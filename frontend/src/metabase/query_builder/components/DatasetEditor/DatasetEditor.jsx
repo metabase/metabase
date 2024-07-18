@@ -53,7 +53,7 @@ import {
 } from "./DatasetEditor.styled";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
-import EditorTabs from "./EditorTabs";
+import { EditorTabs } from "./EditorTabs";
 import { TabHintToast } from "./TabHintToast";
 import { EDITOR_TAB_INDEXES } from "./constants";
 
@@ -496,16 +496,8 @@ function DatasetEditor(props) {
           isMetric ? null : (
             <EditorTabs
               currentTab={datasetEditorTab}
+              disabledMetadata={!resultsMetadata}
               onChange={onChangeEditorTab}
-              options={[
-                { id: "query", name: t`Query`, icon: "notebook" },
-                {
-                  id: "metadata",
-                  name: t`Metadata`,
-                  icon: "label",
-                  disabled: !resultsMetadata,
-                },
-              ]}
             />
           )
         }

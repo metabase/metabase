@@ -156,7 +156,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
 
 async function setup({
   hash,
-  queryString,
+  queryString = "",
   numberOfTabs = 1,
 }: { hash?: string; queryString?: string; numberOfTabs?: number } = {}) {
   const tabs: DashboardTab[] = [];
@@ -191,6 +191,14 @@ async function setup({
 
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
 
+  const pathname = `/embed/dashboard/${MOCK_TOKEN}`;
+  const hashString = hash ? `#${hash}` : "";
+  const href = `${pathname}${queryString}${hashString}`;
+
+  // Setting initial window.location state,
+  // so it can be used by getInitialSelectedTabId
+  window.history.replaceState({}, "", href);
+
   const view = renderWithProviders(
     <Route
       path="embed/dashboard/:token"
@@ -199,9 +207,7 @@ async function setup({
     {
       storeInitialState: createMockState(),
       withRouter: true,
-      initialRoute: `embed/dashboard/${MOCK_TOKEN}${
-        queryString ? `?` + queryString : ""
-      }${hash ? "#" + hash : ""}`,
+      initialRoute: href,
     },
   );
 
