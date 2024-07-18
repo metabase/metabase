@@ -5,7 +5,7 @@ import { promisify } from "util";
 
 import { getCurrentDockerPort } from "./get-current-docker-port";
 import { checkIsPortTaken } from "./is-port-taken";
-import { printError, printSuccess } from "./print";
+import { printError, printInfo, printSuccess } from "./print";
 
 const exec = promisify(execCallback);
 
@@ -18,15 +18,17 @@ export const CONTAINER_NAME = "metabase-embedding-sdk-react";
  */
 const DEFAULT_PORT = 3366;
 
-const messageContainerRunning = (port: number) => `
-  Your local Metabase instance is already running on port ${port}.
-  Use the "docker ps" command to see the Docker container's status.
-`;
+const messageContainerRunning = (port: number) =>
+  `Your local Metabase instance is already running on port ${port}.
+  Use the "docker ps" command to see the Docker container's status.`;
 
-const messageContainerStarted = (port: number) => `
-  Your local Metabase instance has been started on port ${port}.
-  Use the "docker ps" command to see the Docker container's status.
-`;
+const messageContainerStarted = (
+  port: number,
+) => `Your local Metabase instance has been started on port ${port}.
+  Use the "docker ps" command to see the Docker container's status.`;
+
+const CONTAINER_CHECK_MESSAGE =
+  "Checking if Metabase is already running in a Docker container...";
 
 /** Container information returned by "docker ps" */
 interface ContainerInfo {
@@ -59,7 +61,7 @@ export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null>
 
   if (stderr) {
     printError("Failed to check local container status.");
-    console.log(stderr);
+    printInfo(stderr);
     return null;
   }
 
@@ -77,6 +79,8 @@ const randInt = (min: number, max: number) =>
 
 export async function startLocalMetabaseContainer(): Promise<number | false> {
   let port = DEFAULT_PORT;
+
+  printInfo(chalk.grey(CONTAINER_CHECK_MESSAGE));
 
   const container = await getLocalMetabaseContainer();
 
@@ -98,7 +102,7 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
       // stderr may show a warning about architecture mismatch on
       // Apple Silicon, but it does not prevent the container from starting.
       if (stderr) {
-        console.log(stderr);
+        printInfo(chalk.grey(stderr.trim()));
       }
 
       if (stdout.trim().includes(CONTAINER_NAME)) {
@@ -112,6 +116,8 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
 
   // if the container has never been run before, we should run it.
   try {
+    printInfo("Starting Metabase in a Docker container...");
+
     // If the port is already taken, we should try another port.
     while (await checkIsPortTaken(port)) {
       console.log(
@@ -128,7 +134,7 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
     // stderr may show a warning about architecture mismatch on
     // Apple Silicon, but it does not prevent the container from starting.
     if (stderr) {
-      console.log(stderr);
+      printInfo(chalk.grey(stderr.trim()));
     }
 
     if (stdout) {

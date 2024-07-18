@@ -19,32 +19,37 @@ const DOCKER_NOT_RUNNING_MESSAGE = `
 `;
 
 export async function start() {
-  console.log(START_MESSAGE);
+  try {
+    console.log(START_MESSAGE);
 
-  const isInReactProject = await checkInReactProject();
+    const isInReactProject = await checkInReactProject();
 
-  if (!isInReactProject) {
-    return;
+    if (!isInReactProject) {
+      return;
+    }
+
+    const shouldStart = await confirm({ message: "Continue?" });
+
+    if (!shouldStart) {
+      printError("Aborted.");
+      return;
+    }
+
+    const isDockerRunning = await checkIsDockerRunning();
+
+    if (!isDockerRunning) {
+      printError(DOCKER_NOT_RUNNING_MESSAGE);
+      return;
+    }
+
+    const port = await startLocalMetabaseContainer();
+    if (!port) {
+      return;
+    }
+
+    await showGettingStartedGuide(port);
+  } catch (error) {
+    printError("An error occurred.");
+    console.log(error);
   }
-
-  const shouldStart = await confirm({ message: "Continue?" });
-
-  if (!shouldStart) {
-    printError("Aborted.");
-    return;
-  }
-
-  const isDockerRunning = await checkIsDockerRunning();
-
-  if (!isDockerRunning) {
-    printError(DOCKER_NOT_RUNNING_MESSAGE);
-    return;
-  }
-
-  const port = await startLocalMetabaseContainer();
-  if (!port) {
-    return;
-  }
-
-  await showGettingStartedGuide(port);
 }
