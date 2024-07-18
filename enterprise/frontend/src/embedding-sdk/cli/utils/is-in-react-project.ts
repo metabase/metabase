@@ -23,12 +23,15 @@ const UNSUPPORTED_REACT_VERSION = `
   Please make sure your package.json file contains a dependency for React 18.
 `;
 
-export async function checkStartRequirements() {
+/**
+ * Are we in a React project with a supported React version?
+ */
+export async function checkInReactProject(): Promise<boolean> {
   const packageJson = await fs.stat("./package.json");
 
   if (!packageJson.isFile()) {
     printError(PACKAGE_JSON_NOT_FOUND_MESSAGE);
-    return;
+    return false;
   }
 
   try {
@@ -43,15 +46,17 @@ export async function checkStartRequirements() {
 
     if (!hasReactDependency) {
       printError(MISSING_REACT_DEPENDENCY);
-      return;
+      return false;
     }
 
     if (!hasSupportedReactVersion) {
       printError(UNSUPPORTED_REACT_VERSION);
-      return;
+      return false;
     }
+
+    return true;
   } catch (error) {
     printError("Could not parse your package.json file.");
-    return;
+    return false;
   }
 }

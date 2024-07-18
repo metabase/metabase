@@ -1,6 +1,7 @@
 import { confirm } from "@inquirer/prompts";
 
-import { checkStartRequirements } from "../utils/check-requirements";
+import { checkIsDockerRunning } from "../utils/docker";
+import { checkInReactProject } from "../utils/is-in-react-project";
 import { printError } from "../utils/print";
 
 const START_MESSAGE = `
@@ -8,8 +9,19 @@ const START_MESSAGE = `
   analytics into your React app using the Metabase embedding SDK for React.
 `;
 
+const DOCKER_NOT_RUNNING_MESSAGE = `
+  Docker is not running. Please install and start the Docker daemon before running this command.
+  For more information, see https://docs.docker.com/engine/install
+`;
+
 export async function start() {
   console.log(START_MESSAGE);
+
+  const isInReactProject = await checkInReactProject();
+
+  if (!isInReactProject) {
+    return;
+  }
 
   const shouldStart = await confirm({ message: "Continue?" });
 
@@ -18,5 +30,10 @@ export async function start() {
     return;
   }
 
-  await checkStartRequirements();
+  const isDockerRunning = await checkIsDockerRunning();
+
+  if (!isDockerRunning) {
+    printError(DOCKER_NOT_RUNNING_MESSAGE);
+    return;
+  }
 }
