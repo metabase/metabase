@@ -54,8 +54,8 @@ title: Driver interface changelog
   Honey SQL version) has been removed; replace all usages with the two-arity version. Honey SQL 2 has been the only
   supported version since Metabase 0.49.0.
 
-- `:foreign-keys` driver feature was removed. `:metadata/keys-constraints` should be used for drivers that support
-  foreign key relationships reporting during sync. Implicit joins are now dependent on `:left-join` instead. Feature's
+- The `:foreign-keys` driver feature has been removed. `:metadata/keys-constraints` should be used for drivers that support
+  foreign key relationships reporting during sync. Implicit joins now depend on the `:left-join` feature instead. The
   default value is true for `:sql` based drivers. All join features are now enabled for `:sql` based drivers
   by default. Previously those were dependent on `:foreign-keys`. If your driver does support `:left-join`, 
   also remapping and implicit joins tests will run with it.
