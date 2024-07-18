@@ -3,6 +3,7 @@ import cx from "classnames";
 import { useState } from "react";
 import { t } from "ttag";
 
+import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
@@ -202,6 +203,7 @@ export const ParameterValueWidget = ({
       opened={isOpen}
       onChange={toggle}
       position="bottom-start"
+      zIndex={DEFAULT_Z_INDEX - 1}
       {...popoverProps}
     >
       <Popover.Target>
