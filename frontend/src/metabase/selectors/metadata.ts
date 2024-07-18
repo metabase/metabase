@@ -38,7 +38,15 @@ type FieldSelectorOpts = {
 
 export type MetadataSelectorOpts = TableSelectorOpts & FieldSelectorOpts;
 
-const getNormalizedDatabases = (state: State) => state.entities.databases;
+const INTERNAL_DB_ID = 13371337;
+
+const getNormalizedDatabases = (state: State) => {
+  return Object.fromEntries(
+    Object.entries(state.entities.databases).filter(
+      ([_, database]) => database.id !== INTERNAL_DB_ID,
+    ),
+  );
+};
 const getNormalizedSchemas = (state: State) => state.entities.schemas;
 
 const getNormalizedTablesUnfiltered = (state: State) => state.entities.tables;
