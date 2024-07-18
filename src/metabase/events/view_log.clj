@@ -1,6 +1,7 @@
 (ns metabase.events.view-log
   "This namespace is responsible for subscribing to events which should update the view log and view counts."
   (:require
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
@@ -95,9 +96,17 @@
 
 (def ^:private update-dashboard-last-viewed-at-interval-seconds 20)
 
-(defn- update-dashboard-last-viewed-at!* [dashboard-ids]
-  (t2/update! :model/Dashboard :id [:in dashboard-ids]
-              {:last_viewed_at :%now}))
+(defn- update-dashboard-last-viewed-at!* [dashboard-id-timestamps]
+  (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)
+                                             (fn [xs] (apply t/max (map :timestamp xs))))]
+    (try
+      (t2/update! :model/Dashboard :id [:in (keys dashboard-id->timestamp)]
+                  {:last_viewed_at (into [:case]
+                                         (mapcat (fn [[id timestamp]]
+                                                   [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                 dashboard-id->timestamp))})
+      (catch Exception e
+        (log/error e "Failed to increment view counts")))))
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
@@ -108,7 +117,9 @@
 (defn- update-dashboard-last-viewed-at!
   "Update the `last_used_at` of a dashboard asynchronously"
   [dashboard-id]
-  (grouper/submit! @update-dashboard-last-viewed-at-queue dashboard-id))
+  (let [now (t/offset-date-time)]
+    (grouper/submit! @update-dashboard-last-viewed-at-queue {:id dashboard-id
+                                                             :timestamp now})))
 
 (m/defmethod events/publish-event! ::dashboard-queried
   "Handle processing for a dashboard query being run"
