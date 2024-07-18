@@ -49,6 +49,13 @@ export async function start() {
 
     await showGettingStartedGuide(port);
   } catch (error) {
+    if (error instanceof Error) {
+      if (error.message.includes("force closed the prompt")) {
+        printError("Aborted.");
+        return;
+      }
+    }
+
     printError("An error occurred.");
     console.log(error);
   }
