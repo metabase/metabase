@@ -434,7 +434,7 @@
 
 (defn mock-fks-application-database-metadata-provider
   "A mock metadata provider composed with the application database metadata provider that adds FK relationships
-  for Tables that would normally have them in drivers that havev formal FK constraints."
+  for Tables that would normally have them in drivers that have formal FK constraints."
   ([]
    (mock-fks-application-database-metadata-provider (lib.metadata.jvm/application-database-metadata-provider (data/id))))
 
