@@ -902,6 +902,8 @@ describe("issue 34514", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
 
     cy.visit("/");
     // It's important to navigate via UI so that there are
@@ -914,11 +916,13 @@ describe("issue 34514", () => {
 
   it("should not make network request with invalid query (metabase#34514)", () => {
     entityPickerModal().within(() => {
+      cy.wait("@fetchTables");
       entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
 
     cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
     assertQueryTabState();
 
     cy.go("back");
@@ -928,17 +932,19 @@ describe("issue 34514", () => {
   it("should allow browser history navigation between tabs (metabase#34514)", () => {
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
+      cy.wait("@fetchTables");
       cy.findByText("Orders").click();
     });
 
     cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
     assertQueryTabState();
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     assertMetadataTabState();
 
-    cy.findByLabelText("Description").realHover(); // move cursor out of Metadata button to fix a flaking test
     cy.go("back");
+    cy.wait("@dataset"); // This should be removed when (metabase#45787) is fixed
     assertQueryTabState();
 
     cy.go("back");
