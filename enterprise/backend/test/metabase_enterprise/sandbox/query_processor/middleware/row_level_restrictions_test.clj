@@ -1011,7 +1011,7 @@
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
+  (mt/test-drivers (row-level-restrictions-fk-drivers)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset test-data
         (met/with-gtaps! {:gtaps      (mt/$ids
