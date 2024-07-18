@@ -303,7 +303,6 @@
 ;;
 ;; but for the time being we'll have to live with these being "weird" semantic types.
 (derive :type/Structured :Semantic/*)
-(derive :type/Structured :type/Text)
 
 (derive :type/SerializedJSON :type/Structured)
 (derive :type/XML :type/Structured)

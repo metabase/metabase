@@ -207,7 +207,7 @@ describe("scenarios > dashboard", () => {
           cy.button("Create").click();
         });
 
-        saveDashboard();
+        saveDashboard({ awaitRequest: false });
         cy.findByTestId("app-bar").findByText(NEW_COLLECTION);
       },
     );
