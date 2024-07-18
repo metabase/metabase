@@ -6,7 +6,6 @@ body {
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
   --mb-color-text-tertiary: var(--mb-color-text-light);
-  --mb-color-embed-filter-bg-color: var(--mb-color-bg-white);
 }
 
 .EmbedFrame {
@@ -41,7 +40,6 @@ body {
     var(--mb-color-text-white) 45%,
     transparent
   );
-  --mb-color-embed-filter-bg-color: var(--mb-color-bg-black);
   --mb-color-border: var(--mb-color-text-medium);
   --mb-color-bg-dashboard: var(--mb-color-bg-black);
   --mb-color-background: var(--mb-color-bg-black);
@@ -79,16 +77,16 @@ body {
 }
 
 [data-metabase-theme="transparent"][data-metabase-theme="transparent"] {
-  .ThemeTransparent.EmbedFrame {
+  .EmbedFrame {
     background-color: transparent;
+
+    .DashCard .Card {
+      background-color: transparent;
+    }
   }
 
-  .ThemeTransparent .EmbedFrameHeader,
-  .ThemeTransparent .EmbedFrameFooter {
-    background-color: transparent;
-  }
-
-  .ThemeTransparent.EmbedFrame .DashCard .Card {
+  .EmbedFrameHeader,
+  .EmbedFrameFooter {
     background-color: transparent;
   }
 }
