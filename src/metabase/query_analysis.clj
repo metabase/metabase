@@ -180,8 +180,8 @@
 (defn analyze-async!
   "Asynchronously hand-off the given card for analysis, at a high priority."
   ([card-or-id]
-   (analyze-async! card-or-id worker-queue))
-  ([card-or-id queue]
+   (analyze-async! worker-queue card-or-id))
+  ([queue card-or-id]
    (queue-or-analyze! queue queue/maybe-put! card-or-id)))
 
 (defn analyze-sync!
