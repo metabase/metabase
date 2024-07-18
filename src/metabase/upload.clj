@@ -154,7 +154,7 @@
   []
   (t2/select-one Database :uploads_enabled true))
 
-(mu/defn table-identifier
+(mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
    :- [:map

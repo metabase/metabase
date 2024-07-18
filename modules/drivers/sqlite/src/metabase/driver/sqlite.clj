@@ -38,6 +38,7 @@
                               :schemas                                false
                               :datetime-diff                          true
                               :now                                    true
+                              :identifiers-with-spaces                true
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
                               ;; we have this 'feature' so the frontend doesn't try to present the option to you.
                               :case-sensitivity-string-filter-options false
@@ -84,7 +85,7 @@
   (let [pk (first (sql-jdbc.execute/do-with-connection-with-options
                    driver database nil
                    (fn [conn]
-                     (sql-jdbc.describe-table/get-table-pks :sqlite conn (:name database) table))))]
+                     (sql-jdbc.describe-table/get-table-pks :sqlite conn nil table))))]
     ;; In sqlite a PK will implicitly have a UNIQUE INDEX, but if the PK is integer the getIndexInfo method from
     ;; jdbc doesn't return it as indexed. so we need to manually get mark the pk as indexed here
     (cond-> ((get-method driver/describe-table-indexes :sql-jdbc) driver database table)

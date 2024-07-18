@@ -114,9 +114,18 @@ export function saveDashboard({
   buttonLabel = "Save",
   editBarText = "You're editing this dashboard.",
   waitMs = 1,
+  awaitRequest = true,
 } = {}) {
+  cy.intercept("PUT", "/api/dashboard/*").as("saveDashboardCards");
   cy.button(buttonLabel).click();
-  cy.findByText(editBarText).should("not.exist");
+
+  if (awaitRequest) {
+    cy.wait("@saveDashboardCards").then(() => {
+      cy.findByText(editBarText).should("not.exist");
+    });
+  } else {
+    cy.findByText(editBarText).should("not.exist");
+  }
   cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
@@ -463,7 +472,7 @@ export function assertDashboardFullWidth() {
 }
 
 export function createDashboardWithTabs({
-  dashcards,
+  dashcards = [],
   tabs,
   ...dashboardDetails
 }) {
