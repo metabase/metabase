@@ -28,35 +28,32 @@
 (defn- cards-with-inactive-fields
   [sort-column sort-direction offset limit]
   (let [sort-dir-kw           (keyword sort-direction)
-        additional-joins      (condp = sort-column
+        additional-joins      (case sort-column
                                 "name"           []
-                                "collection"     [[(t2/table-name :model/Collection) :coll] [:or
-                                                                                             [:= :coll.id :c.collection_id]
-                                                                                             [:= nil :c.collection_id]]]
+                                "collection"     [[(t2/table-name :model/Collection) :coll] [:= :coll.id :c.collection_id]]
                                 "created_by"     [[(t2/table-name :model/User) :u] [:= :u.id :c.creator_id]]
                                 "last_edited_at" [])
+        extra-selects         (case sort-column
+                                "name"           [:c.name]
+                                "collection"     [:coll.name [[:not= nil :coll.name] :is_child_collection]]
+                                "created_by"     [:u.first_name :u.last_name :u.email]
+                                "last_edited_at" [:c.updated_at])
         order-by-column       (condp = sort-column
-                                "name"           [[:c.name sort-dir-kw]]
-                                "collection"     [[[:case [:= nil :coll.name] 0 :else 1] sort-dir-kw]
+                                "collection"     [[:is_child_collection sort-dir-kw]
                                                   [:coll.name sort-dir-kw]]
                                 "created_by"     [[[:coalesce [:|| :u.first_name " " :u.last_name]
                                                     :u.first_name :u.last_name :u.email]
                                                    sort-dir-kw]]
-                                "last_edited_at" [[:c.updated_at sort-dir-kw]])
-        extra-selects         (condp = sort-column
-                                "name"           [:c.name]
-                                "collection"     [:coll.name]
-                                "created_by"     [:u.first_name :u.last_name :u.email]
-                                "last_edited_at" [:c.updated_at])
+                                [(into extra-selects [sort-dir-kw])])
         cards                 (t2/select :model/Card
                                          (m/assoc-some
-                                          {:select-distinct (into [:c.*] extra-selects)
-                                           :from            [[(t2/table-name :model/Card) :c]]
-                                           :join            card-joins
-                                           :left-join       additional-joins
-                                           :where           [:= :c.archived false]
-                                           :order-by        order-by-column
-                                           :group-by        :c.id}
+                                          {:select    (into [:c.*] extra-selects)
+                                           :from      [[(t2/table-name :model/Card) :c]]
+                                           :join      card-joins
+                                           :left-join additional-joins
+                                           :where     [:= :c.archived false]
+                                           :order-by  order-by-column
+                                           :group-by  :c.id}
                                           :limit  limit
                                           :offset offset))
         card-id->query-fields (when (seq cards)
@@ -80,11 +77,10 @@
 (defn- invalid-card-count
   []
   (:count
-   (first
-    (t2/query {:select [[[:count [:distinct :c.id]] :count]]
-               :from   [[(t2/table-name :model/Card) :c]]
-               :join   card-joins
-               :where  [:= :c.archived false]}))))
+   (t2/query-one {:select [[[:count [:distinct :c.id]] :count]]
+                  :from   [[(t2/table-name :model/Card) :c]]
+                  :join   card-joins
+                  :where  [:= :c.archived false]})))
 
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
