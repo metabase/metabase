@@ -1,6 +1,9 @@
 import { confirm } from "@inquirer/prompts";
 
-import { checkIsDockerRunning } from "../utils/docker";
+import {
+  checkIsDockerRunning,
+  startLocalMetabaseContainer,
+} from "../utils/docker";
 import { checkInReactProject } from "../utils/is-in-react-project";
 import { printError } from "../utils/print";
 
@@ -34,6 +37,13 @@ export async function start() {
 
   if (!isDockerRunning) {
     printError(DOCKER_NOT_RUNNING_MESSAGE);
+    return;
+  }
+
+  // We should start the container if it's not running.
+  const isContainerStarted = await startLocalMetabaseContainer();
+
+  if (!isContainerStarted) {
     return;
   }
 }
