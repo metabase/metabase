@@ -7,7 +7,7 @@ import { CONTAINER_NAME } from "./docker";
 import { printInfo } from "./print";
 
 const INSTALL_SDK_MESSAGE = `
-  Install the Metabase Embedding SDK for React on another terminal by running:
+  Install the npm package on another terminal by running:
   npm install --save @metabase/embedding-sdk-react
 `;
 
