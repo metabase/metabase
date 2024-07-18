@@ -7021,6 +7021,52 @@ databaseChangeLog:
               DROP VIEW IF EXISTS v_content;
 
   - changeSet:
+      id: v50.2024-02-26T22:15:52
+      author: noahmoss
+      comment: Add index on data_permissions(group_id, db_id, perm_value)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_permissions
+                indexName: idx_data_permissions_group_id_db_id_perm_value
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_group_id_db_id_perm_value
+            columns:
+              - column:
+                  name: group_id
+              - column:
+                  name: db_id
+              - column:
+                  name: perm_value
+
+  - changeSet:
+      id: v50.2024-02-26T22:15:53
+      author: noahmoss
+      comment: Add index on data_permissions(group_id, db_id, table_id, perm_value)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_permissions
+                indexName: idx_data_permissions_group_id_db_id_table_id_perm_value
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_group_id_db_id_table_id_perm_value
+            columns:
+              - column:
+                  name: group_id
+              - column:
+                  name: db_id
+              - column:
+                  name: table_id
+              - column:
+                  name: perm_value
+
+  - changeSet:
       id: v50.2024-02-26T22:15:54
       author: noahmoss
       comment: New `view-data` permission
