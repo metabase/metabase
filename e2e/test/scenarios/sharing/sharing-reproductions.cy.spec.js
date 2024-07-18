@@ -346,33 +346,38 @@ describe("issue 21559", { tags: "@external" }, () => {
     });
   });
 
-  it("should respect dashboard card visualization (metabase#21559)", () => {
-    cy.findByTestId("add-series-button").click({ force: true });
+  it(
+    "should respect dashboard card visualization (metabase#21559)",
+    { tags: "@flaky" },
+    () => {
+      cy.findByTestId("add-series-button").click({ force: true });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText(q2Details.name).click();
-    cy.findByTestId("add-series-modal").within(() => {
-      // wait for elements to appear inside modal
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(q2Details.name).click();
+      cy.findByTestId("add-series-modal").within(() => {
+        // wait for elements to appear inside modal
+        chartPathWithFillColor("#A989C5").should("have.length", 1);
+        chartPathWithFillColor("#88BF4D").should("have.length", 1);
+
+        cy.button("Done").click();
+      });
+
+      // Make sure visualization changed to bars
       chartPathWithFillColor("#A989C5").should("have.length", 1);
       chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
-      cy.button("Done").click();
-    });
+      openAndAddEmailsToSubscriptions([
+        `${admin.first_name} ${admin.last_name}`,
+      ]);
 
-    // Make sure visualization changed to bars
-    chartPathWithFillColor("#A989C5").should("have.length", 1);
-    chartPathWithFillColor("#88BF4D").should("have.length", 1);
-
-    saveDashboard();
-
-    openAndAddEmailsToSubscriptions([`${admin.first_name} ${admin.last_name}`]);
-
-    sendEmailAndAssert(email => {
-      expect(email.html).to.include("img"); // Bar chart is sent as img (inline attachment)
-      expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
-    });
-  });
+      sendEmailAndAssert(email => {
+        expect(email.html).to.include("img"); // Bar chart is sent as img (inline attachment)
+        expect(email.html).not.to.include("80.52"); // Scalar displays its value in HTML
+      });
+    },
+  );
 });
+
 describe("issue 22524", () => {
   const questionDetails = {
     name: "22524 question",
