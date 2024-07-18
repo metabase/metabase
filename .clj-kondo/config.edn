@@ -815,6 +815,7 @@
    metabase.query-processor.streaming/streaming-response                        macros.metabase.query-processor.streaming/streaming-response
    metabase.related-test/with-world                                             macros.metabase.related-test/with-world
    metabase.shared.util.namespaces/import-fn                                    macros.metabase.shared.util.namespaces/import-fn
+   metabase.task.setup.query-analysis-setup/with-test-setup!                    macros.metabase.task.setup.query-analysis-setup/with-test-setup!
    metabase.test.data.users/with-group-for-user                                 macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value!                                  macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                         macros.metabase.test.util/with-temporary-raw-setting-values
