@@ -35,27 +35,30 @@
                                 "last_edited_at" [])
         extra-selects         (case sort-column
                                 "name"           [:c.name]
-                                "collection"     [:coll.name [[:not= nil :coll.name] :is_child_collection]]
+                                "collection"     [[[:max :coll.name]]
+                                                  ;; ^^ All these `max`es are silly, but they're necessary since we
+                                                  ;; group by card
+                                                  [[:not= nil [:max :coll.name]] :is_child_collection]]
                                 "created_by"     [:u.first_name :u.last_name :u.email]
                                 "last_edited_at" [:c.updated_at])
         order-by-column       (condp = sort-column
                                 "collection"     [[:is_child_collection sort-dir-kw]
-                                                  [:coll.name sort-dir-kw]]
+                                                  [[:max :coll.name] sort-dir-kw]]
                                 "created_by"     [[[:coalesce [:|| :u.first_name " " :u.last_name]
                                                     :u.first_name :u.last_name :u.email]
                                                    sort-dir-kw]]
                                 [(into extra-selects [sort-dir-kw])])
-        cards                 (t2/select :model/Card
-                                         (m/assoc-some
-                                          {:select    (into [:c.*] extra-selects)
-                                           :from      [[(t2/table-name :model/Card) :c]]
-                                           :join      card-joins
-                                           :left-join additional-joins
-                                           :where     [:= :c.archived false]
-                                           :order-by  order-by-column
-                                           :group-by  :c.id}
-                                          :limit  limit
-                                          :offset offset))
+        card-query            (m/assoc-some
+                               {:select    (into [:c.*] extra-selects)
+                                :from      [[(t2/table-name :model/Card) :c]]
+                                :join      card-joins
+                                :left-join additional-joins
+                                :where     [:= :c.archived false]
+                                :order-by  order-by-column
+                                :group-by  :c.id}
+                               :limit  limit
+                               :offset offset)
+        cards                 (t2/select :model/Card card-query)
         card-id->query-fields (when (seq cards)
                                 (group-by :card_id (t2/select :model/QueryField
                                                               {:select [:qf.* [:f.name :column_name] [:t.name :table_name]]
