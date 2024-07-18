@@ -178,3 +178,16 @@ export const createRawSeries = (options: {
     ]
   );
 };
+
+export const getSeriesWithVisibleColumns = (series: Series): Series => {
+  return series.map(singleSeries => ({
+    ...singleSeries,
+    data: {
+      ...singleSeries.data,
+      cols: singleSeries.data.cols.map(col => ({
+        ...col,
+        visibility_type: "normal",
+      })),
+    },
+  }));
+};

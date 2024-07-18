@@ -48,7 +48,7 @@ import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { isNotNull } from "metabase/lib/types";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
-import { createRawSeries } from "./utils";
+import { createRawSeries, getSeriesWithVisibleColumns } from "./utils";
 
 export const getUiControls = state => state.qb.uiControls;
 export const getQueryStatus = state => state.qb.queryStatus;
@@ -695,6 +695,14 @@ export const getRawSeries = createSelector(
       showRawTable: isShowingRawTable,
     });
   },
+);
+
+/**
+ * Always show columns in the model editor despite visibility_type
+ */
+export const getRawSeriesWithVisibleColumns = createSelector(
+  [getRawSeries],
+  rawSeries => rawSeries && getSeriesWithVisibleColumns(rawSeries),
 );
 
 const _getVisualizationTransformed = createSelector(

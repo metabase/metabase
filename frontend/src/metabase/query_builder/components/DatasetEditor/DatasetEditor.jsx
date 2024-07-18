@@ -28,6 +28,7 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
   getIsResultDirty,
+  getRawSeriesWithVisibleColumns,
   getResultsMetadata,
   getVisualizationSettings,
   isResultsMetadataDirty,
@@ -58,6 +59,7 @@ import { EDITOR_TAB_INDEXES } from "./constants";
 
 const propTypes = {
   question: PropTypes.object.isRequired,
+  rawSeries: PropTypes.array,
   visualizationSettings: PropTypes.object,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
@@ -93,6 +95,7 @@ const TABLE_HEADER_HEIGHT = 45;
 
 function mapStateToProps(state) {
   return {
+    rawSeries: getRawSeriesWithVisibleColumns(state),
     metadata: getMetadata(state),
     visualizationSettings: getVisualizationSettings(state),
     datasetEditorTab: getDatasetEditorTab(state),
@@ -197,6 +200,7 @@ const FIELDS = [
 function DatasetEditor(props) {
   const {
     question,
+    rawSeries,
     visualizationSettings,
     datasetEditorTab,
     result,
@@ -549,6 +553,7 @@ function DatasetEditor(props) {
                 {...props}
                 className={CS.spread}
                 noHeader
+                rawSeries={rawSeries}
                 queryBuilderMode="dataset"
                 isShowingDetailsOnlyColumns={datasetEditorTab === "metadata"}
                 hasMetadataPopovers={false}
