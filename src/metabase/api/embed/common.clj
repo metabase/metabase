@@ -451,20 +451,21 @@
   The `:preview` key will default to `false`."
   [token searched-param-id prefix id-query-params
    & {:keys [preview] :or {preview false}}]
-  (let [unsigned-token                       (embed/unsign token)
-        dashboard-id                         (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
-        _                                    (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
-        slug-token-params                    (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-        {parameters       :parameters
-         embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
-        ;; when previewing an embed, embedding-params may initially be empty (not in Appdb yet)
-        ;; to prevent an error, use the embedding params from the token in this case
-        embedding-params                     (or embedding-params
-                                                 (when preview
-                                                   (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])))
-        id->slug                             (into {} (map (juxt :id :slug) parameters))
-        slug->id                             (into {} (map (juxt :slug :id) parameters))
-        searched-param-slug                  (get id->slug searched-param-id)]
+  (let [unsigned-token                                 (embed/unsign token)
+        dashboard-id                                   (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
+        _                                              (when-not preview (check-embedding-enabled-for-dashboard dashboard-id))
+        slug-token-params                              (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
+        {parameters                 :parameters
+         published-embedding-params :embedding_params} (t2/select-one :model/Dashboard :id dashboard-id)
+        ;; when previewing an embed, embedding-params should come from the token,
+        ;; since a user may be changing them prior to publishing the Embed, which is what actually persists
+        ;; the settings to the Appdb.
+        embedding-params                               (if preview
+                                                         (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+                                                         published-embedding-params)
+        id->slug                                       (into {} (map (juxt :id :slug) parameters))
+        slug->id                                       (into {} (map (juxt :slug :id) parameters))
+        searched-param-slug                            (get id->slug searched-param-id)]
     (try
       ;; you can only search for values of a parameter if it is ENABLED and NOT PRESENT in the JWT.
       (when-not (= (get embedding-params (keyword searched-param-slug)) "enabled")
