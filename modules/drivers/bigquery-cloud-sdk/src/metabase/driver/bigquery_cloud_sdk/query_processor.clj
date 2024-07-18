@@ -756,9 +756,8 @@
 (defn- adjust-order-by-clause
   [[dir [_clause _id-or-name opts :as clause]]]
   [dir
-   ;; For selected fields, ie. those with desired-alias, use that alias to refer those in compiled order by.
-   ;; If field is not selected, or it is from this table having no binning or temporal unit, refer to it by what would
-   ;; be LHS in select, ie. qualified identifier.
+   ;; Following code ensures that only selected columns (with exception of those comming from different source than
+   ;; this source table and having no binning and no bucketing) are forced to use aliases.
    ;;
    ;; This solves Bigquery's inability to use expression from group by in order by.
    ;; ex: `select a + 1, b from T group by a + 1 order by a + 1 asc` would fail.
@@ -769,8 +768,8 @@
    (if (and
         (::add/desired-alias opts)
         (not (and (pos-int? (::add/source-table opts))
-                  (not (or (:binning opts)
-                           (:temporal-unit opts))))))
+                  (not (:binning opts))
+                  (not (:temporal-unit opts)))))
      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
      clause)])
 
