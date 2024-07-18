@@ -18995,8 +18995,8 @@ msgstr[1] "{0} miembros"
 #: frontend/src/metabase/admin/people/components/PeopleList.jsx:233
 msgid "{0} person found"
 msgid_plural "{0} people found"
-msgstr[0] "{0} persona enconrada"
-msgstr[1] "{0} personas enconradas"
+msgstr[0] "{0} persona encontrada"
+msgstr[1] "{0} personas encontradas"
 
 #: frontend/src/metabase/admin/people/containers/PeopleListingApp.jsx:39
 msgid "Find someone"
