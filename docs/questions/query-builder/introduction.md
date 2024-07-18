@@ -75,7 +75,7 @@ There are different filter types, each with their own set of filtering options:
 - **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
 - **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
 - **Date columns** give you a lot of options to filter by specific date ranges, relative date ranges, and more.
-- **JSON columns**. Metabase can't parse the JSON in a column, so you can only filter for "Is empty" or "Is not empty". Some databases, however, support [JSON unfolding](../../data-modeling/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
+- **JSON columns**. Metabase can't parse the JSON in a column, so you can only filter for "Is empty" or "Not empty". Some databases, however, support [JSON unfolding](../../data-modeling/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
 
 ## Filter multiple columns
 
