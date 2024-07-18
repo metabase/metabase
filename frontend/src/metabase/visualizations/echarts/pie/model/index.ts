@@ -4,6 +4,7 @@ import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
+import { checkNotNull } from "metabase/lib/types";
 import { pieNegativesWarning } from "metabase/visualizations/lib/warnings";
 import { getDefaultColors } from "metabase/visualizations/shared/settings/pie";
 import type {
@@ -143,6 +144,13 @@ export function getPieChartModel(
           (settings["pie.slice_threshold"] ?? 0) / 100, // stored setting for "pie.slice_threshold" is on 0-100 scale to match user input
     )
     .value();
+
+  // We don't show the grey other slice if there isn't more than one slice to
+  // group into it
+  if (others.length === 1) {
+    const singleOtherSlice = others.pop();
+    slices.push(checkNotNull(singleOtherSlice));
+  }
 
   // Only add "other" slice if there are slices below threshold with non-zero total
   const otherTotal = others.reduce((currTotal, o) => currTotal + o.value, 0);
