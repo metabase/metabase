@@ -81,6 +81,8 @@ describe("scenarios > question > download", () => {
         expect(sheet["A1"].v).to.eq("Count");
         expect(sheet["A2"].v).to.eq(18760);
       });
+
+      dismissDownloadStatus();
     });
   });
 
@@ -124,6 +126,8 @@ describe("scenarios > question > download", () => {
         },
       );
 
+      dismissDownloadStatus();
+
       downloadAndAssert(
         {
           ...opts,
@@ -148,6 +152,8 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
+      dismissDownloadStatus();
+
       editDashboard();
 
       setFilter("ID");
@@ -171,6 +177,8 @@ describe("scenarios > question > download", () => {
       });
 
       assertOrdersExport(1);
+
+      dismissDownloadStatus();
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -244,6 +252,8 @@ describe("scenarios > question > download", () => {
                 assertSheetRowsCount(1)(sheet);
               },
             );
+
+            dismissDownloadStatus();
           });
         });
       });
@@ -374,4 +384,15 @@ function assertOrdersExport(length) {
       assertSheetRowsCount(length)(sheet);
     },
   );
+}
+
+function dismissDownloadStatus() {
+  cy.findByTestId("status-root-container").within(() => {
+    cy.findByRole("status").within(() => {
+      cy.findAllByText("Download completed");
+      cy.findByLabelText("Dismiss").click();
+    });
+
+    cy.findByRole("status").should("not.exist");
+  });
 }
