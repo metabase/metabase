@@ -59,7 +59,7 @@ export const AddHeadingOrTextButton = () => {
           w="3rem"
           aria-label={t`Add a heading or text box`}
         >
-          <Group spacing="xs">
+          <Group spacing="xs" noWrap>
             <Icon name="string" size={18} />
             <Icon name="chevrondown" size={10} />
           </Group>
