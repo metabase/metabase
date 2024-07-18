@@ -25,7 +25,7 @@
                               nil   (swap! skipped inc)))))
         background-fn (fn []
                         (doseq [e backfill-events]
-                          (queue/blocking-put! queue {:thread "back", :payload e})))
+                          (queue/blocking-put! queue 1000 {:thread "back", :payload e})))
         run!          (fn [f]
                         (future (f)))]
 
@@ -39,7 +39,7 @@
         (while true
           ;; Stop the consumer once we are sure that there are no more events coming.
           (u/with-timeout 100
-            (vswap! processed conj (:payload (queue/blocking-take! queue)))
+            (vswap! processed conj (:payload (queue/blocking-take! queue 1000)))
             ;; Sleep to provide some backpressure
             (Thread/sleep 1)))
         (assert false "this is never reached")
