@@ -1598,8 +1598,8 @@ describe("issue 44974", () => {
     withDatabase(PG_DB_ID, ({ PEOPLE_ID }) => {
       const questionDetails = {
         name: "Question 44974 in Postgres DB",
+        database: PG_DB_ID,
         query: {
-          database: PG_DB_ID,
           "source-table": PEOPLE_ID,
           limit: 1,
         },
@@ -1614,11 +1614,8 @@ describe("issue 44974", () => {
       join();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        entityPickerModalTab("Recents").should("not.exist");
+        entityPickerModalTab("Saved questions").click();
         cy.findByText(questionDetails.name).should("not.exist");
       });
     });
