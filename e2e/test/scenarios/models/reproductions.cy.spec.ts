@@ -1,5 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
   createNativeQuestion,
@@ -41,6 +44,7 @@ import {
   assertQueryBuilderRowCount,
   navigationSidebar,
   newButton,
+  tableInteractive,
 } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
@@ -834,6 +838,47 @@ describe("issue 39993", () => {
     cy.wait("@updateModel");
     cy.findAllByTestId("header-cell").eq(0).should("have.text", "Exp");
     cy.findAllByTestId("header-cell").eq(1).should("have.text", "ID");
+  });
+});
+
+describe("issue 33844", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
+      type: "model",
+    });
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  it("should show hidden PKs in model metadata editor and object details (metabase#33844)", () => {
+    visitModel(ORDERS_QUESTION_ID);
+
+    cy.log("make a column to be visible only in detail views");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    cy.findByTestId("detail-shortcut").should("not.exist");
+    tableHeaderClick("ID");
+    cy.findByLabelText("Detail views only").click();
+    cy.button("Save changes").click();
+    cy.wait("@updateModel");
+    tableInteractive().findByText("ID").should("not.exist");
+    cy.findAllByTestId("detail-shortcut").first().click();
+    modal().within(() => {
+      cy.findByText("Order").should("be.visible");
+      cy.findByText("ID").should("be.visible");
+      cy.findByTestId("object-detail-close-button").click();
+    });
+
+    cy.log("make the column back visible in table views");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    cy.findByTestId("detail-shortcut").should("not.exist");
+    tableHeaderClick("ID");
+    cy.findByLabelText("Table and details views").click();
+    cy.button("Save changes").click();
+    cy.wait("@updateModel");
+    tableInteractive().findByText("ID").should("be.visible");
   });
 });
 
