@@ -2,6 +2,7 @@
 /* eslint-disable import/no-commonjs */
 /* eslint-disable import/order */
 const NodePolyfillPlugin = require("node-polyfill-webpack-plugin");
+const { EsbuildPlugin } = require("esbuild-loader");
 
 const webpack = require("webpack");
 
@@ -40,6 +41,19 @@ const shouldUseEslint =
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
+  plugins: devMode ? ["@emotion", "react-refresh/babel"] : ["@emotion"],
+  presets: [],
+};
+
+const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
+
+const ESBUILD_LOADER = {
+  loader: "esbuild-loader",
+  options: {
+    loader: "tsx",
+    target: "es6",
+    jsxFactory: "_jsx",
+  },
 };
 
 const CSS_CONFIG = {
@@ -102,9 +116,37 @@ const config = (module.exports = {
   module: {
     rules: [
       {
-        test: /\.(tsx?|jsx?)$/,
+        test: /\.styled\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [BABEL_LOADER, ESBUILD_LOADER],
+      },
+      {
+        test: /\.(tsx|jsx?)$/,
+        exclude: /node_modules|cljs/,
+        use: [
+          {
+            loader: "esbuild-loader",
+            options: {
+              loader: "tsx",
+              target: "es6",
+              jsxFactory: "_jsx",
+            },
+          },
+        ],
+      },
+      {
+        test: /\.(ts)$/,
+        exclude: /node_modules|cljs/,
+        use: [
+          {
+            loader: "esbuild-loader",
+            options: {
+              loader: "ts",
+              target: "es6",
+              jsxFactory: "_jsx",
+            },
+          },
+        ],
       },
       ...(shouldUseEslint
         ? [
@@ -247,10 +289,8 @@ const config = (module.exports = {
       },
     },
     minimizer: [
-      new TerserPlugin({
-        minify: TerserPlugin.swcMinify,
-        parallel: true,
-        test: /\.(tsx?|jsx?)($|\?)/i,
+      new EsbuildPlugin({
+        target: "es2015", // Syntax to transpile to (see options below for possible values)
       }),
     ],
   },
@@ -308,19 +348,19 @@ if (WEBPACK_BUNDLE === "hot") {
   config.output.publicPath =
     "http://localhost:8080/" + config.output.publicPath;
 
-  config.module.rules.unshift({
-    test: /\.(tsx?|jsx?)$/,
-    exclude: /node_modules|cljs/,
-    use: [
-      {
-        loader: "babel-loader",
-        options: {
-          ...BABEL_CONFIG,
-          plugins: ["@emotion", "react-refresh/babel"],
-        },
-      },
-    ],
-  });
+  // config.module.rules.unshift({
+  //   test: /\.(tsx?|jsx?)$/,
+  //   exclude: /node_modules|cljs/,
+  //   use: [
+  //     {
+  //       loader: "babel-loader",
+  //       options: {
+  //         ...BABEL_CONFIG,
+  //         plugins: ["@emotion", "react-refresh/babel"],
+  //       },
+  //     },
+  //   ],
+  // });
 
   config.devServer = {
     hot: true,
