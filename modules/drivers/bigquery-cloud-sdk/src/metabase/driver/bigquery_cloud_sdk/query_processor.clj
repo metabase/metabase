@@ -767,9 +767,9 @@
    ;; tables. Problem is solved by qualifying that order by field.
    (if (and
         (::add/desired-alias opts)
-        (not (and (pos-int? (::add/source-table opts))
-                  (not (:binning opts))
-                  (not (:temporal-unit opts)))))
+        (or (not (pos-int? (::add/source-table opts)))
+            (:binning opts)
+            (:temporal-unit opts)))
      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
      clause)])
 

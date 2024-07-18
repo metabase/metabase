@@ -60,8 +60,7 @@ title: Driver interface changelog
   by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`, 
   the test for remapping and implicit joins will be now executed.
 
--  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in tests. Currently,
-this is disabled only for `:sparksql`.
+-  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in tests. Currently, this is disabled only for `:sparksql`.
 
 ## Metabase 0.50.0
 
