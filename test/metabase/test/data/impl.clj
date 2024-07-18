@@ -186,8 +186,6 @@
 
 (mu/defn database-source-dataset-name :- :string
   "Get the name of the test dataset this Database was created from, e.g. `test-data`."
-  ;; If this schema fails you probably need to reload your test Database or manually add the dataset name to
-  ;; `:settings`. This was added on 2024-07-17
   [database :- [:map [:settings [:map [:database-source-dataset-name :string]]]]]
   (get-in database [:settings :database-source-dataset-name]))
 
