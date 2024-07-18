@@ -2,12 +2,14 @@ body {
   background-color: transparent;
 }
 
-.EmbedFrame {
+[data-metabase-theme="light"][data-metabase-theme="light"] {
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
   --mb-color-text-tertiary: var(--mb-color-text-light);
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-white);
+}
 
+.EmbedFrame {
   color: var(--mb-color-text-primary);
   background-color: var(--mb-color-bg-dashboard);
 }
@@ -23,7 +25,7 @@ body {
   background-color: var(--mb-color-bg-dashboard);
 }
 
-.ThemeNight {
+[data-metabase-theme="night"][data-metabase-theme="night"] {
   --mb-color-text-primary: color-mix(
     in srgb,
     var(--mb-color-text-white) 90%,
@@ -43,48 +45,50 @@ body {
   --mb-color-border: var(--mb-color-text-medium);
   --mb-color-bg-dashboard: var(--mb-color-bg-black);
   --mb-color-background: var(--mb-color-bg-black);
-}
 
-.ThemeNight.EmbedFrame,
-/* this is to make it work when exporting to pdfs,
-where the EmbedFrame is not part of the exported dom */
-.ThemeNight.EmbedFrame .WithThemeBackground {
-  background-color: var(--mb-color-bg-dashboard);
-  border-color: var(--mb-color-bg-dark);
-}
+  .EmbedFrame,
+  /* this is to make it work when exporting to pdfs,
+  where the EmbedFrame is not part of the exported dom */
+  .WithThemeBackground {
+    background-color: var(--mb-color-bg-dashboard);
+    border-color: var(--mb-color-bg-dark);
+  }
 
-.ThemeNight .EmbedFrameHeader,
-.ThemeNight .EmbedFrameFooter {
-  background-color: var(--mb-color-bg-dashboard);
-  border-color: var(--mb-color-bg-dark);
-}
+  .EmbedFrameHeader,
+  .EmbedFrameFooter {
+    background-color: var(--mb-color-bg-dashboard);
+    border-color: var(--mb-color-bg-dark);
+  }
 
-.ThemeNight.EmbedFrame .fullscreenNightText {
-  transition: color 1s linear;
-}
+  .EmbedFrame .fullscreenNightText {
+    transition: color 1s linear;
+  }
 
-.ThemeNight.EmbedFrame svg text {
-  stroke: none !important;
-}
+  .EmbedFrame svg text {
+    stroke: none !important;
+  }
 
-.ThemeNight.EmbedFrame .DashCard .Card {
-  background-color: var(--mb-color-bg-black);
-  border: 1px solid var(--mb-color-border);
+  .EmbedFrame .DashCard .Card {
+    background-color: var(--mb-color-bg-black);
+    border: 1px solid var(--mb-color-border);
+  }
 }
 
 .NoBackground {
   --mb-color-bg-dashboard: transparent;
 }
 
-.ThemeTransparent.EmbedFrame {
-  background-color: transparent;
-}
+[data-metabase-theme="transparent"][data-metabase-theme="transparent"] {
+  .ThemeTransparent.EmbedFrame {
+    background-color: transparent;
+  }
 
-.ThemeTransparent .EmbedFrameHeader,
-.ThemeTransparent .EmbedFrameFooter {
-  background-color: transparent;
-}
+  .ThemeTransparent .EmbedFrameHeader,
+  .ThemeTransparent .EmbedFrameFooter {
+    background-color: transparent;
+  }
 
-.ThemeTransparent.EmbedFrame .DashCard .Card {
-  background-color: transparent;
+  .ThemeTransparent.EmbedFrame .DashCard .Card {
+    background-color: transparent;
+  }
 }
