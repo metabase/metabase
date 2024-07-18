@@ -30,6 +30,7 @@ import {
   showDashboardCardActions,
   getDashboardCard,
   multiAutocompleteInput,
+  dismissDownloadStatus,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -384,15 +385,4 @@ function assertOrdersExport(length) {
       assertSheetRowsCount(length)(sheet);
     },
   );
-}
-
-function dismissDownloadStatus() {
-  cy.findByTestId("status-root-container").within(() => {
-    cy.findByRole("status").within(() => {
-      cy.findAllByText("Download completed");
-      cy.findByLabelText("Dismiss").click();
-    });
-
-    cy.findByRole("status").should("not.exist");
-  });
 }
