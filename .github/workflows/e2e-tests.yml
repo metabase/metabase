@@ -163,6 +163,7 @@ jobs:
           distribution: "temurin"
 
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
 
       - name: Run Snowplow micro
@@ -174,7 +175,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags=@OSS,grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run slow and resource-intensive Cypress tests
         if: matrix.name == 'slow' && github.event_name != 'schedule'
@@ -182,7 +183,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@slow",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run Flaky Cypress tests
         if: matrix.name == 'flaky' && github.event_name != 'schedule'
@@ -190,7 +191,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@flaky --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run EE Cypress tests on ${{ matrix.name }}
         if: matrix.context == 'folder' && github.event_name != 'schedule'
@@ -198,7 +199,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
           --folder ${{ matrix.name }} \
-          --browser 'replay-chromium'
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run E2E tests that depend on Mongo
         if: matrix.name == 'mongo'
@@ -206,7 +207,7 @@ jobs:
           yarn run test-cypress-run \
           --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
           --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           CYPRESS_QA_DB_MONGO: true
 
