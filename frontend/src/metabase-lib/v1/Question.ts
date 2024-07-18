@@ -30,6 +30,7 @@ import type {
   DatabaseId,
   DatasetData,
   DatasetQuery,
+  Field,
   Parameter as ParameterObject,
   ParameterId,
   ParameterValues,
@@ -599,6 +600,15 @@ class Question {
       ...this.card(),
       result_metadata: metadataColumns,
     });
+  }
+
+  setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
+    const metadata = this.getResultMetadata();
+    const newMetadata = metadata.map(column => {
+      const columnDiff = metadataDiff[column.name];
+      return columnDiff ? { ...column, ...columnDiff } : column;
+    });
+    return this.setResultsMetadata({ columns: newMetadata });
   }
 
   /**
