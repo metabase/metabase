@@ -43,6 +43,7 @@ export interface RecentTableItem extends BaseRecentItem {
 export interface RecentCollectionItem extends BaseRecentItem {
   model: "collection" | "dashboard" | "card" | "dataset" | "metric";
   can_write: boolean;
+  database_id?: number; // for models and questions
   parent_collection: {
     id: number | null;
     name: string;
