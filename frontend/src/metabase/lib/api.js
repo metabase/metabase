@@ -50,6 +50,8 @@ export class Api extends EventEmitter {
   }
 
   _makeMethod(method, creatorOptions = {}) {
+    const self = this;
+
     return (urlTemplate, methodOptions = {}) => {
       if (typeof methodOptions === "function") {
         methodOptions = { transformResponse: methodOptions };
@@ -97,11 +99,6 @@ export class Api extends EventEmitter {
           delete headers["Content-Type"];
         }
 
-        if (this.requestClient) {
-          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-          headers["X-Metabase-Client"] = this.requestClient;
-        }
-
         if (this.sessionToken) {
           // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
           headers["X-Metabase-Session"] = this.sessionToken;
@@ -110,6 +107,13 @@ export class Api extends EventEmitter {
         if (isWithinIframe()) {
           // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
           headers["X-Metabase-Embedded"] = "true";
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+          headers["X-Metabase-Client"] = "embedding-iframe";
+        }
+
+        if (self.requestClient) {
+          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+          headers["X-Metabase-Client"] = self.requestClient;
         }
 
         if (ANTI_CSRF_TOKEN) {

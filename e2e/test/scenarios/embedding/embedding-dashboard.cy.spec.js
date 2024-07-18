@@ -527,6 +527,30 @@ describe("scenarios > embedding > dashboard parameters", () => {
       },
     );
   });
+
+  it("should send 'X-Metabase-Client' header for api requests", () => {
+    cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
+
+    cy.get("@dashboardId").then(dashboardId => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        embedding_params: {},
+        enable_embedding: true,
+      });
+
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: {},
+      };
+
+      visitEmbeddedPage(payload);
+
+      cy.wait("@getEmbeddedDashboard").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe",
+        );
+      });
+    });
+  });
 });
 
 describe("scenarios > embedding > dashboard parameters with defaults", () => {
