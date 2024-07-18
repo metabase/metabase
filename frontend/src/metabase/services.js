@@ -461,8 +461,8 @@ export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
 
-export function setPublicDashboardEndpoints() {
-  setDashboardEndpoints("/api/public");
+export function setPublicDashboardEndpoints(uuid) {
+  setDashboardEndpoints("/api/public/dashboard/:uuid", { uuid });
 }
 
 export function setEmbedQuestionEndpoints(token) {
@@ -471,9 +471,9 @@ export function setEmbedQuestionEndpoints(token) {
   }
 }
 
-export function setEmbedDashboardEndpoints() {
+export function setEmbedDashboardEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints(embedBase);
+    setDashboardEndpoints("/api/embed/dashboard/:token", { token });
   } else {
     setDashboardParameterValuesEndpoint(embedBase);
   }
@@ -486,35 +486,51 @@ function GET_with(url, params, omitKeys) {
 
 function setCardEndpoints(prefix, params) {
   CardApi.parameterValues = GET_with(
-    prefix + "/params/:paramId/values",
+    `${prefix}/params/:paramId/values`,
     params,
     ["cardId"],
   );
   CardApi.parameterSearch = GET_with(
-    prefix + "/params/:paramId/search/:query",
+    `${prefix}/params/:paramId/search/:query`,
     params,
     ["cardId"],
   );
   MetabaseApi.field_values = GET_with(
-    prefix + "/field/:fieldId/values",
+    `${prefix}/field/:fieldId/values`,
     params,
   );
   MetabaseApi.field_search = GET_with(
-    prefix + "/field/:fieldId/search/:searchFieldId",
+    `${prefix}/field/:fieldId/search/:searchFieldId`,
     params,
   );
   MetabaseApi.field_remapping = GET_with(
-    prefix + "/field/:fieldId/remapping/:remappedFieldId",
+    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
     params,
   );
 }
 
-function setDashboardEndpoints(prefix) {
-  DashboardApi.parameterValues = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/values`,
+function setDashboardEndpoints(prefix, params) {
+  DashboardApi.parameterValues = GET_with(
+    `${prefix}/params/:paramId/values`,
+    params,
+    ["dashId"],
   );
-  DashboardApi.parameterSearch = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
+  DashboardApi.parameterSearch = GET_with(
+    `${prefix}/params/:paramId/search/:query`,
+    params,
+    ["dashId"],
+  );
+  MetabaseApi.field_values = GET_with(
+    `${prefix}/field/:fieldId/values`,
+    params,
+  );
+  MetabaseApi.field_search = GET_with(
+    `${prefix}/dashboard/:dashId/field/:fieldId/search/:searchFieldId`,
+    params,
+  );
+  MetabaseApi.field_remapping = GET_with(
+    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
+    params,
   );
 }
 

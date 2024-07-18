@@ -4,7 +4,7 @@ export const rootStyle = css`
   font-family: var(--mb-default-font-family), sans-serif;
   font-weight: 400;
   font-style: normal;
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   margin: 0;
   height: 100%; /* ensure the entire page will fill the window */
   display: flex;

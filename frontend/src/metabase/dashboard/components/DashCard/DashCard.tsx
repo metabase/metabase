@@ -85,6 +85,8 @@ export interface DashCardProps {
   ) => void;
   showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+
+  downloadsEnabled: boolean;
 }
 
 function DashCardInner({
@@ -112,6 +114,7 @@ function DashCardInner({
   onChangeLocation,
   onUpdateVisualizationSettings,
   onReplaceAllVisualizationSettings,
+  downloadsEnabled,
 }: DashCardProps) {
   const dashcardData = useSelector(state =>
     getDashcardData(state, dashcard.id),
@@ -352,6 +355,7 @@ function DashCardInner({
             navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
           }
           onChangeLocation={onChangeLocation}
+          downloadsEnabled={downloadsEnabled}
         />
       </DashCardRoot>
     </ErrorBoundary>

@@ -1,13 +1,12 @@
 import { screen, render } from "__support__/ui";
 
-import { LogoBadge } from "./LogoBadge";
+import { LogoBadge } from ".";
 
 describe("LogoBadge", () => {
   it("should render Powered by Metabase footer", () => {
     setup();
 
     expect(screen.getByText("Powered by")).toBeInTheDocument();
-    expect(screen.getByText("Metabase")).toBeInTheDocument();
   });
 
   it("should render a link with valid utm parameters", () => {

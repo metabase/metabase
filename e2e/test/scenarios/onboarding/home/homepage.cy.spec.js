@@ -202,6 +202,40 @@ describe("scenarios > home > homepage", () => {
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Orders, Count").should("not.exist");
     });
+
+    it("should show an alert if applications assets are not served", () => {
+      // intercepting and modifying index.html to cause a network error. originally
+      // attempted to intercept the request for the JS file, but the browser
+      // generally loaded it from a cache, making it difficult to force an error.
+      cy.intercept(
+        {
+          url: "/",
+        },
+        req => {
+          req.continue(res => {
+            res.body = res.body.replace(
+              'src="app/dist/app-main',
+              'src="bad-link.js',
+            );
+            return res;
+          });
+        },
+      );
+
+      cy.on("window:before:load", win => {
+        cy.spy(win.console, "error").as("errorConsole");
+      });
+
+      cy.visit("/");
+      cy.get("@errorConsole").should(
+        "have.been.calledWithMatch",
+        /Could not download asset/,
+      );
+      cy.get("@errorConsole").should(
+        "have.been.calledWithMatch",
+        /bad-link\.js/,
+      );
+    });
   });
 });
 

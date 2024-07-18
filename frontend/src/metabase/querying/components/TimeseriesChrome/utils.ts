@@ -6,7 +6,7 @@ export function findBreakoutColumn(
 ): Lib.ColumnMetadata | undefined {
   const columns = Lib.breakoutableColumns(query, stageIndex);
   return columns.find(column => {
-    if (!Lib.isDate(column)) {
+    if (!Lib.isTemporal(column)) {
       return false;
     }
 

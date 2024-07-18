@@ -19,7 +19,6 @@ import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedHideDownloadButton,
   EmbedHideParameters,
   EmbedNightModeControls,
 } from "metabase/dashboard/types";
@@ -59,14 +58,15 @@ export function PublicOrEmbeddedDashboardView({
   setParameterValue,
   setParameterValueToDefault,
   dashboardId,
+  background,
   bordered,
   titled,
   theme,
   hideParameters,
-  hideDownloadButton,
   navigateToNewCardFromDashboard,
   slowCards,
   cardTitled,
+  downloadsEnabled,
 }: {
   dashboard: Dashboard | null;
   selectedTabId: SelectedTabId;
@@ -80,16 +80,17 @@ export function PublicOrEmbeddedDashboardView({
     typeof setParameterValueToDefaultDashboardAction
   >;
   dashboardId: DashboardId;
+  background: boolean;
   bordered: boolean;
   titled: boolean;
   theme: DisplayTheme;
   hideParameters: EmbedHideParameters;
-  hideDownloadButton: EmbedHideDownloadButton;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
+  downloadsEnabled: boolean;
 } & DashboardRefreshPeriodControls &
   EmbedNightModeControls &
   DashboardFullscreenControls) {
@@ -125,6 +126,11 @@ export function PublicOrEmbeddedDashboardView({
     selectedTabId,
   });
 
+  const normalizedTheme = normalizeTheme({
+    theme,
+    background,
+  });
+
   return (
     <EmbedFrame
       name={dashboard && dashboard.name}
@@ -142,11 +148,12 @@ export function PublicOrEmbeddedDashboardView({
         dashboard?.tabs &&
         dashboard.tabs.length > 1 && <DashboardTabs dashboardId={dashboardId} />
       }
+      background={background}
       bordered={bordered}
       titled={titled}
-      theme={theme}
+      theme={normalizedTheme}
       hide_parameters={hideParameters}
-      hide_download_button={hideDownloadButton}
+      downloadsEnabled={downloadsEnabled}
     >
       <LoadingAndErrorWrapper
         className={cx({
@@ -186,6 +193,7 @@ export function PublicOrEmbeddedDashboardView({
                 withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+                downloadsEnabled={downloadsEnabled}
               />
             </DashboardContainer>
           );
@@ -231,4 +239,22 @@ function getCurrentTabDashcards({
   return dashboard?.dashcards.filter(
     dashcard => dashcard.dashboard_tab_id === selectedTabId,
   );
+}
+
+/**
+ * When both `background: false` and `theme: "transparent"` options are supplied,
+ * the new behavior takes precedence (metabase#43838)
+ */
+function normalizeTheme({
+  theme,
+  background,
+}: {
+  theme: DisplayTheme;
+  background: boolean;
+}) {
+  if (!background && theme === "transparent") {
+    return "light";
+  }
+
+  return theme;
 }

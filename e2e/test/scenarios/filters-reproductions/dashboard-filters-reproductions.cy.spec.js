@@ -2823,7 +2823,7 @@ describe("issue 44288", () => {
     visitDashboard("@dashboardId");
     editDashboard();
     verifyMapping();
-    saveDashboard();
+    saveDashboard({ awaitRequest: false });
     verifyFilter();
     cy.signOut();
 
@@ -3199,6 +3199,86 @@ describe("44047", () => {
 
     cy.log("verify filtering works in a public dashboard");
     cy.get("@dashboardId").then(visitPublicDashboard);
+    verifyFilterWithRemapping();
+  });
+});
+
+describe("issue 45659", () => {
+  const parameterDetails = {
+    name: "ID",
+    slug: "id",
+    id: "f8ec7c71",
+    type: "id",
+    sectionId: "id",
+    default: [10],
+  };
+
+  const questionDetails = {
+    name: "People",
+    query: { "source-table": PEOPLE_ID },
+  };
+
+  const dashboardDetails = {
+    name: "Dashboard",
+    parameters: [parameterDetails],
+    enable_embedding: true,
+    embedding_params: {
+      [parameterDetails.slug]: "enabled",
+    },
+  };
+
+  function createDashboard() {
+    return cy
+      .createDashboardWithQuestions({
+        dashboardDetails,
+        questions: [questionDetails],
+      })
+      .then(({ dashboard, questions: [card] }) => {
+        addOrUpdateDashboardCard({
+          dashboard_id: dashboard.id,
+          card_id: card.id,
+          card: {
+            parameter_mappings: [
+              {
+                card_id: card.id,
+                parameter_id: parameterDetails.id,
+                target: [
+                  "dimension",
+                  ["field", PEOPLE.ID, { "base-type": "type/BigInteger" }],
+                ],
+              },
+            ],
+          },
+        }).then(() => ({ dashboard }));
+      });
+  }
+
+  function verifyFilterWithRemapping() {
+    filterWidget().findByText("Tressa White").should("be.visible");
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${PEOPLE.ID}`, {
+      has_field_values: "list",
+    });
+  });
+
+  it("should remap initial parameter values in public dashboards (metabase#45659)", () => {
+    createDashboard().then(({ dashboard }) =>
+      visitPublicDashboard(dashboard.id),
+    );
+    verifyFilterWithRemapping();
+  });
+
+  it("should remap initial parameter values in embedded dashboards (metabase#45659)", () => {
+    createDashboard().then(({ dashboard }) =>
+      visitEmbeddedPage({
+        resource: { dashboard: dashboard.id },
+        params: {},
+      }),
+    );
     verifyFilterWithRemapping();
   });
 });

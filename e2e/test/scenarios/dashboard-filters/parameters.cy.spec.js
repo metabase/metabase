@@ -80,7 +80,7 @@ describe("scenarios > dashboard > parameters", () => {
     // confirm that typing searches both fields
     filterWidget().contains("Text").click();
 
-    // After typing "Ga", you should see this name
+    // After typing "Ga", you should see this name!
     popover().within(() => multiAutocompleteInput().type("Ga"));
     cy.wait("@dashboard");
     popover().last().contains("Gabrielle Considine");
@@ -674,7 +674,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     it("should not fetch dashcard data when nothing changed on save", () => {
       editDashboard();
-      saveDashboard();
+      saveDashboard({ awaitRequest: false });
 
       cy.get("@dashcardRequestSpy").should("have.callCount", 0);
     });

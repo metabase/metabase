@@ -1,6 +1,10 @@
+import 'dotenv/config';
+import fs from 'fs';
+
 import { WebClient } from '@slack/web-api';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
+import fetch from 'node-fetch';
 
 dayjs.extend(relativeTime);
 import _githubSlackMap from "../github-slack-map.json";
@@ -389,4 +393,94 @@ export async function sendFlakeStatusReport({
       attachments,
       text: `Flaky issue summary`,
     });
+}
+
+/**
+ * uploading a file to slack is a three step process:
+ * 1) make an api call to get a specific url to upload to
+ * 2) make an http POST request to that url with the file
+ * 3) make an api call to "complete" the upload and post it somewhere in slack
+ */
+async function uploadFileToSlack({
+  channelName,
+  thread_ts,
+  fileName,
+  file,
+  message,
+}: {
+  channelName: string,
+  thread_ts?: string,
+  fileName: string,
+  file: Buffer,
+  message: string,
+}) {
+  console.log(`Uploading file ${fileName} to slack`);
+
+  const uploadRequest = await slack.files.getUploadURLExternal({
+    filename: fileName,
+    length: file.length,
+  });
+
+  if (!uploadRequest.ok || !uploadRequest.upload_url || !uploadRequest.file_id) {
+    throw new Error(`Failed to get upload URL: ${uploadRequest.error}`);
+  }
+
+  const uploadResult = await fetch(uploadRequest.upload_url, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/octet-stream',
+    },
+    body: file,
+  });
+
+  if (!uploadResult.ok) {
+    throw new Error(`Failed to upload file: ${uploadResult.statusText}`);
+  }
+
+  const channelId = await getSlackChannelId(channelName);
+
+  return slack.files.completeUploadExternal({
+    files: [{ id: uploadRequest.file_id, title: fileName }],
+    channel_id: channelId,
+    thread_ts,
+    initial_comment: message,
+  });
+}
+
+const milestoneCheckProjectUrl = 'https://github.com/orgs/metabase/projects/93';
+
+export async function sendMilestoneCheckMessage({
+  channelName,
+  issueCount,
+  version,
+}: {
+  channelName: string,
+  issueCount: number,
+  version: string,
+}) {
+  console.log('Sending milestone check slack message to ', channelName);
+  let buildThread = await getExistingSlackMessage(version, channelName);
+
+  // if we can't find a build thread, we'll make our own pre-build thread
+  if (!buildThread) {
+    const message = `:file_folder: *${getGenericVersion(version)} Pre-release milestone check*`;
+    const response = await sendSlackMessage({ channelName, message });
+    buildThread = { id: response.ts ?? '', body: message };
+  }
+
+  const message = `:mag: ${getGenericVersion(version)} has ${slackLink(`${issueCount} issues that need to be checked`, milestoneCheckProjectUrl)}`;
+
+  await sendSlackReply({ message, channelName, messageId: buildThread.id });
+
+  const fileName = `milestone-audit-${version}.md`;
+  const file = fs.readFileSync('./' + fileName);
+  const fileMessage = `:page_with_curl: ${getGenericVersion(version)} milestone audit`;
+
+  return uploadFileToSlack({
+    channelName,
+    thread_ts: buildThread.id,
+    fileName,
+    file,
+    message: fileMessage,
+  });
 }

@@ -32,7 +32,7 @@ export default class Revision extends Component {
           return t`edited the title`;
         case "description":
           return t`edited the description`;
-        case "defintion":
+        case "definition":
           return t`edited the ` + objectName;
       }
     }
