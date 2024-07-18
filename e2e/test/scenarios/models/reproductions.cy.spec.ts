@@ -904,6 +904,7 @@ describe("issue 34514", () => {
     cy.signInAsAdmin();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
+    cy.intercept("GET", "/api/database/*").as("fetchDatabase");
 
     cy.visit("/");
     // It's important to navigate via UI so that there are
@@ -944,7 +945,7 @@ describe("issue 34514", () => {
     assertMetadataTabState();
 
     cy.go("back");
-    cy.wait("@dataset"); // This should be removed when (metabase#45787) is fixed
+    cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
     assertQueryTabState();
 
     cy.go("back");
