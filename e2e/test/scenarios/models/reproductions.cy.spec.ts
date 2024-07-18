@@ -917,8 +917,8 @@ describe("issue 34514", () => {
 
   it("should not make network request with invalid query (metabase#34514)", () => {
     entityPickerModal().within(() => {
-      cy.wait("@fetchTables");
       entityPickerModalTab("Tables").click();
+      cy.wait("@fetchTables");
       cy.findByText("Orders").click();
     });
 
