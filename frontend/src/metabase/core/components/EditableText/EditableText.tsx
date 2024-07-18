@@ -1,18 +1,10 @@
-import type {
-  ChangeEvent,
-  KeyboardEvent,
-  HTMLAttributes,
-  Ref,
-  MouseEvent,
-  FocusEventHandler,
-  FocusEvent,
-} from "react";
-import { forwardRef, useCallback, useEffect, useState, useRef } from "react";
-import { usePrevious } from "react-use";
+import type { HTMLAttributes, Ref, MouseEvent, FocusEventHandler } from "react";
+import { forwardRef, useEffect, useRef } from "react";
 
 import Markdown from "metabase/core/components/Markdown";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
+import { useEditableText } from "./useEditableText";
 
 export type EditableTextAttributes = Omit<
   HTMLAttributes<HTMLDivElement>,
@@ -50,19 +42,25 @@ const EditableText = forwardRef(function EditableText(
   }: EditableTextProps,
   ref: Ref<HTMLDivElement>,
 ) {
-  const [inputValue, setInputValue] = useState(initialValue ?? "");
-  const [submitValue, setSubmitValue] = useState(initialValue ?? "");
-  const [isInFocus, setIsInFocus] = useState(isEditing);
-  const displayValue = inputValue ? inputValue : placeholder;
-  const submitOnBlur = useRef(true);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const previousInitialValue = usePrevious(initialValue);
 
-  useEffect(() => {
-    if (initialValue && initialValue !== previousInitialValue) {
-      setInputValue(initialValue);
-    }
-  }, [initialValue, previousInitialValue]);
+  const {
+    inputValue,
+    isInFocus,
+    setIsInFocus,
+    handleChange,
+    handleBlur,
+    handleKeyDown,
+  } = useEditableText({
+    initialValue,
+    isEditing,
+    isOptional,
+    isMultiline,
+    onChange,
+    onBlur,
+  });
+
+  const displayValue = inputValue ? inputValue : placeholder;
 
   useEffect(() => {
     if (!isMarkdown) {
@@ -73,45 +71,6 @@ const EditableText = forwardRef(function EditableText(
       inputRef.current?.focus();
     }
   }, [isInFocus, isMarkdown]);
-
-  const handleBlur = useCallback(
-    (event: FocusEvent<HTMLTextAreaElement>) => {
-      setIsInFocus(false);
-
-      if (!isOptional && !inputValue) {
-        setInputValue(submitValue);
-      } else if (inputValue !== submitValue && submitOnBlur.current) {
-        setSubmitValue(inputValue);
-        onChange?.(inputValue);
-      }
-
-      onBlur?.(event);
-    },
-    [inputValue, submitValue, isOptional, onChange, onBlur, setIsInFocus],
-  );
-
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLTextAreaElement>) => {
-      setInputValue(event.currentTarget.value);
-      submitOnBlur.current = true;
-    },
-    [submitOnBlur],
-  );
-
-  const handleKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (event.key === "Escape") {
-        setInputValue(submitValue);
-        submitOnBlur.current = false;
-        event.currentTarget.blur();
-      } else if (event.key === "Enter" && !isMultiline) {
-        event.preventDefault();
-        submitOnBlur.current = true;
-        event.currentTarget.blur();
-      }
-    },
-    [submitValue, isMultiline],
-  );
 
   const handleRootElementClick = (event: MouseEvent) => {
     if (!(event.target instanceof HTMLAnchorElement)) {
