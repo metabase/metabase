@@ -461,7 +461,9 @@
         ;; since a user may be changing them prior to publishing the Embed, which is what actually persists
         ;; the settings to the Appdb.
         embedding-params                               (if preview
-                                                         (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
+                                                         (merge
+                                                          published-embedding-params
+                                                          (get unsigned-token :_embedding_params))
                                                          published-embedding-params)
         id->slug                                       (into {} (map (juxt :id :slug) parameters))
         slug->id                                       (into {} (map (juxt :slug :id) parameters))
