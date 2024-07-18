@@ -7070,6 +7070,7 @@ databaseChangeLog:
       id: v50.2024-02-26T22:15:54
       author: noahmoss
       comment: New `view-data` permission
+      validCheckSum: 9:68d8f2fdf00395a9e614b0db8a2ec7bb
       changes:
         - sqlFile:
             dbms: postgresql,h2
