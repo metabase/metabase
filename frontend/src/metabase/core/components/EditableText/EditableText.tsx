@@ -1,35 +1,21 @@
-import type { HTMLAttributes, Ref, MouseEvent, FocusEventHandler } from "react";
-import { forwardRef, useEffect, useRef } from "react";
+import {
+  forwardRef,
+  useEffect,
+  useRef,
+  type MouseEvent,
+  type Ref,
+} from "react";
 
 import Markdown from "metabase/core/components/Markdown";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
+import type { EditableTextProps } from "./types";
 import { useEditableText } from "./useEditableText";
-
-export type EditableTextAttributes = Omit<
-  HTMLAttributes<HTMLDivElement>,
-  "onChange" | "onFocus" | "onBlur"
->;
-
-export interface EditableTextProps extends EditableTextAttributes {
-  initialValue?: string | null;
-  placeholder?: string;
-  isEditing?: boolean;
-  isOptional?: boolean;
-  isMultiline?: boolean;
-  isDisabled?: boolean;
-  isMarkdown?: boolean;
-  onChange?: (value: string) => void;
-  onFocus?: FocusEventHandler<HTMLTextAreaElement>;
-  onBlur?: FocusEventHandler<HTMLTextAreaElement>;
-  "data-testid"?: string;
-}
 
 const EditableText = forwardRef(function EditableText(
   {
     initialValue,
     placeholder,
-    isEditing = false,
     isOptional = false,
     isMultiline = false,
     isDisabled = false,
@@ -53,7 +39,6 @@ const EditableText = forwardRef(function EditableText(
     handleKeyDown,
   } = useEditableText({
     initialValue,
-    isEditing,
     isOptional,
     isMultiline,
     onChange,
@@ -85,7 +70,6 @@ const EditableText = forwardRef(function EditableText(
       onClick={isMarkdown ? handleRootElementClick : undefined}
       {...props}
       ref={ref}
-      isEditing={isEditing}
       isDisabled={isDisabled}
       isEditingMarkdown={!shouldShowMarkdown}
       data-value={`${displayValue}\u00A0`}

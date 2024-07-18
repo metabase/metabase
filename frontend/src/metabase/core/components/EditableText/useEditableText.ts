@@ -12,7 +12,6 @@ import { usePrevious } from "react-use";
 
 type UseEditableTextOptions = {
   initialValue?: string | null;
-  isEditing?: boolean;
   isOptional?: boolean;
   isMultiline?: boolean;
   onChange?: (value: string) => void;
@@ -21,7 +20,6 @@ type UseEditableTextOptions = {
 
 export function useEditableText({
   initialValue,
-  isEditing = false,
   isOptional = false,
   isMultiline = false,
   onChange,
@@ -29,7 +27,7 @@ export function useEditableText({
 }: UseEditableTextOptions) {
   const [inputValue, setInputValue] = useState(initialValue ?? "");
   const [submitValue, setSubmitValue] = useState(initialValue ?? "");
-  const [isInFocus, setIsInFocus] = useState(isEditing);
+  const [isInFocus, setIsInFocus] = useState(false);
   const submitOnBlur = useRef(true);
   const previousInitialValue = usePrevious(initialValue);
 
