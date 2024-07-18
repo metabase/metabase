@@ -1470,3 +1470,38 @@
             (lib/replace-clause join-query 0
                                 (first (lib/aggregations join-query 0))
                                 (lib/min (lib/get-month (by-name (lib/orderable-columns join-query 0) "CREATED_AT"))))))))
+
+(deftest ^:parallel replace-join-condition-updates-alias
+  (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
+                  (lib/join (meta/table-metadata :products))
+                  (lib/join (meta/table-metadata :products))
+                  (as-> $q (lib/breakout $q (first (filter (comp #{(meta/id :products :category)} :id)
+                                                           (lib/breakoutable-columns $q)))))
+                  (as-> $q (lib/breakout $q (last (filter (comp #{(meta/id :products :category)} :id)
+                                                           (lib/breakoutable-columns $q))))))
+        second-join (second (lib/joins query))
+        second-joins-condition (first (lib/join-conditions second-join))]
+    (is (= ["Products" "Products_2"] (map :alias (lib/joins query))))
+    (doseq [[description query] [["Replacing Join"
+                                  (lib/replace-clause
+                                    query
+                                    second-join
+                                    (lib/join-clause (meta/table-metadata :products)
+                                                     [(lib/= (meta/field-metadata :orders :user-id)
+                                                             (meta/field-metadata :products :id))]))]
+                                 ["Replacing Join using old join"
+                                  (lib/replace-clause
+                                    query
+                                    second-join
+                                    (lib/with-join-conditions second-join
+                                      [(lib/= (meta/field-metadata :orders :user-id)
+                                              (meta/field-metadata :products :id))]))]
+                                 ["Replacing Condition"
+                                  (lib/replace-clause
+                                    query
+                                    second-joins-condition
+                                    (lib/= (meta/field-metadata :orders :user-id)
+                                           (meta/field-metadata :products :id)))]]]
+      (testing description
+        (is (= ["Products" "Products - User"]
+               (map :alias (lib/joins query))))))))
