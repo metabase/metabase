@@ -366,6 +366,8 @@ describe("issue 21559", { tags: "@external" }, () => {
       chartPathWithFillColor("#A989C5").should("have.length", 1);
       chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
+      saveDashboard();
+
       openAndAddEmailsToSubscriptions([
         `${admin.first_name} ${admin.last_name}`,
       ]);
