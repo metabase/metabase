@@ -970,6 +970,29 @@
   matter! The calling function, `present-items`, is responsible for ensuring the order is maintained."
   (fn [model _items] model))
 
+(defn- present-collections [rows]
+  (let [coll-id->coll (into {} (for [{coll :collection} rows
+                                        :when (some? coll)] [(:id coll) coll]))
+        to-fetch (into #{} (comp (keep :effective_location)
+                                    (mapcat collection/location-path->ids)
+                                    (remove coll-id->coll))
+                       (vals coll-id->coll))
+        coll-id->coll (merge (if (seq to-fetch)
+                               (t2/select-pk->fn identity :model/Collection :id [:in to-fetch])
+                               {})
+                             coll-id->coll)
+        annotate (fn [x]
+                   (assoc x :collection {:id (get-in x [:collection :id])
+                                         :name (get-in x [:collection :name])
+                                         :authority_level (get-in x [:collection :authority_level])
+                                         :type (get-in x [:collection :type])
+                                         :effective_ancestors (if-let [loc (:effective_location (:collection x))]
+                                                                (->> (collection/location-path->ids loc)
+                                                                     (map coll-id->coll)
+                                                                     (map #(select-keys % [:id :name :authority_level :type])))
+                                                                [])}))]
+    (map annotate rows)))
+
 (defmethod present-model-items :model/Card [_ cards]
   (->> (t2/hydrate (t2/select [:model/Card
                                :id
@@ -997,7 +1020,8 @@
                                  :limit    1}
                                 :moderated_status]]
                               :id [:in (set (map :id cards))])
-                   :can_write :can_delete :can_restore)
+                   :can_write :can_delete :can_restore [:collection :effective_location])
+       present-collections
        (map (fn [card]
               (-> card
                   (assoc :model (if (card/model? card) "dataset" "card"))
@@ -1019,7 +1043,8 @@
                                [nil :database_id]]
 
                               :id [:in (set (map :id dashboards))])
-                   :can_write :can_delete :can_restore)))
+                   :can_write :can_delete :can_restore [:collection :effective_location])
+       present-collections))
 
 (defenterprise find-stale-candidates
   "Returns a boolean if the current user uses sandboxing for any database. In OSS this is always false. Will throw an
