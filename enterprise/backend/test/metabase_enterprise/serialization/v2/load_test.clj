@@ -141,11 +141,11 @@
             (reset! serialized (into [] (serdes.extract/extract {})))))
 
         (testing "serialization of databases is based on the :name"
-          (is (= #{(:name @db1s) (:name @db2s) "test-data"} ; TODO I'm not sure where the `test-data` one comes from.
+          (is (= #{(:name @db1s) (:name @db2s) "test-data (h2)"} ; TODO I'm not sure where the `test-data` one comes from.
                  (ids-by-model @serialized "Database"))))
 
         (testing "tables reference their databases by name"
-          (is (= #{(:name @db1s) (:name @db2s) "test-data"}
+          (is (= #{(:name @db1s) (:name @db2s) "test-data (h2)"}
                  (->> @serialized
                       (filter #(-> % :serdes/meta last :model (= "Table")))
                       (map :db_id)
@@ -173,7 +173,7 @@
 
             (is (= 3 (t2/count Database)))
             (is (every? #(= "complete" (:initial_sync_status %)) (t2/select Database)))
-            (is (= #{"db1" "db2" "test-data"}
+            (is (= #{"db1" "db2" "test-data (h2)"}
                    (t2/select-fn-set :name Database)))
             (is (= #{(:id @db1d) (:id @db2d)}
                    (t2/select-fn-set :db_id Table :name "posts")))
@@ -772,7 +772,7 @@
             (is (= 1
                    (->> @serialized
                         (filter #(= (:serdes/meta %)
-                                    [{:model "Database" :id "test-data"}
+                                    [{:model "Database" :id "test-data (h2)"}
                                      {:model "Schema"   :id "PUBLIC"}
                                      {:model "Table"    :id "VENUES"}
                                      {:model "Field"    :id "NAME"}]))

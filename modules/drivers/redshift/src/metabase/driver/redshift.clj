@@ -105,7 +105,7 @@
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
 (defmethod driver/describe-database :redshift
- [_driver database]
+  [_driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
   {:tables (into #{} (describe-database-tables database))})
 
