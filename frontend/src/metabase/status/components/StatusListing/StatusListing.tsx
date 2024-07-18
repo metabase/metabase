@@ -4,6 +4,7 @@ import { t } from "ttag";
 import { useSelector } from "metabase/lib/redux";
 import { hasActiveUploads } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { useCheckActiveDownloadsBeforeUnload } from "metabase/status/hooks/use-check-active-downloads-before-unload";
 
 import DatabaseStatus from "../../containers/DatabaseStatus";
 import { DownloadsStatus } from "../DownloadsStatus";
@@ -20,6 +21,8 @@ const StatusListing = () => {
     uploadInProgress,
     t`CSV Upload in progress. Are you sure you want to leave?`,
   );
+
+  useCheckActiveDownloadsBeforeUnload();
 
   return (
     <StatusListingRoot data-testid="status-root-container">

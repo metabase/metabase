@@ -241,6 +241,8 @@ const getChartFileName = (question: Question) => {
 };
 
 export const getDownloads = (state: State) => state.downloads;
+export const hasActiveDownloads = (state: State) =>
+  state.downloads.some(download => download.status === "in-progress");
 
 const initialState: DownloadsState = [];
 
