@@ -31,3 +31,13 @@ runs:
         done
         echo "Storybook is being served!"
       shell: bash
+
+    - name: Run tests
+      run: |
+        yarn run test-cypress-run \
+        --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
+        --folder 'embedding-sdk' \
+        --browser 'replay-chromium'
+      env:
+        IS_SDK: true
+      shell: bash

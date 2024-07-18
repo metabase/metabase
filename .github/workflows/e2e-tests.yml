@@ -173,9 +173,6 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      - name: Run Embedding SDK Storybook
-        uses: ./.github/actions/run-embedding-sdk-storybook
-
       - name: Run OSS-specific Cypress tests
         if: matrix.edition == 'oss' && github.event_name != 'schedule'
         run: |
@@ -220,13 +217,7 @@ jobs:
 
       - name: Run E2E tests for Embedding SDK
         if: matrix.context == 'folder' && matrix.name == 'embedding-sdk' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
-          --folder ${{ matrix.name }} \
-          --browser 'replay-chromium'
-        env:
-          IS_SDK: true
+        uses: ./.github/actions/run-embedding-sdk-storybook
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
