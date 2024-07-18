@@ -128,6 +128,8 @@ export interface CollectionItem {
   setCollectionPreview?: (isEnabled: boolean) => void;
 }
 
+export type StaleCollectionItem = CollectionItem & { last_used_at: string };
+
 export interface CollectionListQuery {
   archived?: boolean;
   "exclude-other-user-collections"?: boolean;
@@ -158,9 +160,14 @@ export type ListCollectionItemsResponse = {
 
 export type ListStaleCollectionItemsRequest = {
   id: CollectionId;
-  beforeDate?: string;
+  before_date?: string;
+  is_recursive?: boolean;
 } & PaginationRequest &
   Partial<SortingOptions>;
+
+export type ListStaleCollectionItemsResponse = {
+  data: StaleCollectionItem[];
+} & PaginationResponse;
 
 export interface UpdateCollectionRequest {
   id: RegularCollectionId;

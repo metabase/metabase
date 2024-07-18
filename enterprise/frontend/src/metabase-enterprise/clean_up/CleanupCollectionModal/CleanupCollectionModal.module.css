@@ -3,6 +3,10 @@
   flex-direction: column;
 }
 
+.modalHeader {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
 .modalBody {
   position: relative;
   overflow-y: scroll;

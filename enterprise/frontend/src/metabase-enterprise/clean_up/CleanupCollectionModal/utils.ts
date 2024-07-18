@@ -1,13 +1,20 @@
 import dayjs from "dayjs";
 import { c } from "ttag";
 
-import type { CollectionItem } from "metabase-types/api";
+import type { StaleCollectionItem } from "metabase-types/api";
 
-export const itemKeyFn = (item: CollectionItem) => `${item.id}:${item.model}`;
+export const itemKeyFn = (item: StaleCollectionItem) =>
+  `${item.id}:${item.model}`;
 
 const labelContext = `Time span the item has not been viewed in, reads as "Not viewed in over <time span>"`;
 
 export const dateFilterOptions = [
+  // TODO: remove option before merging
+  {
+    label: c(labelContext).t`-1 days`,
+    value: "tomorrow",
+    duration: [[-1, "day"]],
+  },
   {
     label: c(labelContext).t`1 month`,
     value: "one-month",

@@ -1,0 +1,9 @@
+.table {
+  min-width: 700px;
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.tableHead {
+  margin-bottom: -1px;
+}

@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import type {
   ListCollectionItemsRequest,
   ListCollectionItemsResponse,
@@ -9,6 +11,7 @@ import type {
   ListCollectionsTreeRequest,
   DeleteCollectionRequest,
   getCollectionRequest,
+  ListStaleCollectionItemsResponse,
 } from "metabase-types/api";
 
 import { Api } from "./api";
@@ -57,7 +60,7 @@ export const collectionApi = Api.injectEndpoints({
         provideCollectionItemListTags(response?.data ?? [], models),
     }),
     listStaleCollectionItems: builder.query<
-      ListCollectionItemsResponse,
+      ListStaleCollectionItemsResponse,
       ListStaleCollectionItemsRequest
     >({
       query: ({ id, ...params }) => ({
@@ -65,8 +68,11 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}/stale`,
         params,
       }),
-      providesTags: response =>
-        provideCollectionItemListTags(response?.data ?? []),
+      providesTags: response => {
+        const items = response?.data ?? [];
+        const models = _.uniq(items.map(item => item.model));
+        return provideCollectionItemListTags(items, models);
+      },
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ...body }) => {
