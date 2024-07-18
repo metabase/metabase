@@ -31,6 +31,7 @@
 (doseq [[feature supported?] {:convert-timezone          true
                               :datetime-diff             true
                               :now                       true
+                              :identifiers-with-spaces   true
                               :percentile-aggregations   false
                               :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:vertica feature] [_driver _feature _db] supported?))

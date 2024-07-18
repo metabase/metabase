@@ -65,6 +65,7 @@
                               :now                      true
                               :persist-models           true
                               :schemas                  true
+                              :identifiers-with-spaces  true
                               :uuid-type                true
                               :uploads                  true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))

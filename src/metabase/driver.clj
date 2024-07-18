@@ -675,6 +675,9 @@
     ;; many databases in it.
     :connection/multiple-databases
 
+    ;; Does the driver support identifiers for tables and columns that contain spaces. Defaults to `false`.
+    :identifiers-with-spaces
+
     ;; Does this driver support UUID type
     :uuid-type
 
