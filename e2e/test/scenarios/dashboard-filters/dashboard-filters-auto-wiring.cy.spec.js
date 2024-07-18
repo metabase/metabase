@@ -556,7 +556,6 @@ describe("dashboard filters auto-wiring", () => {
     cy.findByTestId("add-card-sidebar")
       .findByText(questionDetails.name)
       .click();
-    undoToast().button("Auto-connect").click();
 
     cy.log("check auto-wired parameter mapping");
     cy.findByTestId("fixed-width-filters")
