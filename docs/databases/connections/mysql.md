@@ -89,7 +89,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Connecting to MySQL 8+ servers
 
-Metabase uses the MariaDB connector to connect to the MySQL servers. The MariaDB connector lacks support for MySQL 8's default authentication plugin. In order to connect, you'll need to change the plugin used by the Metabase user:
+Metabase uses the MariaDB connector to connect to MySQL servers. The MariaDB connector lacks support for MySQL 8's default authentication plugin. In order to connect, you'll need to change the plugin used by the Metabase user:
 
 ```
 mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';
