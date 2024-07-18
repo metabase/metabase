@@ -5,7 +5,6 @@
       "label": ".Team/QueryingComponents",
       "members": [
         "ranquild",
-        "uladzimirdev",
         "kamilmielnik",
         "nemanjaglumac",
         "romeovs"
@@ -44,7 +43,8 @@
         "npfitz",
         "johnswanson",
         "rafpaf",
-        "sloansparger"
+        "sloansparger",
+        "iethree"
       ]
     },
     {
@@ -62,7 +62,7 @@
       "name": "DevEx",
       "label": ".Team/DevEx",
       "members": [
-        "iethree"
+        "uladzimirdev"
       ]
     }
   ]

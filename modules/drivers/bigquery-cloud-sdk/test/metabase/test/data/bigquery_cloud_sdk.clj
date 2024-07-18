@@ -118,10 +118,10 @@
 (def ^:private valid-field-types
   #{:BOOLEAN :DATE :DATETIME :FLOAT :INTEGER :NUMERIC :RECORD :STRING :TIME :TIMESTAMP})
 
-;; Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128
+;; Fields must contain only letters, numbers, spaces, and underscores, start with a letter or underscore, and be at most 128
 ;; characters long.
 (def ^:private ValidFieldName
-  [:re #"^[A-Za-z_]\w{0,127}$"])
+  [:re #"^[A-Za-z_](\w| ){0,127}$"])
 
 (mu/defn ^:private delete-table!
   [dataset-id :- ::lib.schema.common/non-blank-string

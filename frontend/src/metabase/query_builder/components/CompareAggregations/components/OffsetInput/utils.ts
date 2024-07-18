@@ -12,7 +12,7 @@ export const getLabel = (query: Lib.Query, stageIndex: number): string => {
       firstBreakout,
     );
 
-    if (!Lib.isDate(firstBreakoutColumn)) {
+    if (!Lib.isTemporal(firstBreakoutColumn)) {
       return t`Row for comparison`;
     }
   }
@@ -38,7 +38,7 @@ export const getHelp = (query: Lib.Query, stageIndex: number): string => {
     firstBreakoutColumn,
   );
 
-  if (!Lib.isDate(firstBreakoutColumn)) {
+  if (!Lib.isTemporal(firstBreakoutColumn)) {
     return t`rows above based on “${firstBreakoutColumnInfo.displayName}”`;
   }
 

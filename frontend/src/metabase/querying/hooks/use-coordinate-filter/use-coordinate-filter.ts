@@ -7,6 +7,7 @@ import {
   canPickColumns,
   getAvailableColumns,
   getAvailableOptions,
+  getDefaultOperator,
   getDefaultSecondColumn,
   getDefaultValues,
   getFilterClause,
@@ -44,10 +45,10 @@ export function useCoordinateFilter({
   );
 
   const [operator, setOperator] = useState(
-    filterParts ? filterParts.operator : "between",
+    filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
   );
   const [values, setValues] = useState(
-    getDefaultValues(operator, filterParts?.values ?? []),
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
   const [secondColumn, setSecondColumn] = useState(
     getDefaultSecondColumn(availableColumns, filterParts?.longitudeColumn),

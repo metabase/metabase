@@ -20,6 +20,7 @@ interface NewCollectionDialogProps {
   onClose: () => void;
   parentCollectionId: CollectionId | null;
   onNewCollection: (item: CollectionPickerItem) => void;
+  namespace?: "snippets";
 }
 
 export const NewCollectionDialog = ({
@@ -27,6 +28,7 @@ export const NewCollectionDialog = ({
   onClose,
   parentCollectionId,
   onNewCollection,
+  namespace,
 }: NewCollectionDialogProps) => {
   const [createCollection] = useCreateCollectionMutation();
 
@@ -34,6 +36,7 @@ export const NewCollectionDialog = ({
     const newCollection = await createCollection({
       name,
       parent_id: parentCollectionId === "root" ? null : parentCollectionId,
+      namespace,
     }).unwrap();
 
     onNewCollection({ ...newCollection, model: "collection" });

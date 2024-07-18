@@ -19,13 +19,13 @@
         realtime-fn   (fn []
                         (let [id (rand-int 1000)]
                           (doseq [e realtime-events]
-                            (case (queue/maybePut! queue {:thread (str "real-" id) :payload e})
+                            (case (queue/maybe-put! queue {:thread (str "real-" id) :payload e})
                               true  (swap! sent inc)
                               false (swap! dropped inc)
                               nil   (swap! skipped inc)))))
         background-fn (fn []
                         (doseq [e backfill-events]
-                          (queue/blockingPut! queue {:thread "back", :payload e})))
+                          (queue/blocking-put! queue 1000 {:thread "back", :payload e})))
         run!          (fn [f]
                         (future (f)))]
 
@@ -39,7 +39,7 @@
         (while true
           ;; Stop the consumer once we are sure that there are no more events coming.
           (u/with-timeout 100
-            (vswap! processed conj (:payload (queue/blockingTake! queue)))
+            (vswap! processed conj (:payload (queue/blocking-take! queue 1000)))
             ;; Sleep to provide some backpressure
             (Thread/sleep 1)))
         (assert false "this is never reached")
@@ -66,7 +66,8 @@
                            :realtime-events realtime-events)]
 
       (testing "We processed all the events that were enqueued"
-        (is (= (count processed) (+ (count backfill-events) sent))))
+        (is (= (+ (count backfill-events) sent)
+               (count processed))))
 
       (if dedupe?
         (testing "Some items are deduplicated"

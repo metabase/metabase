@@ -45,10 +45,12 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   }, [dispatch]);
 
   useEffect(() => {
+    dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+  }, [dispatch, config.fetchRequestToken]);
+
+  useEffect(() => {
     if (loginStatus.status === "uninitialized") {
       api.basename = config.metabaseInstanceUrl;
-
-      dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
 
       if (isValidJwtAuth(config)) {
         setupJwtAuth(config, dispatch);

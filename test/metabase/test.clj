@@ -250,7 +250,7 @@
   with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
-  with-discard-model-updates
+  with-discard-model-updates!
   with-env-keys-renamed-by
   with-locale
   with-model-cleanup
