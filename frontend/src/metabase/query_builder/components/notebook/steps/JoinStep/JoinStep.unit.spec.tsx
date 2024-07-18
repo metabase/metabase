@@ -9,6 +9,8 @@ import {
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
 import {
+  mockGetBoundingClientRect,
+  mockScrollBy,
   renderWithProviders,
   screen,
   waitFor,
@@ -17,14 +19,17 @@ import {
 } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
+import type { RecentItem } from "metabase-types/api";
 import {
   createMockCollectionItem,
   createMockDatabase,
+  createMockRecentCollectionItem,
 } from "metabase-types/api/mocks";
 import {
   PRODUCTS_ID,
   createSampleDatabase,
   createStructuredModelCard,
+  createSavedStructuredCard,
 } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
 
@@ -38,18 +43,22 @@ const ANOTHER_DATABASE = createMockDatabase({
   name: "Another Database",
 });
 const DATABASES = [SAMPLE_DATABASE, ANOTHER_DATABASE];
-const MODEL = createStructuredModelCard();
+const MODEL = createStructuredModelCard({ name: "my cool model" });
+const QUESTION = createSavedStructuredCard({
+  name: "other database question",
+  database_id: ANOTHER_DATABASE.id,
+});
 
 const STATE = createMockState({
   entities: createMockEntitiesState({
     databases: DATABASES,
-    questions: [MODEL],
+    questions: [MODEL, QUESTION],
   }),
 });
 
 const metadata = createMockMetadata({
   databases: DATABASES,
-  questions: [MODEL],
+  questions: [MODEL, QUESTION],
 });
 
 function getJoinQueryHelpers(query: Lib.Query) {
@@ -147,12 +156,18 @@ function getJoinedQueryWithMultipleConditions() {
   return Lib.replaceClause(query, 0, currentJoin, nextJoin);
 }
 
-function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
+function setup(
+  step = createMockNotebookStep(),
+  {
+    readOnly = false,
+    recentItems = [],
+  }: { readOnly?: boolean; recentItems?: RecentItem[] } = {},
+) {
   const updateQuery = jest.fn();
 
   setupDatabasesEndpoints(DATABASES);
   setupSearchEndpoints([createMockCollectionItem(MODEL)]);
-  setupRecentViewsAndSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints(recentItems);
 
   function Wrapper() {
     const [query, setQuery] = useState(step.query);
@@ -218,21 +233,12 @@ function setup(step = createMockNotebookStep(), { readOnly = false } = {}) {
 }
 
 describe("Notebook Editor > Join Step", () => {
-  const scrollBy = HTMLElement.prototype.scrollBy;
-  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
-
   beforeAll(() => {
-    HTMLElement.prototype.scrollBy = jest.fn();
-    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
-    HTMLElement.prototype.getBoundingClientRect = jest
-      .fn()
-      .mockReturnValue({ height: 1, width: 1 });
+    mockScrollBy();
+    mockGetBoundingClientRect();
   });
 
   afterAll(() => {
-    HTMLElement.prototype.scrollBy = scrollBy;
-    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
-
     jest.resetAllMocks();
   });
 
@@ -276,6 +282,39 @@ describe("Notebook Editor > Join Step", () => {
     expect(
       within(modal).queryByText(ANOTHER_DATABASE.name),
     ).not.toBeInTheDocument();
+  });
+
+  it("questions from another database should not appear in recents", async () => {
+    setup(undefined, {
+      readOnly: false,
+      recentItems: [
+        createMockRecentCollectionItem({
+          model: "card",
+          id: MODEL.id,
+          database_id: SAMPLE_DATABASE.id,
+          name: MODEL.name,
+        }),
+        createMockRecentCollectionItem({
+          model: "card",
+          id: QUESTION.id,
+          database_id: ANOTHER_DATABASE.id,
+          name: QUESTION.name,
+        }),
+      ],
+    });
+
+    await userEvent.click(
+      within(screen.getByLabelText("Right table")).getByRole("button"),
+    );
+    const modal = await screen.findByTestId("entity-picker-modal");
+
+    await waitForLoaderToBeRemoved();
+
+    expect(within(modal).getByText("Recents")).toBeInTheDocument();
+
+    expect(within(modal).queryByText(QUESTION.name)).not.toBeInTheDocument();
+
+    expect(within(modal).getByText(MODEL.name)).toBeInTheDocument();
   });
 
   it("should open the LHS column picker after right table is selected and the RHS picker after it", async () => {
