@@ -36,7 +36,7 @@ Once you select your data, Metabase will take you to the query builder. Say you 
 
 ![Metabase query builder](../images/notebook-editor.png)
 
-This is the query builder's notebook editor. It has three default steps.
+This is the query builder's editor. It has three default steps.
 
 - [Picking data](#picking-data)
 - [Filtering](#filtering)
@@ -79,11 +79,13 @@ There are different filter types, each with their own set of filtering options:
 
 ## Filter multiple columns
 
-When viewing a table or chart, clicking on the **Filter** will bring up the filter modal:
+When viewing a table or chart, clicking on the **Filter** will bring up the filter modal.
 
 ![Bulk filter modal](../images/bulk-filter-modal.png)
 
-Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
+Here you can add multiple filters to your question in one go (which can save you a lot of loading time). Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal.
+
+When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the editor, and vice versa.
 
 ### Filtering by date
 
