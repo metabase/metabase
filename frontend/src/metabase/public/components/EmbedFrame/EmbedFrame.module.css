@@ -42,6 +42,7 @@ body {
   --mb-color-embed-filter-bg-color: var(--mb-color-bg-black);
   --mb-color-border: var(--mb-color-text-medium);
   --mb-color-bg-dashboard: var(--mb-color-bg-black);
+  --mb-color-background: var(--mb-color-bg-black);
 }
 
 .ThemeNight.EmbedFrame,
