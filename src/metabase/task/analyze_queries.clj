@@ -41,6 +41,7 @@
      (when (public-settings/query-analysis-enabled)
        (let [card-id (query-analysis/next-card-id!)
              timer   (u/start-timer)]
+         (log/info 'analyze (.threadId (Thread/currentThread)) card-id)
          (try
            (query-analysis/analyze-card! card-id)
            (Thread/sleep (wait-proportional (u/since-ms timer)))

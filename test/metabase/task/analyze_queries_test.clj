@@ -4,6 +4,8 @@
    [metabase.query-analysis :as query-analysis]
    [metabase.task.analyze-queries :as task.analyze-queries]
    [metabase.task.setup.query-analysis-setup :as setup]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.queue :as queue]
    [toucan2.core :as t2]))
 
@@ -23,12 +25,15 @@
         ;; the queue should already be empty - but trust noone!
         (queue/clear! @#'query-analysis/queue)
 
+        (log/info 'the-cards card-ids)
+
         ;; queue the cards
         (query-analysis/with-queued-analysis
           (run! query-analysis/analyze-async! card-ids))
 
         ;; process the queue
-        (#'task.analyze-queries/analyzer-loop! (count card-ids))
+        (u/with-timeout 10000
+          (#'task.analyze-queries/analyzer-loop! (count card-ids)))
 
         (testing "QueryField is filled now"
           (testing "for a native query"
