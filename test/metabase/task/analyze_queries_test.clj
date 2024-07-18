@@ -25,7 +25,7 @@
         ;; the queue should already be empty - but trust noone!
         (queue/clear! @#'query-analysis/queue)
 
-        (log/info 'the-cards card-ids)
+        (log/warn 'the-cards card-ids)
 
         ;; queue the cards
         (query-analysis/with-queued-analysis

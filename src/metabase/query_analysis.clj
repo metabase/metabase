@@ -34,7 +34,7 @@
 (defmacro with-execution*
   "Override the default execution mode, except in prod."
   [execution & body]
-  `(binding [*analyze-execution-in-dev?* ~execution
+  `(binding [*analyze-execution-in-dev?*  ~execution
              *analyze-execution-in-test?* ~execution]
      ~@body))
 
@@ -169,6 +169,7 @@
   (queue/blocking-take! queue))
 
 (defn- queue-or-analyze! [offer-fn! card-or-id]
+  (log/warn (execution) card-or-id)
   (case (execution)
     ::immediate (analyze-card! (u/the-id card-or-id))
     ::queued    (offer-fn! queue (u/the-id card-or-id))
