@@ -16,6 +16,12 @@ describe("ExecutionTime", () => {
     expect(screen.getByTestId("execution-time")).toHaveTextContent("100 ms");
   });
 
+  it("renders formatted time when time is provided, but the time is 0", () => {
+    render(<ExecutionTime time={0} />);
+
+    expect(screen.getByTestId("execution-time")).toHaveTextContent("0 ms");
+  });
+
   it("shows tooltip", async () => {
     render(<ExecutionTime time={100} />);
 

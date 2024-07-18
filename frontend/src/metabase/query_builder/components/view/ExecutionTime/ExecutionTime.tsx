@@ -9,7 +9,7 @@ interface Props {
 }
 
 export const ExecutionTime = ({ time }: Props) => {
-  if (!time) {
+  if (time !== 0 && !time) {
     return null;
   }
 
