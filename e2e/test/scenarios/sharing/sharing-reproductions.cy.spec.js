@@ -350,7 +350,13 @@ describe("issue 21559", { tags: "@external" }, () => {
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(q2Details.name).click();
-    cy.findByTestId("add-series-modal").button("Done").click();
+    cy.findByTestId("add-series-modal").within(() => {
+      // wait for elements to appear inside modal
+      chartPathWithFillColor("#A989C5").should("have.length", 1);
+      chartPathWithFillColor("#88BF4D").should("have.length", 1);
+
+      cy.button("Done").click();
+    });
 
     // Make sure visualization changed to bars
     chartPathWithFillColor("#A989C5").should("have.length", 1);
