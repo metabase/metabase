@@ -4,6 +4,7 @@ import {
   checkIsDockerRunning,
   startLocalMetabaseContainer,
 } from "../utils/docker";
+import { showGettingStartedGuide } from "../utils/getting-started";
 import { checkInReactProject } from "../utils/is-in-react-project";
 import { printError } from "../utils/print";
 
@@ -40,10 +41,10 @@ export async function start() {
     return;
   }
 
-  // We should start the container if it's not running.
-  const isContainerStarted = await startLocalMetabaseContainer();
-
-  if (!isContainerStarted) {
+  const port = await startLocalMetabaseContainer();
+  if (!port) {
     return;
   }
+
+  await showGettingStartedGuide(port);
 }

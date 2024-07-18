@@ -5,11 +5,11 @@ import { promisify } from "util";
 
 import { getCurrentDockerPort } from "../utils/get-current-docker-port";
 import { checkIsPortTaken } from "../utils/is-port-taken";
-import { printError } from "../utils/print";
+import { printError, printSuccess } from "../utils/print";
 
 const exec = promisify(execCallback);
 
-const IMAGE_NAME = "metabase/metabase:latest";
+const IMAGE_NAME = "metabase/metabase-enterprise:latest";
 const CONTAINER_NAME = "metabase-embedding-sdk-react";
 
 /**
@@ -28,6 +28,16 @@ const messageContainerStarted = (port: number) => `
   Use the "docker ps" command to see the Docker container's status.
 `;
 
+/** Container information returned by "docker ps" */
+interface ContainerInfo {
+  ID: string;
+  Image: string;
+  Names: string;
+  Ports: string; // e.g. "0.0.0.0:3366->3000/tcp"
+  Port: number | null; // parsed from Ports, e.g. 3366
+  State: "running" | "exited";
+}
+
 /**
  * Check if the Docker daemon is running.
  */
@@ -40,18 +50,6 @@ export async function checkIsDockerRunning(): Promise<boolean> {
   } catch (error) {
     return false;
   }
-}
-
-/**
- * Container information returned by `docker ps`.
- */
-interface ContainerInfo {
-  ID: string;
-  Image: string;
-  Names: string;
-  Ports: string; // e.g. "0.0.0.0:3366->3000/tcp"
-  Port: number | null; // parsed from Ports, e.g. 3366
-  State: "running" | "exited";
 }
 
 export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null> {
@@ -74,22 +72,10 @@ export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null>
   return { ...info, Port: getCurrentDockerPort(info.Ports) };
 }
 
-export async function stopLocalMetabaseContainer(): Promise<boolean> {
-  const { stderr } = await exec(`docker stop ${CONTAINER_NAME}`);
-
-  if (stderr) {
-    printError("Failed to stop the Metabase container.");
-    console.log(stderr);
-    return false;
-  }
-
-  return true;
-}
-
 const randInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1) + min);
 
-export async function startLocalMetabaseContainer(): Promise<boolean> {
+export async function startLocalMetabaseContainer(): Promise<number | false> {
   let port = DEFAULT_PORT;
 
   const container = await getLocalMetabaseContainer();
@@ -101,8 +87,8 @@ export async function startLocalMetabaseContainer(): Promise<boolean> {
 
     // if the container is already running, we should just print a message.
     if (container.State === "running") {
-      console.log(chalk.green(messageContainerRunning(port)));
-      return true;
+      printSuccess(messageContainerRunning(port));
+      return port;
     }
 
     // if the container is exited, we should start it again.
@@ -116,8 +102,8 @@ export async function startLocalMetabaseContainer(): Promise<boolean> {
       }
 
       if (stdout.trim().includes(CONTAINER_NAME)) {
-        console.log(chalk.green(messageContainerStarted(port)));
-        return true;
+        printSuccess(messageContainerStarted(port));
+        return port;
       }
 
       return false;
@@ -146,11 +132,11 @@ export async function startLocalMetabaseContainer(): Promise<boolean> {
     }
 
     if (stdout) {
-      console.log(chalk.green(messageContainerStarted(port)));
-      return true;
+      printSuccess(messageContainerStarted(port));
+      return port;
     }
 
-    return !!stdout;
+    return false;
   } catch (error) {
     if (error instanceof Error) {
       printError("Failed to start Metabase.");
