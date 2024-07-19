@@ -45,3 +45,25 @@ export type PulseParameter = {
   type?: string;
   value?: string;
 };
+
+type ChannelDetails = {
+  url: string;
+  "auth-method": NotificationAuthMethods;
+  description: string;
+};
+
+export type NotificationAuthMethods =
+  | "none"
+  | "header"
+  | "query-param"
+  | "request-body";
+
+export type NotificationChannel<Details = ChannelDetails> = {
+  active: boolean;
+  created_at: string;
+  details: Details;
+  type: "channel/http";
+  updated_at: string;
+  id: number;
+  name: string;
+};

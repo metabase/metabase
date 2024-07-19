@@ -385,6 +385,8 @@ import warning_component from "./warning.svg?component";
 import warning_source from "./warning.svg?source";
 import waterfall_component from "./waterfall.svg?component";
 import waterfall_source from "./waterfall.svg?source";
+import webhook_component from "./webhook.svg?component";
+import webhook_source from "./webhook.svg?source";
 import zoom_in_component from "./zoom_in.svg?component";
 import zoom_in_source from "./zoom_in.svg?source";
 import zoom_out_component from "./zoom_out.svg?component";
@@ -1156,6 +1158,10 @@ export const Icons = {
   waterfall: {
     component: waterfall_component,
     source: waterfall_source,
+  },
+  webhook: {
+    component: webhook_component,
+    source: webhook_source,
   },
   "10k": {
     component: ten_thousand_component,

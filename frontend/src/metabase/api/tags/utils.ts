@@ -36,6 +36,7 @@ import type {
   CardQueryMetadata,
   CardId,
   ModelIndex,
+  NotificationChannel,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -203,6 +204,21 @@ export function provideModelIndexListTags(
   return [
     listTag("model-index"),
     ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+  ];
+}
+
+export function provideChannelTags(
+  channel: NotificationChannel,
+): TagDescription<TagType>[] {
+  return [idTag("channel", channel.id)];
+}
+
+export function provideChannelListTags(
+  channels: NotificationChannel[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("channel"),
+    ...channels.flatMap(channel => provideChannelTags(channel)),
   ];
 }
 
