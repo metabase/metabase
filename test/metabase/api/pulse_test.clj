@@ -1004,6 +1004,34 @@
 
 (deftest form-input-test
   (testing "GET /api/pulse/form_input"
+    (mt/with-temporary-setting-values
+      [slack/slack-app-token "test-token"]
+      (mt/with-temp [:model/Channel _ {:type :channel/http :details {:url "https://metabasetest.com" :auth-method "none"}}]
+        (is (= {:channels {:email {:allows_recipients true
+                                   :configured        false
+                                   :name              "Email"
+                                   :recipients        ["user" "email"]
+                                   :schedules         ["hourly" "daily" "weekly" "monthly"]
+                                   :type              "email"}
+                           :http  {:alows_recipients false
+                                   :configured       true
+                                   :name             "Webhook"
+                                   :schedules        ["hourly" "daily" "weekly" "monthly"]
+                                   :type             "http"}
+                           :slack {:allows_recipients false
+                                   :configured        true
+                                   :fields            [{:displayName "Post to"
+                                                        :name        "channel"
+                                                        :options     []
+                                                        :required    true
+                                                        :type        "select"}]
+                                   :name             "Slack"
+                                   :schedules        ["hourly" "daily" "weekly" "monthly"]
+                                   :type             "slack"}}}
+               (mt/user-http-request :rasta :get 200 "pulse/form_input")))))))
+
+(deftest form-input-slack-test
+  (testing "GET /api/pulse/form_input"
     (testing "Check that Slack channels come back when configured"
       (mt/with-temporary-setting-values [slack/slack-channels-and-usernames-last-updated
                                          (t/zoned-date-time)
