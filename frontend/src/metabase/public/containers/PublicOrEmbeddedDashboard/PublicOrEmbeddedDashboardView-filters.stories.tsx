@@ -256,6 +256,7 @@ LightThemeTextWithValue.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);
+
   const documentElement = within(document.documentElement);
   await userEvent.type(
     documentElement.getByPlaceholderText("Enter some text"),
@@ -274,6 +275,23 @@ LightThemeParameterList.play = async ({ canvasElement }) => {
   await userEvent.click(filter);
 };
 
+export const LightThemeParameterListWithValue = Template.bind({});
+LightThemeParameterListWithValue.args = createDefaultArgs({
+  parameterType: "dropdown",
+});
+LightThemeParameterListWithValue.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
+
+  const documentElement = within(document.documentElement);
+  await userEvent.type(
+    documentElement.getByPlaceholderText("Search the list"),
+    "g",
+  );
+  await userEvent.click(documentElement.getByText("Widget"));
+};
+
 // Dark theme
 export const DarkThemeText = Template.bind({});
 DarkThemeText.args = createDefaultArgs({ theme: "night" });
@@ -289,6 +307,7 @@ DarkThemeTextWithValue.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);
+
   const documentElement = within(document.documentElement);
   await userEvent.type(
     documentElement.getByPlaceholderText("Enter some text"),
@@ -306,4 +325,22 @@ DarkThemeParameterList.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);
+};
+
+export const DarkThemeParameterListWithValue = Template.bind({});
+DarkThemeParameterListWithValue.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "dropdown",
+});
+DarkThemeParameterListWithValue.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
+
+  const documentElement = within(document.documentElement);
+  await userEvent.type(
+    documentElement.getByPlaceholderText("Search the list"),
+    "g",
+  );
+  await userEvent.click(documentElement.getByText("Widget"));
 };
