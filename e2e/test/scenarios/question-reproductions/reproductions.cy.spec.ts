@@ -18,35 +18,33 @@ describe("issue 39487", () => {
     cy.signInAsAdmin();
   });
 
-  it("calendar has constant size when using 'on' filter (metabase#39487)", () => {
+  it("calendar has constant size when using single date picker filter (metabase#39487)", () => {
     createTimeSeriesQuestionWithFilter(["=", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
 
     cy.findByTestId("timeseries-filter-button").click();
 
-    measureDatetimeFilterPicker().then(initialHeight => {
-      cy.wrap(initialHeight).as("initialHeight");
-    });
+    measureInitialValues();
 
-    nextMonth().click(); // go to 2015-02 - 4 day rows
-    assertHeightDidNotChange();
+    nextButton().click(); // go to 2015-02 - 4 day rows
+    assertNoLayoutShift();
 
-    nextMonth().click(); // go to 2015-03 - 5 day rows
-    assertHeightDidNotChange();
+    nextButton().click(); // go to 2015-03 - 5 day rows
+    assertNoLayoutShift();
 
-    nextMonth().click(); // go to 2015-04 - 5 day rows
-    assertHeightDidNotChange();
+    nextButton().click(); // go to 2015-04 - 5 day rows
+    assertNoLayoutShift();
 
-    nextMonth().click(); // go to 2015-05 - 6 day rows
-    assertHeightDidNotChange();
+    nextButton().click(); // go to 2015-05 - 6 day rows
+    assertNoLayoutShift();
 
-    nextMonth().click(); // go to 2015-05 - 6 day rows
-    assertHeightDidNotChange();
+    popover().button("May 2015").click(); // go to year view
+    assertNoLayoutShift();
 
-    nextMonth().click(); // go to 2015-06 - 5 day rows
-    assertHeightDidNotChange();
+    popover().button("2015").click(); // go to decade view
+    assertNoLayoutShift();
   });
 
-  it("calendar has constant size when using 'between' filter (metabase#39487)", () => {
+  it("calendar has constant size when using date range filter (metabase#39487)", () => {
     createTimeSeriesQuestionWithFilter([
       "between",
       CREATED_AT_FIELD,
@@ -56,12 +54,16 @@ describe("issue 39487", () => {
 
     cy.findByTestId("timeseries-filter-button").click();
 
-    measureDatetimeFilterPicker().then(initialHeight => {
-      cy.wrap(initialHeight).as("initialHeight");
-    });
+    measureInitialValues();
 
-    nextMonth().click(); // go to 2024-07 - 5 day rows
-    assertHeightDidNotChange();
+    nextButton().click(); // go to 2024-07 - 5 day rows
+    assertNoLayoutShift();
+
+    popover().button("July 2024").click(); // go to year view
+    assertNoLayoutShift();
+
+    popover().button("2024").click(); // go to decade view
+    assertNoLayoutShift();
   });
 
   function createTimeSeriesQuestionWithFilter(filter: Filter) {
@@ -79,22 +81,72 @@ describe("issue 39487", () => {
     );
   }
 
-  function assertHeightDidNotChange() {
-    cy.get("@initialHeight").then(initialHeight => {
-      measureDatetimeFilterPicker().then(height => {
-        expect(height).to.eq(initialHeight);
+  function measureInitialValues() {
+    measureDatetimeFilterPickerHeight().then(initialPickerHeight => {
+      cy.wrap(initialPickerHeight).as("initialPickerHeight");
+    });
+    measureNextButtonRect().then(nextButtonRect => {
+      cy.wrap(nextButtonRect).as("nextButtonRect");
+    });
+    measurePreviousButtonRect().then(previousButtonRect => {
+      cy.wrap(previousButtonRect).as("previousButtonRect");
+    });
+  }
+
+  function assertNoLayoutShift() {
+    assertDatetimeFilterPickerHeightDidNotChange();
+    assertPreviousButtonRectDidNotChange();
+    assertNextButtonRectDidNotChange();
+  }
+
+  function assertDatetimeFilterPickerHeightDidNotChange() {
+    cy.get("@initialPickerHeight").then(initialPickerHeight => {
+      measureDatetimeFilterPickerHeight().then(height => {
+        expect(height).to.eq(initialPickerHeight);
       });
     });
   }
 
-  function measureDatetimeFilterPicker() {
+  function assertPreviousButtonRectDidNotChange() {
+    cy.get("@previousButtonRect").then(previousButtonRect => {
+      measurePreviousButtonRect().then(rect => {
+        expect(rect).to.deep.eq(previousButtonRect);
+      });
+    });
+  }
+
+  function assertNextButtonRectDidNotChange() {
+    cy.get("@nextButtonRect").then(nextButtonRect => {
+      measureNextButtonRect().then(rect => {
+        expect(rect).to.deep.eq(nextButtonRect);
+      });
+    });
+  }
+
+  function measureDatetimeFilterPickerHeight() {
     return cy.findByTestId("datetime-filter-picker").then(([$element]) => {
       const { height } = $element.getBoundingClientRect();
       return height;
     });
   }
 
-  function nextMonth() {
+  function measureNextButtonRect() {
+    return nextButton().then(([$element]) => {
+      return $element.getBoundingClientRect();
+    });
+  }
+
+  function measurePreviousButtonRect() {
+    return previousButton().then(([$element]) => {
+      return $element.getBoundingClientRect();
+    });
+  }
+
+  function nextButton() {
     return popover().get("button[data-next]");
+  }
+
+  function previousButton() {
+    return popover().get("button[data-previous]");
   }
 });
