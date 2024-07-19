@@ -13,6 +13,7 @@ import { explicitSizeRefreshModeContext } from "metabase/components/ExplicitSize
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { publicReducers } from "metabase/reducers-public";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import {
   createMockCard,
   createMockColumn,
@@ -22,7 +23,10 @@ import {
   createMockDatasetData,
   createMockParameter,
 } from "metabase-types/api/mocks";
-import { PRODUCTS } from "metabase-types/api/mocks/presets";
+import {
+  PRODUCTS,
+  createSampleDatabase,
+} from "metabase-types/api/mocks/presets";
 import {
   createMockDashboardState,
   createMockSettingsState,
@@ -43,9 +47,52 @@ export default {
   parameters: {
     layout: "fullscreen",
   },
+  argTypes: {
+    parameterType: {
+      options: ["text", "dropdown"],
+      control: { type: "select" },
+    },
+  },
 };
 
 function ReduxDecorator(Story: Story) {
+  const initialState = createMockState({
+    settings: createMockSettingsState({
+      "hide-embed-branding?": false,
+    }),
+    dashboard: createMockDashboardState({
+      dashcardData: {
+        [DASHCARD_BAR_ID]: {
+          [CARD_BAR_ID]: createMockDataset({
+            data: createMockDatasetData({
+              cols: [
+                createMockColumn(StringColumn({ name: "Dimension" })),
+                createMockColumn(NumberColumn({ name: "Count" })),
+              ],
+              rows: [
+                ["foo", 1],
+                ["bar", 2],
+              ],
+            }),
+          }),
+        },
+        [DASHCARD_TABLE_ID]: {
+          // Couldn't really figure out the type here.
+          [CARD_TABLE_ID]: createMockDataset(TABLE_RAW_SERIES[0] as any),
+        },
+      },
+    }),
+    parameters: {
+      parameterValuesCache: {
+        [`{"paramId":"${PARAMETER_ID}","dashId":${DASHBOARD_ID}}`]: {
+          values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
+          has_more_values: false,
+        },
+      },
+    },
+  });
+
+  const store = getStore(publicReducers, initialState);
   return (
     <Provider store={store}>
       <Story />
@@ -93,35 +140,6 @@ const CARD_BAR_ID = getNextId();
 const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
 const PARAMETER_ID = "param-hex";
-const initialState = createMockState({
-  settings: createMockSettingsState({
-    "hide-embed-branding?": false,
-  }),
-  dashboard: createMockDashboardState({
-    dashcardData: {
-      [DASHCARD_BAR_ID]: {
-        [CARD_BAR_ID]: createMockDataset({
-          data: createMockDatasetData({
-            cols: [
-              createMockColumn(StringColumn({ name: "Dimension" })),
-              createMockColumn(NumberColumn({ name: "Count" })),
-            ],
-            rows: [
-              ["foo", 1],
-              ["bar", 2],
-            ],
-          }),
-        }),
-      },
-      [DASHCARD_TABLE_ID]: {
-        // Couldn't really figure out the type here.
-        [CARD_TABLE_ID]: createMockDataset(TABLE_RAW_SERIES[0] as any),
-      },
-    },
-  }),
-});
-
-const store = getStore(publicReducers, initialState);
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
@@ -173,12 +191,43 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
 }
 
 const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
-  return <PublicOrEmbeddedDashboardView {...args} />;
+  // @ts-expect-error -- custom prop to support non JSON-serializable value as args
+  const parameterType: ParameterType = args.parameterType;
+  const dashboard = args.dashboard;
+  if (!dashboard) {
+    return <>Please pass `dashboard`</>;
+  }
+
+  const PARAMETER_MAPPING: Record<ParameterType, UiParameter[]> = {
+    text: getDashboardUiParameters(
+      dashboard.dashcards,
+      dashboard.parameters,
+      createMockMetadata({}),
+      {},
+    ),
+    dropdown: getDashboardUiParameters(
+      dashboard.dashcards,
+      dashboard.parameters,
+      createMockMetadata({
+        databases: [createSampleDatabase()],
+      }),
+      {},
+    ),
+  };
+  return (
+    <PublicOrEmbeddedDashboardView
+      {...args}
+      parameters={PARAMETER_MAPPING[parameterType]}
+    />
+  );
 };
 
 type ArgType = Partial<ComponentProps<typeof PublicOrEmbeddedDashboardView>>;
 
-const createDefaultArgs = (args: ArgType = {}): ArgType => {
+type ParameterType = "text" | "dropdown";
+const createDefaultArgs = (
+  args: ArgType & { parameterType?: ParameterType } = {},
+): ArgType & { parameterType: ParameterType } => {
   const dashboard = createDashboard();
   return {
     dashboard,
@@ -187,12 +236,7 @@ const createDefaultArgs = (args: ArgType = {}): ArgType => {
     background: true,
     slowCards: {},
     selectedTabId: TAB_ID,
-    parameters: getDashboardUiParameters(
-      dashboard.dashcards,
-      dashboard.parameters,
-      createMockMetadata({}),
-      {},
-    ),
+    parameterType: "text",
     ...args,
   };
 };
@@ -220,6 +264,16 @@ LightThemeTextWithValue.play = async ({ canvasElement }) => {
   await userEvent.tab();
 };
 
+export const LightThemeParameterList = Template.bind({});
+LightThemeParameterList.args = createDefaultArgs({
+  parameterType: "dropdown",
+});
+LightThemeParameterList.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
+};
+
 // Dark theme
 export const DarkThemeText = Template.bind({});
 DarkThemeText.args = createDefaultArgs({ theme: "night" });
@@ -241,4 +295,15 @@ DarkThemeTextWithValue.play = async ({ canvasElement }) => {
     "filter value",
   );
   await userEvent.tab();
+};
+
+export const DarkThemeParameterList = Template.bind({});
+DarkThemeParameterList.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "dropdown",
+});
+DarkThemeParameterList.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
 };
