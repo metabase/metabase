@@ -483,9 +483,9 @@
       (testing "if the param is locked"
         (t2.with-temp/with-temp
           [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :locked})]
-          (testing "an empty value should apply if provided as nil in the JWT params"
-            (is (= [[1000]]
-                   (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date nil}})))))
+          (testing "an empty value with `nil` as the param's value is invalid and should result in an error"
+            (is (= "You must specify a value for :date in the JWT."
+                   (client/client :get 400 (card-query-url card "" {:params {:date nil}}))))
             (testing "check this is different to when a non-nil value is provided"
               (is (= [[138]]
                      (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date "Q2-2014"}})))))))
@@ -925,9 +925,9 @@
                     (client/client :get 400 (str (dashcard-url dashcard) "?date=")))))))
        (testing "if the param is locked"
          (mt/with-temp-vals-in-db Dashboard (u/the-id dashboard) {:embedding_params {:date "locked"}}
-           (testing "an empty value should apply if provided as nil in the JWT params"
-             (is (= [[1000]]
-                    (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date nil}})))))
+           (testing "an empty value specified as `nil` is invalid and should result in an error"
+             (is (= "You must specify a value for :date in the JWT."
+                    (client/client :get 400 (dashcard-url dashcard {:params {:date nil}}))))
              (testing "check this is different to when a non-nil value is provided"
                (is (= [[138]]
                       (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date "Q2-2014"}})))))))
