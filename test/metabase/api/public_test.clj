@@ -22,7 +22,6 @@
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
-   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [throttle.core :as throttle]
    [toucan2.core :as t2]
@@ -718,7 +717,7 @@
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
     (testing "Dashboard's last_viewed_at should be updated when a public DashCard is viewed"
       (mt/with-temporary-setting-values [enable-public-sharing true]
-        (binding [tu.thread-local/*thread-local* false]
+        (mt/test-helpers-set-global-values!
           (t2.with-temp/with-temp [Collection {collection-id :id}]
             (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
             (with-temp-public-dashboard-and-card [dash {card-id :id, :as card} dashcard]

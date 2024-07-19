@@ -25,7 +25,6 @@
    [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
@@ -1668,13 +1667,13 @@
                           ((get output-helper export-format))))))))))))
 
 (deftest querying-a-dashboard-dashcard-updates-last-viewed-at
-  (binding [tu.thread-local/*thread-local* false]
+  (mt/test-helpers-set-global-values!
     (mt/dataset test-data
-    (with-embedding-enabled-and-new-secret-key
-      (with-temp-dashcard [dashcard {:dash {:enable_embedding true
-                                            :last_viewed_at #t "2000-01-01"}}]
-        (let [dashboard-id (t2/select-one-fn :id :model/Dashboard :id (:dashboard_id dashcard))
-              original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
-          (mt/with-temporary-setting-values [synchronous-batch-updates true]
-            (client/client :get 202 (dashcard-url dashcard))
-            (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))
+      (with-embedding-enabled-and-new-secret-key
+        (with-temp-dashcard [dashcard {:dash {:enable_embedding true
+                                              :last_viewed_at #t "2000-01-01"}}]
+          (let [dashboard-id (t2/select-one-fn :id :model/Dashboard :id (:dashboard_id dashcard))
+                original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
+            (mt/with-temporary-setting-values [synchronous-batch-updates true]
+              (client/client :get 202 (dashcard-url dashcard))
+              (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))))

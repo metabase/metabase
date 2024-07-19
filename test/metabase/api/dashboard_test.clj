@@ -55,7 +55,6 @@
    [metabase.server.request.util :as req.util]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
-   [metabase.test.util.thread-local :as tu.thread-local]
    [metabase.util :as u]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]
@@ -4746,7 +4745,7 @@
         (is (= @cached-calls-count 1))))))
 
 (deftest querying-a-dashboard-dashcard-updates-last-viewed-at
-  (binding [tu.thread-local/*thread-local* false]
+  (mt/test-helpers-set-global-values!
     (mt/dataset test-data
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
                      :model/Card {card-id :id} {:dataset_query (mt/native-query

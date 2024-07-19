@@ -10,7 +10,6 @@
    [metabase.query-processor.card-test :as qp.card-test]
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.test :as mt]
-   [metabase.test.util.thread-local :as tu.thread-local]
    [toucan2.core :as t2]))
 
 ;; there are more tests in [[metabase.api.dashboard-test]]
@@ -407,7 +406,7 @@
                                                         :default ["Gizmo"]}])))))))))
 
 (deftest running-a-query-for-dashcard-sets-last-viewed-at
-  (binding [tu.thread-local/*thread-local* false]
+  (mt/test-helpers-set-global-values!
     (mt/dataset test-data
       (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
                      :model/Card {card-id :id} {:dataset_query (mt/native-query
