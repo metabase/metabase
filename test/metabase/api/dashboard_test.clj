@@ -4644,7 +4644,6 @@
                                  {:id (mt/id :reviews)}
                                  {:id (mt/id :products)
                                   :fields sequential?
-                                  :db map?
                                   :dimension_options map?}
                                  {:id (mt/id :venues)}])
            :cards [{:id link-card}]
