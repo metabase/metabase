@@ -423,8 +423,5 @@
       "clj-kondo --config ./.clj-kondo/config.edn --config-dir ./.clj-kondo --parallel --lint",
       "./bin/whitespace_lint_staged.sh"
     ]
-  },
-  "browserslist": [
-    "defaults"
-  ]
+  }
 }
