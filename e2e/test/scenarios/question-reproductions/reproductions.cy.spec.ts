@@ -116,6 +116,23 @@ describe("issue 39487", () => {
     });
   });
 
+  it("date picker is scrollable when overflows (metabase#39487)", () => {
+    cy.viewport(1280, 800);
+    createTimeSeriesQuestionWithFilter([
+      ">",
+      CREATED_AT_FIELD,
+      "2015-03-01", // 6 day rows
+    ]);
+
+    cy.icon("notebook").click();
+    getNotebookStep("filter")
+      .findAllByTestId("notebook-cell-item")
+      .first()
+      .click();
+    popover().scrollTo("bottom");
+    popover().button("Update filter").should("be.visible").click();
+  });
+
   function createTimeSeriesQuestionWithFilter(filter: Filter) {
     createQuestion(
       {
