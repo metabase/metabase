@@ -10,9 +10,7 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [dev.util :as dev.u]
-   [metabase.db.query :as mdb.query]
    [metabase.test.util.log :as tu.log]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
@@ -48,16 +46,17 @@
   "Get the total number of queries and total execution time in ms."
   []
   (let [qs (queries)]
-    {:total-queries (count qs)
-     :total-execution-time (->> qs (map second) (apply +))}))
+    {:total-queries           (count qs)
+     :total-execution-time-ms (->> qs (map second) (apply +) int)}))
 
 (defn- track-query-execution-fn
   [next-method rf conn query-type model query]
-  (let [start (System/currentTimeMillis)
+  (let [start  (System/nanoTime)
         result (next-method rf conn query-type model query)
-        end (System/currentTimeMillis)]
-    (swap! queries* (fnil conj []) [query (- end start)])
-    result))
+        end    (System/nanoTime)]
+    (swap! queries* (fnil conj []) [query (/ (- end start) 1e6)])
+   result))
+
 
 (defn start!
   "Start tracking queries."
@@ -67,8 +66,8 @@
     (future-cancel f))
   (reset! log-future (future
                       (while true
-                        (let [{:keys [total-queries total-execution-time]} (summary)]
-                          (log/infof "Total queries: %d, Total execution time: %dms" total-queries total-execution-time)
+                        (let [{:keys [total-queries total-execution-time-ms]} (summary)]
+                          (log/infof "Total queries: %d, Total execution time: %dms" total-queries total-execution-time-ms)
                           (Thread/sleep 1000)))))
   (methodical/add-aux-method-with-unique-key!
    #'t2.pipeline/transduce-execute-with-connection
@@ -95,7 +94,7 @@
                     [(-> q first #_mdb.query/format-sql) (-> q rest vec) t])
         temp-file (File/createTempFile "queries" ".csv")]
     (with-open [w (io/writer temp-file)]
-      (csv/write-csv w (cons ["query" "params" "execution-time"] (map format-q qs))))
+      (csv/write-csv w (cons ["query" "params" "execution-time(ms)"] (map format-q qs))))
     (dev.u/os-open temp-file)))
 
 (comment
