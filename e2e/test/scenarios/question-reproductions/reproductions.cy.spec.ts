@@ -28,7 +28,12 @@ describe("issue 39487", () => {
 
     cy.findByTestId("timeseries-filter-button").click();
 
-    assertSameHeightInNextMonth(); // go to 2024-07-01 - 5 day rows
+    measureDatetimeFilterPicker().then(initialHeight => {
+      cy.wrap(initialHeight).as("initialHeight");
+    });
+
+    nextMonth().click(); // go to 2024-07 - 5 day rows
+    assertHeightDidNotChange();
   });
 
   it("calendar has constant size when using 'on' filter (metabase#39487)", () => {
@@ -36,12 +41,27 @@ describe("issue 39487", () => {
 
     cy.findByTestId("timeseries-filter-button").click();
 
-    assertSameHeightInNextMonth(); // go to 2015-02-01 - 4 day rows
-    assertSameHeightInNextMonth(); // go to 2015-03-01 - 5 day rows
-    assertSameHeightInNextMonth(); // go to 2015-04-01 - 5 day rows
-    assertSameHeightInNextMonth(); // go to 2015-05-01 - 6 day rows
-    assertSameHeightInNextMonth(); // go to 2015-05-01 - 6 day rows
-    assertSameHeightInNextMonth(); // go to 2015-06-01 - 5 day rows
+    measureDatetimeFilterPicker().then(initialHeight => {
+      cy.wrap(initialHeight).as("initialHeight");
+    });
+
+    nextMonth().click(); // go to 2015-02 - 4 day rows
+    assertHeightDidNotChange();
+
+    nextMonth().click(); // go to 2015-03 - 5 day rows
+    assertHeightDidNotChange();
+
+    nextMonth().click(); // go to 2015-04 - 5 day rows
+    assertHeightDidNotChange();
+
+    nextMonth().click(); // go to 2015-05 - 6 day rows
+    assertHeightDidNotChange();
+
+    nextMonth().click(); // go to 2015-05 - 6 day rows
+    assertHeightDidNotChange();
+
+    nextMonth().click(); // go to 2015-06 - 5 day rows
+    assertHeightDidNotChange();
   });
 
   function createTimeSeriesQuestionWithFilter(filter: Filter) {
@@ -59,13 +79,7 @@ describe("issue 39487", () => {
     );
   }
 
-  function assertSameHeightInNextMonth() {
-    measureDatetimeFilterPicker().then(initialHeight => {
-      cy.wrap(initialHeight).as("initialHeight");
-    });
-
-    nextMonth().click();
-
+  function assertHeightDidNotChange() {
     cy.get("@initialHeight").then(initialHeight => {
       measureDatetimeFilterPicker().then(height => {
         expect(height).to.eq(initialHeight);
