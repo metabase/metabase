@@ -29,6 +29,7 @@ import {
   openNotebook,
   resetTestTable,
   resyncDatabase,
+  openPeopleTable,
 } from "e2e/support/helpers";
 
 const {
@@ -528,6 +529,33 @@ describe("issue 24994", () => {
 function assertFilterValueIsSelected(value) {
   cy.findByRole("checkbox", { name: value }).should("be.checked");
 }
+
+describe("issue 45410", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not overflow the last filter value with a chevron icon (metabase#45410)", () => {
+    openPeopleTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Email").click();
+      cy.findByPlaceholderText("Enter some text")
+        .type("abc@example.com,abc2@example.com")
+        .blur();
+      cy.findByText("abc2@example.com")
+        .next("button")
+        .then(([removeButton]) => {
+          cy.get("[data-chevron]").then(([chevronIcon]) => {
+            const removeButtonRect = removeButton.getBoundingClientRect();
+            const chevronIconRect = chevronIcon.getBoundingClientRect();
+            expect(removeButtonRect.right).to.be.lte(chevronIconRect.left);
+          });
+        });
+    });
+  });
+});
 
 describe("issue 25378", () => {
   const questionDetails = {
