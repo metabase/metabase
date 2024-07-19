@@ -1474,34 +1474,60 @@
 (deftest ^:parallel replace-join-condition-updates-alias
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :orders))
                   (lib/join (meta/table-metadata :products))
-                  (lib/join (meta/table-metadata :products))
-                  (as-> $q (lib/breakout $q (first (filter (comp #{(meta/id :products :category)} :id)
-                                                           (lib/breakoutable-columns $q)))))
-                  (as-> $q (lib/breakout $q (last (filter (comp #{(meta/id :products :category)} :id)
-                                                           (lib/breakoutable-columns $q))))))
+                  (lib/join (-> (meta/table-metadata :products)
+                                lib/join-clause
+                                (lib/with-join-fields [(meta/field-metadata :products :category)])
+                                (lib/with-join-alias "Products_II"))))
         second-join (second (lib/joins query))
         second-joins-condition (first (lib/join-conditions second-join))]
-    (is (= ["Products" "Products_2"] (map :alias (lib/joins query))))
-    (doseq [[description query] [["Replacing Join"
-                                  (lib/replace-clause
-                                    query
-                                    second-join
-                                    (lib/join-clause (meta/table-metadata :products)
-                                                     [(lib/= (meta/field-metadata :orders :user-id)
-                                                             (meta/field-metadata :products :id))]))]
-                                 ["Replacing Join using old join"
-                                  (lib/replace-clause
-                                    query
-                                    second-join
-                                    (lib/with-join-conditions second-join
-                                      [(lib/= (meta/field-metadata :orders :user-id)
-                                              (meta/field-metadata :products :id))]))]
-                                 ["Replacing Condition"
-                                  (lib/replace-clause
-                                    query
-                                    second-joins-condition
-                                    (lib/= (meta/field-metadata :orders :user-id)
-                                           (meta/field-metadata :products :id)))]]]
-      (testing description
-        (is (= ["Products" "Products - User"]
-               (map :alias (lib/joins query))))))))
+    (is (= ["Products" "Products_II"] (map :alias (lib/joins query))))
+    (testing "should rename alias"
+      (doseq [[description query] [["when Replacing Join"
+                                    (lib/replace-clause
+                                      query
+                                      second-join
+                                      (lib/join-clause (meta/table-metadata :products)
+                                                       [(lib/= (meta/field-metadata :orders :user-id)
+                                                               (meta/field-metadata :products :id))]))]
+                                   ["when Replacing Join using old join"
+                                    (lib/replace-clause
+                                      query
+                                      second-join
+                                      (lib/with-join-conditions second-join
+                                                                [(lib/= (meta/field-metadata :orders :user-id)
+                                                                        (meta/field-metadata :products :id))]))]
+                                   ["when Replacing Condition"
+                                    (lib/replace-clause
+                                      query
+                                      second-joins-condition
+                                      (lib/= (meta/field-metadata :orders :user-id)
+                                             (meta/field-metadata :products :id)))]]]
+        (testing description
+          (is (= ["Products" "Products - User"]
+                 (map :alias (lib/joins query)))))))
+    (testing "should not rename alias"
+      (doseq [[description new-query] [["when Replacing Join"
+                                            (lib/replace-clause
+                                              query
+                                              second-join
+                                              (-> (meta/table-metadata :products)
+                                                  (lib/join-clause [(lib/= (meta/field-metadata :orders :product-id)
+                                                                           (meta/field-metadata :products :id))])
+                                                  (lib/with-join-fields
+                                                    [(meta/field-metadata :products :category)])
+                                                  (lib/with-join-alias "Products_II")))]
+                                         ["when Replacing Join using old join"
+                                          (lib/replace-clause
+                                            query
+                                            second-join
+                                            (lib/with-join-fields second-join
+                                                                  [(meta/field-metadata :products :id)]))]
+                                       ["when Replacing same condition"
+                                        (lib/replace-clause
+                                          query
+                                          second-joins-condition
+                                          (lib/= (meta/field-metadata :orders :product-id)
+                                                 (meta/field-metadata :products :id)))]]]
+        (testing description
+          (is (= ["Products" "Products_II"]
+                 (map :alias (lib/joins new-query)))))))))

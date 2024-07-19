@@ -340,6 +340,24 @@
           ;; 2 accounts for [:stages stage-number] and 1 for the key of the element on the path.
           (subvec in 0 (+ (count p) 2 1)))))))
 
+(defn- conditions-changed-for-aliases?
+  "Checks if two sets of join conditions are the same. We ignore the current join-aliases as those may be changing,
+   and we ignore effective-type since `tweak-expression` above may have already added it, and in this case it will be irrelevant."
+  [new-join-alias new-join-conditions join-alias-b join-conditions-b]
+  (let [a-conds (lib.util.match/replace
+                 new-join-conditions
+                  (_ :guard (every-pred map? (comp #{new-join-alias} :join-alias)))
+                  (dissoc &match :join-alias :effective-type)
+                  (_ :guard (every-pred map? :effective-type))
+                  (dissoc &match :effective-type))
+        b-conds (lib.util.match/replace
+                 join-conditions-b
+                  (_ :guard (every-pred map? (comp #{join-alias-b} :join-alias)))
+                  (dissoc &match :join-alias :effective-type)
+                  (_ :guard (every-pred map? :effective-type))
+                  (dissoc &match :effective-type))]
+    (not (lib.equality/= a-conds b-conds))))
+
 (mu/defn ^:private replace-expression-removing-erroneous-parts :- :metabase.lib.schema/query
   [unmodified-query :- :metabase.lib.schema/query
    stage-number     :- :int
@@ -374,8 +392,11 @@
         (let [join-loc (pop location)
               join-idx (peek join-loc)
               join (get (lib.join/joins query stage-number) join-idx)
+              old-join (get (lib.join/joins unmodified-query stage-number) join-idx)
               new-name (lib.join/default-alias query stage-number (dissoc join :alias))]
-          (if (not= new-name (:alias join))
+          (if (and (not= new-name (:alias join))
+                   (conditions-changed-for-aliases? (:alias join) (:conditions join)
+                                                    (:alias old-join) (:conditions old-join)))
             (rename-join query stage-number join new-name)
             query))
         query))))
@@ -567,16 +588,20 @@
      (remove-join query stage-number join-spec)
      (update-joins query stage-number join-spec (fn [joins join-alias]
                                                   (mapv #(if (= (:alias %) join-alias)
-                                                           (cond-> new-join
-                                                             (or (not= (:conditions new-join)
-                                                                       (:conditions %))
-                                                                 (not= (:source-table new-join)
-                                                                       (:source-table %))
-                                                                 (not= (:source-card new-join)
-                                                                       (:source-card %)))
-                                                             ;; We need to remove so the default alias is used
-                                                             ;; when changing the join
-                                                             (dissoc :alias))
+                                                           (let [should-rename? (or (conditions-changed-for-aliases?
+                                                                                      (:alias new-join)
+                                                                                      (:conditions new-join)
+                                                                                      (:alias %)
+                                                                                      (:conditions %))
+                                                                                  (not= (:source-table new-join)
+                                                                                        (:source-table %))
+                                                                                  (not= (:source-card new-join)
+                                                                                        (:source-card %)))]
+                                                             (cond-> new-join
+                                                               should-rename?
+                                                               ;; We need to remove so the default alias is used
+                                                               ;; when changing the join
+                                                               (dissoc :alias)))
                                                            %)
                                                         joins))))))
 
