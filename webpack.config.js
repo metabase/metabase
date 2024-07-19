@@ -63,11 +63,13 @@ const SWC_LOADER = {
       experimental: {
         plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
       },
-      // TODO: double check if it can reuse browserslist
-      target: "es2015",
     },
+
     sourceMaps: true,
     minify: false, // produces same bundle size, but cuts 1s locally
+    env: {
+      targets: ["defaults"],
+    },
   },
 };
 
