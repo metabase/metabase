@@ -352,7 +352,6 @@
     (let [tables (->> (t2/select Table :id [:in ids])
                       (filter mi/can-read?))
           tables (t2/hydrate tables
-                             ;; we only need :segments and :metrics in /api/card/:id/query_metadata
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments
                              :metrics)
