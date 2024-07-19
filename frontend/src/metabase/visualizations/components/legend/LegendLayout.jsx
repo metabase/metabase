@@ -28,6 +28,7 @@ const propTypes = {
   children: PropTypes.node,
   onHoverChange: PropTypes.func,
   onSelectSeries: PropTypes.func,
+  onChangeSeriesName: PropTypes.func,
   onRemoveSeries: PropTypes.func,
   isReversed: PropTypes.bool,
   canRemoveSeries: PropTypes.func,
@@ -46,6 +47,7 @@ export const LegendLayout = ({
   children,
   onHoverChange,
   onSelectSeries,
+  onChangeSeriesName,
   onRemoveSeries,
   isReversed,
   canRemoveSeries,
@@ -76,6 +78,7 @@ export const LegendLayout = ({
             isVertical={isVertical}
             onHoverChange={onHoverChange}
             onSelectSeries={onSelectSeries}
+            onChangeSeriesName={onChangeSeriesName}
             onRemoveSeries={onRemoveSeries}
             isReversed={isReversed}
             canRemoveSeries={canRemoveSeries}

@@ -286,6 +286,7 @@ export function useVisualizerSeries(
 
   return {
     series: rawSeries,
+    transformedSeries,
     settings: computedSettings,
     question: mainQuestion,
     addCardSeries,
