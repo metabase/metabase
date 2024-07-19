@@ -34,6 +34,7 @@ import {
   isBasedOnExistingQuestion,
   getParameters,
   getSubmittableQuestion,
+  getQueryResults,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
@@ -222,7 +223,13 @@ export const apiCreateQuestion = question => {
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
 
-    dispatch({ type: API_CREATE_QUESTION, payload: card });
+    dispatch({
+      type: API_CREATE_QUESTION,
+      payload: {
+        card,
+        queryResults: getQueryResults(getState()),
+      },
+    });
 
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
@@ -274,7 +281,10 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     await dispatch({
       type: API_UPDATE_QUESTION,
-      payload: updatedQuestion.card(),
+      payload: {
+        payload: updatedQuestion.card(),
+        queryResults: getQueryResults(getState()),
+      },
     });
 
     if (isModel) {

@@ -364,8 +364,8 @@ export const card = handleActions(
     [SOFT_RELOAD_CARD]: { next: (state, { payload }) => payload },
     [RELOAD_CARD]: { next: (state, { payload }) => payload },
     [SET_CARD_AND_RUN]: { next: (state, { payload }) => payload.card },
-    [API_CREATE_QUESTION]: { next: (state, { payload }) => payload },
-    [API_UPDATE_QUESTION]: { next: (state, { payload }) => payload },
+    [API_CREATE_QUESTION]: { next: (state, { payload: { card } }) => card },
+    [API_UPDATE_QUESTION]: { next: (state, { payload: { card } }) => card },
 
     [CANCEL_DATASET_CHANGES]: { next: (state, { payload }) => payload.card },
 
@@ -421,10 +421,10 @@ export const originalCard = handleActions(
         payload.originalCard ? copy(payload.originalCard) : null,
     },
     [API_CREATE_QUESTION]: {
-      next: (state, { payload }) => copy(payload),
+      next: (state, { payload: { card } }) => copy(card),
     },
     [API_UPDATE_QUESTION]: {
-      next: (state, { payload }) => copy(payload),
+      next: (state, { payload: { card } }) => copy(card),
     },
   },
   null,
@@ -460,6 +460,12 @@ export const queryResults = handleActions(
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
     },
+    [API_CREATE_QUESTION]: {
+      next: (state, { payload: { queryResults } }) => queryResults,
+    },
+    [API_UPDATE_QUESTION]: {
+      next: (state, { payload: { queryResults } }) => queryResults,
+    },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
   },
   null,
@@ -468,6 +474,7 @@ export const queryResults = handleActions(
 export const metadataDiff = handleActions(
   {
     [RESET_QB]: { next: () => ({}) },
+    [API_CREATE_QUESTION]: { next: () => ({}) },
     [API_UPDATE_QUESTION]: { next: () => ({}) },
     [SET_METADATA_DIFF]: {
       next: (state, { payload }) => {
