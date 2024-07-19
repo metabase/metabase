@@ -24,25 +24,7 @@ describe("issue 39487", () => {
 
       cy.findByTestId("timeseries-filter-button").click();
 
-      measureInitialValues();
-
-      nextButton().click(); // go to 2015-02 - 4 day rows
-      assertNoLayoutShift();
-
-      nextButton().click(); // go to 2015-03 - 5 day rows
-      assertNoLayoutShift();
-
-      nextButton().click(); // go to 2015-04 - 5 day rows
-      assertNoLayoutShift();
-
-      nextButton().click(); // go to 2015-05 - 6 day rows
-      assertNoLayoutShift();
-
-      popover().button("May 2015").click(); // go to year view
-      assertNoLayoutShift();
-
-      popover().button("2015").click(); // go to decade view
-      assertNoLayoutShift();
+      checkOnFilter();
     });
 
     it("calendar has constant size when using date range filter (metabase#39487)", () => {
@@ -55,16 +37,32 @@ describe("issue 39487", () => {
 
       cy.findByTestId("timeseries-filter-button").click();
 
-      measureInitialValues();
+      checkBetweenFilter();
+    });
+  });
 
-      nextButton().click(); // go to 2024-07 - 5 day rows
-      assertNoLayoutShift();
+  describe("filter pills", () => {
+    it("calendar has constant size when using single date picker filter (metabase#39487)", () => {
+      createTimeSeriesQuestionWithFilter(["=", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
 
-      popover().button("July 2024").click(); // go to year view
-      assertNoLayoutShift();
+      cy.findByTestId("filters-visibility-control").click();
+      cy.findByTestId("filter-pill").click();
 
-      popover().button("2024").click(); // go to decade view
-      assertNoLayoutShift();
+      checkOnFilter();
+    });
+
+    it("calendar has constant size when using date range filter (metabase#39487)", () => {
+      createTimeSeriesQuestionWithFilter([
+        "between",
+        CREATED_AT_FIELD,
+        "2024-05-01", // 5 day rows
+        "2024-06-01", // 6 day rows
+      ]);
+
+      cy.findByTestId("filters-visibility-control").click();
+      cy.findByTestId("filter-pill").click();
+
+      checkBetweenFilter();
     });
   });
 
@@ -81,6 +79,41 @@ describe("issue 39487", () => {
       },
       { visitQuestion: true },
     );
+  }
+
+  function checkOnFilter() {
+    measureInitialValues();
+
+    nextButton().click(); // go to 2015-02 - 4 day rows
+    assertNoLayoutShift();
+
+    nextButton().click(); // go to 2015-03 - 5 day rows
+    assertNoLayoutShift();
+
+    nextButton().click(); // go to 2015-04 - 5 day rows
+    assertNoLayoutShift();
+
+    nextButton().click(); // go to 2015-05 - 6 day rows
+    assertNoLayoutShift();
+
+    popover().button("May 2015").click(); // go to year view
+    assertNoLayoutShift();
+
+    popover().button("2015").click(); // go to decade view
+    assertNoLayoutShift();
+  }
+
+  function checkBetweenFilter() {
+    measureInitialValues();
+
+    nextButton().click(); // go to 2024-07 - 5 day rows
+    assertNoLayoutShift();
+
+    popover().button("July 2024").click(); // go to year view
+    assertNoLayoutShift();
+
+    popover().button("2024").click(); // go to decade view
+    assertNoLayoutShift();
   }
 
   function measureInitialValues() {
