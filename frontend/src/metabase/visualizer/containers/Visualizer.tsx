@@ -40,6 +40,7 @@ export function Visualizer({ router, location }: WithRouterProps) {
 
   const {
     series,
+    transformedSeries,
     settings,
     question,
     addCardSeries,
@@ -162,6 +163,7 @@ export function Visualizer({ router, location }: WithRouterProps) {
           <Panel defaultSize={75} minSize={60}>
             <VisualizerCanvas
               series={series}
+              transformedSeries={transformedSeries}
               settings={settings}
               vizType={vizType}
               onToggleVizSettings={() => setVizSettingsOpen(isOpen => !isOpen)}

@@ -1,5 +1,7 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import { DoubleClickEditableText } from "metabase/core/components/EditableText";
 import { Icon } from "metabase/ui";
 
 export const LegendItemRoot = styled.div<{ isVertical: boolean }>`
@@ -36,12 +38,20 @@ export const LegendItemDot = styled.div`
   color-adjust: exact;
 `;
 
-export const LegendItemTitle = styled.div`
+const legendItemStyle = css`
   color: var(--mb-color-text-primary);
   font-weight: bold;
   font-size: 0.85em;
   margin-left: 4px;
   overflow: hidden;
+`;
+
+export const EditableLegendItemTitle = styled(DoubleClickEditableText)`
+  ${legendItemStyle}
+`;
+
+export const LegendItemTitle = styled.div`
+  ${legendItemStyle}
 `;
 
 export const LegendItemRemoveIcon = styled(Icon)`

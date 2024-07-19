@@ -15,6 +15,7 @@ import {
   type IconName,
 } from "metabase/ui";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
+import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import type {
   ComputedVisualizationSettings,
   OnChangeCardAndRun,
@@ -29,6 +30,7 @@ import { isCartesianSeries } from "../utils";
 
 interface VisualizerCanvasProps {
   series: Series;
+  transformedSeries: Series; // TODO Rename into series + rawSeries?
   settings: ComputedVisualizationSettings;
   vizType: string;
   onToggleVizSettings: () => void;
@@ -39,6 +41,7 @@ interface VisualizerCanvasProps {
 
 export function VisualizerCanvas({
   series,
+  transformedSeries,
   settings,
   vizType,
   onToggleVizSettings,
@@ -101,6 +104,24 @@ export function VisualizerCanvas({
     }
   };
 
+  const handleSeriesNameChange = (seriesIndex: number, name: string) => {
+    const [{ card: mainCard }] = series;
+    const editedSeries = transformedSeries[seriesIndex];
+    const seriesKey = keyForSingleSeries(editedSeries);
+    if (seriesKey && name.length > 0) {
+      onChange({
+        ...mainCard.visualization_settings,
+        series_settings: {
+          ...mainCard.visualization_settings?.seties_settings,
+          [seriesKey]: {
+            ...mainCard.visualization_settings?.series_settings?.[seriesKey],
+            title: name,
+          },
+        },
+      });
+    }
+  };
+
   const handleDimensionsChange = (dimensions: string[]) => {
     const [{ card: mainCard }] = series;
     onChange({
@@ -140,6 +161,7 @@ export function VisualizerCanvas({
             <BaseVisualization
               rawSeries={displaySeries}
               metadata={metadata}
+              onChangeSeriesName={handleSeriesNameChange}
               onChangeCardAndRun={onChangeCardAndRun}
             />
             <VisualizerAxis
