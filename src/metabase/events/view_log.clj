@@ -106,7 +106,7 @@
                                                    [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
                                                  dashboard-id->timestamp))})
       (catch Exception e
-        (log/error e "Failed to increment view counts")))))
+        (log/error e "Failed to update dashboard last_viewed_at")))))
 
 (def ^:private update-dashboard-last-viewed-at-queue
   (delay (grouper/start!
