@@ -81,8 +81,10 @@
 (defn- get-cards
   [ids]
   (when (seq ids)
-    (->> (t2/select :model/Card :id [:in ids])
-         (filter mi/can-read?))))
+    (let [hydrate #(t2/hydrate % :can_write)]
+      (->> (t2/select :model/Card :id [:in ids])
+           (filter mi/can-read?)
+           hydrate))))
 
 (defn dashboard-metadata
   "Fetches dependent query-metadata for a given dashboard"
