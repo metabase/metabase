@@ -10,7 +10,7 @@ import { printError, printInfo, printSuccess } from "./print";
 const exec = promisify(execCallback);
 
 const IMAGE_NAME = "metabase/metabase-enterprise:latest";
-export const CONTAINER_NAME = "metabase-embedding-sdk-react";
+export const CONTAINER_NAME = "metabase-enterprise-embedding";
 
 /**
  * Default port for the local Metabase instance.
