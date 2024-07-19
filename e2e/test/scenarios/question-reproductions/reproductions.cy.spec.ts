@@ -1,6 +1,7 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestion,
+  getNotebookStep,
   modal,
   popover,
   restore,
@@ -22,6 +23,7 @@ describe("issue 39487", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.viewport(1280, 1000);
   });
 
   describe("calendar has constant size when using single date picker filter (metabase#39487)", () => {
@@ -53,6 +55,15 @@ describe("issue 39487", () => {
       popover().findByText("Specific dates…").click();
       popover().findByText("After").click();
       popover().findByRole("textbox").clear().type("2015/01/01");
+      checkSingleDateFilter();
+    });
+
+    it("notebook editor", () => {
+      cy.icon("notebook").click();
+      getNotebookStep("filter")
+        .findAllByTestId("notebook-cell-item")
+        .first()
+        .click();
       checkSingleDateFilter();
     });
   });
@@ -92,6 +103,15 @@ describe("issue 39487", () => {
       popover().findAllByRole("textbox").first().clear().type("2024/05/01");
       popover().findAllByRole("textbox").last().clear().type("2024/06/01");
       previousButton().click();
+      checkDateRangeFilter();
+    });
+
+    it("notebook editor", () => {
+      cy.icon("notebook").click();
+      getNotebookStep("filter")
+        .findAllByTestId("notebook-cell-item")
+        .first()
+        .click();
       checkDateRangeFilter();
     });
   });
