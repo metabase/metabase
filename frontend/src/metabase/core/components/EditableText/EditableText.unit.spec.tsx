@@ -2,11 +2,16 @@ import userEvent from "@testing-library/user-event";
 
 import { screen, render, waitFor } from "__support__/ui";
 
-import type { EditableTextProps } from "./EditableText";
+import { EditableMarkdownText } from "./EditableMarkdownText";
 import EditableText from "./EditableText";
+import type { EditableTextProps } from "./types";
 
-const setup = (props?: Partial<EditableTextProps>) => {
-  render(<EditableText {...props} />);
+const setup = ({
+  isMarkdown = false,
+  ...props
+}: Partial<EditableTextProps> & { isMarkdown?: boolean } = {}) => {
+  const Component = isMarkdown ? EditableMarkdownText : EditableText;
+  render(<Component {...props} />);
 };
 
 describe("EditableText", () => {

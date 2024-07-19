@@ -11,7 +11,6 @@ export interface EditableTextProps extends EditableTextAttributes {
   isOptional?: boolean;
   isMultiline?: boolean;
   isDisabled?: boolean;
-  isMarkdown?: boolean;
   onChange?: (value: string) => void;
   onFocus?: FocusEventHandler<HTMLTextAreaElement>;
   onBlur?: FocusEventHandler<HTMLTextAreaElement>;

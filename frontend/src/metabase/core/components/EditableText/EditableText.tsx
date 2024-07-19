@@ -1,12 +1,4 @@
-import {
-  forwardRef,
-  useEffect,
-  useRef,
-  type MouseEvent,
-  type Ref,
-} from "react";
-
-import Markdown from "metabase/core/components/Markdown";
+import { forwardRef, useRef, type Ref } from "react";
 
 import { EditableTextArea, EditableTextRoot } from "./EditableText.styled";
 import type { EditableTextProps } from "./types";
@@ -19,7 +11,6 @@ const EditableText = forwardRef(function EditableText(
     isOptional = false,
     isMultiline = false,
     isDisabled = false,
-    isMarkdown = false,
     onChange,
     onFocus,
     onBlur,
@@ -30,66 +21,37 @@ const EditableText = forwardRef(function EditableText(
 ) {
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  const {
-    inputValue,
-    isInFocus,
-    setIsInFocus,
-    handleChange,
-    handleBlur,
-    handleKeyDown,
-  } = useEditableText({
-    initialValue,
-    isOptional,
-    isMultiline,
-    onChange,
-    onBlur,
-  });
+  const { inputValue, isInFocus, handleChange, handleBlur, handleKeyDown } =
+    useEditableText({
+      initialValue,
+      isOptional,
+      isMultiline,
+      onChange,
+      onBlur,
+    });
 
   const displayValue = inputValue ? inputValue : placeholder;
 
-  useEffect(() => {
-    if (!isMarkdown) {
-      return;
-    }
-
-    if (isInFocus) {
-      inputRef.current?.focus();
-    }
-  }, [isInFocus, isMarkdown]);
-
-  const handleRootElementClick = (event: MouseEvent) => {
-    if (!(event.target instanceof HTMLAnchorElement)) {
-      setIsInFocus(true);
-    }
-  };
-
-  const shouldShowMarkdown = isMarkdown && !isInFocus && inputValue;
-
   return (
     <EditableTextRoot
-      onClick={isMarkdown ? handleRootElementClick : undefined}
       {...props}
-      ref={ref}
       isDisabled={isDisabled}
-      isEditingMarkdown={!shouldShowMarkdown}
+      isInFocus={isInFocus}
       data-value={`${displayValue}\u00A0`}
       data-testid="editable-text"
+      ref={ref}
     >
-      {shouldShowMarkdown ? (
-        <Markdown>{inputValue}</Markdown>
-      ) : (
-        <EditableTextArea
-          ref={inputRef}
-          value={inputValue}
-          placeholder={placeholder}
-          disabled={isDisabled}
-          data-testid={dataTestId}
-          onFocus={onFocus}
-          onBlur={handleBlur}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-        />
-      )}
+      <EditableTextArea
+        value={inputValue}
+        placeholder={placeholder}
+        disabled={isDisabled}
+        data-testid={dataTestId}
+        onFocus={onFocus}
+        onBlur={handleBlur}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        ref={inputRef}
+      />
     </EditableTextRoot>
   );
 });
