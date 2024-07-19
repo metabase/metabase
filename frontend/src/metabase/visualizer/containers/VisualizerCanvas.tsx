@@ -1,6 +1,7 @@
 import { useDroppable } from "@dnd-kit/core";
 // eslint-disable-next-line no-restricted-imports
 import { ActionIcon } from "@mantine/core";
+import { assocIn } from "icepick";
 import { useMemo } from "react";
 
 import { useSelector } from "metabase/lib/redux";
@@ -109,16 +110,12 @@ export function VisualizerCanvas({
     const editedSeries = transformedSeries[seriesIndex];
     const seriesKey = keyForSingleSeries(editedSeries);
     if (seriesKey && name.length > 0) {
-      onChange({
-        ...mainCard.visualization_settings,
-        series_settings: {
-          ...mainCard.visualization_settings?.seties_settings,
-          [seriesKey]: {
-            ...mainCard.visualization_settings?.series_settings?.[seriesKey],
-            title: name,
-          },
-        },
-      });
+      const nextSettings = assocIn(
+        mainCard.visualization_settings,
+        ["series_settings", seriesKey, "title"],
+        name,
+      );
+      onChange(nextSettings);
     }
   };
 
