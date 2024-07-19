@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import EditableText from "metabase/core/components/EditableText";
+import { EditableMarkdownText } from "metabase/core/components/EditableText";
 import Link from "metabase/core/components/Link";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_CACHING, PLUGIN_MODERATION } from "metabase/plugins";
@@ -55,7 +55,7 @@ export const QuestionInfoSidebar = ({
                 >{t`Model details`}</Link>
               )}
             </HeaderContainer>
-            <EditableText
+            <EditableMarkdownText
               initialValue={description}
               placeholder={
                 !description && !canWrite
@@ -64,7 +64,6 @@ export const QuestionInfoSidebar = ({
               }
               isOptional
               isMultiline
-              isMarkdown
               isDisabled={!canWrite}
               onChange={handleSave}
             />

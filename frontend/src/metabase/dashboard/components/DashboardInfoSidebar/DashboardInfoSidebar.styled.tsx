@@ -1,7 +1,9 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import EditableText from "metabase/core/components/EditableText";
+import EditableText, {
+  EditableMarkdownText,
+} from "metabase/core/components/EditableText";
 import FormField from "metabase/core/components/FormField/FormField";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
@@ -61,7 +63,9 @@ export const DescriptionHeader = styled.h3`
   margin-bottom: 0.5rem;
 `;
 
-export const EditableDescription = styled(EditableText)<{ hasError?: boolean }>`
+export const EditableDescription = styled(EditableMarkdownText)<{
+  hasError?: boolean;
+}>`
   ${props =>
     props.hasError &&
     css`
