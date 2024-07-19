@@ -424,7 +424,7 @@ describe("Notebook Editor > Join Step", () => {
 
     const [condition] = getRecentJoin().conditions;
     expect(condition.lhsColumn.longDisplayName).toBe("User ID");
-    expect(condition.rhsColumn.longDisplayName).toBe("Products User → ID");
+    expect(condition.rhsColumn.longDisplayName).toBe("Products - User → ID");
   });
 
   it("should change RHS column", async () => {
