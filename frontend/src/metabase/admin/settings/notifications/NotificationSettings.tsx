@@ -2,16 +2,30 @@ import { useState } from "react";
 import { Link } from "react-router";
 import { t } from "ttag";
 
-import { Alert, Box, Flex, Icon, Modal, Paper, Text, Title } from "metabase/ui";
+import { useListChannelsQuery } from "metabase/api/channel";
+import {
+  Box,
+  Button,
+  Flex,
+  Icon,
+  type IconName,
+  Paper,
+  Stack,
+  Text,
+  Title,
+} from "metabase/ui";
+import type { NotificationChannel } from "metabase-types/api";
 
-import { CreateWebhookForm, type WebhookFormProps } from "./CreateWebhookForm";
+import { CreateWebhookModal } from "./CreateWebhookModal";
+import { EditWebhookModal } from "./EditWebhookModal";
+
+type NotificationModals = null | "create" | "edit";
 
 export const NotificationSettings = () => {
-  const [webhookModalOpen, setWebhookModalOpen] = useState(true);
+  const [webhookModal, setWebhookModal] = useState<NotificationModals>(null);
+  const [currentChannel, setCurrentChannel] = useState<NotificationChannel>();
 
-  const handleSumbit = (_vals: WebhookFormProps) => {
-    setWebhookModalOpen(false);
-  };
+  const { data: channels } = useListChannelsQuery();
 
   return (
     <>
@@ -30,51 +44,92 @@ export const NotificationSettings = () => {
           </Paper>
         </Link>
 
-        <Title mb="1.5rem">{t`Alerts webhook`}</Title>
-        <Paper
-          shadow="0"
-          withBorder
-          p="lg"
-          w="47rem"
-          onClick={() => setWebhookModalOpen(true)}
-        >
-          <Flex gap="0.5rem" align="center" mb="0.5rem">
-            <Icon name="slack" />
-            <Title order={2}>{t`Add a webook`}</Title>
-          </Flex>
-          <Text>{t`Specify a webhook URL where you can send the content of Alerts`}</Text>
-        </Paper>
+        <Flex justify="space-between" align="center" mb="1.5rem">
+          <Title>{t`Alerts webhook`}</Title>{" "}
+          {channels?.length !== 0 && (
+            <Button
+              variant="subtle"
+              compact
+              leftIcon={<Icon name="add" />}
+              onClick={() => setWebhookModal("create")}
+            >{t`Add another`}</Button>
+          )}
+        </Flex>
+        {channels?.length === 0 ? (
+          <ChannelBox
+            title={t`Add a webook`}
+            description={t`Specify a webhook URL where you can send the content of Alerts`}
+            onClick={() => setWebhookModal("create")}
+            icon="webhook"
+          />
+        ) : (
+          <Stack>
+            {channels?.map(c => (
+              <ChannelBox
+                key={`channel-${c.id}`}
+                title={c.name}
+                description={c.details.description}
+                onClick={() => {
+                  setWebhookModal("edit");
+                  setCurrentChannel(c);
+                }}
+                icon="webhook"
+              />
+            ))}
+          </Stack>
+        )}
       </Box>
+      <NotificationSettingsModals
+        modal={webhookModal}
+        channel={currentChannel}
+        onClose={() => setWebhookModal(null)}
+      />
+    </>
+  );
+};
 
-      <Modal.Root
-        opened={webhookModalOpen}
-        onClose={() => setWebhookModalOpen(false)}
-        size="36rem"
-      >
-        <Modal.Overlay />
-        <Modal.Content p="1rem">
-          <Modal.Header mb="1.5rem">
-            <Modal.Title>{t`New alert webhook`}</Modal.Title>
-            <Modal.CloseButton />
-          </Modal.Header>
-          <Modal.Body>
-            <Alert
-              variant="light"
-              mb="1.5rem"
-              style={{ backgroundColor: "var(--mb-color-bg-light)" }}
-              px="1.5rem"
-              py="1rem"
-              radius="0.5rem"
-            >
-              <Text>{t`You can send the payload of any Alert to this destination whenever the Alert is triggered. Learn about Alerts`}</Text>
-            </Alert>
-            <CreateWebhookForm
-              onSubmit={handleSumbit}
-              onCancel={() => setWebhookModalOpen(false)}
-            />
-          </Modal.Body>
-        </Modal.Content>
-      </Modal.Root>
+const ChannelBox = ({
+  title,
+  description,
+  onClick,
+  icon,
+}: {
+  title: string;
+  description?: string;
+  onClick: () => void;
+  icon: IconName;
+}) => (
+  <Paper
+    shadow="0"
+    withBorder
+    p="lg"
+    w="47rem"
+    onClick={onClick}
+    style={{ cursor: "pointer" }}
+  >
+    <Flex gap="0.5rem" align="center">
+      <Icon name={icon} />
+      <Title order={2}>{title}</Title>
+    </Flex>
+    {description && <Text mt="0.5rem">{description}</Text>}
+  </Paper>
+);
+
+const NotificationSettingsModals = ({
+  modal,
+  channel,
+  onClose,
+}: {
+  modal: NotificationModals;
+  channel?: NotificationChannel;
+  onClose: () => void;
+}) => {
+  return (
+    <>
+      {modal === "create" && <CreateWebhookModal isOpen onClose={onClose} />}
+      {modal === "edit" && channel && (
+        <EditWebhookModal isOpen onClose={onClose} channel={channel} />
+      )}
     </>
   );
 };
