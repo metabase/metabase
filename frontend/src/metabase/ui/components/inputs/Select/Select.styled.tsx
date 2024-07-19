@@ -126,13 +126,13 @@ export const getSelectItemsOverrides = (
       padding: "0.75rem",
     },
     item: {
-      color: theme.fn.themeColor("text-dark"),
+      color: "var(--mb-color-text-primary)",
       fontSize: getItemFontSize(size),
       lineHeight: getItemLineHeight(size),
       padding: theme.spacing.sm,
       "&[data-hovered]": {
         color: theme.fn.themeColor("brand"),
-        backgroundColor: theme.fn.themeColor("brand-lighter"),
+        backgroundColor: "var(--mb-color-background-selected)",
       },
       "&[data-selected]": {
         color: theme.fn.themeColor("text-white"),

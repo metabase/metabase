@@ -122,6 +122,10 @@ export const getMultiSelectOverrides =
             height: "100% !important",
           },
         },
+        dropdown: {
+          backgroundColor: "var(--mb-color-background)",
+          borderColor: "var(--mb-color-border)",
+        },
       }),
       variants: {
         default: () => ({

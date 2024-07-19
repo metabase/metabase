@@ -1,6 +1,6 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
-import type { ComponentStory, Story } from "@storybook/react";
+import type { ComponentStory, Story, StoryContext } from "@storybook/react";
 import { within, userEvent } from "@storybook/testing-library";
 import { useEffect, type ComponentProps } from "react";
 import { Provider } from "react-redux";
@@ -55,7 +55,8 @@ export default {
   },
 };
 
-function ReduxDecorator(Story: Story) {
+function ReduxDecorator(Story: Story, context: StoryContext) {
+  const parameterType: ParameterType = context.args.parameterType;
   const initialState = createMockState({
     settings: createMockSettingsState({
       "hide-embed-branding?": false,
@@ -86,7 +87,7 @@ function ReduxDecorator(Story: Story) {
       parameterValuesCache: {
         [`{"paramId":"${PARAMETER_ID}","dashId":${DASHBOARD_ID}}`]: {
           values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
-          has_more_values: false,
+          has_more_values: parameterType === "search" ? true : false,
         },
       },
     },
@@ -213,6 +214,14 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
       }),
       {},
     ),
+    search: getDashboardUiParameters(
+      dashboard.dashcards,
+      dashboard.parameters,
+      createMockMetadata({
+        databases: [createSampleDatabase()],
+      }),
+      {},
+    ),
   };
   return (
     <PublicOrEmbeddedDashboardView
@@ -224,7 +233,7 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
 
 type ArgType = Partial<ComponentProps<typeof PublicOrEmbeddedDashboardView>>;
 
-type ParameterType = "text" | "dropdown";
+type ParameterType = "text" | "dropdown" | "search";
 const createDefaultArgs = (
   args: ArgType & { parameterType?: ParameterType } = {},
 ): ArgType & { parameterType: ParameterType } => {
@@ -292,6 +301,33 @@ LightThemeParameterListWithValue.play = async ({ canvasElement }) => {
   await userEvent.click(documentElement.getByText("Widget"));
 };
 
+export const LightThemeParameterSearch = Template.bind({});
+LightThemeParameterSearch.args = createDefaultArgs({
+  parameterType: "search",
+});
+LightThemeParameterSearch.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
+};
+
+export const LightThemeParameterSearchWithValue = Template.bind({});
+LightThemeParameterSearchWithValue.args = createDefaultArgs({
+  parameterType: "search",
+});
+LightThemeParameterSearchWithValue.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
+
+  const documentElement = within(document.documentElement);
+  await userEvent.type(
+    documentElement.getByPlaceholderText("Search the list"),
+    "g",
+  );
+  await userEvent.click(documentElement.getByText("Widget"));
+};
+
 // Dark theme
 export const DarkThemeText = Template.bind({});
 DarkThemeText.args = createDefaultArgs({ theme: "night" });
@@ -333,6 +369,35 @@ DarkThemeParameterListWithValue.args = createDefaultArgs({
   parameterType: "dropdown",
 });
 DarkThemeParameterListWithValue.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
+
+  const documentElement = within(document.documentElement);
+  await userEvent.type(
+    documentElement.getByPlaceholderText("Search the list"),
+    "g",
+  );
+  await userEvent.click(documentElement.getByText("Widget"));
+};
+
+export const DarkThemeParameterSearch = Template.bind({});
+DarkThemeParameterSearch.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "search",
+});
+DarkThemeParameterSearch.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", { name: "Category" });
+  await userEvent.click(filter);
+};
+
+export const DarkThemeParameterSearchWithValue = Template.bind({});
+DarkThemeParameterSearchWithValue.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "search",
+});
+DarkThemeParameterSearchWithValue.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);

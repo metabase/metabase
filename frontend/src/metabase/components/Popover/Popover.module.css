@@ -16,7 +16,7 @@
 }
 
 .PopoverBody.PopoverBodyWithBackground {
-  border: 1px solid #edf2f5;
+  border: 1px solid var(--mb-color-border);
   box-shadow: 0 4px 10px var(--mb-color-shadow);
   background-color: var(--mb-color-background);
   border-radius: 6px;
