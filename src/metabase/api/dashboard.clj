@@ -96,8 +96,9 @@
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
     (t2/hydrate dashboard [:dashcards
-                           [:card :can_write :can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                           [:series :can_write :can_run_adhoc_query]
+                           ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                           [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                           [:series :can_write #_:can_run_adhoc_query]
                            :dashcard/action
                            :dashcard/linkcard-info]
                 :can_restore
