@@ -319,7 +319,7 @@
          (coll? recipients)
          (every? map? recipients)]}
   (let [recipients-by-type (group-by integer? (filter identity (map #(or (:id %) (:email %)) recipients)))
-        {:keys [id]}       (t2/insert-returning-pk!
+        id                 (t2/insert-returning-pk!
                             PulseChannel
                             :pulse_id       pulse_id
                             :channel_type   channel_type
