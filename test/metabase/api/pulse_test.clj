@@ -917,6 +917,31 @@
                        :subject "Daily Sad Toucans"}
                       (mt/summarize-multipart-single-email (-> channel-messages :channel/email first) #"Daily Sad Toucans")))))))))))
 
+(deftest send-test-alert-with-http-channel-test
+  ;; see [[metabase-enterprise.advanced-config.api.pulse-test/test-pulse-endpoint-should-respect-email-domain-allow-list-test]]
+  ;; for additional EE-specific tests
+  (testing "POST /api/pulse/test send test alert"
+    (mt/with-temp
+      [:model/Card card {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+       :model/Channel channel {:type    :channel/http
+                               :details {:url         "http://example.com"
+                                         :auth-method :none}}]
+      (pulse.test-util/with-captured-channel-send-messages!
+        (mt/user-http-request :rasta :post 200 "pulse/test"
+                              {:name            (mt/random-name)
+                               :cards           [{:id                (:id card)
+                                                  :include_csv       false
+                                                  :include_xls       false
+                                                  :dashboard_card_id nil}]
+                               :channels        [{:enabled       true
+                                                  :channel_type  "http"
+                                                  :channel_id    (:id channel)
+                                                  :schedule_type "daily"
+                                                  :schedule_hour 12
+                                                  :schedule_day  nil
+                                                  :recipients    []}]
+                               :alert_condition "rows"})))))
+
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)
     (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
