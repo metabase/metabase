@@ -1081,7 +1081,7 @@ describe("issue 34514", () => {
   }
 });
 
-describe("issue 28270", () => {
+describe("issues 28270, 33708", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -1100,6 +1100,7 @@ describe("issue 28270", () => {
 
   it("shows object relationships when model-based ad-hoc question has a filter (metabase#28270)", () => {
     checkRelationships();
+    modal().icon("close").click();
 
     tableHeaderClick("Title");
     popover().findByText("Filter by this column").click();
@@ -1107,6 +1108,17 @@ describe("issue 28270", () => {
     popover().last().findByText("Contains").click();
     popover().findByLabelText("Filter value").type("a,");
     popover().button("Add filter").click();
+
+    checkRelationships();
+  });
+
+  it("shows object relationships after navigating back from relationships question (metabase#33708)", () => {
+    checkRelationships();
+
+    modal().findByText("Orders").click();
+    cy.wait("@dataset");
+    cy.go("back");
+    cy.go("back"); // TODO: remove this when (metabase#/33709) is fixed
 
     checkRelationships();
   });
@@ -1130,8 +1142,6 @@ describe("issue 28270", () => {
         .should("be.visible")
         .and("contain.text", "8")
         .and("contain.text", "Reviews");
-
-      cy.icon("close").click();
     });
   }
 });
