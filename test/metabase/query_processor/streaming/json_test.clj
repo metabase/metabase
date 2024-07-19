@@ -2,12 +2,13 @@
   (:require
    [cheshire.core :as json]
    [clojure.test :refer :all]
-   [metabase.query-processor.streaming.json :as streaming.json]
-   [metabase.test :as mt]))
+   [metabase.query-processor :as qp]
+   [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.test :as mt])
+  (:import
+   [java.io ByteArrayOutputStream OutputStream]))
 
-(deftest map->serialized-json-kvs-test
-  (is (= "\"a\":100,\"b\":200"
-         (#'streaming.json/map->serialized-json-kvs {:a 100, :b 200}))))
+(set! *warn-on-reflection* true)
 
 (deftest geographic-coordinates-json-test
   (testing "Ensure JSON longitude and latitude values are correctly exported"
@@ -28,3 +29,25 @@
               {:ID "4", :Longitude "118.46500000° W", :Latitude "33.99970000° N"}
               {:ID "5", :Longitude "118.26100000° W", :Latitude "34.07780000° N"}]
              result)))))
+
+(deftest batched-streaming-results-test
+  (testing "While streaming JSON results in the API, we should only `.flush` a handful of times (#34795)"
+    (let [baos    (ByteArrayOutputStream.)
+          flushes (atom [])
+          closes  (atom 0)
+          os      (proxy [OutputStream] []
+                    (close []
+                      (swap! closes inc)
+                      (.close baos))
+                    (flush []
+                      (swap! flushes conj (.size baos))
+                      (.flush baos))
+                    (write
+                      ([b]          (.write baos ^int b))
+                      ([bs off len] (.write baos bs off len))))]
+      (qp.streaming/do-with-streaming-rff
+        :api os
+        (fn [rff]
+          (qp/process-query (mt/mbql-query orders) rff)))
+      (is (< 0 (count @flushes) 6))
+      (is (pos? @closes)))))
