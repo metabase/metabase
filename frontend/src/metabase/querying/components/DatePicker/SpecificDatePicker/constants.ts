@@ -10,7 +10,7 @@ export const TABS: Tab[] = [
 ];
 
 /**
- * Months have different number of day rows (4, 5 or 6). his causes date picker height to change when
+ * Months have different number of day rows (4, 5 or 6). This causes date picker height to change when
  * navigating between months, and the "next" & "previous" buttons shift their positions (metabase#39487)
  */
 export const MIN_DATE_PICKER_HEIGHT = 314;
