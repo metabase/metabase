@@ -124,14 +124,19 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   },
 });
 
-export const EMBEDDING_SDK_COMPONENTS_OVERRIDES: MantineThemeOverride["components"] =
-  {
+export function getEmbeddingComponentOverrides(
+  theme?: DeepPartial<MetabaseComponentTheme>,
+): MantineThemeOverride["components"] {
+  return {
     HoverCard: {
       defaultProps: {
         withinPortal: true,
         portalProps: {
           target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
         },
+
+        ...(theme?.popover?.zIndex && { zIndex: theme.popover.zIndex }),
       },
     },
   };
+}

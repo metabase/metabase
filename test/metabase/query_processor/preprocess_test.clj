@@ -5,7 +5,8 @@
    [metabase.driver :as driver]
    [metabase.query-processor :as qp]
    [metabase.query-processor.preprocess :as qp.preprocess]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (deftest preprocess-caching-test
   (testing "`preprocess` should work the same even if query has cached results (#18579)"
@@ -39,6 +40,16 @@
                    (qp.preprocess/preprocess query)))))))))
 
 (driver/register! ::custom-escape-spaces-to-underscores :parent :h2)
+
+(defmethod tx/create-db! ::custom-escape-spaces-to-underscores
+  [& _]
+  ;; no-op since we should be able to reuse the data from H2 tests
+  nil)
+
+(defmethod tx/destroy-db! ::custom-escape-spaces-to-underscores
+  [& _]
+  ;; no-op since we don't want to stomp on data used by H2 tests
+  nil)
 
 (defmethod driver/escape-alias ::custom-escape-spaces-to-underscores
   [driver field-alias]

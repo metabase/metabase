@@ -11,10 +11,10 @@
 (defn- do-with-test-setup [f]
   (query-analysis/without-analysis
    (t2.with-temp/with-temp [:model/Table      {table  :id}   {:name "T"}
-                            :model/Collection {coll-1 :id}   {:name "ZZX"}
+                            ;; no coll-1; its card is in the root collection
                             :model/Collection {coll-2 :id}   {:name "ZZY"}
                             :model/Collection {coll-3 :id}   {:name "ZZZ"}
-                            :model/Card       {card-1 :id}   {:name "A" :collection_id coll-1}
+                            :model/Card       {card-1 :id}   {:name "A"}
                             :model/Card       {card-2 :id}   {:name "B" :collection_id coll-2}
                             :model/Card       {card-3 :id}   {:name "C" :collection_id coll-3}
                             :model/Card       {card-4 :id}   {:name "D"}

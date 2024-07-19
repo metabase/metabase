@@ -269,7 +269,7 @@
 
 (derive :type/TextLike :type/*)
 (derive :type/MongoBSONID :type/TextLike)
-(derive :type/MySQLEnum :type/TextLike)
+(derive :type/MySQLEnum :type/Text)
 ;; IP address can be either a data type e.g. Postgres `inet` or a semantic type e.g. a `text` column that has IP
 ;; addresses
 (derive :type/IPAddress :type/TextLike)
@@ -303,7 +303,6 @@
 ;;
 ;; but for the time being we'll have to live with these being "weird" semantic types.
 (derive :type/Structured :Semantic/*)
-(derive :type/Structured :type/Text)
 
 (derive :type/SerializedJSON :type/Structured)
 (derive :type/XML :type/Structured)
