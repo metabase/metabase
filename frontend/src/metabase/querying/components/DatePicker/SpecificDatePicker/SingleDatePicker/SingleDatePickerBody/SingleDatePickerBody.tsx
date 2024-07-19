@@ -4,6 +4,11 @@ import { t } from "ttag";
 import type { DateValue } from "metabase/ui";
 import { DateInput, DatePicker, Stack, TimeInput } from "metabase/ui";
 
+import {
+  DATE_PICKER_STYLES,
+  MIN_DATE_PICKER_HEIGHT,
+  MIN_DATE_PICKER_WIDTH,
+} from "../../constants";
 import { setDatePart, setTimePart } from "../../utils";
 
 interface SingleDatePickerBodyProps {
@@ -47,6 +52,9 @@ export function SingleDatePickerBody({
       <DatePicker
         value={value}
         date={date}
+        miw={MIN_DATE_PICKER_WIDTH}
+        mih={MIN_DATE_PICKER_HEIGHT}
+        styles={DATE_PICKER_STYLES}
         onChange={handleDateChange}
         onDateChange={setDate}
       />
