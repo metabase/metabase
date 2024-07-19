@@ -1118,7 +1118,7 @@ describe("issues 28270, 33708", () => {
     modal().findByText("Orders").click();
     cy.wait("@dataset");
     cy.go("back");
-    cy.go("back"); // TODO: remove this when (metabase#/33709) is fixed
+    cy.go("back"); // TODO: remove this when (metabase#33709) is fixed
 
     checkRelationships();
   });
