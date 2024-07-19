@@ -1,5 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, popover, restore } from "e2e/support/helpers";
+import { createQuestion, modal, popover, restore } from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -33,6 +33,12 @@ describe("issue 39487", () => {
       cy.findByTestId("filter-pill").click();
       checkSingleDateFilter();
     });
+
+    it("filter modal", () => {
+      cy.button("Filter").click();
+      modal().findByText("Jan 1, 2015").click();
+      checkSingleDateFilter();
+    });
   });
 
   describe("calendar has constant size when using date range picker filter (metabase#39487)", () => {
@@ -53,6 +59,12 @@ describe("issue 39487", () => {
     it("filter pills", () => {
       cy.findByTestId("filters-visibility-control").click();
       cy.findByTestId("filter-pill").click();
+      checkDateRangeFilter();
+    });
+
+    it("filter modal", () => {
+      cy.button("Filter").click();
+      modal().findByText("May 1 – Jun 1, 2024").click();
       checkDateRangeFilter();
     });
   });
@@ -87,10 +99,10 @@ describe("issue 39487", () => {
     nextButton().click(); // go to 2015-05 - 6 day rows
     assertNoLayoutShift();
 
-    popover().button("May 2015").click(); // go to year view
+    popover().findByText("May 2015").click(); // go to year view
     assertNoLayoutShift();
 
-    popover().button("2015").click(); // go to decade view
+    popover().findByText("2015").click(); // go to decade view
     assertNoLayoutShift();
   }
 
@@ -100,10 +112,10 @@ describe("issue 39487", () => {
     nextButton().click(); // go to 2024-07 - 5 day rows
     assertNoLayoutShift();
 
-    popover().button("July 2024").click(); // go to year view
+    popover().findByText("July 2024").click(); // go to year view
     assertNoLayoutShift();
 
-    popover().button("2024").click(); // go to decade view
+    popover().findByText("2024").click(); // go to decade view
     assertNoLayoutShift();
   }
 
@@ -150,7 +162,7 @@ describe("issue 39487", () => {
   }
 
   function measureDatetimeFilterPickerHeight() {
-    return cy.findByTestId("datetime-filter-picker").then(([$element]) => {
+    return popover().then(([$element]) => {
       const { height } = $element.getBoundingClientRect();
       return height;
     });
