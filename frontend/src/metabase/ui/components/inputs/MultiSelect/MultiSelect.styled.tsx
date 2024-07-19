@@ -51,8 +51,9 @@ export const getMultiSelectOverrides =
           minHeight: getSize({ size, sizes: SIZES }),
           marginLeft: 0,
           gap: theme.spacing.xs,
-          padding: theme.spacing.xs,
-          paddingRight: theme.spacing.xl,
+          paddingTop: theme.spacing.xs,
+          paddingLeft: theme.spacing.xs,
+          paddingBottom: theme.spacing.xs,
           alignItems: "center",
           "[data-with-icon=true] &": {
             paddingLeft: 0,
