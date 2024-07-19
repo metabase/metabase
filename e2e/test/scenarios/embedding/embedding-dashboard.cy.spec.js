@@ -253,7 +253,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
       // Filter widget must be visible
       filterWidget().contains("Name");
       // Its default value must be in the URL
-      cy.location("search").should("contain", "name=Ferne%20Rosenbaum");
+      cy.location("search").should("contain", "name=Ferne+Rosenbaum");
       // And the default should be applied giving us only 1 result
       cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
     });
@@ -515,6 +515,7 @@ describe("scenarios > embedding > dashboard parameters", () => {
         isEmbed: true,
         logResults: true,
         downloadUrl: "/api/embed/dashboard/*/dashcard/*/card/*/csv*",
+        downloadMethod: "GET",
       },
       sheet => {
         expect(sheet["A1"].v).to.eq("ID");
@@ -628,7 +629,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     cy.wait("@previewEmbed");
 
     modal().within(() => {
-      cy.findByRole("tab", { name: "Appearance" }).click();
+      cy.findByRole("tab", { name: "Look and Feel" }).click();
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
 
       cy.log("Assert dashboard theme");
@@ -640,13 +641,13 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
         });
 
       // We're getting an input element which is 0x0 in size
-      cy.findByLabelText("Transparent").click({ force: true });
+      cy.findByLabelText("Dark").click({ force: true });
       cy.wait(1000);
       getIframeBody()
         .findByTestId("embed-frame")
         .invoke("attr", "data-embed-theme")
         .then(embedTheme => {
-          expect(embedTheme).to.eq("transparent");
+          expect(embedTheme).to.eq("night");
         });
 
       cy.get("@previewEmbedSpy").should("have.callCount", 1);
@@ -663,7 +664,7 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
         .findByTestId("embed-frame")
         .should("have.css", "border-top-width", "1px");
       // We're getting an input element which is 0x0 in size
-      cy.findByLabelText("Border").click({ force: true });
+      cy.findByLabelText("Dashboard border").click({ force: true });
       getIframeBody()
         .findByTestId("embed-frame")
         .should("have.css", "border-top-width", "0px");

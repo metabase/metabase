@@ -16,6 +16,7 @@
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models :refer [Field]]
    [metabase.models.table :as table]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -213,12 +214,18 @@
    (describe-table-fields-xf driver (table/database table))
    (fields-metadata driver conn table db-name-or-nil)))
 
+;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
+;;; always just `nil`. There's currently not a great driver-agnostic way to determine the actual physical Database name
+;;; anyway... Database `:name` is wrong, because it's a display name rather than a physical name. We might want to
+;;; consider reworking this method so it takes `database` and `table` as arguments, and drivers can extract the Database
+;;; name as needed if they want to do so from `database`.
 (defmulti get-table-pks
   "Returns a vector of primary keys for `table` using a JDBC DatabaseMetaData from JDBC Connection `conn`.
   The PKs should be ordered by column names if there are multiple PKs.
   Ref: https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getPrimaryKeys-java.lang.String-java.lang.String-java.lang.String-
 
-  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access.
+  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection
+  can access.
 
   This does not need to be implemented for drivers that support the [[driver/describe-fields]] multimethod."
   {:changelog-test/ignore true
@@ -227,32 +234,52 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod get-table-pks :default
-  [_driver ^Connection conn db-name-or-nil table]
+(defn- assert-database-name-does-not-include-driver
+  "Starting in 51+ we started giving test Databases like `test-data` a helpful `:name` like `test-data (h2)` for ease of
+  use in the GUI. This helps us catch situations where we're using the human-friendly Database name rather than the
+  actual physical database name for things like sync. Check and make sure we're not trying to use the user-friendly
+  Database `:name` under the hood, since the actual name should still be something like `test-data`."
+  [driver db-name]
+  (when (and db-name
+             (str/ends-with? db-name (format "(%s)" (u/qualified-name driver))))
+    ;; not i18n'ed because this is an assertion meant to catch bugs in driver implementations during test runs
+    (throw (ex-info (str "Error: Database display :name detected where you should be using its physical name"
+                         \newline
+                         "Database `:name` (e.g. `test-data (h2)`) is the human-friendly display name used in the GUI,"
+                         " it does not necessarily correspond to any actual names of anything in the data warehouse"
+                         " itself. Make sure you're using the actual physical name (e.g. `test-data`) rather than the "
+                         " display name.")
+                    {:driver driver, :db-name db-name, :type qp.error-type/driver}))))
+
+(defmethod get-table-pks :sql-jdbc
+  [driver ^Connection conn db-name-or-nil table]
+  (assert-database-name-does-not-include-driver driver db-name-or-nil)
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
     (into [] (sql-jdbc.sync.common/reducible-results
               #(.getPrimaryKeys metadata db-name-or-nil (:schema table) (:name table))
               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defn add-table-pks
-  "Using `conn`, find any primary keys for `table` (or more, see: [[get-table-pks]]) and finally assoc `:pk?` to true for those columns."
-  [driver ^Connection conn db-name-or-nil table]
-  (let [pks (set (get-table-pks driver conn db-name-or-nil table))]
-    (update table :fields (fn [fields]
-                            (set (for [field fields]
-                                   (if-not (contains? pks (:name field))
-                                     field
-                                     (assoc field :pk? true))))))))
+  "Using `conn`, find any primary keys for `table` (or more, see: [[get-table-pks]]) and finally assoc `:pk?` to true
+  for those columns."
+  ([driver ^Connection conn table]
+   (add-table-pks driver conn nil table))
+
+  ([driver ^Connection conn db-name-or-nil table]
+   (let [pks (set (get-table-pks driver conn db-name-or-nil table))]
+     (update table :fields (fn [fields]
+                             (set (for [field fields]
+                                    (if-not (contains? pks (:name field))
+                                      field
+                                      (assoc field :pk? true)))))))))
 
 (defn- describe-table*
-  ([driver ^Connection conn table]
-   (describe-table* driver conn nil table))
-  ([driver ^Connection conn db-name-or-nil table]
-   {:pre [(instance? Connection conn)]}
-   (->> (assoc (select-keys table [:name :schema])
-               :fields (describe-table-fields driver conn table nil))
-        ;; find PKs and mark them
-        (add-table-pks driver conn db-name-or-nil))))
+  [driver ^Connection conn table]
+  {:pre [(instance? Connection conn)]}
+  (->> (assoc (select-keys table [:name :schema])
+              :fields (describe-table-fields driver conn table nil))
+       ;; find PKs and mark them
+       (add-table-pks driver conn)))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
@@ -577,7 +604,7 @@
                         pk-identifier]))]}
       {:select json-field-exprs
        :from   [table-expr]
-       :limit  metadata-queries/nested-field-sample-limit})))
+       :limit  (sql.qp/inline-num metadata-queries/nested-field-sample-limit)})))
 
 (defn- describe-json-fields
   [driver jdbc-spec table json-fields pks]
@@ -611,7 +638,11 @@
       nil
       (fn [^Connection conn]
         (let [unfold-json-fields (table->unfold-json-fields driver conn table)
-              pks                (get-table-pks driver conn (:name database) table)]
+              ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
+              ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
+              ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
+              ;; database [:details :db])` works for most drivers but not H2.
+              pks                (get-table-pks driver conn nil table)]
           (if (empty? unfold-json-fields)
             #{}
             (describe-json-fields driver jdbc-spec table unfold-json-fields pks)))))))

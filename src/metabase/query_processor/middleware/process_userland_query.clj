@@ -20,6 +20,7 @@
    #_
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -37,6 +38,19 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private field-usage-interval-seconds 20)
+
+(defonce ^:private
+  field-usages-queue
+  (delay (grouper/start!
+          (fn [field-usages]
+            (try
+              (t2/insert! :model/FieldUsage field-usages)
+              (catch Throwable e
+                (log/error e "Error saving field usages"))))
+          :capacity 500
+          :interval (* field-usage-interval-seconds 1000))))
+
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
 ;; in the completing arity of the rf
 ;;
@@ -51,7 +65,9 @@
     (log/warn "Cannot save QueryExecution, missing :context")
     (let [qe-id (t2/insert-returning-pk! QueryExecution (dissoc query-execution :json_query))]
       (when (seq field-usages)
-        (t2/insert! :model/FieldUsage (map #(assoc % :query_execution_id qe-id) field-usages))))))
+        (let [queue @field-usages-queue]
+          (doseq [field-usage field-usages]
+            (grouper/submit! queue (assoc field-usage :query_execution_id qe-id))))))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."

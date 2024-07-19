@@ -3421,7 +3421,7 @@
   including GET /api/collection/:id/items and GET /api/card/:id"
   [request]
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (mt/with-discard-model-updates [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
+    (mt/with-discard-model-updates! [:model/Database] ; to restore any existing metabase_database.uploads_enabled=true
       (mt/with-temp [:model/Database   {db-id :id}         {:engine driver/*driver*}
                      :model/Database   {other-db-id :id}   {:engine driver/*driver* :uploads_enabled true}
                      :model/Table      {table-id :id}      {:db_id db-id, :is_upload true}
@@ -3527,7 +3527,7 @@
                                :name                   "Bad Card"
                                :display                "table"
                                :visualization_settings {}}]
-        (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""}
+        (is (=? {:message #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""}
                 (mt/user-http-request :crowberto :post 400 "card" card-data)))))))
 
 (deftest ^:parallel format-export-middleware-test

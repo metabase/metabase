@@ -82,7 +82,7 @@
 (deftest make-database-details-not-null-test
   (testing "Migrations v45.00-042 and v45.00-043: set default value of '{}' for Database rows with NULL details"
     (impl/test-migrations ["v45.00-042" "v45.00-043"] [migrate!]
-      (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) (-> (dissoc (mt/with-temp-defaults Database) :details)
+      (let [database-id (first (t2/insert-returning-pks! (t2/table-name Database) (-> (dissoc (mt/with-temp-defaults Database) :details :settings)
                                                                                       (assoc :engine "h2"))))]
         (is (partial= {:details nil}
                       (t2/select-one Database :id database-id)))
@@ -1513,10 +1513,10 @@
       (encryption-test/with-secret-key "whateverwhatever"
         (t2/insert! :setting [{:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100.4")}
                               {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123.4")}]))
-
       (let [user (create-raw-user! (mt/random-email))
             db   (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
                                                                  (update :details json/generate-string)
+                                                                 (update :settings json/generate-string)
                                                                  (update :engine str)
                                                                  (assoc :cache_ttl 10)))
             dash (t2/insert-returning-pk! (t2/table-name :model/Dashboard)
@@ -1536,10 +1536,8 @@
                                            :database_id            db
                                            :created_at             :%now
                                            :updated_at             :%now})]
-
         (encryption-test/with-secret-key "whateverwhatever"
           (migrate! :up))
-
         (is (=? [{:model    "root"
                   :model_id 0
                   :strategy "ttl"
@@ -1558,16 +1556,18 @@
                   :strategy "duration"
                   :config   {:duration 30 :unit "hours"}}]
                 (->> (t2/select :cache_config)
-                     (mapv #(update % :config json/decode true))))))))
+                     (mapv #(update % :config json/decode true)))))))))
+
+(deftest cache-config-migration-test-2
   (testing "And not copied if caching is disabled"
     (impl/test-migrations ["v50.2024-04-12T12:33:07"] [migrate!]
       (t2/insert! :setting [{:key "enable-query-caching", :value (encryption/maybe-encrypt "false")}
                             {:key "query-caching-ttl-ratio", :value (encryption/maybe-encrypt "100")}
                             {:key "query-caching-min-ttl", :value (encryption/maybe-encrypt "123")}])
-
       ;; this one to have custom configuration to check they are not copied over
       (t2/insert-returning-pk! :metabase_database (-> (mt/with-temp-defaults Database)
                                                       (update :details json/generate-string)
+                                                      (update :settings json/generate-string)
                                                       (update :engine str)
                                                       (assoc :cache_ttl 10)))
       (migrate!)
@@ -1593,7 +1593,6 @@
                                      :config   (json/encode {:multiplier      0
                                                              :min_duration_ms 0})})
           (migrate!)
-
           (is (=? {:model    "root"
                    :model_id 0
                    :strategy "ttl"
@@ -2418,7 +2417,7 @@
                  (mt/test-drivers test-drivers
                    (let [db-def      {:database-name "field-test-db"}
                          data-source (load-from-h2-test/get-data-source driver/*driver* db-def)]
-                     (load-from-h2-test/create-current-database driver/*driver* db-def data-source)
+                     (load-from-h2-test/create-current-database! driver/*driver* db-def data-source)
                      (binding [mdb.connection/*application-db* (mdb.connection/application-db driver/*driver* data-source)]
                        (load-from-h2/load-from-h2! h2-filename)
                        (testing "The defective field should still exist after loading from H2"

@@ -53,6 +53,24 @@ const CSS_CONFIG = {
   importLoaders: 1,
 };
 
+class OnScriptError {
+  apply(compiler) {
+    compiler.hooks.compilation.tap("OnScriptError", compilation => {
+      HtmlWebpackPlugin.getHooks(compilation).alterAssetTags.tapAsync(
+        "OnScriptError",
+        (data, cb) => {
+          // Manipulate the content
+          data.assetTags.scripts.forEach(script => {
+            script.attributes.onerror = `Metabase.AssetErrorLoad(this)`;
+          });
+          // Tell webpack to move on
+          cb(null, data);
+        },
+      );
+    });
+  }
+}
+
 const config = (module.exports = {
   mode: devMode ? "development" : "production",
   context: SRC_PATH,
@@ -243,6 +261,7 @@ const config = (module.exports = {
       filename: devMode ? "[name].css" : "[name].[contenthash].css",
       chunkFilename: devMode ? "[id].css" : "[id].[contenthash].css",
     }),
+    new OnScriptError(),
     new HtmlWebpackPlugin({
       filename: "../../index.html",
       chunksSortMode: "manual",

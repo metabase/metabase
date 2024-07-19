@@ -818,7 +818,7 @@
     :archived            nil
     :model               "table"
     :database_id         true
-    :database_name       "test-data"
+    :database_name       "test-data (h2)"
     :pk_ref              nil
     :initial_sync_status "complete"}))
 
@@ -887,7 +887,7 @@
 (deftest all-users-no-perms-table-test
   (testing (str "If the All Users group doesn't have perms to view a Table, but the current User is in a group that "
                 "does have perms, they should still be able to see it (#12332)")
-    (mt/with-temp [Database                   {db-id :id} {:name "test-data"}
+    (mt/with-temp [Database                   {db-id :id} {:name "test-data (h2)"}
                    Table                      table {:name "RoundTable" :db_id db-id}
                    PermissionsGroup           {group-id :id} {}
                    PermissionsGroupMembership _ {:group_id group-id :user_id (mt/user->id :rasta)}]

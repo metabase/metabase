@@ -115,6 +115,7 @@
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
    clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   grouper.core           {:message "Use metabase.util.grouper instead of grouper.core"}
    honeysql.core          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.format        {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.helpers       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
@@ -203,7 +204,8 @@
                                      metabase.pulse.render.js-svg
                                      metabase.pulse.render.style}                                   ; TODO -- consolidate these into a real API namespace.
     metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
-    metabase.query-analysis        #{metabase.query-analysis}
+    metabase.query-analysis        #{metabase.query-analysis
+                                     metabase.query-analysis.failure-map}
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search}
@@ -580,6 +582,7 @@
     metabase.util.encryption                                      encryption
     metabase.util.encryption-test                                 encryption-test
     metabase.util.files                                           u.files
+    metabase.util.grouper                                         grouper
     metabase.util.honey-sql-2                                     h2x
     metabase.util.i18n                                            i18n
     metabase.util.i18n.impl                                       i18n.impl
@@ -660,6 +663,7 @@
   metabase.test/with-temp-empty-app-db                                                 clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
+  metabase.test/with-grouper-batches!                                                  clojure.core/fn
   metabase.upload-test/with-upload-table!                                              clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
   metabase.util.malli.defn/defn                                                        schema.core/defn
@@ -815,6 +819,7 @@
    metabase.query-processor.streaming/streaming-response                        macros.metabase.query-processor.streaming/streaming-response
    metabase.related-test/with-world                                             macros.metabase.related-test/with-world
    metabase.shared.util.namespaces/import-fn                                    macros.metabase.shared.util.namespaces/import-fn
+   metabase.task.setup.query-analysis-setup/with-test-setup!                    macros.metabase.task.setup.query-analysis-setup/with-test-setup!
    metabase.test.data.users/with-group-for-user                                 macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value!                                  macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                         macros.metabase.test.util/with-temporary-raw-setting-values
