@@ -17,11 +17,12 @@
     return-value))
 
 (def default-test-channel
-  {:name    "Test channel"
-   :type    "channel/metabase-test"
-   :details {:return-type  "return-value"
-             :return-value true}
-   :active  true})
+  {:name        "Test channel"
+   :description "Test channel description"
+   :type        "channel/metabase-test"
+   :details     {:return-type  "return-value"
+                 :return-value true}
+   :active      true})
 
 (deftest CRU-channel-test
   (mt/with-model-cleanup [:model/Channel]
@@ -57,6 +58,11 @@
                 :return-value true
                 :new-data     true}
                (t2/select-one-fn :details :model/Channel (:id channel)))))
+
+      (testing "can update channel description"
+        (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))
+                              {:description "New description"})
+        (is (= "New description" (t2/select-one-fn :description :model/Channel (:id channel)))))
 
       (testing "can disable a channel"
         (mt/user-http-request :crowberto :put 200 (str "channel/" (:id channel))

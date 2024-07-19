@@ -38,17 +38,15 @@
 
 (api/defendpoint POST "/"
   "Create a channel"
-  [:as {{:keys [name type active details]} :body}]
-  {name    ms/NonBlankString
-   type    ChannelType
-   details :map
-   active  [:maybe {:default true} :boolean]}
+  [:as {{:keys [name description type active details] :as body} :body}]
+  {name        ms/NonBlankString
+   description [:maybe ms/NonBlankString]
+   type        ChannelType
+   details     :map
+   active      [:maybe {:default true} :boolean]}
   (validation/check-has-application-permission :setting)
   (test-channel-connection! type details)
-  (t2/insert-returning-instance! :model/Channel {:name    name
-                                                 :type    type
-                                                 :details details
-                                                 :active  active}))
+  (t2/insert-returning-instance! :model/Channel body))
 
 (api/defendpoint GET "/:id"
   "Get a channel"
@@ -58,12 +56,13 @@
 
 (api/defendpoint PUT "/:id"
   "Update a channel"
-  [id :as {{:keys [name type details active] :as body} :body}]
-  {id      ms/PositiveInt
-   name    [:maybe ms/NonBlankString]
-   type    [:maybe ChannelType]
-   details [:maybe :map]
-   active  [:maybe :boolean]}
+  [id :as {{:keys [name type description details active] :as body} :body}]
+  {id          ms/PositiveInt
+   name        [:maybe ms/NonBlankString]
+   description [:maybe ms/NonBlankString]
+   type        [:maybe ChannelType]
+   details     [:maybe :map]
+   active      [:maybe :boolean]}
   (validation/check-has-application-permission :setting)
   (let [channel-before-update (api/check-404 (t2/select-one :model/Channel id))
         details-changed? (some-> details (not= (:details channel-before-update)))
