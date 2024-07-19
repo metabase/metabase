@@ -18,24 +18,6 @@ describe("issue 39487", () => {
     cy.signInAsAdmin();
   });
 
-  it("calendar has constant size when using 'between' filter (metabase#39487)", () => {
-    createTimeSeriesQuestionWithFilter([
-      "between",
-      CREATED_AT_FIELD,
-      "2024-05-01", // 5 day rows
-      "2024-06-01", // 6 day rows
-    ]);
-
-    cy.findByTestId("timeseries-filter-button").click();
-
-    measureDatetimeFilterPicker().then(initialHeight => {
-      cy.wrap(initialHeight).as("initialHeight");
-    });
-
-    nextMonth().click(); // go to 2024-07 - 5 day rows
-    assertHeightDidNotChange();
-  });
-
   it("calendar has constant size when using 'on' filter (metabase#39487)", () => {
     createTimeSeriesQuestionWithFilter(["=", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
 
@@ -61,6 +43,24 @@ describe("issue 39487", () => {
     assertHeightDidNotChange();
 
     nextMonth().click(); // go to 2015-06 - 5 day rows
+    assertHeightDidNotChange();
+  });
+
+  it("calendar has constant size when using 'between' filter (metabase#39487)", () => {
+    createTimeSeriesQuestionWithFilter([
+      "between",
+      CREATED_AT_FIELD,
+      "2024-05-01", // 5 day rows
+      "2024-06-01", // 6 day rows
+    ]);
+
+    cy.findByTestId("timeseries-filter-button").click();
+
+    measureDatetimeFilterPicker().then(initialHeight => {
+      cy.wrap(initialHeight).as("initialHeight");
+    });
+
+    nextMonth().click(); // go to 2024-07 - 5 day rows
     assertHeightDidNotChange();
   });
 
