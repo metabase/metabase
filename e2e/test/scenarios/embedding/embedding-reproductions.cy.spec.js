@@ -496,6 +496,14 @@ describe("issues 20845, 25031", () => {
   });
 });
 
+// TODO:
+// - Add tests for question embedding
+// - Add tests for dashboard embedding
+// - Add tests for embedding previews in both cases
+// - Add tests for disabled, editable and locked parameters in both cases
+// - Add tests for public sharing (question)
+// - Add tests for public sharing (dashboard)
+// BONUS: Ideally add tests for email subscriptions with the filter applied
 describe("27643", () => {
   beforeEach(() => {
     restore("setup");
