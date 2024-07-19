@@ -1,52 +1,58 @@
 import dayjs from "dayjs";
-import { c } from "ttag";
+import { c, t } from "ttag";
 
 import type { StaleCollectionItem } from "metabase-types/api";
 
 export const itemKeyFn = (item: StaleCollectionItem) =>
   `${item.id}:${item.model}`;
 
-const labelContext = `Time span the item has not been used in, reads as "Not used in over <time span>"`;
-
 export const dateFilterOptions = [
-  // TODO: remove option before merging
   {
-    label: c(labelContext).t`-1 days`,
-    value: "tomorrow",
-    duration: [[-1, "day"]],
-  },
-  {
-    label: c(labelContext).t`1 month`,
+    label: c(
+      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
+    ).t`1 month`,
     value: "one-month",
     duration: [[1, "month"]],
   },
   {
-    label: c(labelContext).t`2 months`,
+    label: c(
+      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
+    ).t`2 months`,
     value: "two-months",
     duration: [[2, "month"]],
   },
   {
-    label: c(labelContext).t`3 months`,
+    label: c(
+      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
+    ).t`3 months`,
     value: "three-months",
     duration: [[3, "month"]],
   },
   {
-    label: c(labelContext).t`6 months`,
+    label: c(
+      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
+    ).t`6 months`,
     value: "six-months",
     duration: [[6, "month"]],
   },
   {
-    label: c(labelContext).t`9 months`,
+    label: c(
+      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
+    ).t`9 months`,
     value: "nine-months",
     duration: [[9, "month"]],
   },
   {
-    label: c(labelContext).t`1 year`,
+    label: c(
+      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
+    ).t`1 year`,
     value: "one-year",
     duration: [[1, "year"]],
   },
   {
-    label: c(labelContext).t`1.5 years`,
+    label: c(
+      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
+    ).t`1.5 years`,
     value: "one-and-a-half-years",
     duration: [
       [1, "year"],
@@ -54,7 +60,9 @@ export const dateFilterOptions = [
     ],
   },
   {
-    label: c(labelContext).t`2 years`,
+    label: c(
+      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
+    ).t`2 years`,
     value: "two-years",
     duration: [[2, "year"]],
   },
