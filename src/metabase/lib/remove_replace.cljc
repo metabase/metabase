@@ -567,9 +567,16 @@
      (remove-join query stage-number join-spec)
      (update-joins query stage-number join-spec (fn [joins join-alias]
                                                   (mapv #(if (= (:alias %) join-alias)
-                                                           ;; We need to remove so the default alias is used
-                                                           ;; when changing the join
-                                                           (dissoc new-join :alias)
+                                                           (cond-> new-join
+                                                             (or (not= (:conditions new-join)
+                                                                       (:conditions %))
+                                                                 (not= (:source-table new-join)
+                                                                       (:source-table %))
+                                                                 (not= (:source-card new-join)
+                                                                       (:source-card %)))
+                                                             ;; We need to remove so the default alias is used
+                                                             ;; when changing the join
+                                                             (dissoc :alias))
                                                            %)
                                                         joins))))))
 
