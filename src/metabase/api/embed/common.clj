@@ -35,8 +35,8 @@
 (defn- check-params-are-allowed
   "Check that the conditions specified by `object-embedding-params` are satisfied."
   [object-embedding-params token-params user-params]
-  (let [all-params        (set/union token-params user-params)
-        duplicated-params (set/intersection token-params user-params)]
+  (let [all-params        (merge token-params user-params)
+        duplicated-params (set/intersection (set (keys token-params)) (set (keys user-params)))]
     (doseq [[param status] object-embedding-params]
       (case status
         ;; disabled means a param is not allowed to be specified by either token or user
