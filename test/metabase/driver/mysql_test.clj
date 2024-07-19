@@ -359,13 +359,19 @@
 
 (deftest enums-test
   (mt/test-driver :mysql
-    (testing "ENUM columns are synced with the correct base and semantic types"
-      (mt/with-empty-db
-        (create-enums-table! (mt/db))
-        (sync/sync-database! (mt/db))
+    (mt/with-empty-db
+      (create-enums-table! (mt/db))
+      (sync/sync-database! (mt/db))
+      (testing "ENUM columns are synced with the correct base and semantic types"
         (is (=? {:base_type     :type/MySQLEnum
                  :semantic_type :type/Category}
-                (t2/select-one :model/Field :name "bird_type")))))))
+                (t2/select-one :model/Field :name "bird_type"))))
+      (testing "string functions work on ENUM fields"
+        (let [query (mt/mbql-query birds
+                      {:expressions {"typ" [:replace $bird_type "ou" "hree"]}})]
+          (mt/with-native-query-testing-context query
+            (is (= [["Rasta" "toucan" "threecan"]]
+                   (mt/rows (qp/process-query query))))))))))
 
 (deftest enums-actions-test
   (mt/test-driver :mysql

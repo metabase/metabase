@@ -38,6 +38,7 @@ import {
   visitPublicDashboard,
   setModelMetadata,
   tableHeaderClick,
+  dashboardParameterSidebar,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -555,7 +556,7 @@ describe("issues 15119 and 16112", () => {
     cy.button("Add filter").click();
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
-    cy.location("search").should("eq", "?reviewer=adam&rating=");
+    cy.location("search").should("eq", "?rating=&reviewer=adam");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(ratingFilter.name).click();
@@ -565,7 +566,7 @@ describe("issues 15119 and 16112", () => {
 
     cy.findByTestId("dashcard-container").should("contain", "adam");
     cy.findByTestId("dashcard-container").should("contain", "5");
-    cy.location("search").should("eq", "?reviewer=adam&rating=5");
+    cy.location("search").should("eq", "?rating=5&reviewer=adam");
   });
 });
 
@@ -945,6 +946,30 @@ describe("issue 19494", () => {
     checkAppliedFilter("Card 2 Filter", "Gizmo");
 
     getDashboardCard(1).should("contain", "110.93");
+  });
+});
+
+describe("issue 16177", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+      coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+      semantic_type: null,
+    });
+  });
+
+  it("should not lose the default value of the parameter connected to a field with a coercion strategy applied (metabase#16177)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    setFilter("Time", "All Options");
+    selectDashboardFilter(getDashboardCard(), "Quantity");
+    dashboardParameterSidebar().findByText("No default").click();
+    popover().findByText("Yesterday").click();
+    saveDashboard();
+    filterWidget().findByText("Yesterday").should("be.visible");
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    filterWidget().findByText("Yesterday").should("be.visible");
   });
 });
 
