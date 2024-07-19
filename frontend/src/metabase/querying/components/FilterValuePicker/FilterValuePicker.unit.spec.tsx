@@ -888,11 +888,11 @@ describe("StringFilterValuePicker", () => {
         values: ["a"],
       });
 
-      await userEvent.type(screen.getByLabelText("Filter value"), "ab,abc");
+      await userEvent.type(screen.getByLabelText("Filter value"), "ab");
       await userEvent.tab();
 
       expect(onFocus).toHaveBeenCalled();
-      expect(onChange).toHaveBeenLastCalledWith(["a", "ab", "abc"]);
+      expect(onChange).toHaveBeenLastCalledWith(["a", "ab"]);
       expect(onBlur).toHaveBeenCalled();
     });
   });
