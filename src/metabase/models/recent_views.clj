@@ -20,6 +20,7 @@
   (:require
    [clojure.set :as set]
    [java-time.api :as t]
+   [malli.core :as mc]
    [medley.core :as m]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as root]
@@ -133,35 +134,44 @@
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
-  [:and {:registry {::pc [:map
-                          [:id [:or [:int {:min 1}] [:= "root"]]]
-                          [:name :string]
-                          [:authority_level [:enum :official "official" nil]]]}}
-   [:map
-    [:id [:int {:min 1}]]
-    [:name :string]
-    [:description [:maybe :string]]
-    [:model [:enum :dataset :card :dashboard :collection :table]]
-    [:can_write :boolean]
-    [:timestamp :string]]
-   [:multi {:dispatch :model}
-    [:card [:map
-            [:parent_collection ::pc]
-            [:display :string]
-            [:moderated_status [:enum "verified" nil]]]]
-    [:dataset [:map
+  (mc/schema
+   [:and {:registry {::official [:maybe [:enum :official "official"]]
+                     ::verified [:maybe [:enum :verified "verified"]]
+                     ::pc [:map
+                           [:id [:or [:int {:min 1}] [:= "root"]]]
+                           [:name :string]
+                           [:authority_level ::official]]}}
+    [:map
+     [:id [:int {:min 1}]]
+     [:name :string]
+     [:description [:maybe :string]]
+     [:model [:enum :dataset :card :metric :dashboard :collection :table]]
+     [:can_write :boolean]
+     [:timestamp :string]]
+    [:multi {:dispatch :model}
+     [:card [:map
+             [:display :string]
+             [:database_id :int]
+             [:parent_collection ::pc]
+             [:moderated_status ::verified]]]
+     [:dataset [:map
+                [:database_id :int]
+                [:parent_collection ::pc]
+                [:moderated_status ::verified]]]
+     [:metric [:map
+               [:display :string]
                [:parent_collection ::pc]
                [:moderated_status [:enum "verified" nil]]]]
-    [:dashboard [:map [:parent_collection ::pc]]]
-    [:table [:map
-             [:display_name :string]
-             [:database [:map
-                         [:id [:int {:min 1}]]
-                         [:name :string]]]]]
-    [:collection [:map
-                  [:parent_collection ::pc]
-                  [:effective_location :string]
-                  [:authority_level [:enum "official" nil]]]]]])
+     [:dashboard [:map [:parent_collection ::pc]]]
+     [:table [:map
+              [:display_name :string]
+              [:database [:map
+                          [:id [:int {:min 1}]]
+                          [:name :string]]]]]
+     [:collection [:map
+                   [:parent_collection ::pc]
+                   [:effective_location :string]
+                   [:authority_level [:enum "official" nil]]]]]]))
 
 (defmulti fill-recent-view-info
   "Fills in additional information for a recent view, such as the display name of the object.
@@ -188,17 +198,18 @@
 ;; == Recent Cards ==
 
 (defn card-recents
-  "Query to select card data"
+  "Query to select `report_card` data"
   [card-ids]
   (if-not (seq card-ids)
     []
     (t2/select :model/Card
-               {:select [:report_card.name
-                         :report_card.description
-                         :report_card.archived
-                         :report_card.collection_id
-                         :report_card.id
-                         :report_card.display
+               {:select [:card.name
+                         :card.description
+                         :card.archived
+                         :card.id
+                         :card.database_id
+                         :card.display
+                         [:card.collection_id :entity-coll-id]
                          [:mr.status :moderated-status]
                          [:c.id :collection-id]
                          [:c.name :collection-name]
@@ -220,6 +231,7 @@
                    (ellide-archived model_object))]
     {:id model_id
      :name (:name card)
+     :database_id (:database_id card)
      :description (:description card)
      :display (some-> card :display name)
      :model :card
@@ -238,6 +250,7 @@
                       (ellide-archived model_object))]
     {:id model_id
      :name (:name dataset)
+     :database_id (:database_id dataset)
      :description (:description dataset)
      :model :dataset
      :can_write (mi/can-write? dataset)
