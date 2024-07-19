@@ -1,17 +1,28 @@
+// @ts-check
+
 import fs from "fs/promises";
 
 import semver from "semver";
 
-import { printError } from "./print";
+import { printError } from "./print.mjs";
 
 const PACKAGE_JSON_NOT_FOUND_MESSAGE = `
   Could not find a package.json file in the current directory.
   Please run this command from the root of your project.
 `;
 
-// TODO: add support for React 17 once compatibility issue is resolved
-const isReactVersionSupported = (version: string) =>
-  semver.satisfies(semver.coerce(version)!, "18.x");
+/**
+ * TODO: add support for React 17 once compatibility issue is resolved
+ *
+ * @param {string} version
+ * @returns {boolean}
+ */
+const isReactVersionSupported = version => {
+  const semverVersion = semver.coerce(version);
+  if (!semverVersion) return false;
+
+  return semver.satisfies(semverVersion, "18.x");
+};
 
 const MISSING_REACT_DEPENDENCY = `
   Your package.json file does not contain a dependency for React.
@@ -25,8 +36,10 @@ const UNSUPPORTED_REACT_VERSION = `
 
 /**
  * Are we in a React project with a supported React version?
+ *
+ * @returns {Promise<boolean>}
  */
-export async function checkInReactProject(): Promise<boolean> {
+export async function checkInReactProject() {
   const packageJson = await fs.stat("./package.json");
 
   if (!packageJson.isFile()) {

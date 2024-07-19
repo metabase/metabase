@@ -1,6 +1,6 @@
 import { Command } from "commander";
 
-import { start } from "./actions/start";
+import { start } from "./actions/start.mjs";
 
 const program = new Command();
 

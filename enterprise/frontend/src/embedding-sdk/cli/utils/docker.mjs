@@ -1,11 +1,13 @@
+// @ts-check
+
 import { exec as execCallback } from "child_process";
 
 import chalk from "chalk";
 import { promisify } from "util";
 
-import { getCurrentDockerPort } from "./get-current-docker-port";
-import { checkIsPortTaken } from "./is-port-taken";
-import { printError, printInfo, printSuccess } from "./print";
+import { getCurrentDockerPort } from "./get-current-docker-port.mjs";
+import { checkIsPortTaken } from "./is-port-taken.mjs";
+import { printError, printInfo, printSuccess } from "./print.mjs";
 
 const exec = promisify(execCallback);
 
@@ -18,32 +20,25 @@ export const CONTAINER_NAME = "metabase-enterprise-embedding";
  */
 const DEFAULT_PORT = 3366;
 
-const messageContainerRunning = (port: number) =>
+/** @param {number} port */
+const messageContainerRunning = port =>
   `Your local Metabase instance is already running on port ${port}.
   Use the "docker ps" command to see the Docker container's status.`;
 
-const messageContainerStarted = (
-  port: number,
-) => `Your local Metabase instance has been started on port ${port}.
+/** @param {number} port */
+const messageContainerStarted =
+  port => `Your local Metabase instance has been started on port ${port}.
   Use the "docker ps" command to see the Docker container's status.`;
 
 const CONTAINER_CHECK_MESSAGE =
   "Checking if Metabase is already running in a Docker container...";
 
-/** Container information returned by "docker ps" */
-interface ContainerInfo {
-  ID: string;
-  Image: string;
-  Names: string;
-  Ports: string; // e.g. "0.0.0.0:3366->3000/tcp"
-  Port: number | null; // parsed from Ports, e.g. 3366
-  State: "running" | "exited";
-}
-
 /**
  * Check if the Docker daemon is running.
+ *
+ * @returns {Promise<boolean>}
  */
-export async function checkIsDockerRunning(): Promise<boolean> {
+export async function checkIsDockerRunning() {
   try {
     // `docker ps` returns an error if Docker is not running.
     const { stderr } = await exec("docker ps");
@@ -54,7 +49,7 @@ export async function checkIsDockerRunning(): Promise<boolean> {
   }
 }
 
-export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null> {
+export async function getLocalMetabaseContainer() {
   const { stdout, stderr } = await exec(
     `docker ps -a --format json --filter name=${CONTAINER_NAME}`,
   );
@@ -69,15 +64,20 @@ export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null>
     return null;
   }
 
-  const info = JSON.parse(stdout) as ContainerInfo;
+  const info = JSON.parse(stdout);
 
   return { ...info, Port: getCurrentDockerPort(info.Ports) };
 }
 
-const randInt = (min: number, max: number) =>
-  Math.floor(Math.random() * (max - min + 1) + min);
+/**
+ * @param {number} min
+ * @param {number} max
+ * @returns {number}
+ */
+const randInt = (min, max) => Math.floor(Math.random() * (max - min + 1) + min);
 
-export async function startLocalMetabaseContainer(): Promise<number | false> {
+/** @returns {Promise<number|false>} */
+export async function startLocalMetabaseContainer() {
   let port = DEFAULT_PORT;
 
   printInfo(chalk.grey(CONTAINER_CHECK_MESSAGE));

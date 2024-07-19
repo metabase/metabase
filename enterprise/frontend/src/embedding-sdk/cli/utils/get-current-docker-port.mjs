@@ -1,6 +1,12 @@
+// @ts-check
+
 const PORT_REGEX = /(?:0\.0\.0\.0:|:::)(\d+)->3000\/tcp/g;
 
-export function getCurrentDockerPort(ports: string): number | null {
+/**
+ * @param {string} ports
+ * @returns {number|null}
+ */
+export function getCurrentDockerPort(ports) {
   if (!ports || ports.length === 0) {
     return null;
   }

@@ -1,12 +1,15 @@
+// @ts-check
+
 import { confirm } from "@inquirer/prompts";
 
 import {
   checkIsDockerRunning,
   startLocalMetabaseContainer,
-} from "../utils/docker";
-import { showGettingStartedGuide } from "../utils/getting-started";
-import { checkInReactProject } from "../utils/is-in-react-project";
-import { printError } from "../utils/print";
+} from "../utils/docker.mjs";
+
+import { showGettingStartedGuide } from "../utils/getting-started.mjs";
+import { checkInReactProject } from "../utils/is-in-react-project.mjs";
+import { printError } from "../utils/print.mjs";
 
 const START_MESSAGE = `
   This command will help you bootstrap a local Metabase instance and embed
