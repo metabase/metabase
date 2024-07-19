@@ -25,13 +25,13 @@ describe("issue 39487", () => {
 
     it("timeseries filter button", () => {
       cy.findByTestId("timeseries-filter-button").click();
-      checkOnFilter();
+      checkSingleDateFilter();
     });
 
     it("filter pills", () => {
       cy.findByTestId("filters-visibility-control").click();
       cy.findByTestId("filter-pill").click();
-      checkOnFilter();
+      checkSingleDateFilter();
     });
   });
 
@@ -47,13 +47,13 @@ describe("issue 39487", () => {
 
     it("timeseries filter button", () => {
       cy.findByTestId("timeseries-filter-button").click();
-      checkBetweenFilter();
+      checkDateRangeFilter();
     });
 
     it("filter pills", () => {
       cy.findByTestId("filters-visibility-control").click();
       cy.findByTestId("filter-pill").click();
-      checkBetweenFilter();
+      checkDateRangeFilter();
     });
   });
 
@@ -72,7 +72,7 @@ describe("issue 39487", () => {
     );
   }
 
-  function checkOnFilter() {
+  function checkSingleDateFilter() {
     measureInitialValues();
 
     nextButton().click(); // go to 2015-02 - 4 day rows
@@ -94,7 +94,7 @@ describe("issue 39487", () => {
     assertNoLayoutShift();
   }
 
-  function checkBetweenFilter() {
+  function checkDateRangeFilter() {
     measureInitialValues();
 
     nextButton().click(); // go to 2024-07 - 5 day rows
