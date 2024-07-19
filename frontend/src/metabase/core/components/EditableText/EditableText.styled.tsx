@@ -2,8 +2,9 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 export interface EditableTextRootProps {
-  isInFocus: boolean;
+  isInFocus: boolean; // TODO Rename prop
   isDisabled: boolean;
+  hasHoverBorder?: boolean;
 }
 
 export const EditableTextRoot = styled.div<EditableTextRootProps>`
@@ -14,10 +15,19 @@ export const EditableTextRoot = styled.div<EditableTextRootProps>`
   border-radius: 4px;
   word-wrap: break-word;
 
-  &:hover,
   &:focus-within {
     border-color: ${props => !props.isDisabled && "var(--mb-color-border)"};
   }
+
+  ${({ isDisabled, isInFocus, hasHoverBorder = true }) =>
+    hasHoverBorder &&
+    css`
+      border-color: ${isInFocus && "var(--mb-color-border)"};
+
+      &:hover {
+        border-color: ${!isDisabled && "var(--mb-color-border)"};
+      }
+    `}
 
   ${({ isInFocus }) =>
     !isInFocus &&
