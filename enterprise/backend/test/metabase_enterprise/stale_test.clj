@@ -75,7 +75,7 @@
                   :offset         0
                   :sort-column    :name
                   :sort-direction :desc}))))))
-    (testing "by last_viewed_at"
+    (testing "by last_used_at"
       (testing "ascending"
         (is (= [{:id id3 :model :model/Dashboard}
                 {:id id2 :model :model/Dashboard}
@@ -86,7 +86,7 @@
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
                   :offset         0
-                  :sort-column    :last_viewed_at
+                  :sort-column    :last_used_at
                   :sort-direction :asc})))))
       (testing "descending"
         (is (= [{:id id1 :model :model/Dashboard}
@@ -98,7 +98,7 @@
                   :cutoff-date    (date-months-ago 6)
                   :limit          10
                   :offset         0
-                  :sort-column    :last_viewed_at
+                  :sort-column    :last_used_at
                   :sort-direction :desc}))))))))
 
 (deftest limits-and-offset-work
