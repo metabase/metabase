@@ -1147,8 +1147,9 @@
            (collection/perms-for-moving collection-before-update new-parent)))
 
         ;; We can't move a collection to the Trash
-        (api/check-400
-         (not (collection/is-trash? new-parent)))
+        (api/check
+         (not (collection/is-trash? new-parent))
+         [400 "You cannot modify the Trash Collection."])
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 
@@ -1192,6 +1193,8 @@
                (not= (keyword authority_level) (:authority_level collection-before-update)))
       (premium-features/assert-has-feature :official-collections (tru "Official Collections"))
       (api/check-403 api/*is-superuser?*))
+    (api/check (not (collection/is-trash? collection-before-update))
+               400 "You cannot modify the Trash Collection.")
     ;; ok, go ahead and update it! Only update keys that were specified in the `body`. But not `parent_id` since
     ;; that's not actually a property of Collection, and since we handle moving a Collection separately below.
     (let [updates (u/select-keys-when collection-updates :present [:name :description :authority_level])]
