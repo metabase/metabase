@@ -2375,9 +2375,9 @@
                                   :datetime-diff
                                   :expression-aggregations
                                   :expressions
-                                  :foreign-keys
                                   :inner-join
                                   :left-join
+                                  :metadata/key-constraints
                                   :native-parameters
                                   :nested-queries
                                   :now
