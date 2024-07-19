@@ -48,4 +48,20 @@ describe("SdkThemeProvider", () => {
     // SDK colors should override user interface colors
     expect(filter.color).toBe("rgb(44, 44, 44)");
   });
+
+  it("should use foreground color from the theme", () => {
+    const theme = {
+      colors: { "text-primary": "rgb(255, 0, 255)" },
+    };
+
+    renderWithProviders(
+      <SdkThemeProvider theme={theme}>
+        <Text>Hello world</Text>
+      </SdkThemeProvider>,
+    );
+
+    expect(window.getComputedStyle(screen.getByText("Hello world")).color).toBe(
+      "rgb(255, 0, 255)",
+    );
+  });
 });
