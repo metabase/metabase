@@ -1,6 +1,8 @@
 import styled from "@emotion/styled";
 
-import EditableText from "metabase/core/components/EditableText";
+import EditableText, {
+  EditableMarkdownText,
+} from "metabase/core/components/EditableText";
 
 export const CaptionTitleContainer = styled.div`
   display: flex;
@@ -17,7 +19,9 @@ export interface CaptionDescriptionProps {
   isVisible: boolean;
 }
 
-export const CaptionDescription = styled(EditableText)<CaptionDescriptionProps>`
+export const CaptionDescription = styled(
+  EditableMarkdownText,
+)<CaptionDescriptionProps>`
   opacity: ${props => (props.isVisible ? 1 : 0)};
   max-width: 25rem;
   transition: opacity 400ms ease 1s;

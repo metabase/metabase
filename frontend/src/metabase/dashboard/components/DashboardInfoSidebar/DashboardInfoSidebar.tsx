@@ -131,7 +131,6 @@ const DashboardInfoSidebarBody = ({
           onBlur={handleDescriptionBlur}
           isOptional
           isMultiline
-          isMarkdown
           hasError={!!descriptionError}
           placeholder={t`Add description`}
           key={`dashboard-description-${dashboard.description}`}

@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import EditableText from "metabase/core/components/EditableText";
+import { EditableMarkdownText } from "metabase/core/components/EditableText";
 import Link from "metabase/core/components/Link";
 
 export const ModelInfoSection = styled.div``;
@@ -38,7 +38,7 @@ export const ModelInfoText = styled.span`
   ${commonInfoTextStyle}
 `;
 
-export const ModelDescription = styled(EditableText)`
+export const ModelDescription = styled(EditableMarkdownText)`
   ${commonInfoTextStyle}
 `;
 

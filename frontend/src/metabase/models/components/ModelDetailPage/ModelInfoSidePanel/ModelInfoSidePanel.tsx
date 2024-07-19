@@ -40,7 +40,6 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
           }
           isOptional
           isMultiline
-          isMarkdown
           isDisabled={!canWrite}
           aria-label={t`Description`}
           onChange={onChangeDescription}
