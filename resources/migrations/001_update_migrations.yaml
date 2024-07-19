@@ -8351,6 +8351,28 @@ databaseChangeLog:
             columnName: explicit_reference
             defaultValueBoolean: true
 
+  - changeSet:
+      id: v51.2024-07-10T12:28:10
+      author: johnswanson
+      comment: Add `last_viewed_at` to dashboards
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: report_dashboard
+              columnName: last_viewed_at
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: last_viewed_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when this dashboard was last viewed
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
