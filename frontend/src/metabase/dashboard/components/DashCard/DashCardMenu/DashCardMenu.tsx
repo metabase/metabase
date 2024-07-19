@@ -4,6 +4,7 @@ import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
+import * as Lib from "metabase-lib";
 import CS from "metabase/css/core/index.css";
 import { editQuestion } from "metabase/dashboard/actions";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
@@ -140,7 +141,12 @@ interface QueryDownloadWidgetOpts {
 }
 
 const canEditQuestion = (question: Question) => {
-  return question.canWrite() && question.canRunAdhocQuery();
+  if (!question.canWrite()) {
+    return false;
+  }
+
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+  return isEditable;
 };
 
 const canDownloadResults = (result?: Dataset) => {

@@ -2,8 +2,8 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
+import * as Lib from "metabase-lib";
 import { isActionDashCard } from "metabase/actions/utils";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -191,7 +191,8 @@ export function DashCardCardParameterMapper({
       return false;
     }
 
-    return question.canRunAdhocQuery();
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    return isEditable;
   }, [isVirtual, dashcard, card.dataset_query, question]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
