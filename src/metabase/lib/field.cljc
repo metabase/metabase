@@ -579,7 +579,8 @@
                  (integer? (last match-ref))))
       ;; If the column is already found, do nothing and return the original query.
       query
-      (lib.util/update-query-stage populated stage-number update :fields conj column-ref))))
+      (lib.util/update-query-stage populated stage-number
+                                   update :fields (comp #(conj % column-ref) vec)))))
 
 (defn- add-field-to-join [query stage-number column]
   (let [column-ref   (lib.ref/ref column)
@@ -647,7 +648,7 @@
 
 (defn- remove-matching-ref [column refs]
   (let [match (lib.equality/find-matching-ref column refs)]
-    (remove #(= % match) refs)))
+    (into [] (remove #(= % match)) refs)))
 
 (defn- exclude-field
   "This is called only for fields that plausibly need removing. If the stage has no `:fields`, this will populate it.
