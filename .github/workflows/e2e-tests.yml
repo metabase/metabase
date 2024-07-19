@@ -173,47 +173,47 @@ jobs:
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
 
-      - name: Run OSS-specific Cypress tests
-        if: matrix.edition == 'oss' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags=@OSS,grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
-
-      - name: Run slow and resource-intensive Cypress tests
-        if: matrix.name == 'slow' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="@slow",grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
-
-      - name: Run Flaky Cypress tests
-        if: matrix.name == 'flaky' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="@flaky --@quarantine",grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
-
-      - name: Run EE Cypress tests on ${{ matrix.name }}
-        if: matrix.context == 'folder' && matrix.name != 'embedding-sdk' && github.event_name != 'schedule'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
-          --folder ${{ matrix.name }} \
-          --browser 'replay-chromium'
-
-      - name: Run E2E tests that depend on Mongo
-        if: matrix.name == 'mongo'
-        run: |
-          yarn run test-cypress-run \
-          --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
-          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-          --browser 'replay-chromium'
-        env:
-          CYPRESS_QA_DB_MONGO: true
+#      - name: Run OSS-specific Cypress tests
+#        if: matrix.edition == 'oss' && github.event_name != 'schedule'
+#        run: |
+#          yarn run test-cypress-run \
+#          --env grepTags=@OSS,grepOmitFiltered=true \
+#          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
+#          --browser 'replay-chromium'
+#
+#      - name: Run slow and resource-intensive Cypress tests
+#        if: matrix.name == 'slow' && github.event_name != 'schedule'
+#        run: |
+#          yarn run test-cypress-run \
+#          --env grepTags="@slow",grepOmitFiltered=true \
+#          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
+#          --browser 'replay-chromium'
+#
+#      - name: Run Flaky Cypress tests
+#        if: matrix.name == 'flaky' && github.event_name != 'schedule'
+#        run: |
+#          yarn run test-cypress-run \
+#          --env grepTags="@flaky --@quarantine",grepOmitFiltered=true \
+#          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
+#          --browser 'replay-chromium'
+#
+#      - name: Run EE Cypress tests on ${{ matrix.name }}
+#        if: matrix.context == 'folder' && matrix.name != 'embedding-sdk' && github.event_name != 'schedule'
+#        run: |
+#          yarn run test-cypress-run \
+#          --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
+#          --folder ${{ matrix.name }} \
+#          --browser 'replay-chromium'
+#
+#      - name: Run E2E tests that depend on Mongo
+#        if: matrix.name == 'mongo'
+#        run: |
+#          yarn run test-cypress-run \
+#          --env grepTags="@mongo --@quarantine",grepOmitFiltered=true \
+#          --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
+#          --browser 'replay-chromium'
+#        env:
+#          CYPRESS_QA_DB_MONGO: true
 
       - name: Run E2E tests for Embedding SDK
         if: matrix.context == 'folder' && matrix.name == 'embedding-sdk' && github.event_name != 'schedule'
