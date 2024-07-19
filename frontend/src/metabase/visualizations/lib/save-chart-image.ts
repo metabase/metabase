@@ -1,10 +1,9 @@
+import { css } from "@emotion/react";
+
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
 export const SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS =
   "saving-dom-image-display-none";
-
-import { css } from "@emotion/react";
-import html2canvas from "html2canvas-pro";
 
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
@@ -27,6 +26,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
     return;
   }
 
+  const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
     useCORS: true,
     onclone: (doc: Document, node: HTMLElement) => {
