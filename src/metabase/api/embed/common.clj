@@ -47,14 +47,14 @@
                               [400 (tru "You can''t specify a value for {0} if it''s already set in the JWT." param)])
         ;; locked means JWT must specify param
         "locked"   (api/check
-                    (contains? token-params param)      [400 (tru "You must specify a value for {0} in the JWT." param)]
+                    (some? (get token-params param))    [400 (tru "You must specify a value for {0} in the JWT." param)]
                     (not (contains? user-params param)) [400 (tru "You can only specify a value for {0} in the JWT." param)])))))
 
 (defn- check-params-exist
   "Make sure all the params specified are specified in `object-embedding-params`."
   [object-embedding-params all-params]
   (let [embedding-params (set (keys object-embedding-params))]
-    (doseq [k all-params]
+    (doseq [[k _] all-params]
       (api/check (contains? embedding-params k)
                  [400 (format "Unknown parameter %s." k)]))))
 
@@ -69,7 +69,7 @@
              "token params:"            token-params
              "user params:"             user-params)
   (check-params-are-allowed object-embedding-params token-params user-params)
-  (check-params-exist object-embedding-params (set/union token-params user-params)))
+  (check-params-exist object-embedding-params (merge token-params user-params)))
 
 (defn- check-embedding-enabled-for-object
   "Check that embedding is enabled, that `object` exists, and embedding for `object` is enabled."
@@ -164,8 +164,8 @@
    token-params            :- [:map-of :keyword :any]
    user-params             :- [:map-of :keyword :any]]
   (check-param-sets object-embedding-params
-                    (set (keys (m/filter-vals valid-param-value? token-params)))
-                    (set (keys (m/filter-vals valid-param-value? user-params))))
+                    (m/filter-vals valid-param-value? token-params)
+                    (m/filter-vals valid-param-value? user-params))
   ;; ok, everything checks out, now return the merged params map,
   ;; but first turn empty lists into nil
   (-> (merge user-params token-params)
