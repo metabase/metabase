@@ -7,6 +7,13 @@ const path = require("path");
 const IGNORED_PACKAGES = ["react", "react-dom"];
 const SDK_DIST_DIR = path.resolve("./resources/embedding-sdk");
 
+const CLI_DEPENDENCIES = [
+  "chalk",
+  "@inquirer/prompts",
+  "commander",
+  "semver"
+]
+
 function filterOutReactDependencies(object) {
   const result = {};
 
@@ -53,6 +60,7 @@ function generateSdkPackage() {
     version: maybeCommitHash
       ? `${sdkPackageTemplateJsonContent.version}-${todayDate}-${maybeCommitHash}`
       : sdkPackageTemplateJsonContent.version,
+    devDependencies: getDevDependenciesForCLI(mainPackageJsonContent.devDependencies)
   };
 
   const mergedContentString = JSON.stringify(mergedContent, null, 2);
@@ -116,6 +124,18 @@ function copyDirToOutput(source, target) {
       fs.copyFileSync(sourceEntryPath, targetEntryPath);
     }
   }
+}
+
+function getDevDependenciesForCLI(dependencies) {
+  const outDeps = {};
+
+  Object.entries(dependencies).forEach(([packageName, version]) => {
+    if (CLI_DEPENDENCIES.includes(packageName)) {
+      outDeps[packageName] = version;
+    }
+  });
+
+  return outDeps;
 }
 
 if (!fs.existsSync(SDK_DIST_DIR)) {
