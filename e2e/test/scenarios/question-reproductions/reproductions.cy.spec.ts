@@ -18,50 +18,41 @@ describe("issue 39487", () => {
     cy.signInAsAdmin();
   });
 
-  describe("timeseries filter button", () => {
-    it("calendar has constant size when using single date picker filter (metabase#39487)", () => {
+  describe("calendar has constant size when using single date picker filter (metabase#39487)", () => {
+    beforeEach(() => {
       createTimeSeriesQuestionWithFilter(["=", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
+    });
 
+    it("timeseries filter button", () => {
       cy.findByTestId("timeseries-filter-button").click();
-
       checkOnFilter();
     });
 
-    it("calendar has constant size when using date range filter (metabase#39487)", () => {
-      createTimeSeriesQuestionWithFilter([
-        "between",
-        CREATED_AT_FIELD,
-        "2024-05-01", // 5 day rows
-        "2024-06-01", // 6 day rows
-      ]);
-
-      cy.findByTestId("timeseries-filter-button").click();
-
-      checkBetweenFilter();
+    it("filter pills", () => {
+      cy.findByTestId("filters-visibility-control").click();
+      cy.findByTestId("filter-pill").click();
+      checkOnFilter();
     });
   });
 
-  describe("filter pills", () => {
-    it("calendar has constant size when using single date picker filter (metabase#39487)", () => {
-      createTimeSeriesQuestionWithFilter(["=", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
-
-      cy.findByTestId("filters-visibility-control").click();
-      cy.findByTestId("filter-pill").click();
-
-      checkOnFilter();
-    });
-
-    it("calendar has constant size when using date range filter (metabase#39487)", () => {
+  describe("calendar has constant size when using date range picker filter (metabase#39487)", () => {
+    beforeEach(() => {
       createTimeSeriesQuestionWithFilter([
         "between",
         CREATED_AT_FIELD,
         "2024-05-01", // 5 day rows
         "2024-06-01", // 6 day rows
       ]);
+    });
 
+    it("timeseries filter button", () => {
+      cy.findByTestId("timeseries-filter-button").click();
+      checkBetweenFilter();
+    });
+
+    it("filter pills", () => {
       cy.findByTestId("filters-visibility-control").click();
       cy.findByTestId("filter-pill").click();
-
       checkBetweenFilter();
     });
   });
