@@ -1,6 +1,5 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createQuestion, popover, restore } from "e2e/support/helpers";
-
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -14,39 +13,35 @@ describe("issue 39487", () => {
     },
   ];
 
-  const MONTH_WITH_4_DAY_ROWS = "2015-02-01";
-  const MONTH_WITH_5_DAY_ROWS = "2024-05-01";
-  const MONTH_WITH_6_DAY_ROWS = "2024-06-01";
-
-  // TODO:
-  // - [] before/after/on (single calendar)
-  // - [] between (two calendars)
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
   });
 
-  it("calendar has constant size (metabase#39487", () => {
+  it("calendar has constant size when using 'between' filter (metabase#39487)", () => {
     createTimeSeriesQuestionWithFilter([
       "between",
       CREATED_AT_FIELD,
-      MONTH_WITH_5_DAY_ROWS,
-      MONTH_WITH_6_DAY_ROWS,
+      "2024-05-01", // 5 day rows
+      "2024-06-01", // 6 day rows
     ]);
 
     cy.findByTestId("timeseries-filter-button").click();
 
-    measureDatetimeFilterPicker().then(initialHeight => {
-      cy.wrap(initialHeight).as("initialHeight");
-    });
+    assertSameHeightInNextMonth(); // go to 2024-07-01 - 5 day rows
+  });
 
-    nextMonth().click();
+  it("calendar has constant size when using 'on' filter (metabase#39487)", () => {
+    createTimeSeriesQuestionWithFilter(["=", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
 
-    cy.get("@initialHeight").then(initialHeight => {
-      measureDatetimeFilterPicker().then(height => {
-        expect(height).to.eq(initialHeight);
-      });
-    });
+    cy.findByTestId("timeseries-filter-button").click();
+
+    assertSameHeightInNextMonth(); // go to 2015-02-01 - 4 day rows
+    assertSameHeightInNextMonth(); // go to 2015-03-01 - 5 day rows
+    assertSameHeightInNextMonth(); // go to 2015-04-01 - 5 day rows
+    assertSameHeightInNextMonth(); // go to 2015-05-01 - 6 day rows
+    assertSameHeightInNextMonth(); // go to 2015-05-01 - 6 day rows
+    assertSameHeightInNextMonth(); // go to 2015-06-01 - 5 day rows
   });
 
   function createTimeSeriesQuestionWithFilter(filter: Filter) {
@@ -62,6 +57,20 @@ describe("issue 39487", () => {
       },
       { visitQuestion: true },
     );
+  }
+
+  function assertSameHeightInNextMonth() {
+    measureDatetimeFilterPicker().then(initialHeight => {
+      cy.wrap(initialHeight).as("initialHeight");
+    });
+
+    nextMonth().click();
+
+    cy.get("@initialHeight").then(initialHeight => {
+      measureDatetimeFilterPicker().then(height => {
+        expect(height).to.eq(initialHeight);
+      });
+    });
   }
 
   function measureDatetimeFilterPicker() {
