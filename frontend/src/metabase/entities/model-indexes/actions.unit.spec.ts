@@ -71,7 +71,7 @@ describe("Entities > model-indexes > actions", () => {
       ]);
 
       const { dispatch } = setup();
-      await updateModelIndexes(model)(dispatch);
+      await updateModelIndexes(model, model.getResultMetadata())(dispatch);
 
       const calls = fetchMock.calls();
 
@@ -93,7 +93,7 @@ describe("Entities > model-indexes > actions", () => {
 
       const { dispatch } = setup();
 
-      await updateModelIndexes(model)(dispatch);
+      await updateModelIndexes(model, model.getResultMetadata())(dispatch);
 
       const createCalls = await fetchMock.calls("createModelIndex");
 
@@ -129,7 +129,7 @@ describe("Entities > model-indexes > actions", () => {
 
       const { dispatch } = setup();
 
-      await updateModelIndexes(model)(dispatch);
+      await updateModelIndexes(model, model.getResultMetadata())(dispatch);
 
       const deleteCalls = fetchMock.calls("deleteModelIndex");
 
@@ -160,7 +160,7 @@ describe("Entities > model-indexes > actions", () => {
 
       const { dispatch } = setup();
 
-      await updateModelIndexes(model)(dispatch);
+      await updateModelIndexes(model, model.getResultMetadata())(dispatch);
 
       const fetchCalls = await fetchMock.calls(`getModelIndexes-${model.id()}`);
       const createCalls = await fetchMock.calls("createModelIndex");
@@ -185,7 +185,7 @@ describe("Entities > model-indexes > actions", () => {
 
       const { dispatch } = setup();
 
-      await updateModelIndexes(model)(dispatch);
+      await updateModelIndexes(model, model.getResultMetadata())(dispatch);
 
       const fetchCalls = await fetchMock.calls(`getModelIndexes-${model.id()}`);
       const deleteCalls = fetchMock.calls("deleteModelIndex");
