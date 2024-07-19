@@ -1,5 +1,11 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { createQuestion, modal, popover, restore } from "e2e/support/helpers";
+import {
+  createQuestion,
+  modal,
+  popover,
+  restore,
+  tableHeaderClick,
+} from "e2e/support/helpers";
 import type { Filter, LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -20,7 +26,7 @@ describe("issue 39487", () => {
 
   describe("calendar has constant size when using single date picker filter (metabase#39487)", () => {
     beforeEach(() => {
-      createTimeSeriesQuestionWithFilter(["=", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
+      createTimeSeriesQuestionWithFilter([">", CREATED_AT_FIELD, "2015-01-01"]); // 5 day rows
     });
 
     it("timeseries filter button", () => {
@@ -37,6 +43,16 @@ describe("issue 39487", () => {
     it("filter modal", () => {
       cy.button("Filter").click();
       modal().findByText("Jan 1, 2015").click();
+      checkSingleDateFilter();
+    });
+
+    it("filter drill", () => {
+      cy.findByLabelText("Switch to data").click();
+      tableHeaderClick("Created At: Year");
+      popover().findByText("Filter by this column").click();
+      popover().findByText("Specific dates…").click();
+      popover().findByText("After").click();
+      popover().findByRole("textbox").clear().type("2015/01/01");
       checkSingleDateFilter();
     });
   });
@@ -65,6 +81,17 @@ describe("issue 39487", () => {
     it("filter modal", () => {
       cy.button("Filter").click();
       modal().findByText("May 1 – Jun 1, 2024").click();
+      checkDateRangeFilter();
+    });
+
+    it("filter drill", () => {
+      cy.findByLabelText("Switch to data").click();
+      tableHeaderClick("Created At: Year");
+      popover().findByText("Filter by this column").click();
+      popover().findByText("Specific dates…").click();
+      popover().findAllByRole("textbox").first().clear().type("2024/05/01");
+      popover().findAllByRole("textbox").last().clear().type("2024/06/01");
+      previousButton().click();
       checkDateRangeFilter();
     });
   });
