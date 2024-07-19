@@ -4,11 +4,11 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
-import Checkbox from "metabase/core/components/CheckBox";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
 import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
+import { Checkbox } from "metabase/ui";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -137,9 +137,7 @@ export const ListField = ({
           <OptionContainer key={index}>
             <Checkbox
               data-testid={`${option[0]}-filter-value`}
-              checkedColor={
-                checkedColor ?? isDashboardFilter ? "brand" : "filter"
-              }
+              color={checkedColor ?? isDashboardFilter ? "brand" : "filter"}
               checked={selectedValues.has(option[0])}
               label={<LabelWrapper>{optionRenderer(option)}</LabelWrapper>}
               onChange={() => handleToggleOption(option[0])}
