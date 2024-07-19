@@ -1004,7 +1004,7 @@
                                :collection_position
                                :display
                                :collection_preview
-                               [nil :database_id]
+                               :database_id
                                [nil :location]
                                :dataset_query
                                :last_used_at
