@@ -50,9 +50,8 @@ const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
 const ESBUILD_LOADER = {
   loader: "esbuild-loader",
   options: {
-    loader: "tsx",
-    target: "es6",
-    jsxFactory: "_jsx",
+    jsx: "automatic",
+    target: "es2016",
   },
 };
 
@@ -118,7 +117,7 @@ const config = (module.exports = {
       {
         test: /\.styled\.(tsx?|jsx?)$/,
         exclude: /node_modules|cljs/,
-        use: [BABEL_LOADER, ESBUILD_LOADER],
+        use: [BABEL_LOADER],
       },
       {
         test: /\.(tsx|jsx?)$/,
@@ -128,22 +127,20 @@ const config = (module.exports = {
             loader: "esbuild-loader",
             options: {
               loader: "tsx",
-              target: "es6",
-              jsxFactory: "_jsx",
+              target: "es2016",
+              jsx: "automatic",
             },
           },
         ],
       },
       {
-        test: /\.(ts)$/,
+        test: /\.ts$/,
         exclude: /node_modules|cljs/,
         use: [
           {
             loader: "esbuild-loader",
             options: {
-              loader: "ts",
-              target: "es6",
-              jsxFactory: "_jsx",
+              target: "es2016",
             },
           },
         ],
