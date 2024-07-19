@@ -1,15 +1,13 @@
-import { createServer } from "net";
+import { createServer, type Server } from "net";
 
 /**
  * Check if a port is taken.
  * Creates a TCP server on the given port and waits for it to be closed.
- *
- * @param {number} port
  */
-export const checkIsPortTaken = port =>
-  new Promise((resolve, reject) => {
-    const server = createServer()
-      .once("error", err =>
+export const checkIsPortTaken = (port: number) =>
+  new Promise<boolean>((resolve, reject) => {
+    const server: Server = createServer()
+      .once("error", (err: NodeJS.ErrnoException) =>
         err.code === "EADDRINUSE" ? resolve(true) : reject(err),
       )
       .once("listening", () =>

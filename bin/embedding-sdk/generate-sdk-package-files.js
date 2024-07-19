@@ -84,40 +84,6 @@ function copyFileToOutput(source, target = source) {
   );
 }
 
-/**
- * Copies a directory and its contents to the target directory.
- * @param {string} source - The source directory path.
- * @param {string} target - The target directory path.
- */
-function copyDirToOutput(source, target) {
-  const sourcePath = path.resolve(`./enterprise/${source}`);
-  const targetPath = path.resolve(path.join(SDK_DIST_DIR, target));
-
-  // Ensure target directory exists
-  if (!fs.existsSync(targetPath)) {
-    fs.mkdirSync(targetPath, { recursive: true });
-  }
-
-  // Read contents of the source directory
-  const entries = fs.readdirSync(sourcePath, { withFileTypes: true });
-
-  for (const entry of entries) {
-    const sourceEntryPath = path.join(sourcePath, entry.name);
-    const targetEntryPath = path.join(targetPath, entry.name);
-
-    if (entry.isDirectory()) {
-      // Recursively copy directory
-      copyDirToOutput(
-        path.join(source, entry.name),
-        path.join(target, entry.name),
-      );
-    } else {
-      // Copy file
-      fs.copyFileSync(sourceEntryPath, targetEntryPath);
-    }
-  }
-}
-
 if (!fs.existsSync(SDK_DIST_DIR)) {
   fs.mkdirSync(SDK_DIST_DIR);
 }
@@ -126,4 +92,3 @@ generateSdkPackage();
 copyFileToOutput("LICENSE.txt");
 copyFileToOutput("frontend/src/embedding-sdk/README.md", "README.md");
 copyFileToOutput("frontend/src/embedding-sdk/CHANGELOG.md", "CHANGELOG.md");
-copyDirToOutput("frontend/src/embedding-sdk/cli", "cli");

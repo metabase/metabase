@@ -1,7 +1,4 @@
-// @ts-check
-
-/** @param {string} url */
-export const getCodeSample = url => `
+export const getCodeSample = (url: string) => `
 import {
   MetabaseProvider,
   InteractiveDashboard,

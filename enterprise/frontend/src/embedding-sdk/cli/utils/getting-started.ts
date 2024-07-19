@@ -1,25 +1,21 @@
-// @ts-check
-
 import fs from "fs/promises";
 
 import { confirm } from "@inquirer/prompts";
 
-import { getCodeSample } from "./code-sample.mjs";
-import { CONTAINER_NAME } from "./docker.mjs";
-import { printInfo } from "./print.mjs";
+import { getCodeSample } from "./code-sample";
+import { CONTAINER_NAME } from "./docker";
+import { printInfo } from "./print";
 
 const INSTALL_SDK_MESSAGE = `
   Install the npm package on another terminal by running:
   npm install --save @metabase/embedding-sdk-react
 `;
 
-/** @param {string} url **/
-const completeSetupMessage = url => `
+const completeSetupMessage = (url: string) => `
   Now, open ${url} and complete the setup.
 `;
 
-/** @param {string} url **/
-const afterInstallStepsMessage = url => `
+const afterInstallStepsMessage = (url: string) => `
   After completing the setup, please complete the following steps in the settings of your Metabase instance:
 
   1. Go to "Embedding" > "Interactive Embedding"
@@ -38,10 +34,8 @@ const DOCS_MESSAGE = `
 /**
  * If the user answers "no" to the prompt, they will be asked again.
  * Hitting "Enter" will confirm by default.
- *
- * @param {string} message
  **/
-const confirmStep = async message => {
+const confirmStep = async (message: string) => {
   let confirmed = false;
 
   do {
@@ -49,8 +43,7 @@ const confirmStep = async message => {
   } while (!confirmed);
 };
 
-/** @param {number} port **/
-export async function showGettingStartedGuide(port) {
+export async function showGettingStartedGuide(port: number) {
   const isSdkInPackageJson = await checkHasSdkInPackageJson();
 
   if (!isSdkInPackageJson) {
