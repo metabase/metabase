@@ -38,6 +38,7 @@ import {
   visitPublicDashboard,
   setModelMetadata,
   tableHeaderClick,
+  dashboardParameterSidebar,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -945,6 +946,30 @@ describe("issue 19494", () => {
     checkAppliedFilter("Card 2 Filter", "Gizmo");
 
     getDashboardCard(1).should("contain", "110.93");
+  });
+});
+
+describe("issue 16177", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${ORDERS.QUANTITY}`, {
+      coercion_strategy: "Coercion/UNIXSeconds->DateTime",
+      semantic_type: null,
+    });
+  });
+
+  it("should not lose the default value of the parameter connected to a field with a coercion strategy applied (metabase#16177)", () => {
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    editDashboard();
+    setFilter("Time", "All Options");
+    selectDashboardFilter(getDashboardCard(), "Quantity");
+    dashboardParameterSidebar().findByText("No default").click();
+    popover().findByText("Yesterday").click();
+    saveDashboard();
+    filterWidget().findByText("Yesterday").should("be.visible");
+    visitDashboard(ORDERS_DASHBOARD_ID);
+    filterWidget().findByText("Yesterday").should("be.visible");
   });
 });
 

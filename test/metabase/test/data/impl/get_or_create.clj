@@ -3,6 +3,7 @@
    [clojure.string :as str]
    [clojure.tools.reader.edn :as edn]
    [java-time.api :as t]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Field Table]]
@@ -153,6 +154,74 @@
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/create-queries :query-builder-and-native)
   (data-perms/set-database-permission! (perms-group/all-users) new-db-id :perms/download-results :one-million-rows))
 
+(defn- extract-dbdef-info
+  "Return dbdef info, map with table-name, field-name, fk-table-name keys, required for `fk-field-infos` construction
+  in [[dbdef->fk-field-infos]]."
+  [driver dbdef]
+  (let [database-name (:database-name dbdef)
+        ;; Following is required for presto. It names tables as `<db-name>_<table-name>` by use
+        ;; of `qualified-name-components`.
+        table-name-fn  (or (some-> (get-method @(requiring-resolve 'metabase.test.data.sql/qualified-name-components)
+                                               driver)
+                                   (partial driver database-name)
+                                   (->> (comp last)))
+                           identity)
+        field-defs-with-table-name (fn [{:keys [table-name field-definitions] :as _table-definition}]
+                                     (for [fd field-definitions]
+                                       (assoc fd :table-name table-name)))
+        field-def->info (fn [{:keys [table-name field-name fk] :as _field-definition}]
+                          {:table-name (table-name-fn table-name)
+                           :field-name field-name
+                           :target-table-name (table-name-fn (name fk))})]
+    (into []
+          (comp (mapcat field-defs-with-table-name)
+                (filter (comp some? :fk))
+                (map field-def->info))
+          (:table-definitions dbdef))))
+
+(defn- dbdef->fk-field-infos
+  "Generate `fk-field-infos` structure. It is a seq of maps of 2 keys: :id and :fk-target-field-id. Existing database,
+  tables and fields in app db are examined to get the required info."
+  [driver dbdef db]
+  ;; dbdef-infos require only dbdef to be generated, while fk-field-infos get additional information querying app db.
+  (when-some [dbdef-infos (not-empty (extract-dbdef-info driver dbdef))]
+    (let [tables (t2/select :model/Table :db_id (:id db))
+          fields (t2/select :model/Field {:where [:in :table_id (map :id tables)]})
+          table-id->table (m/index-by :id tables)
+          table-name->field-name->field (-> (group-by (comp :name table-id->table :table_id) fields)
+                                            (update-vals (partial m/index-by :name)))
+          table-name->pk-field (into {}
+                                     (keep (fn [{:keys [name semantic_type table_id] :as field}]
+                                             (when (or
+                                                    ;; Following works on mongo.
+                                                    (= semantic_type :type/PK)
+                                                    ;; Heuristic for other dbs.
+                                                    (= (u/lower-case-en name) "id"))
+                                               [(get-in table-id->table [table_id :name]) field])))
+                                     fields)]
+      (map (fn [{:keys [table-name field-name target-table-name]}]
+             {:id (get-in table-name->field-name->field [table-name field-name :id])
+              :fk-target-field-id (get-in table-name->pk-field [target-table-name :id])})
+           dbdef-infos))))
+
+(defn- add-foreign-key-relationships!
+  "Add foreign key relationships _to app db manually_. To be used with dbmses that do not support
+  `:metadata/key-constraints`.
+
+  `:metadata/key-constraints` driver feature signals that underlying dbms _is capable of reporting_ some columns
+  as having foregin key relationship to other columns. If that's the case, sync infers those relationships.
+
+  However, users can freely define those relationships also for dbmses that do not support that (eg. Mongo)
+  in Metabase.
+
+  This function simulates those user added fks, based on dataset definition. Therefore, it enables tests for eg.
+  implicit joins to work."
+  [driver dbdef db]
+  (let [fk-field-infos (dbdef->fk-field-infos driver dbdef db)]
+    (doseq [{:keys [id fk-target-field-id]} fk-field-infos]
+      (t2/update! :model/Field :id id {:semantic_type :type/FK
+                                       :fk_target_field_id fk-target-field-id}))))
+
 (defn- load-dataset-data-if-needed!
   "Create the test dataset and load its data if needed. No-ops if this was already done successfully during this
   session.
@@ -189,6 +258,8 @@
                                                                     :details  connection-details
                                                                     :settings {:database-source-dataset-name database-name}})))]
     (sync-newly-created-database! driver database-definition connection-details db)
+    (when (not (driver/database-supports? driver :metadata/key-constraints nil))
+      (add-foreign-key-relationships! driver database-definition db))
     (set-test-db-permissions! (u/the-id db))
     ;; make sure we're returing an up-to-date copy of the DB
     (t2/select-one Database :id (u/the-id db))))

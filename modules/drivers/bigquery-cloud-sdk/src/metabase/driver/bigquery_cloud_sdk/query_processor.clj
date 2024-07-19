@@ -753,17 +753,37 @@
       (merge qualified
              (select-keys unqualified #{:group-by})))))
 
+(defn- adjust-order-by-clause
+  [[dir [_clause _id-or-name opts :as clause]]]
+  [dir
+   ;; Following code ensures that only selected columns (with exception of those comming from different source than
+   ;; this source table and having no binning and no bucketing) are forced to use aliases.
+   ;;
+   ;; This solves Bigquery's inability to use expression from group by in order by.
+   ;; ex: `select a + 1, b from T group by a + 1 order by a + 1 asc` would fail.
+   ;; vs: `select a + 1 as asdf, b from T group by a + 1 order by asdf asc` would not fail.
+   ;;
+   ;; Also it handles case as follows: `select b from T join U ... order by a`, where field a is in both T and U
+   ;; tables. Problem is solved by qualifying that order by field.
+   (if (and
+        (::add/desired-alias opts)
+        (or (not (pos-int? (::add/source-table opts)))
+            (:binning opts)
+            (:temporal-unit opts)))
+     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+     clause)])
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]
   [driver clause]
   ((get-method sql.qp/->honeysql [:sql :asc])
    driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+   (adjust-order-by-clause clause)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc]
   [driver clause]
   ((get-method sql.qp/->honeysql [:sql :desc])
    driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+   (adjust-order-by-clause clause)))
 
 (defmethod temporal-type ::sql.qp/compiled
   [[_compiled x, :as form]]

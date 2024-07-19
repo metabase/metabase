@@ -20,7 +20,6 @@ export type DatabaseFeature =
   | "dynamic-schema"
   | "expression-aggregations"
   | "expressions"
-  | "foreign-keys"
   | "native-parameters"
   | "nested-queries"
   | "standard-deviation-aggregations"
