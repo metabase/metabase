@@ -52,7 +52,6 @@ export const getMultiSelectOverrides =
           marginLeft: 0,
           gap: theme.spacing.xs,
           padding: theme.spacing.xs,
-          paddingRight: theme.spacing.xl,
           alignItems: "center",
           "[data-with-icon=true] &": {
             paddingLeft: 0,
