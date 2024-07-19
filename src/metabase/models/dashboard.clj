@@ -4,6 +4,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.usage :as usage]
    [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.config :as config]

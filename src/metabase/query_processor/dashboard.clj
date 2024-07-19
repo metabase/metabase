@@ -15,6 +15,7 @@
    [metabase.query-processor.card :as qp.card]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.usage :as usage]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -176,10 +177,10 @@
                     :attributes {:dashboard/id dashboard-id
                                  :dashcard/id  dashcard-id
                                  :card/id      card-id}}
-    (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id api/*current-user-id*})
     ;; make sure we can read this Dashboard. Card will get read-checked later on inside
     ;; [[qp.card/process-query-for-card]]
     (api/read-check Dashboard dashboard-id)
+    (usage/track! :model/Dashboard dashboard-id)
     (check-card-and-dashcard-are-in-dashboard dashboard-id card-id dashcard-id)
     (let [resolved-params (resolve-params-for-query dashboard-id card-id dashcard-id parameters)
           options         (merge
