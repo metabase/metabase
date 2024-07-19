@@ -21,6 +21,9 @@ const VALUE_SIZES = {
   md: rem(28),
 };
 
+const DEFAULT_ICON_WIDTH = rem(40);
+const UNSTYLED_ICON_WIDTH = 28;
+
 export const getMultiSelectOverrides =
   (): MantineThemeOverride["components"] => ({
     MultiSelect: {
@@ -47,6 +50,7 @@ export const getMultiSelectOverrides =
           marginLeft: 0,
           gap: theme.spacing.xs,
           padding: theme.spacing.xs,
+          paddingRight: theme.spacing.xl,
           alignItems: "center",
           "[data-with-icon=true] &": {
             paddingLeft: 0,
@@ -112,11 +116,17 @@ export const getMultiSelectOverrides =
             paddingTop: rem(7),
             paddingBottom: rem(7),
           },
+          values: {
+            paddingRight: DEFAULT_ICON_WIDTH,
+          },
         }),
         unstyled: () => ({
           input: {
             paddingTop: rem(8),
             paddingBottom: rem(8),
+          },
+          values: {
+            paddingRight: UNSTYLED_ICON_WIDTH,
           },
         }),
       },
