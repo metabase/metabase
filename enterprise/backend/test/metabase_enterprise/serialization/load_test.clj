@@ -300,8 +300,10 @@
   (try
     ;; in case it already exists
     (u/ignore-exceptions
-      (delete-directory! dump-dir))
-    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions :foreign-keys)
+     (delete-directory! dump-dir))
+    ;; TODO: Examine whether the test could work without :metadata/key-constraints.
+    (mt/test-drivers (-> (mt/normal-drivers-with-feature :basic-aggregations :binning :expressions
+                                                         :metadata/key-constraints)
                          ;; We will run this roundtrip test against any database supporting these features ^ except
                          ;; certain ones for specific reasons, outlined below.
                          ;;
@@ -320,104 +322,101 @@
                                :snowflake ; bare table name doesn't work; it's test_data_venues instead of venues
                                :sqlserver ; ORDER BY not allowed not allowed in derived tables (subselects)
                                :vertica   ; bare table name doesn't work; it's test_data_venues instead of venues
-                               :sqlite    ; foreign-keys is not supported by this driver
-                               :sparksql  ; foreign-keys is not supported by this driver
-                               ;; foreign-keys is not supported by the below driver even though it has joins
-                               :bigquery-cloud-sdk))
-      (mt/with-premium-features #{:serialization}
-        (let [fingerprint (ts/with-world
-                            (v1-dump! dump-dir {:user        (:email (test.users/fetch-user :crowberto))
-                                                :only-db-ids #{db-id}})
-                            {:query-results (gather-orig-results [card-id
-                                                                  card-arch-id
-                                                                  card-id-root
-                                                                  card-id-nested
-                                                                  card-id-nested-query
-                                                                  card-id-native-query
-                                                                  card-id-root-to-collection
-                                                                  card-id-collection-to-root
-                                                                  card-id-template-tags
-                                                                  card-id-filter-agg
-                                                                  card-id-temporal-unit
-                                                                  card-id-with-native-snippet
-                                                                  card-id-temporal-unit
-                                                                  card-join-card-id
-                                                                  card-id-pivot-table])
-                             :collections   (gather-collections [card-id
-                                                                 card-arch-id
-                                                                 card-id-root
-                                                                 card-id-nested
-                                                                 card-id-nested-query
-                                                                 card-id-native-query
-                                                                 card-id-root-to-collection
-                                                                 card-id-collection-to-root
-                                                                 card-id-template-tags
-                                                                 card-id-filter-agg
-                                                                 card-id-temporal-unit
-                                                                 card-id-with-native-snippet
-                                                                 card-id-temporal-unit
-                                                                 card-join-card-id
-                                                                 card-id-pivot-table])
-                             :entities      [[Database           (t2/select-one Database :id db-id)]
-                                             [Table              (t2/select-one Table :id table-id)]
-                                             [Table              (t2/select-one Table :id table-id-categories)]
-                                             [Table              (t2/select-one Table :id table-id-users)]
-                                             [Table              (t2/select-one Table :id table-id-checkins)]
-                                             [Field              (t2/select-one Field :id numeric-field-id)]
-                                             [Field              (t2/select-one Field :id name-field-id)]
-                                             [Field              (t2/select-one Field :id category-field-id)]
-                                             [Field              (t2/select-one Field :id latitude-field-id)]
-                                             [Field              (t2/select-one Field :id longitude-field-id)]
-                                             [Field              (t2/select-one Field :id category-pk-field-id)]
-                                             [Field              (t2/select-one Field :id date-field-id)]
-                                             [Field              (t2/select-one Field :id user-id-field-id)]
-                                             [Field              (t2/select-one Field :id users-pk-field-id)]
-                                             [Field              (t2/select-one Field :id last-login-field-id)]
-                                             [Collection         (t2/select-one Collection :id collection-id)]
-                                             [Collection         (t2/select-one Collection :id collection-id-nested)]
-                                             [Collection         (t2/select-one Collection :id personal-collection-id)]
-                                             [Collection         (t2/select-one Collection :id pc-nested-id)]
-                                             [Collection         (t2/select-one Collection :id pc-deeply-nested-id)]
-                                             [Segment            (t2/select-one Segment :id segment-id)]
-                                             [Dashboard          (t2/select-one Dashboard :id dashboard-id)]
-                                             [Dashboard          (t2/select-one Dashboard :id root-dashboard-id)]
-                                             [Card               (t2/select-one Card :id card-id)]
-                                             [Card               (t2/select-one Card :id card-arch-id)]
-                                             [Card               (t2/select-one Card :id card-id-root)]
-                                             [Card               (t2/select-one Card :id card-id-nested)]
-                                             [Card               (t2/select-one Card :id card-id-nested-query)]
-                                             [Card               (t2/select-one Card :id card-id-native-query)]
-                                             [DashboardCard      (t2/select-one DashboardCard :id dashcard-id)]
-                                             [DashboardCard      (t2/select-one DashboardCard :id dashcard-top-level-click-id)]
-                                             [DashboardCard      (t2/select-one DashboardCard :id dashcard-with-click-actions)]
-                                             [Card               (t2/select-one Card :id card-id-root-to-collection)]
-                                             [Card               (t2/select-one Card :id card-id-collection-to-root)]
-                                             [Card               (t2/select-one Card :id card-id-template-tags)]
-                                             [Card               (t2/select-one Card :id card-id-filter-agg)]
-                                             [Card               (t2/select-one Card :id card-id-temporal-unit)]
-                                             [Pulse              (t2/select-one Pulse :id pulse-id)]
-                                             [DashboardCard      (t2/select-one DashboardCard :id dashcard-with-textbox-id)]
-                                             [NativeQuerySnippet (t2/select-one NativeQuerySnippet :id snippet-id)]
-                                             [Collection         (t2/select-one Collection :id snippet-collection-id)]
-                                             [Collection         (t2/select-one Collection :id snippet-nested-collection-id)]
-                                             [NativeQuerySnippet (t2/select-one NativeQuerySnippet :id nested-snippet-id)]
-                                             [Card               (t2/select-one Card :id card-id-with-native-snippet)]
-                                             [Card               (t2/select-one Card :id card-join-card-id)]
-                                             [Card               (t2/select-one Card :id card-id-pivot-table)]]})]
-          (with-world-cleanup
-            (v1-load! dump-dir {:on-error :continue :mode :skip})
-            (mt/with-db (t2/select-one Database :name ts/temp-db-name)
-              (doseq [[model entity] (:entities fingerprint)]
-                (testing (format "%s \"%s\"" (type model) (:name entity))
-                  (is (or (-> entity :name nil?)
-                          (when-let [loaded (t2/select-one model :name (:name entity))]
-                            (assert-loaded-entity loaded fingerprint))
-                          (and (-> entity :archived) ; archived card hasn't been dump-loaded
-                               (= (:name entity) "My Arch Card"))
-                          ;; Rasta's Personal Collection was not loaded
-                          (= "Felicia's Personal Collection" (:name entity)))
-                      (str " failed " (pr-str entity)))))
-              fingerprint)))))
+                               ))
+                     (mt/with-premium-features #{:serialization}
+                       (let [fingerprint (ts/with-world
+                                           (v1-dump! dump-dir {:user        (:email (test.users/fetch-user :crowberto))
+                                                               :only-db-ids #{db-id}})
+                                           {:query-results (gather-orig-results [card-id
+                                                                                 card-arch-id
+                                                                                 card-id-root
+                                                                                 card-id-nested
+                                                                                 card-id-nested-query
+                                                                                 card-id-native-query
+                                                                                 card-id-root-to-collection
+                                                                                 card-id-collection-to-root
+                                                                                 card-id-template-tags
+                                                                                 card-id-filter-agg
+                                                                                 card-id-temporal-unit
+                                                                                 card-id-with-native-snippet
+                                                                                 card-id-temporal-unit
+                                                                                 card-join-card-id
+                                                                                 card-id-pivot-table])
+                                            :collections   (gather-collections [card-id
+                                                                                card-arch-id
+                                                                                card-id-root
+                                                                                card-id-nested
+                                                                                card-id-nested-query
+                                                                                card-id-native-query
+                                                                                card-id-root-to-collection
+                                                                                card-id-collection-to-root
+                                                                                card-id-template-tags
+                                                                                card-id-filter-agg
+                                                                                card-id-temporal-unit
+                                                                                card-id-with-native-snippet
+                                                                                card-id-temporal-unit
+                                                                                card-join-card-id
+                                                                                card-id-pivot-table])
+                                            :entities      [[Database           (t2/select-one Database :id db-id)]
+                                                            [Table              (t2/select-one Table :id table-id)]
+                                                            [Table              (t2/select-one Table :id table-id-categories)]
+                                                            [Table              (t2/select-one Table :id table-id-users)]
+                                                            [Table              (t2/select-one Table :id table-id-checkins)]
+                                                            [Field              (t2/select-one Field :id numeric-field-id)]
+                                                            [Field              (t2/select-one Field :id name-field-id)]
+                                                            [Field              (t2/select-one Field :id category-field-id)]
+                                                            [Field              (t2/select-one Field :id latitude-field-id)]
+                                                            [Field              (t2/select-one Field :id longitude-field-id)]
+                                                            [Field              (t2/select-one Field :id category-pk-field-id)]
+                                                            [Field              (t2/select-one Field :id date-field-id)]
+                                                            [Field              (t2/select-one Field :id user-id-field-id)]
+                                                            [Field              (t2/select-one Field :id users-pk-field-id)]
+                                                            [Field              (t2/select-one Field :id last-login-field-id)]
+                                                            [Collection         (t2/select-one Collection :id collection-id)]
+                                                            [Collection         (t2/select-one Collection :id collection-id-nested)]
+                                                            [Collection         (t2/select-one Collection :id personal-collection-id)]
+                                                            [Collection         (t2/select-one Collection :id pc-nested-id)]
+                                                            [Collection         (t2/select-one Collection :id pc-deeply-nested-id)]
+                                                            [Segment            (t2/select-one Segment :id segment-id)]
+                                                            [Dashboard          (t2/select-one Dashboard :id dashboard-id)]
+                                                            [Dashboard          (t2/select-one Dashboard :id root-dashboard-id)]
+                                                            [Card               (t2/select-one Card :id card-id)]
+                                                            [Card               (t2/select-one Card :id card-arch-id)]
+                                                            [Card               (t2/select-one Card :id card-id-root)]
+                                                            [Card               (t2/select-one Card :id card-id-nested)]
+                                                            [Card               (t2/select-one Card :id card-id-nested-query)]
+                                                            [Card               (t2/select-one Card :id card-id-native-query)]
+                                                            [DashboardCard      (t2/select-one DashboardCard :id dashcard-id)]
+                                                            [DashboardCard      (t2/select-one DashboardCard :id dashcard-top-level-click-id)]
+                                                            [DashboardCard      (t2/select-one DashboardCard :id dashcard-with-click-actions)]
+                                                            [Card               (t2/select-one Card :id card-id-root-to-collection)]
+                                                            [Card               (t2/select-one Card :id card-id-collection-to-root)]
+                                                            [Card               (t2/select-one Card :id card-id-template-tags)]
+                                                            [Card               (t2/select-one Card :id card-id-filter-agg)]
+                                                            [Card               (t2/select-one Card :id card-id-temporal-unit)]
+                                                            [Pulse              (t2/select-one Pulse :id pulse-id)]
+                                                            [DashboardCard      (t2/select-one DashboardCard :id dashcard-with-textbox-id)]
+                                                            [NativeQuerySnippet (t2/select-one NativeQuerySnippet :id snippet-id)]
+                                                            [Collection         (t2/select-one Collection :id snippet-collection-id)]
+                                                            [Collection         (t2/select-one Collection :id snippet-nested-collection-id)]
+                                                            [NativeQuerySnippet (t2/select-one NativeQuerySnippet :id nested-snippet-id)]
+                                                            [Card               (t2/select-one Card :id card-id-with-native-snippet)]
+                                                            [Card               (t2/select-one Card :id card-join-card-id)]
+                                                            [Card               (t2/select-one Card :id card-id-pivot-table)]]})]
+                         (with-world-cleanup
+                           (v1-load! dump-dir {:on-error :continue :mode :skip})
+                           (mt/with-db (t2/select-one Database :name ts/temp-db-name)
+                             (doseq [[model entity] (:entities fingerprint)]
+                               (testing (format "%s \"%s\"" (type model) (:name entity))
+                                 (is (or (-> entity :name nil?)
+                                         (when-let [loaded (t2/select-one model :name (:name entity))]
+                                           (assert-loaded-entity loaded fingerprint))
+                                         (and (-> entity :archived) ; archived card hasn't been dump-loaded
+                                              (= (:name entity) "My Arch Card"))
+                                         ;; Rasta's Personal Collection was not loaded
+                                         (= "Felicia's Personal Collection" (:name entity)))
+                                     (str " failed " (pr-str entity)))))
+                             fingerprint)))))
     (finally
       (delete-directory! dump-dir))))
 

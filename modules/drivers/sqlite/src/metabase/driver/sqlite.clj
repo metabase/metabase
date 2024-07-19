@@ -4,7 +4,6 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
@@ -44,10 +43,6 @@
                               :case-sensitivity-string-filter-options false
                               :index-info                             true}]
   (defmethod driver/database-supports? [:sqlite feature] [_driver _feature _db] supported?))
-
-;; HACK SQLite doesn't support ALTER TABLE ADD CONSTRAINT FOREIGN KEY and I don't have all day to work around this so
-;; for now we'll just skip the foreign key stuff in the tests.
-(defmethod driver/database-supports? [:sqlite :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 ;; Every SQLite3 file starts with "SQLite Format 3"
 ;; or "** This file contains an SQLite

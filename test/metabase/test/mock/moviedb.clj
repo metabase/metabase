@@ -97,4 +97,4 @@
      {:keypath "movies.description", :value "A cinematic adventure."}
      {:keypath "description", :value "Information about movies"}]))
 
-(defmethod driver/database-supports? [::moviedb :foreign-keys] [_driver _feature _db] true)
+(defmethod driver/database-supports? [::moviedb :metadata/key-constraints] [_driver _feature _db] true)
