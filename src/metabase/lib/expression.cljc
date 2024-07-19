@@ -443,7 +443,7 @@
    (cyclic-definition node->children start []))
   ([node->children node path]
    (if (some #{node} path)
-     (conj path node)
+     (drop-while (complement #{node}) (conj path node))
      (some #(cyclic-definition node->children % (conj path node))
            (node->children node)))))
 
