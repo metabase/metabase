@@ -7,12 +7,12 @@ import {
   type SDKConfig,
 } from "embedding-sdk";
 
-const METABASE_INSTANCE_URL = "http://localhost:3000";
+const METABASE_INSTANCE_URL =
+  (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 const METABASE_JWT_SHARED_SECRET =
   (window as any).JWT_SHARED_SECRET || "0".repeat(64);
 
-// eslint-disable-next-line no-console
-console.log(METABASE_JWT_SHARED_SECRET, (window as any).JWT_SHARED_SECRET);
+const DASHBOARD_ID = (window as any).DASHBOARD_ID || "1";
 
 const secret = new TextEncoder().encode(METABASE_JWT_SHARED_SECRET);
 
@@ -21,12 +21,11 @@ const user = {
   lastName: "Mueller",
   email: "rene@example.com",
   password: "password",
-  shopId: 1,
 };
 
 const DEFAULT_CONFIG: SDKConfig = {
-  metabaseInstanceUrl: "http://localhost:3000",
-  jwtProviderUri: `http://localhost:3535/sso/metabase`,
+  metabaseInstanceUrl: METABASE_INSTANCE_URL,
+  jwtProviderUri: `${METABASE_INSTANCE_URL}/sso/metabase`,
   fetchRequestToken: async () => {
     try {
       const signedUserData = await new jose.SignJWT({
@@ -69,5 +68,5 @@ const Template: ComponentStory<typeof StaticDashboard> = args => {
 
 export const Default = Template.bind({});
 Default.args = {
-  dashboardId: "1",
+  dashboardId: DASHBOARD_ID,
 };
