@@ -113,7 +113,7 @@ export const CleanupCollectionModal = ({
       opened
       onClose={handleClose}
       data-testid="cleanup-collection-modal"
-      size={1118}
+      size="70rem"
     >
       <Modal.Overlay />
       <Modal.Content
@@ -126,7 +126,7 @@ export const CleanupCollectionModal = ({
           pb="1.5rem"
           className={CS.modalHeader}
         >
-          <Modal.Title fz="20px">{t`Select unused items to trash`}</Modal.Title>
+          <Modal.Title fz="20px">{t`Select unused items to move to trash`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
         <Modal.Body px="2.5rem" mih={{ md: 646 }} className={CS.modalBody}>

@@ -8,7 +8,7 @@ export const CleanupCleanState = ({ duration }: { duration: string }) => {
     <Flex align="center" direction="column" pt="10rem" pb="11rem">
       <CollectionEmptyIcon />
       <Text fw="bold" size="1.25rem" mt="4rem">
-        {t`We didn’t find any items not viewed in over ${duration}`}
+        {t`All items have been used in the past ${duration}`}
       </Text>
     </Flex>
   );

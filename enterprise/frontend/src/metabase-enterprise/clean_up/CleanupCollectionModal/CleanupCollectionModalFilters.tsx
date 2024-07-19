@@ -33,11 +33,10 @@ export const CleanupCollectionModalFilters = ({
       direction={{ base: "column", md: "row" }}
     >
       <Text fw="bold">{c(
-        `Prefixes a time span, reads as "Not viewed in over 6 months"`,
-      ).t`Not viewed in over`}</Text>
+        `Prefixes a time span, reads as "Not used in over 6 months"`,
+      ).t`Not used in over`}</Text>
       <Select
         icon={<Icon name="calendar" />}
-        id="not-view-in-filter"
         data={dateFilterOptions}
         value={dateFilter}
         onChange={option => {

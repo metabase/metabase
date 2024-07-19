@@ -97,11 +97,10 @@ export const CleanupCollectionTable = ({
           />
           {/* Name */}
           <ItemCell data-testid="clean-up-table-collection">
-            <Flex align="center">
+            <Flex align="center" gap="sm">
               <FixedSizeIcon
                 name={item.getIcon().name}
                 color="var(--mb-color-brand)"
-                style={{ marginInlineEnd: "0.5rem" }}
               />
               <Ellipsified>{item.name}</Ellipsified>
             </Flex>
@@ -109,11 +108,8 @@ export const CleanupCollectionTable = ({
           {/* Collection */}
           <ItemCell data-testid="clean-up-table-collection">
             {item.collection && (
-              <Flex align="center">
-                <FixedSizeIcon
-                  name="folder"
-                  style={{ marginInlineEnd: "0.5rem" }}
-                />
+              <Flex align="center" gap="sm">
+                <FixedSizeIcon name="folder" />
                 <Ellipsified>{getCollectionName(item.collection)}</Ellipsified>
               </Flex>
             )}

@@ -6,7 +6,7 @@ import type { StaleCollectionItem } from "metabase-types/api";
 export const itemKeyFn = (item: StaleCollectionItem) =>
   `${item.id}:${item.model}`;
 
-const labelContext = `Time span the item has not been viewed in, reads as "Not viewed in over <time span>"`;
+const labelContext = `Time span the item has not been used in, reads as "Not used in over <time span>"`;
 
 export const dateFilterOptions = [
   // TODO: remove option before merging
@@ -93,7 +93,7 @@ export const getDateFilterLabel = (dateFilter: DateFilter) => {
   const label = option?.label;
 
   if (!label) {
-    throw new Error(`Invalid date filter: ${dateFilter}`);
+    throw new Error(t`Invalid date filter: ${dateFilter}`);
   }
 
   return label;
