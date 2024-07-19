@@ -21,8 +21,10 @@ const VALUE_SIZES = {
   md: rem(28),
 };
 
-const DEFAULT_ICON_WIDTH = rem(40);
-const UNSTYLED_ICON_WIDTH = 28;
+const RIGHT_SECTION_SIZES = {
+  default: rem(40),
+  unstyled: rem(28),
+};
 
 export const getMultiSelectOverrides =
   (): MantineThemeOverride["components"] => ({
@@ -117,7 +119,7 @@ export const getMultiSelectOverrides =
             paddingBottom: rem(7),
           },
           values: {
-            paddingRight: DEFAULT_ICON_WIDTH,
+            paddingRight: RIGHT_SECTION_SIZES.default,
           },
         }),
         unstyled: () => ({
@@ -126,7 +128,7 @@ export const getMultiSelectOverrides =
             paddingBottom: rem(8),
           },
           values: {
-            paddingRight: UNSTYLED_ICON_WIDTH,
+            paddingRight: RIGHT_SECTION_SIZES.unstyled,
           },
         }),
       },
