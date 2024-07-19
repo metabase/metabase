@@ -44,7 +44,7 @@ describe("issue 39487", () => {
 
     it("filter modal", () => {
       cy.button("Filter").click();
-      modal().findByText("Jan 1, 2015").click();
+      modal().findByText("After Jan 1, 2015").click();
       checkSingleDateFilter();
     });
 
