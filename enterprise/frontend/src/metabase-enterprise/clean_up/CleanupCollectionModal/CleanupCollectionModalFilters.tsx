@@ -26,25 +26,21 @@ export const CleanupCollectionModalFilters = ({
     direction={{ base: "column", md: "row" }}
     align={{ base: "start", md: "center" }}
     gap={{ base: "md", md: "none" }}
+    style={{ marginInlineEnd: ".25rem" }}
   >
-    <Flex
-      gap="sm"
-      align={{ base: "start", md: "center" }}
-      direction={{ base: "column", md: "row" }}
-    >
-      <Text fw="bold">{c(
-        `Prefixes a time span, reads as "Not used in over 6 months"`,
-      ).t`Not used in over`}</Text>
-      <Select
-        icon={<Icon name="calendar" />}
-        data={dateFilterOptions}
-        value={dateFilter}
-        onChange={option => {
-          option && isDateFilter(option) && onDateFilterChange(option);
-        }}
-        style={{ marginInlineEnd: ".25rem" }}
-      />
-    </Flex>
+    <Text fw="bold" display="inline-flex" style={{ alignItems: "center" }}>
+      {c(`Not used in over <time-span>`).jt`Not used in over ${(
+        <Select
+          icon={<Icon name="calendar" />}
+          data={dateFilterOptions}
+          value={dateFilter}
+          onChange={option => {
+            option && isDateFilter(option) && onDateFilterChange(option);
+          }}
+          mx=".5rem"
+        />
+      )}`}
+    </Text>
     <Flex align="center">
       <Switch
         label={<Text>{t`Include items in sub-collections`}</Text>}

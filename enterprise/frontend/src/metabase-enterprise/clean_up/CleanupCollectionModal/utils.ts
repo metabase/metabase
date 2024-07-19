@@ -8,51 +8,42 @@ export const itemKeyFn = (item: StaleCollectionItem) =>
 
 export const dateFilterOptions = [
   {
-    label: c(
-      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
-    ).t`1 month`,
+    label: c(`Not used in over -1 day`).t`-1 day`,
+    value: "one-day-back",
+    duration: [[-1, "day"]],
+  },
+  {
+    label: c(`Not used in over 1 month`).t`1 month`,
     value: "one-month",
     duration: [[1, "month"]],
   },
   {
-    label: c(
-      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
-    ).t`2 months`,
+    label: c(`Not used in over 2 months`).t`2 months`,
     value: "two-months",
     duration: [[2, "month"]],
   },
   {
-    label: c(
-      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
-    ).t`3 months`,
+    label: c(`Not used in over 3 months`).t`3 months`,
     value: "three-months",
     duration: [[3, "month"]],
   },
   {
-    label: c(
-      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
-    ).t`6 months`,
+    label: c(`Not used in over 6 months`).t`6 months`,
     value: "six-months",
     duration: [[6, "month"]],
   },
   {
-    label: c(
-      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
-    ).t`9 months`,
+    label: c(`Not used in over 9 months`).t`9 months`,
     value: "nine-months",
     duration: [[9, "month"]],
   },
   {
-    label: c(
-      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
-    ).t`1 year`,
+    label: c(`Not used in over 1 year`).t`1 year`,
     value: "one-year",
     duration: [[1, "year"]],
   },
   {
-    label: c(
-      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
-    ).t`1.5 years`,
+    label: c(`Not used in over 1.5 years`).t`1.5 years`,
     value: "one-and-a-half-years",
     duration: [
       [1, "year"],
@@ -60,9 +51,7 @@ export const dateFilterOptions = [
     ],
   },
   {
-    label: c(
-      `Time span the item has not been used in, reads as "Not used in over <time span>"`,
-    ).t`2 years`,
+    label: c(`Not used in over 2 years`).t`2 years`,
     value: "two-years",
     duration: [[2, "year"]],
   },
