@@ -5,7 +5,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { ActionIcon } from "@mantine/core";
 import type { CSSProperties } from "react";
 
-import EditableText from "metabase/core/components/EditableText";
+import { DoubleClickEditableText } from "metabase/core/components/EditableText";
 import { color } from "metabase/lib/colors";
 import { Flex, Icon, Menu } from "metabase/ui";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
@@ -149,39 +149,41 @@ function ColumnPicker({
 
   return (
     <Menu disabled={!hasOptions}>
-      <Menu.Target>
+      <Flex
+        {...attributes}
+        {...listeners}
+        align="center"
+        style={containerStyle}
+        ref={setNodeRef}
+      >
         <Flex
-          {...attributes}
-          {...listeners}
           align="center"
-          style={containerStyle}
-          ref={setNodeRef}
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 99,
+            boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+          }}
+          bg="white"
+          px="sm"
+          gap="4px"
         >
-          <Flex
-            align="center"
-            style={{
-              border: "1px solid #ddd",
-              borderRadius: 99,
-              boxShadow: "0 1px 2px rgba(0,0,0,0.06)",
+          <Icon name="grabber" size={12} />
+          <DoubleClickEditableText
+            initialValue={label ?? option?.label ?? column}
+            onChange={label => {
+              if (label.length > 0) {
+                onChangeLabel(label);
+              }
             }}
-            bg="white"
-            px="sm"
-            gap="4px"
-          >
-            <Icon name="grabber" size={12} />
-            <EditableText
-              initialValue={label ?? option?.label ?? column}
-              onChange={label => {
-                if (label.length > 0) {
-                  onChangeLabel(label);
-                }
-              }}
-              style={{ color: color("text-medium"), fontWeight: "bold" }}
-            />
-            {hasOptions && <Icon name="chevrondown" size={12} />}
-          </Flex>
+            style={{ color: color("text-medium"), fontWeight: "bold" }}
+          />
+          {hasOptions && (
+            <Menu.Target>
+              <Icon name="chevrondown" size={12} />
+            </Menu.Target>
+          )}
         </Flex>
-      </Menu.Target>
+      </Flex>
       <Menu.Dropdown>
         {columnOptions.map(option => (
           <Menu.Item
