@@ -504,7 +504,7 @@ describe("issues 20845, 25031", () => {
   });
 });
 
-describe.skip("27643", { tags: "@external" }, () => {
+describe("27643", { tags: "@external" }, () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {

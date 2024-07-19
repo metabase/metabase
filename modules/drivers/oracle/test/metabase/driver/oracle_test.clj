@@ -209,7 +209,7 @@
                     "SELECT * FROM dual")
                "A"
                "B"]]
-             (ddl/insert-rows-ddl-statements :oracle (h2x/identifier :table "my_db" "my_table") [{:col1 "A", :col2 1}
+             (ddl/insert-rows-dml-statements :oracle (h2x/identifier :table "my_db" "my_table") [{:col1 "A", :col2 1}
                                                                                                  {:col1 "B", :col2 2}]))))))
 
 (defn- do-with-temp-user [username f]

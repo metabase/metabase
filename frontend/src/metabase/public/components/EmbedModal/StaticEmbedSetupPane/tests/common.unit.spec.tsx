@@ -380,18 +380,16 @@ describe("Static Embed Setup phase", () => {
       }
     });
 
-    describe("Appearance tab", () => {
+    describe("Look and Feel tab", () => {
       it("should render link to documentation", async () => {
         await setup({
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
-        expect(
-          screen.getByText("Customizing your embed’s appearance"),
-        ).toBeVisible();
+        expect(screen.getByText("Customizing look and feel")).toBeVisible();
 
         const link = screen.getByRole("link", {
           name: "documentation",
@@ -410,7 +408,7 @@ describe("Static Embed Setup phase", () => {
             resourceType,
             resource,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
         expect(screen.getByLabelText("Code")).toBeChecked();
@@ -425,7 +423,7 @@ describe("Static Embed Setup phase", () => {
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
         await userEvent.click(screen.getByText("Preview"));
@@ -438,17 +436,17 @@ describe("Static Embed Setup phase", () => {
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
-        await userEvent.click(screen.getByText("Transparent"));
+        await userEvent.click(screen.getByText("Dark"));
 
         expect(
           screen.getByText("Here’s the code you’ll need to alter:"),
         ).toBeVisible();
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-          `"#theme=transparent&bordered=true&titled=true"`,
+          `"#theme=night&bordered=true&titled=true"`,
         );
 
         await userEvent.click(
@@ -458,7 +456,7 @@ describe("Static Embed Setup phase", () => {
         );
 
         expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-          `"#theme=transparent&bordered=true&titled=false"`,
+          `"#theme=night&bordered=true&titled=false"`,
         );
       });
 
@@ -467,7 +465,7 @@ describe("Static Embed Setup phase", () => {
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
         expect(
@@ -477,7 +475,7 @@ describe("Static Embed Setup phase", () => {
         ).toBeVisible();
 
         const link = within(
-          screen.getByLabelText("Playing with appearance options"),
+          screen.getByLabelText("Customizing look and feel"),
         ).getByRole("link", {
           name: "a paid plan",
         });
@@ -491,33 +489,59 @@ describe("Static Embed Setup phase", () => {
       it('should render "Powered by Metabase" banner caption', async () => {
         await setup({
           props: {},
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
         });
 
-        expect(
-          screen.getByText("Removing the “Powered by Metabase” banner"),
-        ).toBeVisible();
+        expect(screen.getByText("Removing the banner")).toBeVisible();
 
         expect(
           screen.getByText(
-            getBrokenUpTextMatcher(
-              "This banner appears on all static embeds created with the Metabase open source version. You’ll need to upgrade to a paid plan to remove the banner.",
-            ),
+            "The “Powered by Metabase” banner appears on all static embeds created with the open source version. You’ll need to upgrade to remove it.",
           ),
         ).toBeVisible();
 
         const link = within(
-          screen.getByLabelText("Removing the “Powered by Metabase” banner"),
+          screen.getByLabelText("Removing the banner"),
         ).getByRole("link", {
-          name: "a paid plan",
+          name: "Upgrade to a paid plan",
         });
         expect(link).toBeVisible();
         expect(link).toHaveAttribute(
           "href",
-          "https://www.metabase.com/upgrade?utm_media=static-embed-settings-appearance&utm_source=oss",
+          "https://www.metabase.com/upgrade?utm_source=product&utm_medium=upsell&utm_campaign=remove-mb-branding&utm_content=static-embed-settings-look-and-feel&source_plan=oss",
         );
       });
     });
+  });
+
+  it("should render Dashboard background option", async () => {
+    await setup({
+      props: { resourceType: "dashboard" },
+      activeTab: "Look and Feel",
+    });
+
+    expect(screen.getByText("Dashboard background")).toBeVisible();
+    expect(
+      within(screen.getByTestId("embed-backend")).getByTestId(
+        "text-editor-mock",
+      ),
+    ).toHaveTextContent("#bordered=true&titled=true");
+    await userEvent.click(screen.getByText("Dashboard background"));
+
+    expect(
+      within(screen.getByTestId("embed-backend")).getByTestId(
+        "text-editor-mock-highlighted-code",
+      ),
+    ).toHaveTextContent("#background=false&bordered=true&titled=true");
+  });
+
+  it("should not render Question background option", async () => {
+    await setup({
+      props: { resourceType: "question" },
+      activeTab: "Look and Feel",
+    });
+
+    expect(screen.queryByText("Question")).not.toBeInTheDocument();
   });
 
   it("should preserve selected preview mode selection on tabs navigation", async () => {
@@ -530,13 +554,11 @@ describe("Static Embed Setup phase", () => {
 
     await userEvent.click(
       screen.getByRole("tab", {
-        name: "Appearance",
+        name: "Look and Feel",
       }),
     );
 
-    expect(
-      screen.getByText("Customizing your embed’s appearance"),
-    ).toBeVisible();
+    expect(screen.getByText("Customizing look and feel")).toBeVisible();
 
     expect(screen.getByLabelText("Preview")).toBeChecked();
 
@@ -577,7 +599,7 @@ describe("Static Embed Setup phase", () => {
 
     await userEvent.click(
       screen.getByRole("tab", {
-        name: "Appearance",
+        name: "Look and Feel",
       }),
     );
 
@@ -607,7 +629,7 @@ describe("Static Embed Setup phase", () => {
 
     await userEvent.click(
       screen.getByRole("tab", {
-        name: "Appearance",
+        name: "Look and Feel",
       }),
     );
 
@@ -615,9 +637,9 @@ describe("Static Embed Setup phase", () => {
       screen.getByTestId("text-editor-mock-highlighted-code"),
     ).toHaveTextContent(`params: { "${DATE_PARAMETER_MOCK.slug}": null }`);
 
-    await userEvent.click(screen.getByText("Transparent"));
+    await userEvent.click(screen.getByText("Dark"));
 
-    const appearanceChangedCode = `"#theme=transparent&bordered=true&titled=true"`;
+    const appearanceChangedCode = `"#theme=night&bordered=true&titled=true"`;
 
     expect(
       screen.getByTestId("text-editor-mock-highlighted-code"),

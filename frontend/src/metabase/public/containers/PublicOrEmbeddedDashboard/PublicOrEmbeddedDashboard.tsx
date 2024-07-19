@@ -146,6 +146,7 @@ const PublicOrEmbeddedDashboardInner = ({
   refreshPeriod,
   setRefreshElapsedHook,
   hasNightModeToggle,
+  background,
   bordered,
   titled,
   theme,
@@ -281,6 +282,7 @@ const PublicOrEmbeddedDashboardInner = ({
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
       dashboardId={dashboardId}
+      background={background}
       bordered={bordered}
       titled={titled}
       theme={theme}

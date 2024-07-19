@@ -9,9 +9,9 @@
   (maybe-put! [queue msg]
     "Put a message on the queue if there is space for it, otherwise drop it.
      Returns whether the item was enqueued.")
-  (blocking-put! [queue msg]
+  (blocking-put! [queue timeout msg]
     "Put a message on the queue. If necessary, block until there is space for it.")
-  (blocking-take! [queue]
+  (blocking-take! [queue timeout]
     "Take a message off the queue, blocking if necessary.")
   (clear! [queue]
     "Discard all messages on the given queue."))
@@ -25,14 +25,17 @@
   BoundedTransferQueue
   (maybe-put! [_ msg]
     (.offer async-queue msg))
-  (blocking-put! [_ msg]
-    (.offer sync-queue msg Long/MAX_VALUE TimeUnit/DAYS))
-  (blocking-take! [_]
-    ;; Async messages are given higher priority, as sync messages will never be dropped.
-    (or (.poll async-queue)
-        (.poll sync-queue block-ms TimeUnit/MILLISECONDS)
-        (do (Thread/sleep ^long sleep-ms)
-            (recur))))
+  (blocking-put! [_ timeout msg]
+    (.offer sync-queue msg timeout TimeUnit/MILLISECONDS))
+  (blocking-take! [_ timeout]
+    (loop [time-remaining timeout]
+      (when (pos? time-remaining)
+        ;; Async messages are given higher priority, as sync messages will never be dropped.
+        (or (.poll async-queue)
+            (.poll sync-queue block-ms TimeUnit/MILLISECONDS)
+            (do (Thread/sleep ^long sleep-ms)
+                ;; This is an underestimate, as the thread may have taken a while to wake up. That's OK.
+                (recur (- time-remaining block-ms sleep-ms)))))))
   (clear! [_]
     (.clear sync-queue)
     (.clear async-queue)))
@@ -56,19 +59,20 @@
             (when-not accepted?
               (.remove queued-set payload))
             accepted?)))))
-  (blocking-put! [_ msg]
+  (blocking-put! [_ timeout msg]
    ;; we cannot hold the lock while we push, so there is some chance of a duplicate
     (when (locking queued-set (.add queued-set (:payload msg msg)))
-      (.offer sync-queue msg Long/MAX_VALUE TimeUnit/DAYS)))
-  (blocking-take! [_]
-   ;; we lock here to avoid leaving a blocking entry behind that can never be cleared
-    (or (locking queued-set
-          (when-let [msg (or (.poll ^Queue async-queue)
-                             (.poll sync-queue block-ms TimeUnit/MILLISECONDS))]
-            (.remove queued-set (:payload msg msg))
-            msg))
-        (do (Thread/sleep ^long sleep-ms)
-            (recur))))
+      (.offer sync-queue msg timeout TimeUnit/MILLISECONDS)))
+  (blocking-take! [_ timeout]
+    (loop [time-remaining timeout]
+      ;; we lock here to avoid leaving a blocking entry behind that can never be cleared
+      (or (locking queued-set
+            (when-let [msg (or (.poll ^Queue async-queue)
+                               (.poll sync-queue block-ms TimeUnit/MILLISECONDS))]
+              (.remove queued-set (:payload msg msg))
+              msg))
+          (do (Thread/sleep ^long sleep-ms)
+              (recur (- time-remaining block-ms sleep-ms))))))
   (clear! [_]
     (locking queued-set
       (.clear sync-queue)

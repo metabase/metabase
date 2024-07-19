@@ -1391,15 +1391,10 @@
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s]
   (try
-    ;; TODO: Fixme! In following expression we were previously creating BasicDBObject's. As part of Monger removal
-    ;;       in favor of plain mongo-java-driver we now create Documents. I believe following conversion was and is
-    ;;       responsible for https://github.com/metabase/metabase/issues/38181. When pipeline is deserialized,
-    ;;       we end up with vector of `Document`s into which are appended new query stages, which are clojure
-    ;;       structures. When we render the query in "view native query" in query builder, clojure structures
-    ;;       are transformed to json correctly. But documents are rendered to their string representation (screenshot
-    ;;       in the issue). Possible fix could be to represent native queries in ejson v2, which conforms to json rfc,
-    ;;       hence there would be no need for special bson values handling. That is to be further investigated.
-    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument org.bson.Document.))
+    ;; Only way to parse _ejson array_ using bson library is through `BsonArray/parse`. That results in sequence
+    ;; of `org.bson.BsonDocument`s. Currently `org.bson.Document` fits our needs better as it (1) implements `Map`
+    ;; and (2) converts `BsonValue`s to java types.
+    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument .toJson org.bson.Document/parse))
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))

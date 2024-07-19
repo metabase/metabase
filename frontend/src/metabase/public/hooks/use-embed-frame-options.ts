@@ -9,6 +9,7 @@ import { DEFAULT_EMBED_DISPLAY_PARAMS } from "../constants";
 
 export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
   const {
+    background = true,
     bordered = isWithinIframe(),
     titled = DEFAULT_EMBED_DISPLAY_PARAMS.titled,
     theme = DEFAULT_EMBED_DISPLAY_PARAMS.theme,
@@ -23,6 +24,7 @@ export const useEmbedFrameOptions = ({ location }: { location: Location }) => {
   });
 
   return {
+    background,
     bordered,
     titled,
     theme,
