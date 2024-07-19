@@ -42,7 +42,7 @@ export const getMultiSelectOverrides =
       styles: (
         theme,
         { invalid }: MultiSelectStylesParams,
-        { size = "md" },
+        { size = "md", variant = "default" },
       ) => ({
         ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
@@ -54,6 +54,10 @@ export const getMultiSelectOverrides =
           paddingTop: theme.spacing.xs,
           paddingLeft: theme.spacing.xs,
           paddingBottom: theme.spacing.xs,
+          paddingRight:
+            variant === "unstyled"
+              ? RIGHT_SECTION_SIZES.unstyled
+              : RIGHT_SECTION_SIZES.default,
           alignItems: "center",
           "[data-with-icon=true] &": {
             paddingLeft: 0,
@@ -119,17 +123,11 @@ export const getMultiSelectOverrides =
             paddingTop: rem(7),
             paddingBottom: rem(7),
           },
-          values: {
-            paddingRight: RIGHT_SECTION_SIZES.default,
-          },
         }),
         unstyled: () => ({
           input: {
             paddingTop: rem(8),
             paddingBottom: rem(8),
-          },
-          values: {
-            paddingRight: RIGHT_SECTION_SIZES.unstyled,
           },
         }),
       },
