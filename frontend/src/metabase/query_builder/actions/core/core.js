@@ -35,6 +35,7 @@ import {
   getParameters,
   getSubmittableQuestion,
   getQueryResults,
+  getResultsMetadata,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
@@ -256,6 +257,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       rerunQuery = rerunQuery ?? isResultDirty;
     }
 
+    const resultsMetadata = getResultsMetadata(getState());
     const submittableQuestion = getSubmittableQuestion(getState(), question);
 
     // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
@@ -282,15 +284,15 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     await dispatch({
       type: API_UPDATE_QUESTION,
       payload: {
-        payload: updatedQuestion.card(),
+        card: updatedQuestion.card(),
         queryResults: getQueryResults(getState()),
       },
     });
 
-    if (isModel) {
+    if (isModel && resultsMetadata?.columns) {
       // this needs to happen after the question update completes in case we have changed the type
       // of the primary key field in the same update
-      await dispatch(updateModelIndexes(question));
+      await dispatch(updateModelIndexes(question, resultsMetadata.columns));
     }
 
     const metadataOptions = { reload: isModel || isMetric };

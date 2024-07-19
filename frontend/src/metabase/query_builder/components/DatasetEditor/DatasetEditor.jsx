@@ -28,7 +28,6 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getDatasetEditorTab,
   getIsResultDirty,
-  getMetadataDiff,
   getRawSeriesWithVisibleColumns,
   getResultsMetadata,
   getVisualizationSettings,
@@ -64,7 +63,6 @@ const propTypes = {
   visualizationSettings: PropTypes.object,
   datasetEditorTab: PropTypes.oneOf(["query", "metadata"]).isRequired,
   metadata: PropTypes.object,
-  metadataDiff: PropTypes.object.isRequired,
   resultsMetadata: PropTypes.shape({ columns: PropTypes.array }),
   isMetadataDirty: PropTypes.bool.isRequired,
   result: PropTypes.object,
@@ -99,7 +97,6 @@ function mapStateToProps(state) {
   return {
     rawSeries: getRawSeriesWithVisibleColumns(state),
     metadata: getMetadata(state),
-    metadataDiff: getMetadataDiff(state),
     visualizationSettings: getVisualizationSettings(state),
     datasetEditorTab: getDatasetEditorTab(state),
     isMetadataDirty: isResultsMetadataDirty(state),
@@ -209,7 +206,6 @@ function DatasetEditor(props) {
     result,
     resultsMetadata,
     metadata,
-    metadataDiff,
     isMetadataDirty,
     height,
     isDirty: isModelQueryDirty,
@@ -363,10 +359,9 @@ function DatasetEditor(props) {
   const handleSave = useCallback(async () => {
     const canBeDataset = checkCanBeModel(question);
     const isBrandNewDataset = !question.id();
-    const questionWithMetadata = question.setResultMetadataDiff(metadataDiff);
     const questionWithDisplay = isMetric
-      ? questionWithMetadata.setDefaultDisplay()
-      : questionWithMetadata;
+      ? question.setDefaultDisplay()
+      : question;
 
     if (canBeDataset && isBrandNewDataset) {
       await updateQuestion(questionWithDisplay, { rerunQuery: false });
@@ -381,7 +376,6 @@ function DatasetEditor(props) {
     }
   }, [
     question,
-    metadataDiff,
     isMetric,
     updateQuestion,
     onSave,

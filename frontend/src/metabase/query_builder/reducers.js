@@ -461,10 +461,10 @@ export const queryResults = handleActions(
       next: (state, { payload }) => (payload ? [payload] : state),
     },
     [API_CREATE_QUESTION]: {
-      next: (state, { payload: { queryResults } }) => queryResults,
+      next: (state, { payload: { queryResults } }) => queryResults ?? state,
     },
     [API_UPDATE_QUESTION]: {
-      next: (state, { payload: { queryResults } }) => queryResults,
+      next: (state, { payload: { queryResults } }) => queryResults ?? state,
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
   },

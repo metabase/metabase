@@ -1088,9 +1088,10 @@ export const getSubmittableQuestion = (state, question) => {
   const resultsMetadata = getResultsMetadata(state);
   const isResultDirty = getIsResultDirty(state);
 
-  if (question.type() === "model" && resultsMetadata) {
-    resultsMetadata.columns = cleanIndexFlags(resultsMetadata.columns);
-  }
+  const clearResultsMetadata =
+    question.type() === "model" && resultsMetadata
+      ? { columns: cleanIndexFlags(resultsMetadata.columns) }
+      : resultsMetadata;
 
   let submittableQuestion = question;
 
@@ -1104,7 +1105,7 @@ export const getSubmittableQuestion = (state, question) => {
   const cleanQuery = Lib.dropEmptyStages(submittableQuestion.query());
   submittableQuestion = submittableQuestion
     .setQuery(cleanQuery)
-    .setResultsMetadata(isResultDirty ? null : resultsMetadata);
+    .setResultsMetadata(isResultDirty ? null : clearResultsMetadata);
 
   return submittableQuestion;
 };

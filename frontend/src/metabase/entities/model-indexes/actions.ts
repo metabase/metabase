@@ -29,9 +29,7 @@ const filterForRefAndShouldIndex = (
 };
 
 export const updateModelIndexes =
-  (model: Question) => async (dispatch: Dispatch) => {
-    const fields = model.getResultMetadata();
-
+  (model: Question, fields: Field[]) => async (dispatch: Dispatch) => {
     const fieldsWithIndexFlags = fields.filter(filterForRefAndShouldIndex);
 
     if (fieldsWithIndexFlags.length === 0) {
