@@ -51,7 +51,7 @@ export const CleanupCollectionTable = ({
       {/* Collection */}
       <TableColumn width="280px" />
       {/* Last used at */}
-      <TableColumn width="140px" />
+      <TableColumn width="160px" />
     </colgroup>
     <thead className={CS.tableHead}>
       <tr>

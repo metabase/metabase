@@ -9,7 +9,6 @@
 
 .modalBody {
   position: relative;
-  overflow-x: scroll;
 }
 
 .modalFooter {

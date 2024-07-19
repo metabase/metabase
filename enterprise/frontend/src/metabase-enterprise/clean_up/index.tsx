@@ -4,7 +4,8 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
 
-if (hasPremiumFeature("auto_cleanup") || !!true) {
+// TODO: remove this once the feature flag is added
+if (hasPremiumFeature("clean-up") || !!true) {
   PLUGIN_COLLECTIONS.canCleanUp = true;
 
   PLUGIN_COLLECTIONS.cleanUpRoute = (

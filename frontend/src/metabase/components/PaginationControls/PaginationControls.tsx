@@ -26,6 +26,7 @@ export const PaginationControls = ({
   onNextPage,
   onPreviousPage,
   showIfSinglePage = false,
+  ...props
 }: PaginationControlsProps) => {
   const isSinglePage = total !== undefined && total <= pageSize;
 
@@ -38,7 +39,13 @@ export const PaginationControls = ({
     total != null ? isLastPage(page, pageSize, total) : !onNextPage;
 
   return (
-    <Group align="center" fw="bold" aria-label="pagination" role="navigation">
+    <Group
+      align="center"
+      fw="bold"
+      aria-label="pagination"
+      role="navigation"
+      {...props}
+    >
       <Text span mr="sm">
         {page * pageSize + 1} - {page * pageSize + itemsLength}
         {showTotal && (

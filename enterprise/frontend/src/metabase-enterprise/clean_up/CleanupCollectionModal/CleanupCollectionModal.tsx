@@ -167,12 +167,14 @@ const _CleanupCollectionModal = ({
           mih="5.5rem"
           justify="end"
           className={CS.modalFooter}
+          data-testid="cleanup-collection-modal-footer"
         >
           <PaginationControls
             showTotal
             itemsLength={items.length}
             {...pagination}
             total={total}
+            data-testid="cleanup-collection-modal-pagination"
           />
         </Flex>
         <CleanupCollectionBulkActions

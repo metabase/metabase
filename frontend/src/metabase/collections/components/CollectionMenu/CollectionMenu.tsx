@@ -47,7 +47,8 @@ export const CollectionMenu = ({
     PLUGIN_COLLECTIONS.canCleanUp &&
     !isEmptyCollection &&
     !isInstanceAnalyticsCustom &&
-    !isTrashed;
+    !isTrashed &&
+    canWrite;
 
   if (isAdmin && !isRoot && canWrite) {
     items.push(
