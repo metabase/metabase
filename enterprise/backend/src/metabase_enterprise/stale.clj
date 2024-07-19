@@ -15,7 +15,7 @@
    [:cutoff-date [:time/local-date {:doc "The cutoff date for stale content."}]]
    [:limit  [:maybe {:doc "The limit for pagination."} :int]]
    [:offset [:maybe {:doc "The offset for pagination."} :int]]
-   [:sort-column  [:enum {:doc "The column to sort by."} :name :last_viewed_at]]
+   [:sort-column  [:enum {:doc "The column to sort by."} :name :last_used_at]]
    [:sort-direction  [:enum {:doc "The direction to sort by."} :asc :desc]]])
 
 (defmulti ^:private find-stale-query
@@ -27,7 +27,7 @@
   {:select [:report_card.id
             [(h2x/literal "Card") :model]
             [:report_card.name :name]
-            [:last_used_at :last_viewed_at]]
+            :last_used_at]
    :from :report_card
    :left-join [:moderation_review [:and
                                    [:= :moderation_review.moderated_item_id :report_card.id]
@@ -59,7 +59,7 @@
   {:select [:report_dashboard.id
             [(h2x/literal "Dashboard") :model]
             [:report_dashboard.name :name]
-            :last_viewed_at]
+            [:last_viewed_at :last_used_at]]
    :from :report_dashboard
    :left-join [:pulse [:and
                        [:= :pulse.archived false]
@@ -80,7 +80,7 @@
 (defn- sort-column [column]
   (case column
     :name :%lower.name
-    :last_viewed_at :last_viewed_at))
+    :last_used_at :last_used_at))
 
 (defn- queries [args]
   (for [model [:model/Card :model/Dashboard]]
@@ -116,7 +116,7 @@
 
   - `limit` / `offset`: to support pagination
 
-  - `sort-column`: one of `:name` or `:last_viewed_at` (column to sort on)
+  - `sort-column`: one of `:name` or `:last_used_at` (column to sort on)
 
   - `sort-direction`: `:asc` or `:desc`
 
