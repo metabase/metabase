@@ -4,7 +4,6 @@ import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
 import CS from "metabase/css/core/index.css";
 import { editQuestion } from "metabase/dashboard/actions";
 import { getParameterValuesBySlugMap } from "metabase/dashboard/selectors";
@@ -15,6 +14,7 @@ import { downloadQueryResults } from "metabase/query_builder/actions";
 import QueryDownloadPopover from "metabase/query_builder/components/QueryDownloadPopover";
 import { Icon } from "metabase/ui";
 import { SAVING_DOM_IMAGE_HIDDEN_CLASS } from "metabase/visualizations/lib/save-chart-image";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import InternalQuery from "metabase-lib/v1/queries/InternalQuery";
 import type {

@@ -3,7 +3,6 @@ import { connect } from "react-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
 
-import * as Lib from "metabase-lib";
 import { isActionDashCard } from "metabase/actions/utils";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
@@ -25,6 +24,7 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
   getParameterSubType,
