@@ -1080,3 +1080,68 @@ describe("issue 34514", () => {
     });
   }
 });
+
+describe("issue 28270", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createQuestion(
+      {
+        type: "model",
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("shows object relationships when model-based ad-hoc question has a filter (metabase#28270)", () => {
+    openFirstObjectDetails();
+
+    cy.wait(["@dataset", "@dataset"]);
+
+    modal().within(() => {
+      cy.findByTestId("fk-relation-orders")
+        .should("be.visible")
+        .and("contain.text", "93")
+        .and("contain.text", "Orders");
+      cy.findByTestId("fk-relation-reviews")
+        .should("be.visible")
+        .and("contain.text", "8")
+        .and("contain.text", "Reviews");
+
+      cy.icon("close").click();
+    });
+
+    tableHeaderClick("Title");
+    popover().findByText("Filter by this column").click();
+    popover().findByLabelText("Filter operator").click();
+    popover().last().findByText("Contains").click();
+    popover().findByLabelText("Filter value").type("a,");
+    popover().button("Add filter").click();
+
+    openFirstObjectDetails();
+
+    cy.wait(["@dataset", "@dataset"]);
+
+    modal().within(() => {
+      cy.findByTestId("fk-relation-orders")
+        .should("be.visible")
+        .and("contain.text", "93") // TODO: update this number
+        .and("contain.text", "Orders");
+      cy.findByTestId("fk-relation-reviews")
+        .should("be.visible")
+        .and("contain.text", "8") // TODO: update this number
+        .and("contain.text", "Reviews");
+
+      cy.icon("close").click();
+    });
+  });
+
+  function openFirstObjectDetails() {
+    cy.findAllByTestId("cell-data").eq(8).should("have.text", "1").click();
+  }
+});
