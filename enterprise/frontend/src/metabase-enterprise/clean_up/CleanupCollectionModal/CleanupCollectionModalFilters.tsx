@@ -29,8 +29,9 @@ export const CleanupCollectionModalFilters = ({
     style={{ marginInlineEnd: ".25rem" }}
   >
     <Text fw="bold" display="inline-flex" style={{ alignItems: "center" }}>
-      {c(`Not used in over <time-span>`).jt`Not used in over ${(
+      {c("{0} is a duration of time (e.g.: 2 months)").jt`Not used in over ${(
         <Select
+          key="select"
           icon={<Icon name="calendar" />}
           data={dateFilterOptions}
           value={dateFilter}

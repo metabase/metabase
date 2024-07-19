@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,11 +14,11 @@ import { Flex, Modal } from "metabase/ui";
 import type { StaleCollectionItem } from "metabase-types/api";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
-import { CleanupCleanState } from "./CleanupCleanState";
 import { CleanupCollectionBulkActions } from "./CleanupCollectionBulkActions";
 import CS from "./CleanupCollectionModal.module.css";
 import { CleanupCollectionModalFilters } from "./CleanupCollectionModalFilters";
 import { CleanupCollectionTable } from "./CleanupCollectionTable";
+import { CleanupEmptyState } from "./CleanupEmptyState";
 import { usePagination } from "./hooks";
 import {
   type DateFilter,
@@ -31,7 +32,7 @@ interface CleanupCollectionModalProps {
   params: { slug: string };
 }
 
-export const CleanupCollectionModal = ({
+const _CleanupCollectionModal = ({
   onClose: handleClose,
   params: { slug },
 }: CleanupCollectionModalProps) => {
@@ -129,7 +130,12 @@ export const CleanupCollectionModal = ({
           <Modal.Title fz="20px">{t`Select unused items to move to trash`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
-        <Modal.Body px="2.5rem" mih={{ md: 646 }} className={CS.modalBody}>
+        <Modal.Body
+          px="2.5rem"
+          pb="0"
+          mih={{ md: 646 }}
+          className={CS.modalBody}
+        >
           <CleanupCollectionModalFilters
             dateFilter={dateFilter}
             recursiveFilter={recursiveFilter}
@@ -138,7 +144,7 @@ export const CleanupCollectionModal = ({
           />
           <DelayedLoadingAndErrorWrapper loading={isLoading} error={error}>
             {items.length === 0 ? (
-              <CleanupCleanState duration={getDateFilterLabel(dateFilter)} />
+              <CleanupEmptyState duration={getDateFilterLabel(dateFilter)} />
             ) : (
               <CleanupCollectionTable
                 items={items}
@@ -156,8 +162,9 @@ export const CleanupCollectionModal = ({
         </Modal.Body>
         <Flex
           px="2.5rem"
+          pt="1.5rem"
           pb="2rem"
-          mih="4rem"
+          mih="5.5rem"
           justify="end"
           className={CS.modalFooter}
         >
@@ -176,3 +183,5 @@ export const CleanupCollectionModal = ({
     </Modal.Root>
   );
 };
+
+export const CleanupCollectionModal = withRouter(_CleanupCollectionModal);

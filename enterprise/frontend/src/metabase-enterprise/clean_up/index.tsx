@@ -4,11 +4,10 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
 
-// TODO: before merging, remove second conditional
 if (hasPremiumFeature("auto_cleanup") || !!true) {
   PLUGIN_COLLECTIONS.canCleanUp = true;
 
-  (PLUGIN_COLLECTIONS.CLEAN_UP_ROUTE as any) = (
-    <ModalRoute path="cleanup" modal={CleanupCollectionModal as any} />
+  PLUGIN_COLLECTIONS.cleanUpRoute = (
+    <ModalRoute path="cleanup" modal={CleanupCollectionModal} />
   );
 }

@@ -286,7 +286,7 @@ export const PLUGIN_COLLECTIONS = {
     items: Item[],
   ) => items as Item[],
   canCleanUp: false,
-  CLEAN_UP_ROUTE: null,
+  cleanUpRoute: null as React.ReactElement | null,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<

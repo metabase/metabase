@@ -9,9 +9,11 @@
 
 .modalBody {
   position: relative;
-  overflow-y: scroll;
+  overflow-x: scroll;
 }
 
 .modalFooter {
   background: white;
+  position: sticky;
+  bottom: 0;
 }

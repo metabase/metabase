@@ -25,8 +25,10 @@ export const CollectionMenu = ({
   isPersonalCollectionChild,
   onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
-  // we don't want any of the items, we just want to know how many there are in the collection
-  const query = useListCollectionItemsQuery({ id: collection.id, limit: 0 });
+  const query = useListCollectionItemsQuery({
+    id: collection.id,
+    limit: 0, // we don't want any of the items, we just want to know how many there are in the collection
+  });
   const collectionItemCount = query.data?.total ?? 0;
 
   const items = [];
