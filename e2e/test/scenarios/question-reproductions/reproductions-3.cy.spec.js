@@ -1589,8 +1589,7 @@ describe("issue 44668", () => {
   });
 });
 
-// TODO: unskip when metabase#44974 is fixed
-describe.skip("issue 44974", () => {
+describe("issue 44974", () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {
@@ -1601,9 +1600,9 @@ describe.skip("issue 44974", () => {
   it("entity picker should not offer to join with a table or a question from a different database (metabase#44974)", () => {
     withDatabase(PG_DB_ID, ({ PEOPLE_ID }) => {
       const questionDetails = {
-        name: "Question 44794 in Postgres DB",
+        name: "Question 44974 in Postgres DB",
+        database: PG_DB_ID,
         query: {
-          database: PG_DB_ID,
           "source-table": PEOPLE_ID,
           limit: 1,
         },
@@ -1618,11 +1617,8 @@ describe.skip("issue 44974", () => {
       join();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        entityPickerModalTab("Recents").should("not.exist");
+        entityPickerModalTab("Saved questions").click();
         cy.findByText(questionDetails.name).should("not.exist");
       });
     });

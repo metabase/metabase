@@ -1,5 +1,5 @@
 import type { CardDisplayType } from "./card";
-import type { InitialSyncStatus } from "./database";
+import type { DatabaseId, InitialSyncStatus } from "./database";
 
 export const ACTIVITY_MODELS = [
   "table",
@@ -31,6 +31,7 @@ export interface RecentTableItem extends BaseRecentItem {
 export interface RecentCollectionItem extends BaseRecentItem {
   model: "collection" | "dashboard" | "dataset" | "card";
   can_write: boolean;
+  database_id?: DatabaseId; // for models and questions
   parent_collection: {
     id: number | null;
     name: string;
