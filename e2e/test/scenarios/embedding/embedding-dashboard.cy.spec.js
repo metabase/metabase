@@ -559,12 +559,25 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       });
     });
 
-    visitIframe();
-    // The ID default (1 and 2) should apply, because it is disabled.
-    // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
-    // The Source default ('Facebook') should not apply because the param is locked but the value is unset
-    // If either the Name or Source default applied the result would be 0.
-    cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+    cy.get("@dashboardId").then(dashboardId => {
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: { source: [] },
+      };
+
+      visitEmbeddedPage(payload);
+
+      // wait for the results to load
+
+      // The ID default (1 and 2) should apply, because it is disabled.
+      // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
+      // The Source default ('Facebook') should not apply because the param is locked but the value is unset
+      // If either the Name or Source default applied the result would be 0.
+
+      cy.contains("Test Dashboard");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+    });
+    //visitIframe();
   });
 });
 
