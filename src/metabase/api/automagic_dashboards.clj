@@ -167,7 +167,7 @@
   {entity (mu/with-api-error-message
             (into [:enum] entities)
             (deferred-tru "Invalid entity type"))}
-  (api.query-metadata/dashboard-metadata
+  (api.query-metadata/batch-fetch-dashboard-metadata
     (get-automagic-dashboard entity entity-id-or-query nil)))
 
 (defn linked-entities
