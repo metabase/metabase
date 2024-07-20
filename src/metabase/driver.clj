@@ -627,6 +627,9 @@
     ;; many databases in it.
     :connection/multiple-databases
 
+    ;; Does this driver support UUID type
+    :uuid-type
+
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
     :window-functions/cumulative
 
