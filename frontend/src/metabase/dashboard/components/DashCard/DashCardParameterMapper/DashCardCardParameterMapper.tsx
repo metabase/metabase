@@ -2,7 +2,6 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { connect } from "react-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { isActionDashCard } from "metabase/actions/utils";
 import TippyPopover from "metabase/components/Popover/TippyPopover";
@@ -25,6 +24,7 @@ import {
   MOBILE_HEIGHT_BY_DISPLAY_TYPE,
   MOBILE_DEFAULT_CARD_HEIGHT,
 } from "metabase/visualizations/shared/utils/sizes";
+import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import {
   getParameterSubType,
@@ -191,7 +191,8 @@ export function DashCardCardParameterMapper({
       return false;
     }
 
-    return question.canRunAdhocQuery();
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    return isEditable;
   }, [isVirtual, dashcard, card.dataset_query, question]);
 
   const { buttonVariant, buttonTooltip, buttonText, buttonIcon } =
