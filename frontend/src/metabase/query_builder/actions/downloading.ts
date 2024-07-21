@@ -31,7 +31,7 @@ interface DownloadQueryResultsParams {
   method: string;
   url: string;
   body?: Record<string, unknown>;
-  params?: URLSearchParams;
+  params?: URLSearchParams | string;
 }
 
 export const downloadQueryResults =
@@ -76,7 +76,8 @@ const getDatasetParams = ({
   visualizationSettings,
 }: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
-  const isQuestionInStaticEmbedDashboard = dashcardId != null && token != null;
+  const isQuestionInStaticEmbedDashboard =
+    dashcardId != null && cardId != null && token != null;
 
   // Formatting is always enabled for Excel
   const format_rows = enableFormatting && type !== "xlsx" ? "true" : "false";
@@ -89,7 +90,8 @@ const getDatasetParams = ({
     };
   }
 
-  const isQuestionInPublicDashboard = dashboardId != null && uuid != null;
+  const isQuestionInPublicDashboard =
+    dashboardId != null && cardId != null && uuid != null;
   if (isQuestionInPublicDashboard) {
     return {
       method: "POST",
@@ -101,7 +103,8 @@ const getDatasetParams = ({
     };
   }
 
-  const isDashboard = dashboardId != null && dashcardId != null;
+  const isDashboard =
+    dashboardId != null && dashcardId != null && cardId != null;
   if (isDashboard) {
     return {
       method: "POST",
@@ -161,7 +164,10 @@ const getDatasetParams = ({
   };
 };
 
-export function getDatasetDownloadUrl(url: string, params?: URLSearchParams) {
+export function getDatasetDownloadUrl(
+  url: string,
+  params?: URLSearchParams | string,
+) {
   url = url.replace(api.basename, ""); // make url relative if it's not
   if (params) {
     url += `?${params.toString()}`;

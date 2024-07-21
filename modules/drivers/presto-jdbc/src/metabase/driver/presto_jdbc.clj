@@ -44,7 +44,6 @@
                               :binning                         true
                               :expression-aggregations         true
                               :expressions                     true
-                              :foreign-keys                    true
                               :native-parameters               true
                               :now                             true
                               :set-timezone                    true
@@ -819,3 +818,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (prefer-method driver/database-supports? [:presto-jdbc :set-timezone] [:sql-jdbc :set-timezone])
+
+(defmethod driver/escape-alias :presto-jdbc
+  [_driver s]
+  ((get-method driver/escape-alias :sql-jdbc)
+   :presto-jdbc
+   ;; Source of the pattern:
+   ;; https://github.com/prestodb/presto/blob/b73ab7df31e4d969c44fd953e5cb8e36a18eb55b/presto-parser/src/main/java/com/facebook/presto/sql/tree/Identifier.java#L26
+   (str/replace s #"(^[^a-zA-Z_])|([^a-zA-Z0-9_:@])" "_")))

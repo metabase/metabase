@@ -472,7 +472,7 @@ export function assertDashboardFullWidth() {
 }
 
 export function createDashboardWithTabs({
-  dashcards,
+  dashcards = [],
   tabs,
   ...dashboardDetails
 }) {
