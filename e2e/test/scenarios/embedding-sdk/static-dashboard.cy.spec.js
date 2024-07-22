@@ -1,7 +1,9 @@
-import { USERS } from "e2e/support/cypress_data";
+import {
+  ORDERS_DASHBOARD_DASHCARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   getTextCardDetails,
-  restore,
   setTokenFeatures,
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
@@ -16,24 +18,25 @@ import {
 
 describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
-    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
     setupJwt();
 
-    cy.createUserFromRawData({
-      ...USERS.normal,
-      firstName: "Rene",
-      lastName: "Mueller",
-      email: "rene@example.com",
-    });
-
-    const textCard = getTextCardDetails({ size_y: 1 });
+    const textCard = getTextCardDetails({ col: 16 });
+    const questionCard = {
+      id: ORDERS_DASHBOARD_DASHCARD_ID,
+      card_id: ORDERS_QUESTION_ID,
+      row: 0,
+      col: 0,
+      size_x: 16,
+      size_y: 8,
+      visualization_settings: {},
+    };
 
     cy.createDashboard(
       {
         name: "Embedding Sdk Test Dashboard",
-        dashcards: [textCard],
+        dashcards: [questionCard, textCard],
       },
       { wrapId: true },
     );
@@ -70,7 +73,8 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
       .within(() => {
         cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
-        cy.findByText("Text card").should("be.visible"); // card content
+        cy.findByText("Orders").should("be.visible"); // question card content
+        cy.findByText("Text card").should("be.visible"); // text card content
       });
   });
 });
