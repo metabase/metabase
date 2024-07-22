@@ -40,7 +40,7 @@ const shouldUseEslint =
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
-  plugins: devMode ? ["@emotion", "react-refresh/babel"] : ["@emotion"],
+  plugins: ["@emotion"],
 };
 
 const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
