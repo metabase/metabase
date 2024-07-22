@@ -54,31 +54,37 @@ export MB_DB_PASS=<password>
 java -jar metabase.jar
 ```
 
-## [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/)
+## MySQL or MariaDB
 
-We recommend [PostgreSQL](#postgresql), but you can also use MySQL or MariaDB.
+We recommend [PostgreSQL](#postgresql), but you can also use [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/).
 
-The minimum recommended version is MySQL 8.0.17 or MariaDB
-10.2.2, and the `utf8mb4` character set is required. You can change the application database to use MySQL using
-environment variables like this:
+The minimum recommended version is MySQL 8.0.17 or MariaDB 10.2.2, and the `utf8mb4` character set is required.
 
-    export MB_DB_TYPE=mysql
-    export MB_DB_DBNAME=metabase
-    export MB_DB_PORT=3306
-    export MB_DB_USER=<username>
-    export MB_DB_PASS=<password>
-    export MB_DB_HOST=localhost
-    java -jar metabase.jar
 
-Metabase will not create this database for you. Example SQL statement to create the database:
+You can change the application database to use MySQL using environment variables like this:
 
-    CREATE DATABASE metabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```sh
+export MB_DB_TYPE=mysql
+export MB_DB_DBNAME=metabase
+export MB_DB_PORT=3306
+export MB_DB_USER=<username>
+export MB_DB_PASS=<password>
+export MB_DB_HOST=localhost
+java -jar metabase.jar
+```
 
-This will tell Metabase to look for its application database using the supplied MySQL connection information. Metabase
-also supports providing a full JDBC connection string if you have additional parameters:
+Metabase won't create this database for you. Example SQL statement to create the database:
 
-    export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:3306/metabase?user=<username>&password=<password>"
-    java -jar metabase.jar
+```sh
+CREATE DATABASE metabase CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+The following command will tell Metabase to look for its application database using the supplied MySQL connection information. Metabase also supports providing a full JDBC connection string if you have additional parameters:
+
+```sh
+export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:3306/metabase?user=<username>&password=<password>"
+java -jar metabase.jar
+```
 
 As with Postgres, `MB_DB_CONNECTION_URI` can also be used in combination with `MB_DB_USER` and/or `MB_DB_PASS` if you
 want to pass one or both separately from the rest of the JDBC connection string:
