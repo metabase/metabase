@@ -425,7 +425,7 @@
                        :order-by [[:id :desc]]
                        :limit    1}
                       :moderated_status]]
-                    (= :model card-type)
+                    (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and

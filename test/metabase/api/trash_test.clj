@@ -1,9 +1,13 @@
 (ns metabase.api.trash-test
   (:require  [clojure.test :refer [deftest testing is]]
              [metabase.api.card-test :refer [card-with-name-and-query]]
-             [metabase.api.dashboard-test :refer [dashboard-defaults]]
              [metabase.models.collection :as collection]
              [metabase.test :as mt]))
+
+(def dashboard-defaults {:name          "Dashboard"
+                         :parameters    [{:id "abc123", :name "test", :type "date"}]
+                         :cache_ttl     1234
+                         :collection_id nil})
 
 (deftest cannot-create-in-trash
   (testing "Cannot create a card in the trash"

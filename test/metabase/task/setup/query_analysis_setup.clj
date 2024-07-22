@@ -37,7 +37,7 @@
                   (t2/delete! :model/QueryField :card_id [:in (map :id [c1 c2 c3 c4 arch])])
 
                   ;; Make sure some other card has analysis
-                  (query-analysis/analyze-card! (:id c3))
+                  (query-analysis/analyze-card! c3)
 
                   (mt/call-with-map-params f [c1 c2 c3 c4 arch]))))
 

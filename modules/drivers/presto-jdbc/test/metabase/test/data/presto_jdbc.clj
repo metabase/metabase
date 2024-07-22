@@ -3,7 +3,6 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.presto-jdbc :as presto-jdbc]
@@ -25,9 +24,6 @@
 (sql-jdbc.tx/add-test-extensions! :presto-jdbc)
 
 (defmethod tx/sorts-nil-first? :presto-jdbc [_ _] false)
-
-;; during unit tests don't treat presto as having FK support
-(defmethod driver/database-supports? [:presto-jdbc :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 (defmethod tx/aggregate-column-info :presto-jdbc
   ([driver ag-type]
