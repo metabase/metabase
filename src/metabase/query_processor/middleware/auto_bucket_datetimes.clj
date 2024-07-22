@@ -136,7 +136,7 @@
 (mu/defn ^:private date-or-datetime-clause?
   [{base-type :base-type, effective-type :effective-type} :- ::column-type-info]
   (when (and (nil? base-type) (nil? effective-type))
-    (log/warn "`type-info` is missing `base-type` and `effective-type`."))
+    (log/debug "`type-info` is missing `base-type` and `effective-type`."))
   (some (fn [field-type]
           (some #(isa? field-type %)
                 [:type/Date :type/DateTime]))
