@@ -7,6 +7,7 @@ import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField"
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
 import DatabaseHostnameSectionField from "./components/DatabaseHostnameSectionField";
+import DatabaseManagedIdentitySectionField from "./components/DatabaseManagedIdentitySectionField";
 import DatabaseScheduleToggleField from "./components/DatabaseScheduleToggleField";
 import DatabaseSshDescription from "./components/DatabaseSshDescription";
 import DatabaseSslKeyDescription from "./components/DatabaseSslKeyDescription";
@@ -106,6 +107,9 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "use-hostname": {
     type: DatabaseHostnameSectionField,
+  },
+  "use-managed-identity": {
+    type: DatabaseManagedIdentitySectionField,
   },
   "let-user-control-scheduling": {
     type: DatabaseScheduleToggleField,
