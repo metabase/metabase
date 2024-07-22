@@ -51,7 +51,7 @@ describe("issue 40064", () => {
     getNotebookStep("expression").findByText("Tax3").click();
     enterCustomColumnDetails({ formula: "[Tax3] * 3", name: "Tax3" });
     popover().within(() => {
-      cy.findByText("Unknown Field: Tax3").should("be.visible");
+      cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
     });
   });

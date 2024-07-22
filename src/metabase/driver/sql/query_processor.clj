@@ -26,7 +26,9 @@
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]))
+   [metabase.util.malli :as mu])
+  (:import
+   (java.util UUID)))
 
 (set! *warn-on-reflection* true)
 
@@ -500,8 +502,17 @@
   (inline-num n))
 
 (defmethod ->honeysql [:sql :value]
-  [driver [_ value]]
-  (->honeysql driver value))
+  [driver [_ value {base-type :base_type effective-type :effective_type}]]
+  (when (some? value)
+    (condp #(isa? %2 %1) (or effective-type base-type)
+      ;; When we are dealing with a uuid type we should try to convert to a real UUID
+      ;; If that fails,, we will add a fallback cast to "text"
+      :type/UUID (when (not= "" value) ; support is-empty/non-empty checks
+                   (try
+                     (UUID/fromString value)
+                     (catch IllegalArgumentException _
+                       (h2x/with-type-info value {:database-type "varchar"}))))
+      (->honeysql driver value))))
 
 (defmethod ->honeysql [:sql :expression]
   [driver [_ expression-name {::add/keys [source-table source-alias]} :as _clause]]
@@ -1217,17 +1228,48 @@
         expr
         [:lower expr]))))
 
+(mu/defn ^:private maybe-cast-uuid-for-equality
+  "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
+  [driver field arg]
+  (if (and (isa? (or (:effective-type (get field 2))
+                     (:base-type (get field 2)))
+                 :type/UUID)
+           ;; If we could not convert the arg to a UUID then we have to cast the Field.
+           ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
+           (not (uuid? (->honeysql driver arg)))
+           ;; Check for inlined values
+           (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
+    [::cast field "varchar"]
+    field))
+
+(mu/defn ^:private maybe-cast-uuid-for-text-compare
+  "For :contains, :starts-with, and :ends-with.
+   Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
+  [field]
+  (if (isa? (or (:effective-type (get field 2))
+                (:base-type (get field 2)))
+            :type/UUID)
+    [::cast field "varchar"]
+    field))
+
+(defmethod ->honeysql [:sql ::cast]
+  [driver [_ expr database-type]]
+  (h2x/maybe-cast database-type (->honeysql driver expr)))
+
 (defmethod ->honeysql [:sql :starts-with]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver field) (generate-pattern driver nil arg "%" options) options))
+  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
+               (generate-pattern driver nil arg "%" options) options))
 
 (defmethod ->honeysql [:sql :contains]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg "%" options) options))
+  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
+               (generate-pattern driver "%" arg "%" options) options))
 
 (defmethod ->honeysql [:sql :ends-with]
   [driver [_ field arg options]]
-  (like-clause (->honeysql driver field) (generate-pattern driver "%" arg nil options) options))
+  (like-clause (->honeysql driver (maybe-cast-uuid-for-text-compare field))
+               (generate-pattern driver "%" arg nil options) options))
 
 (defmethod ->honeysql [:sql :between]
   [driver [_ field min-val max-val]]
@@ -1252,7 +1294,7 @@
 (defmethod ->honeysql [:sql :=]
   [driver [_ field value]]
   (assert field)
-  [:= (->honeysql driver field) (->honeysql driver value)])
+  [:= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)])
 
 (defn- correct-null-behaviour
   [driver [op & args :as clause]]
@@ -1269,8 +1311,8 @@
 (defmethod ->honeysql [:sql :!=]
   [driver [_ field value]]
   (if (nil? (qp.wrap-value-literals/unwrap-value-literal value))
-    [:not= (->honeysql driver field) (->honeysql driver value)]
-    (correct-null-behaviour driver [:not= field value])))
+    [:not= (->honeysql driver (maybe-cast-uuid-for-equality driver field value)) (->honeysql driver value)]
+    (correct-null-behaviour driver [:not= (maybe-cast-uuid-for-equality driver field value) value])))
 
 (defmethod ->honeysql [:sql :and]
   [driver [_tag & subclauses]]

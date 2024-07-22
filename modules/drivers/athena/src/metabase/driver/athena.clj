@@ -22,7 +22,8 @@
    [metabase.util.log :as log])
   (:import
    (java.sql Connection DatabaseMetaData)
-   (java.time OffsetDateTime ZonedDateTime)))
+   (java.time OffsetDateTime ZonedDateTime)
+   [java.util UUID]))
 
 (set! *warn-on-reflection* true)
 
@@ -35,7 +36,9 @@
 (doseq [[feature supported?] {:datetime-diff                 true
                               :foreign-keys                  true
                               :nested-fields                 false
+                              :uuid-type                     true
                               :connection/multiple-databases true
+                              :identifiers-with-spaces       false
                               :metadata/key-constraints      false
                               :test/jvm-timezone-setting     false}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
@@ -100,6 +103,7 @@
     :float                               :type/Float
     :integer                             :type/Integer
     :int                                 :type/Integer
+    :uuid                                :type/UUID
     :map                                 :type/*
     :smallint                            :type/Integer
     :string                              :type/Text
@@ -125,6 +129,14 @@
   (condp = (u/lower-case-en (.getColumnTypeName rsmeta i))
     "time"
     (fn read-column-as-LocalTime [] (.getObject rs i java.time.LocalTime))
+
+    "uuid"
+    (fn read-column-as-UUID []
+      (when-let [s (.getObject rs i)]
+        (try
+          (UUID/fromString s)
+          (catch IllegalArgumentException _
+            s))))
 
     "timestamp with time zone"
     (fn read-column-as-ZonedDateTime []
@@ -178,6 +190,11 @@
   (if *loading-data*
     (unprepare/unprepare-value driver (t/offset-date-time t))
     (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t))))
+
+(defmethod unprepare/unprepare-value [:athena UUID]
+  [_driver uuid]
+  ;; since we inline, we need to cast to string to uuid
+  (format "cast('%s' as uuid)" uuid))
 
 ;;; for some evil reason Athena expects `OFFSET` *before* `LIMIT`, unlike every other database in the known universe; so
 ;;; we'll have to have a custom implementation of `:page` here and do our own version of `:offset` that comes before

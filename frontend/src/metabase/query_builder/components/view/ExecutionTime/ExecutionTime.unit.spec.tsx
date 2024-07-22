@@ -10,6 +10,12 @@ describe("ExecutionTime", () => {
     expect(container).toBeEmptyDOMElement();
   });
 
+  it("renders nothing when time is `null`", () => {
+    const { container } = render(<ExecutionTime time={null} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("renders formatted time when time is provided", () => {
     render(<ExecutionTime time={100} />);
 

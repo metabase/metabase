@@ -879,6 +879,22 @@ describe("StringFilterValuePicker", () => {
 
       expect(onChange).toHaveBeenLastCalledWith([]);
     });
+
+    it("should allow to add multiple values that extend each other (metabase#21915)", async () => {
+      const { onChange, onFocus, onBlur } = await setupStringPicker({
+        query,
+        stageIndex,
+        column,
+        values: ["a"],
+      });
+
+      await userEvent.type(screen.getByLabelText("Filter value"), "ab");
+      await userEvent.tab();
+
+      expect(onFocus).toHaveBeenCalled();
+      expect(onChange).toHaveBeenLastCalledWith(["a", "ab"]);
+      expect(onBlur).toHaveBeenCalled();
+    });
   });
 });
 

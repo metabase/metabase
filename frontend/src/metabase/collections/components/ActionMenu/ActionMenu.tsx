@@ -15,7 +15,6 @@ import {
   isItemPinned,
   isPreviewEnabled,
 } from "metabase/collections/utils";
-import EventSandbox from "metabase/components/EventSandbox";
 import { canUseMetabotOnDatabase } from "metabase/metabot/utils";
 import { getSetting } from "metabase/selectors/settings";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -117,23 +116,19 @@ function ActionMenu({
   }, [item]);
 
   return (
-    // this component is used within a `<Link>` component,
-    // so we must prevent events from triggering the activation of the link
-    <EventSandbox preventDefault>
-      <EntityItemMenu
-        className={className}
-        item={item}
-        isBookmarked={isBookmarked}
-        isXrayEnabled={isXrayEnabled}
-        canUseMetabot={canUseMetabot}
-        onPin={canPin ? handlePin : undefined}
-        onMove={canMove ? handleMove : undefined}
-        onCopy={item.copy ? handleCopy : undefined}
-        onArchive={canArchive ? handleArchive : undefined}
-        onToggleBookmark={handleToggleBookmark}
-        onTogglePreview={canPreview ? handleTogglePreview : undefined}
-      />
-    </EventSandbox>
+    <EntityItemMenu
+      className={className}
+      item={item}
+      isBookmarked={isBookmarked}
+      isXrayEnabled={isXrayEnabled}
+      canUseMetabot={canUseMetabot}
+      onPin={canPin ? handlePin : undefined}
+      onMove={canMove ? handleMove : undefined}
+      onCopy={item.copy ? handleCopy : undefined}
+      onArchive={canArchive ? handleArchive : undefined}
+      onToggleBookmark={handleToggleBookmark}
+      onTogglePreview={canPreview ? handleTogglePreview : undefined}
+    />
   );
 }
 

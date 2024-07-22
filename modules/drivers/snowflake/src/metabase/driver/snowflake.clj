@@ -54,6 +54,7 @@
                               :connection-impersonation-requires-role true
                               :convert-timezone                       true
                               :datetime-diff                          true
+                              :identifiers-with-spaces                true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
@@ -194,7 +195,7 @@
         (maybe-add-role-to-spec-url details))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :snowflake
-  [_ base-type]
+  [_driver base-type]
   ({:NUMBER                     :type/Number
     :DECIMAL                    :type/Decimal
     :NUMERIC                    :type/Number
@@ -230,7 +231,8 @@
     :TIMESTAMPNTZ               :type/DateTime
     ;; timestamp with time zone normalized to UTC, similar to Postgres
     :TIMESTAMPTZ                :type/DateTimeWithLocalTZ
-    :VARIANT                    :type/*
+    ;; `VARIANT` is allowed to be any type. See https://docs.snowflake.com/en/sql-reference/data-types-semistructured
+    :VARIANT                    :type/SnowflakeVariant
     ;; Maybe also type *
     :OBJECT                     :type/Dictionary
     :ARRAY                      :type/*} base-type))

@@ -101,7 +101,8 @@
       (are [typ] (= ::lib.types.constants/number (lib.types.isa/field-type {base-or-effective-type-key typ}))
         :type/BigInteger :type/Integer :type/Float :type/Decimal))
     (testing "string"
-      (is (= ::lib.types.constants/string (lib.types.isa/field-type {base-or-effective-type-key :type/Text}))))
+      (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {base-or-effective-type-key typ}))
+        :type/Text :type/MySQLEnum))
     (testing "types of string"
       (are [typ] (= ::lib.types.constants/string (lib.types.isa/field-type {base-or-effective-type-key :type/Text
                                                                             :semantic-type typ}))
