@@ -24,14 +24,19 @@ export const AdminNavbarRoot = styled.nav`
 
 export const AdminNavbarItems = styled.ul`
   display: flex;
-  flex: 1 0 auto;
+  flex: 1 1 auto;
+  align-items: center;
+  text-align: center;
+  line-break: anywhere;
+  gap: 1rem;
+  margin-inline: 1rem;
   margin-right: auto;
   margin-left: 2rem;
 `;
 
 export const MobileHide = styled.div`
   display: flex;
-  flex: 1 0 auto;
+  flex: 1 1 auto;
   align-items: center;
   ${breakpointMaxMedium} {
     display: none;
@@ -51,7 +56,7 @@ export const AdminMobileNavBarItems = styled.ul`
   display: flex;
   flex-direction: column;
   text-align: right;
-  padding: 1rem;
+  padding: 1.5rem;
   gap: 2rem;
   border-radius: 0 0 0 0.5rem;
   top: ${ADMIN_NAVBAR_HEIGHT};
