@@ -2,6 +2,18 @@ name: Run Embedding SDK Storybook
 runs:
   using: "composite"
   steps:
+    - name: Prepare frontend environment
+      uses: ./.github/actions/prepare-frontend
+
+    - name: Prepare back-end environment
+      uses: ./.github/actions/prepare-backend
+      with:
+        m2-cache-key: "cljs"
+
+    - name: Compile CLJS
+      run: yarn build-pure:cljs
+      shell: bash
+
     - name: Build Storybook
       run: yarn build-storybook-embedding-sdk
       shell: bash
