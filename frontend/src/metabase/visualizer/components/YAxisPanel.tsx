@@ -13,12 +13,13 @@ import {
   TextInput,
   type ButtonProps,
 } from "metabase/ui";
-import type { VisualizationSettings } from "metabase-types/api";
+import type { Series, VisualizationSettings } from "metabase-types/api";
 
 interface YAxisPanelProps {
   isVisible: boolean;
   columns: string[];
   columnOptions: Array<{ label: string; value: string }>;
+  series: Series;
   settings: VisualizationSettings;
   onColumnsChange: (columns: string[]) => void;
   onSettingsChange: (settings: VisualizationSettings) => void;
@@ -29,6 +30,7 @@ export function YAxisPanel({
   isVisible,
   columns,
   columnOptions,
+  series,
   settings,
   onColumnsChange,
   onSettingsChange,
@@ -37,6 +39,10 @@ export function YAxisPanel({
   const [isGoalLinePopoverOpen, setGoalLinePopoverOpen] = useState(false);
   const goalLinePopoverTimeout = useRef<any>(null);
   const goalLine = useGoalLine(settings, onSettingsChange);
+
+  const canHaveTrendLine =
+    Array.isArray(series?.[0]?.data?.insights) &&
+    series[0].data.insights.length > 0;
 
   const handleToggleColumn = (column: string) => {
     if (columns.includes(column)) {
@@ -84,6 +90,21 @@ export function YAxisPanel({
             {option.label}
           </Chip>
         ))}
+        {canHaveTrendLine && (
+          <Chip
+            checked={settings["graph.show_trendline"]}
+            variant="outline"
+            radius="sm"
+            onChange={() =>
+              onSettingsChange({
+                ...settings,
+                "graph.show_trendline": !settings["graph.show_trendline"],
+              })
+            }
+          >
+            {t`Trend`}
+          </Chip>
+        )}
         <Popover opened={isGoalLinePopoverOpen} position="right" offset={10}>
           <Popover.Target>
             {goalLine.isEnabled ? (

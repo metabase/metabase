@@ -176,6 +176,7 @@ export function VisualizerCanvas({
             isVisible={isYAxisPanelVisible}
             columns={currentMetrics}
             columnOptions={metrics}
+            series={series}
             settings={series[0].card.visualization_settings}
             onColumnsChange={handleMetricsChange}
             onSettingsChange={onChange}
