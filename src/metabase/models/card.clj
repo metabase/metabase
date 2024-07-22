@@ -170,8 +170,8 @@
     (when lib.metadata.jvm/*metadata-provider-cache*
       (try
         (prefetch-tables-for-cards! dataset-cards)
-       (catch Throwable t
-         (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
+        (catch Throwable t
+          (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
                 (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
