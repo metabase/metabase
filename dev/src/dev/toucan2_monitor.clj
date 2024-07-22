@@ -6,7 +6,9 @@
     ;; do some query using toucan 2 or via UI
     (queries) ;; get all queries and its execution time
     ;; => [[[\"SELECT * FROM report_card\"] 100]]
-    (stop!)"
+    (stop!)
+    (to-csv!)
+    ;; to save all queries to a csv file"
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
@@ -18,14 +20,11 @@
   (:import
    (java.io File)))
 
-
 (set! *warn-on-reflection* true)
 
 (def queries*
   "An atom to store all the queries and its execution time."
   (atom []))
-
-
 
 (defn queries
   "Get all the queries and its execution time in ms.
@@ -77,9 +76,6 @@
   (when-let [thread @log-thread-ref]
     (.interrupt thread)
     (vreset! log-thread-ref nil)))
-
-(start-log!)
-(stop-log!)
 
 (defn start!
   "Start tracking queries."
