@@ -958,10 +958,12 @@
   {id ms/PositiveInt}
   (collection-detail (api/read-check Collection id)))
 
-(defn- effective-children-ids
+(defn- writable-effective-children-ids
   "Returns effective children ids for collection."
   [collection permissions-set]
-  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids permissions-set))
+  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids permissions-set
+                                                                                        {:include-archived-items :exclude
+                                                                                         :permission-level :write}))
         all-descendants (map :id (collection/descendants-flat collection))]
     (filterv visible-collection-ids all-descendants)))
 
@@ -1053,6 +1055,12 @@
   {:rows []
    :total 0})
 
+(defn- string->date [s]
+  (try (t/local-date "yyyy-MM-dd" s)
+       (catch Exception _
+         (throw (ex-info (str "invalid before_date: '" s "' expected format: 'yyyy-MM-dd'")
+                         {:status 400})))))
+
 (api/defendpoint GET "/:id/stale"
   "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
   - `before_date` - only return entities that were last edited before this date (default: 6 months ago)
@@ -1066,20 +1074,14 @@
    sort_column    [:maybe {:default :name} [:enum :name :last_used_at]]
    sort_direction [:maybe {:default :asc} (into [:enum] (map keyword valid-sort-directions))]}
   (premium-features/assert-has-feature :collection-cleanup (tru "Collection Cleanup"))
-  (let [before-date    (if before_date
-                         (try (t/local-date "yyyy-MM-dd" before_date)
-                              (catch Exception _
-                                (throw (ex-info (str "invalid before_date: '"
-                                                     before_date
-                                                     "' expected format: 'yyyy-MM-dd'")
-                                                {:status 400}))))
-                         (t/minus (t/local-date) (t/months 6)))
+  (let [before-date    (or (some-> before_date string->date)
+                           (t/minus (t/local-date) (t/months 6)))
         collection     (if (= id :root)
                          (root-collection nil)
                          (t2/select-one :model/Collection id))
         _              (api/read-check collection)
         collection-ids (->> (if is_recursive
-                              (conj (effective-children-ids collection @api/*current-user-permissions-set*)
+                              (conj (writable-effective-children-ids collection @api/*current-user-permissions-set*)
                                     id)
                               [id])
                             (mapv (fn root->nil [x] (if (= :root x) nil x)))
@@ -1103,6 +1105,42 @@
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
+(api/defendpoint POST "/:id/stale/trash"
+  "An endpoint that archives stale entities, with the following options:
+  - `before_date` - only archive entities that were last edited before this date (default: 6 months ago)
+  - `is_recursive` - if true, archive entities from all children of the collection, not just the direct children (default: false)"
+  [id before_date is_recursive]
+  {id           [:or ms/PositiveInt [:= :root]]
+   before_date  [:maybe :string]
+   is_recursive [:boolean {:default false}]}
+  (premium-features/assert-has-feature :collection-cleanup (tru "Collection Cleanup"))
+  (let [before-date          (or (some-> before_date string->date)
+                                 (t/minus (t/local-date) (t/months 6)))
+        collection           (if (= id :root)
+                               (root-collection nil)
+                               (t2/select-one :model/Collection id))
+        _                    (api/read-check collection)
+        collection-ids       (->> (if is_recursive
+                                    (conj (writable-effective-children-ids collection @api/*current-user-permissions-set*)
+                                          id)
+                                    [id])
+                                  (mapv (fn root->nil [x] (if (= :root x) nil x)))
+                                  set)
+        {:keys [rows total]} (find-stale-candidates {:collection-ids collection-ids
+                                                     :cutoff-date    before-date
+                                                     :limit          nil
+                                                     :offset         nil
+                                                     :sort-column    :name
+                                                     :sort-direction :asc})
+        snowplow-payload     {:total-stale-items-found total
+                              :cutoff-date             before-date}]
+    (doseq [[model rows] (group-by :model rows)
+            rows-batch   (partition-all 3000 rows)]
+      (t2/update! model
+                  {:id [:in (map :id rows-batch)]}
+                  {:archived true}))
+    (snowplow/track-event! ::snowplow/collection-trash-stale-content api/*current-user-id* snowplow-payload)
+    {:total total}))
 
 (api/defendpoint GET "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
