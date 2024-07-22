@@ -28,10 +28,10 @@ export const EditWebhookModal = ({
     await editChannel({
       id: channel.id,
       name: vals.name,
+      description: vals.description,
       details: {
         url: vals.url,
         "auth-method": vals["auth-method"],
-        description: vals.description,
       },
     }).unwrap();
 
@@ -48,7 +48,7 @@ export const EditWebhookModal = ({
     () => ({
       url: channel.details.url,
       name: channel.name,
-      description: channel.details.description,
+      description: channel.description,
       "auth-method": channel.details["auth-method"],
     }),
     [channel],

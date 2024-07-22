@@ -29,7 +29,7 @@ export const NotificationSettings = () => {
 
   return (
     <>
-      <Box>
+      <Box w="47rem">
         <Title mb="1.5rem">{t`Slack`}</Title>
         <Link to="/admin/settings/notifications/slack">
           <Paper shadow="0" withBorder p="lg" w="47rem" mb="2.5rem">
@@ -68,7 +68,7 @@ export const NotificationSettings = () => {
               <ChannelBox
                 key={`channel-${c.id}`}
                 title={c.name}
-                description={c.details.description}
+                description={c.description}
                 onClick={() => {
                   setWebhookModal("edit");
                   setCurrentChannel(c);
@@ -103,7 +103,6 @@ const ChannelBox = ({
     shadow="0"
     withBorder
     p="lg"
-    w="47rem"
     onClick={onClick}
     style={{ cursor: "pointer" }}
   >

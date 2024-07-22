@@ -49,7 +49,6 @@ export type PulseParameter = {
 type ChannelDetails = {
   url: string;
   "auth-method": NotificationAuthMethods;
-  description: string;
 };
 
 export type NotificationAuthMethods =
@@ -66,4 +65,5 @@ export type NotificationChannel<Details = ChannelDetails> = {
   updated_at: string;
   id: number;
   name: string;
+  description: string;
 };

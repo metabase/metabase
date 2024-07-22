@@ -52,7 +52,6 @@ export const WebhookForm = ({
     await testChannel({
       details: {
         url: values.url,
-        description: values.description,
         "auth-method": values["auth-method"],
       },
     })
