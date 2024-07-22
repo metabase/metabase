@@ -19,7 +19,9 @@
   (json/parse-string headers))
 
 (defn- fetch-as-json [url headers]
-  (let [response (http/get url {:headers (parse-http-headers headers), :as :json})]
+  (let [headers (cond-> headers
+                  (string? headers) parse-http-headers)
+        response (http/get url {:headers headers, :as :json})]
     (:body response)))
 
 (defmethod fetch-auth :http
@@ -29,6 +31,12 @@
 (defmethod fetch-auth :oauth
   [_ _database-id {:keys [oauth-token-url oauth-token-headers]}]
   (fetch-as-json oauth-token-url oauth-token-headers))
+
+(defmethod fetch-auth :azure-managed-identity
+  [_ _database-id {:keys [azure-managed-identity-client-id]}]
+  (fetch-as-json (str "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fossrdbms-aad.database.windows.net&client_id="
+                      azure-managed-identity-client-id)
+                 {"Metadata" "true"}))
 
 (defn fetch-and-incorporate-auth-provider-details
   "Incorporates auth-provider responses with db-details.

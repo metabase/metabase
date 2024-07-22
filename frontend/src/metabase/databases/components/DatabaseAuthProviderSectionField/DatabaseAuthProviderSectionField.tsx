@@ -4,15 +4,15 @@ import { t } from "ttag";
 
 import FormField from "metabase/core/components/FormField";
 
-import { SectionButton } from "./DatabaseManagedIdentitySectionField.styled";
+import { SectionButton } from "./DatabaseAuthProviderSectionField.styled";
 
-export interface DatabaseManagedIdentitySectionFieldProps {
+export interface DatabaseAuthProviderSectionFieldProps {
   name: string;
 }
 
-const DatabaseManagedIdentitySectionField = ({
+const DatabaseAuthProviderSectionField = ({
   name,
-}: DatabaseManagedIdentitySectionFieldProps): JSX.Element => {
+}: DatabaseAuthProviderSectionFieldProps): JSX.Element => {
   const [{ value }, , { setValue }] = useField(name);
 
   const handleClick = useCallback(() => {
@@ -22,11 +22,11 @@ const DatabaseManagedIdentitySectionField = ({
   return (
     <FormField>
       <SectionButton type="button" onClick={handleClick}>
-        {value ? t`Use managed identity` : t`Use password`}
+        {value ? t`Use password` : t`Use an authentication provider`}
       </SectionButton>
     </FormField>
   );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseManagedIdentitySectionField;
+export default DatabaseAuthProviderSectionField;

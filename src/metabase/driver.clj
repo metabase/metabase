@@ -980,7 +980,7 @@
 (defmethod incorporate-auth-provider-details :sql-jdbc
   [_driver auth-provider auth-provider-response details]
   (case auth-provider
-    :oauth
+    (:oauth :azure-managed-identity)
     (assoc details :password (:access_token auth-provider-response))
 
     (merge details auth-provider-response)))

@@ -136,24 +136,9 @@
     (assoc driver.common/default-port-details :placeholder 5432)
     driver.common/default-dbname-details
     driver.common/default-user-details
-    {:name "use-managed-identity"
-     :type :section
-     :default false}
-    {:name "auth-provider"
-     :display-name (trs "Auth Provider")
-     :type :select
-     :options [{:name "OAuth"
-                :value "oauth"}]
-     :visible-if {"use-managed-identity" true}}
-    {:name "oauth-token-url"
-     :display-name (trs "Auth Token URL")
-     :required true
-     :visible-if {"auth-provider" "oauth"}}
-    {:name "oauth-token-headers"
-     :display-name (trs "Auth Token Request Headers")
-     :visible-if {"auth-provider" "oauth"}}
+    driver.common/auth-provider-options
     (assoc driver.common/default-password-details
-           :visible-if {"use-managed-identity" false})
+           :visible-if {"use-auth-provider" false})
     driver.common/cloud-ip-address-info
     {:name "schema-filters"
      :type :schema-filters
