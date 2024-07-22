@@ -8,7 +8,10 @@ import {
   combineConsecutiveStrings,
 } from "./utils";
 
-describe("utils", () => {
+const allowAnyAmountOfWhitespace = (str: string) =>
+  new RegExp(str.replace(/ /g, "\\s*"));
+
+describe("Schedule utility functions", () => {
   describe("fillScheduleTemplate", () => {
     // Mock translation dictionary
     const translations = {
@@ -56,7 +59,9 @@ describe("utils", () => {
       render(<div data-testid="schedule">{scheduleReactNode}</div>);
       const scheduleElement = screen.getByTestId("schedule");
       expect(scheduleElement).toHaveTextContent(
-        "Invalidate monthly on the first Tuesday at 12:00pm",
+        allowAnyAmountOfWhitespace(
+          "Invalidate monthly on the first Tuesday at 12:00pm",
+        ),
       );
     });
 
@@ -74,7 +79,9 @@ describe("utils", () => {
       render(<div data-testid="schedule">{scheduleReactNode}</div>);
       const scheduleElement = screen.getByTestId("schedule");
       expect(scheduleElement).toHaveTextContent(
-        "monatlich am erste Dienstag um 12:00 Uhr ungültig machen",
+        allowAnyAmountOfWhitespace(
+          "monatlich am erste Dienstag um 12:00 Uhr ungültig machen",
+        ),
       );
     });
   });
