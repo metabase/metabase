@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import { Component } from "react";
 import * as React from "react";
 import { findDOMNode } from "react-dom";
@@ -106,39 +105,6 @@ class _TokenField extends Component<TokenFieldProps, TokenFieldState> {
 
     this.inputRef = React.createRef();
   }
-
-  static propTypes = {
-    value: PropTypes.array.isRequired,
-    onChange: PropTypes.func.isRequired,
-    options: PropTypes.array,
-    placeholder: PropTypes.string,
-    multi: PropTypes.bool,
-    validateValue: PropTypes.func,
-    parseFreeformValue: PropTypes.func,
-    updateOnInputChange: PropTypes.bool,
-    optionRenderer: PropTypes.func,
-    valueRenderer: PropTypes.func,
-    layoutRenderer: PropTypes.func,
-    color: PropTypes.string,
-    style: PropTypes.object,
-    className: PropTypes.string,
-    valueStyle: PropTypes.object,
-    optionsStyle: PropTypes.object,
-    optionsClassName: PropTypes.string,
-    prefix: PropTypes.string,
-    canAddItems: PropTypes.bool,
-    autoFocus: PropTypes.bool,
-    removeSelected: PropTypes.bool,
-    idKey: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
-    valueKey: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
-    labelKey: PropTypes.oneOfType([PropTypes.string, PropTypes.func]),
-    onFocus: PropTypes.func,
-    onBlur: PropTypes.func,
-    onInputKeyDown: PropTypes.func,
-    onInputChange: PropTypes.func,
-    updateOnInputBlur: PropTypes.bool,
-    filterOption: PropTypes.func,
-  };
 
   UNSAFE_componentWillMount() {
     this._updateFilteredValues(this.props);
@@ -719,12 +685,6 @@ const DefaultTokenFieldLayout = ({
     </TippyPopover>
   </div>
 );
-
-DefaultTokenFieldLayout.propTypes = {
-  valuesList: PropTypes.element.isRequired,
-  optionsList: PropTypes.element,
-  isFocused: PropTypes.bool,
-};
 
 /**
  * @deprecated use MultiSelect or Autocomplete from metabase/ui
