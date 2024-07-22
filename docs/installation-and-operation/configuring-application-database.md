@@ -12,7 +12,7 @@ For production, we recommend using PostgreSQL as your application database.
 
 - [PostgreSQL](#postgresql) (recommended for production)
 - [MySQL](#mysql-or-mariadb) (also works for production)
-- [H2](#h2-default) (default - AVOID in production)
+- [H2](#h2-default) (default for local demos - AVOID in production)
 
 Metabase will read the connection configuration information when the application starts up. You can't change the application database while the application is running.
 
@@ -20,7 +20,7 @@ Metabase will read the connection configuration information when the application
 
 We recommend that you use [PostgreSQL](https://www.postgresql.org/) for your Metabase application database.
 
-You can change the application database to use Postgres using a few simple environment variables. For example, the following command tells Metabase to look for its application database using the supplied Postgres connection information.
+You can use [environment variables](../configuring-metabase/environment-variables.md) to set a Postgres database as Metabase's application database. For example, the following commands tell Metabase to use a Postgres database as its application database:
 
 ```sh
 export MB_DB_TYPE=postgres
@@ -32,7 +32,7 @@ export MB_DB_HOST=localhost
 java -jar metabase.jar
 ```
 
-Metabase will not create this database for you. Example command to create the database:
+Metabase will not create a Postgres database for you. Example command to create the database:
 
 ```sh
 createdb --encoding=UTF8 -e metabase
@@ -58,10 +58,9 @@ java -jar metabase.jar
 
 We recommend [PostgreSQL](#postgresql), but you can also use [MySQL](https://www.mysql.com/) or [MariaDB](https://www.mariadb.org/).
 
-The minimum recommended version is MySQL 8.0.17 or MariaDB 10.2.2, and the `utf8mb4` character set is required.
+The minimum recommended version is MySQL 8.0.17 or MariaDB 10.2.2. The `utf8mb4` character set is required.
 
-
-You can change the application database to use MySQL using environment variables like this:
+You can change the application database to use MySQL using environment variables like so:
 
 ```sh
 export MB_DB_TYPE=mysql
@@ -89,35 +88,43 @@ java -jar metabase.jar
 As with Postgres, `MB_DB_CONNECTION_URI` can also be used in combination with `MB_DB_USER` and/or `MB_DB_PASS` if you
 want to pass one or both separately from the rest of the JDBC connection string:
 
-    export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:5432/metabase"
-    export MB_DB_USER=<username>
-    export MB_DB_PASS=<password>
-    java -jar metabase.jar
+```sh
+export MB_DB_CONNECTION_URI="jdbc:mysql://localhost:5432/metabase"
+export MB_DB_USER=<username>
+export MB_DB_PASS=<password>
+java -jar metabase.jar
+```
 
-## [H2](https://www.h2database.com/) (default)
+## H2(default)
 
-> **For production installations of Metabase we recommend that people [replace the H2 database with PostgreSQL](./migrating-from-h2.md)**. Postgres offers a greater degree of performance and reliability when Metabase is running with many users.
+> **For production installations of Metabase we recommend that people [replace the default H2 database with PostgreSQL](./migrating-from-h2.md)**. Postgres offers a greater degree of performance and reliability.
 
-By default, Metabase ships with an H2 database to make it easy to demo Metabase on your local machine. **Avoid using this default database in production**.
+By default, Metabase ships with an [H2 database](https://www.h2database.com/) to make it easy to demo Metabase on your local machine. **Avoid using this default database in production**.
 
-To use the H2 database for your Metabase,. When the application is first launched it will attempt to create a new H2 database in the same filesystem location the application is launched from.
+If when launching Metabase you don't provide environment variables that specify connection details for a production database, Metabase will attempt to create a new H2 database in the same directory as the Metabase JAR.
 
 You can see these database files from the terminal:
 
-    ls metabase.*
+```sh
+ls metabase.*
+```
 
 You should see the following files:
 
-    metabase.db.h2.db  # Or metabase.db.mv.db depending on when you first started using Metabase.
-    metabase.db.trace.db
+```sh
+metabase.db.h2.db  # Or metabase.db.mv.db depending on when you first started using Metabase.
+metabase.db.trace.db
+```
 
-If for any reason you want to use an H2 database file in a separate location from where you launch Metabase you can do so using an environment variable. For example:
+If you want to use an H2 database file in a particular directory, use the `MB_DB_TYPE` and `MB_DB_FILE` environment variables:
 
-    export MB_DB_TYPE=h2
-    export MB_DB_FILE=/the/path/to/my/h2.db
-    java -jar metabase.jar
+```sh
+export MB_DB_TYPE=h2
+export MB_DB_FILE=/the/path/to/my/h2.db
+java -jar metabase.jar
+```
 
-Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; do not include those in your path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though this is the file that actually gets created).
+Note that H2 automatically appends `.mv.db` or `.h2.db` to the path you specify; exclude those extensions in your path! In other words, `MB_DB_FILE` should be something like `/path/to/metabase.db`, rather than something like `/path/to/metabase.db.mv.db` (even though the latter is the file that Metabase will create).
 
 ## Migrating from H2
 
@@ -134,33 +141,36 @@ You can resolve this failure in one of two ways:
 
 How you configure your connection depends on whether you're using Postgres as Metabase's application database or as a data warehouse connected to Metabase:
 
-**For Postgres application databases**:
+### SSL certificate validation for Postgres _application_ databases
 
-To use SSL certificate validation, you'll need to use the `MB_DB_CONNECTION_URI` method to configure your database connection. Here's an example:
+To use SSL certificate validation, you'll need to use the `MB_DB_CONNECTION_URI` environment variable to configure your database connection. Here's an example:
 
-```
+```sh
 export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&password=<password>&sslmode=verify-ca&sslrootcert=<path to CA root or intermediate root certificate>"
 ```
 
-If you cannot enable certificate validation, you can enable the `NonValidatingFactory` for your application database via the same environment variable as above:
+If you can't enable certificate validation, you can enable the `NonValidatingFactory` for your application database:
 
-```
+```sh
 export MB_DB_CONNECTION_URI="postgres://localhost:5432/metabase?user=<username>&password=<password>&ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory"
 ```
 
-**For Postgres data warehouse databases**
+### SSL certificate validation for Postgres _data warehouse_ databases
 
-You can do the same inside the Metabase Admin page for the connection to your Postgres database. Add the following to the end of your JDBC connection string for your database:
+Add the following to the end of your JDBC connection string for your database:
 
-```
+```sh
 &sslmode=verify-ca&sslrootcert=<path to CA root or intermediate root certificate>
 ```
 
-If that does not work, you can enable `NonValidatingFactory` by adding the following to the end of your connection URI for your database:
+If that fails, you can enable `NonValidatingFactory` by adding the following to the end of your connection URI for your database:
 
-```
+```sh
 &ssl=true&sslfactory=org.postgresql.ssl.NonValidatingFactory
 ```
 
-For more options to further tune the SSL connection parameters,
-see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/documentation/ssl/#configuring-the-client).
+For more options to further tune the SSL connection parameters, see the [PostgreSQL SSL client documentation](https://jdbc.postgresql.org/documentation/ssl/#configuring-the-client).
+
+## Further reading
+
+- [Environment variables](../configuring-metabase/environment-variables.md)
