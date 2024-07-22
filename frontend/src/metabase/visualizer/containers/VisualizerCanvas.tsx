@@ -2,11 +2,13 @@ import { useDroppable } from "@dnd-kit/core";
 // eslint-disable-next-line no-restricted-imports
 import { ActionIcon, Chip } from "@mantine/core";
 import { assocIn } from "icepick";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ChangeEvent } from "react";
+import { t } from "ttag";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
+  Button,
   Card,
   Flex,
   Group,
@@ -14,6 +16,9 @@ import {
   Title,
   Stack,
   type IconName,
+  Popover,
+  NumberInput,
+  TextInput,
 } from "metabase/ui";
 import BaseVisualization from "metabase/visualizations/components/Visualization";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
@@ -175,8 +180,12 @@ export function VisualizerCanvas({
             isVisible={isYAxisPanelVisible}
             columns={currentMetrics}
             columnOptions={metrics}
+            settings={series[0].card.visualization_settings}
             onColumnsChange={handleMetricsChange}
-            onClose={() => setYAxisPanelVisible(false)}
+            onSettingsChange={onChange}
+            onClose={() => {
+              setYAxisPanelVisible(false);
+            }}
           />
         </Group>
       );
@@ -225,7 +234,9 @@ interface YAxisPanelProps {
   isVisible: boolean;
   columns: string[];
   columnOptions: Array<{ label: string; value: string }>;
+  settings: VisualizationSettings;
   onColumnsChange: (columns: string[]) => void;
+  onSettingsChange: (settings: VisualizationSettings) => void;
   onClose: () => void;
 }
 
@@ -233,15 +244,52 @@ function YAxisPanel({
   isVisible,
   columns,
   columnOptions,
+  settings,
   onColumnsChange,
+  onSettingsChange,
   onClose,
 }: YAxisPanelProps) {
+  const [isGoalLinePopoverOpen, setGoalLinePopoverOpen] = useState(false);
+
+  const hasGoalLine = typeof settings["graph.show_goal"] === "boolean";
+  const isGoalLineEnabled = settings["graph.show_goal"] ?? false;
+  const goalLabel = settings["graph.goal_label"] ?? t`Goal`;
+  const goalValue = settings["graph.goal_value"] ?? 0;
+
   const handleToggleColumn = (column: string) => {
     if (columns.includes(column)) {
       onColumnsChange(columns.filter(c => c !== column));
     } else {
       onColumnsChange([...columns, column]);
     }
+  };
+
+  const handleAddGoalLine = () => {
+    onSettingsChange({
+      ...settings,
+      "graph.show_goal": true,
+    });
+  };
+
+  const handleToggleGoalLine = () => {
+    onSettingsChange({
+      ...settings,
+      "graph.show_goal": !isGoalLineEnabled,
+    });
+  };
+
+  const handleChangeGoalLabel = (event: ChangeEvent<HTMLInputElement>) => {
+    onSettingsChange({
+      ...settings,
+      "graph.goal_label": event.target.value,
+    });
+  };
+
+  const handleChangeGoalValue = (value: number | "") => {
+    onSettingsChange({
+      ...settings,
+      "graph.goal_value": value || 0,
+    });
   };
 
   return (
@@ -272,6 +320,51 @@ function YAxisPanel({
             {option.label}
           </Chip>
         ))}
+        <Popover opened={isGoalLinePopoverOpen} position="right" offset={10}>
+          <Popover.Target>
+            {hasGoalLine ? (
+              <div onMouseEnter={() => setGoalLinePopoverOpen(true)}>
+                <Chip
+                  checked={isGoalLineEnabled}
+                  variant="outline"
+                  radius="sm"
+                  onChange={handleToggleGoalLine}
+                >
+                  {goalLabel}
+                </Chip>
+              </div>
+            ) : (
+              <Button
+                variant="outline"
+                color="text-medium"
+                compact
+                leftIcon={<Icon name="add" />}
+                mt="lg"
+                w="8rem"
+                onClick={() => {
+                  handleAddGoalLine();
+                  setGoalLinePopoverOpen(true);
+                }}
+              >{t`Add a goal`}</Button>
+            )}
+          </Popover.Target>
+          <Popover.Dropdown
+            p="md"
+            onMouseLeave={() => setGoalLinePopoverOpen(false)}
+          >
+            <TextInput
+              label={t`Label`}
+              value={goalLabel}
+              onChange={handleChangeGoalLabel}
+            />
+            <NumberInput
+              label={t`Value`}
+              value={goalValue}
+              mt="sm"
+              onChange={handleChangeGoalValue}
+            />
+          </Popover.Dropdown>
+        </Popover>
       </Stack>
     </Card>
   );
