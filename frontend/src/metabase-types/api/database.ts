@@ -51,6 +51,7 @@ export interface Database extends DatabaseData {
   created_at: ISO8601Time;
   updated_at: ISO8601Time;
   can_upload: boolean;
+  is_audit?: boolean;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;

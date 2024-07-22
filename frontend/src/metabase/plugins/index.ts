@@ -15,6 +15,7 @@ import type { IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/Question";
 import type Database from "metabase-lib/metadata/Database";
 import type {
+  Database as DatabaseType,
   Bookmark,
   Collection,
   CollectionAuthorityLevelConfig,
@@ -356,6 +357,10 @@ export const PLUGIN_DASHBOARD_HEADER = {
 
 export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
+};
+
+export const PLUGIN_AUDIT = {
+  isAuditDb: (_db: DatabaseType) => false,
 };
 
 export const PLUGIN_IS_EE_BUILD = {

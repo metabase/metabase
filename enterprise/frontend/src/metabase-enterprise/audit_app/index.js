@@ -6,6 +6,7 @@ import {
   PLUGIN_ADMIN_USER_MENU_ITEMS,
   PLUGIN_ADMIN_USER_MENU_ROUTES,
   PLUGIN_REDUCERS,
+  PLUGIN_AUDIT,
   PLUGIN_DASHBOARD_HEADER,
   PLUGIN_QUERY_BUILDER_HEADER,
 } from "metabase/plugins";
@@ -15,6 +16,7 @@ import { InstanceAnalyticsButton } from "./components/InstanceAnalyticsButton/In
 import { auditInfo } from "./reducer";
 import getAuditRoutes, { getUserMenuRotes } from "./routes";
 import { getDashboardOverviewId, getQuestionOverviewId } from "./selectors";
+import { isAuditDb } from "./utils";
 
 if (hasPremiumFeature("audit_app")) {
   PLUGIN_ADMIN_NAV_ITEMS.push({
@@ -62,4 +64,6 @@ if (hasPremiumFeature("audit_app")) {
       },
     ];
   };
+
+  PLUGIN_AUDIT.isAuditDb = isAuditDb;
 }
