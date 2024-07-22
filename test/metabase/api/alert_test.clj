@@ -666,15 +666,18 @@
                  :model/Channel   {channel-id :id} {:type    :channel/http
                                                     :details {:auth-method "none"
                                                               :url         "https://metabasetest.com"}}]
-    (is (=? {:channels [{:channel_type "http"
-                         :channel_id   channel-id
-                         :enabled true}]}
-            (mt/user-http-request :crowberto :put 200 (alert-url alert)
-                                  (default-alert-req card (u/the-id alert) {:channels [(default-http-channel channel-id)]} nil))))
-    (is (=? {:pulse_id     (:id alert)
-             :channel_type :http
-             :channel_id   channel-id}
-            (t2/select-one :model/PulseChannel :pulse_id (:id alert))))))
+    (testing "PUT /api/channel/:id can enable a HTTP channel for an alert"
+      (is (=? {:channels [{:channel_type "http"
+                           :channel_id   channel-id
+                           :enabled true}]}
+              (mt/user-http-request :crowberto :put 200 (alert-url alert)
+                                    (default-alert-req card (u/the-id alert) {:channels [(default-http-channel channel-id)]} nil))))
+
+      (testing "make sure it's in the database"
+        (is (=? {:pulse_id     (:id alert)
+                 :channel_type :http
+                 :channel_id   channel-id}
+                (t2/select-one :model/PulseChannel :pulse_id (:id alert))))))))
 
 (deftest alert-event-test
   (mt/with-premium-features #{:audit-app}

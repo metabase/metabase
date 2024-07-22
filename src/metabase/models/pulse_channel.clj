@@ -99,7 +99,7 @@
                                 :required    true}]}
    :http  {:type              "http"
            :name              "Webhook"
-           :alows_recipients  false
+           :allows_recipients false
            :schedules         [:hourly :daily :weekly :monthly]}})
 
 (defn channel-type?
