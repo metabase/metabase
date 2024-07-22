@@ -367,7 +367,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
 
-  it("does not hang in loading state when there is a non-integer PK (metabase#38747)", () => {
+  it("does not hang in loading state when there are multiple PKs and one of them is not an integer (metabase#38747)", () => {
     // remove default PK
     cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
       semantic_type: "type/Description",
