@@ -1099,7 +1099,7 @@ describe("scenarios > admin > settings > map settings", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Invalid custom GeoJSON: does not contain features");
+    cy.findByText("GeoJSON URL returned invalid content-type");
 
     // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
     cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
