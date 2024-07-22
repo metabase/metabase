@@ -8351,6 +8351,48 @@ databaseChangeLog:
             columnName: explicit_reference
             defaultValueBoolean: true
 
+  - changeSet:
+      id: v51.2024-07-22T15:49:38
+      author: escherize
+      comment: Add columns to query execution for metabase embedding SDK analytics
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_client
+                  remarks: Used by the embedding team to track SDK usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: embedding_version
+                  remarks: Used by the embedding team to track SDK version usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:39
+      author: escherize
+      comment: Add columns to view log for metabase embedding SDK analytics
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_client
+                  remarks: Used by the embedding team to track SDK usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: embedding_version
+                  remarks: Used by the embedding team to track SDK version usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
