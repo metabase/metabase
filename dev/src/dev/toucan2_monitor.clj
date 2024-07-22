@@ -26,7 +26,6 @@
   (atom []))
 
 
-(def ^:private log-future (atom nil))
 
 (defn queries
   "Get all the queries and its execution time in ms.
@@ -57,18 +56,36 @@
     (swap! queries* (fnil conj []) [query (/ (- end start) 1e6)])
    result))
 
+(def ^:private log-thread-ref (volatile! nil))
+
+(defn- create-log-thread! []
+  (Thread.
+   (fn []
+     (while (not (Thread/interrupted))
+       (let [{:keys [total-queries total-execution-time-ms]} (summary)]
+         (log/infof "Total queries: %d, Total execution time: %dms" total-queries total-execution-time-ms)
+         (Thread/sleep 1000))))))
+
+(defn- start-log! []
+  (tu.log/set-ns-log-level! *ns* :debug)
+  (when-not (some? @log-thread-ref)
+    (let [new-thread (create-log-thread!)]
+      (vreset! log-thread-ref new-thread)
+      (.start new-thread))))
+
+(defn- stop-log! []
+  (when-let [thread @log-thread-ref]
+    (.interrupt thread)
+    (vreset! log-thread-ref nil)))
+
+(start-log!)
+(stop-log!)
 
 (defn start!
   "Start tracking queries."
   []
-  (tu.log/set-ns-log-level! *ns* :debug)
-  (when-let [f @log-future]
-    (future-cancel f))
-  (reset! log-future (future
-                      (while true
-                        (let [{:keys [total-queries total-execution-time-ms]} (summary)]
-                          (log/infof "Total queries: %d, Total execution time: %dms" total-queries total-execution-time-ms)
-                          (Thread/sleep 1000)))))
+  (stop-log!)
+  (start-log!)
   (methodical/add-aux-method-with-unique-key!
    #'t2.pipeline/transduce-execute-with-connection
    :around
@@ -79,7 +96,7 @@
 (defn stop!
   "Stop tracking queries."
   []
-  (future-cancel @log-future)
+  (stop-log!)
   (methodical/remove-aux-method-with-unique-key!
    #'t2.pipeline/transduce-execute-with-connection
    :around
