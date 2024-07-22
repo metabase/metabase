@@ -4,11 +4,6 @@ import { t } from "ttag";
 import type { DatesRangeValue, DateValue } from "metabase/ui";
 import { DatePicker, Group, Stack, Text } from "metabase/ui";
 
-import {
-  DATE_PICKER_STYLES,
-  MIN_DATE_RANGE_PICKER_HEIGHT,
-  MIN_DATE_RANGE_PICKER_WIDTH,
-} from "../../constants";
 import { setDatePart, setTimePart } from "../../utils";
 
 import { FlexDateInput, FlexTimeInput } from "./DateRangePickerBody.styled";
@@ -90,9 +85,6 @@ export function DateRangePickerBody({
         defaultDate={startDate}
         numberOfColumns={2}
         allowSingleDateInRange
-        miw={MIN_DATE_RANGE_PICKER_WIDTH}
-        mih={MIN_DATE_RANGE_PICKER_HEIGHT}
-        styles={DATE_PICKER_STYLES}
         onChange={handleRangeChange}
       />
     </Stack>
