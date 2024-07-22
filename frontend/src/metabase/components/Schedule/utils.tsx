@@ -126,7 +126,14 @@ export const getLongestSelectLabel = (data: SelectProps["data"]) =>
     return label.length > acc.length ? label : acc;
   }, "");
 
-/** Since measureTextWidth can throw an error, this function catches the error and returns a default width */
+/** Since measureTextWidth can throw an error, this function catches the error and returns a default width
+ *
+ * Note that you may want to set the style prop to reflect the currently chosen font family, like this:
+ * ```
+ *    const fontFamily = useSelector(state => getSetting(state, "application-font"));
+ *    measureTextWidthSafely("string", 50, {family: fontFamily});
+ * ```
+ * */
 export const measureTextWidthSafely = (
   text: string,
   defaultWidth: number,
