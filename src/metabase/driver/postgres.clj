@@ -24,6 +24,7 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
+   [metabase.jvm-util :as jvm-u]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -817,7 +818,7 @@
   [_driver ^ResultSet rs ^ResultSetMetaData rsmeta ^Integer i]
   (if (= (.getColumnTypeName rsmeta i) "money")
     (fn []
-      (some-> (.getString rs i) u/parse-currency))
+      (some-> (.getString rs i) jvm-u/parse-currency))
     (fn []
       (.getObject rs i))))
 

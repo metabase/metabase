@@ -723,30 +723,6 @@
   [hours]
   (-> (* 60 hours) minutes->seconds seconds->ms))
 
-(defn parse-currency
-  "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
-
-    $1,000.00
-    -£127.54
-    -127,54 €
-    kr-127,54
-    € 127,54-
-    ¥200"
-  ^java.math.BigDecimal [^String s]
-  (when-not (str/blank? s)
-    (#?(:clj bigdec :cljs js/parseFloat)
-     (reduce
-      (partial apply str/replace)
-      s
-      [;; strip out any current symbols
-       [#"[^\d,.-]+"          ""]
-       ;; now strip out any thousands separators
-       [#"(?<=\d)[,.](\d{3})" "$1"]
-       ;; now replace a comma decimal seperator with a period
-       [#","                  "."]
-       ;; move minus sign at end to front
-       [#"(^[^-]+)-$"         "-$1"]]))))
-
 (defn email->domain
   "Extract the domain portion of an `email-address`.
 
