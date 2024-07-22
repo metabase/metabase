@@ -1,6 +1,7 @@
 (ns metabase.events.view-log
   "This namespace is responsible for subscribing to events which should update the view log and view counts."
   (:require
+   [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
@@ -89,6 +90,44 @@
       (record-views! (generate-view :model :model/Card event))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
+
+(derive ::dashboard-queried :metabase/event)
+(derive :event/dashboard-queried ::dashboard-queried)
+
+(def ^:private update-dashboard-last-viewed-at-interval-seconds 20)
+
+(defn- update-dashboard-last-viewed-at!* [dashboard-id-timestamps]
+  (let [dashboard-id->timestamp (update-vals (group-by :id dashboard-id-timestamps)
+                                             (fn [xs] (apply t/max (map :timestamp xs))))]
+    (try
+      (t2/update! :model/Dashboard :id [:in (keys dashboard-id->timestamp)]
+                  {:last_viewed_at (into [:case]
+                                         (mapcat (fn [[id timestamp]]
+                                                   [[:= :id id] [:greatest [:coalesce :last_viewed_at (t/offset-date-time 0)] timestamp]])
+                                                 dashboard-id->timestamp))})
+      (catch Exception e
+        (log/error e "Failed to update dashboard last_viewed_at")))))
+
+(def ^:private update-dashboard-last-viewed-at-queue
+  (delay (grouper/start!
+          update-dashboard-last-viewed-at!*
+          :capacity 500
+          :interval (* update-dashboard-last-viewed-at-interval-seconds 1000))))
+
+(defn- update-dashboard-last-viewed-at!
+  "Update the `last_used_at` of a dashboard asynchronously"
+  [dashboard-id]
+  (let [now (t/offset-date-time)]
+    (grouper/submit! @update-dashboard-last-viewed-at-queue {:id dashboard-id
+                                                             :timestamp now})))
+
+(m/defmethod events/publish-event! ::dashboard-queried
+  "Handle processing for a dashboard query being run"
+  [topic {:keys [object-id] :as _event}]
+  (try
+    (update-dashboard-last-viewed-at! object-id)
+    (catch Throwable e
+      (log/warnf e "Failed to process dashboard query event. %s" topic))))
 
 (derive ::collection-read-event :metabase/event)
 (derive :event/collection-read ::collection-read-event)

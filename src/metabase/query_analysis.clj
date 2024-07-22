@@ -23,7 +23,7 @@
 
 (def ^:dynamic *analyze-execution-in-dev?*
   "Managing a background thread in the REPL is likely to confound and infuriate, especially when we're using it to run
-  tests. For this reason we run analysis on the main thread by default."
+  tests. For this reason, we run analysis on the main thread by default."
   ::immediate)
 
 (def ^:dynamic *analyze-execution-in-test?*
@@ -152,10 +152,18 @@
     (throw (ex-info "We don't (yet) support replacing field and table refs in cards with MBQL queries"
                     {:card card :replacements replacements}))))
 
+(defn ->analyzable
+  "Ensure that we have all the fields required for analysis."
+  [card-or-id]
+  (if (and (map? card-or-id) (every? (partial contains? card-or-id) [:id :archived :dataset_query]))
+    card-or-id
+    (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
+
 (defn analyze-card!
-  "Update the analysis for the given card, if it is active."
-  [card-id]
-  (let [card (t2/select-one [:model/Card :id :archived :dataset_query] card-id)]
+  "Update the analysis for the given card if it is active."
+  [card-or-id]
+  (let [card    (->analyzable card-or-id)
+        card-id (:id card)]
       (cond
         (not card)       (log/warnf "Card not found: %s" card-id)
         (:archived card) (log/warnf "Skipping archived card: %s" card-id)

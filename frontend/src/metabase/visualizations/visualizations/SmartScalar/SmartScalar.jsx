@@ -450,7 +450,7 @@ Object.assign(SmartScalar, {
   ) {
     if (!insights || insights.length === 0) {
       throw new NoBreakoutError(
-        t`Group by a time field to see how this has changed over time`,
+        t`Group only by a time field to see how this has changed over time`,
       );
     }
   },

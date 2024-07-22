@@ -83,7 +83,7 @@
 ;;; parse-response
 
 (def ^:private auto-deserialize-dates-keys
-  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed :last_used_at})
+  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed :last_used_at :last_viewed_at})
 
 (defn- auto-deserialize-dates
   "Automatically recurse over `response` and look for keys that are known to correspond to dates. Parse their values and

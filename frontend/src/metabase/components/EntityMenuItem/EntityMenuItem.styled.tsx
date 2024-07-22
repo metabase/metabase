@@ -48,6 +48,7 @@ export const MenuItemIcon = styled(Icon)`
 
 export const MenuItemTitle = styled.span`
   font-weight: bold;
+  line-height: 1rem;
 `;
 
 export const MenuLink = styled(Link)`
