@@ -48,6 +48,7 @@
                         full-exception-chain
                         generate-nano-id
                         host-port-up?
+                        parse-currency
                         poll
                         host-up?
                         ip-address?
