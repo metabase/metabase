@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
@@ -40,7 +41,8 @@ export const getNewCardUrl = ({
   const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
 
   const previousQuestion = new Question(previousCard, metadata);
-  const nextQuestion = previousQuestion.canRunAdhocQuery()
+  const { isEditable } = Lib.queryDisplayInfo(previousQuestion.query());
+  const nextQuestion = isEditable
     ? new Question(cardAfterClick, metadata)
         .setDisplay(cardAfterClick.display || previousCard.display)
         .setSettings(dashcard.card.visualization_settings)
