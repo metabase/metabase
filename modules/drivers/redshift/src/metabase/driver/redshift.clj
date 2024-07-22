@@ -36,6 +36,8 @@
 (doseq [[feature supported?] {:connection-impersonation  true
                               :describe-fields           true
                               :describe-fks              true
+                              :identifiers-with-spaces   false
+                              :uuid-type                 false
                               :nested-field-columns      false
                               :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
