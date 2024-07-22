@@ -107,7 +107,7 @@ module.exports = {
     complexity: ["error", { max: 54 }],
     ...(shouldLintCssModules
       ? {
-          "postcss-modules/no-undef-class": "error",
+          // "postcss-modules/no-undef-class": "error", temporary for default
         }
       : {}),
   },
@@ -124,7 +124,11 @@ module.exports = {
     "jest/globals": true,
   },
   parser: "babel-eslint",
-  plugins: ["react", "no-only-tests", "postcss-modules"],
+  plugins: [
+    "react",
+    "no-only-tests",
+    // "postcss-modules" temporary for default
+  ],
   extends: [
     "eslint:recommended",
     "plugin:react/recommended",
