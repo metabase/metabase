@@ -103,7 +103,7 @@ By default, Metabase ships with an [H2 database](https://www.h2database.com/) to
 
 If when launching Metabase you don't provide environment variables that specify connection details for a production database, Metabase will attempt to create a new H2 database in the same directory as the Metabase JAR.
 
-You can see these database files from the terminal:
+H2 is a file-based database, and you can see these H2 database files from the terminal:
 
 ```sh
 ls metabase.*
