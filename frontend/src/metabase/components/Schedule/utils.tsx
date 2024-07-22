@@ -5,6 +5,7 @@ import _ from "underscore";
 import { measureTextWidth } from "metabase/lib/measure-text";
 import type { SelectProps } from "metabase/ui";
 import { Box, Group } from "metabase/ui";
+import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 
 const placeholderRegex = /^\{(\d)+\}$/;
 
@@ -125,9 +126,14 @@ export const getLongestSelectLabel = (data: SelectProps["data"]) =>
     return label.length > acc.length ? label : acc;
   }, "");
 
-const measureTextWidthSafely = (text: string, defaultWidth: number) => {
+/** Since measureTextWidth can throw an error, this function catches the error and returns a default width */
+export const measureTextWidthSafely = (
+  text: string,
+  defaultWidth: number,
+  style?: Partial<FontStyle>,
+) => {
   try {
-    return measureTextWidth(text);
+    return measureTextWidth(text, style);
   } catch {
     return defaultWidth;
   }

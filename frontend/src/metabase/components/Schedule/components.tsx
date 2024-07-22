@@ -1,14 +1,13 @@
 import { useMemo } from "react";
 import { t } from "ttag";
-import _ from "underscore";
 
 import {
   hourTo24HourFormat,
   hourToTwelveHourFormat,
 } from "metabase/admin/performance/utils";
-import { measureTextWidth } from "metabase/lib/measure-text";
 import { useSelector } from "metabase/lib/redux";
 import { has24HourModeSetting } from "metabase/lib/time";
+import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { SelectProps } from "metabase/ui";
 import { Box, Group, SegmentedControl, Select, Tooltip } from "metabase/ui";
@@ -27,7 +26,7 @@ import {
   minutes,
 } from "./constants";
 import type { UpdateSchedule } from "./types";
-import { getLongestSelectLabel } from "./utils";
+import { getLongestSelectLabel, measureTextWidthSafely } from "./utils";
 
 export type SelectFrameProps = {
   schedule: ScheduleSettings;
@@ -186,12 +185,20 @@ export const SelectMinute = ({
 export const AutoWidthSelect = ({
   style,
   ...props
-}: { style?: FontStyle } & SelectProps) => {
+}: { style?: Partial<FontStyle> } & SelectProps) => {
+  const fontFamily = useSelector(state =>
+    getSetting(state, "application-font"),
+  );
   const maxWidth = useMemo(() => {
     const longestLabel = getLongestSelectLabel(props.data);
-    const maxWidth = `${measureTextWidth(longestLabel, style) + 60}px`;
+    const maxWidth = `${
+      measureTextWidthSafely(longestLabel, 50, {
+        family: fontFamily,
+        ...style,
+      }) + 60
+    }px`;
     return maxWidth;
-  }, [props.data, style]);
+  }, [props.data, style, fontFamily]);
   return (
     <Select
       miw="5rem"

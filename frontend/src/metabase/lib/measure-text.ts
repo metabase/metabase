@@ -35,5 +35,5 @@ const styleDefaults = {
   weight: "normal",
 };
 
-export const measureTextWidth = (text: string, style?: FontStyle) =>
+export const measureTextWidth = (text: string, style?: Partial<FontStyle>) =>
   measureText(text, _.defaults(style, styleDefaults)).width;
