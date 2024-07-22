@@ -20,7 +20,7 @@
   [:map
    [:base-type      [:maybe ::lib.schema.common/base-type]]
    [:effective-type [:maybe ::lib.schema.common/base-type]]
-   [:semantic-type  {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
+   [:semantic-type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
 
 (mr/def ::field-id-or-name->type-info
   [:map-of
