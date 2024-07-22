@@ -37,7 +37,10 @@ import {
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import {
+  getModelFieldMetadata,
+  isAdHocModelQuestion,
+} from "metabase-lib/v1/metadata/utils/models";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameters,
@@ -133,7 +136,10 @@ const getModelMetadataDiff = createSelector(
       ...Object.fromEntries(
         resultMetadata.map(column => [
           column.name,
-          { ...column, ...metadataDiff[column.name] },
+          {
+            ...getModelFieldMetadata(column),
+            ...metadataDiff[column.name],
+          },
         ]),
       ),
     };

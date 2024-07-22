@@ -13,6 +13,27 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
+export function getModelFieldMetadata(field: Field) {
+  const {
+    id,
+    display_name,
+    description,
+    semantic_type,
+    fk_target_field_id,
+    visibility_type,
+    settings,
+  } = field;
+  return {
+    id,
+    display_name,
+    description,
+    semantic_type,
+    fk_target_field_id,
+    visibility_type,
+    settings,
+  };
+}
+
 type FieldMetadata = {
   id?: FieldId | FieldReference;
   name: string;

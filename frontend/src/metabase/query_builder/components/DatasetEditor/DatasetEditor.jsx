@@ -38,6 +38,7 @@ import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
   checkCanBeModel,
+  getModelFieldMetadata,
   getSortedModelFields,
 } from "metabase-lib/v1/metadata/utils/models";
 
@@ -187,16 +188,6 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
     : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
-const FIELDS = [
-  "id",
-  "display_name",
-  "description",
-  "semantic_type",
-  "fk_target_field_id",
-  "visibility_type",
-  "settings",
-];
-
 function DatasetEditor(props) {
   const {
     question,
@@ -293,7 +284,7 @@ function DatasetEditor(props) {
   const inheritMappedFieldProperties = useCallback(
     changes => {
       const mappedField = metadata.field?.(changes.id)?.getPlainObject();
-      const inheritedProperties = _.pick(mappedField, ...FIELDS);
+      const inheritedProperties = getModelFieldMetadata(mappedField);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
     [metadata],
