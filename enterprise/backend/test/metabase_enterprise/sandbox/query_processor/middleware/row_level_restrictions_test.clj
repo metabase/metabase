@@ -32,7 +32,6 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.server.middleware.session :as mw.session]
    [metabase.test :as mt]
-   [metabase.test.data.env :as tx.env]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
@@ -414,12 +413,14 @@
 ;; several things wrapped up which are detailed below
 
 (defn- row-level-restrictions-fk-drivers
-  "Drivers to test row-level restrictions against foreign keys with. Includes BigQuery, which for whatever reason does
-  not normally have FK tests ran for it. Excludes Presto JDBC, because that driver does NOT support fetching foreign
-  keys from the JDBC metadata, even though we enable the feature in the UI."
+  "Drivers to test row-level restrictions against foreign keys with."
   []
-  (cond-> (mt/normal-drivers-with-feature :nested-queries :foreign-keys :metadata/key-constraints)
-    (@tx.env/test-drivers :bigquery-cloud-sdk) (conj :bigquery-cloud-sdk)))
+  (mt/normal-drivers-with-feature :nested-queries :left-join))
+
+(defn- row-level-restrictions-fk-sql-drivers
+  "SQL drivers to test row-level restrictions against foreign keys with."
+  []
+  (into #{} (filter #(isa? driver/hierarchy % :sql)) (row-level-restrictions-fk-drivers)))
 
 (deftest e2e-fks-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -430,9 +431,8 @@
       (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                      :venues   nil}
                         :attributes {"user" 5}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= [[1 10] [2 36] [3 4] [4 5]]
-                 (run-checkins-count-broken-out-by-price-query))))))))
+        (is (= [[1 10] [2 36] [3 4] [4 5]]
+               (run-checkins-count-broken-out-by-price-query)))))))
 
 (deftest e2e-fks-test-2
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -442,9 +442,8 @@
       (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                      :venues   (venues-price-mbql-gtap-def)}
                         :attributes {"user" 5, "price" 1}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= #{[nil 45] [1 10]}
-                 (set (run-checkins-count-broken-out-by-price-query)))))))))
+        (is (= #{[nil 45] [1 10]}
+               (set (run-checkins-count-broken-out-by-price-query))))))))
 
 (deftest e2e-fks-test-3
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -452,9 +451,8 @@
       (met/with-gtaps! {:gtaps      {:checkins (checkins-user-mbql-gtap-def)
                                      :venues   (dissoc (venues-price-mbql-gtap-def) :query)}
                         :attributes {"user" 5, "price" 1}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= #{[nil 45] [1 10]}
-                 (set (run-checkins-count-broken-out-by-price-query)))))))))
+        (is (= #{[nil 45] [1 10]}
+               (set (run-checkins-count-broken-out-by-price-query))))))))
 
 (deftest e2e-fks-test-4
   (mt/test-drivers (row-level-restrictions-fk-drivers)
@@ -464,15 +462,14 @@
                                      :venues   (dissoc (venues-price-mbql-gtap-def) :query)
                                      :users    {:remappings {:user ["variable" [:field (mt/id :users :id) nil]]}}}
                         :attributes {"user" 5, "price" 1}}
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
-                 (set
-                  (mt/format-rows-by [#(when % (int %)) str int]
-                    (mt/rows
-                     (mt/run-mbql-query checkins
-                       {:aggregation [[:count]]
-                        :order-by    [[:asc $venue_id->venues.price]]
-                        :breakout    [$venue_id->venues.price $user_id->users.name]})))))))))))
+        (is (= #{[nil "Quentin Sören" 45] [1 "Quentin Sören" 10]}
+               (set
+                (mt/format-rows-by [#(when % (int %)) str int]
+                                   (mt/rows
+                                    (mt/run-mbql-query checkins
+                                                       {:aggregation [[:count]]
+                                                        :order-by    [[:asc $venue_id->venues.price]]
+                                                        :breakout    [$venue_id->venues.price $user_id->users.name]}))))))))))
 
 (defn- run-query-returning-remark [run-query-fn]
   (let [remark (atom nil)
@@ -495,7 +492,7 @@
                 (mt/user-http-request :rasta :post "dataset" (mt/mbql-query venues {:aggregation [[:count]]})))))))))
 
 (deftest breakouts-test
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (row-level-restrictions-fk-sql-drivers)
     (testing "Make sure that if a GTAP is in effect we can still do stuff like breakouts (#229)"
       (met/with-gtaps! {:gtaps      {:venues (venues-category-native-gtap-def)}
                         :attributes {"cat" 50}}
@@ -507,7 +504,9 @@
                      :breakout    [$price]})))))))))
 
 (deftest sql-with-join-test
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (into #{}
+                         (filter #(driver.u/supports? % :parameterized-sql nil))
+                         (row-level-restrictions-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
@@ -518,10 +517,13 @@
                 (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
                                   :attributes {"user" 1}}
                   (mt/run-mbql-query checkins
-                    {:limit 2})))))))))
+                    {:order-by [[:asc $id]]
+                     :limit 2})))))))))
 
 (deftest sql-with-join-test-2
-  (mt/test-drivers (row-level-restrictions-fk-drivers)
+  (mt/test-drivers (into #{}
+                         (filter #(driver.u/supports? % :parameterized-sql nil))
+                         (row-level-restrictions-fk-sql-drivers))
     (testing (str "If we use a parameterized SQL GTAP that joins a Table the user doesn't have access to, does it "
                   "still work? (EE #230) If we pass the query in directly without anything that would require nesting "
                   "it, it should work")
@@ -532,7 +534,8 @@
                 (met/with-gtaps! {:gtaps      {:checkins (parameterized-sql-with-join-gtap-def)}
                                   :attributes {"user" 1}}
                   (mt/run-mbql-query checkins
-                    {:limit 2})))))))))
+                    {:order-by [[:asc $id]]
+                     :limit 2})))))))))
 
 (deftest correct-metadata-test
   (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
@@ -1009,9 +1012,7 @@
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
 (deftest pivot-query-test
-  ;; This test relies on a FK relation between $product_id->products.category, hence the requirement on
-  ;; :metadata/key-constraints.
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries :left-join :metadata/key-constraints)
+  (mt/test-drivers (row-level-restrictions-fk-drivers)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
       (mt/dataset test-data
         (met/with-gtaps! {:gtaps      (mt/$ids

@@ -1,5 +1,10 @@
 import "metabase/lib/dayjs";
 
+// we need to manually import them here to make sure they are included in the bundle
+// as they're dynamically loaded in the main codebase
+import "html2canvas-pro";
+import "jspdf";
+
 export * from "./hooks/public";
 export * from "./components/public";
 export * from "./lib/plugins";

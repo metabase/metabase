@@ -19,12 +19,16 @@ Features currently supported:
 - embedding dashboards - static
 - embedding dashboards - w/drill-down
 - embedding the collection browser
+- ability for the user to modify existing questions
 - theming with CSS variables
-- plugins for custom actions
-
-Features planned:
-
+- plugins for custom actions, overriding dashboard card menu items
 - subscribing to events
+
+
+Features not yet supported:
+- letting users create new questions from scratch
+- creating and editing dashboards
+
 
 # Changelog
 
@@ -32,7 +36,7 @@ Features planned:
 
 # Prerequisites
 
-- You have an application using React 17 or higher
+- You have an application using React. The SDK currently supports React 18 only. We are investigating issues with React 17. 
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
 - You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time.
 

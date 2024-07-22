@@ -296,8 +296,10 @@
         expressionable-expressions-for-position (fn [pos]
                                                   (some->> (lib/expressionable-columns query pos)
                                                            (map :lib/desired-column-alias)))]
-    (is (= ["ID" "NAME"] (expressionable-expressions-for-position 0)))
-    (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
+    ;; Because of (the second problem in) #44584, the expression-position argument is ignored,
+    ;; so the first two calls behave the same as the last two.
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 0)))
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 1)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
     (is (= (lib/visible-columns query)
