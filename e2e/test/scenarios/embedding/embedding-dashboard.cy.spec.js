@@ -579,6 +579,30 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
     });
     //visitIframe();
   });
+
+  it("locked parameters require a value to be specified in the JWT", () => {
+    openStaticEmbeddingModal({ activeTab: "parameters" });
+
+    // ID param is disabled by default
+    setEmbeddingParameter("Name", "Editable");
+    setEmbeddingParameter("Source", "Locked");
+    publishChanges("dashboard", ({ request }) => {
+      assert.deepEqual(request.body.embedding_params, {
+        source: "locked",
+        name: "enabled",
+      });
+    });
+
+    visitIframe();
+
+    // The Source parameter is 'locked', and no value has been specified in the token,
+    // thus the API responds with "You must specify a value for :source in the JWT."
+    // and the card will not display.
+
+    getDashboardCard()
+      .findByText("There was a problem displaying this chart.")
+      .should("be.visible");
+  });
 });
 
 describeEE("scenarios > embedding > dashboard appearance", () => {

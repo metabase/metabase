@@ -90,16 +90,14 @@ describe("scenarios > embedding > native questions", () => {
 
         visitEmbeddedPage(payload);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Organic");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Twitter").should("not.exist");
 
         // Created At: Q2 2023
         filterWidget().contains("Created At").click();
         cy.findByTestId("select-button").click();
         popover().last().contains("2023").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+
         cy.findByText("Q2").click();
 
         // State: is not KS
@@ -109,17 +107,14 @@ describe("scenarios > embedding > native questions", () => {
         cy.findByTestId("KS-filter-value").should("be.visible").click();
         cy.button("Add filter").click();
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Logan Weber").should("not.exist");
 
         // Product ID is 10
         cy.findByPlaceholderText("Product ID").type("10{enter}");
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.contains("Affiliate").should("not.exist");
 
         // Let's try to remove one filter
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Q2 2023")
           .closest("fieldset")
           .within(() => {
@@ -133,11 +128,8 @@ describe("scenarios > embedding > native questions", () => {
 
         cy.findByTestId("table-row").should("have.length", 1);
 
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("December 29, 2024, 4:54 AM");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("CO");
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Sid Mills").should("not.exist");
 
         cy.location("search").should(
