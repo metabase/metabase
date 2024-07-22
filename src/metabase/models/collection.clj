@@ -1210,9 +1210,20 @@
   [:name :namespace parent-identity-hash :created_at])
 
 (defmethod serdes/extract-query "Collection" [_model {:keys [collection-set]}]
-  (if (seq collection-set)
-    (t2/reducible-select Collection :id [:in collection-set])
-    (t2/reducible-select Collection :personal_owner_id nil)))
+  (let [not-trash-clause [:or
+                          [:= :type nil]
+                          [:not= :type trash-collection-type]]]
+    (if (seq collection-set)
+      (t2/reducible-select Collection
+                           {:where
+                            [:and
+                             [:in :id collection-set]
+                             not-trash-clause]})
+      (t2/reducible-select Collection
+                           {:where
+                            [:and
+                             [:= :personal_owner_id nil]
+                             not-trash-clause]}))))
 
 (defmethod serdes/extract-one "Collection"
   ;; Transform :location (which uses database IDs) into a portable :parent_id with the parent's entity ID.
@@ -1260,7 +1271,11 @@
 
 (defmethod serdes/descendants "Collection" [_model-name id]
   (let [location    (t2/select-one-fn :location Collection :id id)
-        child-colls (set (for [child-id (t2/select-pks-set :model/Collection {:where [:like :location (str location id "/%")]})]
+        child-colls (set (for [child-id (t2/select-pks-set :model/Collection {:where [:and
+                                                                                      [:like :location (str location id "/%")]
+                                                                                      [:or
+                                                                                       [:not= :type trash-collection-type]
+                                                                                       [:= :type nil]]]})]
                            ["Collection" child-id]))
         dashboards  (set (for [dash-id (t2/select-pks-set :model/Dashboard {:where [:= :collection_id id]})]
                            ["Dashboard" dash-id]))
