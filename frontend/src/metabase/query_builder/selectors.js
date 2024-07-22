@@ -136,7 +136,7 @@ const getModelMetadataDiff = createSelector(
 );
 
 export const getQueryResults = createSelector(
-  [getRawQueryResults, getModelMetadataDiff, getQueryBuilderMode],
+  [getRawQueryResults, getModelMetadataDiff],
   (queryResults, metadataDiff) => {
     if (!Array.isArray(queryResults) || !queryResults.length) {
       return null;
