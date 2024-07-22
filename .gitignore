@@ -112,3 +112,6 @@ modules/drivers/*/.lsp/*
 
 # airgap
 /resources/airgap/
+
+# swc
+.swc/

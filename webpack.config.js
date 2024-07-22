@@ -40,6 +40,35 @@ const shouldUseEslint =
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
+  plugins: devMode ? ["@emotion", "react-refresh/babel"] : ["@emotion"],
+};
+
+const BABEL_LOADER = { loader: "babel-loader", options: BABEL_CONFIG };
+
+const SWC_LOADER = {
+  loader: "swc-loader",
+  options: {
+    jsc: {
+      loose: true,
+      transform: {
+        react: {
+          runtime: "automatic",
+          refresh: devMode,
+        },
+      },
+      parser: {
+        syntax: "typescript",
+        tsx: true,
+      },
+      experimental: {
+        plugins: [["@swc/plugin-emotion", { sourceMap: devMode }]],
+      },
+      // TODO: double check if it can reuse browserslist
+      target: "es2016",
+    },
+    sourceMaps: true,
+    minify: false, // produces same bundle size, but cuts 1s locally
+  },
 };
 
 const CSS_CONFIG = {
@@ -102,9 +131,15 @@ const config = (module.exports = {
   module: {
     rules: [
       {
-        test: /\.(tsx?|jsx?)$/,
+        // swc breaks styles for the whole app if we proceed this file
+        test: /css\/core\/fonts\.styled\.ts$/,
         exclude: /node_modules|cljs/,
-        use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
+        use: [BABEL_LOADER],
+      },
+      {
+        test: /\.(tsx?|jsx?)$/,
+        exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
+        use: [SWC_LOADER],
       },
       ...(shouldUseEslint
         ? [
@@ -307,20 +342,6 @@ if (WEBPACK_BUNDLE === "hot") {
   // point the publicPath (inlined in index.html by HtmlWebpackPlugin) to the hot-reloading server
   config.output.publicPath =
     "http://localhost:8080/" + config.output.publicPath;
-
-  config.module.rules.unshift({
-    test: /\.(tsx?|jsx?)$/,
-    exclude: /node_modules|cljs/,
-    use: [
-      {
-        loader: "babel-loader",
-        options: {
-          ...BABEL_CONFIG,
-          plugins: ["@emotion", "react-refresh/babel"],
-        },
-      },
-    ],
-  });
 
   config.devServer = {
     hot: true,
