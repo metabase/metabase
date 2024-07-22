@@ -102,7 +102,7 @@ class OnScriptError {
   }
 }
 
-const config = (module.exports = {
+const config = {
   mode: devMode ? "development" : "production",
   context: SRC_PATH,
 
@@ -115,6 +115,9 @@ const config = (module.exports = {
     "vendor-styles": "./css/vendor.css",
     styles: "./css/index.module.css",
   },
+
+  // we override it for dev mode below
+  devtool: "source-map",
 
   externals: {
     canvg: "canvg",
@@ -334,7 +337,7 @@ const config = (module.exports = {
       `${SRC_PATH}/ui/components/overlays/Popover/use-popover`,
     ),
   ],
-});
+};
 
 if (WEBPACK_BUNDLE === "hot") {
   config.target = "web";
@@ -358,22 +361,21 @@ if (WEBPACK_BUNDLE === "hot") {
     devMiddleware: {
       stats: "errors-warnings",
       writeToDisk: true,
+      // if webpack doesn't reload UI after code change in development
+      // watchOptions: {
+      //     aggregateTimeout: 300,
+      //     poll: 1000
+      // }
+      // if you want to reduce stats noise
+      // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
     },
-    // if webpack doesn't reload UI after code change in development
-    // watchOptions: {
-    //     aggregateTimeout: 300,
-    //     poll: 1000
-    // }
-    // if you want to reduce stats noise
-    // stats: 'minimal' // values: none, errors-only, minimal, normal, verbose
   };
 
   config.watchOptions = {
-    ignored: [CLJS_SRC_PATH_DEV + "/**"],
+    ignored: ["**/node_modules", CLJS_SRC_PATH_DEV + "/**"],
   };
 
   config.plugins.unshift(
-    new webpack.NoEmitOnErrorsPlugin(),
     new ReactRefreshPlugin({
       overlay: false,
     }),
@@ -398,7 +400,6 @@ if (WEBPACK_BUNDLE !== "production") {
 
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
-  config.output.pathinfo = true;
 
   config.plugins.push(
     new WebpackNotifierPlugin({
@@ -406,6 +407,6 @@ if (WEBPACK_BUNDLE !== "production") {
       skipFirstNotification: true,
     }),
   );
-} else {
-  config.devtool = "source-map";
 }
+
+module.exports = config;
