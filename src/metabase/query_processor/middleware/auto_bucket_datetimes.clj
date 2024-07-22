@@ -16,23 +16,23 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::field-type-info
+(mr/def ::column-type-info
   [:map
    [:base-type      [:maybe ::lib.schema.common/base-type]]
    [:effective-type [:maybe ::lib.schema.common/base-type]]
    [:semantic-type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
 
-(mr/def ::field-id-or-name->type-info
+(mr/def ::column-id-or-name->type-info
   [:map-of
    [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]
-   [:maybe ::field-type-info]])
+   [:maybe ::column-type-info]])
 
 ;; Unfortunately these Fields won't be in the store yet since Field resolution can't happen before we add the implicit
 ;; `:fields` clause, which happens after this
 ;;
 ;; TODO - What we could do tho is fetch all the stuff we need for the Store and then save these Fields in the store,
 ;; which would save a bit of time when we do resolve them
-(mu/defn ^:private unbucketed-fields->field-id->type-info :- [:maybe ::field-id-or-name->type-info]
+(mu/defn ^:private unbucketed-fields->field-id->type-info :- [:maybe ::column-id-or-name->type-info]
   "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`. Return an empty map
   for empty `unbucketed-fields`."
   [metadata-providerable unbucketed-fields :- [:maybe [:sequential :mbql.clause/field]]]
@@ -151,12 +151,12 @@
   [query               :- ::lib.schema/query
    stage-path          :- ::lib.walk/stage-path
    stage               :- ::lib.schema/stage
-   field-id->type-info :- [:maybe ::field-id-or-name->type-info]]
+   field-id->type-info :- [:maybe ::column-id-or-name->type-info]]
   (letfn [(datetime-but-not-time? [field-id]
             (some-> field-id field-id->type-info date-or-datetime-clause?))
           ;; Following function copies type extraction logic from [[unbucketed-fields->field-id->type-info]],
           ;; to conform original schema.
-          (expression-opts->type-info [{:keys [base-type effective-type]}] :- ::field-id-or-name->type-info
+          (expression-opts->type-info [{:keys [base-type effective-type]}] :- ::column-id-or-name->type-info
             {:base-type base-type
              :effective-type (or effective-type base-type)})
           (wrap-clauses [x]
