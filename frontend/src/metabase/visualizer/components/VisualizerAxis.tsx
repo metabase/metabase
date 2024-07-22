@@ -22,6 +22,7 @@ interface VisualizerAxisProps {
   settings: ComputedVisualizationSettings;
   onColumnsChange: (columns: string[]) => void;
   onLabelChange: (column: string, label: string) => void;
+  onMouseEnter?: () => void;
 }
 
 export function VisualizerAxis({
@@ -31,6 +32,7 @@ export function VisualizerAxis({
   settings,
   onColumnsChange,
   onLabelChange,
+  onMouseEnter,
 }: VisualizerAxisProps) {
   const handleColumnChange = (column: string, nextColumn: string) => {
     const nextColumns = columns.map(c => (c === column ? nextColumn : c));
@@ -65,6 +67,7 @@ export function VisualizerAxis({
       bg="bg-light"
       py="sm"
       px="md"
+      onMouseEnter={onMouseEnter}
       style={{ borderRadius: 99 }}
     >
       {columns.map(column => (

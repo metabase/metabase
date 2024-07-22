@@ -1,8 +1,8 @@
 import { useDroppable } from "@dnd-kit/core";
 // eslint-disable-next-line no-restricted-imports
-import { ActionIcon } from "@mantine/core";
+import { ActionIcon, Chip } from "@mantine/core";
 import { assocIn } from "icepick";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { useSelector } from "metabase/lib/redux";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -50,6 +50,7 @@ export function VisualizerCanvas({
   onChange,
   onChangeCardAndRun,
 }: VisualizerCanvasProps) {
+  const [isYAxisPanelVisible, setYAxisPanelVisible] = useState(false);
   const metadata = useSelector(getMetadata);
 
   const { setNodeRef } = useDroppable({
@@ -145,7 +146,7 @@ export function VisualizerCanvas({
   const renderChart = () => {
     if (hasAxes) {
       return (
-        <Group w="100%" h="90%">
+        <Group pos="relative" w="100%" h="90%">
           <VisualizerAxis
             direction="vertical"
             columns={currentMetrics}
@@ -153,6 +154,7 @@ export function VisualizerCanvas({
             settings={settings}
             onColumnsChange={handleMetricsChange}
             onLabelChange={handleMetricLabelChange}
+            onMouseEnter={() => setYAxisPanelVisible(true)}
           />
           <Stack w="90%" h="100%">
             <BaseVisualization
@@ -169,6 +171,13 @@ export function VisualizerCanvas({
               onLabelChange={handleDimensionLabelChange}
             />
           </Stack>
+          <YAxisPanel
+            isVisible={isYAxisPanelVisible}
+            columns={currentMetrics}
+            columnOptions={metrics}
+            onColumnsChange={handleMetricsChange}
+            onClose={() => setYAxisPanelVisible(false)}
+          />
         </Group>
       );
     }
@@ -208,6 +217,62 @@ export function VisualizerCanvas({
         )}
       </Flex>
       {hasData && renderChart()}
+    </Card>
+  );
+}
+
+interface YAxisPanelProps {
+  isVisible: boolean;
+  columns: string[];
+  columnOptions: Array<{ label: string; value: string }>;
+  onColumnsChange: (columns: string[]) => void;
+  onClose: () => void;
+}
+
+function YAxisPanel({
+  isVisible,
+  columns,
+  columnOptions,
+  onColumnsChange,
+  onClose,
+}: YAxisPanelProps) {
+  const handleToggleColumn = (column: string) => {
+    if (columns.includes(column)) {
+      onColumnsChange(columns.filter(c => c !== column));
+    } else {
+      onColumnsChange([...columns, column]);
+    }
+  };
+
+  return (
+    <Card
+      pos="absolute"
+      left={0}
+      top={0}
+      h="100%"
+      w="16rem"
+      bg="bg-medium"
+      shadow="md"
+      onMouseLeave={onClose}
+      style={{
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "translateX(0)" : "translateX(-16rem)",
+        transition: "transform 0.3s ease-out, opacity 0.3s ease-out",
+      }}
+    >
+      <Stack spacing="xs" p="md">
+        {columnOptions.map(option => (
+          <Chip
+            key={option.value}
+            checked={columns.includes(option.value)}
+            variant="outline"
+            radius="sm"
+            onChange={() => handleToggleColumn(option.value)}
+          >
+            {option.label}
+          </Chip>
+        ))}
+      </Stack>
     </Card>
   );
 }
