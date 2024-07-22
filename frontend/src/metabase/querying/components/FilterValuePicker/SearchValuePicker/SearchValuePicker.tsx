@@ -45,7 +45,7 @@ export function SearchValuePicker({
   const canSearch = searchQuery.length > 0;
 
   const {
-    data: fieldValues = [],
+    data: searchFieldValues = [],
     error: searchError,
     isFetching: isSearching,
   } = useSearchFieldValuesQuery(
@@ -61,7 +61,7 @@ export function SearchValuePicker({
   );
 
   const searchOptions = canSearch
-    ? getFieldOptions(fieldValues)
+    ? getFieldOptions(searchFieldValues)
     : getFieldOptions(initialFieldValues);
   const visibleOptions = getFilteredOptions(
     searchOptions,
@@ -83,7 +83,7 @@ export function SearchValuePicker({
   };
 
   const handleSearchTimeout = () => {
-    if (shouldSearch(searchValue, searchQuery, fieldValues)) {
+    if (shouldSearch(searchValue, searchQuery, searchFieldValues)) {
       setSearchQuery(searchValue);
     }
   };
