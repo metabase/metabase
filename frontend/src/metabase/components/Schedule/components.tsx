@@ -12,6 +12,7 @@ import { has24HourModeSetting } from "metabase/lib/time";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { SelectProps } from "metabase/ui";
 import { Box, Group, SegmentedControl, Select, Tooltip } from "metabase/ui";
+import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -182,12 +183,15 @@ export const SelectMinute = ({
   );
 };
 
-export const AutoWidthSelect = (props: SelectProps) => {
+export const AutoWidthSelect = ({
+  style,
+  ...props
+}: { style?: FontStyle } & SelectProps) => {
   const maxWidth = useMemo(() => {
     const longestLabel = getLongestSelectLabel(props.data);
-    const maxWidth = `${measureTextWidth(longestLabel) + 60}px`;
+    const maxWidth = `${measureTextWidth(longestLabel, style) + 60}px`;
     return maxWidth;
-  }, [props.data]);
+  }, [props.data, style]);
   return (
     <Select
       miw="5rem"
