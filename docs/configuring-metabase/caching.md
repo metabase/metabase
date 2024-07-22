@@ -125,12 +125,12 @@ To set a caching policy for a question, you must have [curate access](../permiss
 
 If multiple caching policies affect the same question, Metabase will use the first available policy, in this order:
 
-1. Dashboard (if viewing the question on a card in a dashboard)
-2. Question
+1. Question
+2. Dashboard
 3. Database
 4. Default (site-wide)
 
-A dashboard policy overrides a question policy, which overrides a database policy, which overrides a default policy.
+A question policy overrides a dashboard policy, which overrides a database policy, which overrides a default policy.
 
 ## Clearing the cache
 
