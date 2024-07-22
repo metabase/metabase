@@ -27,9 +27,11 @@ import {
   findDashCardAction,
   removeDashboardCard,
   sidebar,
+  dashboardHeader,
 } from "e2e/support/helpers";
 
-const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, PRODUCTS_ID, REVIEWS_ID, ORDERS, PEOPLE, PRODUCTS } =
+  SAMPLE_DATABASE;
 
 const cards = [
   {
@@ -692,6 +694,84 @@ describe("dashboard filters auto-wiring", () => {
       cy.tick(8000);
       undoToast().should("not.exist");
     });
+  });
+
+  it("should auto-wire a new card to correct parameter targets (metabase#44720)", () => {
+    cy.log("create a dashboard with 2 parameters mapped to the same card");
+    const questionDetails = {
+      name: "Test",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    };
+    const sourceParameter = {
+      name: "Source",
+      slug: "source",
+      id: "27454068",
+      type: "string/=",
+      sectionId: "string",
+    };
+    const categoryParameter = {
+      name: "Category",
+      slug: "category",
+      id: "27454069",
+      type: "string/=",
+      sectionId: "string",
+    };
+    const dashboardDetails = {
+      parameters: [sourceParameter, categoryParameter],
+    };
+    const getParameterMappings = card => [
+      {
+        card_id: card.id,
+        parameter_id: sourceParameter.id,
+        target: [
+          "dimension",
+          ["field", PEOPLE.SOURCE, { "source-field": ORDERS.USER_ID }],
+        ],
+      },
+      {
+        card_id: card.id,
+        parameter_id: categoryParameter.id,
+        target: [
+          "dimension",
+          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
+        ],
+      },
+    ];
+    cy.createDashboardWithQuestions({
+      dashboardDetails,
+      questions: [questionDetails],
+    }).then(({ dashboard, questions: [card] }) => {
+      updateDashboardCards({
+        dashboard_id: dashboard.id,
+        cards: [
+          {
+            card_id: card.id,
+            parameter_mappings: getParameterMappings(card),
+          },
+        ],
+      });
+      visitDashboard(dashboard.id);
+    });
+
+    cy.log("add a card to the dashboard and auto-wire");
+    editDashboard();
+    dashboardHeader().icon("add").click();
+    cy.findByTestId("add-card-sidebar")
+      .findByText(questionDetails.name)
+      .click();
+    undoToast().button("Auto-connect").click();
+
+    cy.log("check auto-wired parameter mapping");
+    cy.findByTestId("fixed-width-filters")
+      .findByText(sourceParameter.name)
+      .click();
+    getDashboardCard(1).findByText("User.Source").should("be.visible");
+    cy.findByTestId("fixed-width-filters")
+      .findByText(categoryParameter.name)
+      .click();
+    getDashboardCard(1).findByText("Product.Category").should("be.visible");
   });
 });
 

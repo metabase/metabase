@@ -182,16 +182,6 @@
           (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
           (is (= 2 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
 
-(deftest replace-fields-and-tables!-test
-  (testing "fields and tables in a native card can be replaced"
-    ;; We need the user to be defined in order to population the new revision related to the card update
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
-      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
-        (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
-                                               :tables {(mt/id :orders) (mt/id :people)}})
-        (is (= "SELECT NAME FROM PEOPLE"
-               (:query (:native (t2/select-one-fn :dataset_query :model/Card :id card-id)))))))))
-
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
 (defn- card-with-source-table
@@ -432,13 +422,13 @@
       (testing "Should not be able to create new Card with a filter with the wrong Database ID"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""
+             #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
              (t2.with-temp/with-temp [:model/Card _ bad-card-data]))))
       (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
         (t2.with-temp/with-temp [:model/Card {card-id :id} good-card-data]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""
+               #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
                (t2/update! :model/Card card-id bad-card-data))))))))
 
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
@@ -834,10 +824,8 @@
             (t2/delete! :model/Revision :model "Card" :model_id (:id card))
             (t2/update! :model/Card (:id card) changes)
             (create-card-revision! (:id card) false)
-
             (testing (format "we should track when %s changes" col)
               (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
-
             (when-not (#{;; these columns are expected to not have a description because it's always
                          ;; comes with a dataset_query changes
                          :table_id :database_id :query_type

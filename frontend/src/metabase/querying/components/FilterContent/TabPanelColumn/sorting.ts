@@ -30,7 +30,7 @@ function isLongText(column: Lib.ColumnMetadata) {
 const PRIORITIES = [
   isCreationDateOrTimestamp,
   Lib.isCreationTime,
-  Lib.isDate,
+  Lib.isTemporal,
   Lib.isBoolean,
   isCategoryAndNotNameOrAddress,
   Lib.isCurrency,

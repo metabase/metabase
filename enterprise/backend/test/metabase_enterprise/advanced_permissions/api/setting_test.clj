@@ -114,8 +114,9 @@
        user  [group]]
       (letfn [(get-geojson [user status]
                 (testing (format "get geojson with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "geojson"
-                                        :url geojson-test/test-geojson-url)))]
+                  (geojson-test/with-geojson-mocks
+                    (mt/user-http-request user :get status "geojson"
+                                          :url geojson-test/test-geojson-url))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}
@@ -220,13 +221,11 @@
                       (mt/with-actions [{:keys [action-id]} {:public_uuid       (str (random-uuid))
                                                              :made_public_by_id (mt/user->id :crowberto)}]
                         (mt/user-http-request user :delete status (format "action/%d/public_link" action-id)))))]
-
             (testing "if `advanced-permissions` is disabled, require admins,"
               (mt/with-premium-features #{}
                 (get-public-actions user 403)
                 (delete-public-action! user 403)
                 (delete-public-action! :crowberto 204)))
-
             (testing "if `advanced-permissions` is enabled,"
               (mt/with-premium-features #{:advanced-permissions}
                 (testing "still fail if user's group doesn't have `setting` permission"
@@ -234,7 +233,6 @@
                   (delete-public-action! user 403)
                   (get-public-actions :crowberto 200)
                   (delete-public-action! :crowberto 204))
-
                 (testing "succeed if user's group has `setting` permission,"
                   (perms/grant-application-permissions! group :setting)
                   (get-public-actions user 200)

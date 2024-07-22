@@ -47,7 +47,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     });
   });
 
-  it.skip("should drill to a question with multi-value 'contains' filter applied (metabase#42999)", () => {
+  it("should drill to a question with multi-value 'contains' filter applied (metabase#42999)", () => {
     setFilter("Text or Category", "Contains");
     cy.findAllByRole("radio", { name: "Multiple values" }).should("be.checked");
     cy.findByTestId("visualization-root").findByText("Select…").click();
@@ -167,7 +167,7 @@ describe("scenarios > dashboard > filters > text/category", () => {
     saveDashboard();
     waitDashboardCardQuery();
 
-    cy.location("search").should("eq", "?text=Organic&id=");
+    cy.location("search").should("eq", "?id=&text=Organic");
     cy.findByTestId("dashcard").contains("39.58");
 
     // This part reproduces metabase#13960
@@ -175,19 +175,19 @@ describe("scenarios > dashboard > filters > text/category", () => {
     cy.get("fieldset .Icon-close").click();
     waitDashboardCardQuery();
 
-    cy.location("search").should("eq", "?text=&id=");
+    cy.location("search").should("eq", "?id=&text=");
 
     filterWidget().contains("ID").click();
     cy.findByPlaceholderText("Enter an ID").type("4{enter}").blur();
     cy.button("Add filter").click();
     waitDashboardCardQuery();
 
-    cy.location("search").should("eq", "?text=&id=4");
+    cy.location("search").should("eq", "?id=4&text=");
 
     cy.reload();
     waitDashboardCardQuery();
 
-    cy.location("search").should("eq", "?text=&id=4");
+    cy.location("search").should("eq", "?id=4&text=");
     filterWidget().contains("Text");
     filterWidget().contains("Arnold Adams");
   });

@@ -1,7 +1,11 @@
-import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
+import {
+  getAvailableOperatorOptions,
+  getDefaultAvailableOperator,
+} from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
+import type { OperatorOption } from "./types";
 
 export function getAvailableOptions(
   query: Lib.Query,
@@ -20,16 +24,14 @@ export function getOptionByOperator(operator: Lib.BooleanFilterOperatorName) {
   return OPERATOR_OPTIONS[operator];
 }
 
-export function getDefaultValues() {
-  return [];
+export function getDefaultOperator(
+  availableOptions: OperatorOption[],
+): Lib.BooleanFilterOperatorName {
+  return getDefaultAvailableOperator(availableOptions, "=");
 }
 
-export function isValidFilter(
-  operator: Lib.BooleanFilterOperatorName,
-  column: Lib.ColumnMetadata,
-  values: boolean[],
-) {
-  return getFilterParts(operator, column, values) != null;
+export function getDefaultValues() {
+  return [];
 }
 
 export function getFilterClause(

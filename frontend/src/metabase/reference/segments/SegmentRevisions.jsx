@@ -70,7 +70,7 @@ class SegmentRevisions extends Component {
         : {};
 
     return (
-      <div style={style} className={CS.full}>
+      <div style={style} className={CS.full} data-testid="segment-revisions">
         <ReferenceHeader
           name={t`Revision history for ${this.props.segment.name}`}
           headerIcon="segment"

@@ -1,10 +1,10 @@
-import { useState } from "react";
+import { type FocusEvent, useState } from "react";
 import { useDebounce } from "react-use";
 import { t } from "ttag";
 
 import { useSearchFieldValuesQuery } from "metabase/api";
 import { Loader, MultiAutocomplete } from "metabase/ui";
-import type { FieldId } from "metabase-types/api";
+import type { FieldId, FieldValue } from "metabase-types/api";
 
 import { getFieldOptions } from "../utils";
 
@@ -18,28 +18,34 @@ import {
 interface SearchValuePickerProps {
   fieldId: FieldId;
   searchFieldId: FieldId;
+  fieldValues: FieldValue[];
   selectedValues: string[];
   columnDisplayName: string;
   shouldCreate?: (query: string, values: string[]) => boolean;
   autoFocus?: boolean;
   onChange: (newValues: string[]) => void;
+  onFocus?: (event: FocusEvent<HTMLInputElement>) => void;
+  onBlur?: (event: FocusEvent<HTMLInputElement>) => void;
 }
 
 export function SearchValuePicker({
   fieldId,
   searchFieldId,
+  fieldValues: initialFieldValues,
   selectedValues,
   columnDisplayName,
   shouldCreate,
   autoFocus,
   onChange,
+  onFocus,
+  onBlur,
 }: SearchValuePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [searchQuery, setSearchQuery] = useState(searchValue);
   const canSearch = searchQuery.length > 0;
 
   const {
-    data: fieldValues = [],
+    data: searchFieldValues = [],
     error: searchError,
     isFetching: isSearching,
   } = useSearchFieldValuesQuery(
@@ -54,7 +60,9 @@ export function SearchValuePicker({
     },
   );
 
-  const searchOptions = canSearch ? getFieldOptions(fieldValues) : [];
+  const searchOptions = canSearch
+    ? getFieldOptions(searchFieldValues)
+    : getFieldOptions(initialFieldValues);
   const visibleOptions = getFilteredOptions(
     searchOptions,
     searchValue,
@@ -75,7 +83,7 @@ export function SearchValuePicker({
   };
 
   const handleSearchTimeout = () => {
-    if (shouldSearch(searchValue, searchQuery, fieldValues)) {
+    if (shouldSearch(searchValue, searchQuery, searchFieldValues)) {
       setSearchQuery(searchValue);
     }
   };
@@ -96,6 +104,8 @@ export function SearchValuePicker({
       nothingFound={notFoundMessage}
       onChange={onChange}
       onSearchChange={handleSearchChange}
+      onFocus={onFocus}
+      onBlur={onBlur}
     />
   );
 }

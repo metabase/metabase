@@ -353,10 +353,7 @@ export type SidebarCacheFormProps = {
 } & GroupProps;
 
 export const PLUGIN_CACHING = {
-  cacheTTLFormField: null as any,
-  dashboardCacheTTLFormField: null,
-  questionCacheTTLFormField: null,
-  getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
+  isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
   DashboardStrategySidebar: PluginPlaceholder as any,
@@ -365,7 +362,6 @@ export const PLUGIN_CACHING = {
   SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
-  isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
   strategies: strategies,
@@ -478,4 +474,14 @@ export const PLUGIN_UPLOAD_MANAGEMENT = {
 
 export const PLUGIN_IS_EE_BUILD = {
   isEEBuild: () => false,
+};
+
+export const PLUGIN_RESOURCE_DOWNLOADS = {
+  /**
+   * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
+   */
+  areDownloadsEnabled: (_args: {
+    hide_download_button?: boolean | null;
+    downloads?: boolean | null;
+  }) => true,
 };

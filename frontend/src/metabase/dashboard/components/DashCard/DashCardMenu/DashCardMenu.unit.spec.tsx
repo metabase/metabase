@@ -48,7 +48,6 @@ const TEST_CARD_NO_DATA_ACCESS = createMockCard({
     database: SAMPLE_DB_ID,
     query: {},
   }),
-  can_run_adhoc_query: false,
 });
 
 const TEST_CARD_NO_COLLECTION_WRITE_ACCESS = createMockCard({
@@ -92,7 +91,9 @@ const setup = ({ card = TEST_CARD, result = TEST_RESULT }: SetupOpts = {}) => {
     <>
       <Route
         path="dashboard/:slug"
-        component={() => <DashCardMenu question={question} result={result} />}
+        component={() => (
+          <DashCardMenu question={question} result={result} downloadsEnabled />
+        )}
       />
       <Route path="question/:slug" component={() => <div />} />
       <Route path="question/:slug/notebook" component={() => <div />} />

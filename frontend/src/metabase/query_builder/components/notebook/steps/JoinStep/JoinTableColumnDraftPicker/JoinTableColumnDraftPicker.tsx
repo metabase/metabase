@@ -1,4 +1,7 @@
-import { FieldPicker } from "metabase/common/components/FieldPicker";
+import {
+  FieldPicker,
+  type FieldPickerItem,
+} from "metabase/common/components/FieldPicker";
 import type * as Lib from "metabase-lib";
 
 interface JoinTableColumnPickerDraftProps {
@@ -16,7 +19,7 @@ export function JoinTableColumnDraftPicker({
   selectedColumns,
   onChange,
 }: JoinTableColumnPickerDraftProps) {
-  const isColumnSelected = (column: Lib.ColumnMetadata) => {
+  const isColumnSelected = ({ column }: FieldPickerItem) => {
     return selectedColumns.includes(column);
   };
 
