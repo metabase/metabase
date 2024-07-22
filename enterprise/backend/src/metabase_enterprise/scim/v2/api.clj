@@ -4,7 +4,7 @@
 
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
-   [compojure.core :refer [GET]]
+   [compojure.core :refer [GET POST]]
    [metabase.api.common :as api :refer [defendpoint]]
    [metabase.models.user :as user]
    [metabase.util :as u]
@@ -37,6 +37,7 @@
               [:value ms/NonBlankString]
               [:type {:optional true} [:enum "work" "home" "other"]]
               [:primary {:optional true} boolean?]]]]
+   [:locale {:optional true} ms/NonBlankString]
    [:active boolean?]])
 
 (def SCIMUserList
@@ -77,7 +78,7 @@
 
 (def ^:private user-cols
   "Required columns when fetching users for SCIM."
-  [:id :first_name :last_name :email :is_active :entity_id])
+  [:id :first_name :last_name :email :locale :is_active :entity_id])
 
 (mu/defn mb-user->scim :- SCIMUser
   "Given a Metabase user, returns a SCIM user."
@@ -90,6 +91,19 @@
    :emails   [{:value (:email user)}]
    :active   (:is_active user)
    :meta     {:resourceType "User"}})
+
+(mu/defn scim-user->mb :- user/NewUser
+  "Given a SCIM user, returns a Metabase user."
+  [user]
+  (let [{email :userName name-obj :name locale :locale is-active? :active} user
+        {:keys [givenName familyName]} name-obj]
+    (merge
+     {:first_name givenName
+      :last_name  familyName
+      :email      email
+      :is_active  is-active?
+      :type       :personal}
+     (when locale {:locale locale}))))
 
 (defn- user-filter-clause
   [filter-parameter]
@@ -142,25 +156,70 @@
   "Create a single user."
   [:as {scim-user :body}]
   {scim-user SCIMUser}
-  (let [{email :userName name-obj :name is-active? :active} scim-user
-        {:keys [givenName familyName]} name-obj
-        user {:first_name givenName
-              :last_name  familyName
-              :email      email
-              :is_active  is-active?
-              :type       :personal}]
+  (let [mb-user (scim-user->mb scim-user)
+        email   (:email mb-user)]
     (when (t2/exists? :model/User :%lower.email (u/lower-case-en email))
       (throw (ex-info "Email address is already in use"
                       {:schemas     [error-schema-uri]
                        :detail      "Email address is already in use"
                        :status-code 409})))
     (let [new-user (t2/with-transaction [_]
-                     (user/insert-new-user! user)
+                     (user/insert-new-user! mb-user)
                      (-> (t2/select-one (cons :model/User user-cols)
                                         :email (u/lower-case-en email))
                          mb-user->scim))]
       {:status 201
        :body   new-user})))
+
+(defendpoint PUT "/Users/:id"
+  "Update a user."
+  [:as {scim-user :body {id :id} :params}]
+  {scim-user SCIMUser}
+  (let [updates      (scim-user->mb scim-user)
+        email        (:email scim-user)
+        current-user (t2/select-one :model/User :entity_id id)]
+    (when-not current-user
+      (throw (ex-info "User not found"
+                          {:schemas     [error-schema-uri]
+                           :detail      "User not found"
+                           :status      404
+                           :status-code 404})))
+    (if (not= email (:email current-user))
+      (throw (ex-info "You may not update the email of an existing user."
+                      {:schemas     [error-schema-uri]
+                       :detail      "You may not update the email of an existing user."
+                       :status      400
+                       :status-code 400}))
+      (try
+       (t2/with-transaction [_conn]
+         (t2/update! :model/User (u/the-id current-user) updates)
+         (let [user (-> (t2/select-one (cons :model/User user-cols)
+                                       :entity_id id)
+                        mb-user->scim)]
+           {:status 200
+            :body   user}))
+       (catch Exception e
+         (let [message (format "Error updating user: %s" (ex-message e))]
+           (throw (ex-info message
+                           {:schemas     [error-schema-uri]
+                            :detail      message
+                            :status      400
+                            :status-code 400}))))))))
+
+#_(defendpoint PATCH "/Users/:id"
+    "Activate or deactivate a user."
+    [id]
+    {id ms/NonBlankString}
+    (if-let [user (t2/select-one (cons :model/User user-cols)
+                                 :entity_id id
+                                 {:where [:= :type "personal"]})]
+      (-> user
+          mb-user->scim))
+    (throw (ex-info "User not found"
+                    {:schemas     [error-schema-uri]
+                     :detail      "User not found"
+                     :status      404
+                     :status-code 404})))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
