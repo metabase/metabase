@@ -43,9 +43,10 @@
   "A wrapper of [[grouper.core/submit!]] that returns nil instead of a promise.
   We use grouper for fire-and-forget scenarios, so we don't care about the result."
   [& args]
-  (let [p (apply grouper/submit! args)]
-    (when (synchronous-batch-updates)
-      ;; wake up the group immediately and wait for it to finish
-      (.wakeUp ^Grouper (first args))
-      (deref p))
-    nil))
+  nil
+  #_(let [p (apply grouper/submit! args)]
+      (when (synchronous-batch-updates)
+        ;; wake up the group immediately and wait for it to finish
+        (.wakeUp ^Grouper (first args))
+        (deref p))
+      nil))

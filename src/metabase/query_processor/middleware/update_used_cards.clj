@@ -51,8 +51,8 @@
           rff   :- ::qp.schema/rff]
     (let [now  (t/offset-date-time)
           rff* (fn [metadata]
-                 (doseq [card-id (distinct (lib.metadata/invoked-ids (qp.store/metadata-provider) :metadata/card))]
-                   (grouper/submit! @update-used-cards-queue {:id        card-id
-                                                              :timestamp now}))
+                 #_(doseq [card-id (distinct (lib.metadata/invoked-ids (qp.store/metadata-provider) :metadata/card))]
+                     (grouper/submit! @update-used-cards-queue {:id        card-id
+                                                                :timestamp now}))
                  (rff metadata))]
       (qp query rff*))))

@@ -86,7 +86,7 @@
      :topic   topic
      :user-id user-id}
     (try
-      (increment-view-counts! :model/Card object-id)
+      #_(increment-view-counts! :model/Card object-id)
       (record-views! (generate-view :model :model/Card event))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
@@ -125,7 +125,7 @@
   "Handle processing for a dashboard query being run"
   [topic {:keys [object-id] :as _event}]
   (try
-    (update-dashboard-last-viewed-at! object-id)
+    #_(update-dashboard-last-viewed-at! object-id)
     (catch Throwable e
       (log/warnf e "Failed to process dashboard query event. %s" topic))))
 
@@ -169,7 +169,7 @@
      :topic topic
      :user-id user-id}
     (try
-      (increment-view-counts! :model/Dashboard object-id)
+      #_(increment-view-counts! :model/Dashboard object-id)
       (record-views! (generate-view :model :model/Dashboard event))
       (catch Throwable e
         (log/warnf e "Failed to process view event. %s" topic)))))
@@ -186,7 +186,7 @@
      :topic topic
      :user-id user-id}
     (try
-      (increment-view-counts! :model/Table (:id object))
+      #_(increment-view-counts! :model/Table (:id object))
       (let [table-id    (u/id object)
             database-id (:db_id object)
             has-access? (when (= api/*current-user-id* user-id)
