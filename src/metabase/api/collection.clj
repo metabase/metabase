@@ -1047,8 +1047,7 @@
        present-collections))
 
 (defenterprise find-stale-candidates
-  "Returns a boolean if the current user uses sandboxing for any database. In OSS this is always false. Will throw an
-  error if [[api/*current-user-id*]] is not bound."
+  "Finds stale content in the given collection."
   metabase-enterprise.stale
   [& _args]
   {:rows []
