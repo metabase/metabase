@@ -33,6 +33,7 @@ describe("scenarios > embedding > native questions", () => {
       }
 
       cy.createNativeQuestion(details, {
+        wrapId: true,
         visitQuestion: true,
       });
 
@@ -81,62 +82,69 @@ describe("scenarios > embedding > native questions", () => {
         assert.deepEqual(actual, expected);
       });
 
-      visitIframe();
+      cy.get("@questionId").then(questionId => {
+        const payload = {
+          resource: { question: questionId },
+          params: { total: [] },
+        };
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Organic");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Twitter").should("not.exist");
+        visitEmbeddedPage(payload);
 
-      // Created At: Q2 2023
-      filterWidget().contains("Created At").click();
-      cy.findByTestId("select-button").click();
-      popover().last().contains("2023").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("Organic");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("Twitter").should("not.exist");
 
-      // State: is not KS
-      filterWidget().contains("State").click();
-      cy.findByPlaceholderText("Search the list").type("KS{enter}");
-      cy.findAllByTestId(/-filter-value$/).should("have.length", 1);
-      cy.findByTestId("KS-filter-value").should("be.visible").click();
-      cy.button("Add filter").click();
+        // Created At: Q2 2023
+        filterWidget().contains("Created At").click();
+        cy.findByTestId("select-button").click();
+        popover().last().contains("2023").click();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Q2").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Logan Weber").should("not.exist");
+        // State: is not KS
+        filterWidget().contains("State").click();
+        cy.findByPlaceholderText("Search the list").type("KS{enter}");
+        cy.findAllByTestId(/-filter-value$/).should("have.length", 1);
+        cy.findByTestId("KS-filter-value").should("be.visible").click();
+        cy.button("Add filter").click();
 
-      // Product ID is 10
-      cy.findByPlaceholderText("Product ID").type("10{enter}");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Logan Weber").should("not.exist");
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("Affiliate").should("not.exist");
+        // Product ID is 10
+        cy.findByPlaceholderText("Product ID").type("10{enter}");
 
-      // Let's try to remove one filter
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Q2 2023")
-        .closest("fieldset")
-        .within(() => {
-          cy.icon("close").click();
-        });
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("Affiliate").should("not.exist");
 
-      // Order ID is 926 - there should be only one result after this
-      filterWidget().contains("Order ID").click();
-      cy.findByPlaceholderText("Enter an ID").type("926");
-      cy.button("Add filter").click();
+        // Let's try to remove one filter
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Q2 2023")
+          .closest("fieldset")
+          .within(() => {
+            cy.icon("close").click();
+          });
 
-      cy.findByTestId("table-row").should("have.length", 1);
+        // Order ID is 926 - there should be only one result after this
+        filterWidget().contains("Order ID").click();
+        cy.findByPlaceholderText("Enter an ID").type("926");
+        cy.button("Add filter").click();
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("December 29, 2024, 4:54 AM");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("CO");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Sid Mills").should("not.exist");
+        cy.findByTestId("table-row").should("have.length", 1);
 
-      cy.location("search").should(
-        "eq",
-        "?id=926&created_at=&state=KS&product_id=10",
-      );
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("December 29, 2024, 4:54 AM");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("CO");
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.findByText("Sid Mills").should("not.exist");
+
+        cy.location("search").should(
+          "eq",
+          "?id=926&created_at=&state=KS&product_id=10",
+        );
+      });
     });
 
     it("should handle required parameters", () => {
@@ -323,6 +331,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
   it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
     cy.createNativeQuestion(questionDetailsWithDefaults, {
       visitQuestion: true,
+      wrapId: true,
     });
 
     openStaticEmbeddingModal({ activeTab: "parameters" });
@@ -337,15 +346,22 @@ describe("scenarios > embedding > native questions with default parameters", () 
       });
     });
 
-    visitIframe();
+    cy.get("@questionId").then(questionId => {
+      const payload = {
+        resource: { question: questionId },
+        params: { source: [] },
+      };
 
-    // Remove default filter value
-    clearFilterWidget();
-    // The ID default (1, 2) should apply, because it is disabled.
-    // The Name default ('Lina Heaney') should not apply, because the Name param is editable and empty
-    // The Source default ('Facebook') should not apply because the param is locked but the value is unset
-    // If either the Name or Source default applied the result would be 0.
-    cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+      visitEmbeddedPage(payload);
+
+      // Remove default filter value
+      clearFilterWidget();
+      // The ID default (1, 2) should apply, because it is disabled.
+      // The Name default ('Lina Heaney') should not apply, because the Name param is editable and empty
+      // The Source default ('Facebook') should not apply because the param is locked but the value is unset
+      // If either the Name or Source default applied the result would be 0.
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+    });
   });
 });
 
