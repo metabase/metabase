@@ -20,7 +20,9 @@ export const ExecutionTime = ({ time }: Props) => {
 
   return (
     <Tooltip label={t`Query execution time`}>
-      <span data-testid="execution-time">{formatDuration(time)}</span>
+      <span aria-label={t`Query execution time`} data-testid="execution-time">
+        {formatDuration(time)}
+      </span>
     </Tooltip>
   );
 };

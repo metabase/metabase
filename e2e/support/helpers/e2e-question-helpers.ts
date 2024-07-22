@@ -6,7 +6,7 @@ import type {
   StructuredQuery,
 } from "metabase-types/api";
 
-type QuestionDetails = {
+export type QuestionDetails = {
   dataset_query: DatasetQuery;
   /**
    * Defaults to "test question".
@@ -58,7 +58,7 @@ export type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
   native: NativeQuery;
 };
 
-type Options = {
+export type Options = {
   /**
    * Whether to visit the question in order to load its metadata.
    * Defaults to false.

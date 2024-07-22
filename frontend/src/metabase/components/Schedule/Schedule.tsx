@@ -1,14 +1,13 @@
-import { type ReactNode, useCallback } from "react";
+import { type ReactNode, useCallback, type HTMLAttributes } from "react";
 import { c } from "ttag";
 
-import { capitalize } from "metabase/lib/formatting/strings";
 import { removeNullAndUndefinedValues } from "metabase/lib/types";
-import { Box } from "metabase/ui";
+import { Box, type BoxProps } from "metabase/ui";
 import type { ScheduleSettings, ScheduleType } from "metabase-types/api";
 
 import {
-  AutoWidthSelect,
   SelectFrame,
+  SelectFrequency,
   SelectMinute,
   SelectTime,
   SelectWeekday,
@@ -65,6 +64,7 @@ export const Schedule = ({
   verb,
   minutesOnHourPicker,
   onScheduleChange,
+  ...boxProps
 }: {
   schedule: ScheduleSettings;
   scheduleOptions: ScheduleType[];
@@ -75,7 +75,8 @@ export const Schedule = ({
     nextSchedule: ScheduleSettings,
     change: ScheduleChangeProp,
   ) => void;
-}) => {
+} & BoxProps &
+  HTMLAttributes<HTMLDivElement>) => {
   const updateSchedule: UpdateSchedule = useCallback(
     (field: ScheduleProperty, value: ScheduleSettings[typeof field]) => {
       let newSchedule: ScheduleSettings = {
@@ -117,6 +118,7 @@ export const Schedule = ({
         gap: ".5rem",
         rowGap: ".35rem",
       }}
+      {...boxProps}
     >
       {renderSchedule({
         fillScheduleTemplate,
@@ -262,32 +264,4 @@ const renderSchedule = ({
   } else {
     return null;
   }
-};
-
-/** A Select that changes the schedule frequency (e.g., daily, hourly, monthly, etc.),
- * also known as the schedule 'type'. */
-const SelectFrequency = ({
-  scheduleType,
-  updateSchedule,
-  scheduleOptions,
-}: {
-  scheduleType?: ScheduleType | null;
-  updateSchedule: UpdateSchedule;
-  scheduleOptions: ScheduleType[];
-}) => {
-  const { scheduleOptionNames } = getScheduleStrings();
-
-  const scheduleTypeOptions = scheduleOptions.map(option => ({
-    label: scheduleOptionNames[option] || capitalize(option),
-    value: option,
-  }));
-
-  return (
-    <AutoWidthSelect
-      display="flex"
-      value={scheduleType}
-      onChange={(value: ScheduleType) => updateSchedule("schedule_type", value)}
-      data={scheduleTypeOptions}
-    />
-  );
 };
