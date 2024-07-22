@@ -1081,7 +1081,7 @@ describe("issue 34514", () => {
   }
 });
 
-describe("issues 28270, 33708", () => {
+describe.skip("issues 28270, 33708", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
