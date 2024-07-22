@@ -116,17 +116,22 @@ export const getQueryBuilderMode = createSelector(
   uiControls => uiControls.queryBuilderMode,
 );
 
+const getCardResultMetadata = createSelector(
+  [getCard],
+  card => card?.result_metadata,
+);
+
 const getModelMetadataDiff = createSelector(
-  [getCard, getMetadataDiff, getQueryBuilderMode],
-  (card, metadataDiff, queryBuilderMode) => {
-    if (!card || !card.result_metadata || queryBuilderMode !== "dataset") {
+  [getCardResultMetadata, getMetadataDiff, getQueryBuilderMode],
+  (resultMetadata, metadataDiff, queryBuilderMode) => {
+    if (!resultMetadata || queryBuilderMode !== "dataset") {
       return metadataDiff;
     }
 
     return {
       ...metadataDiff,
       ...Object.fromEntries(
-        card.result_metadata.map(column => [
+        resultMetadata.map(column => [
           column.name,
           { ...column, ...metadataDiff[column.name] },
         ]),
@@ -143,11 +148,7 @@ export const getQueryResults = createSelector(
     }
 
     const [result] = queryResults;
-    if (
-      result.error ||
-      !result?.data?.results_metadata ||
-      Object.keys(metadataDiff).length === 0
-    ) {
+    if (result.error || !result?.data?.results_metadata) {
       return queryResults;
     }
 
