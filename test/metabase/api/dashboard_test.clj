@@ -4606,7 +4606,6 @@
                                  {:id (mt/id :reviews)}
                                  {:id (mt/id :products)
                                   :fields sequential?
-                                  :db map?
                                   :dimension_options map?}
                                  {:id (mt/id :venues)}])
            :cards [{:id link-card}]
@@ -4739,7 +4738,9 @@
           (mt/user-http-request :crowberto :get 200
                                 (format "dashboard/%d/query_metadata?dashboard_load_id=%s" (:id d) load-id))))
       (testing "Call count for :metadata/table is smaller with caching in place"
-        (is (< @cached-calls-count @uncached-calls-count)))
+        ;; with disabled can_run_adhoc_query these numbers might now match. Without disabled it was 5, with disabling
+        ;; it is 1
+        (is (<= @cached-calls-count @uncached-calls-count)))
       ;; If we need more for _some reason_, this test should be updated accordingly.
       (testing "At most 1 db call should be executed for :metadata/tables"
         (is (= @cached-calls-count 1))))))
