@@ -594,7 +594,6 @@ export function FieldValuesWidgetInner({
             onChange={onChange}
             options={options}
             optionRenderer={optionRenderer}
-            checkedColor={checkedColor}
           />
         ) : isListMode && hasListValues && !multi ? (
           <SingleSelectListField
