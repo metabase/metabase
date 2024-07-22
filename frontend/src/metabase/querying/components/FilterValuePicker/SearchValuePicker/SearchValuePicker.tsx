@@ -45,7 +45,7 @@ export function SearchValuePicker({
   const canSearch = searchQuery.length > 0;
 
   const {
-    data: fieldValues = initialFieldValues,
+    data: fieldValues = [],
     error: searchError,
     isFetching: isSearching,
   } = useSearchFieldValuesQuery(
