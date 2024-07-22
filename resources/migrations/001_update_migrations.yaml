@@ -8369,6 +8369,12 @@ databaseChangeLog:
                   constraints:
                     nullable: false
               - column:
+                  name: description
+                  remarks: channel description
+                  type: ${text.type}
+                  constraints:
+                    nullable: true
+              - column:
                   name: type
                   remarks: Channel type
                   type: varchar(32)
