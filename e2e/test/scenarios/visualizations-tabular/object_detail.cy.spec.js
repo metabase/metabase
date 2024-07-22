@@ -366,6 +366,31 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Item 1 of/i).should("be.visible");
   });
+
+  it("does not hang in loading state when there is a non-integer PK (metabase#38747)", () => {
+    // remove default PK
+    cy.request("PUT", `/api/field/${PRODUCTS.ID}`, {
+      semantic_type: "type/Description",
+    });
+    // make string field a PK
+    cy.request("PUT", `/api/field/${PRODUCTS.CATEGORY}`, {
+      fk_target_field_id: null,
+      semantic_type: "type/PK",
+    });
+
+    createQuestion(
+      {
+        type: "model",
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findAllByTestId("cell-data").contains("Gizmo").eq(0).click();
+    cy.findByTestId("loading-indicator").should("not.exist");
+  });
 });
 
 function drillPK({ id }) {
