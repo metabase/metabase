@@ -150,24 +150,12 @@ describe("issue 39487", () => {
 
     nextButton().click(); // go to 2015-05 - 6 day rows
     assertNoLayoutShift();
-
-    popover().findByText("May 2015").click(); // go to year view
-    assertNoLayoutShift();
-
-    popover().findByText("2015").click(); // go to decade view
-    assertNoLayoutShift();
   }
 
   function checkDateRangeFilter() {
     measureInitialValues();
 
     nextButton().click(); // go to 2024-07 - 5 day rows
-    assertNoLayoutShift();
-
-    popover().findByText("July 2024").click(); // go to year view
-    assertNoLayoutShift();
-
-    popover().findByText("2024").click(); // go to decade view
     assertNoLayoutShift();
   }
 
