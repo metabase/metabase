@@ -521,6 +521,10 @@ describe("StringFilterValuePicker", () => {
         screen.queryByPlaceholderText("Search the list"),
       ).not.toBeInTheDocument();
 
+      await userEvent.click(input);
+      expect(screen.getByText("Gadget")).toBeInTheDocument();
+      expect(screen.getByText("Widget")).toBeInTheDocument();
+
       await userEvent.type(input, "g");
       await userEvent.click(await screen.findByText("Gizmo"));
       expect(onChange).toHaveBeenLastCalledWith(["Gizmo"]);
