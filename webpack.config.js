@@ -396,7 +396,7 @@ if (WEBPACK_BUNDLE !== "production") {
   // with BETTER_SOURCE_MAPS we switch to sourcemaps that work with breakpoints and makes stacktraces readable
   config.devtool = process.env.BETTER_SOURCE_MAPS
     ? "eval-source-map"
-    : "cheap-module-source-map";
+    : "eval-cheap-module-source-map";
 
   // helps with source maps
   config.output.devtoolModuleFilenameTemplate = "[absolute-resource-path]";
