@@ -116,11 +116,10 @@ export const getQueryBuilderMode = createSelector(
   uiControls => uiControls.queryBuilderMode,
 );
 
-// preserve original model metadata when running an-doc query
 const getModelMetadataDiff = createSelector(
-  [getCard, getMetadataDiff],
+  [getCard, getMetadataDiff, getQueryBuilderMode],
   (card, metadataDiff, queryBuilderMode) => {
-    if (!card || !card.result_metadata) {
+    if (!card || !card.result_metadata || queryBuilderMode !== "dataset") {
       return metadataDiff;
     }
 
@@ -138,16 +137,17 @@ const getModelMetadataDiff = createSelector(
 
 export const getQueryResults = createSelector(
   [getRawQueryResults, getModelMetadataDiff, getQueryBuilderMode],
-  (queryResults, metadataDiff, queryBuilderMode) => {
+  (queryResults, metadataDiff) => {
     if (!Array.isArray(queryResults) || !queryResults.length) {
       return null;
     }
-    if (queryBuilderMode !== "dataset") {
-      return queryResults;
-    }
 
     const [result] = queryResults;
-    if (result.error || !result?.data?.results_metadata) {
+    if (
+      result.error ||
+      !result?.data?.results_metadata ||
+      Object.keys(metadataDiff).length === 0
+    ) {
       return queryResults;
     }
 
