@@ -26,9 +26,9 @@ export const CreateWebhookModal = ({
     await createChannel({
       name: vals.name,
       type: "channel/http",
+      description: vals.description,
       details: {
         url: vals.url,
-        description: vals.description,
         "auth-method": vals["auth-method"],
       },
     }).unwrap();
