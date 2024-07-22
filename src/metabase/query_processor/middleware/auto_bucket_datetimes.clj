@@ -33,7 +33,7 @@
 ;; TODO - What we could do tho is fetch all the stuff we need for the Store and then save these Fields in the store,
 ;; which would save a bit of time when we do resolve them
 (mu/defn ^:private unbucketed-fields->field-id->type-info :- [:maybe ::field-id-or-name->type-info]
-  "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`. Return empty map
+  "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`. Return an empty map
   for empty `unbucketed-fields`."
   [metadata-providerable unbucketed-fields :- [:maybe [:sequential :mbql.clause/field]]]
   (merge
@@ -134,7 +134,7 @@
     :do-not-bucket-reason/field-with-bucketing-or-binning))
 
 (mu/defn ^:private date-or-datetime-clause?
-  [{base-type :base-type, effective-type :effective-type} :- ::field-type-info]
+  [{base-type :base-type, effective-type :effective-type} :- ::column-type-info]
   (when (and (nil? base-type) (nil? effective-type))
     (log/warn "`type-info` is missing `base-type` and `effective-type`."))
   (some (fn [field-type]
@@ -144,7 +144,7 @@
 
 (mu/defn ^:private wrap-unbucketed-clauses :- ::lib.schema/stage
   "Add `:temporal-unit` to `:field`s and `:expression`s in breakouts and filters if appropriate; for fields, look
-  at corresponing type information in `field-id->type-info` to see if we should do so. For expressions examine clause
+  at corresponing type information in `field-id->type-info` to see if we should do so. For expressions examine the clause
   options."
   ;; we only want to wrap clauses in `:breakout` and `:filter` so just make a 3-arg version of this fn that takes the
   ;; name of the clause to rewrite and call that twice
