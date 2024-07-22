@@ -143,6 +143,13 @@
             "null"
           ],
           "description": "Indicates if the download button is hidden. It will be null on OSS instance since it's not supported."
+        },
+        "downloads": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Indicates if downloads are enabled, it will be null on OSS as they can't disable them"
         }
       }
     },
