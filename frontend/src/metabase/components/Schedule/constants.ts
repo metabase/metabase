@@ -64,52 +64,100 @@ export const getScheduleStrings = () => {
   const weekdays: Weekday[] = [
     {
       label: c(
-        "Occurs in phrases like 'Send weekly on Sunday'. Only capitalize if necessary",
+        "Occurs in phrases like 'Send weekly on Sundays'. Only capitalize if necessary. In some languages, a singular noun is best.",
+      ).t`Sundays`,
+      value: "sun",
+    },
+    {
+      label: c(
+        "Occurs in phrases like 'Send weekly on Mondays'. Only capitalize if necessary. In some languages, a singular noun is best.",
+      ).t`Mondays`,
+      value: "mon",
+    },
+    {
+      label: c(
+        "Occurs in phrases like 'Send weekly on Tuesdays'. Only capitalize if necessary. In some languages, a singular noun is best.",
+      ).t`Tuesdays`,
+      value: "tue",
+    },
+    {
+      label: c(
+        "Occurs in phrases like 'Send weekly on Wednesdays'. Only capitalize if necessary. In some languages, a singular noun is best.",
+      ).t`Wednesdays`,
+      value: "wed",
+    },
+    {
+      label: c(
+        "Occurs in phrases like 'Send weekly on Thursdays'. Only capitalize if necessary. In some languages, a singular noun is best.",
+      ).t`Thursdays`,
+      value: "thu",
+    },
+    {
+      label: c(
+        "Occurs in phrases like 'Send weekly on Fridays'. Only capitalize if necessary. In some languages, a singular noun is best.",
+      ).t`Fridays`,
+      value: "fri",
+    },
+    {
+      label: c(
+        "Occurs in phrases like 'Send weekly on Saturdays'. Only capitalize if necessary. In some languages, a singular noun is best.",
+      ).t`Saturdays`,
+      value: "sat",
+    },
+  ];
+
+  /** In several languages the word 'Sunday' is translated differently in 'Send
+   * weekly on Sunday' vs. 'Send monthly on the first Sunday'. So we need
+   * separate translations of weekdays mentioned in a monthly schedule and
+   * weekdays mentioned in a weekly schedule. */
+  const weekdayOfMonthOptions: (
+    | Weekday
+    | { label: string; value: "calendar-day" }
+  )[] = [
+    { label: t`calendar day`, value: "calendar-day" },
+    {
+      label: c(
+        "Occurs in phrases like 'Send monthly on the first Sunday'. Only capitalize if necessary",
       ).t`Sunday`,
       value: "sun",
     },
     {
       label: c(
-        "Occurs in phrases like 'Send weekly on Monday'. Only capitalize if necessary",
+        "Occurs in phrases like 'Send monthly on the first Monday'. Only capitalize if necessary",
       ).t`Monday`,
       value: "mon",
     },
     {
       label: c(
-        "Occurs in phrases like 'Send weekly on Tuesday'. Only capitalize if necessary",
+        "Occurs in phrases like 'Send monthly on the first Tuesday'. Only capitalize if necessary",
       ).t`Tuesday`,
       value: "tue",
     },
     {
       label: c(
-        "Occurs in phrases like 'Send weekly on Wednesday'. Only capitalize if necessary",
+        "Occurs in phrases like 'Send monthly on the first Wednesday'. Only capitalize if necessary",
       ).t`Wednesday`,
       value: "wed",
     },
     {
       label: c(
-        "Occurs in phrases like 'Send weekly on Thursday'. Only capitalize if necessary",
+        "Occurs in phrases like 'Send monthly on the first Thursday'. Only capitalize if necessary",
       ).t`Thursday`,
       value: "thu",
     },
     {
       label: c(
-        "Occurs in phrases like 'Send weekly on Friday'. Only capitalize if necessary",
+        "Occurs in phrases like 'Send monthly on the first Friday'. Only capitalize if necessary",
       ).t`Friday`,
       value: "fri",
     },
     {
       label: c(
-        "Occurs in phrases like 'Send weekly on Saturday'. Only capitalize if necessary",
+        "Occurs in phrases like 'Send monthly on the first Saturday'. Only capitalize if necessary",
       ).t`Saturday`,
       value: "sat",
     },
   ];
-
-  const weekdayOfMonthOptions: (
-    | Weekday
-    | { label: string; value: "calendar-day" }
-  )[] = [{ label: t`calendar day`, value: "calendar-day" }, ...weekdays];
 
   const amAndPM = [
     // We use a fallback string in case the translator translated
