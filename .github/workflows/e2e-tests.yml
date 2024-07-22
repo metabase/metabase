@@ -215,9 +215,20 @@ jobs:
         env:
           CYPRESS_QA_DB_MONGO: true
 
-      - name: Run E2E tests for Embedding SDK
+      - name: Run Embedding SDK Storybook
         if: matrix.context == 'folder' && matrix.name == 'embedding-sdk' && github.event_name != 'schedule'
         uses: ./.github/actions/run-embedding-sdk-storybook
+
+      - name: Run E2E tests for Embedding SDK
+        if: matrix.context == 'folder' && matrix.name == 'embedding-sdk' && github.event_name != 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="-@slow+-@flaky --@quarantine",grepOmitFiltered=true \
+          --folder 'embedding-sdk' \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        env:
+          CYPRESS_IS_EMBEDDING_SDK: true
+        shell: bash
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
