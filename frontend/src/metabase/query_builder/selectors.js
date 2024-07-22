@@ -111,17 +111,46 @@ export const getIsBookmarked = (state, props) =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
   );
 
+export const getQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.queryBuilderMode,
+);
+
+// preserve original model metadata when running an-doc query
+const getModelMetadataDiff = createSelector(
+  [getCard, getMetadataDiff],
+  (card, metadataDiff, queryBuilderMode) => {
+    if (!card || !card.result_metadata) {
+      return metadataDiff;
+    }
+
+    return {
+      ...metadataDiff,
+      ...Object.fromEntries(
+        card.result_metadata.map(column => [
+          column.name,
+          { ...column, ...metadataDiff[column.name] },
+        ]),
+      ),
+    };
+  },
+);
+
 export const getQueryResults = createSelector(
-  [getRawQueryResults, getMetadataDiff],
-  (queryResults, metadataDiff) => {
+  [getRawQueryResults, getModelMetadataDiff, getQueryBuilderMode],
+  (queryResults, metadataDiff, queryBuilderMode) => {
     if (!Array.isArray(queryResults) || !queryResults.length) {
       return null;
+    }
+    if (queryBuilderMode !== "dataset") {
+      return queryResults;
     }
 
     const [result] = queryResults;
     if (result.error || !result?.data?.results_metadata) {
       return queryResults;
     }
+
     const { cols, results_metadata } = result.data;
 
     function applyMetadataDiff(column) {
@@ -308,11 +337,6 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
 export const getNextRunParameters = createSelector(
   [getParameters],
   parameters => normalizeParameters(parameters),
-);
-
-export const getQueryBuilderMode = createSelector(
-  [getUiControls],
-  uiControls => uiControls.queryBuilderMode,
 );
 
 export const getPreviousQueryBuilderMode = createSelector(
