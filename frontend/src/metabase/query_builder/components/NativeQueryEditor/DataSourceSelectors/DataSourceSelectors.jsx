@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { t } from "ttag";
 
 import { getNativeQueryLanguage } from "metabase/lib/engine";
+import { PLUGIN_AUDIT } from "metabase/plugins";
 import {
   DatabaseDataSelector,
   SchemaAndTableDataSelector,
@@ -65,7 +66,8 @@ const DataSourceSelectors = ({
   const databases = useMemo(() => {
     const allDatabases = query
       .metadata()
-      .databasesList({ savedQuestions: false });
+      .databasesList({ savedQuestions: false })
+      .filter(db => !PLUGIN_AUDIT.isAuditDb(db));
 
     if (editorContext === "action") {
       return allDatabases.filter(database => database.hasActionsEnabled());
