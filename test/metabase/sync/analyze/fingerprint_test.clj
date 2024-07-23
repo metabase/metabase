@@ -34,13 +34,14 @@
           "type/Dictionary"
           "type/Array"
           "type/Collection"
-          "type/XML"}
+          "type/XML"
+          "type/fingerprint-unsupported"}
         (comp (mapcat descendants)
               (map u/qualified-name))
         [:type/Collection
          :type/Structured
          :type/Large
-         :type/skip-fingerprint-base-types]))
+         :type/fingerprint-unsupported]))
 
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test
   (testing (str "Make sure we generate the correct HoneySQL WHERE clause based on whatever is in "
