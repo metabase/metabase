@@ -13,6 +13,7 @@ import type {
 import { rootId } from "../constants/simple";
 import {
   getFieldsForStrategyType,
+  getStrategyValidationSchema,
   populateMinDurationSeconds,
   translateConfigToAPI,
 } from "../utils";
@@ -53,8 +54,9 @@ export const useSaveStrategy = (
         const validFields = getFieldsForStrategyType(values.type);
         const newStrategy = _.pick(values, validFields) as CacheStrategy;
 
-        const validatedStrategy =
-          strategies[values.type].validateWith.validateSync(newStrategy);
+        const strategyData = strategies[values.type];
+        const strategySchema = getStrategyValidationSchema(strategyData);
+        const validatedStrategy = strategySchema.validateSync(newStrategy);
 
         const newConfig: CacheConfig = {
           ...baseConfig,
