@@ -89,53 +89,62 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         visitEmbeddedPage(payload);
-        
-        cy.contains("Organic");
-        cy.contains("Twitter").should("not.exist");
-
-        // Created At: Q2 2023
-        filterWidget().contains("Created At").click();
-        cy.findByTestId("select-button").click();
-        popover().last().contains("2023").click(); 
-        cy.findByText("Q2").click();
-
-        // State: is not KS
-        filterWidget().contains("State").click();
-        cy.findByPlaceholderText("Search the list").type("KS{enter}");
-        cy.findAllByTestId(/-filter-value$/).should("have.length", 1);
-        cy.findByLabelText("KS").should("be.visible").click();
-        cy.button("Add filter").click();
-
-        cy.findByText("Logan Weber").should("not.exist");
-
-        // Product ID is 10
-        cy.findByPlaceholderText("Product ID").type("10{enter}");
-
-        cy.contains("Affiliate").should("not.exist");
-
-        // Let's try to remove one filter
-        cy.findByText("Q2 2023")
-          .closest("fieldset")
-          .within(() => {
-            cy.icon("close").click();
-          });
-
-        // Order ID is 926 - there should be only one result after this
-        filterWidget().contains("Order ID").click();
-        cy.findByPlaceholderText("Enter an ID").type("926");
-        cy.button("Add filter").click();
-
-        cy.findByTestId("table-row").should("have.length", 1);
-
-        cy.findByText("December 29, 2024, 4:54 AM");
-        cy.findByText("CO");
-        cy.findByText("Sid Mills").should("not.exist");
-
-        cy.location("search").should(
-          "eq",
-          "?id=926&created_at=&state=KS&product_id=10",
-        );
       });
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Organic");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Twitter").should("not.exist");
+
+      // Created At: Q2 2023
+      filterWidget().contains("Created At").click();
+      cy.findByTestId("select-year-picker").click();
+      popover().last().contains("2023").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Q2").click();
+
+      // State: is not KS
+      filterWidget().contains("State").click();
+      cy.findByPlaceholderText("Search the list").type("KS{enter}");
+      cy.findAllByTestId(/-filter-value$/).should("have.length", 1);
+      cy.findByLabelText("KS").should("be.visible").click();
+      cy.button("Add filter").click();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Logan Weber").should("not.exist");
+
+      // Product ID is 10
+      cy.findByPlaceholderText("Product ID").type("10{enter}");
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.contains("Affiliate").should("not.exist");
+
+      // Let's try to remove one filter
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Q2 2023")
+        .closest("fieldset")
+        .within(() => {
+          cy.icon("close").click();
+        });
+
+      // Order ID is 926 - there should be only one result after this
+      filterWidget().contains("Order ID").click();
+      cy.findByPlaceholderText("Enter an ID").type("926");
+      cy.button("Add filter").click();
+
+      cy.findByTestId("table-row").should("have.length", 1);
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("December 29, 2024, 4:54 AM");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("CO");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Sid Mills").should("not.exist");
+
+      cy.location("search").should(
+        "eq",
+        "?id=926&created_at=&state=KS&product_id=10",
+      );
     });
 
     it("should handle required parameters", () => {
@@ -317,9 +326,7 @@ describe("scenarios > embedding > native questions with default parameters", () 
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
 
-  it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
     cy.createNativeQuestion(questionDetailsWithDefaults, {
       visitQuestion: true,
       wrapId: true,
@@ -336,7 +343,9 @@ describe("scenarios > embedding > native questions with default parameters", () 
         name: "enabled",
       });
     });
+  });
 
+  it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
     cy.get("@questionId").then(questionId => {
       const payload = {
         resource: { question: questionId },
@@ -344,15 +353,30 @@ describe("scenarios > embedding > native questions with default parameters", () 
       };
 
       visitEmbeddedPage(payload);
-
-      // Remove default filter value
-      clearFilterWidget();
-      // The ID default (1, 2) should apply, because it is disabled.
-      // The Name default ('Lina Heaney') should not apply, because the Name param is editable and empty
-      // The Source default ('Facebook') should not apply because the param is locked but the value is unset
-      // If either the Name or Source default applied the result would be 0.
-      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
     });
+    // Remove default filter value
+    clearFilterWidget();
+    // The ID default (1, 2) should apply, because it is disabled.
+    // The Name default ('Lina Heaney') should not apply, because the Name param is editable and empty
+    // The Source default ('Facebook') should not apply because the param is locked but the value is unset
+    // If either the Name or Source default applied the result would be 0.
+    cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+  });
+
+  it("locked parameters require a value to be specified in the JWT", () => {
+    cy.get("@questionId").then(questionId => {
+      const payload = {
+        resource: { question: questionId },
+        params: { source: null },
+      };
+
+      visitEmbeddedPage(payload);
+    });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("You must specify a value for :source in the JWT.").should(
+      "be.visible",
+    );
   });
 });
 
