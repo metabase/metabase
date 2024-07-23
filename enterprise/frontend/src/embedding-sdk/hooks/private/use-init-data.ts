@@ -3,6 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import type { EmbeddingSessionToken } from "embedding-sdk";
+import { EMBEDDING_SDK_VERSION } from "embedding-sdk/config";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
@@ -42,7 +43,18 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
   useEffect(() => {
     registerVisualizationsOnce();
-  }, [dispatch]);
+
+    api.requestClient = {
+      name: "embedding-sdk-react",
+      version: EMBEDDING_SDK_VERSION,
+    };
+
+    // eslint-disable-next-line no-console
+    console.log(
+      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      `Using Metabase Embedding SDK, version "${EMBEDDING_SDK_VERSION}"`,
+    );
+  }, []);
 
   useEffect(() => {
     dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
@@ -51,7 +63,6 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   useEffect(() => {
     if (loginStatus.status === "uninitialized") {
       api.basename = config.metabaseInstanceUrl;
-      api.requestClient = "embedding-sdk-react";
 
       if (isValidJwtAuth(config)) {
         setupJwtAuth(config, dispatch);

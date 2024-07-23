@@ -34,6 +34,10 @@ export class Api extends EventEmitter {
   sessionToken;
 
   onBeforeRequest;
+
+  /**
+   * @type {string|{name: string, version: string}}
+   */
   requestClient;
 
   GET;
@@ -112,8 +116,15 @@ export class Api extends EventEmitter {
         }
 
         if (self.requestClient) {
-          // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-          headers["X-Metabase-Client"] = self.requestClient;
+          if (typeof self.requestClient === "object") {
+            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            headers["X-Metabase-Client"] = self.requestClient.name;
+            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            headers["X-Metabase-Client-Version"] = self.requestClient.version;
+          } else {
+            // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+            headers["X-Metabase-Client"] = self.requestClient;
+          }
         }
 
         if (ANTI_CSRF_TOKEN) {

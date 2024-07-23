@@ -11,6 +11,7 @@ import {
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useInitData } from "embedding-sdk/hooks";
+import packageJson from "embedding-sdk/package.template.json";
 import { sdkReducers, useSdkSelector } from "embedding-sdk/store";
 import { refreshTokenAsync } from "embedding-sdk/store/reducer";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
@@ -154,6 +155,9 @@ describe("useInitData hook", () => {
 
       expect(lastCallRequest?.headers.get("X-Metabase-Client")).toEqual(
         "embedding-sdk-react",
+      );
+      expect(lastCallRequest?.headers.get("X-Metabase-Client-Version")).toEqual(
+        packageJson.version,
       );
     });
   });
