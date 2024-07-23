@@ -31,9 +31,13 @@ runs:
         ref: ${{ github.head_ref }}
 
     - name: Run backend on pull request branch
-      run: clojure -M:run:ee
+      run: clojure -M:run:ee & echo $! > metabase_pid
       shell: bash
 
     - name: Wait for Metabase to start
       run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      shell: bash
+
+    - name: Stop Metabase on pull request branch
+      run: kill $(cat metabase_pid)
       shell: bash
