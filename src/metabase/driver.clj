@@ -11,6 +11,7 @@
    [clojure.string :as str]
    [java-time.api :as t]
    [metabase.driver.impl :as driver.impl]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -18,6 +19,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [potemkin :as p]
    [toucan2.core :as t2]))
 
@@ -472,12 +474,20 @@
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 
+(mr/def ::execute-multiple-queries-response
+  [:map
+   [:metadata [:map
+               [:cols [:sequential [:map]]]]]
+   [:rows     [:or
+               sequential?
+               (lib.schema.common/instance-of-class clojure.lang.IReduceInit)]]])
+
 (defmulti EXPERIMENTAL-execute-multiple-queries
   "EXPERIMENTAL INTERNAL USE ONLY! DO NOT IMPLEMENT IN THIRD-PARTY DRIVERS! MAY BE REMOVED WITHOUT NOTICE!
 
-  Like [[execute-reducible-query]], but execute several queries at once with `UNION ALL` or similar. All queries are
-  guaranteed to have the same set of returned columns and be against the same Database. `queries` will be pMBQL-style
-  queries with a single native stage rather than legacy MBQL queries.
+  (Mostly) like [[execute-reducible-query]], but execute several queries at once with `UNION ALL` or similar. All
+  queries are guaranteed to have the same set of returned columns and be against the same Database. `queries` will be
+  pMBQL-style queries with a single native stage rather than legacy MBQL queries.
 
   Used internally for fast pivot query implementations... this is probably not a good long-term solution to the
   problem however. `UNION ALL` should really be a part of MBQL itself instead of a different way of running queries.

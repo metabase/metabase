@@ -1,4 +1,13 @@
 (ns metabase.query-processor.pivot.impl.new
+  "'New' implementation of the pivot QP that combines all constituent queries into a single `UNION ALL`-style query and
+  runs them all at once against the data warehouse.
+
+  To use this implementation, drivers must implement [[metabase.driver/EXPERIMENTAL-execute-multiple-queries]].
+
+  `EXPERIMENTAL-execute-multiple-queries` is probably not the way we want to support `UNION ALL` in the long run -- it
+  should probably be added to MBQL itself at some point. But this will involved lots of QP work, and will probably be
+  a lot easier once we complete the MLv2 × QP epc (#30516) and move towards using pMBQL exclusively. So this 'new'
+  implementation might be replaced by an new-er implementation in the future once we get that all working."
   (:require
    [clojure.set :as set]
    [metabase.driver :as driver]
@@ -10,7 +19,11 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pivot.impl.common :as qp.pivot.impl.common]
+   [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.setup :as qp.setup]
+   [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -103,13 +116,17 @@
    [:database ::lib.schema.id/database]
    [:stages   [:sequential {:min 1, :max 1} ::lib.schema/stage.native]]])
 
+(defn- compile-pmbql-query [query]
+  (assoc query :stages [(merge {:lib/type :mbql.stage/native}
+                               (set/rename-keys (qp.compile/compile query) {:query :native}))]))
+
 (mu/defn ^:private generate-compiled-queries :- [:sequential {:min 1} ::compiled-query]
   [query         :- ::lib.schema/query
    pivot-options :- ::pivot-options]
-  (mapv (fn [query]
-          (assoc query :stages [(merge {:lib/type :mbql.stage/native}
-                                       (set/rename-keys (qp.compile/compile query) {:query :native}))]))
-        (generate-queries query pivot-options)))
+  (qp.setup/with-qp-setup [query query]
+    (let [preprocessed (lib/query (qp.store/metadata-provider) (qp.preprocess/preprocess query))]
+      (mapv compile-pmbql-query
+            (generate-queries preprocessed pivot-options)))))
 
 (mu/defmethod qp.pivot.impl.common/run-pivot-query :qp.pivot.impl/new
   "Legacy implementation for running pivot queries."

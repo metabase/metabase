@@ -714,7 +714,7 @@
     (lib.metadata/database (qp.store/metadata-provider))
     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
     (fn [^Connection conn]
-      (println "<RUN QUERY>" sql) ; NOCOMMIT
+      (println "<EXECUTE>" sql) ; NOCOMMIT
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params qp.pipeline/*canceled-chan*)
                   ^ResultSet rs (try
                                   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
@@ -768,9 +768,10 @@
                               (mapcat (fn [query]
                                         (get-in query [:stages 0 :params])))
                               queries)]
-    (-> (first queries)
-        lib.convert/->legacy-MBQL
-        (update :native #(assoc % :query combined-sql, :params combined-params)))))
+    (as-> (first queries) query
+      (lib.convert/->legacy-MBQL query)
+      (update query :native #(assoc % :query combined-sql, :params combined-params))
+      (assoc-in query [:info :query-hash] (qp.util/query-hash query)))))
 
 (mu/defn EXPERIMENTAL-execute-multiple-queries
   "Default implementation of [[metabase.driver/EXPERIMENTAL-execute-multiple-queries]] for JDBC-based drivers."

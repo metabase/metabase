@@ -1,8 +1,15 @@
 (ns metabase.query-processor.pivot
-  "Pivot table query processor. Determines a bunch of different subqueries to run, then runs them one by one on the data
-  warehouse and concatenates the result rows together, sort of like the way [[clojure.core/lazy-cat]] works. This is
-  dumb, right? It's not just me? Why don't we just generate a big ol' UNION query so we can run one single query
-  instead of running like 10 separate queries? -- Cam"
+  "Pivot table QP. There are two implementations:
+
+  * [[metabase.query-processor.pivot.impl.legacy]], which runs a series of queries sequentially and then combines
+    results in post-processing
+
+  * [[metabase.query-processor.pivot.impl.new]], which combines a series of queries with `UNION ALL` or equivalent and
+    runs them as a single query against the data warehouse all at once.
+
+  Drivers that implement [[metabase.driver/EXPERIMENTAL-execute-multiple-queries]] will use the `new` impl, otherwise
+  we fall back to the `legacy` impl. At the time of this writing, the `new` impl is implemented for `:sql-jdbc`
+  drivers."
   (:require
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]

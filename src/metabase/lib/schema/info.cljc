@@ -32,6 +32,7 @@
    :embedded-json-download])
 
 (mr/def ::hash
+  "32-byte SHA3-256 hash of relevant keys in the query. See [[metabase.query-processor.util/query-hash]]."
   #?(:clj bytes?
      :cljs :any))
 

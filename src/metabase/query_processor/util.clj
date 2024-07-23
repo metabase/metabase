@@ -11,6 +11,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.schema.expression :as lib.schema.expression]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
@@ -56,7 +57,7 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod query->remark :default
-  [_ query]
+  [_driver query]
   (default-query->remark query))
 
 
@@ -110,7 +111,7 @@
       true                 remove-lib-uuids
       true                 walk-query-sort-maps)))
 
-(mu/defn query-hash :- bytes?
+(mu/defn query-hash :- ::lib.schema.info/hash
   "Return a 256-bit SHA3 hash of `query` as a key for the cache. (This is returned as a byte array.)"
   ^bytes [query :- [:maybe :map]]
   ;; convert to pMBQL first if this is a legacy query.

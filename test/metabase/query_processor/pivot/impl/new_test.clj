@@ -4,6 +4,8 @@
    [clojure.walk :as walk]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.pivot-test :as qp.pivot-test]
    [metabase.query-processor.pivot.impl.new :as qp.pivot.impl.new]
    [metabase.test :as mt]))
@@ -92,8 +94,14 @@
 
 (deftest ^:parallel generate-compiled-queries-test
   (testing "Just make sure we can compile everything ok"
-    (is (some? (#'qp.pivot.impl.new/generate-compiled-queries
-                (lib/query
-                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                  (qp.pivot-test/test-query))
-                {})))))
+    (is (malli= [:sequential
+                 {:min 8, :max 8}
+                 [:and
+                  ::lib.schema/query
+                  [:map
+                   [:stages [:sequential {:min 1, :max 1} ::lib.schema/stage.native]]]]]
+                (#'qp.pivot.impl.new/generate-compiled-queries
+                 (lib/query
+                  (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                   (qp.pivot-test/test-query))
+                 {})))))
