@@ -108,7 +108,11 @@
 (defmethod driver/describe-database :redshift
   [_driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
-  {:tables (into #{} (describe-database-tables database))})
+  ;;
+  ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
+  ;; fix #45874
+  (u/auto-retry 3
+    {:tables (into #{} (describe-database-tables database))}))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]
