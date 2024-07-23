@@ -28,39 +28,13 @@ export function renameColumn(oldName, newName) {
   cy.findByDisplayValue(oldName).clear().type(newName).blur();
 }
 
-function retry({ statement, condition, wait, attempts }) {
-  statement().then(() => {
-    condition().then(result => {
-      if (!result && attempts > 1) {
-        cy.wait(wait);
-        retry({
-          statement,
-          condition,
-          wait,
-          attempts: attempts--,
-        });
-      }
-    });
-  });
-}
-
 export function setColumnType(oldType, newType) {
   cy.findByTestId("sidebar-right")
     .findAllByTestId("select-button")
     .contains(oldType)
     .click();
 
-  retry({
-    statement: () =>
-      cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top"),
-    condition: () =>
-      cy
-        .findAllByPlaceholderText("Search for a special type")
-        .then(elements => elements.length > 0),
-    wait: 100,
-    attempts: 10,
-  });
-
+  cy.get(".ReactVirtualized__Grid.MB-Select").realMouseWheel({ deltaY: -200 });
   cy.findByPlaceholderText("Search for a special type").realType(newType);
   popover().findByLabelText(newType).click();
 }
