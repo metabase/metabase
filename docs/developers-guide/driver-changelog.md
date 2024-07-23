@@ -54,7 +54,7 @@ title: Driver interface changelog
     Honey SQL version) has been removed; replace all usages with the two-arity version. Honey SQL 2 has been the only
     supported version since Metabase 0.49.0.
 
-## Metabase 0.50.13
+## Metabase 0.50.15
 
   - `:type/fingerprinting-unsupported` has been added in the `metabase.types` namespace. Similar to
     `:type/field-values-unsupported` for field values scanning, it is used to determine whether a specific field
