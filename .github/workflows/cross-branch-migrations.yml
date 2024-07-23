@@ -13,7 +13,7 @@ concurrency:
 jobs:
   migrations-h2-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 3
     env:
       CI: 'true'
       MB_DB_TYPE: h2
@@ -23,7 +23,7 @@ jobs:
 
   migrations-postgres-12-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 3
     env:
       CI: 'true'
       MB_DB_TYPE: postgres
@@ -46,7 +46,7 @@ jobs:
 
   migrations-postgres-latest-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 3
     env:
       CI: 'true'
       MB_DB_TYPE: postgres
@@ -69,7 +69,7 @@ jobs:
 
   migrations-mysql-8-0-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 3
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -88,7 +88,7 @@ jobs:
 
   migrations-mysql-latest-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 3
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -107,7 +107,7 @@ jobs:
 
   migrations-mariadb-10-2-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 3
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -126,7 +126,7 @@ jobs:
 
   migrations-mariadb-latest-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 10
+    timeout-minutes: 3
     env:
       CI: 'true'
       MB_DB_TYPE: mysql

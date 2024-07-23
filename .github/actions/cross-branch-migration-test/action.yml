@@ -20,7 +20,6 @@ runs:
     - name: Wait for Metabase to start
       run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       shell: bash
-      timeout-minutes: 3
 
     - name: Stop Metabase on master
       run: kill $(cat metabase_pid)
@@ -38,7 +37,6 @@ runs:
     - name: Wait for Metabase to start
       run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
       shell: bash
-      timeout-minutes: 3
 
     - name: Stop Metabase on pull request branch
       run: kill $(cat metabase_pid)
