@@ -22,6 +22,13 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
+(deftest merge-count-maps-test
+  (is (= {:a 1, :b 22, :c 30 :d 1}
+         (#'stats/merge-count-maps [{:a 1, :b 2}
+                                    {:b 20, :c 30}
+                                    {:d "one"}]))
+      "Merging two maps with counts should sum the counts"))
+
 (deftest ^:parallel bin-small-number-test
   (are [expected n] (= expected
                        (#'stats/bin-small-number n))

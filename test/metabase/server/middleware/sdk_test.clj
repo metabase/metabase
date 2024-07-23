@@ -1,7 +1,7 @@
-(ns metabase.server.middleware.analytics-test
+(ns metabase.server.middleware.sdk-test
   (:require
    [clojure.test :refer [are deftest]]
-   [metabase.server.middleware.analytics :as mw.analytics]
+   [metabase.analytics.sdk :as sdk]
    [ring.mock.request :as ring.mock]))
 
 (defn- mock-request
@@ -13,10 +13,10 @@
 (deftest bind-client-test
   (are [client]
       (let [request (mock-request {:client client})
-            handler (mw.analytics/bind-embedding
+            handler (sdk/bind-embedding-mw
                      (fn [_request respond _raise] (respond client)))]
         (handler request
-                 (fn [response] (=  mw.analytics/*metabase-client* response))
+                 (fn [response] (= sdk/*client* response))
                  (fn [e] (throw e))))
     nil
     "embedding-iframe"))
@@ -24,10 +24,10 @@
 (deftest bind-client-version-test
   (are [version]
       (let [request (mock-request {:version version})
-            handler (mw.analytics/bind-embedding
+            handler (sdk/bind-embedding-mw
                      (fn [_request respond _raise] (respond version)))]
         (handler request
-                 (fn [response] (=  mw.analytics/*metabase-client-version* response))
+                 (fn [response] (=  sdk/*version* response))
                  (fn [e] (throw e))))
     nil
     "1.1.1"))
