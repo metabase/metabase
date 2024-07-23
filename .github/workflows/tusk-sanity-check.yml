@@ -46,7 +46,7 @@ jobs:
 
       - name: Run lint-staged
         if: steps.changes.outputs.frontend_all == 'true'
-        run: yarn lint-staged --diff=origin/${{ github.event.repository.default_branch }}
+        run: yarn lint-staged --concurrent=1 --diff=origin/${{ github.event.repository.default_branch }}
 
       # You must include this step after running all auto-fixing steps
       - uses: stefanzweifel/git-auto-commit-action@v5
