@@ -92,14 +92,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
-      popover()
-        .last()
-        .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
-        });
+      searchMultiAutocompleteFilter();
 
       popover()
         .filter(":contains('Add filter')")
@@ -171,14 +164,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
-      popover()
-        .last()
-        .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
-        });
+      searchMultiAutocompleteFilter();
 
       popover()
         .filter(":contains('Add filter')")
@@ -223,14 +209,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
-      popover()
-        .last()
-        .within(() => {
-          multiAutocompleteInput().type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
-        });
+      searchMultiAutocompleteFilter();
 
       popover()
         .filter(":contains('Add filter')")
@@ -271,14 +250,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       filterWidget().should("have.length", 1).and("contain", "City").click();
 
-      popover()
-        .last()
-        .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
-        });
+      searchMultiAutocompleteFilter();
 
       popover()
         .filter(":contains('Add filter')")
@@ -316,14 +288,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       filterWidget().should("have.length", 1).and("contain", "City").click();
 
-      popover()
-        .last()
-        .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
-        });
+      searchMultiAutocompleteFilter();
 
       popover()
         .filter(":contains('Add filter')")
@@ -535,6 +500,18 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
   echartsContainer().get("text").contains(xLabel);
 
   echartsContainer().get("text").contains(yLabel);
+}
+
+function searchMultiAutocompleteFilter() {
+  cy.findByTestId("parameter-value-dropdown").within(() => {
+    multiAutocompleteInput().type("An");
+  });
+
+  cy.findByTestId("select-dropdown").within(() => {
+    cy.findByText("Kiana");
+    cy.findByText("Anacoco").should("not.exist");
+    cy.findByText("Anchorage").click();
+  });
 }
 
 function removeValueForFilter(label) {

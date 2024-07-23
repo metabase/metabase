@@ -89,22 +89,21 @@ describe("scenarios > embedding > native questions", () => {
         };
 
         visitEmbeddedPage(payload);
-
+        
         cy.contains("Organic");
         cy.contains("Twitter").should("not.exist");
 
         // Created At: Q2 2023
         filterWidget().contains("Created At").click();
         cy.findByTestId("select-button").click();
-        popover().last().contains("2023").click();
-
+        popover().last().contains("2023").click(); 
         cy.findByText("Q2").click();
 
         // State: is not KS
         filterWidget().contains("State").click();
         cy.findByPlaceholderText("Search the list").type("KS{enter}");
         cy.findAllByTestId(/-filter-value$/).should("have.length", 1);
-        cy.findByTestId("KS-filter-value").should("be.visible").click();
+        cy.findByLabelText("KS").should("be.visible").click();
         cy.button("Add filter").click();
 
         cy.findByText("Logan Weber").should("not.exist");

@@ -697,14 +697,14 @@ describeEE("issue 24966", () => {
     cy.signIn("nodata");
     visitDashboard("@dashboardId");
     filterWidget().click();
-    cy.findByTestId("Gizmo-filter-value").click();
+    cy.findByLabelText("Gizmo").click();
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Gizmo");
 
     cy.signInAsSandboxedUser();
     visitDashboard("@dashboardId");
     filterWidget().click();
-    cy.findByTestId("Widget-filter-value").click();
+    cy.findByLabelText("Widget").click();
     cy.button("Add filter").click();
     cy.location("search").should("eq", "?text=Widget");
   });
