@@ -39,9 +39,7 @@ export const CollectionBreadcrumbsWithTooltip = ({
     : collections;
   const justOneShown = shownCollections.length === 1;
 
-  const { areAnyTruncated, ref } = useAreAnyTruncated<HTMLDivElement>({
-    tolerance: 1,
-  });
+  const { areAnyTruncated, ref } = useAreAnyTruncated<HTMLDivElement>();
 
   const initialEllipsisRef = useRef<HTMLDivElement | null>(null);
   const [

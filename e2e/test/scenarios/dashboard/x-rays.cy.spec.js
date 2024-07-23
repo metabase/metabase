@@ -252,7 +252,7 @@ describe("scenarios > x-rays", { tags: "@slow" }, () => {
     cy.findByText("State", timeout).click();
 
     cy.findByPlaceholderText("Search the list").type("GA{enter}");
-    cy.findByTestId("GA-filter-value").should("be.visible").click();
+    cy.findByLabelText("GA").should("be.visible").click();
     cy.button("Add filter").click();
 
     // confirm results of "Total transactions" card were updated

@@ -20,7 +20,7 @@ export const getOffsetPeriod = (
     firstBreakout,
   );
 
-  if (!Lib.isDate(firstBreakoutColumn)) {
+  if (!Lib.isTemporal(firstBreakoutColumn)) {
     return t`rows`;
   }
 

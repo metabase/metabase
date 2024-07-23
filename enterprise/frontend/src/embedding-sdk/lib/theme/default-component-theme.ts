@@ -64,7 +64,7 @@ export const DEFAULT_METABASE_COMPONENT_THEME: MetabaseComponentTheme = {
   table: {
     cell: {
       fontSize: FONT_SIZES.tableCell.px,
-      textColor: "var(--mb-color-text-dark)",
+      textColor: "var(--mb-color-text-primary)",
     },
     idColumn: {
       textColor: "var(--mb-color-brand)",
@@ -124,14 +124,19 @@ export const DEFAULT_EMBEDDED_COMPONENT_THEME: MetabaseComponentTheme = merge<
   },
 });
 
-export const EMBEDDING_SDK_COMPONENTS_OVERRIDES: MantineThemeOverride["components"] =
-  {
+export function getEmbeddingComponentOverrides(
+  theme?: DeepPartial<MetabaseComponentTheme>,
+): MantineThemeOverride["components"] {
+  return {
     HoverCard: {
       defaultProps: {
         withinPortal: true,
         portalProps: {
           target: `#${EMBEDDING_SDK_ROOT_ELEMENT_ID}`,
         },
+
+        ...(theme?.popover?.zIndex && { zIndex: theme.popover.zIndex }),
       },
     },
   };
+}

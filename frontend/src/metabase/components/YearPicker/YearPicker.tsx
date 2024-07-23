@@ -1,26 +1,27 @@
-import type { ChangeEvent } from "react";
 import _ from "underscore";
 
-import Select from "metabase/core/components/Select";
 import CS from "metabase/css/core/index.css";
+import { Select, type SelectProps } from "metabase/ui";
 
 const YEARS = _.range(new Date().getFullYear(), 1900, -1);
 
-export interface YearPickerProps {
+export type YearPickerProps = {
   value: number;
   onChange: (v: number) => void;
-}
+} & Omit<SelectProps, "value" | "onChange" | "data">;
 
-const YearPicker = ({ value, onChange }: YearPickerProps) => (
+const YearPicker = ({ value, onChange, ...selectProps }: YearPickerProps) => (
   <Select
     className={CS.borderless}
-    value={value}
-    options={YEARS}
-    optionNameFn={(option: any) => option}
-    optionValueFn={(option: any) => option}
-    onChange={({ target: { value } }: ChangeEvent<HTMLInputElement>) =>
-      onChange(parseInt(value as string, 10))
-    }
+    {...selectProps}
+    data={YEARS.map(year => String(year))}
+    value={String(value)}
+    onChange={year => year && onChange(parseInt(year, 10))}
+    w="6rem"
+    classNames={{
+      dropdown: CS.ParameterDropdownWidth,
+    }}
+    data-testid="select-year-picker"
   />
 );
 

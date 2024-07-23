@@ -36,6 +36,8 @@
 (doseq [[feature supported?] {:connection-impersonation  true
                               :describe-fields           true
                               :describe-fks              true
+                              :identifiers-with-spaces   false
+                              :uuid-type                 false
                               :nested-field-columns      false
                               :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
@@ -104,7 +106,7 @@
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
 (defmethod driver/describe-database :redshift
- [_driver database]
+  [_driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
   {:tables (into #{} (describe-database-tables database))})
 

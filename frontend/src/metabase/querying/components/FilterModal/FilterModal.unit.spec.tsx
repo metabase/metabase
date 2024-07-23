@@ -1,10 +1,11 @@
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import { setupFieldsValuesEndpoints } from "__support__/server-mocks";
 import {
-  act,
   renderWithProviders,
   screen,
+  waitFor,
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
@@ -14,7 +15,12 @@ import {
   createQuery,
   createQueryWithClauses,
 } from "metabase-lib/test-helpers";
-import { SAMPLE_DB_FIELD_VALUES } from "metabase-types/api/mocks/presets";
+import { createMockField } from "metabase-types/api/mocks";
+import {
+  createSampleDatabase,
+  ORDERS_ID,
+  SAMPLE_DB_FIELD_VALUES,
+} from "metabase-types/api/mocks/presets";
 
 import { FilterModal } from "./FilterModal";
 
@@ -47,14 +53,6 @@ describe("FilterModal", () => {
     query,
     Lib.filterableColumns(query, stageIndex),
   );
-
-  beforeAll(() => {
-    jest.useFakeTimers({ advanceTimers: true });
-  });
-
-  afterAll(() => {
-    jest.useRealTimers();
-  });
 
   it("should allow to add filters", async () => {
     const { getNextQuery } = setup({ query });
@@ -106,6 +104,33 @@ describe("FilterModal", () => {
     expect(Lib.filters(nextQuery, 0)).toHaveLength(2);
   });
 
+  it("should allow to add filters for unknown column types", async () => {
+    const unknownField = createMockField({
+      id: 100,
+      table_id: ORDERS_ID,
+      name: "UNKNOWN",
+      display_name: "Unknown",
+      base_type: "type/*",
+      effective_type: "type/*",
+      semantic_type: null,
+    });
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+      fields: [unknownField],
+    });
+    const { getNextQuery } = setup({ query: createQuery({ metadata }) });
+
+    const columnSection = screen.getByTestId(`filter-column-Unknown`);
+    await userEvent.click(within(columnSection).getByLabelText("Is empty"));
+    await userEvent.click(
+      screen.getByRole("button", { name: "Apply filters" }),
+    );
+
+    const nextQuery = getNextQuery();
+    expect(Lib.stageCount(nextQuery)).toBe(1);
+    expect(Lib.filters(nextQuery, 0)).toHaveLength(1);
+  });
+
   it("should allow to add post-aggregation filters", async () => {
     const { getNextQuery } = setup({
       query: createQueryWithClauses({
@@ -136,10 +161,11 @@ describe("FilterModal", () => {
 
     const searchInput = screen.getByPlaceholderText("Search for a column…");
     await userEvent.type(searchInput, "created");
-    act(() => jest.advanceTimersByTime(1000));
-    const sections = screen.getAllByTestId("filter-column-Created At");
-    expect(sections).toHaveLength(3);
+    await waitFor(() => {
+      expect(screen.getAllByTestId("filter-column-Created At")).toHaveLength(3);
+    });
 
+    const sections = screen.getAllByTestId("filter-column-Created At");
     const [ordersSection, productsSection, peopleSection] = sections;
     expect(within(ordersSection).getByText("Orders")).toBeInTheDocument();
     expect(within(productsSection).getByText("Products")).toBeInTheDocument();

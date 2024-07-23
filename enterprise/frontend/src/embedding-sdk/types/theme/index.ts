@@ -138,9 +138,12 @@ export type MetabaseComponentTheme = {
     };
   };
 
-  /** Numerical value display */
-  scalar?: {
-    /** The primary numerical value */
+  /** Number chart */
+  number?: {
+    /**
+     * Value displayed on number charts.
+     * This also applies to the primary value in trend charts.
+     **/
     value?: {
       fontSize?: CSSProperties["fontSize"];
       lineHeight?: string;
@@ -163,6 +166,12 @@ export type MetabaseComponentTheme = {
         fontSize: string;
       };
     };
+  };
+
+  /** Popover */
+  popover?: {
+    /** z-index of the popover. Useful for embedding components in a modal. Defaults to 4. */
+    zIndex?: number;
   };
 
   collectionBrowser: {
