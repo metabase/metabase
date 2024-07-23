@@ -17,6 +17,9 @@ jobs:
     env:
       CI: 'true'
       MB_DB_TYPE: h2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cross-branch-migration-test
 
   migrations-postgres-12-ee:
     runs-on: ubuntu-22.04
@@ -37,6 +40,9 @@ jobs:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
           POSTGRES_HOST_AUTH_METHOD: trust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cross-branch-migration-test
 
   migrations-postgres-latest-ee:
     runs-on: ubuntu-22.04
@@ -57,6 +63,9 @@ jobs:
           POSTGRES_USER: circle_test
           POSTGRES_DB: circle_test
           POSTGRES_HOST_AUTH_METHOD: trust
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cross-branch-migration-test
 
   migrations-mysql-8-0-ee:
     runs-on: ubuntu-22.04
