@@ -18,8 +18,8 @@
    the view_log or query_execution table."
   [m :- :map]
   (assoc m
-         :embedding-client *client*
-         :embedding-version *version*))
+         :embedding_client *client*
+         :embedding_version *version*))
 
 (defn bind-embedding-mw
   "Reads Metabase Client and Version headers and binds them to *metabase-client{-version}*."
