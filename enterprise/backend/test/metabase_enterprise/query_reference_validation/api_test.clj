@@ -1,4 +1,4 @@
-(ns metabase-enterprise.query-field-validation.api-test
+(ns metabase-enterprise.query-reference-validation.api-test
   (:require
    [clojure.set :as set]
    [clojure.string :as str]
@@ -49,7 +49,7 @@
                                                               :field_id field-2}
                             :model/QueryField {qf-3 :id}     {:card_id  card-3
                                                               :field_id field-3}]
-     (mt/with-premium-features #{:query-field-validation}
+     (mt/with-premium-features #{:query-reference-validation}
        (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-1b qf-2 qf-3])))))
 
 (defmacro ^:private with-test-setup
@@ -63,7 +63,7 @@
     (mt/with-anaphora [qf-1 qf-1b qf-2 qf-3 card-1 card-2 card-3 card-4]
       ~@body)))
 
-(def ^:private url "ee/query-field-validation/invalid-cards")
+(def ^:private url "ee/query-reference-validation/invalid-cards")
 
 (defn- get!
   ([] (get! {}))
@@ -175,7 +175,7 @@
                  :name "D"}]))))
   (testing "It requires the premium feature"
     (mt/with-premium-features #{}
-      (is (= (str "Query Field Validation is a paid feature not currently available to your instance. Please upgrade to"
+      (is (= (str "Query Reference Validation is a paid feature not currently available to your instance. Please upgrade to"
                   " use it. Learn more at metabase.com/upgrade/")
              (mt/user-http-request :crowberto :get 402 url))))))
 
@@ -242,6 +242,6 @@
                             "nullable enum of")))))
 
 (deftest is-admin-test
-  (mt/with-premium-features #{:query-field-validation}
+  (mt/with-premium-features #{:query-reference-validation}
     (testing "The endpoint is unavailable for normal users"
       (is (mt/user-http-request :rasta :get 403 url)))))
