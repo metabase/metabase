@@ -1473,7 +1473,7 @@
   (json-in [:ref field-ref]))
 
 (defn- column-setting-legacy-key [{name :name field-ref :field_ref}]
-  (let [field-ref (or field-ref [:field, name, nil])
+  (let [field-ref (or field-ref [:field name nil])
         [ref-type field-id-or-name ref-options] field-ref
         field-ref (if (and (#{:field :expression :aggregation} ref-type) ref-options)
                     [ref-type field-id-or-name (dissoc ref-options :binning :temporal-unit)]
