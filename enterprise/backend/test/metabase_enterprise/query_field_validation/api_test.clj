@@ -162,18 +162,14 @@
                 :data
                 [{:id     card-1
                   :name   "A"
-                  :errors {:inactive-fields [{:field "FA"
-                                              :table "T1"}
-                                             {:field "FAB"
-                                              :table "T1"}]}}
+                  :errors [{:type "inactive-field", :table "T1", :field "FA"}
+                           {:type "inactive-field", :table "T1", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
-                  :errors {:inactive-fields [{:field "FB"
-                                              :table "T1"}]}}
+                  :errors [{:type "inactive-field", :table "T1", :field "FB"}]}
                  {:id     card-3
                   :name   "C"
-                  :errors {:inactive-tables [{:field "FC"
-                                              :table "T2"}]}}]}
+                  :errors [{:type "inactive-table", :table "T2", :field "FC"}]}]}
                (get!)
                [{:id   card-4
                  :name "D"}]))))
@@ -192,14 +188,11 @@
                 :data
                 [{:id     card-1
                   :name   "A"
-                  :errors {:inactive-fields [{:field "FA"
-                                              :table "T1"}
-                                             {:field "FAB"
-                                              :table "T1"}]}}
+                  :errors [{:type "inactive-field", :table "T1", :field "FA"}
+                           {:type "inactive-field", :table "T1", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
-                  :errors {:inactive-fields [{:field "FB"
-                                              :table "T1"}]}}]}
+                  :errors [{:type "inactive-field", :table "T1", :field "FB"}]}]}
                (get! {:limit 2})
                [{:id   card-3
                  :name "C"}
@@ -211,8 +204,7 @@
                 :data
                 [{:id     card-3
                   :name   "C"
-                  :errors {:inactive-tables [{:field "FC"
-                                              :table "T2"}]}}]}
+                  :errors [{:type "inactive-table", :table "T2", :field "FC"}]}]}
                (get! {:limit 1 :offset 2})
                [{:id   card-1
                  :name "A"}

@@ -41,12 +41,13 @@
                          [:in :card_id (map :id cards)]]})))
 
 (defn- inactive-errors [inactive-fields]
-  (reduce
-   (fn [acc {:keys [field table table_active]}]
-     (update acc (if table_active :inactive-fields :inactive-tables) conj
-             {:table table, :field field}))
-   {:inactive-fields []
-    :inactive-tables []}
+  (mapv
+   (fn [{:keys [field table table_active]}]
+     {:type  (if table_active
+               :inactive-field
+               :inactive-table)
+      :table table
+      :field field})
    inactive-fields))
 
 (defn- cards-with-inactive-fields
