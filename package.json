@@ -106,6 +106,7 @@
     "reselect": "^5.1.0",
     "screenfull": "^6.0.2",
     "scroll-into-view-if-needed": "^3.1.0",
+    "semver": "^7.6.3",
     "server-text-width": "^1.0.2",
     "simple-statistics": "^3.0.0",
     "slugg": "^1.2.1",

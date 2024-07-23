@@ -2,8 +2,7 @@
 import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, forwardRef, Component } from "react";
-import ReactDOM, { findDOMNode } from "react-dom";
-import { createRoot } from "react-dom/client";
+import { findDOMNode } from "react-dom";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -20,6 +19,7 @@ import CS from "metabase/css/core/index.css";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
+import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
 import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
   getRowIndexToPKMap,
@@ -356,13 +356,7 @@ class TableInteractive extends Component {
       </EmotionCacheProvider>
     );
 
-    if (typeof createRoot === "function") {
-      this._root = createRoot(this._div);
-      this._root.render(content);
-    } else {
-      // Support backwards compatibility with React 17 for the embedding SDK.
-      ReactDOM.render(content, this._div);
-    }
+    this._root = renderRoot(content, this._div);
   }
 
   onMeasureHeaderRender = div => {
@@ -396,12 +390,7 @@ class TableInteractive extends Component {
 
     // Doing this on next tick makes sure it actually gets removed on initial measure
     setTimeout(() => {
-      if (this._root) {
-        this._root.unmount();
-      } else {
-        // Support backwards compatibility with React 17 for the embedding SDK.
-        ReactDOM.unmountComponentAtNode(this._div);
-      }
+      unmountRoot(this._root, this._div);
     }, 0);
 
     delete this.columnNeedsResize;
