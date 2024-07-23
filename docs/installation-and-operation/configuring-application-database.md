@@ -12,7 +12,7 @@ For production, we recommend using PostgreSQL as your application database.
 
 - [PostgreSQL](#postgresql) (recommended for production)
 - [MySQL](#mysql-or-mariadb) (also works for production)
-- [H2](#h2-default) (default for local demos - AVOID in production)
+- [H2](#h2-application-database) (default for local demos - AVOID in production)
 
 Metabase will read the connection configuration information when the application starts up. You can't change the application database while the application is running.
 
@@ -95,7 +95,7 @@ export MB_DB_PASS=<password>
 java -jar metabase.jar
 ```
 
-## H2(default)
+## H2 application database
 
 > **For production installations of Metabase we recommend that people [replace the default H2 database with PostgreSQL](./migrating-from-h2.md)**. Postgres offers a greater degree of performance and reliability.
 
