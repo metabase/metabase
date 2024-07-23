@@ -109,10 +109,20 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
     cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 
     cy.log("Check object details for the first row");
-    cy.findAllByTestId("detail-shortcut").first().click();
+    cy.findAllByTestId("cell-data").filter(":contains(37.65)").realHover();
+    cy.get("[data-show-detail-rowindex='0']").click();
     cy.findByTestId("object-detail").within(() => {
       cy.findByRole("heading").should("contain", "Order").and("contain", 1);
       cy.findByText("37.65").should("be.visible");
+      cy.findByTestId("object-detail-close-button").click();
+    });
+
+    cy.log("Check object details for the second row");
+    cy.findAllByTestId("cell-data").filter(":contains(110.93)").realHover();
+    cy.get("[data-show-detail-rowindex='1']").click();
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByRole("heading").should("contain", "Order").and("contain", 2);
+      cy.findByText("110.93").should("be.visible");
     });
   });
 
