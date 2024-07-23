@@ -8425,7 +8425,7 @@ databaseChangeLog:
       id: v51.2024-07-23T15:58:10
       validCheckSum: ANY
       author: ranquild
-      comment: Migrate the report_card.visualization_settings.column_settings field ref-based keys to column names
+      comment: Migrate the report_card.visualization_settings.column_settings field ref-based keys to name-based keys
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyFieldRefBasedColumnSettingKeys"
