@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
+   [medley.core :as m]
    [metabase.driver :as driver]))
 
 (defmulti fetch-auth
@@ -21,7 +22,7 @@
 (defn- fetch-as-json [url headers]
   (let [headers (cond-> headers
                   (string? headers) parse-http-headers)
-        response (http/get url {:headers headers, :as :json})]
+        response (http/get url (m/assoc-some {:as :json} :headers headers))]
     (:body response)))
 
 (defmethod fetch-auth :http
