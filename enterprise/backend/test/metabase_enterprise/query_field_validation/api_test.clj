@@ -11,7 +11,8 @@
 
 (defn- do-with-test-setup [f]
   (query-analysis/without-analysis
-   (t2.with-temp/with-temp [:model/Table      {table  :id}   {:name "T"}
+   (t2.with-temp/with-temp [:model/Table      {table-1 :id}  {:name "T1"}
+                            :model/Table      {table-2 :id}  {:name "T2" :active false}
                             ;; no coll-1; its card is in the root collection
                             :model/Collection {coll-2 :id}   {:name "ZZY"}
                             :model/Collection {coll-3 :id}   {:name "ZZZ"}
@@ -21,16 +22,16 @@
                             :model/Card       {card-4 :id}   {:name "D"}
                             :model/Field      {field-1 :id}  {:active   false
                                                               :name     "FA"
-                                                              :table_id table}
+                                                              :table_id table-1}
                             :model/Field      {field-1b :id} {:active   false
                                                               :name     "FAB"
-                                                              :table_id table}
+                                                              :table_id table-1}
                             :model/Field      {field-2 :id}  {:active   false
                                                               :name     "FB"
-                                                              :table_id table}
+                                                              :table_id table-1}
                             :model/Field      {field-3 :id}  {:active   false
                                                               :name     "FC"
-                                                              :table_id table}
+                                                              :table_id table-2}
                             ;; QFs not to include:
                             ;; - Field is still active
                             :model/QueryField {}             {:card_id  card-1
@@ -162,17 +163,17 @@
                 [{:id     card-1
                   :name   "A"
                   :errors {:inactive-fields [{:field "FA"
-                                              :table "T"}
+                                              :table "T1"}
                                              {:field "FAB"
-                                              :table "T"}]}}
+                                              :table "T1"}]}}
                  {:id     card-2
                   :name   "B"
                   :errors {:inactive-fields [{:field "FB"
-                                              :table "T"}]}}
+                                              :table "T1"}]}}
                  {:id     card-3
                   :name   "C"
-                  :errors {:inactive-fields [{:field "FC"
-                                              :table "T"}]}}]}
+                  :errors {:inactive-tables [{:field "FC"
+                                              :table "T2"}]}}]}
                (get!)
                [{:id   card-4
                  :name "D"}]))))
@@ -192,13 +193,13 @@
                 [{:id     card-1
                   :name   "A"
                   :errors {:inactive-fields [{:field "FA"
-                                              :table "T"}
+                                              :table "T1"}
                                              {:field "FAB"
-                                              :table "T"}]}}
+                                              :table "T1"}]}}
                  {:id     card-2
                   :name   "B"
                   :errors {:inactive-fields [{:field "FB"
-                                              :table "T"}]}}]}
+                                              :table "T1"}]}}]}
                (get! {:limit 2})
                [{:id   card-3
                  :name "C"}
@@ -210,8 +211,8 @@
                 :data
                 [{:id     card-3
                   :name   "C"
-                  :errors {:inactive-fields [{:field "FC"
-                                              :table "T"}]}}]}
+                  :errors {:inactive-tables [{:field "FC"
+                                              :table "T2"}]}}]}
                (get! {:limit 1 :offset 2})
                [{:id   card-1
                  :name "A"}
