@@ -504,7 +504,7 @@ describe("issues 20845, 25031", () => {
 // - Add tests for public sharing (question)
 // - Add tests for public sharing (dashboard)
 // BONUS: Ideally add tests for email subscriptions with the filter applied
-describe("27643", () => {
+describe("issue 27643", () => {
   beforeEach(() => {
     restore("setup");
     cy.signInAsAdmin();
