@@ -73,6 +73,7 @@
                 :name     {:givenName "Rasta" :familyName "Toucan"}
                 :emails   [{:value "rasta@metabase.com"}]
                 :active   true
+                :locale   nil
                 :meta     {:resourceType "User"}}
                (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))))))
 
@@ -178,6 +179,65 @@
                   response    (scim-client :put 404 (format "ee/scim/v2/Users/%s" (random-uuid)) update-user)]
               (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
               (is (= "User not found" (get response :detail))))))))))
+
+(deftest patch-user-test
+  (with-scim-setup!
+    (mt/with-temp [:model/User user {:email "testuser@metabase.com"
+                                     :first_name "Test"
+                                     :last_name "User"
+                                     :is_active true
+                                     :locale "en-US"}]
+      (let [entity-id (t2/select-one-fn :entity_id :model/User :id (:id user))]
+        (testing "Deactivate an existing user"
+          (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                            :Operations [{:op "Replace"
+                                          :path "active"
+                                          :value false}]}
+                response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
+            (is (malli= scim-api/SCIMUser response))
+            (is (= false (:active response)))))
+
+        (testing "Update family name of an existing user"
+          (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                            :Operations [{:op "Replace"
+                                          :path "name.familyName"
+                                          :value "UpdatedUser"}]}
+                response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
+            (is (malli= scim-api/SCIMUser response))
+            (is (= "UpdatedUser" (get-in response [:name :familyName])))))
+
+        (testing "Update multiple attributes of an existing user"
+          (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                            :Operations [{:op "Replace"
+                                          :path "name.givenName"
+                                          :value "UpdatedTest"}
+                                         {:op "Replace"
+                                          :path "locale"
+                                          :value "fr_FR"}]}
+                response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
+            (def response response)
+            (is (malli= scim-api/SCIMUser response))
+            (is (= "UpdatedTest" (get-in response [:name :givenName])))
+            (is (= "fr_FR" (:locale response)))))
+
+        (testing "Error when using unsupported operation"
+          (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                            :Operations [{:op "add"
+                                          :path "name.familyName"
+                                          :value "UnsupportedOperation"}]}
+                response   (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
+            (def response response)
+            (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
+            (is (= "Unsupported operation: add" (get response :detail)))))
+
+        (testing "Error when trying to update a non-existent user"
+          (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                            :Operations [{:op "Replace"
+                                          :path "name.familyName"
+                                          :value "NonexistentUser"}]}
+                response   (scim-client :patch 404 (format "ee/scim/v2/Users/%s" (random-uuid)) patch-body)]
+            (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
+            (is (= "User not found" (get response :detail)))))))))
 
 (deftest list-groups-test
   (with-scim-setup!

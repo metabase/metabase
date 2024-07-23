@@ -37,7 +37,7 @@
               [:value ms/NonBlankString]
               [:type {:optional true} [:enum "work" "home" "other"]]
               [:primary {:optional true} boolean?]]]]
-   [:locale {:optional true} ms/NonBlankString]
+   [:locale {:optional true} [:maybe ms/NonBlankString]]
    [:active {:optional true} boolean?]])
 
 (def SCIMUserList
@@ -56,8 +56,7 @@
    [:Operations
     [:sequential [:map
                   [:op ms/NonBlankString]
-                  [:value [:map
-                           [:active ms/BooleanValue]]]]]]])
+                  [:value [:or ms/NonBlankString ms/BooleanValue]]]]]])
 
 (def SCIMGroup
   "Malli schema for a SCIM group."
@@ -107,6 +106,7 @@
    :name     {:givenName  (:first_name user)
               :familyName (:last_name user)}
    :emails   [{:value (:email user)}]
+   :locale   (:locale user)
    :active   (:is_active user)
    :meta     {:resourceType "User"}})
 
@@ -126,7 +126,8 @@
 (mu/defn ^:private get-user-by-entity-id
   "Fetches a user by entity ID, or throws a 404"
   [entity-id]
-  (or (t2/select-one :model/User :entity_id entity-id
+  (or (t2/select-one (cons :model/User user-cols)
+                     :entity_id entity-id
                      {:where [:= :type "personal"]})
       (throw-scim-error 404 "User not found")))
 
@@ -209,26 +210,30 @@
                             :status      400
                             :status-code 400}))))))))
 
-(defn- active-status
-  [patch-op]
-  (let [operation (-> patch-op :Operations first)
-        op        (:op operation)
-        value     (:value operation)]
-    (if-not (and (= op "replace")
-                 (= (keys value) [:active]))
-      (throw-scim-error 400 "Unsupported PATCH operation")
-      (get value :active))))
-
 (defendpoint PATCH "/Users/:id"
-  "Activate or deactivate a user. Arbitrary patch requests are not currently supported, only activation/deactivation."
-  [:as {patch-op :body {id :id} :params}]
-  {patch-op UserPatch}
+  "Activate or deactivate a user. Supports specific replace operations, but not arbitrary patches."
+  [:as {patch-ops :body {id :id} :params}]
+  {patch-ops UserPatch}
   {id ms/NonBlankString}
-  (let [active? (active-status patch-op)
-        user    (get-user-by-entity-id id)]
-    (t2/update! :model/User :is_active active?)
-    (-> user
-        mb-user->scim)))
+  (t2/with-transaction [_conn]
+    (let [user (get-user-by-entity-id id)
+          updates (reduce
+                    (fn [acc op]
+                      (let [{:keys [op path value]} op]
+                        (if (= (u/lower-case-en op) "replace")
+                          (case path
+                            "active"          (assoc acc :is_active value)
+                            "userName"        (assoc acc :email value)
+                            "name.givenName"  (assoc acc :first_name value)
+                            "name.familyName" (assoc acc :last_name value)
+                            "locale"          (assoc acc :locale value)
+                            (throw-scim-error 400 (format "Unsupported path: %s" path)))
+                          (throw-scim-error 400 (format "Unsupported operation: %s" op)))))
+                    {}
+                    (:Operations patch-ops))]
+      (t2/update! :model/User (u/the-id user) updates)
+      (-> (get-user-by-entity-id id)
+          mb-user->scim))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Group operations                                                  |
