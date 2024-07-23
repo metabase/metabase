@@ -46,7 +46,7 @@
      (update acc (if table_active :inactive-fields :inactive-tables) conj
              {:table table, :field field}))
    {:inactive-fields []
-    :inactive_tables []}
+    :inactive-tables []}
    inactive-fields))
 
 (defn- cards-with-inactive-fields
