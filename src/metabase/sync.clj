@@ -34,6 +34,22 @@
      [:name       :string]
      [:steps      [:maybe [:sequential sync-util/StepNameWithMetadata]]]]]])
 
+(def ^:private phase->fn
+  {:metadata     sync-metadata/sync-db-metadata!
+   :analyze      analyze/analyze-db!
+   :field-values field-values/update-field-values!})
+
+(defn- scan-phases [scan]
+  (if (not= :full scan)
+    [:metadata]
+    [:metadata :analyze :field-values]))
+
+(defn- do-phase [phase database]
+  (let [f      (phase->fn phase)
+        result (f database)]
+    (when-not (instance? Throwable result)
+      (assoc result :name (name phase)))))
+
 (mu/defn sync-database! :- SyncDatabaseResults
   "Perform all the different sync operations synchronously for `database`.
 
@@ -49,10 +65,9 @@
     {:keys [scan], :or {scan :full}} :- [:maybe [:map
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
-     (cond-> [(assoc (sync-metadata/sync-db-metadata! database) :name "metadata")]
-       (= scan :full)
-       (conj (assoc (analyze/analyze-db! database) :name "analyze")
-             (assoc (field-values/update-field-values! database) :name "field-values"))))))
+     (->> (scan-phases scan)
+          (keep #(do-phase % database))
+          vec))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
