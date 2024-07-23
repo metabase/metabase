@@ -272,8 +272,7 @@
            :type/Text
            :type/Temporal
            :type/Boolean
-           :type/Collection
-           :type/field-values-unsupported]]
+           :type/Collection]]
   (derive :type/SnowflakeVariant t))
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
