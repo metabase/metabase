@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { popover, interceptIfNotPreviouslyDefined } from "e2e/support/helpers";
 
 export function saveMetadataChanges() {
@@ -34,7 +36,12 @@ export function setColumnType(oldType, newType) {
     .contains(oldType)
     .click();
 
-  cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
+  const scrollTimes = 3;
+  _.times(scrollTimes, () => {
+    cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
+    cy.wait(100);
+  });
+
   cy.findByPlaceholderText("Search for a special type").realType(newType);
   popover().findByLabelText(newType).click();
 }
