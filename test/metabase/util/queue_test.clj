@@ -46,7 +46,7 @@
            :dropped   @dropped
            :skipped   @skipped})))))
 
-(deftest deduplicating-bounded-blocking-queue-test
+(deftest bounded-blocking-queue-test
   (let [realtime-event-count 500
         backfill-event-count 1000
         capacity             (- realtime-event-count 100)
