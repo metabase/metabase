@@ -4,9 +4,15 @@ import type {
   Store,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
-import type { TypedUseSelectorHook } from "react-redux";
-import { useSelector, useDispatch } from "react-redux";
+import { useContext } from "react";
+import {
+  ReactReduxContext,
+  type TypedUseSelectorHook,
+  useSelector,
+  useDispatch,
+} from "react-redux";
 
+import { USE_OUTSIDE_OF_CONTEXT_MESSAGE } from "embedding-sdk";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
@@ -27,7 +33,19 @@ export const store = getStore(sdkReducers, null, {
   },
 }) as unknown as Store<SdkStoreState, AnyAction>;
 
-export const useSdkSelector: TypedUseSelectorHook<SdkStoreState> = useSelector;
+export const useSdkSelector: TypedUseSelectorHook<SdkStoreState> = (
+  selector,
+  options,
+) => {
+  const context = useContext(ReactReduxContext);
+
+  if (!context) {
+    throw new Error(USE_OUTSIDE_OF_CONTEXT_MESSAGE);
+  }
+
+  return useSelector(selector, options);
+};
+
 export const useSdkDispatch: () => ThunkDispatch<
   SdkStoreState,
   void,
