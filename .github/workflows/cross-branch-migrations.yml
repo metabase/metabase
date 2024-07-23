@@ -11,37 +11,75 @@ jobs:
     name: Test backwards-compatability of migrations
     runs-on: ubuntu-22.04
     timeout-minutes: 15
-    strategy:
-      matrix:
-        # TODO: add h2, multiple DB versions
-        db: [postgres, mysql, mariadb]
 
-  services:
-    postgres:
-      image: postgres:12-alpine
-      ports:
-        - "5432:5432"
-      env:
-        POSTGRES_USER: mb_test
-        POSTGRES_DB: mb_test
-        POSTGRES_HOST_AUTH_METHOD: trust
-    mysql:
-      image: mysql:latest
-      env:
-        MYSQL_ALLOW_EMPTY_PASSWORD: true
-        MYSQL_DATABASE: circle_test
-      ports:
-        - "3306:3306"
-    mariadb:
-      image: circleci/mariadb:10.2.23
-      ports:
-        - "3306:3306"
 
+  migrations-mysql-8-0-ee:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 90
+    env:
+      CI: 'true'
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
+    services:
+      mysql:
+        image: cimg/mysql:8.0
+        ports:
+          - "3306:3306"
     steps:
-      - name: Check out master
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           ref: master
-
-      - name: Run backend on master
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+      - name: Run back-end
         run: clojure -M:run:ee
+
+
+  # services:
+  #   postgres:
+  #     image: postgres:12-alpine
+  #     ports:
+  #       - "5432:5432"
+  #     env:
+  #       POSTGRES_USER: mb_test
+  #       POSTGRES_DB: mb_test
+  #       POSTGRES_HOST_AUTH_METHOD: trust
+  #   mysql:
+  #     image: mysql:latest
+  #     env:
+  #       MYSQL_ALLOW_EMPTY_PASSWORD: true
+  #       MYSQL_DATABASE: circle_test
+  #     ports:
+  #       - "3306:3306"
+  #   mariadb:
+  #     image: circleci/mariadb:10.2.23
+  #     ports:
+  #       - "3306:3306"
+
+  # files-changed:
+  #   name: Check which files changed
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 3
+  #   outputs:
+  #     yaml: ${{ steps.changes.outputs.yaml }}
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - name: Test which files changed
+  #       uses: dorny/paths-filter@v3.0.0
+  #       id: changes
+  #       with:
+  #         token: ${{ github.token }}
+  #         filters: .github/file-paths.yaml
+
+  #   steps:
+  #     - name: Check out master
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: master
+
+  #     - name: Run backend on master
+  #       run: clojure -M:run:ee
