@@ -425,7 +425,7 @@
                        :order-by [[:id :desc]]
                        :limit    1}
                       :moderated_status]]
-                    (= :model card-type)
+                    (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
@@ -1260,8 +1260,7 @@
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
 
   If the `skip_graph` query parameter is true, it will only return the current revision"
-  [:as {{:keys [namespace revision groups]} :body
-        {:strs [skip_graph]} :query-params}]
+  [:as {{:keys [namespace revision groups skip_graph]} :body}]
   {namespace [:maybe ms/NonBlankString]
    revision  ms/Int
    groups :map

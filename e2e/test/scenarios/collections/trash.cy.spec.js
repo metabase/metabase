@@ -691,7 +691,7 @@ describe("scenarios > collections > trash", () => {
     });
   });
 
-  it.skip("should open only one context menu at a time (metabase#44910)", () => {
+  it("should open only one context menu at a time (metabase#44910)", () => {
     cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { archived: true });
     cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
       archived: true,

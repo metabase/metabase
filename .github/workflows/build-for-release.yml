@@ -42,6 +42,27 @@ jobs:
               channelName: '${{ vars.SLACK_RELEASE_CHANNEL }}',
             }).catch(console.error);
 
+  trigger-milestone-check:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    needs: start-message
+    steps:
+      - name: trigger pre-release milestone check
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release-milestone-check.yml',
+              ref: '${{ github.ref }}',
+              inputs: {
+                commit: '${{ inputs.commit }}',
+                version: '${{ inputs.version }}',
+              }
+            });
+
+
   check-version:
     runs-on: ubuntu-22.04
     timeout-minutes: 10

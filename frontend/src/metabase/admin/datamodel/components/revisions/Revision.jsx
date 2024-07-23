@@ -15,7 +15,6 @@ export default class Revision extends Component {
     objectName: PropTypes.string.isRequired,
     revision: PropTypes.object.isRequired,
     currentUser: PropTypes.object.isRequired,
-    tableMetadata: PropTypes.object.isRequired,
   };
 
   getAction() {
@@ -33,7 +32,7 @@ export default class Revision extends Component {
           return t`edited the title`;
         case "description":
           return t`edited the description`;
-        case "defintion":
+        case "definition":
           return t`edited the ` + objectName;
       }
     }
@@ -53,7 +52,7 @@ export default class Revision extends Component {
   }
 
   render() {
-    const { revision, tableMetadata, userColor } = this.props;
+    const { revision, userColor } = this.props;
 
     let message = revision.message;
     let diffKeys = Object.keys(revision.diff || {});
@@ -86,12 +85,7 @@ export default class Revision extends Component {
           </div>
           {message && <p>&quot;{message}&quot;</p>}
           {diffKeys.map(key => (
-            <RevisionDiff
-              key={key}
-              property={key}
-              diff={revision.diff[key]}
-              tableMetadata={tableMetadata}
-            />
+            <RevisionDiff key={key} property={key} diff={revision.diff[key]} />
           ))}
         </div>
       </li>

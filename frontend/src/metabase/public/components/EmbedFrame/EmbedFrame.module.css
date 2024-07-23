@@ -2,46 +2,86 @@ body {
   background-color: transparent;
 }
 
+.NoBackground {
+  --mb-color-embed-bg-color-override: transparent;
+}
+
 .EmbedFrame {
-  background-color: var(--mb-color-bg-dashboard);
+  --mb-color-text-primary: var(--mb-color-text-dark);
+  --mb-color-text-secondary: var(--mb-color-text-medium);
+  --mb-color-text-tertiary: var(--mb-color-text-light);
+  --mb-color-embed-filter-bg-color: var(--mb-color-bg-white);
+
+  color: var(--mb-color-text-primary);
+  background-color: var(
+    --mb-color-embed-bg-color-override,
+    var(--mb-color-bg-dashboard)
+  );
+}
+/* A temporary solution until we migrated all colors in visualization to use semantic colors
+   e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
+.EmbedFrame svg text {
+  fill: var(--mb-color-text-primary);
 }
 
 .EmbedFrameHeader,
 .EmbedFrameFooter {
-  color: var(--mb-color-text-dark);
-  background-color: var(--mb-color-bg-dashboard);
+  color: var(--mb-color-text-primary);
+  background-color: var(
+    --mb-color-embed-bg-color-override,
+    var(--mb-color-bg-dashboard)
+  );
 }
 
-.ThemeNight.EmbedFrame {
-  background-color: var(--mb-color-bg-black);
+.ThemeNight.EmbedFrame,
+/* this is to make it work when exporting to pdfs,
+where the EmbedFrame is not part of the exported dom */
+.ThemeNight.EmbedFrame .WithThemeBackground {
+  --mb-color-text-primary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 90%,
+    transparent
+  );
+  --mb-color-text-secondary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 65%,
+    transparent
+  );
+  --mb-color-text-tertiary: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 45%,
+    transparent
+  );
+  --mb-color-embed-filter-bg-color: var(--mb-color-bg-black);
+  --mb-color-border: var(--mb-color-text-medium);
+
+  background-color: var(
+    --mb-color-embed-bg-color-override,
+    var(--mb-color-bg-black)
+  );
   border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight .EmbedFrameHeader,
 .ThemeNight .EmbedFrameFooter {
-  color: var(--mb-color-text-white-alpha-85);
-  background-color: var(--mb-color-bg-black);
+  background-color: var(
+    --mb-color-embed-bg-color-override,
+    var(--mb-color-bg-black)
+  );
   border-color: var(--mb-color-bg-dark);
 }
 
 .ThemeNight.EmbedFrame .fullscreenNightText {
-  color: var(--mb-color-text-white-alpha-85);
   transition: color 1s linear;
 }
 
 .ThemeNight.EmbedFrame svg text {
-  fill: var(--mb-color-text-white-alpha-85) !important;
   stroke: none !important;
 }
 
 .ThemeNight.EmbedFrame .DashCard .Card {
   background-color: var(--mb-color-bg-black);
-  border: 1px solid var(--mb-color-bg-dark);
-}
-
-.ThemeNight.EmbedFrame .enableDotsOnHover :global(.dc-tooltip circle.dot:hover),
-.ThemeNight.EmbedFrame .enableDots :global(.dc-tooltip circle.dot) {
-  fill: currentColor;
+  border: 1px solid var(--mb-color-border);
 }
 
 .ThemeTransparent.EmbedFrame {

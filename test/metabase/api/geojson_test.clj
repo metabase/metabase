@@ -1,6 +1,7 @@
 (ns metabase.api.geojson-test
   (:require
    [cheshire.core :as json]
+   [clj-http.fake :as fake]
    [clojure.test :refer :all]
    [metabase.api.geojson :as api.geojson]
    [metabase.config :as config]
@@ -17,11 +18,34 @@
 
 (def ^String test-geojson-url
   "URL of a GeoJSON file used for test purposes."
-  "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/test.geojson")
+  "https://metabase.com/test.geojson")
 
 (def ^:private ^String test-broken-geojson-url
   "URL of a GeoJSON file that is a valid URL but which cannot be connected to."
-  "https://raw.githubusercontent.com/metabase/metabase/master/test_resources/broken.geojson")
+  "https://metabase.com/broken.geojson")
+
+(def ^:private ^String test-not-json-geojson-url
+  "URL of a GeoJSON file that is a valid URL but responds with a wrong application type"
+  "https://metabase.com/not-json.geojson")
+
+(def ^:private ^String test-geojson-body
+  "Body of the GeoJSON file used for test purposes."
+  "{\"type\": \"Point\", \"coordinates\": [37.77986, -122.429]}")
+
+(def fake-routes
+  {test-geojson-url          (constantly {:status  200
+                                          :headers {:content-type "application/json"}
+                                          :body    test-geojson-body})
+   test-broken-geojson-url   (constantly {:status  404
+                                          :headers {:content-type "text/plain"}
+                                          :body    "oh no, not found!"})
+   test-not-json-geojson-url (constantly {:status  200
+                                          :headers {:content-type "application/html"}
+                                          :body    "<h1>oops</h1>"})})
+
+(defmacro with-geojson-mocks [& body]
+  `(fake/with-fake-routes fake-routes
+     ~@body))
 
 (def ^:private test-custom-geojson
   {:middle-earth {:name        "Middle Earth"
@@ -135,23 +159,28 @@
                    (mt/user-http-request :crowberto :get 200 "setting/custom-geojson")))))))))
 
 (deftest ^:parallel url-proxy-endpoint-test
-  (testing "GET /api/geojson"
-    (testing "test the endpoint that fetches JSON files given a URL"
-      (is (= {:type        "Point"
-              :coordinates [37.77986 -122.429]}
-             (mt/user-http-request :crowberto :get 200 "geojson" :url test-geojson-url))))
-    (testing "error is returned if URL connection fails"
-      (is (= "GeoJSON URL failed to load"
-             (mt/user-http-request :crowberto :get 400 "geojson"
-                                   :url test-broken-geojson-url))))
-    (testing "error is returned if URL is invalid"
-      (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
-                  "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
-                  "prohibited.")
-             (mt/user-http-request :crowberto :get 400 "geojson" :url "file://tmp"))))
-    (testing "cannot be called by non-admins"
-      (is (= "You don't have permissions to do that."
-             (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url))))))
+  (with-geojson-mocks
+    (testing "GET /api/geojson"
+      (testing "test the endpoint that fetches JSON files given a URL"
+        (is (= {:type        "Point"
+                :coordinates [37.77986 -122.429]}
+               (mt/user-http-request :crowberto :get 200 "geojson" :url test-geojson-url))))
+      (testing "error is returned if URL connection fails"
+        (is (= "GeoJSON URL failed to load"
+               (mt/user-http-request :crowberto :get 400 "geojson"
+                                     :url test-broken-geojson-url))))
+      (testing "error is returned if URL is invalid"
+        (is (= (str "Invalid GeoJSON file location: must either start with http:// or https:// or be a relative path to "
+                    "a file on the classpath. URLs referring to hosts that supply internal hosting metadata are "
+                    "prohibited.")
+               (mt/user-http-request :crowberto :get 400 "geojson" :url "file://tmp"))))
+      (testing "error is returned if response is not JSON"
+        (is (= "GeoJSON URL returned invalid content-type"
+               (mt/user-http-request :crowberto :get 400 "geojson"
+                                     :url test-not-json-geojson-url))))
+      (testing "cannot be called by non-admins"
+        (is (= "You don't have permissions to do that."
+               (mt/user-http-request :rasta :get 403 "geojson" :url test-geojson-url)))))))
 
 (defprotocol GeoJsonTestServer
   (-port [_]))
@@ -188,23 +217,24 @@
                                          :url never-responds-url)))))))))
 
 (deftest key-proxy-endpoint-test
-  (testing "GET /api/geojson/:key"
-    (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
-      (testing "test the endpoint that fetches JSON files given a GeoJSON key"
-        (is (= {:type        "Point"
-                :coordinates [37.77986 -122.429]}
-               (mt/user-http-request :rasta :get 200 "geojson/middle-earth"))))
-      (testing "should be able to fetch the GeoJSON even if you aren't logged in"
-        (is (= {:type        "Point"
-                :coordinates [37.77986 -122.429]}
-               (client/real-client :get 200 "geojson/middle-earth"))))
-      (testing "try fetching an invalid key; should fail"
-        (is (= "Invalid custom GeoJSON key: invalid-key"
-               (mt/user-http-request :rasta :get 400 "geojson/invalid-key")))))
-    (mt/with-temporary-setting-values [custom-geojson test-broken-custom-geojson]
-      (testing "fetching a broken URL should fail"
-        (is (= "GeoJSON URL failed to load"
-               (mt/user-http-request :rasta :get 400 "geojson/middle-earth")))))))
+  (with-geojson-mocks
+    (testing "GET /api/geojson/:key"
+      (mt/with-temporary-setting-values [custom-geojson test-custom-geojson]
+        (testing "test the endpoint that fetches JSON files given a GeoJSON key"
+          (is (= {:type        "Point"
+                  :coordinates [37.77986 -122.429]}
+                 (mt/user-http-request :rasta :get 200 "geojson/middle-earth"))))
+        (testing "should be able to fetch the GeoJSON even if you aren't logged in"
+          (is (= {:type        "Point"
+                  :coordinates [37.77986 -122.429]}
+                 (client/client :get 200 "geojson/middle-earth"))))
+        (testing "try fetching an invalid key; should fail"
+          (is (= "Invalid custom GeoJSON key: invalid-key"
+                 (mt/user-http-request :rasta :get 400 "geojson/invalid-key")))))
+      (mt/with-temporary-setting-values [custom-geojson test-broken-custom-geojson]
+        (testing "fetching a broken URL should fail"
+          (is (= "GeoJSON URL failed to load"
+                 (mt/user-http-request :rasta :get 400 "geojson/middle-earth"))))))))
 
 (deftest set-custom-geojson-from-env-var-test
   (testing "Should be able to set the `custom-geojson` Setting via env var (#18862)"

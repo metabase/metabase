@@ -1,6 +1,5 @@
 (ns metabase.api.query-metadata
   (:require
-   [medley.core :as m]
    [metabase.api.database :as api.database]
    [metabase.api.field :as api.field]
    [metabase.api.table :as api.table]
@@ -8,10 +7,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util :as lib.util]
-   [metabase.models.card :as card]
-   [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
-   [metabase.models.revision.last-edit :as last-edit]
    [metabase.util.log :as log]
    [toucan2.core :as t2]))
 
@@ -82,35 +78,13 @@
                                        ;; xray cards don't have real ids
                                        (lib/dependent-metadata query nil :question)))) cards)))))
 
-(defn- hydrate-persisted-for-models
-  [cards]
-  (let [models (m/index-by :id (t2/hydrate (filter card/model? cards) :persisted))]
-    (map #(get models (:id %) %) cards)))
-
 (defn- get-cards
   [ids]
   (when (seq ids)
-    (let [root-collection
-          (collection.root/hydrated-root-collection)
-          with-last-edit-info #(last-edit/with-last-edit-info % :card)
-          hydrate #(t2/hydrate %
-                               :based_on_upload
-                               :creator
-                               :dashboard_count
-                               :can_write
-                               :can_run_adhoc_query
-                               :average_query_time
-                               :last_query_start
-                               :parameter_usage_count
-                               :can_restore
-                               [:collection :is_personal]
-                               [:moderation_reviews :moderator_details])]
+    (let [hydrate #(t2/hydrate % :can_write)]
       (->> (t2/select :model/Card :id [:in ids])
            (filter mi/can-read?)
-           hydrate
-           hydrate-persisted-for-models
-           with-last-edit-info
-           (map #(collection.root/hydrate-root-collection % root-collection))))))
+           hydrate))))
 
 (defn dashboard-metadata
   "Fetches dependent query-metadata for a given dashboard"

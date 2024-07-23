@@ -14,19 +14,17 @@
   (mt/discard-setting-changes [sql-parsing-enabled]
     (testing "sql parsing enabled"
       (public-settings/sql-parsing-enabled! true)
-      (binding [query-analysis/*parse-queries-in-test?* true]
-        (is (true? (query-analysis/enabled? :native)))))
+      (is (true? (query-analysis/enabled-type? :native))))
     (testing "sql parsing disabled"
       (public-settings/sql-parsing-enabled! false)
-      (binding [query-analysis/*parse-queries-in-test?* true]
-        (is (false? (query-analysis/enabled? :native)))))))
+      (is (false? (query-analysis/enabled-type? :native))))))
 
 (deftest non-native-query-enabled-test
   (testing "mbql parsing is always enabled"
-    (is (query-analysis/enabled? :query))
-    (is (query-analysis/enabled? :mbql/query)))
+    (is (query-analysis/enabled-type? :query))
+    (is (query-analysis/enabled-type? :mbql/query)))
   (testing "other types are disabled"
-    (is (false? (query-analysis/enabled? :unexpected)))))
+    (is (false? (query-analysis/enabled-type? :unexpected)))))
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"

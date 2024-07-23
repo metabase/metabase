@@ -45,7 +45,6 @@ frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources
   - *frontend_specs
-  - *release_sources
 
 frontend_loki_ci: &frontend_loki_ci
   - ".github/workflows/loki.yml"
