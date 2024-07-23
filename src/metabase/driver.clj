@@ -445,6 +445,21 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+(mr/def ::execute-query-response.metadata.col
+  [:map
+   [:name          :string]
+   [:base_type     ::lib.schema.common/base-type]
+   [:database_type :string]])
+
+(mr/def ::execute-query-response.metadata
+  [:map
+   [:cols [:sequential ::execute-query-response.metadata.col]]])
+
+(mr/def ::execute-query-response.rows
+  [:or
+   sequential?
+   (lib.schema.common/instance-of-class clojure.lang.IReduceInit)])
+
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`. This
   query is guaranteed to be compiled, i.e. it will have a top-level `:native` key with `:query` and possibly
@@ -457,6 +472,9 @@
   Pass metadata about the columns and the reducible object to `respond`, which has the signature
 
     (respond results-metadata rows)
+
+  The `results-metadata` should match the `::execute-query-response.metadata` schema, and `rows` should match the
+  `::execute-query-response.rows` schema.
 
   You can use [[metabase.query-processor.reducible/reducible-rows]] to create reducible, streaming results.
 
@@ -476,11 +494,8 @@
 
 (mr/def ::execute-multiple-queries-response
   [:map
-   [:metadata [:map
-               [:cols [:sequential [:map]]]]]
-   [:rows     [:or
-               sequential?
-               (lib.schema.common/instance-of-class clojure.lang.IReduceInit)]]])
+   [:metadata ::execute-query-response.metadata]
+   [:rows     ::execute-query-response.rows]])
 
 (defmulti EXPERIMENTAL-execute-multiple-queries
   "EXPERIMENTAL INTERNAL USE ONLY! DO NOT IMPLEMENT IN THIRD-PARTY DRIVERS! MAY BE REMOVED WITHOUT NOTICE!
@@ -489,6 +504,9 @@
   queries are guaranteed to have the same set of returned columns and be against the same Database. `queries` will be
   pMBQL-style queries with a single native stage rather than legacy MBQL queries.
 
+  Query should be executed sequentially and return a response matching the `::execute-multiple-queries-response`
+  schema.
+
   Used internally for fast pivot query implementations... this is probably not a good long-term solution to the
   problem however. `UNION ALL` should really be a part of MBQL itself instead of a different way of running queries.
   So don't run around implementing this method in third-party drivers just yet.
@@ -496,7 +514,7 @@
   Note that this does not have a separate `context` parameter with a `:canceled-chan`; look
   at [[metabase.query-processor.pipeline/*canceled-chan*]] instead if you want to implement behavior if the query is
   canceled upstream."
-  {:added "0.51.0", :arglists '([driver queries respond])}
+  {:added "0.51.0", :arglists '([driver queries])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

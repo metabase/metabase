@@ -133,10 +133,9 @@
   [_impl-name
    query :- ::qp.schema/query
    rff   :- ::qp.schema/rff]
-  (let [pivot-options (or (get-in query [:middleware :pivot-options])
-                          (throw (ex-info "Missing pivot options" {:query query, :type qp.error-type/qp})))
-        queries       (generate-compiled-queries query pivot-options)
-        respond       (fn respond [metadata rows]
-                        (let [rf (rff metadata)]
-                          (transduce identity rf rows)))]
-    (driver/EXPERIMENTAL-execute-multiple-queries driver/*driver* queries respond)))
+  (let [pivot-options           (or (get-in query [:middleware :pivot-options])
+                                    (throw (ex-info "Missing pivot options" {:query query, :type qp.error-type/qp})))
+        queries                 (generate-compiled-queries query pivot-options)
+        {:keys [metadata rows]} (driver/EXPERIMENTAL-execute-multiple-queries driver/*driver* queries)
+        rf                      (rff metadata)]
+    (transduce identity rf rows)))

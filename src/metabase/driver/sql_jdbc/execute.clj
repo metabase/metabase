@@ -773,13 +773,14 @@
       (update query :native #(assoc % :query combined-sql, :params combined-params))
       (assoc-in query [:info :query-hash] (qp.util/query-hash query)))))
 
-(mu/defn EXPERIMENTAL-execute-multiple-queries
+(mu/defn EXPERIMENTAL-execute-multiple-queries :- ::driver/execute-multiple-queries-response
   "Default implementation of [[metabase.driver/EXPERIMENTAL-execute-multiple-queries]] for JDBC-based drivers."
   [driver  :- :keyword
-   queries :- [:sequential {:min 1} ::compiled-pmbql-query]
-   respond :- [:=> [:cat :any :any] :any]]
+   queries :- [:sequential {:min 1} ::compiled-pmbql-query]]
   (let [query   (combine-native-queries queries)
-        context {:canceled-chan qp.pipeline/*canceled-chan*}]
+        context {:canceled-chan qp.pipeline/*canceled-chan*}
+        respond (fn respond [metadata rows]
+                  {:metadata metadata, :rows rows})]
     (execute-reducible-query driver query context respond)))
 
 (defn reducible-query
