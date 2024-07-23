@@ -23,10 +23,8 @@
   [:map
    [:url                           ms/Url]
    [:auth-method                   [:enum "none" "header" "query-param" "request-body"]]
-   [:method       {:optional true} [:enum "get" "post" "put"]]
-   [:query-params {:optional true} [:maybe [:map-of string-or-keyword :any]]]
-   [:headers      {:optional true} [:maybe [:map-of string-or-keyword :any]]]
-   [:body         {:optional true} :any]])
+   [:auth-info    {:optional true} [:map-of string-or-keyword :any]]
+   [:method       {:optional true} [:enum "get" "post" "put"]]])
 
 (def ^:private HTTPChannel
   [:map
