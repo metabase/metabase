@@ -1,5 +1,3 @@
-import _ from "underscore";
-
 import { popover, interceptIfNotPreviouslyDefined } from "e2e/support/helpers";
 
 export function saveMetadataChanges() {
