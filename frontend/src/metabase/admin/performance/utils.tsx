@@ -1,4 +1,5 @@
 import dayjs from "dayjs";
+import { t } from "ttag";
 import { memoize } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
@@ -124,12 +125,24 @@ export const cronToScheduleSettings_unmemoized = (
     if (weekday === Cron.AllValues) {
       schedule_frame = frameFromCron(dayOfMonth);
     } else {
-      // Split on transition from number to non-number
-      const weekdayParts = weekday.split(/(?<=\d)(?=\D)/);
-      const day = parseInt(weekdayParts[0]);
+      const dayStr = weekday.match(/^\d+/)?.[0];
+      if (!dayStr) {
+        throw new Error(
+          t`The cron expression contains an invalid weekday: ${weekday}`,
+        );
+      }
+      const day = parseInt(dayStr);
       schedule_day = weekdays[day - 1]?.value as ScheduleDayType;
       if (dayOfMonth === Cron.AllValues) {
-        const frameInCronFormat = weekdayParts[1].replace(/^#/, "");
+        // Match the part after the '#' in a string like '6#1' or the letter in '6L'
+        const frameInCronFormat = weekday
+          .match(/^\d+(\D.*)$/)?.[1]
+          .replace(/^#/, "");
+        if (!frameInCronFormat) {
+          throw new Error(
+            t`The cron expression contains an invalid weekday: ${weekday}`,
+          );
+        }
         schedule_frame = frameFromCron(frameInCronFormat);
       } else {
         schedule_frame = frameFromCron(dayOfMonth);
