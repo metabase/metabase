@@ -38,7 +38,7 @@
               [:type {:optional true} [:enum "work" "home" "other"]]
               [:primary {:optional true} boolean?]]]]
    [:locale {:optional true} ms/NonBlankString]
-   [:active boolean?]])
+   [:active {:optional true} boolean?]])
 
 (def SCIMUserList
   "Malli schema for a list of SCIM users"
