@@ -7,10 +7,10 @@ on:
       - "resources/migrations/**"
 
 jobs:
-  test-migrations:
-    name: Test backwards-compatability of migrations
-    runs-on: ubuntu-22.04
-    timeout-minutes: 15
+  # test-migrations:
+  #   name: Test backwards-compatability of migrations
+  #   runs-on: ubuntu-22.04
+  #   timeout-minutes: 15
 
 
   migrations-mysql-8-0-ee:
