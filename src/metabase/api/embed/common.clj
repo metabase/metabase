@@ -100,7 +100,7 @@
       api.public/combine-parameters-and-template-tags
       :parameters))
 
-(mu/defn ^:private resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
+(mu/defn- resolve-dashboard-parameters :- [:sequential api.dashboard/ParameterWithID]
   "Given a `dashboard-id` and parameters map in the format `slug->value`, return a sequence of parameters with `:id`s
   that can be passed to various functions in the `metabase.api.dashboard` namespace such as
   [[metabase.api.dashboard/process-query-for-dashcard]]."
@@ -169,7 +169,7 @@
   ;; ok, everything checks out, now return the merged params map
   (merge user-params token-params))
 
-(mu/defn ^:private param-values-merged-params :- [:map-of ms/NonBlankString :any]
+(mu/defn- param-values-merged-params :- [:map-of ms/NonBlankString :any]
   [id->slug slug->id embedding-params token-params id-query-params]
   (let [slug-query-params  (into {}
                                  (for [[id v] id-query-params]
@@ -217,7 +217,7 @@
   [dashboard-or-card-params embedding-params]
   (:remove (classify-params-as-keep-or-remove dashboard-or-card-params embedding-params)))
 
-(mu/defn ^:private remove-locked-and-disabled-params
+(mu/defn- remove-locked-and-disabled-params
   "Remove the `:parameters` for `dashboard-or-card` that listed as `disabled` or `locked` in the `embedding-params`
   whitelist, or not present in the whitelist. This is done so the frontend doesn't display widgets for params the user
   can't set."
@@ -254,7 +254,7 @@
                 card))
             dashcards))))
 
-(mu/defn ^:private apply-slug->value :- [:maybe [:sequential
+(mu/defn- apply-slug->value :- [:maybe [:sequential
                                                  [:map
                                                   [:slug ms/NonBlankString]
                                                   [:type :keyword]

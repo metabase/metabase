@@ -51,7 +51,7 @@
            (:doc (meta #'baz))))))
 
 
-(mu/defn ^:private boo :- :int "something very important to remember goes here" [_x])
+(mu/defn- boo :- :int "something very important to remember goes here" [_x])
 
 (mu/defn qux-1 [])
 (mu/defn qux-2 "Original docstring." [])
@@ -60,7 +60,7 @@
 (mu/defn qux-5 :- :int [])
 (mu/defn qux-6 :- :int "Original docstring." [x :- :int] x)
 
-(mu/defn ^:private foo :- [:multi {:dispatch :type}
+(mu/defn- foo :- [:multi {:dispatch :type}
                            [:sized [:map [:type [:= :sized]]
                                     [:size int?]]]
                            [:human [:map
@@ -146,7 +146,7 @@
        [:=> [:cat :int :int] out]
        [:=> [:cat :any :any [:* :int]] out]])))
 
-(mu/defn ^:private add-ints :- :int
+(mu/defn- add-ints :- :int
   ^Integer [x :- :int y :- :int]
   (+ x y))
 

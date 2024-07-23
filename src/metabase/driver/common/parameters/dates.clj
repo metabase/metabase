@@ -145,7 +145,7 @@
       (:date :date-1 :date-2) [[group-label (u.date/parse group-value)]]
       [[group-label group-value]])))
 
-(mu/defn ^:private regex->parser :- fn?
+(mu/defn- regex->parser :- fn?
   "Takes a regex and labels matching the regex capturing groups. Returns a parser which takes a parameter value,
   validates the value against regex and gives a map of labels and group values. Respects the following special label
   names:
@@ -369,7 +369,7 @@
 (def ^:private all-date-string-decoders
   (concat relative-date-string-decoders absolute-date-string-decoders))
 
-(mu/defn ^:private execute-decoders
+(mu/defn- execute-decoders
   "Returns the first successfully decoded value, run through both parser and a range/filter decoder depending on
   `decoder-type`. This generates an *inclusive* range by default. The range is adjusted to be exclusive as needed: see
   dox for [[date-string->range]] for more details."
@@ -391,7 +391,7 @@
    [:end   {:optional true} (lib.schema.common/instance-of-class Temporal)]
    [:unit                   TemporalUnit]])
 
-(mu/defn ^:private adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
+(mu/defn- adjust-inclusive-range-if-needed :- [:maybe TemporalRange]
   "Make an inclusive date range exclusive as needed."
   [{:keys [inclusive-start? inclusive-end?]} temporal-range :- [:maybe TemporalRange]]
   (-> temporal-range

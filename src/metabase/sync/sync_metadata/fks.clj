@@ -77,7 +77,7 @@
                        [:not= :f.fk_target_field_id pk-field-id-query]]]})]
     (sql/format q :dialect (mdb/quoting-style (mdb/db-type)))))
 
-(mu/defn ^:private mark-fk!
+(mu/defn- mark-fk!
   "Updates the `fk_target_field_id` of a Field. Returns 1 if the Field was successfully updated, 0 otherwise."
   [database :- i/DatabaseInstance
    metadata :- i/FKMetadataEntry]

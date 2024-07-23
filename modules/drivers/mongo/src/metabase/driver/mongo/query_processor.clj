@@ -1008,7 +1008,7 @@
   (or (get-in field [2 ::add/desired-alias])
       (->lvalue field)))
 
-(mu/defn ^:private breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ::lib.schema.common/non-blank-string :any]]]
+(mu/defn- breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ::lib.schema.common/non-blank-string :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
   [breakout-fields aggregations]
@@ -1256,7 +1256,7 @@
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
-(mu/defn ^:private order-by->$sort :- $SortStage
+(mu/defn- order-by->$sort :- $SortStage
   [order-by :- [:sequential ::mbql.s/OrderBy]]
   {$sort (into
           (ordered-map/ordered-map)
@@ -1365,7 +1365,7 @@
             handle-limit
             handle-page])))
 
-(mu/defn ^:private generate-aggregation-pipeline :- [:map
+(mu/defn- generate-aggregation-pipeline :- [:map
                                                      [:projections Projections]
                                                      [:query Pipeline]]
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."

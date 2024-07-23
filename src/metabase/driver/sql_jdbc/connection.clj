@@ -190,7 +190,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   database-id->jdbc-spec-hash
   (atom {}))
 
-(mu/defn ^:private jdbc-spec-hash
+(mu/defn- jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
   [{driver :engine, :keys [details], :as database} :- [:maybe :map]]

@@ -542,7 +542,7 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
-(mu/defn ^:private dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union

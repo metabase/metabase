@@ -125,7 +125,7 @@
 (mr/def ::xform
   [:=> [:cat ::rf] ::rf])
 
-(mu/defn ^:private reducible-chunked-rows :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
+(mu/defn- reducible-chunked-rows :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   [rows        :- [:sequential :any]    ; rows is allowed to be empty.
    chunk-size  :- [:maybe [:int {:min 1}]]
    row-xform   :- ::xform
@@ -151,7 +151,7 @@
              rows)
             (rf init rows)))))))
 
-(mu/defn ^:private reducible-chunks  :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
+(mu/defn- reducible-chunks  :- (lib.schema.common/instance-of-class clojure.lang.IReduceInit)
   [driver   :- :keyword
    dbdef    :- [:map [:database-name :string]]
    tabledef :- [:map [:table-name :string]]]

@@ -427,7 +427,7 @@
               (map ->legacy-MBQL))
         (:columns stage-metadata)))
 
-(mu/defn ^:private chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
+(mu/defn- chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
   ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
   ;; :source-query.
