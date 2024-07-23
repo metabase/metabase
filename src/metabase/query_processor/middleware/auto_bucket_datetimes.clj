@@ -16,25 +16,26 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(mr/def ::field-type-info
+(mr/def ::column-type-info
   [:map
    [:base-type      [:maybe ::lib.schema.common/base-type]]
    [:effective-type [:maybe ::lib.schema.common/base-type]]
    [:semantic-type {:optional true} [:maybe ::lib.schema.common/semantic-or-relation-type]]])
 
-(mr/def ::field-id-or-name->type-info
+(mr/def ::column-id-or-name->type-info
   [:map-of
    [:or ::lib.schema.common/non-blank-string ::lib.schema.id/field]
-   [:maybe ::field-type-info]])
+   [:maybe ::column-type-info]])
 
 ;; Unfortunately these Fields won't be in the store yet since Field resolution can't happen before we add the implicit
 ;; `:fields` clause, which happens after this
 ;;
 ;; TODO - What we could do tho is fetch all the stuff we need for the Store and then save these Fields in the store,
 ;; which would save a bit of time when we do resolve them
-(mu/defn ^:private unbucketed-fields->field-id->type-info :- ::field-id-or-name->type-info
-  "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`."
-  [metadata-providerable unbucketed-fields :- [:sequential {:min 1} :mbql.clause/field]]
+(mu/defn ^:private unbucketed-fields->field-id->type-info :- [:maybe ::column-id-or-name->type-info]
+  "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`. Return an empty map
+  for empty `unbucketed-fields`."
+  [metadata-providerable unbucketed-fields :- [:maybe [:sequential :mbql.clause/field]]]
   (merge
    ;; build map of field-literal-name -> {:base-type base-type}
    (into {} (for [[_tag opts id-or-name] unbucketed-fields
@@ -97,7 +98,7 @@
    stage-path :- ::lib.walk/stage-path
    x]
   (cond
-    ;; do not autobucket Fields in a non-compound filter clause that either:
+    ;; do not autobucket clauses in a non-compound filter clause that either:
     (simple-filter-clause? query stage-path x)
     (cond
       ;; *  is not an equality or comparison filter. e.g. wouldn't make sense to bucket a field and then check if it is
@@ -105,48 +106,58 @@
       (not (mbql.u/is-clause? #{:= :!= :< :> :<= :>= :between} x))
       :do-not-bucket-reason/not-equality-or-comparison-filter
 
-      ;; *  has arguments that aren't `yyyy-MM-dd` date strings. The only reason we auto-bucket datetime Fields in the
+      ;; *  has arguments that aren't `yyyy-MM-dd` date strings. The only reason we auto-bucket datetime clauses in the
       ;; *  first place is for legacy reasons, if someone is specifying additional info like hour/minute then we
       ;; *  shouldn't assume they want to bucket by day
-      (let [[_tag _opts _field & values] x]
+      (let [[_tag _opts _ref & values] x]
         (not (every? auto-bucketable-value? values)))
       :do-not-bucket-reason/not-all-values-are-auto-bucketable)
 
-    ;; *  do not autobucket fields that are updating the time interval
+    ;; *  do not autobucket clauses that are updating the time interval
     (lib.util.match/match-one x
-      [(_tag :guard #{:+ :-}) _ [:field _ _] [:interval _ _n (unit :guard #{:minute :hour :second})]])
+      [(_tag :guard #{:+ :-})
+       _
+       [(_ :guard #{:expression :field}) _ _]
+       [:interval _ _n (unit :guard #{:minute :hour :second})]])
     :do-not-bucket-reason/bucket-between-relative-starting-from
 
-    ;; do not auto-bucket fields inside a `:time-interval` filter: it already supplies its own unit
-    ;; do not auto-bucket fields inside a `:datetime-diff` clause: the precise timestamp is needed for the difference
+    ;; do not auto-bucket clauses inside a `:time-interval` filter: it already supplies its own unit
+    ;; do not auto-bucket clauses inside a `:datetime-diff` clause: the precise timestamp is needed for the difference
     (mbql.u/is-clause? #{:time-interval :datetime-diff} x)
     :do-not-bucket-reason/bucketed-or-precise-operation
 
-    ;; do not autobucket Fields that already have a temporal unit, or have a binning strategy
-    (and (mbql.u/is-clause? :field x)
+    ;; do not autobucket clauses that already have a temporal unit, or have a binning strategy
+    (and (or (mbql.u/is-clause? :expression x)
+             (mbql.u/is-clause? :field x))
          (let [[_tag opts _id-or-name] x]
            ((some-fn :temporal-unit :binning) opts)))
     :do-not-bucket-reason/field-with-bucketing-or-binning))
 
-(mu/defn ^:private date-or-datetime-field?
-  [{base-type :base-type, effective-type :effective-type} :- ::field-type-info]
+(mu/defn ^:private date-or-datetime-clause?
+  [{base-type :base-type, effective-type :effective-type} :- ::column-type-info]
   (some (fn [field-type]
           (some #(isa? field-type %)
                 [:type/Date :type/DateTime]))
         [base-type effective-type]))
 
-(mu/defn ^:private wrap-unbucketed-fields :- ::lib.schema/stage
-  "Add `:temporal-unit` to `:field`s in breakouts and filters if appropriate; look at corresponing type information in
-  `field-id->type-info` to see if we should do so."
+(mu/defn ^:private wrap-unbucketed-clauses :- ::lib.schema/stage
+  "Add `:temporal-unit` to `:field`s and `:expression`s in breakouts and filters if appropriate; for fields, look
+  at corresponing type information in `field-id->type-info` to see if we should do so. For expressions examine the clause
+  options."
   ;; we only want to wrap clauses in `:breakout` and `:filter` so just make a 3-arg version of this fn that takes the
   ;; name of the clause to rewrite and call that twice
   [query               :- ::lib.schema/query
    stage-path          :- ::lib.walk/stage-path
    stage               :- ::lib.schema/stage
-   field-id->type-info :- ::field-id-or-name->type-info]
+   field-id->type-info :- [:maybe ::column-id-or-name->type-info]]
   (letfn [(datetime-but-not-time? [field-id]
-            (some-> field-id field-id->type-info date-or-datetime-field?))
-          (wrap-fields [x]
+            (some-> field-id field-id->type-info date-or-datetime-clause?))
+          ;; Following function copies type extraction logic from [[unbucketed-fields->field-id->type-info]],
+          ;; to conform original schema.
+          (expression-opts->type-info [{:keys [base-type effective-type]}] :- ::column-id-or-name->type-info
+            {:base-type base-type
+             :effective-type (or effective-type base-type)})
+          (wrap-clauses [x]
             (lib.util.match/replace x
               ;; don't replace anything that's already bucketed or otherwise is not subject to autobucketing
               (_ :guard (partial should-not-be-autobucketed? query stage-path))
@@ -155,9 +166,12 @@
               ;; if it's a `:field` clause and `field-id->type-info` tells us it's a `:type/Temporal` (but not
               ;; `:type/Time`), then go ahead and replace it
               [:field opts (id-or-name :guard datetime-but-not-time?)]
-              [:field (assoc opts :temporal-unit :day) id-or-name]))
+              [:field (assoc opts :temporal-unit :day) id-or-name]
+
+              [:expression (opts :guard (comp date-or-datetime-clause? expression-opts->type-info)) name']
+              [:expression (assoc opts :temporal-unit :day) name']))
           (rewrite-clause [stage clause-to-rewrite]
-            (m/update-existing stage clause-to-rewrite wrap-fields))]
+            (m/update-existing stage clause-to-rewrite wrap-clauses))]
     (-> stage
         (rewrite-clause :breakout)
         (rewrite-clause :filters))))
@@ -168,14 +182,16 @@
    {breakouts :breakout, :keys [filters], :as stage} :- ::lib.schema/stage]
   ;; find any breakouts or filters in the query that are just plain `[:field-id ...]` clauses (unwrapped by any other
   ;; clause)
-  (if-let [unbucketed-fields (lib.util.match/match (cons filters breakouts)
-                               (_clause :guard (partial should-not-be-autobucketed? query stage-path)) nil
-                               :field                                       &match)]
+  (if-let [unbucketed-clauses (lib.util.match/match (cons filters breakouts)
+                                (_clause :guard (partial should-not-be-autobucketed? query stage-path)) nil
+                                :expression                                  &match
+                                :field                                       &match)]
     ;; if we found some unbucketed breakouts/filters, fetch the Fields & type info that are referred to by those
     ;; breakouts/filters...
-    (let [field-id->type-info (unbucketed-fields->field-id->type-info query unbucketed-fields)]
+    (let [unbucketed-fields (filter (comp (partial = :field) first) unbucketed-clauses)
+          field-id->type-info (unbucketed-fields->field-id->type-info query unbucketed-fields)]
       ;; ...and then update each breakout/filter by wrapping it if appropriate
-      (wrap-unbucketed-fields query stage-path stage field-id->type-info))
+      (wrap-unbucketed-clauses query stage-path stage field-id->type-info))
     ;; otherwise if there are no unbucketed breakouts/filters return the query as-is
     stage))
 
