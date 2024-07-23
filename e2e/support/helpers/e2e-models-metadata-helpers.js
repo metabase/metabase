@@ -35,7 +35,7 @@ export function setColumnType(oldType, newType) {
     .click();
 
   cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
-  cy.findByPlaceholderText("Search for a special type").type(newType);
+  cy.findByPlaceholderText("Search for a special type").realType(newType);
   popover().findByLabelText(newType).click();
 }
 
