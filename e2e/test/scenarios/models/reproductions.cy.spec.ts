@@ -992,6 +992,9 @@ describe("issue 34514", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
+    cy.intercept("GET", "/api/database/*").as("fetchDatabase");
 
     cy.visit("/");
     // It's important to navigate via UI so that there are
@@ -1005,10 +1008,12 @@ describe("issue 34514", () => {
   it("should not make network request with invalid query (metabase#34514)", () => {
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
+      cy.wait("@fetchTables");
       cy.findByText("Orders").click();
     });
 
     cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
     assertQueryTabState();
 
     cy.go("back");
@@ -1018,16 +1023,23 @@ describe("issue 34514", () => {
   it("should allow browser history navigation between tabs (metabase#34514)", () => {
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
+      cy.wait("@fetchTables");
       cy.findByText("Orders").click();
     });
 
     cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
     assertQueryTabState();
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     assertMetadataTabState();
 
+    // Close the TabHinToast component.
+    // This isn't a part of the test scenario but it helps with flakiness.
+    cy.icon("close").click();
+
     cy.go("back");
+    cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
     assertQueryTabState();
 
     cy.go("back");
@@ -1065,6 +1077,71 @@ describe("issue 34514", () => {
       cy.findByText("Here's where your results will appear").should(
         "be.visible",
       );
+    });
+  }
+});
+
+describe.skip("issues 28270, 33708", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createQuestion(
+      {
+        type: "model",
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("shows object relationships when model-based ad-hoc question has a filter (metabase#28270)", () => {
+    checkRelationships();
+    modal().icon("close").click();
+
+    tableHeaderClick("Title");
+    popover().findByText("Filter by this column").click();
+    popover().findByLabelText("Filter operator").click();
+    popover().last().findByText("Contains").click();
+    popover().findByLabelText("Filter value").type("a,");
+    popover().button("Add filter").click();
+
+    checkRelationships();
+  });
+
+  it("shows object relationships after navigating back from relationships question (metabase#33708)", () => {
+    checkRelationships();
+
+    modal().findByText("Orders").click();
+    cy.wait("@dataset");
+    cy.go("back");
+    cy.go("back"); // TODO: remove this when (metabase#33709) is fixed
+
+    checkRelationships();
+  });
+
+  function openObjectDetails() {
+    cy.findAllByTestId("cell-data").eq(8).should("have.text", "1").click();
+  }
+
+  function checkRelationships() {
+    openObjectDetails();
+
+    cy.wait(["@dataset", "@dataset"]);
+
+    modal().within(() => {
+      cy.findByTestId("fk-relation-orders")
+        .should("be.visible")
+        .and("contain.text", "93")
+        .and("contain.text", "Orders");
+
+      cy.findByTestId("fk-relation-reviews")
+        .should("be.visible")
+        .and("contain.text", "8")
+        .and("contain.text", "Reviews");
     });
   }
 });

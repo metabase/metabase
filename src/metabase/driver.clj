@@ -362,8 +362,8 @@
 (defmethod escape-entity-name-for-metadata :default [_driver table-name] table-name)
 
 (defmulti describe-table-fks
-  "Return information about the foreign keys in a `table`. Required for drivers that support `:foreign-keys` but not
-  `:describe-fks`. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
+  "Return information about the foreign keys in a `table`. Required for drivers that support :metadata/key-constraints
+  but not :describe-fks. Results should match the [[metabase.sync.interface/FKMetadata]] schema."
   {:added "0.32.0" :deprecated "0.49.0" :arglists '([driver database table])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
@@ -515,13 +515,11 @@
 
 (def features
   "Set of all features a driver can support."
-  #{;; Does this database support following foreign key relationships while querying?
-    ;; Note that this is different from supporting primary key and foreign key constraints in the schema; see below.
-    :foreign-keys
-
-    ;; Does this database track and enforce primary key and foreign key constraints in the schema?
-    ;; SQL query engines like Presto and Athena do not track these, though they can query across FKs.
-    ;; See :foreign-keys above.
+  #{;; Does this database track and enforce primary key and foreign key constraints in the schema?
+    ;; Is the database capable of reporting columns as PK or FK? (Relevant during sync.)
+    ;;
+    ;; Not to be confused with Metabase's notion of foreign key columns. Those are user definable and power eg.
+    ;; implicit joins.
     :metadata/key-constraints
 
     ;; Does this database support nested fields for any and every field except primary key (e.g. Mongo)?
@@ -589,6 +587,7 @@
     ;; DEFAULTS TO TRUE.
     :case-sensitivity-string-filter-options
 
+    ;; Implicit joins require :left-join (only) to work.
     :left-join
     :right-join
     :inner-join
@@ -675,6 +674,9 @@
     ;; many databases in it.
     :connection/multiple-databases
 
+    ;; Does the driver support identifiers for tables and columns that contain spaces. Defaults to `false`.
+    :identifiers-with-spaces
+
     ;; Does this driver support UUID type
     :uuid-type
 
@@ -683,7 +685,10 @@
 
     ;; Does this driver support the new `:offset` MBQL clause added in 50? (i.e. SQL `lag` and `lead` or equivalent
     ;; functions)
-    :window-functions/offset})
+    :window-functions/offset
+
+    ;; Does this driver support parameterized sql, eg. in prepared statements?
+    :parameterized-sql})
 
 (defmulti database-supports?
   "Does this driver and specific instance of a database support a certain `feature`?
@@ -718,6 +723,7 @@
                               :basic-aggregations                     true
                               :case-sensitivity-string-filter-options true
                               :date-arithmetics                       true
+                              :parameterized-sql                      false
                               :temporal-extract                       true
                               :schemas                                true
                               :test/jvm-timezone-setting              true

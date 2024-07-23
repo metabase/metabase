@@ -53,7 +53,7 @@
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [query= =? malli=])
+    (clojure.test/is [query= =? malli= qv=])
     (clojure.tools.macro/macrolet)
     instaparse.core/transform
     (metabase.async.streaming-response/streaming-response)
@@ -204,7 +204,8 @@
                                      metabase.pulse.render.js-svg
                                      metabase.pulse.render.style}                                   ; TODO -- consolidate these into a real API namespace.
     metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
-    metabase.query-analysis        #{metabase.query-analysis}
+    metabase.query-analysis        #{metabase.query-analysis
+                                     metabase.query-analysis.failure-map}
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search}

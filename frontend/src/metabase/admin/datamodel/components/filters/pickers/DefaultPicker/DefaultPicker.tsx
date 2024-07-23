@@ -1,5 +1,4 @@
 import cx from "classnames";
-import PropTypes from "prop-types";
 import type { ReactElement } from "react";
 import { t } from "ttag";
 
@@ -26,22 +25,6 @@ import {
   BetweenLayoutFieldContainer,
   DefaultPickerContainer,
 } from "./DefaultPicker.styled";
-
-const defaultPickerPropTypes = {
-  filter: PropTypes.array,
-  setValue: PropTypes.func,
-  setValues: PropTypes.func,
-  onCommit: PropTypes.func,
-  className: PropTypes.string,
-  minWidth: PropTypes.number,
-  maxWidth: PropTypes.number,
-  checkedColor: PropTypes.string,
-};
-
-const defaultLayoutPropTypes = {
-  className: PropTypes.string,
-  fieldWidgets: PropTypes.array,
-};
 
 export interface DefaultPickerProps {
   filter: Filter;
@@ -201,8 +184,6 @@ export function DefaultPicker({
   );
 }
 
-DefaultPicker.propTypes = defaultPickerPropTypes;
-
 const DefaultLayout = ({
   fieldWidgets,
 }: {
@@ -219,8 +200,6 @@ const DefaultLayout = ({
     ))}
   </div>
 );
-
-DefaultLayout.propTypes = defaultLayoutPropTypes;
 
 const BetweenLayout = ({
   fieldWidgets,

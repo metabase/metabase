@@ -246,7 +246,6 @@ export const ParameterSettings = ({
 
         <SettingValueWidget
           parameter={parameter}
-          name={parameter.name}
           value={parameter.default}
           placeholder={t`No default`}
           setValue={onChangeDefaultValue}
