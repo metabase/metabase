@@ -4,8 +4,8 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 
-function isReact17() {
-  const versionParts = React.version.split(".");
+export function isReact17OrEarlier(version = React.version) {
+  const versionParts = version.split(".");
 
   if (versionParts.length < 1) {
     return false;
@@ -24,8 +24,7 @@ export function renderRoot(
   content: React.JSX.Element,
   element: Element,
 ): Root | undefined {
-  if (isReact17()) {
-    // Support backwards compatibility with React 17 for the embedding SDK.
+  if (isReact17OrEarlier()) {
     ReactDOM.render(content, element);
     return;
   }
@@ -37,7 +36,7 @@ export function renderRoot(
 }
 
 export function unmountRoot(root?: Root, element?: Element) {
-  if (isReact17() && element) {
+  if (isReact17OrEarlier() && element) {
     ReactDOM.unmountComponentAtNode(element);
     return;
   }
