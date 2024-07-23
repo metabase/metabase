@@ -99,6 +99,8 @@
                  (dissoc source :limit)
                  (qp.middleware.resolve-joins/append-join-fields-to-fields source (joined-fields inner-query))
                  (remove-unused-fields inner-query source)
+                 ;; update the alias info again after removing unused stuff, otherwise we might get false duplicates.
+                 (add/add-alias-info source)
                  (cond-> source
                    keep-filter? (assoc :filter filter-clause)))]
     (-> inner-query

@@ -1736,19 +1736,22 @@
 ;;; [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]] already does
 ;;; basically the same check, this is here mostly to avoid the performance hit of converting to pMBQL and back in
 ;;; queries that have no cumulative aggregations at all. Once we convert the SQL QP to pMBQL we can remove this.
-(defn- has-window-function-aggregations? [inner-query]
+(mu/defn ^:private has-window-function-aggregations?
+  [inner-query :- :map]
   (or (lib.util.match/match (mapcat inner-query [:aggregation :expressions])
         #{:cum-sum :cum-count :offset}
         true)
       (when-let [source-query (:source-query inner-query)]
         (has-window-function-aggregations? source-query))))
 
-(defn- maybe-nest-breakouts-in-queries-with-window-fn-aggregations [inner-query]
+(mu/defn ^:private maybe-nest-breakouts-in-queries-with-window-fn-aggregations :- :map
+  [inner-query :- :map]
   (cond-> inner-query
     (has-window-function-aggregations? inner-query) nest-breakouts-in-queries-with-window-fn-aggregations))
 
-(defmethod preprocess :sql
-  [_driver inner-query]
+(mu/defmethod preprocess :sql :- :map
+  [_driver     :- :keyword
+   inner-query :- :map]
   (-> inner-query
       maybe-nest-breakouts-in-queries-with-window-fn-aggregations
       add/add-alias-info
