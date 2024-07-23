@@ -55,7 +55,7 @@ export function setColumnType(oldType, newType) {
       cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top"),
     condition: () =>
       cy
-        .findByPlaceholderText("Search for a special type")
+        .findAllByPlaceholderText("Search for a special type")
         .then(elements => elements.length > 0),
     wait: 100,
     attempts: 10,
