@@ -35,6 +35,7 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
+  cy.findAllByTestId("loading-indicator").should("not.exist");
   return focusNativeEditor().as(alias);
 }
 
