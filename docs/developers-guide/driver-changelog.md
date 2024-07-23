@@ -104,6 +104,14 @@ title: Driver interface changelog
     `metabase.test.data.sql.ddl/insert-rows-dml-statements`, since `INSERT` is DML, not DDL. Please update your method
     implementations accordingly.
 
+- The `:foreign-keys` driver feature has been removed. `:metadata/keys-constraints` should be used for drivers that support
+  foreign key relationships reporting during sync. Implicit joins now depend on the `:left-join` feature instead. The
+  default value is true for `:sql` based drivers. All join features are now enabled for `:sql` based drivers
+  by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`, 
+  the test for remapping and implicit joins will be now executed.
+
+-  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in tests. Currently, this is disabled only for `:sparksql`.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
@@ -176,6 +184,9 @@ title: Driver interface changelog
   corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
   This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
   Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
+
+- New feature `:identifiers-with-spaces` has been added to indicate where a driver supports identifiers like table or
+  column names that contains a space character. Defaults to `false`.
 
 - New feature `:uuid-type` has been added to indicate that this database is able to distinguish and filter against UUIDs.
   Only a few database support native UUID types. The default is `false`.

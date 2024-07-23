@@ -235,12 +235,8 @@ describe("issue 17160", () => {
   function assertMultipleValuesFilterState() {
     cy.findByText("2 selections").click();
 
-    cy.findByTestId("Doohickey-filter-value").within(() =>
-      cy.get("input").should("be.checked"),
-    );
-    cy.findByTestId("Gadget-filter-value").within(() =>
-      cy.get("input").should("be.checked"),
-    );
+    cy.findByLabelText("Doohickey").should("be.checked");
+    cy.findByLabelText("Gadget").should("be.checked");
   }
 
   function setup() {

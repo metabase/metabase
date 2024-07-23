@@ -5,6 +5,7 @@
    [clojurewerkz.quartzite.triggers :as triggers]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
+   [metabase.query-analysis.failure-map :as failure-map]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log])
@@ -37,13 +38,18 @@
   (loop [remaining stop-after]
     (when (public-settings/query-analysis-enabled)
       (let [card-id (next-card-id-fn)
-            timer   (u/start-timer)]
-        (try
-          (query-analysis/analyze-card! card-id)
-          (Thread/sleep (wait-proportional (u/since-ms timer)))
-          (catch Exception e
-            (log/errorf e "Error analysing and updating query for Card %" card-id)
-            (Thread/sleep (wait-fail (u/since-ms timer)))))
+            timer   (u/start-timer)
+            card    (query-analysis/->analyzable card-id)]
+        (if (failure-map/non-retryable? card)
+          (log/warnf "Skipping analysis of Card % as its query has caused failures in the past." card-id)
+          (try
+            (query-analysis/analyze-card! card)
+            (failure-map/track-success! card)
+            (Thread/sleep (wait-proportional (u/since-ms timer)))
+            (catch Exception e
+              (log/errorf e "Error analysing and updating query for Card %" card-id)
+              (failure-map/track-failure! card)
+              (Thread/sleep (wait-fail (u/since-ms timer))))))
         (cond
           (nil? remaining) (recur nil)
           (> remaining 1) (recur (dec remaining)))))))
