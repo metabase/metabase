@@ -4,6 +4,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   getTextCardDetails,
+  restore,
   setTokenFeatures,
   visitFullAppEmbeddingUrl,
 } from "e2e/support/helpers";
@@ -18,6 +19,7 @@ import {
 
 describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
   beforeEach(() => {
+    restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
     setupJwt();
