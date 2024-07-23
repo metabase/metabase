@@ -44,7 +44,7 @@
     [:metadata]
     [:metadata :analyze :field-values]))
 
-(defn- do-phase [phase database]
+(defn- do-phase! [phase database]
   (let [f      (phase->fn phase)
         result (f database)]
     (when-not (instance? Throwable result)
@@ -66,7 +66,7 @@
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (->> (scan-phases scan)
-          (keep #(do-phase % database))
+          (keep #(do-phase! % database))
           vec))))
 
 (mu/defn sync-table!
