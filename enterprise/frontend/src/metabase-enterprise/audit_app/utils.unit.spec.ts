@@ -5,7 +5,7 @@ import { isAuditDb } from "./utils";
 describe("enterprise audit utils", () => {
   describe("isAuditDb", () => {
     it("should return true if the database is an audit database", () => {
-      const db = createMockDatabase({ is_audit: true });
+      const db = createMockDatabase({ is_audit: true, id: 13371337 });
       expect(isAuditDb(db)).toBe(true);
     });
 
