@@ -11,9 +11,56 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  migrations-h2-ee:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      MB_DB_TYPE: h2
+
+  migrations-postgres-12-ee:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: circle_test
+    services:
+      postgres:
+        image: postgres:12-alpine
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+
+  migrations-postgres-latest-ee:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      MB_DB_TYPE: postgres
+      MB_DB_PORT: 5432
+      MB_DB_HOST: localhost
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: circle_test
+    services:
+      postgres:
+        image: circleci/postgres:latest
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_USER: circle_test
+          POSTGRES_DB: circle_test
+          POSTGRES_HOST_AUTH_METHOD: trust
+
   migrations-mysql-8-0-ee:
     runs-on: ubuntu-22.04
-    timeout-minutes: 90
+    timeout-minutes: 10
     env:
       CI: 'true'
       MB_DB_TYPE: mysql
@@ -21,7 +68,6 @@ jobs:
       MB_DB_PORT: 3306
       MB_DB_DBNAME: circle_test
       MB_DB_USER: root
-      MB_MYSQL_TEST_USER: root
     services:
       mysql:
         image: cimg/mysql:8.0
@@ -31,48 +77,59 @@ jobs:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
 
-  # services:
-  #   postgres:
-  #     image: postgres:12-alpine
-  #     ports:
-  #       - "5432:5432"
-  #     env:
-  #       POSTGRES_USER: mb_test
-  #       POSTGRES_DB: mb_test
-  #       POSTGRES_HOST_AUTH_METHOD: trust
-  #   mysql:
-  #     image: mysql:latest
-  #     env:
-  #       MYSQL_ALLOW_EMPTY_PASSWORD: true
-  #       MYSQL_DATABASE: circle_test
-  #     ports:
-  #       - "3306:3306"
-  #   mariadb:
-  #     image: circleci/mariadb:10.2.23
-  #     ports:
-  #       - "3306:3306"
+  migrations-mysql-latest-ee:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+    services:
+      mysql:
+        image: mysql:latest
+        ports:
+          - "3306:3306"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cross-branch-migration-test
 
-  # files-changed:
-  #   name: Check which files changed
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 3
-  #   outputs:
-  #     yaml: ${{ steps.changes.outputs.yaml }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - name: Test which files changed
-  #       uses: dorny/paths-filter@v3.0.0
-  #       id: changes
-  #       with:
-  #         token: ${{ github.token }}
-  #         filters: .github/file-paths.yaml
+  migrations-mariadb-10-2-ee:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+    services:
+      mariadb:
+        image: circleci/mariadb:10.2.23
+        ports:
+          - "3306:3306"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cross-branch-migration-test
 
-  #   steps:
-  #     - name: Check out master
-  #       uses: actions/checkout@v4
-  #       with:
-  #         ref: master
-
-  #     - name: Run backend on master
-  #       run: clojure -M:run:ee
-
+  migrations-mariadb-latest-ee:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    env:
+      CI: 'true'
+      MB_DB_TYPE: mysql
+      MB_DB_HOST: localhost
+      MB_DB_PORT: 3306
+      MB_DB_DBNAME: circle_test
+      MB_DB_USER: root
+    services:
+      mariadb:
+        image: circleci/mariadb:latest
+        ports:
+          - "3306:3306"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: ./.github/actions/cross-branch-migration-test
