@@ -8422,9 +8422,15 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-07-22T15:49:38
+      id: v51.2024-07-22T15:49:37
       author: escherize
-      comment: Add columns to query execution for metabase embedding SDK analytics
+      comment: Add embedding_client column to query_execution for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: query_execution
+              columnName: embedding_client
       changes:
         - addColumn:
             tableName: query_execution
@@ -8435,6 +8441,21 @@ databaseChangeLog:
                   type: varchar(254)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:38
+      author: escherize
+      comment: Add embedding_version column to query_execution for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: query_execution
+              columnName: embedding_version
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
               - column:
                   name: embedding_version
                   remarks: Used by the embedding team to track SDK version usage
@@ -8445,7 +8466,13 @@ databaseChangeLog:
   - changeSet:
       id: v51.2024-07-22T15:49:39
       author: escherize
-      comment: Add columns to view log for metabase embedding SDK analytics
+      comment: Add embedding_client column to view_log for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: view_log
+              columnName: embedding_client
       changes:
         - addColumn:
             tableName: view_log
@@ -8456,6 +8483,21 @@ databaseChangeLog:
                   type: varchar(254)
                   constraints:
                     nullable: true
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:40
+      author: escherize
+      comment: Add embedding_version column to view_log for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: view_log
+              columnName: embedding_version
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
               - column:
                   name: embedding_version
                   remarks: Used by the embedding team to track SDK version usage
