@@ -32,6 +32,7 @@ export const getActionIconOverrides =
             backgroundColor: "transparent",
             border: "1px solid transparent",
             transition: "all 300ms linear",
+            pointerEvents: "all",
             "&:hover": {
               color: theme.fn.themeColor("brand"),
               backgroundColor: theme.fn.themeColor("bg-medium"),
@@ -40,6 +41,7 @@ export const getActionIconOverrides =
             "&:disabled, &[data-disabled]": {
               color: theme.fn.themeColor("text-light"),
               backgroundColor: "transparent",
+              pointerEvents: "all",
             },
           },
         }),

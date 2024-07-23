@@ -57,6 +57,7 @@ export const AddHeadingOrTextButton = () => {
         <DashboardHeaderButton
           tooltipLabel={t`Add a heading or text box`}
           w="3rem"
+          data-element-id={t`Add a heading or text box`}
           aria-label={t`Add a heading or text box`}
         >
           <Group spacing="xs" noWrap>

@@ -38,7 +38,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
   },
   [DASHBOARD_ACTION.ADD_HEADING_OR_TEXT]: {
     icon: "string",
-    tooltip: "Add a heading or text",
+    tooltip: "Add a heading or text box",
   },
   [DASHBOARD_ACTION.ADD_LINK_CARD]: {
     icon: "link",
@@ -211,6 +211,9 @@ const expectButtonInHeader = async ({
       `${DASHBOARD_EXPECTED_DATA_MAP[action].icon} icon`,
     ),
   );
+  console.log("*".repeat(30));
+  console.log("action:", action);
+  console.log("*".repeat(30));
   const { tooltip } = DASHBOARD_EXPECTED_DATA_MAP[action];
   expect(screen.getByText(checkNotNull(tooltip))).toBeInTheDocument();
 };

@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes, Ref } from "react";
+import type { ButtonHTMLAttributes, Ref, MouseEvent } from "react";
 import { forwardRef } from "react";
 
 import { color } from "metabase/lib/colors";
@@ -30,6 +30,13 @@ export const DashboardHeaderButton = forwardRef(function _DashboardHeaderButton(
   }: DashboardHeaderButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
+  const handleButtonClick = (e: MouseEvent<HTMLButtonElement>) => {
+    e.preventDefault();
+    if (onClick && !disabled) {
+      onClick?.(e);
+    }
+  };
+
   const actionButton = (
     <ActionIcon
       ref={ref}
@@ -40,7 +47,7 @@ export const DashboardHeaderButton = forwardRef(function _DashboardHeaderButton(
       size="2rem"
       variant="viewHeader"
       aria-label={ariaLabel}
-      onClick={onClick}
+      onClick={handleButtonClick}
       bg={hasBackground ? undefined : "transparent"}
       disabled={disabled}
       {...actionIconProps}
