@@ -30,13 +30,13 @@
   (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? false}))
 
 (def ^:dynamic *analyze-execution-in-dev?*
-  "Managing a background thread in the REPL is likely to confound and infuriate, especially when we're using it to run
-  tests. For this reason, we run analysis on the main thread by default."
+  "Managing a background thread in the REPL is likely to confuse and infuriate, especially when running tests.
+  For this reason, we run analysis on the main thread by default."
   ::immediate)
 
 (def ^:dynamic *analyze-execution-in-test?*
-  "A card's query is normally analyzed on every create/update. For most tests, this is an unnecessary expense, hence
-  we disable analysis by default."
+  "A card's query is normally analyzed on every create/update.
+  For most tests, this is an unnecessary expense; hence we disable analysis by default."
   ::disabled)
 
 (defmacro with-execution*
@@ -73,44 +73,46 @@
 (defn enabled-type?
   "Is analysis of the given query type enabled?"
   [query-type]
-  (case query-type
-    :native     (public-settings/sql-parsing-enabled)
-    :query      true
-    :mbql/query true
-    false))
+  (and (public-settings/query-analysis-enabled)
+       (case query-type
+         :native (public-settings/sql-parsing-enabled)
+         :query true
+         :mbql/query true
+         false)))
 
 (defn- query-field-ids
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
   so returns `{:explicit #{...int ids}}` map.
 
-  Does not track wildcards for queries rendered as tables afterwards."
-  [query]
-  (let [query-type (lib/normalized-query-type query)]
-    (when (enabled-type? query-type)
-      (case query-type
-        :native     (try
-                      (nqa/field-ids-for-native query)
-                      (catch Exception e
-                        (log/error e "Error parsing SQL" query)))
-        :query      {:explicit (mbql.u/referenced-field-ids query)}
-        :mbql/query {:explicit (lib.util/referenced-field-ids query)}))))
+  Does not track wildcards for queries rendered as tables afterward."
+  ([query]
+   (query-field-ids query (lib/normalized-query-type query)))
+  ([query query-type]
+   (case query-type
+     :native (try
+               (nqa/field-ids-for-native query)
+               (catch Exception e
+                 (log/error e "Error parsing SQL" query)))
+     :query {:explicit (mbql.u/referenced-field-ids query)}
+     :mbql/query {:explicit (lib.util/referenced-field-ids query)})))
 
 (defn update-query-analysis-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
 
-  Returns `nil` (and logs the error) if there was a parse error."
+  Returns `nil` (and logs the error) if there was a parse error.
+  Returns `nil` and leaves the database records as-is if analysis is disabled for the given query type."
   [{card-id :id, query :dataset_query}]
-  (let [{:keys [explicit implicit] :as res} (query-field-ids query)
-        id->row          (fn [explicit? field-id]
-                           {:card_id            card-id
-                            :field_id           field-id
-                            :explicit_reference explicit?})
-        query-field-rows (concat
-                          (map (partial id->row true) explicit)
-                          (map (partial id->row false) implicit))]
-    ;; when the response is `nil`, it's a disabled parser, not unknown columns
-    (when (some? res)
-      (query-field/update-query-fields-for-card! card-id query-field-rows))))
+  (let [query-type (lib/normalized-query-type query)]
+    (when (enabled-type? query-type)
+      (let [{:keys [explicit implicit]} (query-field-ids query)
+            id->row          (fn [explicit? field-id]
+                               {:card_id            card-id
+                                :field_id           field-id
+                                :explicit_reference explicit?})
+            query-field-rows (concat
+                              (map (partial id->row true) explicit)
+                              (map (partial id->row false) implicit))]
+        (query-field/update-query-fields-for-card! card-id query-field-rows)))))
 
 (defn- replaced-inner-query-for-native-card
   "Substitute new references for certain fields and tables, based upon the given mappings."
