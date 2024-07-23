@@ -1,5 +1,6 @@
 (ns metabase-enterprise.query-field-validation.api-test
   (:require
+   [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
    [mb.hawk.assert-exprs.approximately-equal :as hawk.approx]
@@ -79,110 +80,167 @@
                 :when (approx= b a)]
             :found)))
 
-(defn- resp=
+(defn- qv=-report
   "Is the response close enough to what we expect? Accounts for extra data from the app DB that could sneak in. If
   `unexpected` is provided, ensure that they're *not* present.
 
   Due to pagination this is slightly fragile, sorry."
-  ([expected actual]
-   (resp= expected actual nil))
-  ([expected actual unexpected]
-   ;; CI is swallowing 500 errors; here's a cheeky way to surface them
-   (is (empty? (filter some? ((juxt :via :trace) actual))))
-   (is (<= (:total expected)  (:total actual)))
-   (is (=  (:limit expected)  (:limit actual)))
-   (is (=  (:offset expected) (:offset actual)))
-   (is (some? (:data actual)))
-   (is (mt/ordered-subset? (:data expected)
-                           (map #(select-keys % (keys (first (:data expected)))) (:data actual)) approx=))
-   (is (none-found? unexpected (:data actual)))))
+  [message
+   {expected-total :total expected-limit :limit expected-offset :offset expected-data :data}
+   {actual-total :total actual-limit :limit actual-offset :offset actual-data :data}
+   unexpected]
+  (let [results [
+                 ;; Total
+                 (merge {:expected {:total expected-total}
+                         :actual   {:total actual-total}}
+                        (if (<= expected-total actual-total)
+                          {:type :pass}
+                          {:type :fail
+                           :diffs [actual-total [expected-total nil]]}))
+                 ;; Limit
+                 (merge {:expected {:limit expected-limit}
+                         :actual   {:limit actual-limit}}
+                        (if (= expected-limit actual-limit)
+                          {:type :pass}
+                          {:type :fail
+                           :diffs [actual-limit [expected-limit nil]]}))
+                 ;; Offset
+                 (merge {:expected {:offset expected-offset}
+                         :actual   {:offset actual-offset}}
+                        (if (= expected-offset actual-offset)
+                          {:type :pass}
+                          {:type :fail
+                           :diffs [actual-offset [expected-offset nil]]}))
+                 ;; Data
+                 (merge {:expected {:data expected-data}
+                         :actual   {:data actual-data}}
+                        (let [trimmed-actual-data (map #(select-keys % (keys (first expected-data))) actual-data)
+                              actual-set          (into #{} trimmed-actual-data)
+                              expected-set        (into #{} expected-data)]
+                          (if (and (some? actual-data)
+                                   (mt/ordered-subset? expected-data trimmed-actual-data approx=))
+                            {:type :pass}
+                            {:type :fail
+                             :diffs [actual-data [(set/difference expected-set actual-set)
+                                                  (set/difference actual-set expected-set)]]})))
+                 ;; Unexpected
+                 (if (none-found? unexpected actual-data)
+                   {:type :pass}
+                   {:type :fail
+                    :diffs [actual-data [nil
+                                         (for [u unexpected
+                                               a actual-data
+                                               :when (approx= u a)]
+                                           u)]]})]]
+    (assoc
+     (reduce (fn [a b]
+               (let [append #(conj (% a) (% b))]
+                 {:type     (if (= (:type b) :fail)
+                              :fail
+                              (:type a))
+                  :expected (append :expected)
+                  :actual   (append :actual)
+                  :diffs    (if (:diffs b)
+                              (append :diffs)
+                              (:diffs a))}))
+             {:expected []
+              :actual   []
+              :type     :pass
+              :diffs    []}
+             results)
+     :message message)))
+
+(defmethod assert-expr 'qv= [message [_ expected actual unexpected]]
+  `(do-report
+    (qv=-report ~message ~expected ~actual ~unexpected)))
 
 (deftest list-invalid-cards-basic-test
   (testing "Only returns cards with problematic field refs"
     (with-test-setup
-      (resp= {:total 3,
-              :data
-              [{:id     card-1
-                :name   "A"
-                :errors {:inactive-fields [{:field "FA"
-                                            :table "T"}
-                                           {:field "FAB"
-                                            :table "T"}]}}
-               {:id     card-2
-                :name   "B"
-                :errors {:inactive-fields [{:field "FB"
-                                            :table "T"}]}}
-               {:id     card-3
-                :name   "C"
-                :errors {:inactive-fields [{:field "FC"
-                                            :table "T"}]}}]}
-             (get!)
-             [{:id   card-4
-               :name "D"}])))
+      (is (qv= {:total 3
+                :data
+                [{:id     card-1
+                  :name   "A"
+                  :errors {:inactive-fields [{:field "FA"
+                                              :table "T"}
+                                             {:field "FAB"
+                                              :table "T"}]}}
+                 {:id     card-2
+                  :name   "B"
+                  :errors {:inactive-fields [{:field "FB"
+                                              :table "T"}]}}
+                 {:id     card-3
+                  :name   "C"
+                  :errors {:inactive-fields [{:field "FC"
+                                              :table "T"}]}}]}
+               (get!)
+               [{:id   card-4
+                 :name "D"}]))))
   (testing "It requires the premium feature"
     (mt/with-premium-features #{}
-      (is (= "Query Field Validation is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
+      (is (= (str "Query Field Validation is a paid feature not currently available to your instance. Please upgrade to"
+                  " use it. Learn more at metabase.com/upgrade/")
              (mt/user-http-request :crowberto :get 402 url))))))
 
 (deftest pagination-test
   (testing "Lets you page results"
     (with-test-setup
-      (resp= {:total  3
-              :limit  2
-              :offset 0
-              :data
-              [{:id     card-1
-                :name   "A"
-                :errors {:inactive-fields [{:field "FA"
-                                            :table "T"}
-                                           {:field "FAB"
-                                            :table "T"}]}}
-               {:id     card-2
-                :name   "B"
-                :errors {:inactive-fields [{:field "FB"
-                                            :table "T"}]}}]}
-             (get! {:limit 2})
-             [{:id   card-3
-               :name "C"}
-              {:id   card-4
-               :name "D"}])
-      (resp= {:total  3
-              :limit  1
-              :offset 2
-              :data
-              [{:id     card-3
-                :name   "C"
-                :errors {:inactive-fields [{:field "FC"
-                                            :table "T"}]}}]}
-             (get! {:limit 1 :offset 2})
-             [{:id   card-1
-               :name "A"}
-              {:id   card-2
-               :name "B"}
-              {:id   card-4
-               :name "D"}]))))
+      (is (qv= {:total  3
+                :limit  2
+                :offset 0
+                :data
+                [{:id     card-1
+                  :name   "A"
+                  :errors {:inactive-fields [{:field "FA"
+                                              :table "T"}
+                                             {:field "FAB"
+                                              :table "T"}]}}
+                 {:id     card-2
+                  :name   "B"
+                  :errors {:inactive-fields [{:field "FB"
+                                              :table "T"}]}}]}
+               (get! {:limit 2})
+               [{:id   card-3
+                 :name "C"}
+                {:id   card-4
+                 :name "D"}]))
+      (is (qv= {:total  3
+                :limit  1
+                :offset 2
+                :data
+                [{:id     card-3
+                  :name   "C"
+                  :errors {:inactive-fields [{:field "FC"
+                                              :table "T"}]}}]}
+               (get! {:limit 1 :offset 2})
+               [{:id   card-1
+                 :name "A"}
+                {:id   card-2
+                 :name "B"}
+                {:id   card-4
+                 :name "D"}])))))
 
 (deftest sorting-test
   (testing "Lets you specify the sort key"
     (with-test-setup
-      (resp= {:total 3
-              :data
-              [{:id card-3}
-               {:id card-2}
-               {:id card-1}]}
-             (get! {:sort_column "collection" :sort_direction "desc"}))
-      (resp= {:total 3
-              :data
-              [{:id card-1}
-               {:id card-2}
-               {:id card-3}]}
-             (get! {:sort_column "last_edited_at" :sort_direction "asc"}))
-      (resp= {:total 3
-              :data
-              [{:id card-3}
-               {:id card-2}
-               {:id card-1}]}
-             (get! {:sort_column "last_edited_at" :sort_direction "desc"}))))
+      (is (qv= {:total 3
+                :data
+                [{:id card-3}
+                 {:id card-2}
+                 {:id card-1}]}
+               (get! {:sort_column "collection" :sort_direction "desc"})))
+      (is (qv= {:total 3
+                :data
+                [{:id card-1}
+                 {:id card-2}
+                 {:id card-3}]}
+               (get! {:sort_column "last_edited_at" :sort_direction "asc"})))
+      (is (qv= {:total 3
+                :data
+                [{:id card-3}
+                 {:id card-2}
+                 {:id card-1}]}
+               (get! {:sort_column "last_edited_at" :sort_direction "desc"})))))
   (testing "Rejects bad keys"
     (with-test-setup
       (is (str/starts-with? (:sort_column
