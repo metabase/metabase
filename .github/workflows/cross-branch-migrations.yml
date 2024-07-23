@@ -1,0 +1,47 @@
+name: Cross-branch migration tests
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+    paths:
+      - "resources/migrations/**"
+
+jobs:
+  test-migrations:
+    name: Test backwards-compatability of migrations
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        # TODO: add h2, multiple DB versions
+        db: [postgres, mysql, mariadb]
+
+  services:
+    postgres:
+      image: postgres:12-alpine
+      ports:
+        - "5432:5432"
+      env:
+        POSTGRES_USER: mb_test
+        POSTGRES_DB: mb_test
+        POSTGRES_HOST_AUTH_METHOD: trust
+    mysql:
+      image: mysql:latest
+      env:
+        MYSQL_ALLOW_EMPTY_PASSWORD: true
+        MYSQL_DATABASE: circle_test
+      ports:
+        - "3306:3306"
+    mariadb:
+      image: circleci/mariadb:10.2.23
+      ports:
+        - "3306:3306"
+
+    steps:
+      - name: Check out master
+        uses: actions/checkout@v4
+        with:
+          ref: master
+
+      - name: Run backend on master
+        run: clojure -M:run:ee
