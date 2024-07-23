@@ -99,7 +99,7 @@ describe("scenarios > embedding > native questions", () => {
       filterWidget().contains("State").click();
       cy.findByPlaceholderText("Search the list").type("KS{enter}");
       cy.findAllByTestId(/-filter-value$/).should("have.length", 1);
-      cy.findByTestId("KS-filter-value").should("be.visible").click();
+      cy.findByLabelText("KS").should("be.visible").click();
       cy.button("Add filter").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

@@ -779,10 +779,8 @@ describe("scenarios > dashboard > parameters", () => {
 });
 
 function isFilterSelected(filter, bool) {
-  cy.findByTestId(`${filter}-filter-value`).within(() =>
-    cy
-      .findByRole("checkbox")
-      .should(`${bool === false ? "not." : ""}be.checked`),
+  cy.findByLabelText(filter).should(
+    `${bool === false ? "not." : ""}be.checked`,
   );
 }
 

@@ -102,6 +102,6 @@ describe("scenarios > dashboard > filters", () => {
 
 function selectFromDropdown(values) {
   values.forEach(value => {
-    cy.findByTestId(`${value}-filter-value`).should("be.visible").click();
+    cy.findByLabelText(value).should("be.visible").click();
   });
 }
