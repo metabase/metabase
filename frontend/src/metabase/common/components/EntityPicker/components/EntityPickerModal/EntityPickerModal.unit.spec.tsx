@@ -38,6 +38,7 @@ interface SetupOpts {
   recentItems?: RecentItem[];
   defaultToRecentTab?: boolean;
   initialValue?: { model: SampleModelType };
+  searchDelay?: number;
 }
 
 const TestPicker = ({ name }: { name: string }) => (
@@ -84,13 +85,14 @@ const setup = ({
   selectedItem = null,
   recentItems = [],
   recentFilter,
+  searchDelay = 0,
   ...rest
 }: SetupOpts = {}) => {
   mockGetBoundingClientRect();
   mockScrollBy();
   setupRecentViewsEndpoints(recentItems);
 
-  fetchMock.get("path:/api/search", mockSearchResults);
+  fetchMock.get("path:/api/search", mockSearchResults, { delay: searchDelay });
 
   fetchMock.get("path:/api/user/recipients", { data: [] });
 
@@ -210,6 +212,26 @@ describe("EntityPickerModal", () => {
       await userEvent.click(await screen.findByText("Search Result 1"));
 
       expect(onItemSelect).toHaveBeenCalledTimes(1);
+    });
+
+    it("should show a loading state while search is happening", async () => {
+      setup({
+        searchDelay: 2000,
+      });
+
+      await userEvent.type(
+        await screen.findByPlaceholderText("Search…"),
+        "My ",
+        {
+          delay: 50,
+        },
+      );
+      expect(await screen.findByRole("tablist")).toBeInTheDocument();
+      expect(
+        await screen.findByRole("tab", { name: /Search results/ }),
+      ).toBeInTheDocument();
+
+      expect(await screen.findByText(/loading/i)).toBeInTheDocument();
     });
 
     it("should render a search bar by default and show confirmation button", async () => {

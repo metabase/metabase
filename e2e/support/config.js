@@ -4,7 +4,6 @@ const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
-const replay = require("@replayio/cypress");
 
 const {
   removeDirectory,
@@ -21,18 +20,7 @@ const isQaDatabase = process.env["QA_DB_ENABLED"];
 const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
-const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
-/**
- * CI coerces the value of this env var to a string (even if it's `false` or `0`!
- * Just omit it from any workflow that doesn't need to upload test recordings,
- * like we do in the `e2e-stress-test-flake-fix` workflow.
- */
-const uploadReplayRecordings = !!process.env["CYPRESS_REPLAYIO_ENABLE_UPLOAD"];
-
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
-
-const convertStringToInt = string =>
-  string.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -42,36 +30,6 @@ const defaultConfig = {
     /********************************************************************
      **                        PREPROCESSOR                            **
      ********************************************************************/
-
-    if (runWithReplay) {
-      on = replay.wrapOn(on);
-      replay.default(on, config, {
-        upload: uploadReplayRecordings,
-        apiKey: process.env.REPLAY_API_KEY,
-        filter: r => {
-          const hasCrashed = r.status === "crashed";
-          const hasFailed = r.metadata.test?.result === "failed";
-          const isFlaky =
-            r.metadata.test?.result === "passed" &&
-            r.metadata.test.tests.some(r => r.result === "failed");
-          const randomlyUploadAll =
-            r.metadata.source.branch === "master" &&
-            convertStringToInt(r.metadata.test.run.id) % 10 === 1;
-
-          console.log("upload replay ::", {
-            hasCrashed,
-            hasFailed,
-            isFlaky,
-            randomlyUploadAll,
-            branch: r.metadata.source.branch,
-            result: r.metadata.test?.result,
-            status: r.status,
-            runId: r.metadata.test.run.id,
-          });
-          return hasCrashed || hasFailed || isFlaky || randomlyUploadAll;
-        },
-      });
-    }
 
     on(
       "file:preprocessor",

@@ -6,6 +6,7 @@ import {
   queryIcon,
   renderWithProviders,
   screen,
+  waitFor,
 } from "__support__/ui";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -103,13 +104,17 @@ describe("QuestionActions", () => {
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
 
       await userEvent.click(screen.getByText("Edit query definition"));
-      expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
-        datasetEditorTab: "query",
+      await waitFor(() => {
+        expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
+          datasetEditorTab: "query",
+        });
       });
 
       await userEvent.click(screen.getByText("Edit metadata"));
-      expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
-        datasetEditorTab: "metadata",
+      await waitFor(() => {
+        expect(onSetQueryBuilderMode).toHaveBeenCalledWith("dataset", {
+          datasetEditorTab: "metadata",
+        });
       });
     });
 

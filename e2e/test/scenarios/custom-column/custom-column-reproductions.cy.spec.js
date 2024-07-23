@@ -33,6 +33,7 @@ import {
   tableHeaderClick,
   resetTestTable,
   main,
+  createNativeQuestion,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -931,5 +932,140 @@ describe("issue 32032", () => {
     cy.findByTestId("TableInteractive-root")
       .findAllByText("xavier")
       .should("have.length", 2);
+  });
+});
+
+describe("issue 42949", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should correctly show available shortcuts for date and number columns (metabase#42949)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: `
+            SELECT DATE '2024-05-21' AS created_at, null as v
+            UNION ALL SELECT DATE '2024-05-20', 1
+            UNION ALL SELECT DATE '2024-05-19', 2
+            ORDER BY created_at
+          `,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+
+    cy.log("Verify header drills - CREATED_AT");
+    tableHeaderClick("CREATED_AT");
+    popover().findByText("Extract day, month…").should("be.visible");
+    popover().findByText("Combine columns").should("not.exist");
+    cy.realPress("Escape");
+
+    cy.log("Verify header drills - V");
+    tableHeaderClick("V");
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").should("not.exist");
+    cy.realPress("Escape");
+
+    cy.log("Verify plus button - extract column");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").click();
+    popover().findByText("CREATED_AT").click();
+    popover().within(() => {
+      cy.findByText("Day of month").should("be.visible");
+      cy.findByText("Day of week").should("be.visible");
+      cy.findByText("Month of year").should("be.visible");
+      cy.findByText("Quarter of year").should("be.visible");
+      cy.findByText("Year").should("be.visible").click();
+    });
+    cy.findAllByTestId("header-cell").eq(2).should("have.text", "Year");
+
+    cy.log("Verify plus button - combine columns");
+    cy.button("Add column").click();
+    popover().findByText("Combine columns").click();
+    popover().findAllByTestId("column-input").eq(0).click();
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("CREATED_AT").should("be.visible");
+        cy.findByText("V").should("be.visible");
+        cy.findByText("Year").should("be.visible").click();
+      });
+    popover().findAllByTestId("column-input").eq(1).click();
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("CREATED_AT").should("be.visible");
+        cy.findByText("Year").should("be.visible");
+        cy.findByText("V").should("be.visible").click();
+      });
+    popover().button("Done").click();
+
+    cy.findAllByTestId("header-cell")
+      .eq(3)
+      .should("have.text", "Combined Year, V");
+
+    cy.findAllByTestId("cell-data").eq(6).should("have.text", "2,024");
+    cy.findAllByTestId("cell-data").eq(7).should("have.text", "2024 2");
+    cy.findAllByTestId("cell-data").eq(10).should("have.text", "2,024");
+    cy.findAllByTestId("cell-data").eq(11).should("have.text", "2024 1");
+    cy.findAllByTestId("cell-data").eq(13).should("have.text", "2,024");
+    cy.findAllByTestId("cell-data").eq(14).should("have.text", "2024 ");
+  });
+
+  it("should correctly show available shortcuts for a number column (metabase#42949)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "select 1 as n",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.findByLabelText("Switch to data").click();
+
+    cy.log("Verify header drills");
+    tableHeaderClick("N");
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").should("not.exist");
+    cy.realPress("Escape");
+
+    cy.log("Verify plus button");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").click();
+    popover().findAllByTestId("column-input").eq(0).click();
+    popover().last().findByText("N").should("be.visible");
+  });
+
+  it("should correctly show available shortcuts for a string column (metabase#42949)", () => {
+    createNativeQuestion(
+      {
+        native: {
+          query: "select 'abc'",
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    cy.findByTestId("qb-header").findByText("Explore results").click();
+    cy.findByLabelText("Switch to data").click();
+
+    cy.log("Verify header drills");
+    tableHeaderClick("'abc'");
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").should("be.visible");
+    cy.realPress("Escape");
+
+    cy.log("Verify plus button");
+    cy.button("Add column").click();
+    popover().findByText("Extract part of column").should("not.exist");
+    popover().findByText("Combine columns").click();
+    popover().findAllByTestId("column-input").eq(0).click();
+    popover().last().findByText("'abc'").should("be.visible");
   });
 });

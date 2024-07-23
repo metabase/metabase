@@ -358,7 +358,7 @@
           (mt/with-test-user :rasta
             (automagic-dashboards.test/with-dashboard-cleanup!
               (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
-              (test-automagic-analysis (t2/select-one Card :id card-id) 8))))))))
+              (test-automagic-analysis (t2/select-one Card :id card-id) 6))))))))
 
 (deftest ensure-field-dimension-bindings-test
   (testing "A very simple card with two plain fields should return the singe assigned dimension for each field."
@@ -431,6 +431,38 @@
               (is (= "GenericNumber" (boundval (mt/id :products :price))))
               (is (= #{"CreateTimestamp" "Timestamp"} (bindset (mt/id :orders :created_at))))
               (is (= "CreateTimestamp" (boundval (mt/id :orders :created_at)))))))))))
+
+(deftest ensure-field-dimension-bindings-test-3
+  (testing "A model that breaksout by non-source-table fields should not provide dimensions."
+    (mt/dataset test-data
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (let [source-query {:database (mt/id)
+                            :type     :query
+                            :query    (mt/$ids
+                                        {:source-table $$orders
+                                         :joins        [{:fields       [$people.state
+                                                                        $people.longitude
+                                                                        $people.latitude]
+                                                         :source-table $$people
+                                                         :condition    [:= $orders.user_id $people.id]}
+                                                        {:fields       [$products.price]
+                                                         :source-table $$products
+                                                         :condition    [:= $orders.product_id $products.id]}]
+                                         :breakout     [$products.category $people.state]})}]
+          (mt/with-temp [Collection {collection-id :id} {}
+                         Card       card                {:table_id        (mt/id :products)
+                                                         :collection_id   collection-id
+                                                         :dataset_query   source-query
+                                                         :result_metadata (mt/with-test-user
+                                                                            :rasta
+                                                                            (result-metadata-for-query
+                                                                             source-query))
+                                                         :type            :model}]
+            (let [root               (#'magic/->root card)
+                  {:keys [dimensions] :as _template} (dashboard-templates/get-dashboard-template ["table" "GenericTable"])
+                  base-context       (#'magic/make-base-context root)
+                  candidate-bindings (#'interesting/candidate-bindings base-context dimensions)]
+              (is (= {} candidate-bindings)))))))))
 
 (deftest field-candidate-matching-test
   (testing "Simple dimensions with only a tablespec can be matched directly against fields."
@@ -926,7 +958,7 @@
                                           :source-table (mt/id :checkins)}
                                   :type :query
                                   :database (mt/id)})]
-        (test-automagic-analysis q 17)))))
+        (test-automagic-analysis q 9)))))
 
 (deftest adhoc-filter-cell-test
   (mt/with-test-user :rasta
@@ -1770,23 +1802,16 @@
                 (is (= "A closer look at the metrics and dimensions used in this saved question."
                        description))
                 (is (set/subset?
-                      #{{:group-name "# A look at the SOURCE fields", :card-name nil}
-                        {:group-name "## The number of 15655 over time", :card-name nil}
-                        {:group-name nil, :card-name "Over time"}
-                        {:group-name nil, :card-name "Number of 15655 per day of the week"}
-                        {:group-name "## How this metric is distributed across different categories", :card-name nil}
-                        {:group-name nil, :card-name "Number of 15655 per NAME over time"}
-                        {:group-name nil, :card-name "Number of 15655 per CITY over time"}
-                        {:group-name "## Overview", :card-name nil}
-                        {:group-name nil, :card-name "Count"}
-                        {:group-name nil, :card-name "How the SOURCE is distributed"}
-                        {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                        {:group-name nil, :card-name "SOURCE by NAME"}
-                        {:group-name nil, :card-name "SOURCE by CITY"}}
-                      (set (map (fn [dashcard]
-                                  {:group-name (get-in dashcard [:visualization_settings :text])
-                                   :card-name  (get-in dashcard [:card :name])})
-                                dashcards)))))
+                     #{{:group-name "## The number of 15655 over time", :card-name nil}
+                       {:group-name nil, :card-name "Over time"}
+                       {:group-name nil, :card-name "Number of 15655 per day of the week"}
+                       {:group-name "## How this metric is distributed across different categories", :card-name nil}
+                       {:group-name nil, :card-name "Number of 15655 per NAME over time"}
+                       {:group-name nil, :card-name "Number of 15655 per CITY over time"}}
+                     (set (map (fn [dashcard]
+                                 {:group-name (get-in dashcard [:visualization_settings :text])
+                                  :card-name  (get-in dashcard [:card :name])})
+                               dashcards)))))
               (let [cell-query ["=" ["field" "SOURCE" {:base-type "type/Text"}] "Affiliate"]
                     {comparison-description :description
                      comparison-dashcards   :dashcards
@@ -1800,16 +1825,16 @@
                          transient_name))
                   (is (= "Automatically generated comparison dashboard comparing Number of 15655 where SOURCE is Affiliate and \"15655\", all 15655"
                          comparison-description))
-                  (is (= [{:group-name nil, :card-name "SOURCE by CITY"}
-                          {:group-name nil, :card-name "SOURCE by CITY"}
-                          {:group-name nil, :card-name "SOURCE by NAME"}
-                          {:group-name nil, :card-name "SOURCE by NAME"}
-                          {:group-name "## How the SOURCE fields is distributed", :card-name nil}
-                          {:group-name nil, :card-name "Distinct values"}
-                          {:group-name nil, :card-name "Distinct values"}
-                          {:group-name nil, :card-name "How the SOURCE is distributed (Number of 15655 where SOURCE is Affiliate)"}
-                          {:group-name nil, :card-name "Null values"}
-                          {:group-name nil, :card-name "Null values"}]
+                  (is (= [{:group-name nil, :card-name "Number of 15655 per SOURCE"}
+                          {:group-name nil, :card-name "Number of 15655 per SOURCE"}
+                          {:group-name nil, :card-name "Number of 15655 per CITY"}
+                          {:group-name nil, :card-name "Number of 15655 per CITY"}
+                          {:group-name nil, :card-name "Number of 15655 per NAME"}
+                          {:group-name nil, :card-name "Number of 15655 per NAME"}
+                          {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
+                          {:group-name nil, :card-name "Number of 15655 per SOURCE over time"}
+                          {:group-name nil, :card-name "Number of 15655 per CITY over time"}
+                          {:group-name nil, :card-name "Number of 15655 per CITY over time"}]
                          (->> comparison-dashcards
                               (take 10)
                               (map (fn [dashcard]

@@ -6,6 +6,7 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type {
   CollectionItemModel,
   DatabaseId,
+  RecentItem,
   TableId,
 } from "metabase-types/api";
 
@@ -73,6 +74,19 @@ export const DataPickerModal = ({
   const questionsShouldShowItem = useMemo(() => {
     return createShouldShowItem(["card"], databaseId);
   }, [databaseId]);
+
+  const recentFilter = useCallback(
+    (recentItems: RecentItem[]) => {
+      if (databaseId) {
+        return recentItems.filter(
+          item => "database_id" in item && item.database_id === databaseId,
+        );
+      }
+
+      return recentItems;
+    },
+    [databaseId],
+  );
 
   const searchParams = useMemo(() => {
     return databaseId ? { table_db_id: databaseId } : undefined;
@@ -157,6 +171,7 @@ export const DataPickerModal = ({
   return (
     <EntityPickerModal
       canSelectItem
+      recentFilter={recentFilter}
       defaultToRecentTab={false}
       initialValue={value}
       options={options}

@@ -52,11 +52,12 @@ jobs:
     - name: Wait for Metabase to start on port 3000
       run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
     - name: Prepare Cypress environment
+      id: cypress-prep
       uses: ./.github/actions/prepare-cypress
     - name: Run Cypress on the source
       run: |
         yarn cypress run \
-          --browser chrome \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
           --config-file e2e/test/scenarios/cross-version/source/shared/cross-version-source.config.js \
           --spec e2e/test/scenarios/cross-version/source/**/*.cy.spec.js
     - name: Stop Metabase ${{ matrix.version.source }}
@@ -84,7 +85,7 @@ jobs:
     - name: Run Cypress on the target
       run: |
         yarn cypress run \
-          --browser chrome \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }} \
           --config-file e2e/test/scenarios/cross-version/target/shared/cross-version-target.config.js \
           --spec e2e/test/scenarios/cross-version/target/**/*.cy.spec.js
     - name: Upload Cypress Artifacts upon failure

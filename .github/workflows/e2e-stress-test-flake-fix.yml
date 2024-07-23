@@ -46,7 +46,6 @@ jobs:
       DISPLAY: ""
       QA_DB_ENABLED: true
       CYPRESS_QA_DB_MONGO: true
-      CYPRESS_REPLAYIO_ENABLED: 1
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
@@ -84,6 +83,7 @@ jobs:
           java-version: 11
           distribution: "temurin"
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
@@ -96,7 +96,7 @@ jobs:
           --spec '${{ github.event.inputs.spec }}' \
           --env burn=${{ github.event.inputs.burn_in }},grep='${{ github.event.inputs.grep }}' \
           --config-file e2e/support/cypress-stress-test.config.js \
-          --browser 'replay-chromium'
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4

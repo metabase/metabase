@@ -87,6 +87,15 @@
       metric-clause
       metric-metadata)))
 
+(deftest ^:parallel metric-expression-display-info-test
+  (are [metric] (=? {:display-name      "CC"
+                     :long-display-name "CC"
+                     :effective-type    :type/Integer
+                     :description       "Number of toucans plus number of pelicans"}
+                    (lib/display-info query-with-metric metric))
+    (update metric-clause 1 assoc :display-name "CC")
+    (assoc metric-metadata :display-name "CC")))
+
 (deftest ^:parallel unknown-display-info-test
   (is (=? {:effective-type    :type/*
            :display-name      "[Unknown Metric]"

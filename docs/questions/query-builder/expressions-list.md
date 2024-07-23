@@ -476,6 +476,8 @@ Related: [isempty](#isempty), [isnull](#isnull), [notnull](#notnull)
 
 ### [regexextract](./expressions/regexextract.md)
 
+> ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
+
 Extracts matching substrings according to a regular expression.
 
 Syntax: `regexextract(text, regular_expression)`.
@@ -765,15 +767,19 @@ Limitations are noted for each aggregation and function above, and here there ar
 
 **H2** (including Metabase Sample Database): `Median`, `Percentile`, `convertTimezone` and `regexextract`
 
+**Druid**: `regexextract` is only available for the Druid-JDBC driver.
+
+**MongoDB**: `regexextract`
+
 **MySQL/MariaDB**: `Median`, `Percentile`.
+
+**Presto**: Only provides _approximate_ results for `Median` and `Percentile`.
 
 **SQL Server**: `Median`, `Percentile` and `regexextract`
 
 **SQLite**: `log`, `Median`, `Percentile`, `power`, `regexextract`, `StandardDeviation`, `sqrt` and `Variance`
 
 **Vertica**: `Median` and `Percentile`
-
-Additionally, **Presto** only provides _approximate_ results for `Median` and `Percentile`.
 
 If you're using or maintaining a third-party database driver, please [refer to the wiki](https://github.com/metabase/metabase/wiki/What's-new-in-0.35.0-for-Metabase-driver-authors) to see how your driver might be impacted.
 

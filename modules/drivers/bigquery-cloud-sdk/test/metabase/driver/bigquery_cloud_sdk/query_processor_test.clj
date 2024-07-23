@@ -26,6 +26,7 @@
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
    [metabase.test.util.timezone :as test.tz]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -620,6 +621,55 @@
                 (mt/with-native-query-testing-context query
                   (is (= [[0]]
                          (mt/rows (qp/process-query query)))))))))))))
+
+
+(deftest datetime-timezone-parameter-test
+  (testing "Date Field Filter not includes Timezone (#43597)"
+    (mt/test-driver
+      :bigquery-cloud-sdk
+      (mt/dataset
+        attempted-murders
+        (doseq [:let [expectations {["Europe/Oslo" :date "2020-01-09"] #t"2020-01-09",
+                                    ["Europe/Oslo" :datetime "2020-01-09"] #t"2020-01-09T00:00",
+                                    ["Europe/Oslo" :datetime "2020-01-09T01:03"] #t"2020-01-09T01:03",
+                                    ["Europe/Oslo" :datetime_tz "2020-01-09"] #t"2020-01-09T01:00+01:00[Europe/Oslo]",
+                                    ["Europe/Oslo" :datetime_tz "2020-01-09T01:03"] #t"2020-01-09T02:03+01:00[Europe/Oslo]",
+                                    ["UTC" :date "2020-01-09"] #t"2020-01-09",
+                                    ["UTC" :datetime "2020-01-09"] #t"2020-01-09T00:00",
+                                    ["UTC" :datetime "2020-01-09T01:03"] #t"2020-01-09T01:03",
+                                    ["UTC" :datetime_tz "2020-01-09"] #t"2020-01-09T00:00Z[UTC]",
+                                    ["UTC" :datetime_tz "2020-01-09T01:03"] #t"2020-01-09T01:03Z[UTC]",
+                                    [nil :date "2020-01-09"] #t"2020-01-09"
+                                    [nil :datetime "2020-01-09"] #t"2020-01-09T00:00",
+                                    [nil :datetime "2020-01-09T01:03"] #t"2020-01-09T01:03",
+                                    [nil :datetime_tz "2020-01-09"] (t/offset-date-time (u.date/parse "2020-01-09T00:00Z"))
+                                    [nil :datetime_tz "2020-01-09T01:03"] #t"2020-01-09T01:03Z[UTC]"}]
+                tz [nil "Europe/Oslo" "UTC"]
+                field [:date :datetime :datetime_tz]
+                value (cond-> ["2020-01-09"]
+                        (not= field :date)
+                        (conj "2020-01-09T01:03"))]
+          (testing (format "With TZ %s: field: %s value: %s parsed: %s" tz field value (pr-str (u.date/parse value)))
+            (mt/with-report-timezone-id!
+              tz
+              (let [expected (get expectations [tz field value])
+                    value-type :date/single
+                    query {:database (mt/id)
+                           :type :native
+                           :native {:query (str "SELECT count(*)\n"
+                                                (format "FROM `%s.attempts`\n"
+                                                        (bigquery.tx/test-dataset-id "attempted_murders"))
+                                                "WHERE {{d}}")
+                                    :template-tags {"d" {:name         "d"
+                                                         :display-name "Date"
+                                                         :type         :dimension
+                                                         :widget-type  :date/all-options
+                                                         :dimension    [:field (mt/id :attempts field) nil]}}}
+                           :parameters [{:type value-type
+                                         :name "d"
+                                         :target [:dimension [:template-tag "d"]]
+                                         :value value}]}]
+                (is (= [expected] (:params (qp.compile/compile query))))))))))))
 
 (deftest current-datetime-honeysql-form-test
   (mt/test-driver :bigquery-cloud-sdk

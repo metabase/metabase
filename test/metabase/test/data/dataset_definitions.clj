@@ -43,6 +43,9 @@
   As an added bonus this dataset has a table with a name in a slash in it, so the driver will need to support that
   correctly in order for this to work!")
 
+(tx/defdataset-edn crazy-names
+  "A small dataset with a table and column both with spaces in their names")
+
 (tx/defdataset-edn office-checkins
   "A small dataset that includes TIMESTAMP dates. People who stopped by the Metabase office and the time they did so.")
 

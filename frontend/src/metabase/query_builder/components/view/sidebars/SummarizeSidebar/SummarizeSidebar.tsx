@@ -31,7 +31,10 @@ export function SummarizeSidebar({
     handleUpdateBreakout,
     handleRemoveBreakout,
     handleReplaceBreakouts,
-  } = useSummarizeQuery(initialQuery, onQueryChange);
+  } = useSummarizeQuery({
+    query: initialQuery,
+    onQueryChange,
+  });
 
   const handleDoneClick = useCallback(() => {
     onQueryChange(query);

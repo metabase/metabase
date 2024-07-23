@@ -29,7 +29,6 @@ export const createMockCard = (opts?: Partial<Card>): Card => ({
   result_metadata: [],
   type: "question",
   can_write: true,
-  can_run_adhoc_query: true,
   cache_ttl: null,
   collection: null,
   collection_id: null,
@@ -120,7 +119,6 @@ export const createMockTableColumnOrderSetting = (
   opts?: Partial<TableColumnOrderSetting>,
 ): TableColumnOrderSetting => ({
   name: "Column",
-  key: '["ref",["field",1,null]]',
   enabled: true,
   ...opts,
 });

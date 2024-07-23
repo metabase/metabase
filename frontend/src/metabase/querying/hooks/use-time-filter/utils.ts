@@ -1,11 +1,14 @@
 import dayjs from "dayjs";
 
 import { isNotNull } from "metabase/lib/types";
-import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
+import {
+  getAvailableOperatorOptions,
+  getDefaultAvailableOperator,
+} from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { TimeValue } from "./types";
+import type { TimeValue, OperatorOption } from "./types";
 
 export function getAvailableOptions(
   query: Lib.Query,
@@ -22,6 +25,12 @@ export function getAvailableOptions(
 
 export function getOptionByOperator(operator: Lib.TimeFilterOperatorName) {
   return OPERATOR_OPTIONS[operator];
+}
+
+export function getDefaultOperator(
+  availableOptions: OperatorOption[],
+): Lib.TimeFilterOperatorName {
+  return getDefaultAvailableOperator(availableOptions, "<");
 }
 
 function getDefaultValue() {

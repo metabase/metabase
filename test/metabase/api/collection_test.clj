@@ -8,8 +8,9 @@
    [metabase.api.collection :as api.collection]
    [metabase.models
     :refer [Card Collection Dashboard DashboardCard ModerationReview
-            NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse
-            PulseCard PulseChannel PulseChannelRecipient Revision Timeline TimelineEvent User]]
+            NativeQuerySnippet PermissionsGroup PermissionsGroupMembership
+            Pulse PulseCard PulseChannel PulseChannelRecipient Revision
+            Timeline TimelineEvent User]]
    [metabase.models.collection :as collection]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection-test :as collection-test]
@@ -655,7 +656,7 @@
                   :name                (:name card)
                   :collection_position nil
                   :collection_preview  true
-                  :database_id         nil
+                  :database_id         (mt/id)
                   :display             "table"
                   :description         nil
                   :entity_id           (:entity_id card)
@@ -686,7 +687,7 @@
                                                            :collection_id (u/the-id collection)}
                                Card       {card-id-2 :id} {:collection_id (u/the-id collection)}]
         (is (= #{{:id card-id-1 :database_id (mt/id)}
-                 {:id card-id-2 :database_id nil}}
+                 {:id card-id-2 :database_id (mt/id)}}
                (->> (:data (mt/user-http-request :crowberto :get 200
                                                  (str "collection/" (u/the-id collection) "/items")))
                     (map #(select-keys % [:id :database_id]))
@@ -2023,6 +2024,8 @@
   (is (malli= [:map {:closed true} [:revision :int]]
               (mt/user-http-request :crowberto
                                     :put 200
-                                    "collection/graph?skip_graph=true"
-                                    {:revision (c-perm-revision/latest-id) :groups {}}))
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id)
+                                     :groups {}
+                                     :skip_graph true}))
       "PUTs with skip_graph should not return the coll permission graph."))

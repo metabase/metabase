@@ -100,30 +100,28 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
             alias: "Products",
           },
         ],
-        limit: 5,
+        limit: 2,
       },
     };
 
     createQuestion(questionDetails, { visitQuestion: true });
+    cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 
-    cy.log("check click on 1st row");
-
-    cy.get("[data-testid=cell-data]").contains("37.65").realHover();
-    cy.findByTestId("detail-shortcut").findByRole("button").click();
-
+    cy.log("Check object details for the first row");
+    cy.findAllByTestId("cell-data").filter(":contains(37.65)").realHover();
+    cy.get("[data-show-detail-rowindex='0']").click();
     cy.findByTestId("object-detail").within(() => {
-      cy.get("h2").should("contain", "Order").should("contain", 1);
+      cy.findByRole("heading").should("contain", "Order").and("contain", 1);
+      cy.findByText("37.65").should("be.visible");
       cy.findByTestId("object-detail-close-button").click();
     });
 
-    cy.log("check click on 3rd row");
-
-    cy.get("[data-testid=cell-data]").contains("52.72").realHover();
-    cy.findByTestId("detail-shortcut").findByRole("button").click();
-
+    cy.log("Check object details for the second row");
+    cy.findAllByTestId("cell-data").filter(":contains(110.93)").realHover();
+    cy.get("[data-show-detail-rowindex='1']").click();
     cy.findByTestId("object-detail").within(() => {
-      cy.get("h2").should("contain", "Order").should("contain", 3);
-      cy.findByText("52.72");
+      cy.findByRole("heading").should("contain", "Order").and("contain", 2);
+      cy.findByText("110.93").should("be.visible");
     });
   });
 
