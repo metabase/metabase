@@ -1,14 +1,14 @@
 import { renderHook } from "@testing-library/react";
 
 import {
-  useMetabaseAuthStatus,
   USE_OUTSIDE_OF_CONTEXT_MESSAGE,
-} from "./use-metabase-auth-status";
+  useSdkSelector,
+} from "embedding-sdk/store";
 
-describe("useMetabaseAuthStatus", () => {
+describe("useSdkSelector", () => {
   it("should throw an error if used outside of the MetabaseProvider", () => {
     expect(() => {
-      renderHook(() => useMetabaseAuthStatus());
+      renderHook(() => useSdkSelector(s => s.sdk.token));
     }).toThrow(Error(USE_OUTSIDE_OF_CONTEXT_MESSAGE));
   });
 });

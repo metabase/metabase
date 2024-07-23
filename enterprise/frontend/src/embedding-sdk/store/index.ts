@@ -12,7 +12,6 @@ import {
   useDispatch,
 } from "react-redux";
 
-import { USE_OUTSIDE_OF_CONTEXT_MESSAGE } from "embedding-sdk";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { mainReducers } from "metabase/reducers-main";
 import { getStore } from "metabase/store";
@@ -32,6 +31,9 @@ export const store = getStore(sdkReducers, null, {
     isDndAvailable: false,
   },
 }) as unknown as Store<SdkStoreState, AnyAction>;
+
+// eslint-disable-next-line no-literal-metabase-strings -- this string only shows in the console.
+export const USE_OUTSIDE_OF_CONTEXT_MESSAGE = `The useMetabaseAuthStatus hook must be used within a component wrapped by the MetabaseProvider`;
 
 export const useSdkSelector: TypedUseSelectorHook<SdkStoreState> = (
   selector,
