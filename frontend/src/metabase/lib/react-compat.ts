@@ -3,15 +3,21 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
-import { satisfies, coerce } from "semver";
 
 function isReact17() {
-  const version = coerce(React.version);
-  if (version == null) {
+  const versionParts = React.version.split(".");
+
+  if (versionParts.length < 1) {
     return false;
   }
 
-  return satisfies(version, "<=17");
+  const majorVersion = parseInt(versionParts[0], 10);
+
+  if (isNaN(majorVersion)) {
+    return false;
+  }
+
+  return majorVersion <= 17;
 }
 
 export function renderRoot(
