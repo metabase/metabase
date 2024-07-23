@@ -28,16 +28,37 @@ export function renameColumn(oldName, newName) {
   cy.findByDisplayValue(oldName).clear().type(newName).blur();
 }
 
+function retry({ statement, condition, wait, attempts }) {
+  statement().then(() => {
+    condition().then(result => {
+      if (!result && attempts > 1) {
+        cy.wait(wait);
+        retry({
+          statement,
+          condition,
+          wait,
+          attempts: attempts--,
+        });
+      }
+    });
+  });
+}
+
 export function setColumnType(oldType, newType) {
   cy.findByTestId("sidebar-right")
     .findAllByTestId("select-button")
     .contains(oldType)
     .click();
 
-  const scrollTimes = 3;
-  Cypress._.times(scrollTimes, () => {
-    cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
-    cy.wait(100);
+  retry({
+    statement: () =>
+      cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top"),
+    condition: () =>
+      cy
+        .findByPlaceholderText("Search for a special type")
+        .then(elements => elements.length > 0),
+    wait: 100,
+    attempts: 10,
   });
 
   cy.findByPlaceholderText("Search for a special type").realType(newType);
