@@ -51,7 +51,7 @@ jobs:
           echo "Git diff --name-status:"
           git diff --name-status
           echo "Git stash"
-          git stash
+          git stash list
 
           BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
           echo "BASE_COMMIT: $BASE_COMMIT"
@@ -64,7 +64,7 @@ jobs:
         continue-on-error: true
         run: |
           BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
-          npx lint-staged -d -v --diff="$BASE_COMMIT...HEAD"
+          npx lint-staged --shell -d -v --diff="$BASE_COMMIT...HEAD"
 
       - name: Debug Git after running lint-staged
         run: |
@@ -73,7 +73,7 @@ jobs:
           echo "Git diff --name-status:"
           git diff --name-status
           echo "Git stash"
-          git stash
+          git stash list
 
       # You must include this step after running all auto-fixing steps
       # - uses: stefanzweifel/git-auto-commit-action@v5
