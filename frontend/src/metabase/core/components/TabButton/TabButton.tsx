@@ -1,5 +1,4 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
-import { useSortable } from "@dnd-kit/sortable";
 import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 import type {
@@ -259,19 +258,9 @@ export function RenameableTabButton({
     ];
   }
 
-  const dragLabel = (s: string) => {
-    if (s.length < 20) {
-      return s;
-    } else {
-      return `${s.slice(0, 17)}...`;
-    }
-  };
-
-  const { isDragging } = useSortable({ id: props.value });
-
   return (
     <RenameableTabButtonStyled
-      label={isDragging ? dragLabel(label) : label}
+      label={label}
       isSelected={isSelected}
       isRenaming={canRename && isRenaming}
       canRename={canRename}

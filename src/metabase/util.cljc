@@ -1,14 +1,14 @@
 (ns metabase.util
   "Common utility functions useful throughout the codebase."
   (:require
-   #?@(:clj  ([clojure.math.numeric-tower :as math]
-              [me.flowthing.pp :as pp]
-              [metabase.config :as config]
-              #_{:clj-kondo/ignore [:discouraged-namespace]}
-              [metabase.util.jvm :as u.jvm]
-              [metabase.util.string :as u.str]
-              [potemkin :as p]
-              [ring.util.codec :as codec]))
+   #?@(:clj ([clojure.math.numeric-tower :as math]
+             [me.flowthing.pp :as pp]
+             [metabase.config :as config]
+             #_{:clj-kondo/ignore [:discouraged-namespace]}
+             [metabase.util.jvm :as u.jvm]
+             [metabase.util.string :as u.str]
+             [potemkin :as p]
+             [ring.util.codec :as codec]))
    [camel-snake-kebab.internals.macros :as csk.macros]
    [clojure.data :refer [diff]]
    [clojure.pprint :as pprint]
@@ -48,6 +48,7 @@
                         full-exception-chain
                         generate-nano-id
                         host-port-up?
+                        parse-currency
                         poll
                         host-up?
                         ip-address?
@@ -723,30 +724,6 @@
   [hours]
   (-> (* 60 hours) minutes->seconds seconds->ms))
 
-(defn parse-currency
-  "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
-
-    $1,000.00
-    -£127.54
-    -127,54 €
-    kr-127,54
-    € 127,54-
-    ¥200"
-  ^java.math.BigDecimal [^String s]
-  (when-not (str/blank? s)
-    (#?(:clj bigdec :cljs js/parseFloat)
-     (reduce
-      (partial apply str/replace)
-      s
-      [;; strip out any current symbols
-       [#"[^\d,.-]+"          ""]
-       ;; now strip out any thousands separators
-       [#"(?<=\d)[,.](\d{3})" "$1"]
-       ;; now replace a comma decimal seperator with a period
-       [#","                  "."]
-       ;; move minus sign at end to front
-       [#"(^[^-]+)-$"         "-$1"]]))))
-
 (defn email->domain
   "Extract the domain portion of an `email-address`.
 
@@ -954,6 +931,25 @@
    nil
    coll))
 
+(defn reduce-preserving-reduced
+  "Like [[reduce]] but preserves the [[reduced]] wrapper around the result. This is important because we have some
+  cases where we want to call [[reduce]] on some rf, but still be able to tell if it returned early.
+
+  Returns a vanilla value if all the `xs` were consumed and `(reduced result)` on an early exit."
+  [rf init xs]
+  (if (reduced? init)
+    init
+    (reduce
+     (fn [acc x]
+       ;; HACK: Wrap the reduced value in [[reduced]] again! [[reduce]] will unwrap the outer layer but we'll still
+       ;; see the inner one.
+       (let [acc' (rf acc x)]
+         (if (reduced? acc')
+           (reduced acc')
+           acc')))
+     init
+     xs)))
+
 #?(:clj
    (let [sym->enum (fn ^Enum [sym]
                     (Reflector/invokeStaticMethod ^Class (resolve (symbol (namespace sym)))
@@ -990,6 +986,10 @@
                          m))]
      (with-meta ret (meta m)))))
 
+(def conjv
+  "Like `conj` but returns a vector instead of a list"
+  (fnil conj []))
+
 (defn string-byte-count
   "Number of bytes in a string using UTF-8 encoding."
   [s]
@@ -1019,3 +1019,15 @@
      (let [buf (js/Uint8Array. max-length-bytes)
            result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
        (subs s 0 (.-read result)))))
+
+#?(:clj
+   (defn start-timer
+     "Start and return a timer. Treat the \"timer\" as an opaque object, the implementation may change."
+     []
+     (System/nanoTime)))
+
+#?(:clj
+   (defn since-ms
+     "Return how many milliseconds have elapsed since the given timer was started."
+     [timer]
+     (/ (- (System/nanoTime) timer) 1e6)))

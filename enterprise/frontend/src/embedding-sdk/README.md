@@ -19,19 +19,24 @@ Features currently supported:
 - embedding dashboards - static
 - embedding dashboards - w/drill-down
 - embedding the collection browser
+- ability for the user to modify existing questions
 - theming with CSS variables
-- plugins for custom actions
-
-Features planned:
-
+- plugins for custom actions, overriding dashboard card menu items
 - subscribing to events
 
+
+Features not yet supported:
+- letting users create new questions from scratch
+- creating and editing dashboards
+
+
 # Changelog
+
 [View changelog](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/CHANGELOG.md)
 
 # Prerequisites
 
-- You have an application using React 17 or higher
+- You have an application using React. The SDK currently supports React 18 only. We are investigating issues with React 17. 
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
 - You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time.
 
@@ -177,7 +182,7 @@ yarn add @metabase/embedding-sdk-react
 
 Once installed, you need to import `MetabaseProvider` and provide it with a `config` object.
 
-```jsx
+```typescript jsx
 import React from "react";
 import { MetabaseProvider } from "@metabase/embedding-sdk-react";
 
@@ -217,7 +222,7 @@ After the SDK is configured, you can use embed your question using the `StaticQu
 The component has a default height, which can be customized by using the `height` prop.
 To inherit the height from the parent container, you can pass `100%` to the height prop.
 
-```jsx
+```typescript jsx
 import React from "react";
 import { MetabaseProvider, StaticQuestion } from "@metabase/embedding-sdk-react";
 
@@ -234,9 +239,17 @@ export default function App() {
 }
 ```
 
-### Embedding an interactive question (with drill-down)
+You can pass parameter values to questions defined with SQL via `parameterValues` prop,
+in the format of `{parameter_name: parameter_value}`. Refer to the [SQL parameters](https://www.metabase.com/docs/v0.50/questions/native-editor/sql-parameters.html)
+documentation for more information.
 
 ```jsx
+<StaticQuestion questionId={questionId} parameterValues={{product_id: 50}} />
+```
+
+### Embedding an interactive question (with drill-down)
+
+```typescript jsx
 import React from "react";
 import { MetabaseProvider, InteractiveQuestion } from "@metabase/embedding-sdk-react";
 
@@ -262,31 +275,44 @@ questions, apply filters and aggregations, and access functionality within the n
 that there's no such thing as a one-size-fits-all when it comes to style, usage, and all of the other variables that
 make your application unique. Therefore, we've added the ability to customize the layout of interactive questions.
 
-
 Using the `InteractiveQuestion` with its default layout looks like this:
 
-```jsx
+```typescript jsx
 <InteractiveQuestion questionId={95} />
 ```
 
 To customize the layout, use namespaced components within the `InteractiveQuestion`. For example:
 
-```jsx
+```typescript jsx
 <InteractiveQuestion questionId={95}>
-  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-    <div style={{ display: 'grid', placeItems: 'center' }}>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      justifyContent: "center",
+    }}
+  >
+    <div style={{ display: "grid", placeItems: "center" }}>
       <InteractiveQuestion.Title />
       <InteractiveQuestion.ResetButton />
     </div>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', overflow: "hidden" }}>
-      <div style={{ width: '100%' }}>
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ width: "100%" }}>
         <InteractiveQuestion.QuestionVisualization />
       </div>
-      <div style={{ display: 'flex', flex: 1, overflow: "scroll" }}>
+      <div style={{ display: "flex", flex: 1, overflow: "scroll" }}>
         <InteractiveQuestion.Summarize />
       </div>
     </div>
-    <div style={{ display: 'flex', flexDirection: 'column' }}>
+    <div style={{ display: "flex", flexDirection: "column" }}>
       <InteractiveQuestion.Filter />
     </div>
   </div>
@@ -298,7 +324,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 These components are available via the `InteractiveQuestion` namespace (i.e. `<InteractiveQuestion.ComponentName />`)
 
 | Component               | Info                                                                                                                         |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
@@ -311,11 +337,9 @@ These components are available via the `InteractiveQuestion` namespace (i.e. `<I
 | `NotebookButton`        | The button used in the default layout to open the Notebook editor. You can replace this button with your own implementation. |
 | `QuestionVisualization` | The chart visualization for the question                                                                                     |
 
-
 ### Embedding a static dashboard
 
 After the SDK is configured, you can embed your dashboard using the `StaticDashboard` component.
-
 
 #### Parameters
 
@@ -325,9 +349,10 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 - **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
 - **withDownloads**: `boolean | null` – Whether to hide the download button.
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. [More information here](https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters)
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
 
-
-```jsx
+```typescript jsx
 import React from "react";
 import { MetabaseProvider, StaticDashboard } from "@metabase/embedding-sdk-react";
 
@@ -358,7 +383,6 @@ export default function App() {
 
 After the SDK is configured, you can embed your dashboard using the `InteractiveDashboard` component.
 
-
 #### Parameters
 
 - **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
@@ -369,8 +393,10 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
 - **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
 - **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question level.
 - **questionPlugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add drill-down menu. [See this](#implementing-custom-actions) for more details
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
 
-```jsx
+```typescript jsx
 import React from "react";
 import { MetabaseProvider, InteractiveDashboard } from "@metabase/embedding-sdk-react";
 
@@ -414,7 +440,7 @@ import { CollectionBrowser } from "metabase-types/api";
 
 export default function App() {
   const collectionId = 123; // This is the collection ID you want to browse
-  const handleItemClick = (item) => {
+  const handleItemClick = item => {
     console.log("Clicked item:", item);
   };
 
@@ -431,7 +457,6 @@ export default function App() {
   );
 }
 ```
-
 
 ### Customizing appearance
 
@@ -517,7 +542,7 @@ const theme = {
         // Apply a border color instead of shadow for dashboard cards.
         // Unset by default.
         border: "1px solid #EEECEC",
-      }
+      },
     },
 
     // Question
@@ -548,9 +573,10 @@ const theme = {
       },
     },
 
-    // Numerical value display
-    scalar: {
-      // The primary value to display
+    // Number chart
+    number: {
+      // Value displayed on number charts.
+      // This also applies to the primary value in trend charts.
       value: {
         fontSize: "24px",
         lineHeight: "21px",
@@ -579,26 +605,65 @@ const theme = {
     },
 
     collectionBrowser: {
-       breadcrumbs: {
-         expandButton: {
-           textColor: "#8118F4",
-           backgroundColor: "#767D7C",
-           hoverTextColor: "#CE8C8C",
-           hoverBackgroundColor: "#69264B",
-         },
-       },
-     },
+      breadcrumbs: {
+        expandButton: {
+          textColor: "#8118F4",
+          backgroundColor: "#767D7C",
+          hoverTextColor: "#CE8C8C",
+          hoverBackgroundColor: "#69264B",
+        },
+      },
+    },
+
+    // Popover are used in components such as click actions in interactive questions.
+    popover: {
+      // z-index of the popover. Useful for embedding components in a modal. defaults to 4.
+      zIndex: 4,
+    },
   },
 };
 ```
 
-### Implementing custom actions
+### Plugins
 
-`MetabaseProvider` also supports `pluginsConfig`. You can use `pluginsConfig` to customize the behavior of components. Currently we only allow configuring `mapQuestionClickActions` which lets you add custom actions or remove Metabase default actions in `InteractiveQuestion` component.
+The Metabase Embedding SDK supports plugins to customize the behavior of components. These plugins can be used in a
+global context or on a per-component basis. This list of plugins will continue to grow as we add more options to each
+component.
 
-We'll support more plugins in next releases. Please share your uses cases for us!
+To use a plugin globally, add the plugin to the `MetabaseProvider`'s `pluginsConfig` prop:
 
-```jsx
+```typescript jsx
+<MetabaseProvider
+  config={config}
+  theme={theme}
+  pluginsConfig={{
+    mapQuestionClickActions: [...] // Add your custom actions here
+  }}
+>
+  {children}
+</MetabaseProvider>
+```
+
+To use a plugin on a per-component basis, pass the plugin as a prop to the component:
+
+```typescript jsx
+<InteractiveQuestion
+  questionId={1}
+  plugins={{
+    mapQuestionClickActions: [...],
+  }}
+/>
+```
+
+#### _Interactive Question_
+
+###### `mapQuestionClickActions`
+
+This plugin allows you to add custom actions to
+the click-through menu of an interactive question. You can add and
+customize the appearance and behavior of the custom actions.
+
+```typescript jsx
 // You can provide a custom action with your own `onClick` logic.
 const createCustomAction = clicked => ({
   buttonType: "horizontal",
@@ -654,24 +719,178 @@ return (
 );
 ```
 
+#### _Interactive Dashboard_
+
+###### `dashcardMenu`
+
+This plugin allows you to add, remove, and modify the custom actions on the overflow menu of dashboard cards. The plugin
+appears as a dropdown menu on the top right corner of the card.
+
+The plugin's default configuration looks like this:
+
+```typescript jsx
+const plugins = {
+  dashboard: {
+    dashcardMenu: {
+      withDownloads: true,
+      withEditLink: true,
+      customItems: [],
+    },
+  },
+}
+```
+
+and can be used in the InteractiveDashboard like this:
+
+```typescript jsx
+<InteractiveDashboard
+  questionId={1}
+  plugins={{
+    dashboard: {
+      dashcardMenu: null,
+    },
+  }}
+/>
+```
+
+Take a look below to see how you can customize the plugin:
+
+###### Enabling/disabling default actions
+
+To remove the download button from the dashcard menu, set `withDownloads` to `false`. To remove the edit link from the
+dashcard menu, set `withEditLink` to `false`.
+
+```typescript jsx
+const plugins = {
+  dashboard: {
+    dashcardMenu: {
+       withDownloads: false,
+       withEditLink: false,
+       customItems: [],
+    }
+  }
+};
+```
+
+###### Adding custom actions to the existing menu:
+
+You can add custom actions to the dashcard menu by adding an object to the `customItems` array. Each element can either
+be an object or a function that takes in the dashcard's question, and outputs a list of custom items in the form of:
+
+```typescript jsx
+{
+  iconName: string;
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+}
+```
+
+```typescript jsx
+const plugins: SdkPluginsConfig = {
+  dashboard: {
+    dashcardMenu: {
+      customItems: [
+        {
+          iconName: "chevronright",
+          label: "Custom action",
+          onClick: () => {
+            alert(`Custom action clicked`);
+          },
+        },
+        ({ question }) => {
+          return {
+            iconName: "chevronright",
+            label: "Custom action",
+            onClick: () => {
+              alert(`Custom action clicked ${question.name}`);
+            },
+          };
+        },
+      ],
+    },
+  },
+};
+```
+
+###### Replacing the existing menu with your own component
+
+If you want to replace the existing menu with your own component, you can do so by providing a function that returns a
+React component. This function also can receive the question as an argument.
+
+```typescript jsx
+const plugins: SdkPluginsConfig = {
+  dashboard: {
+    dashcardMenu: ({ question }) => (
+      <button onClick={() => console.log(question.name)}>Click me</button>
+    ),
+  },
+};
+```
+
+### Adding global event handlers
+
+`MetabaseProvider` also supports `eventHandlers` configuration. This way you can add global handlers to react on events that happen in the SDK context.
+
+Currently, we support:
+
+- `onDashboardLoad?: (dashboard: Dashboard | null) => void;` - triggers when dashboard loads with all visible cards and their content
+- `onDashboardLoadWithoutCards?: (dashboard: Dashboard | null) => void;` - triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded
+
+```typescript jsx
+const handleDashboardLoad: SdkDashboardLoadEvent = dashboard => {
+  /* do whatever you need to do - e.g. send analytics events, show notifications */
+};
+
+const eventHandlers = {
+  onDashboardLoad: handleDashboardLoad,
+  onDashboardLoadWithoutCards: handleDashboardLoad,
+};
+
+return (
+  <MetabaseProvider config={config} eventHandlers={eventHandlers}>
+    {children}
+  </MetabaseProvider>
+);
+```
+
+### Getting Metabase authentication status
+
+You can query the Metabase authentication status using the `useMetabaseAuthStatus` hook.
+This is useful if you want to completely hide Metabase components when the user is not authenticated.
+
+This hook can only be used within components wrapped by `MetabaseProvider`.
+
+```jsx
+const auth = useMetabaseAuthStatus()
+
+if (auth.status === "error") {
+  return <div>Failed to authenticate: {auth.error.message}</div>
+}
+
+if (auth.status === "success") {
+  return <InteractiveQuestion questionId={110} />;
+}
+```
+
 ### Reloading Metabase components
 
 In case you need to reload a Metabase component, for example, your users modify your application data and that data is used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to show the latest data, you can do so by using the `key` prop to force a component to reload.
 
-```jsx
+```typescript jsx
 // Inside your application component
 const [data, setData] = useState({});
 // This is used to force reloading Metabase components
 const [counter, setCounter] = useState(0);
 
 // This ensures we only change the `data` reference when it's actually changed
-const handleDataChange = (newData) => {
+const handleDataChange = newData => {
   setData(prevData => {
     if (isEqual(prevData, newData)) {
       return prevData;
     }
 
-    return newData
+    return newData;
   });
 };
 
@@ -683,16 +902,16 @@ useEffect(() => {
   if (data) {
     setCounter(counter => counter + 1);
   }
-}, [data])
+}, [data]);
 
-return <InteractiveQuestion key={counter} questionId={yourQuestionId} />
+return <InteractiveQuestion key={counter} questionId={yourQuestionId} />;
 ```
 
 ### Customizing JWT authentication
 
 You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config` prop:
 
-```jsx
+```typescript jsx
 /**
   * This is the default implementation used in the SDK.
   * You can customize this function to fit your needs, such as adding headers or excluding cookies.
@@ -711,7 +930,8 @@ async function fetchRefreshToken(url) {
 }
 
 // Pass this configuration to MetabaseProvider.
-const config = { fetchRefreshToken }
+// Wrap the fetchRequestToken function in useCallback if it has dependencies to prevent re-renders.
+const config = { fetchRefreshToken };
 ```
 
 # Known limitations
@@ -719,6 +939,8 @@ const config = { fetchRefreshToken }
 - The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
   - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components are rendered on the client side.
   - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component on Remix.
+- Embedding multiple instances of interactive dashboards on the same page are not supported.
+  - Please use static dashboards if you need to embed multiple dashboards on the same page.
 
 # Feedback
 

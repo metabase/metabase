@@ -125,7 +125,6 @@
           }
         }
       ],
-      "can_run_adhoc_query": true,
       "table_id": 5,
       "collection_position": null,
       "view_count": 0,

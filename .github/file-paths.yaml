@@ -38,6 +38,9 @@ frontend_specs: &frontend_specs
   - "jest.config.json"
   - "jest.tz.unit.conf.json"
 
+release_source: &release_sources
+  - "release/**"
+
 frontend_all: &frontend_all
   - *frontend_ci
   - *frontend_sources

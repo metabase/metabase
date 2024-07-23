@@ -197,7 +197,6 @@
   rows
   rows+column-names
   with-database-timezone-id
-  with-mock-fks-for-drivers-without-fk-constraints
   with-report-timezone-id!
   with-results-timezone-id]
 
@@ -251,7 +250,7 @@
   with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
-  with-discard-model-updates
+  with-discard-model-updates!
   with-env-keys-renamed-by
   with-locale
   with-model-cleanup

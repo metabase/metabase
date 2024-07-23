@@ -65,6 +65,64 @@ title: Driver interface changelog
     signal that a specific field contains large enough values to skip fingerprinting or field values scanning. It
     can be used for other purposes as well in the future. Examples include Oracle CLOB or Postgres JSON columns.
 
+- The `:skip-drop-db?` option sometimes passed to methods for loading and destroying test data is no longer passed,
+  you can remove code that checks for it. Test data code is now better about avoiding unneeded/redundant calls to
+  `metabase.test.data.interface/create-db!`, so test data loading code should not need to call `DROP DATABASE IF
+  EXISTS` before loading test data.
+
+- Test data loading for JDBC-based databases has been overhauled somewhat. The multimethod
+  `metabase.test.data.sql-jdbc.load-data/load-data!` and helper functions for it have been removed in favor of several
+  new simpler to compose and understand multimethods.
+
+  - `metabase.test.data.sql-jdbc.load-data/row-xform` is a transducer applied to each row when loading test data. The
+    default implementation is `identity`, but you can use `metabase.test.data.sql-jdbc.load-data/add-ids-xform` to add
+    IDs to each row (this replaces the removed `metabase.test.data.sql-jdbc.load-data/load-data-add-ids` function) and
+    `metabase.test.data.sql-jdbc.load-data/maybe-add-ids-xform` (which replaces
+    `metabase.test.data.sql-jdbc.load-data/load-data-maybe-add-ids!` and
+    `metabase.test.data.sql-jdbc.load-data/load-data-maybe-add-ids-chunked!`).
+
+  - `metabase.test.data.sql-jdbc.load-data/chunk-size` is used to control the number of rows that should be loaded in
+    each batch. The default is `200`, but you can implement this method and return `nil` to load data all at once
+    regardless of the number of rows. `metabase.test.data.sql-jdbc.load-data/*chunk-size*`,
+    `metabase.test.data.sql-jdbc.load-data/load-data-chunked`,
+    `metabase.test.data.sql-jdbc.load-data/load-data-all-at-once!`,
+    `metabase.test.data.sql-jdbc.load-data/load-data-chunked!`, and other similar functions are no longer needed and
+    have been removed.
+
+  - `metabase.test.data.sql-jdbc.load-data/chunk-xform` is a transducer applied to each chunk of rows (dependent on
+    `chunk-size`) or the entire group of rows if `chunk-size` is `nil`. The default is `identity`. It can be used to
+    implement special behavior for each chunk, for example writing the chunk to a CSV file to load separately in the
+    `metabase.test.data.sql-jdbc.load-data/do-insert!` method. See the `metabase.test.data.vertica` for an example of
+    this.
+
+  - Connections are now created once and reused for much of test data loading. The second argument to
+    `metabase.test.data.sql-jdbc.load-data/do-insert!` is now a `java.sql.Connection` instead of a `clojure.java.jdbc`
+    spec.
+
+  - Similarly, `metabase.test.data.sql-jdbc.execute/execute-sql!` and helper functions like
+    `metabase.test.data.sql-jdbc.execute/sequentially-execute-sql!` are now called with a `java.sql.Connection`
+    instead of both a `DatabaseDefinition` and either `:server` or `:db` *context*; the appropriate connection type is
+    created automatically and passed in in the calling code. Update your method implementations and usages
+    accordingly.
+
+  - Added method `metabase.test.data.interface/dataset-already-loaded?` to check if a test dataset has already been
+    loaded. JDBC-based drivers have a default implementation that checks whether we can connect to the database; you
+    may need to override this for drivers that don't actually physically create new databases in tests. You can check
+    whether your JDBC-based driver works correctly using the default implementation by running the test
+    `metabase.test.data.sql-jdbc-test/dataset-already-loaded?-test`.
+
+  - `metabase.test.data.sql.ddl/insert-rows-ddl-statements` has been renamed to
+    `metabase.test.data.sql.ddl/insert-rows-dml-statements`, since `INSERT` is DML, not DDL. Please update your method
+    implementations accordingly.
+
+- The `:foreign-keys` driver feature has been removed. `:metadata/keys-constraints` should be used for drivers that support
+  foreign key relationships reporting during sync. Implicit joins now depend on the `:left-join` feature instead. The
+  default value is true for `:sql` based drivers. All join features are now enabled for `:sql` based drivers
+  by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`, 
+  the test for remapping and implicit joins will be now executed.
+
+-  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in tests. Currently, this is disabled only for `:sparksql`.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
@@ -137,6 +195,12 @@ title: Driver interface changelog
   corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
   This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
   Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
+
+- New feature `:identifiers-with-spaces` has been added to indicate where a driver supports identifiers like table or
+  column names that contains a space character. Defaults to `false`.
+
+- New feature `:uuid-type` has been added to indicate that this database is able to distinguish and filter against UUIDs.
+  Only a few database support native UUID types. The default is `false`.
 
 ## Metabase 0.49.9
 

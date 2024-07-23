@@ -453,11 +453,9 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
-          expect(search).to.equal(
-            `?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}&${
-              DASHBOARD_FILTER_TEXT.slug
-            }=${POINT_COUNT}`,
-          );
+          const tabParam = `tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`;
+          const textFilterParam = `${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`;
+          expect(search).to.equal(`?${textFilterParam}&${tabParam}`);
         });
       });
     });
@@ -1324,10 +1322,11 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.get("@targetDashboardId").then(targetDashboardId => {
         cy.location().should(({ pathname, search }) => {
           expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
+          const tabParam = `tab=${TAB_SLUG_MAP[SECOND_TAB.name]}`;
+          const textFilterParam = `${DASHBOARD_FILTER_TEXT.slug}=${POINT_COUNT}`;
+          const timeFilterParam = `${DASHBOARD_FILTER_TIME.slug}=`;
           expect(search).to.equal(
-            `?tab=${TAB_SLUG_MAP[SECOND_TAB.name]}&${
-              DASHBOARD_FILTER_TEXT.slug
-            }=${POINT_COUNT}&${DASHBOARD_FILTER_TIME.slug}=`,
+            `?${textFilterParam}&${timeFilterParam}&${tabParam}`,
           );
         });
       });
@@ -1867,7 +1866,7 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.location().should(({ pathname, search }) => {
         expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
         expect(search).to.equal(
-          `?tab=${TAB_SLUG_MAP[TAB_2.name]}&${DASHBOARD_FILTER_TEXT.slug}=${1}`,
+          `?${DASHBOARD_FILTER_TEXT.slug}=${1}&tab=${TAB_SLUG_MAP[TAB_2.name]}`,
         );
       });
     });
@@ -2107,6 +2106,80 @@ describe("scenarios > dashboard > dashboard cards > click behavior", () => {
       cy.location().should(({ pathname, search }) => {
         expect(pathname).to.equal(`/dashboard/${targetDashboardId}`);
         expect(search).to.equal("?discount=&total=420.3189231596888");
+      });
+    });
+  });
+
+  it("should navigate to correct dashboard tab via custom destination click behavior (metabase#34447 metabase#44106)", () => {
+    createDashboardWithTabs({
+      name: TARGET_DASHBOARD.name,
+      tabs: [
+        {
+          id: -1,
+          name: "first-tab",
+        },
+        {
+          id: -2,
+          name: "second-tab",
+        },
+      ],
+    }).then(targetDashboard => {
+      const baseClickBehavior = {
+        type: "link",
+        linkType: "dashboard",
+        targetId: targetDashboard.id,
+        parameterMapping: {},
+      };
+
+      const [firstTab, secondTab] = targetDashboard.tabs;
+
+      cy.createDashboard({
+        dashcards: [
+          createMockDashboardCard({
+            id: -1,
+            card_id: ORDERS_QUESTION_ID,
+            size_x: 12,
+            size_y: 6,
+            visualization_settings: {
+              click_behavior: {
+                ...baseClickBehavior,
+                tabId: firstTab.id,
+              },
+            },
+          }),
+          createMockDashboardCard({
+            id: -2,
+            card_id: ORDERS_QUESTION_ID,
+            size_x: 12,
+            size_y: 6,
+            visualization_settings: {
+              click_behavior: {
+                ...baseClickBehavior,
+                tabId: secondTab.id,
+              },
+            },
+          }),
+        ],
+      }).then(({ body: dashboard }) => {
+        visitDashboard(dashboard.id);
+
+        getDashboardCard(1).findByText("14").click();
+        cy.location("pathname").should(
+          "eq",
+          `/dashboard/${targetDashboard.id}`,
+        );
+        cy.location("search").should("eq", `?tab=${secondTab.id}-second-tab`);
+
+        cy.go("back");
+        cy.location("pathname").should("eq", `/dashboard/${dashboard.id}`);
+        cy.location("search").should("eq", "");
+
+        getDashboardCard(0).findByText("14").click();
+        cy.location("pathname").should(
+          "eq",
+          `/dashboard/${targetDashboard.id}`,
+        );
+        cy.location("search").should("eq", `?tab=${firstTab.id}-first-tab`);
       });
     });
   });

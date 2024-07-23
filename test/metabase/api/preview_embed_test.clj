@@ -567,7 +567,7 @@
   (testing "embedding with parameter that has source is a static list"
     (with-embedding-enabled-and-new-secret-key
       (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
-        (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding true
+        (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
                                                     :embedding_params {"static_category"       "enabled"
                                                                        "static_category_label" "enabled"}})
         (let [signed-token (dash-token dashboard)
@@ -577,3 +577,62 @@
               (is (= {:values          [["African"] ["American"] ["Asian"]]
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))
+
+(deftest parameter-values-are-parsed-and-query-suceeds-test
+  (testing "embedding endpoint parameter values are parsed when sensible. (#27643)"
+    (embed-test/with-embedding-enabled-and-new-secret-key
+      (mt/dataset places-cam-likes
+        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
+                                                           {:database (mt/id)
+                                                            :type     :native
+                                                            :native
+                                                            {:template-tags
+                                                             {"ASDF"
+                                                              {:widget-type  :string/=
+                                                               :default      [true]
+                                                               :name         "ASDF"
+                                                               :type         :dimension
+                                                               :id           "ASDF"
+                                                               :dimension    [:field (mt/id :places :liked) nil]
+                                                               :display-name "Asdf"
+                                                               :options      nil
+                                                               :required     true}}
+                                                             :query "SELECT * FROM PLACES WHERE {{ASDF}}"}}}
+                       :model/Dashboard {dashboard-id :id} {:parameters
+                                                            [{:name      "ASDF"
+                                                              :slug      "ASDF"
+                                                              :id        "ccb91bc"
+                                                              :type      :string/=
+                                                              :sectionId "string"
+                                                              :required  true
+                                                              :default   [true]}]}
+                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                      :parameter_mappings
+                                                      [{:parameter_id "ccb91bc"
+                                                        :card_id      card-id
+                                                        :target       [:dimension [:template-tag "ASDF"]]}]
+                                                      :card_id      card-id}]
+          (testing "for card embeds"
+            (let [false-url (format "%s?ASDF=false" (card-query-url card {:_embedding_params {:ASDF "enabled"}}))
+                  true-url  (format "%s?ASDF=true" (card-query-url card {:_embedding_params {:ASDF "enabled"}}))]
+              (is (= [[3 "The Dentist" false]]
+                     (-> (mt/user-http-request :crowberto :get 202 false-url)
+                         :data
+                         :rows)))
+              (is (= [[1 "Tempest" true]
+                      [2 "Bullit" true]]
+                     (-> (mt/user-http-request :crowberto :get 202 true-url)
+                         :data
+                         :rows)))))
+          (testing "for dashboard embeds"
+            (let [false-url (format "%s?ASDF=false" (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}}))
+                  true-url  (format "%s?ASDF=true" (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}}))]
+              (is (= [[3 "The Dentist" false]]
+                     (-> (mt/user-http-request :crowberto :get 202 false-url)
+                         :data
+                         :rows)))
+              (is (= [[1 "Tempest" true]
+                      [2 "Bullit" true]]
+                     (-> (mt/user-http-request :crowberto :get 202 true-url)
+                         :data
+                         :rows))))))))))

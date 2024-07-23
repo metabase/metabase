@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
@@ -22,7 +24,7 @@ export const StaticDashboardInner = ({
   withDownloads = true,
   hiddenParameters = [],
   onLoad,
-  onLoadWithCards,
+  onLoadWithoutCards,
 }: StaticDashboardProps) => {
   const {
     displayOptions,
@@ -49,8 +51,8 @@ export const StaticDashboardInner = ({
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameterValues}
-        hideDownloadButton={displayOptions.hideDownloadButton}
         hideParameters={displayOptions.hideParameters}
+        background={displayOptions.background}
         titled={displayOptions.titled}
         cardTitled={withCardTitle}
         theme={theme}
@@ -62,7 +64,11 @@ export const StaticDashboardInner = ({
         font={font}
         bordered={displayOptions.bordered}
         onLoad={onLoad}
-        onLoadWithCards={onLoadWithCards}
+        onLoadWithoutCards={onLoadWithoutCards}
+        downloadsEnabled={withDownloads}
+        isNightMode={false}
+        onNightModeChange={_.noop}
+        hasNightModeToggle={false}
       />
     </Box>
   );
