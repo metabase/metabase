@@ -3,6 +3,7 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, forwardRef, Component } from "react";
 import ReactDOM, { findDOMNode } from "react-dom";
+import { createRoot } from "react-dom/client";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -355,9 +356,13 @@ class TableInteractive extends Component {
       </EmotionCacheProvider>
     );
 
-    // NOTE: we use `ReactDOM.render` instead of `createRoot` to
-    // React 17 compatibility for the SDK.
-    ReactDOM.render(content, this._div);
+    if (typeof createRoot === "function") {
+      this._root = createRoot(this._div);
+      this._root.render(content);
+    } else {
+      // Support backwards compatibility with React 17 for the embedding SDK.
+      ReactDOM.render(content, this._div);
+    }
   }
 
   onMeasureHeaderRender = div => {
@@ -391,7 +396,12 @@ class TableInteractive extends Component {
 
     // Doing this on next tick makes sure it actually gets removed on initial measure
     setTimeout(() => {
-      ReactDOM.unmountComponentAtNode(this._div);
+      if (this._root) {
+        this._root.unmount();
+      } else {
+        // Support backwards compatibility with React 17 for the embedding SDK.
+        ReactDOM.unmountComponentAtNode(this._div);
+      }
     }, 0);
 
     delete this.columnNeedsResize;
