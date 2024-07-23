@@ -44,6 +44,21 @@ jobs:
         if: steps.changes.outputs.frontend_all == 'true'
         uses: ./.github/actions/prepare-frontend
 
+      - name: Debug Git before running lint-staged
+        run: |
+          echo "Git status:"
+          git status
+          echo "Git diff --name-status:"
+          git diff --name-status
+          echo "Git stash"
+          git stash
+
+          BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
+          echo "BASE_COMMIT: $BASE_COMMIT"
+          echo "CURRENT_COMMIT: $(git rev-parse HEAD)"
+          echo "DIFF: $BASE_COMMIT...HEAD"
+          echo "DIFF_SHORT: $(git diff --name-status $BASE_COMMIT...HEAD)"
+
       - name: Run lint-staged
         if: steps.changes.outputs.frontend_all == 'true'
         continue-on-error: true
@@ -51,41 +66,14 @@ jobs:
           BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
           npx lint-staged -d -v --diff="$BASE_COMMIT...HEAD"
 
-      - name: Log Git reflog and .git folder contents
+      - name: Debug Git after running lint-staged
         run: |
-          BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
-          echo "BASE_COMMIT: $BASE_COMMIT"
-          echo "CURRENT_COMMIT: $(git rev-parse HEAD)"
-          echo "DIFF: $BASE_COMMIT...HEAD"
-          echo "DIFF_SHORT: $(git diff --name-status $BASE_COMMIT...HEAD)"
-
-          echo "\nDetailed Git diff (first 500 lines):"
-          git diff origin/${{ github.event.repository.default_branch }}..HEAD | head -n 500
-
-          echo "Git reflog (last 20 entries):"
-          git reflog -n 20
-
-          echo "\nDetailed Git reflog (last 10 entries):"
-          git reflog -n 10 --pretty=fuller
-
-          echo "\nContents of .git folder:"
-          ls -lR .git
-
-          echo "\nContents of .git/config:"
-          cat .git/config
-
-          echo "\nContents of .git/HEAD:"
-          cat .git/HEAD
-
-          echo "\nList of refs:"
-          ls -R .git/refs
-
-          echo "\nContents of .git/index (if exists):"
-          if [ -f .git/index ]; then
-            hexdump -C .git/index | head -n 20
-          else
-            echo "index file does not exist"
-          fi
+          echo "Git status:"
+          git status
+          echo "Git diff --name-status:"
+          git diff --name-status
+          echo "Git stash"
+          git stash
 
       # You must include this step after running all auto-fixing steps
       # - uses: stefanzweifel/git-auto-commit-action@v5
