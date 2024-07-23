@@ -16,6 +16,9 @@ import {
   describeEE,
   toggleFilterWidgetValues,
   getDashboardCard,
+  createNativeQuestion,
+  queryBuilderMain,
+  queryBuilderFooter,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID, INVOICES } = SAMPLE_DATABASE;
@@ -497,108 +500,164 @@ describe("issues 20845, 25031", () => {
 });
 
 // TODO:
-// - Add tests for question embedding
-// - Add tests for dashboard embedding
 // - Add tests for embedding previews in both cases
 // - Add tests for disabled, editable and locked parameters in both cases
-// - Add tests for public sharing (question)
-// - Add tests for public sharing (dashboard)
 // BONUS: Ideally add tests for email subscriptions with the filter applied
 describe("issue 27643", () => {
-  beforeEach(() => {
-    restore("setup");
-    cy.signInAsAdmin();
-
-    const TEMPLATE_TAG_NAME = "expected_invoice";
-
-    const questionDetails = {
-      name: "27643",
-      native: {
-        query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
-        "template-tags": {
-          [TEMPLATE_TAG_NAME]: {
-            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
-            dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
-            name: TEMPLATE_TAG_NAME,
-            "display-name": "Expected Invoice",
-            type: "dimension",
-            "widget-type": "string/=",
-          },
+  const TEMPLATE_TAG_NAME = "expected_invoice";
+  const QUESTION_DETAILS = {
+    name: "27643",
+    native: {
+      query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
+      "template-tags": {
+        [TEMPLATE_TAG_NAME]: {
+          id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+          dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
+          name: TEMPLATE_TAG_NAME,
+          "display-name": "Expected Invoice",
+          type: "dimension",
+          "widget-type": "string/=",
         },
       },
-    };
+    },
+    enable_embedding: true,
+    embedding_params: {
+      [TEMPLATE_TAG_NAME]: "enabled",
+    },
+  };
 
-    const dashboardParameter = {
-      id: "2850aeab",
-      name: "Text filter for boolean field",
-      slug: "text_filter_for_boolean_field",
-      type: "string/=",
-    };
+  describe("dashboards", () => {
+    beforeEach(() => {
+      restore("setup");
+      cy.signInAsAdmin();
 
-    const dashboardDetails = {
-      name: "Dashboard with card with boolean field filter",
-      enable_embedding: true,
-      embedding_params: {
-        [dashboardParameter.slug]: "enabled",
-      },
-      parameters: [dashboardParameter],
-    };
-
-    cy.createNativeQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails,
-    }).then(({ body: dashboardCard }) => {
-      const { card_id, dashboard_id } = dashboardCard;
-
-      cy.wrap(dashboard_id).as("dashboardId");
-      cy.wrap(card_id).as("questionId");
-
-      const mapFilterToCard = {
-        parameter_mappings: [
-          {
-            parameter_id: dashboardParameter.id,
-            card_id,
-            target: ["dimension", ["template-tag", TEMPLATE_TAG_NAME]],
-          },
-        ],
+      const dashboardParameter = {
+        id: "2850aeab",
+        name: "Text filter for boolean field",
+        slug: "text_filter_for_boolean_field",
+        type: "string/=",
       };
 
-      cy.editDashboardCard(dashboardCard, mapFilterToCard);
-    });
-  });
+      const dashboardDetails = {
+        name: "Dashboard with card with boolean field filter",
+        enable_embedding: true,
+        embedding_params: {
+          [dashboardParameter.slug]: "enabled",
+        },
+        parameters: [dashboardParameter],
+      };
 
-  it("should allow dashboard filter to map to boolean field filter parameter in static embedding (metabase#27643)", () => {
-    cy.log("Test dashboard");
-    cy.get("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
-    });
+      cy.createNativeQuestionAndDashboard({
+        questionDetails: QUESTION_DETAILS,
+        dashboardDetails,
+      }).then(({ body: dashboardCard }) => {
+        const { card_id, dashboard_id } = dashboardCard;
 
-    toggleFilterWidgetValues(["false"]);
-    getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
+        cy.wrap(dashboard_id).as("dashboardId");
+        cy.wrap(card_id).as("questionId");
 
-    cy.log("Test embedded dashboard");
-    cy.get("@dashboardId").then(dashboard => {
-      visitEmbeddedPage({
-        resource: { dashboard },
-        params: {},
+        const mapFilterToCard = {
+          parameter_mappings: [
+            {
+              parameter_id: dashboardParameter.id,
+              card_id,
+              target: ["dimension", ["template-tag", TEMPLATE_TAG_NAME]],
+            },
+          ],
+        };
+
+        cy.editDashboardCard(dashboardCard, mapFilterToCard);
+
+        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`).then(
+          ({ body: { uuid } }) => {
+            cy.wrap(uuid).as("dashboardPublicUuid");
+          },
+        );
       });
     });
 
-    /**
-     * If we set the filter value now, this request won't be cancelled.
-     * And it will override the result from the next request with filter value.
-     *
-     * This seems to only happen in Cypress since it click elements on the screen
-     * a lot faster than human. I tested this manually, and the requests were cancelled properly.
-     */
-    getDashboardCard()
-      .findByText("Rows 1-4 of first 2000")
-      .should("be.visible");
+    it("should allow a dashboard filter to map to a boolean field filter parameter in static embedding (metabase#27643)", () => {
+      cy.log("Test the dashboard");
+      cy.get("@dashboardId").then(dashboardId => {
+        visitDashboard(dashboardId);
+      });
 
-    toggleFilterWidgetValues(["false"]);
-    getDashboardCard()
-      .findByText("There was a problem displaying this chart.")
-      .should("not.exist");
+      toggleFilterWidgetValues(["false"]);
+      getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
+
+      cy.log("Test the embedded dashboard");
+      cy.get("@dashboardId").then(dashboard => {
+        visitEmbeddedPage({
+          resource: { dashboard },
+          params: {},
+        });
+      });
+
+      toggleFilterWidgetValues(["false"]);
+      getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
+
+      cy.log("Test the public dashboard");
+      cy.signOut();
+      cy.get("@dashboardPublicUuid").then(uuid => {
+        cy.visit(`/public/dashboard/${uuid}`);
+      });
+      toggleFilterWidgetValues(["false"]);
+      getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
+    });
+  });
+
+  describe("questions", () => {
+    beforeEach(() => {
+      restore("setup");
+      cy.signInAsAdmin();
+
+      createNativeQuestion(QUESTION_DETAILS, {
+        wrapId: true,
+        idAlias: "questionId",
+      });
+
+      cy.get("@questionId").then(questionId => {
+        cy.request("POST", `/api/card/${questionId}/public_link`).then(
+          ({ body: { uuid } }) => {
+            cy.wrap(uuid).as("questionPublicUuid");
+          },
+        );
+      });
+    });
+
+    it("should allow a native question filter to map to a boolean field filter parameter in static embedding (metabase#27643)", () => {
+      cy.log("Test the question");
+      cy.get("@questionId").then(questionId => {
+        visitQuestion(questionId);
+      });
+
+      toggleFilterWidgetValues(["false"]);
+      queryBuilderMain().button("Get Answer").click();
+      queryBuilderFooter().findByText("Showing 455 rows").should("be.visible");
+
+      cy.log("Test the embedded question");
+      cy.get("@questionId").then(question => {
+        visitEmbeddedPage({
+          resource: { question },
+          params: {},
+        });
+      });
+
+      toggleFilterWidgetValues(["false"]);
+      cy.findByTestId("visualization-root")
+        .findByText("Rows 1-13 of 455")
+        .should("be.visible");
+
+      cy.log("Test the public question");
+      cy.signOut();
+      cy.get("@questionPublicUuid").then(uuid => {
+        cy.visit(`/public/question/${uuid}`);
+      });
+      toggleFilterWidgetValues(["false"]);
+      cy.findByTestId("visualization-root")
+        .findByText("Rows 1-13 of 455")
+        .should("be.visible");
+    });
   });
 });
 
