@@ -1,5 +1,5 @@
 (ns metabase-enterprise.sandbox.models.group-table-access-policy
-  "Model definition for sandboxes, aka Group Table Access Policies (old name). A sandbox is useed to control access to a
+  "Model definition for sandboxes, aka Group Table Access Policies (old name). A sandbox is used to control access to a
   certain Table for a certain PermissionsGroup. Whenever a member of that group attempts to query the Table in question,
   a Saved Question specified by the GTAP is instead used as the source of the query.
 
