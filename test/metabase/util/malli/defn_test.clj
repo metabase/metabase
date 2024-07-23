@@ -185,10 +185,11 @@
                  expansion)))))))
 
 
-(mu/defn- private-foo :- :int
+(mu/defn- ^:extra-metadata private-foo :- :int
   [x :- :int]
   x)
 
 (deftest ^:parallel private-defn-test
   (testing "The defn- macro creates a private function"
-    (is (true? (:private (meta #'private-foo))))))
+    (is (true? (:private (meta #'private-foo))))
+    (is (true? (:extra-metadata (meta #'private-foo))))))
