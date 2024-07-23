@@ -7,7 +7,7 @@
 
 (def ^:private ^ConcurrentHashMap cached-failures (ConcurrentHashMap.))
 
-(def ^:private max-size 10)
+(def ^:private max-size 10000)
 
 (def ^:private max-retries 2)
 
