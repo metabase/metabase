@@ -4,21 +4,8 @@ import React from "react";
 import ReactDOM from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 
-export function isReact17OrEarlier(version = React.version) {
-  const versionParts = version.split(".");
-
-  if (versionParts.length < 1) {
-    return false;
-  }
-
-  const majorVersion = parseInt(versionParts[0], 10);
-
-  if (isNaN(majorVersion)) {
-    return false;
-  }
-
-  return majorVersion <= 17;
-}
+// React 18 and later has the useSyncExternalStore hook.
+export const isReact17OrEarlier = () => !("useSyncExternalStore" in React);
 
 export function renderRoot(
   content: React.JSX.Element,
