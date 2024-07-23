@@ -194,7 +194,7 @@ jobs:
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
 
       - name: Run EE Cypress tests on ${{ matrix.name }}
-        if: matrix.context == 'folder' && matrix.name != 'embedding-sdk' && github.event_name != 'schedule'
+        if: matrix.context == 'folder' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@mongo+-@flaky --@quarantine",grepOmitFiltered=true \
@@ -212,11 +212,11 @@ jobs:
           CYPRESS_QA_DB_MONGO: true
 
       - name: Run Embedding SDK Storybook
-        if: matrix.context == 'folder' && matrix.name == 'embedding-sdk' && github.event_name != 'schedule'
+        if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
         uses: ./.github/actions/run-embedding-sdk-storybook
 
       - name: Run E2E tests for Embedding SDK
-        if: matrix.context == 'folder' && matrix.name == 'embedding-sdk' && github.event_name != 'schedule'
+        if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
         run: |
           yarn run test-cypress-run \
           --env grepTags="-@slow+-@flaky --@quarantine",grepOmitFiltered=true \
