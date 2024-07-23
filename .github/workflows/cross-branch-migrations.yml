@@ -37,10 +37,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: master
-      - name: Prepare back-end environment
+      - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
-      - name: Run back-end on master
-        run: clojure -M:run:ee
+      - name: Run backend on master
+        run: clojure -M:run:ee & echo $! > metabase_pid
+      - name: Wait for Metabase to start
+        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      - name: Stop Metabase on master
+        run: kill $(cat metabase_pid)
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.head_ref }}
@@ -48,7 +52,6 @@ jobs:
         run: clojure -M:run:ee
       - name: Wait for Metabase to start
         run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-
 
 
   # services:
