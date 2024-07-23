@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -112,10 +113,10 @@
   ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
   ;; fix #45874
   (try
-    (u/auto-retry 5
+    (u/auto-retry (if config/is-prod? 2 10)
       {:tables (into #{} (describe-database-tables database))})
     (catch Throwable e
-      (throw (ex-info (format "Error in %d describe-database: %s" driver (ex-message e))
+      (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
                       {}
                       e)))))
 
