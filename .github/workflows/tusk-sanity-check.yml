@@ -47,7 +47,8 @@ jobs:
       - name: Run lint-staged
         if: steps.changes.outputs.frontend_all == 'true'
         continue-on-error: true
-        run: npx lint-staged -v --diff=origin/${{ github.event.repository.default_branch }}
+        run: npx lint-staged
+        # run: npx lint-staged -v --diff=origin/${{ github.event.repository.default_branch }}
 
       - name: Log Git reflog and .git folder contents
         run: |
