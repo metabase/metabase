@@ -28,6 +28,7 @@ jobs:
         ports:
           - "3306:3306"
     steps:
+      - uses: actions/checkout@v4
       - uses: ./.github/actions/cross-branch-migration-test
 
   # services:
