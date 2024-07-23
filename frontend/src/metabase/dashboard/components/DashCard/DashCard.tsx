@@ -35,6 +35,7 @@ import type {
 } from "metabase-types/api";
 import type { StoreDashcard } from "metabase-types/store";
 
+import { Icon, Tooltip } from "metabase/ui";
 import { DashCardRoot } from "./DashCard.styled";
 import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
 import { DashCardVisualization } from "./DashCardVisualization";
@@ -243,7 +244,7 @@ function DashCardInner({
     const authorityLevel = dashcard.collection_authority_level;
     if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
       const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
-      const iconSize = 14;
+      const iconSize = 16;
       return {
         name: opts.icon,
         color: opts.color ? color(opts.color) : undefined,
@@ -300,7 +301,29 @@ function DashCardInner({
         isNightMode={isNightMode}
         isUsuallySlow={isSlow === "usually-slow"}
         ref={cardRootRef}
+        style={{
+          ...dashcard.style,
+          zIndex: isEditingDashboardLayout ? 1 : 2,
+        }}
       >
+        {dashcard.card.description && (
+          <div
+            className={cx(
+              CS.absolute,
+              CS.top,
+              CS.right,
+              CS.zTop,
+              CS.flex,
+              CS.alignCenter,
+              CS.justifyCenter,
+            )}
+            style={{ width: 24, height: 24 }}
+          >
+            <Tooltip tooltip={dashcard.card.description}>
+              <Icon name="info" size={16} />
+            </Tooltip>
+          </div>
+        )}
         {isEditingDashboardLayout && (
           <DashCardActionsPanel
             onMouseDown={preventDragging}
