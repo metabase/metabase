@@ -183,3 +183,9 @@
                            (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))
                            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
                  expansion)))))))
+
+(mu/defn- private-foo :- :int [x] x)
+
+(deftest ^:parallel private-defn-test
+  (testing "The defn- macro creates a private function"
+    (is (true? (:private (meta #'private-foo))))))
