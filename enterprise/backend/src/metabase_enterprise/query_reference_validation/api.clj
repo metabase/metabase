@@ -5,7 +5,9 @@
    [metabase.api.common :as api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.query-field :as query-field]
+   [metabase.models.collection :as collection]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 (def ^:private valid-sort-columns "Columns that the card errors can be sorted by"
@@ -18,8 +20,8 @@
 
 (def ^:private default-sort-direction "asc")
 
-(defn- cards-with-inactive-fields
-  [sort-column sort-direction offset limit]
+(defn- cards-with-reference-errors
+  [{:keys [sort-column sort-direction limit offset collection-ids]}]
   (let [sort-dir-kw         (keyword sort-direction)
         sorting-joins       (case sort-column
                               "name"           []
@@ -47,7 +49,12 @@
                               {:select    (into [:c.*] sorting-selects)
                                :from      [[(t2/table-name :model/Card) :c]]
                                :left-join sorting-joins
-                               :where     [:= :c.archived false]
+                               :where     [:and
+                                           [:= :c.archived false]
+                                           [:or
+                                            [:in :c.collection_id collection-ids]
+                                            (when (contains? collection-ids nil)
+                                              [:is :c.collection_id nil])]]
                                :order-by  order-by-clause
                                :group-by  :c.id}
                               :limit  limit
@@ -77,13 +84,20 @@
      :limit  50
      :offset 100
   ```"
-  [sort_column sort_direction]
+  [sort_column sort_direction collection_id]
   {sort_column    [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
-  (let [cards (cards-with-inactive-fields (or sort_column default-sort-column)
-                                          (or sort_direction default-sort-direction)
-                                          mw.offset-paging/*offset*
-                                          mw.offset-paging/*limit*)]
+   sort_direction [:maybe (into [:enum] valid-sort-directions)]
+   collection_id  [:maybe ms/PositiveInt]}
+
+  (let [collection (if (nil? collection_id)
+                     collection/root-collection
+                     (t2/select-one :model/Collection :id collection_id))
+        collection-ids (conj (collection/descendant-ids collection) collection_id)
+        cards (cards-with-reference-errors {:sort-column (or sort_column default-sort-column)
+                                           :sort-direction (or sort_direction default-sort-direction)
+                                           :collection-ids (set collection-ids)
+                                           :limit mw.offset-paging/*limit*
+                                           :offset mw.offset-paging/*offset*})]
     {:total  (invalid-card-count)
      :data   cards
      :limit  mw.offset-paging/*limit*

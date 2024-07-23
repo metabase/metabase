@@ -15,7 +15,7 @@
                             :model/Table      {table-2 :id}  {:name "T2" :active false}
                             ;; no coll-1; its card is in the root collection
                             :model/Collection {coll-2 :id}   {:name "ZZY"}
-                            :model/Collection {coll-3 :id}   {:name "ZZZ"}
+                            :model/Collection {coll-3 :id}   {:name "ZZZ" :location (str "/" coll-2 "/")}
                             :model/Card       {card-1 :id}   {:name "A"}
                             :model/Card       {card-2 :id}   {:name "B" :collection_id coll-2}
                             :model/Card       {card-3 :id}   {:name "C" :collection_id coll-3}
@@ -59,7 +59,7 @@
                                                               :column   "FC"
                                                               :field_id field-3}]
      (mt/with-premium-features #{:query-reference-validation}
-       (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-1b qf-2 qf-3])))))
+       (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-1b qf-2 qf-3 coll-3 coll-2])))))
 
 (defmacro ^:private with-test-setup
   "Creates some non-stale QueryFields and anaphorically provides stale QueryField IDs called `qf-{1-3}` and `qf-1b` and
@@ -69,7 +69,7 @@
   `card-4` is guaranteed not to have problems"
   [& body]
   `(do-with-test-setup
-    (mt/with-anaphora [qf-1 qf-1b qf-2 qf-3 card-1 card-2 card-3 card-4]
+    (mt/with-anaphora [qf-1 qf-1b qf-2 qf-3 card-1 card-2 card-3 card-4 coll-2 coll-3]
       ~@body)))
 
 (def ^:private url "ee/query-reference-validation/invalid-cards")
@@ -258,6 +258,28 @@
                              (:errors
                               (mt/user-http-request :crowberto :get 400 (str url "?sort_column=favorite_bird"))))
                             "nullable enum of")))))
+
+(deftest filter-on-collection
+  (testing "can filter on collection id"
+    (with-test-setup
+      (testing "we can just look in coll-3"
+        (is (qv= {:total 1
+                  :data
+                  [{:id card-3}]}
+                 (get! {:collection_id coll-3}))))
+      (testing "we can look in coll-2 (which contains coll-3)"
+        (is (qv= {:total 2
+                  :data
+                  [{:id card-2}
+                   {:id card-3}]}
+                 (get! {:collection_id coll-2}))))
+      (testing "we can look in the root coll (which recursively contains coll-2 and coll-3)"
+        (is (qv= {:total 2
+                  :data
+                  [{:id card-1}
+                   {:id card-2}
+                   {:id card-3}]}
+                 (get! {})))))))
 
 (deftest is-admin-test
   (mt/with-premium-features #{:query-reference-validation}
