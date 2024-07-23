@@ -39,7 +39,7 @@
                                                           :group_id (u/the-id (perms-group/all-users))}]
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
-           #"You cannot change the Table ID of a sandbox once it has been created"
+           #"You cannot change the table ID of a sandbox once it has been created"
            (t2/update! GroupTableAccessPolicy (:id gtap) {:table_id (mt/id :checkins)}))))))
 
 (deftest disallow-queries-that-add-columns-test
