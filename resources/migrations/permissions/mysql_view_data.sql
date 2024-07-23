@@ -17,56 +17,86 @@ SELECT
   dp.db_id,
   dp.schema_name,
   dp.table_id,
-  CASE
-    WHEN dp.perm_value = 'no-self-service'
-    AND EXISTS (
-      SELECT
-        1
-      FROM
-        permissions_group_membership pgm
-        JOIN (
-          SELECT
-            group_id,
-            db_id,
-            CAST(NULL AS UNSIGNED) AS table_id
-          FROM
-            connection_impersonations
-          UNION
-          SELECT
-            group_id,
-            db_id,
-            CAST(NULL AS UNSIGNED) AS table_id
-          FROM
-            data_permissions
-          WHERE
-            perm_value = 'block'
-            AND table_id IS NULL
-          UNION
-          SELECT
-            group_id,
-            CAST(NULL AS UNSIGNED) as db_id,
-            table_id
-          FROM
-            sandboxes
-        ) AS sp ON pgm.group_id = sp.group_id
-      WHERE
-        pgm.group_id <> dp.group_id
-        AND (
-          sp.db_id IS NULL
-          OR sp.db_id = dp.db_id
-        )
-        AND (
-          sp.table_id IS NULL
-          OR sp.table_id = dp.table_id
-        )
-    ) THEN 'legacy-no-self-service'
-    ELSE 'unrestricted'
-  END AS perm_value
+  'legacy-no-self-service' AS perm_value
 FROM
   data_permissions dp
 WHERE
-  dp.perm_type = 'perms/data-access'
-  AND dp.table_id IS NOT NULL;
+  dp.table_id IS NOT NULL
+  AND dp.perm_type = 'perms/data-access'
+  AND dp.perm_value = 'no-self-service'
+  AND EXISTS (
+    SELECT
+      1
+    FROM
+      permissions_group_membership pgm
+      JOIN (
+        SELECT
+          group_id,
+          db_id,
+          CAST(NULL AS UNSIGNED) AS table_id
+        FROM
+          connection_impersonations
+        UNION
+        SELECT
+          group_id,
+          db_id,
+          CAST(NULL AS UNSIGNED) AS table_id
+        FROM
+          data_permissions
+        WHERE
+          perm_value = 'block'
+          AND table_id IS NULL
+        UNION
+        SELECT
+          group_id,
+          CAST(NULL AS UNSIGNED) as db_id,
+          table_id
+        FROM
+          sandboxes
+      ) AS sp ON pgm.group_id = sp.group_id
+    WHERE
+      pgm.group_id <> dp.group_id
+      AND (
+        sp.db_id IS NULL
+        OR sp.db_id = dp.db_id
+      )
+      AND (
+        sp.table_id IS NULL
+        OR sp.table_id = dp.table_id
+      )
+  );
+
+INSERT INTO
+  data_permissions (
+    group_id,
+    perm_type,
+    db_id,
+    schema_name,
+    table_id,
+    perm_value
+  )
+SELECT
+  dp.group_id,
+  'perms/view-data' AS perm_type,
+  dp.db_id,
+  dp.schema_name,
+  dp.table_id,
+  'unrestricted' AS perm_value
+FROM
+  data_permissions dp
+WHERE
+  dp.table_id IS NOT NULL
+  AND dp.perm_type = 'perms/data-access'
+  AND NOT EXISTS (
+    SELECT
+      1
+    FROM
+    data_permissions dp1
+    WHERE
+     dp1.group_id = dp.group_id
+     AND dp1.table_id = dp.table_id
+     AND dp1.perm_value = 'legacy-no-self-service'
+  );
 
 
 -- If all tables in a DB have the same view-data permission, insert a DB-level view-data permission instead

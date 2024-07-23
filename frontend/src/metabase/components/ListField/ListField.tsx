@@ -25,10 +25,8 @@ function createOptionsFromValuesWithoutOptions(
   values: RowValue[],
   options: Option[],
 ): Option {
-  const optionsMap = _.indexBy(options, "0");
-  return values
-    .filter(value => typeof value !== "string" || !optionsMap[value])
-    .map(value => [value]);
+  const optionsMap = new Map(options.map(option => [option[0], option]));
+  return values.filter(value => !optionsMap.has(value)).map(value => [value]);
 }
 
 export const ListField = ({

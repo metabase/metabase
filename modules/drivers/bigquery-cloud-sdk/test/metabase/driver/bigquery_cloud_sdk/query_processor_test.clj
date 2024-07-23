@@ -19,7 +19,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.sync :as sync]
    [metabase.test :as mt]
@@ -150,7 +149,7 @@
                              "  `price`"
                              "ORDER BY"
                              "  `avg` ASC,"
-                             "  `price` ASC"]
+                             "  `v4_test_data.venues`.`price` ASC"]
                 :params     nil
                 :table-name "venues"
                 :mbql?      true})
@@ -167,28 +166,27 @@
     (testing (str "Make sure that BigQuery properly aliases the names generated for Join Tables. It's important to use "
                   "the right alias, e.g. something like `categories__via__category_id`, which is considerably "
                   "different  what other SQL databases do. (#4218)")
-      (mt/with-mock-fks-for-drivers-without-fk-constraints
-        (let [results (mt/run-mbql-query venues
-                        {:aggregation [:count]
-                         :breakout    [$category_id->categories.name]})]
-          (is (= (with-test-db-name
-                   (->> ["SELECT"
-                         "  `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
-                         "  COUNT(*) AS `count`"
-                         "FROM"
-                         "  `v4_test_data.venues`"
-                         "  LEFT JOIN `v4_test_data.categories` AS `categories__via__category_id` ON `v4_test_data.venues`.`category_id` = `categories__via__category_id`.`id`"
-                         "GROUP BY"
-                         "  `categories__via__category_id__name`"
-                         "ORDER BY"
-                         "  `categories__via__category_id__name` ASC"]
+      (let [results (mt/run-mbql-query venues
+                                       {:aggregation [:count]
+                                        :breakout    [$category_id->categories.name]})]
+        (is (= (with-test-db-name
+                 (->> ["SELECT"
+                       "  `categories__via__category_id`.`name` AS `categories__via__category_id__name`,"
+                       "  COUNT(*) AS `count`"
+                       "FROM"
+                       "  `v4_test_data.venues`"
+                       "  LEFT JOIN `v4_test_data.categories` AS `categories__via__category_id` ON `v4_test_data.venues`.`category_id` = `categories__via__category_id`.`id`"
+                       "GROUP BY"
+                       "  `categories__via__category_id__name`"
+                       "ORDER BY"
+                       "  `categories__via__category_id__name` ASC"]
                         ;; reformat the SQL because the formatting may have changed once we change the test DB name.
-                        (str/join " ")
-                        (driver/prettify-native-form :bigquery-cloud-sdk)
-                        str/split-lines))
-                 (or (when-let [sql (get-in results [:data :native_form :query])]
-                       (str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk sql)))
-                     results))))))))
+                      (str/join " ")
+                      (driver/prettify-native-form :bigquery-cloud-sdk)
+                      str/split-lines))
+               (or (when-let [sql (get-in results [:data :native_form :query])]
+                     (str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk sql)))
+                   results)))))))
 
 (defn- native-timestamp-query [db-or-db-id timestamp-str timezone-str]
   (-> (qp/process-query
@@ -989,26 +987,23 @@
       (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
                                         (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                         {:tables [{:id (mt/id :venues), :name "Organização"}]})
-        (mt/with-mock-fks-for-drivers-without-fk-constraints
-          (is qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests*
-              "Sanity check for with-mock-fks-for-drivers-without-fk-constraints macro")
-          (let [query (mt/mbql-query checkins
-                        {:fields [$id $venue-id->venues.name]
-                         :limit  1})]
-            (is (= (with-test-db-name
-                     {:query      ["SELECT"
-                                   "  `v4_test_data.checkins`.`id` AS `id`,"
-                                   "  `Organizacao__via__venue_id`.`name` AS `Organizacao__via__venue_id__name`"
-                                   "FROM"
-                                   "  `v4_test_data.checkins`"
-                                   "  LEFT JOIN `v4_test_data.Organização` AS `Organizacao__via__venue_id` ON `v4_test_data.checkins`.`venue_id` = `Organizacao__via__venue_id`.`id`"
-                                   "LIMIT"
-                                   "  1"]
-                      :params     nil
-                      :table-name "checkins"
-                      :mbql?      true})
-                   (-> (qp.compile/compile query)
-                       (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %))))))))))))
+        (let [query (mt/mbql-query checkins
+                                   {:fields [$id $venue-id->venues.name]
+                                    :limit  1})]
+          (is (= (with-test-db-name
+                   {:query      ["SELECT"
+                                 "  `v4_test_data.checkins`.`id` AS `id`,"
+                                 "  `Organizacao__via__venue_id`.`name` AS `Organizacao__via__venue_id__name`"
+                                 "FROM"
+                                 "  `v4_test_data.checkins`"
+                                 "  LEFT JOIN `v4_test_data.Organização` AS `Organizacao__via__venue_id` ON `v4_test_data.checkins`.`venue_id` = `Organizacao__via__venue_id`.`id`"
+                                 "LIMIT"
+                                 "  1"]
+                    :params     nil
+                    :table-name "checkins"
+                    :mbql?      true})
+                 (-> (qp.compile/compile query)
+                     (update :query #(str/split-lines (driver/prettify-native-form :bigquery-cloud-sdk %)))))))))))
 
 (deftest ^:parallel multiple-template-parameters-test
   (mt/test-driver :bigquery-cloud-sdk

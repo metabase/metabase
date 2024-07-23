@@ -38,6 +38,7 @@
 (declare remove-local-references)
 (declare remove-stage-references)
 (declare remove-join)
+(declare rename-join)
 (declare normalize-fields-clauses)
 
 (defn- find-matching-order-by-index
@@ -157,17 +158,21 @@
         query))
     query))
 
+(defn- find-location
+  [query stage-number target-clause]
+  (let [stage (lib.util/query-stage query stage-number)]
+    (m/find-first
+      (fn [possible-location]
+        (when-let [clauses (get-in stage possible-location)]
+          (let [target-uuid (lib.options/uuid target-clause)]
+            (when (some (comp #{target-uuid} :lib/uuid second) clauses)
+              possible-location))))
+      (stage-paths query stage-number))))
+
 (defn- remove-replace* [query stage-number target-clause remove-or-replace replacement]
   (mu/disable-enforcement
     (let [target-clause (lib.common/->op-arg target-clause)
-          stage (lib.util/query-stage query stage-number)
-          location (m/find-first
-                    (fn [possible-location]
-                      (when-let [clauses (get-in stage possible-location)]
-                        (let [target-uuid (lib.options/uuid target-clause)]
-                          (when (some (comp #{target-uuid} :lib/uuid second) clauses)
-                            possible-location))))
-                    (stage-paths query stage-number))
+          location (find-location query stage-number target-clause)
           replace? (= :replace remove-or-replace)
           replacement-clause (when replace?
                                (lib.common/->op-arg replacement))
@@ -335,34 +340,66 @@
           ;; 2 accounts for [:stages stage-number] and 1 for the key of the element on the path.
           (subvec in 0 (+ (count p) 2 1)))))))
 
+(defn- conditions-changed-for-aliases?
+  "Checks if two sets of join conditions are the same. We ignore the current join-aliases as those may be changing,
+   and we ignore effective-type since `tweak-expression` above may have already added it, and in this case it will be irrelevant."
+  [new-join-alias new-join-conditions join-alias-b join-conditions-b]
+  (let [a-conds (lib.util.match/replace
+                 new-join-conditions
+                  (_ :guard (every-pred map? (comp #{new-join-alias} :join-alias)))
+                  (dissoc &match :join-alias :effective-type)
+                  (_ :guard (every-pred map? :effective-type))
+                  (dissoc &match :effective-type))
+        b-conds (lib.util.match/replace
+                 join-conditions-b
+                  (_ :guard (every-pred map? (comp #{join-alias-b} :join-alias)))
+                  (dissoc &match :join-alias :effective-type)
+                  (_ :guard (every-pred map? :effective-type))
+                  (dissoc &match :effective-type))]
+    (not (lib.equality/= a-conds b-conds))))
+
 (mu/defn ^:private replace-expression-removing-erroneous-parts :- :metabase.lib.schema/query
   [unmodified-query :- :metabase.lib.schema/query
    stage-number     :- :int
    target           :- :metabase.lib.schema.expression/expression
    replacement      :- :metabase.lib.schema.expression/expression]
   (mu/disable-enforcement
-    (loop [query (tweak-expression unmodified-query stage-number target replacement)]
-      (let [explanation (mr/explain ::lib.schema/query query)
-            error-paths (->> (:errors explanation)
-                             (keep #(on-stage-path query %))
-                             distinct)]
-        (if (seq error-paths)
-          (recur (reduce (fn [q path]
-                           (try
-                             (remove-clause q (second path) (get-in q path))
-                             (catch #?(:clj Exception :cljs js/Error) e
-                               (let [{:keys [error join]} (ex-data e)]
-                                 (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
-                                   ;; remove the dangling join
-                                   (remove-join q (second path) join)
-                                   (throw e))))))
-                         query
-                         error-paths))
-          (if explanation
-            ;; there is an error we cannot fix, fall back to old way,
-            ;; i.e., remove all dependent parts
-            (remove-replace* unmodified-query stage-number target :replace replacement)
-            query))))))
+    (let [location (find-location unmodified-query stage-number target)
+          query (loop [query (tweak-expression unmodified-query stage-number target replacement)]
+                  (let [explanation (mr/explain ::lib.schema/query query)
+                        error-paths (->> (:errors explanation)
+                                         (keep #(on-stage-path query %))
+                                         distinct)]
+                    (if (seq error-paths)
+                      (recur (reduce (fn [q path]
+                                       (try
+                                         (remove-clause q (second path) (get-in q path))
+                                         (catch #?(:clj Exception :cljs js/Error) e
+                                           (let [{:keys [error join]} (ex-data e)]
+                                             (if (= error :metabase.lib.util/cannot-remove-final-join-condition)
+                                               ;; remove the dangling join
+                                               (remove-join q (second path) join)
+                                               (throw e))))))
+                                     query
+                                     error-paths))
+                      (if explanation
+                        ;; there is an error we cannot fix, fall back to old way,
+                        ;; i.e., remove all dependent parts
+                        (remove-replace* unmodified-query stage-number target :replace replacement)
+                        query))))]
+      (if (and (= :joins (first location))
+               (= :conditions (last location)))
+        (let [join-loc (pop location)
+              join-idx (peek join-loc)
+              join (get (lib.join/joins query stage-number) join-idx)
+              old-join (get (lib.join/joins unmodified-query stage-number) join-idx)
+              new-name (lib.join/default-alias query stage-number (dissoc join :alias))]
+          (if (and (not= new-name (:alias join))
+                   (conditions-changed-for-aliases? (:alias join) (:conditions join)
+                                                    (:alias old-join) (:conditions old-join)))
+            (rename-join query stage-number join new-name)
+            query))
+        query))))
 
 (declare replace-join)
 
@@ -551,7 +588,20 @@
      (remove-join query stage-number join-spec)
      (update-joins query stage-number join-spec (fn [joins join-alias]
                                                   (mapv #(if (= (:alias %) join-alias)
-                                                           new-join
+                                                           (let [should-rename? (or (conditions-changed-for-aliases?
+                                                                                      (:alias new-join)
+                                                                                      (:conditions new-join)
+                                                                                      (:alias %)
+                                                                                      (:conditions %))
+                                                                                  (not= (:source-table new-join)
+                                                                                        (:source-table %))
+                                                                                  (not= (:source-card new-join)
+                                                                                        (:source-card %)))]
+                                                             (cond-> new-join
+                                                               should-rename?
+                                                               ;; We need to remove so the default alias is used
+                                                               ;; when changing the join
+                                                               (dissoc :alias)))
                                                            %)
                                                         joins))))))
 

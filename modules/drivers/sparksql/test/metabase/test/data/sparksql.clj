@@ -2,8 +2,6 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
-   [metabase.config :as config]
-   [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
@@ -19,9 +17,6 @@
 (set! *warn-on-reflection* true)
 
 (sql-jdbc.tx/add-test-extensions! :sparksql)
-
-;; during unit tests don't treat Spark SQL as having FK support
-(defmethod driver/database-supports? [:sparksql :foreign-keys] [_driver _feature _db] (not config/is-test?))
 
 (defmethod tx/supports-time-type? :sparksql [_driver] false)
 (defmethod tx/supports-timestamptz-type? :sparksql [_driver] false)
