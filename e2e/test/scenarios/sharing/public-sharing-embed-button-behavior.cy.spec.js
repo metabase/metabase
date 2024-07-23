@@ -635,9 +635,10 @@ describe("#39152 sharing an unsaved question", () => {
 
             popover().findByText("Oswald").click();
 
-            if (resource === "question") {
-              modal().findByLabelText("Download data").click({ force: true });
-            }
+            cy.log(
+              "Assert that it sends `disabled: false` when downloads are disabled",
+            );
+            modal().findByLabelText("Download data").click({ force: true });
 
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
@@ -654,7 +655,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: false,
                 font: "custom",
                 theme: "night",
-                downloads: true,
+                downloads: false,
               },
             });
           });
