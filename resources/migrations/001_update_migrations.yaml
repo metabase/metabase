@@ -8421,7 +8421,7 @@ databaseChangeLog:
                   constraints:
                     nullable: false
 
- - changeSet:
+  - changeSet:
       id: v51.2024-07-22T15:49:38
       author: escherize
       comment: Add columns to query execution for metabase embedding SDK analytics
