@@ -35,7 +35,10 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
+  // We are first loading databases to see if we should show the
+  // database selector or simply display the previously selected database
   cy.findAllByTestId("loading-indicator").should("not.exist");
+
   return focusNativeEditor().as(alias);
 }
 
