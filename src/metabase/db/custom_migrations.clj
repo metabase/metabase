@@ -1492,22 +1492,19 @@
                            key)))))
 
 (define-migration MigrateLegacyFieldRefBasedColumnSettingKeys
-  (let [update! (fn [{:keys [id visualization_settings]}]
-                  (t2/query-one {:update :report_card
-                                 :set    {:visualization_settings visualization_settings}
-                                 :where  [:= :id id]}))]
-    (run! update! (eduction (keep (fn [{:keys [id visualization_settings result_metadata]}]
-                                    (let [parsed-viz-settings  (json-out visualization_settings false)
-                                          parsed-result-metadata (json-out result_metadata true)
-                                          updated-viz-settings (update-legacy-column-setting-keys parsed-viz-settings
-                                                                                                  parsed-result-metadata)]
-                                      (when (not= parsed-viz-settings updated-viz-settings)
-                                        {:id                     id
-                                         :visualization_settings (json-in updated-viz-settings)}))))
-                            (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
-                                                 :from   [:report_card]
-                                                 :where  [:and [:not= :result_metadata nil]
-                                                               [:like :visualization_settings "%column_settings%"]
-                                                               [:or [:like :visualization_settings "%ref\\\\\"%"]
-                                                                    ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                                    [:like :visualization_settings "%ref\\\\\\\"%"]]]})))))
+  (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
+                      (let [parsed-viz-settings    (json-out visualization_settings false)
+                            parsed-result-metadata (json-out result_metadata true)
+                            updated-viz-settings   (update-legacy-column-setting-keys parsed-viz-settings
+                                                                                      parsed-result-metadata)]
+                        (when (not= parsed-viz-settings updated-viz-settings)
+                          (t2/query-one {:update :report_card
+                                         :set    {:visualization_settings (json-in updated-viz-settings)}
+                                         :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
+                                           :from   [:report_card]
+                                           :where  [:and [:not= :result_metadata nil]
+                                                    [:like :visualization_settings "%column_settings%"]
+                                                    [:or [:like :visualization_settings "%ref\\\\\"%"]
+                                                     ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+                                                     [:like :visualization_settings "%ref\\\\\\\"%"]]]}))))
