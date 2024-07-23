@@ -540,7 +540,7 @@ describeEE("issue 24223", () => {
 
     sendEmailAndVisitIt();
     cy.get("table.header")
-      .should("contain", containsFilter.title)
+      .should("contain", containsFilter.name)
       .and("contain", "Awesome")
       .and("not.contain", dropdownFilter.name)
       .and("not.contain", "Doohickey");
