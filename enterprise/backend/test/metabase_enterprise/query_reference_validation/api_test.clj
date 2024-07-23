@@ -175,7 +175,7 @@
                  :name "D"}]))))
   (testing "It requires the premium feature"
     (mt/with-premium-features #{}
-      (is (= (str "Query Field Validation is a paid feature not currently available to your instance. Please upgrade to"
+      (is (= (str "Query Reference Validation is a paid feature not currently available to your instance. Please upgrade to"
                   " use it. Learn more at metabase.com/upgrade/")
              (mt/user-http-request :crowberto :get 402 url))))))
 
