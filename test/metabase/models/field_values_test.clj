@@ -31,6 +31,7 @@
     :type/Structured
     :type/Collection
     :type/OracleCLOB
+    :type/SnowflakeVariant
     :type/DruidHyperUnique
     :type/TimeWithTZ
     :type/TimeWithLocalTZ
