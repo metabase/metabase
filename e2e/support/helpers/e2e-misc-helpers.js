@@ -43,11 +43,13 @@ export function openNativeEditor({
 }
 
 export function focusNativeEditor() {
-  return cy
-    .findByTestId("native-query-editor")
+  cy.findByTestId("native-query-editor")
     .should("be.visible")
     .should("have.class", "ace_editor")
-    .click()
+    .click();
+
+  return cy
+    .findByTestId("native-query-editor")
     .should("have.class", "ace_focus");
 }
 
