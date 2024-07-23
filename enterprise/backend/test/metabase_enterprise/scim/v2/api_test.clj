@@ -138,6 +138,47 @@
         (is (= (get response :schemas) ["urn:ietf:params:scim:api:messages:2.0:Error"]))
         (is (= (get response :detail) "Email address is already in use"))))))
 
+(deftest update-user-test
+  (with-scim-setup!
+    (mt/with-temp [:model/User user {:email "testuser@metabase.com"
+                                     :first_name "Test"
+                                     :last_name "User"
+                                     :is_active true}]
+      (let [entity-id (t2/select-one-fn :entity_id :model/User :id (:id user))]
+        (testing "Update an existing user successfully"
+          (let [update-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                             :id entity-id
+                             :userName "testuser@metabase.com"
+                             :name {:givenName "UpdatedTest" :familyName "UpdatedUser"}
+                             :emails [{:value "testuser@metabase.com"}]
+                             :active true}
+                response    (scim-client :put 200 (format "ee/scim/v2/Users/%s" entity-id) update-user)]
+            (is (malli= scim-api/SCIMUser response))
+            (is (= "UpdatedTest" (get-in response [:name :givenName])))
+            (is (= "UpdatedUser" (get-in response [:name :familyName]))))
+
+          (testing "Error when trying to update the email of an existing user"
+            (let [update-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                               :id entity-id
+                               :userName "updatedtestuser@metabase.com"
+                               :name {:givenName "Test" :familyName "User"}
+                               :emails [{:value "updatedtestuser@metabase.com"}]
+                               :active true}
+                  response    (scim-client :put 400 (format "ee/scim/v2/Users/%s" entity-id) update-user)]
+              (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
+              (is (= "You may not update the email of an existing user." (get response :detail)))))
+
+          (testing "Error when trying to update a non-existent user"
+            (let [update-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                               :id (str (random-uuid))
+                               :userName "nonexistent@metabase.com"
+                               :name {:givenName "Nonexistent" :familyName "User"}
+                               :emails [{:value "nonexistent@metabase.com"}]
+                               :active true}
+                  response    (scim-client :put 404 (format "ee/scim/v2/Users/%s" (random-uuid)) update-user)]
+              (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
+              (is (= "User not found" (get response :detail))))))))))
+
 (deftest list-groups-test
   (with-scim-setup!
     (mt/with-temp [:model/PermissionsGroup _group1 {:name "Group 1"}]

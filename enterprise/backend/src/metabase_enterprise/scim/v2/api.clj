@@ -189,7 +189,7 @@
   [:as {scim-user :body {id :id} :params}]
   {scim-user SCIMUser}
   (let [updates      (scim-user->mb scim-user)
-        email        (:email scim-user)
+        email        (-> scim-user :emails first :value)
         current-user (get-user-by-entity-id id)]
     (if (not= email (:email current-user))
       (throw-scim-error 400 "You may not update the email of an existing user.")
