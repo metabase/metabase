@@ -8411,7 +8411,7 @@ databaseChangeLog:
               columnName: last_viewed_at
       changes:
         - addColumn:
-            tableName: report_dashboar
+            tableName: report_dashboard
             columns:
               - column:
                   name: last_viewed_at
