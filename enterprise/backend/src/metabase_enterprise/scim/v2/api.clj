@@ -49,6 +49,16 @@
    [:itemsPerPage ms/IntGreaterThanOrEqualToZero]
    [:Resources [:sequential SCIMUser]]])
 
+(def UserPatch
+  "Malli schema for a user patch operation"
+  [:map
+   [:schemas [:sequential ms/NonBlankString]]
+   [:Operations
+    [:sequential [:map
+                  [:op ms/NonBlankString]
+                  [:value [:map
+                           [:active ms/BooleanValue]]]]]]])
+
 (def SCIMGroup
   "Malli schema for a SCIM group."
   [:map
@@ -76,11 +86,19 @@
 ;;; |                                               User operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- throw-scim-error
+  [status message]
+  (throw (ex-info message
+                  {:schemas     [error-schema-uri]
+                   :detail      message
+                   :status      status
+                   :status-code status})))
+
 (def ^:private user-cols
   "Required columns when fetching users for SCIM."
   [:id :first_name :last_name :email :locale :is_active :entity_id])
 
-(mu/defn mb-user->scim :- SCIMUser
+(mu/defn ^:private mb-user->scim :- SCIMUser
   "Given a Metabase user, returns a SCIM user."
   [user]
   {:schemas  [user-schema-uri]
@@ -92,7 +110,7 @@
    :active   (:is_active user)
    :meta     {:resourceType "User"}})
 
-(mu/defn scim-user->mb :- user/NewUser
+(mu/defn ^:private scim-user->mb :- user/NewUser
   "Given a SCIM user, returns a Metabase user."
   [user]
   (let [{email :userName name-obj :name locale :locale is-active? :active} user
@@ -105,13 +123,19 @@
       :type       :personal}
      (when locale {:locale locale}))))
 
-(defn- user-filter-clause
+(mu/defn ^:private get-user-by-entity-id
+  "Fetches a user by entity ID, or throws a 404"
+  [entity-id]
+  (or (t2/select-one :model/User :entity_id entity-id
+                     {:where [:= :type "personal"]})
+      (throw-scim-error 404 "User not found")))
+
+(defn- ^:private user-filter-clause
   [filter-parameter]
   (let [[_ match] (re-matches #"^userName eq \"(.*)\"$" filter-parameter)]
     (if match
       [:= :%lower.email (u/lower-case-en match)]
-      (throw (ex-info "Unsupported filter parameter" {:filter      filter-parameter
-                                                      :status-code 400})))))
+      (throw-scim-error 400 (format "Unsupported filter parameter: %s" filter-parameter)))))
 
 (defendpoint GET "/Users"
   "Fetch a list of users."
@@ -141,16 +165,8 @@
   "Fetch a single user."
   [id]
   {id ms/NonBlankString}
-  (if-let [user (t2/select-one (cons :model/User user-cols)
-                               :entity_id id
-                               {:where [:= :type "personal"]})]
-    (-> user
-        mb-user->scim)
-    (throw (ex-info "User not found"
-                    {:schemas     [error-schema-uri]
-                     :detail      "User not found"
-                     :status      404
-                     :status-code 404}))))
+  (-> (get-user-by-entity-id id)
+      mb-user->scim))
 
 (defendpoint POST "/Users"
   "Create a single user."
@@ -159,10 +175,7 @@
   (let [mb-user (scim-user->mb scim-user)
         email   (:email mb-user)]
     (when (t2/exists? :model/User :%lower.email (u/lower-case-en email))
-      (throw (ex-info "Email address is already in use"
-                      {:schemas     [error-schema-uri]
-                       :detail      "Email address is already in use"
-                       :status-code 409})))
+      (throw-scim-error 409 "Email address is already in use"))
     (let [new-user (t2/with-transaction [_]
                      (user/insert-new-user! mb-user)
                      (-> (t2/select-one (cons :model/User user-cols)
@@ -177,19 +190,9 @@
   {scim-user SCIMUser}
   (let [updates      (scim-user->mb scim-user)
         email        (:email scim-user)
-        current-user (t2/select-one :model/User :entity_id id)]
-    (when-not current-user
-      (throw (ex-info "User not found"
-                          {:schemas     [error-schema-uri]
-                           :detail      "User not found"
-                           :status      404
-                           :status-code 404})))
+        current-user (get-user-by-entity-id id)]
     (if (not= email (:email current-user))
-      (throw (ex-info "You may not update the email of an existing user."
-                      {:schemas     [error-schema-uri]
-                       :detail      "You may not update the email of an existing user."
-                       :status      400
-                       :status-code 400}))
+      (throw-scim-error 400 "You may not update the email of an existing user.")
       (try
        (t2/with-transaction [_conn]
          (t2/update! :model/User (u/the-id current-user) updates)
@@ -206,27 +209,32 @@
                             :status      400
                             :status-code 400}))))))))
 
-#_(defendpoint PATCH "/Users/:id"
-    "Activate or deactivate a user."
-    [id]
-    {id ms/NonBlankString}
-    (if-let [user (t2/select-one (cons :model/User user-cols)
-                                 :entity_id id
-                                 {:where [:= :type "personal"]})]
-      (-> user
-          mb-user->scim))
-    (throw (ex-info "User not found"
-                    {:schemas     [error-schema-uri]
-                     :detail      "User not found"
-                     :status      404
-                     :status-code 404})))
+(defn- active-status
+  [patch-op]
+  (let [operation (-> patch-op :Operations first)
+        op        (:op operation)
+        value     (:value operation)]
+    (if-not (and (= op "replace")
+                 (= (keys value) [:active]))
+      (throw-scim-error 400 "Unsupported PATCH operation")
+      (get value :active))))
 
+(defendpoint PATCH "/Users/:id"
+  "Activate or deactivate a user. Arbitrary patch requests are not currently supported, only activation/deactivation."
+  [:as {patch-op :body {id :id} :params}]
+  {patch-op UserPatch}
+  {id ms/NonBlankString}
+  (let [active? (active-status patch-op)
+        user    (get-user-by-entity-id id)]
+    (t2/update! :model/User :is_active active?)
+    (-> user
+        mb-user->scim)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Group operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn mb-group->scim :- SCIMGroup
+(mu/defn ^:private mb-group->scim :- SCIMGroup
   "Given a Metabase permissions group, returns a SCIM group."
   [group]
   {:schemas     [group-schema-uri]
