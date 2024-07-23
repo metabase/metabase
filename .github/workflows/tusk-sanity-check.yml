@@ -47,12 +47,17 @@ jobs:
       - name: Run lint-staged
         if: steps.changes.outputs.frontend_all == 'true'
         continue-on-error: true
-        run: npx lint-staged -d -v --diff=origin/${{ github.event.repository.default_branch }}
+        run: |
+          BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
+          npx lint-staged -d -v --diff="$BASE_COMMIT...HEAD"
 
       - name: Log Git reflog and .git folder contents
         run: |
-          echo "Git diff between origin/${{ github.event.repository.default_branch }} and current branch:"
-          git diff --name-status origin/${{ github.event.repository.default_branch }}..HEAD
+          BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
+          echo "BASE_COMMIT: $BASE_COMMIT"
+          echo "CURRENT_COMMIT: $(git rev-parse HEAD)"
+          echo "DIFF: $BASE_COMMIT...HEAD"
+          echo "DIFF_SHORT: $(git diff --name-status $BASE_COMMIT...HEAD)"
 
           echo "\nDetailed Git diff (first 500 lines):"
           git diff origin/${{ github.event.repository.default_branch }}..HEAD | head -n 500
