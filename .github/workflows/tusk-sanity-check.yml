@@ -47,11 +47,16 @@ jobs:
       - name: Run lint-staged
         if: steps.changes.outputs.frontend_all == 'true'
         continue-on-error: true
-        run: npx lint-staged
-        # run: npx lint-staged -v --diff=origin/${{ github.event.repository.default_branch }}
+        run: npx lint-staged -d -v --diff=origin/${{ github.event.repository.default_branch }}
 
       - name: Log Git reflog and .git folder contents
         run: |
+          echo "Git diff between origin/${{ github.event.repository.default_branch }} and current branch:"
+          git diff --name-status origin/${{ github.event.repository.default_branch }}..HEAD
+
+          echo "\nDetailed Git diff (first 500 lines):"
+          git diff origin/${{ github.event.repository.default_branch }}..HEAD | head -n 500
+
           echo "Git reflog (last 20 entries):"
           git reflog -n 20
 
