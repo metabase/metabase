@@ -1,4 +1,4 @@
-(ns metabase-enterprise.query-field-validation.api
+(ns metabase-enterprise.query-reference-validation.api
   (:require
    [compojure.core :refer [GET]]
    [medley.core :as m]
