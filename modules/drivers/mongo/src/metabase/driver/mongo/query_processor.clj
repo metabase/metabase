@@ -186,9 +186,15 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
+(defn- scope-with-join-field
+  "Adjust `field-name` for fields coming from joins. For use in `->[lr]value` for `:field` and `:metadata/column`."
+  [field-name join-field source-alias]
+  (cond->> (or source-alias field-name)
+    join-field (str join-field \.)))
+
 (defmethod ->lvalue :metadata/column
-  [field]
-  (field->name field))
+  [{::keys [join-field source-alias] :as field}]
+  (scope-with-join-field (field->name field) join-field source-alias))
 
 (defmethod ->lvalue :expression
   [[_ expression-name {::add/keys [desired-alias]}]]
@@ -204,8 +210,7 @@
 
 (defmethod ->rvalue :metadata/column
   [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
-  (let [field-name (str \$ (cond->> (or source-alias (field->name field))
-                             join-field (str join-field \.)))]
+  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
     (cond
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
@@ -249,11 +254,13 @@
   (annotate/aggregation-name (:query *query*) (mbql.u/aggregation-at-index *query* index *nesting-level*)))
 
 (defmethod ->lvalue :field
-  [[_ id-or-name _props :as field]]
+  [[_ id-or-name {:keys [join-alias] ::add/keys [source-alias]} :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
-        (->lvalue (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
-    (name id-or-name)))
+        (->lvalue (assoc (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+                         ::source-alias source-alias
+                         ::join-field (get-join-alias join-alias))))
+    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) source-alias)))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -380,8 +387,7 @@
                                  ::join-field join-field)))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
-                (str \$ (cond->> (or source-alias (name id-or-name))
-                          join-field (str join-field \.)))))
+                (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))
       temporal-unit (with-rvalue-temporal-bucketing temporal-unit))))
 
 ;; Values clauses below; they only need to implement `->rvalue`

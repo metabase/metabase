@@ -117,7 +117,7 @@ const DashboardInfoSidebarBody = ({
   const canWrite = dashboard.can_write && !dashboard.archived;
   const isCacheable = isDashboardCacheable(dashboard);
 
-  const showCaching = canWrite && PLUGIN_CACHING.isEnabled();
+  const showCaching = canWrite && PLUGIN_CACHING.isGranularCachingEnabled();
 
   return (
     <>

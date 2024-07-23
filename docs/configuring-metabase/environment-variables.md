@@ -1073,20 +1073,6 @@ Default: `8640000`
 
 The absolute maximum time to keep any cached query results, in seconds. The default value is 100 days in seconds.
 
-### `MB_QUERY_CACHING_MIN_TTL`
-
-Type: integer<br>
-Default: `60`
-
-Metabase will cache all saved questions with an average query execution time longer than this many seconds.
-
-### `MB_QUERY_CACHING_TTL_RATIO`
-
-Type: integer<br>
-Default: `10`
-
-To determine how long each saved question's cached result should stick around, we take the query's average execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes.
-
 ### `MB_REDIRECT_ALL_REQUESTS_TO_HTTPS`
 
 Type: boolean<br>

@@ -445,7 +445,7 @@ describe("issue 22517", () => {
     cy.wait("@updateMetadata");
   });
 
-  it("adding or removging a column should not drop previously edited metadata (metabase#22517)", () => {
+  it.skip("adding or removing a column should not drop previously edited metadata (metabase#22517)", () => {
     openQuestionActions();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();

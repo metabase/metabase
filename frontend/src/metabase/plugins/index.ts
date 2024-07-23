@@ -353,10 +353,7 @@ export type SidebarCacheFormProps = {
 } & GroupProps;
 
 export const PLUGIN_CACHING = {
-  cacheTTLFormField: null as any,
-  dashboardCacheTTLFormField: null,
-  questionCacheTTLFormField: null,
-  getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
+  isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
   DashboardStrategySidebar: PluginPlaceholder as any,
@@ -365,7 +362,6 @@ export const PLUGIN_CACHING = {
   SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
-  isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
   strategies: strategies,

@@ -1,7 +1,6 @@
 import * as TippyReact from "@tippyjs/react";
 import cx from "classnames";
 import { merge } from "icepick";
-import PropTypes from "prop-types";
 import { useState, useMemo, useCallback } from "react";
 import type * as tippy from "tippy.js";
 
@@ -29,12 +28,6 @@ export interface ITippyPopoverProps extends TippyProps {
 }
 
 const OFFSET: [number, number] = [0, 5];
-
-const propTypes = {
-  disablContentSandbox: PropTypes.bool,
-  lazy: PropTypes.bool,
-  ...TippyComponent.propTypes,
-};
 
 function appendTo() {
   return (
@@ -166,8 +159,6 @@ function TippyPopover({
     />
   );
 }
-
-TippyPopover.propTypes = propTypes;
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TippyPopover;

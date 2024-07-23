@@ -4,12 +4,25 @@ import { isValidElement } from "react";
 import type { SelectProps } from "metabase/ui";
 import { Box, Group } from "metabase/ui";
 
-const placeholderRegex = /^\{([0-9])+\}$/;
+const placeholderRegex = /^\{(\d)+\}$/;
+
+// https://regexr.com/83e7f
+// Splitting on this regex includes the placeholders in the resulting array
+const regexForSplittingOnPlaceholders = /(\{\d+\})/;
+
+/** Takes a translated string containing placeholders and returns a JSX expression containing components substituted in for the placeholders */
 export const addScheduleComponents = (
+  /** A translated string containing placeholders, such as:
+   * - "{0} {1} on {2} at {3}"
+   * - "{0} {1} {2} à {3}" (a French example)
+   * - "{1} {2} um {3} {0}" (a German example)
+   */
   str: string,
   components: ReactNode[],
 ): ReactNode => {
-  const segments = str.split(/(?=\{)|(?<=\})/g).filter(part => part.trim());
+  const segments = str
+    .split(regexForSplittingOnPlaceholders)
+    .filter(part => part.trim());
   const arr = segments.map(segment => {
     const match = segment.match(placeholderRegex);
     return match ? components[parseInt(match[1])] : segment;
@@ -52,7 +65,9 @@ const addBlanks = (arr: ReactNode[]) => {
     // Insert blank nodes between adjacent Selects unless they can fit on one line
     if (isValidElement(curr) && isValidElement(next)) {
       const canSelectsProbablyFitOnOneLine =
-        curr.props.longestLabel.length + next.props.longestLabel.length < 24;
+        (curr.props.longestLabel?.length || 5) +
+          (next.props.longestLabel?.length || 5) <
+        24;
       if (canSelectsProbablyFitOnOneLine) {
         result[result.length - 1] = (
           <Group spacing="xs" key={`selects-on-one-line`}>

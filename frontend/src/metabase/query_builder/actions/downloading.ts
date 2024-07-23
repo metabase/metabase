@@ -76,7 +76,8 @@ const getDatasetParams = ({
   visualizationSettings,
 }: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
-  const isQuestionInStaticEmbedDashboard = dashcardId != null && token != null;
+  const isQuestionInStaticEmbedDashboard =
+    dashcardId != null && cardId != null && token != null;
 
   // Formatting is always enabled for Excel
   const format_rows = enableFormatting && type !== "xlsx" ? "true" : "false";
@@ -89,7 +90,8 @@ const getDatasetParams = ({
     };
   }
 
-  const isQuestionInPublicDashboard = dashboardId != null && uuid != null;
+  const isQuestionInPublicDashboard =
+    dashboardId != null && cardId != null && uuid != null;
   if (isQuestionInPublicDashboard) {
     return {
       method: "POST",
@@ -101,7 +103,8 @@ const getDatasetParams = ({
     };
   }
 
-  const isDashboard = dashboardId != null && dashcardId != null;
+  const isDashboard =
+    dashboardId != null && dashcardId != null && cardId != null;
   if (isDashboard) {
     return {
       method: "POST",

@@ -649,7 +649,7 @@
                   :name                (:name card)
                   :collection_position nil
                   :collection_preview  true
-                  :database_id         nil
+                  :database_id         (mt/id)
                   :display             "table"
                   :description         nil
                   :entity_id           (:entity_id card)
@@ -690,7 +690,7 @@
                                                            :collection_id (u/the-id collection)}
                                Card       {card-id-2 :id} {:collection_id (u/the-id collection)}]
         (is (= #{{:id card-id-1 :database_id (mt/id)}
-                 {:id card-id-2 :database_id nil}}
+                 {:id card-id-2 :database_id (mt/id)}}
                (->> (:data (mt/user-http-request :crowberto :get 200
                                                  (str "collection/" (u/the-id collection) "/items")))
                     (map #(select-keys % [:id :database_id]))
