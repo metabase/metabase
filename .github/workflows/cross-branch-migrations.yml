@@ -11,12 +11,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # test-migrations:
-  #   name: Test backwards-compatability of migrations
-  #   runs-on: ubuntu-22.04
-  #   timeout-minutes: 15
-
-
   migrations-mysql-8-0-ee:
     runs-on: ubuntu-22.04
     timeout-minutes: 90
@@ -39,6 +33,8 @@ jobs:
           ref: master
       - name: Prepare backend environment
         uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: cross-branch-migrations
       - name: Run backend on master
         run: clojure -M:run:ee & echo $! > metabase_pid
       - name: Wait for Metabase to start
