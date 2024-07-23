@@ -17,5 +17,5 @@ export const SelectDropdown = forwardRef(function SelectDropdown(
     return () => removeCloseHandler();
   }, [setupCloseHandler, removeCloseHandler]);
 
-  return <div ref={ref} {...props} />;
+  return <div data-testid="select-dropdown" ref={ref} {...props} />;
 });
