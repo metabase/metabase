@@ -1,4 +1,8 @@
 (ns metabase.query-analysis
+  "This module handles the analysis of queries, which determines their data dependencies.
+  It also is used to audit these dependencies for issues - for example, making use of column that no longer exists.
+  Analysis is typically performed on a background worker thread, and the [[analyze-async!]] method is used to add cards
+  to the corresponding queue."
   (:require
    [clojure.set :as set]
    [medley.core :as m]
@@ -17,9 +21,13 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private realtime-queue-capacity 1000)
+(def ^:private realtime-queue-capacity
+  "The maximum number of cards which can be queued for async analysis. When exceeded, additional cards will be dropped."
+  1000)
 
-(def ^:private worker-queue (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? false}))
+(def ^:private worker-queue
+  "The in-memory queue used to throttle analysis and reduce the chance of race conditions."
+  (queue/bounded-transfer-queue realtime-queue-capacity {:dedupe? false}))
 
 (def ^:dynamic *analyze-execution-in-dev?*
   "Managing a background thread in the REPL is likely to confound and infuriate, especially when we're using it to run
@@ -34,6 +42,7 @@
 (defmacro with-execution*
   "Override the default execution mode, except in prod."
   [execution & body]
+  (assert (not (config/is-prod?)))
   `(binding [*analyze-execution-in-dev?*  ~execution
              *analyze-execution-in-test?* ~execution]
      ~@body))
@@ -53,12 +62,13 @@
   [& body]
   `(with-execution* ::disabled ~@body))
 
-(defn- execution []
+(defn- execution
+  "The execution strategy for analysis, which can be overridden in dev and tests. In production, it is always async."
+  []
   (case config/run-mode
     :prod ::queued
     :dev  *analyze-execution-in-dev?*
     :test *analyze-execution-in-test?*))
-
 
 (defn enabled-type?
   "Is analysis of the given query type enabled?"
@@ -103,6 +113,7 @@
       (query-field/update-query-fields-for-card! card-id query-field-rows))))
 
 (defn- replaced-inner-query-for-native-card
+  "Substitute new references for certain fields and tables, based upon the given mappings."
   [query {:keys [fields tables] :as _replacement-ids}]
   (let [keyvals-set         #(set/union (set (keys %))
                                         (set (vals %)))
@@ -153,14 +164,14 @@
                     {:card card :replacements replacements}))))
 
 (defn ->analyzable
-  "Ensure that we have all the fields required for analysis."
+  "Given a partial card or its id, ensure that we have all the fields required for analysis."
   [card-or-id]
   (if (and (map? card-or-id) (every? (partial contains? card-or-id) [:id :archived :dataset_query]))
     card-or-id
     (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
 
 (defn analyze-card!
-  "Update the analysis for the given card if it is active."
+  "Update the analysis for a given card if it is active. Should only be called from [[metabase.task.analyze-queries]]."
   [card-or-id]
   (let [card    (->analyzable card-or-id)
         card-id (:id card)]
@@ -172,7 +183,8 @@
         (update-query-analysis-for-card! card))))
 
 (defn next-card-id!
-  "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer."
+  "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer.
+  Should only be called from [[metabase.task.analyze-queries]]."
   ([]
    (next-card-id! worker-queue))
   ([queue]
@@ -180,14 +192,16 @@
   ([queue timeout]
    (queue/blocking-take! queue timeout)))
 
-(defn- queue-or-analyze! [offer-fn! card-or-id]
+(defn- queue-or-analyze!
+  "Indirection used to modify the execution strategy for analysis in dev and tests."
+  [offer-fn! card-or-id]
   (case (execution)
     ::immediate (analyze-card! (u/the-id card-or-id))
     ::queued    (offer-fn! (u/the-id card-or-id))
     ::disabled  nil))
 
 (defn analyze-async!
-  "Asynchronously hand-off the given card for analysis, at a high priority."
+  "Asynchronously hand-off the given card for analysis, at a high priority. This is typically the method you want."
   ([card-or-id]
    (analyze-async! worker-queue card-or-id))
   ([queue card-or-id]
