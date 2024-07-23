@@ -1,4 +1,4 @@
-INSERT INTO data_permissions_asdf (group_id, perm_type, db_id, perm_value)
+INSERT INTO data_permissions (group_id, perm_type, db_id, perm_value)
 SELECT pg.id AS group_id,
        'perms/create-queries' AS perm_type,
        md.id AS db_id,
