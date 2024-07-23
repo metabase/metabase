@@ -1465,3 +1465,47 @@
     (run! decrypt! ["query-caching-ttl-ratio"
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
+
+(defn- column-setting-name-key [name]
+  (json/generate-string [:name name]))
+
+(defn- column-setting-field-ref-key [field-ref]
+  (json/generate-string [:ref field-ref]))
+
+(defn- column-setting-legacy-key [{name :name field-ref :field_ref}]
+  (let [field-ref (or field-ref [:field, name, nil])
+        [ref-type field-id-or-name ref-options] field-ref
+        field-ref (if (and (#{:field :expression :aggregation} ref-type) ref-options)
+                    [ref-type field-id-or-name (dissoc ref-options :binning :temporal-unit)]
+                    field-ref)]
+    (if (or (and (= ref-type :field) (string? field-id-or-name))
+            (= ref-type :aggregation))
+      (column-setting-name-key name)
+      (column-setting-field-ref-key field-ref))))
+
+(defn- update-legacy-column-setting-keys [visualization_settings result_metadata]
+  (let [key->column (m/index-by column-setting-legacy-key result_metadata)]
+    (m/update-existing visualization_settings "column_settings" update-keys
+                       (fn [key]
+                         (if-let [column (get key->column key)]
+                           (column-setting-name-key (:name column))
+                           key)))))
+
+(define-migration MigrateLegacyFieldRefBasedColumnSettingKeys
+  (let [update! (fn [{:keys [id visualization_settings]}]
+                  (t2/query-one {:update :report_card
+                                 :set    {:visualization_settings visualization_settings}
+                                 :where  [:= :id id]}))]
+    (run! update! (eduction (keep (fn [{:keys [id visualization_settings result_metadata]}]
+                                    (let [parsed  (json/parse-string visualization_settings)
+                                          updated (update-legacy-column-setting-keys parsed result_metadata)]
+                                      (when (not= parsed updated)
+                                        {:id                     id
+                                         :visualization_settings (json/generate-string updated)}))))
+                            (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
+                                                 :from   [:report_card]
+                                                 :where  [:and [:not= :result_metadata nil]
+                                                               [:like :visualization_settings "%column_settings%"]
+                                                               [:or [:like :visualization_settings "%ref\\\\\"%"]
+                                                                    ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
+                                                                    [:like :visualization_settings "%ref\\\\\\\"%"]]]})))))
