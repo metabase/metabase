@@ -1,5 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
   createNativeQuestion,
@@ -41,6 +44,7 @@ import {
   assertQueryBuilderRowCount,
   navigationSidebar,
   newButton,
+  tableInteractive,
 } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
@@ -678,6 +682,37 @@ describe("issue 39749", () => {
     cy.findByLabelText("Description").should("have.text", "A");
     tableHeaderClick("Sum of Total");
     cy.findByLabelText("Description").should("have.text", "B");
+  });
+});
+
+describe("issue 45924", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should preserve model metadata when re-running the query (metabase#45924)", () => {
+    visitModel(ORDERS_QUESTION_ID);
+    cy.wait("@dataset");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("ID");
+    cy.findByLabelText("Display name").clear().type("ID1");
+    cy.findByTestId("dataset-edit-bar").findByText("Query").click();
+    cy.findByTestId("action-buttons").button("Sort").click();
+    popover().findByText("ID").click();
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    tableHeaderClick("ID1");
+    cy.findByLabelText("Display name").should("have.value", "ID1");
+    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+    cy.wait("@updateCard");
+    cy.wait("@dataset");
+    tableInteractive().findByText("ID1").should("be.visible");
   });
 });
 
