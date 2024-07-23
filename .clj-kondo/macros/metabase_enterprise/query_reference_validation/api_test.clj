@@ -1,4 +1,4 @@
-(ns macros.metabase-enterprise.query-field-validation.api-test
+(ns macros.metabase-enterprise.query-reference-validation.api-test
   (:require [macros.common]))
 
 (defmacro with-test-setup [& body]
