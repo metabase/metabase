@@ -19,9 +19,11 @@ import {
   createNativeQuestion,
   queryBuilderMain,
   queryBuilderFooter,
+  resyncDatabase,
+  withDatabase,
 } from "e2e/support/helpers";
 
-const { PRODUCTS, PRODUCTS_ID, INVOICES } = SAMPLE_DATABASE;
+const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
 describe.skip("issue 15860", () => {
   const q1IdFilter = {
@@ -504,33 +506,47 @@ describe("issues 20845, 25031", () => {
 // - Add tests for disabled, editable and locked parameters in both cases
 // BONUS: Ideally add tests for email subscriptions with the filter applied
 describe("issue 27643", () => {
+  const PG_DB_ID = 2;
   const TEMPLATE_TAG_NAME = "expected_invoice";
-  const QUESTION_DETAILS = {
-    name: "27643",
-    native: {
-      query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
-      "template-tags": {
-        [TEMPLATE_TAG_NAME]: {
-          id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
-          dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
-          name: TEMPLATE_TAG_NAME,
-          "display-name": "Expected Invoice",
-          type: "dimension",
-          "widget-type": "string/=",
+  const getQuestionDetails = fieldId => {
+    return {
+      name: "27643",
+      database: PG_DB_ID,
+      native: {
+        query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
+        "template-tags": {
+          [TEMPLATE_TAG_NAME]: {
+            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+            dimension: ["field", fieldId, null],
+            name: TEMPLATE_TAG_NAME,
+            "display-name": "Expected Invoice",
+            type: "dimension",
+            "widget-type": "string/=",
+          },
         },
       },
-    },
-    enable_embedding: true,
-    embedding_params: {
-      [TEMPLATE_TAG_NAME]: "enabled",
-    },
+      enable_embedding: true,
+      embedding_params: {
+        [TEMPLATE_TAG_NAME]: "enabled",
+      },
+    };
   };
+
+  beforeEach(() => {
+    restore("postgres-12");
+    cy.signInAsAdmin();
+    resyncDatabase({
+      dbId: PG_DB_ID,
+    });
+    withDatabase(PG_DB_ID, ({ INVOICES }) => {
+      cy.wrap(INVOICES.EXPECTED_INVOICE).as(
+        "postgresInvoicesExpectedInvoiceId",
+      );
+    });
+  });
 
   describe("dashboards", () => {
     beforeEach(() => {
-      restore("setup");
-      cy.signInAsAdmin();
-
       const dashboardParameter = {
         id: "2850aeab",
         name: "Text filter for boolean field",
@@ -547,33 +563,37 @@ describe("issue 27643", () => {
         parameters: [dashboardParameter],
       };
 
-      cy.createNativeQuestionAndDashboard({
-        questionDetails: QUESTION_DETAILS,
-        dashboardDetails,
-      }).then(({ body: dashboardCard }) => {
-        const { card_id, dashboard_id } = dashboardCard;
+      cy.get("@postgresInvoicesExpectedInvoiceId")
+        .then(fieldId => {
+          cy.createNativeQuestionAndDashboard({
+            questionDetails: getQuestionDetails(fieldId),
+            dashboardDetails,
+          });
+        })
+        .then(({ body: dashboardCard }) => {
+          const { card_id, dashboard_id } = dashboardCard;
 
-        cy.wrap(dashboard_id).as("dashboardId");
-        cy.wrap(card_id).as("questionId");
+          cy.wrap(dashboard_id).as("dashboardId");
+          cy.wrap(card_id).as("questionId");
 
-        const mapFilterToCard = {
-          parameter_mappings: [
-            {
-              parameter_id: dashboardParameter.id,
-              card_id,
-              target: ["dimension", ["template-tag", TEMPLATE_TAG_NAME]],
+          const mapFilterToCard = {
+            parameter_mappings: [
+              {
+                parameter_id: dashboardParameter.id,
+                card_id,
+                target: ["dimension", ["template-tag", TEMPLATE_TAG_NAME]],
+              },
+            ],
+          };
+
+          cy.editDashboardCard(dashboardCard, mapFilterToCard);
+
+          cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`).then(
+            ({ body: { uuid } }) => {
+              cy.wrap(uuid).as("dashboardPublicUuid");
             },
-          ],
-        };
-
-        cy.editDashboardCard(dashboardCard, mapFilterToCard);
-
-        cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`).then(
-          ({ body: { uuid } }) => {
-            cy.wrap(uuid).as("dashboardPublicUuid");
-          },
-        );
-      });
+          );
+        });
     });
 
     it("should allow a dashboard filter to map to a boolean field filter parameter in static embedding (metabase#27643)", () => {
@@ -608,12 +628,11 @@ describe("issue 27643", () => {
 
   describe("questions", () => {
     beforeEach(() => {
-      restore("setup");
-      cy.signInAsAdmin();
-
-      createNativeQuestion(QUESTION_DETAILS, {
-        wrapId: true,
-        idAlias: "questionId",
+      cy.get("@postgresInvoicesExpectedInvoiceId").then(fieldId => {
+        createNativeQuestion(getQuestionDetails(fieldId), {
+          wrapId: true,
+          idAlias: "questionId",
+        });
       });
 
       cy.get("@questionId").then(questionId => {
