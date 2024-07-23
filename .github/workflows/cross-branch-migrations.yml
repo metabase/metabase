@@ -6,6 +6,10 @@ on:
     paths:
       - "resources/migrations/**"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
 jobs:
   # test-migrations:
   #   name: Test backwards-compatability of migrations
@@ -35,8 +39,16 @@ jobs:
           ref: master
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
-      - name: Run back-end
+      - name: Run back-end on master
         run: clojure -M:run:ee
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Run back-end on pull request branch
+        run: clojure -M:run:ee
+      - name: Wait for Metabase to start
+        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+
 
 
   # services:
