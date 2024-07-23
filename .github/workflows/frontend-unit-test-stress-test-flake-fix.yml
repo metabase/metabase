@@ -41,10 +41,10 @@ jobs:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      # - name: Prepare back-end environment
-      #   uses: ./.github/actions/prepare-backend
-      #   with:
-      #     m2-cache-key: "cljs"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
       - name: Build cljs
         run: yarn build:cljs
       - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
