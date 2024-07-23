@@ -1,13 +1,14 @@
 (ns metabase.auth-provider-test
   (:require
-    [cheshire.core :as json]
-    [clojure.test :refer [deftest is testing]]
-    [metabase.api.database :as api.database]
-    [metabase.auth-provider :as auth-provider]
-    [metabase.http-client :as client]
-    [metabase.sync :as sync]
-    [metabase.test :as mt]
-    [metabase.test.data.interface :as tx]))
+   [cheshire.core :as json]
+   [clojure.string :as str]
+   [clojure.test :refer [deftest is testing]]
+   [metabase.api.database :as api.database]
+   [metabase.auth-provider :as auth-provider]
+   [metabase.http-client :as client]
+   [metabase.sync :as sync]
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (defmethod auth-provider/fetch-auth ::test-me
   [_provider _db-id details]
@@ -46,6 +47,20 @@
            (auth-provider/fetch-and-incorporate-auth-provider-details
             (tx/driver)
             oauth-provider-details)))))
+
+(deftest azure-managed-identity-provider-tests
+  (let [client-id "client ID"
+        provider-details {:auth-provider :azure-managed-identity
+                          :azure-managed-identity-client-id client-id}
+        response-body {:access_token "foobar"}]
+    (with-redefs [auth-provider/fetch-as-json (fn [url _headers]
+                                                (is (str/includes? url client-id))
+                                                response-body)]
+      (is (= response-body (auth-provider/fetch-auth :azure-managed-identity nil provider-details)))
+      (is (= (merge provider-details {:password "foobar"})
+             (auth-provider/fetch-and-incorporate-auth-provider-details
+              (tx/driver)
+              provider-details))))))
 
 (deftest auth-integration-test
   (mt/test-drivers #{:postgres :mysql}
