@@ -21,7 +21,7 @@
     [:= :f.active false]]])
 
 (defn cards-with-reference-errors
-  "Given some HoneySQL querty map with :model/Card bound as :c, restrict this query to only return cards
+  "Given some HoneySQL query map with :model/Card bound as :c, restrict this query to only return cards
   with invalid references.
   For now this only handles inactive references, but in future it will also handle unknown references too."
   [card-query-map]
