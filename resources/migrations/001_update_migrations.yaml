@@ -7066,7 +7066,6 @@ databaseChangeLog:
               - column:
                   name: perm_value
 
-
   - changeSet:
       id: v50.2024-02-26T22:15:54
       author: noahmoss
@@ -8412,7 +8411,7 @@ databaseChangeLog:
               columnName: last_viewed_at
       changes:
         - addColumn:
-            tableName: report_dashboard
+            tableName: report_dashboar
             columns:
               - column:
                   name: last_viewed_at
