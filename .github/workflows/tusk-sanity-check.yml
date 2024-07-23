@@ -40,9 +40,16 @@ jobs:
           token: ${{ github.token }}
           filters: .github/file-paths.yaml
 
+      # Similar to .github/workflows/frontend.yml
       - name: Prepare front-end environment
         if: steps.changes.outputs.frontend_all == 'true'
         uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - run: yarn build-pure:cljs
+        name: Compile CLJS
 
       - name: Debug Git before running lint-staged
         run: |
@@ -64,7 +71,7 @@ jobs:
         continue-on-error: true
         run: |
           BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
-          npx lint-staged --shell -d -v --diff="$BASE_COMMIT...HEAD"
+          npx lint-staged --shell --no-stash -d -v --diff="$BASE_COMMIT...HEAD"
 
       - name: Debug Git after running lint-staged
         run: |
