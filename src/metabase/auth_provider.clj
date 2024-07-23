@@ -2,8 +2,7 @@
   (:require
    [cheshire.core :as json]
    [clj-http.client :as http]
-   [medley.core :as m]
-   [metabase.driver :as driver]))
+   [medley.core :as m]))
 
 (defmulti fetch-auth
   "Multimethod for auth-provider implementations.
@@ -19,7 +18,7 @@
 (defn- parse-http-headers [headers]
   (json/parse-string headers))
 
-(defn- fetch-as-json [url headers]
+(defn- ^:dynamic *fetch-as-json* [url headers]
   (let [headers (cond-> headers
                   (string? headers) parse-http-headers)
         response (http/get url (m/assoc-some {:as :json} :headers headers))]
@@ -27,30 +26,14 @@
 
 (defmethod fetch-auth :http
   [_ _database-id {:keys [http-auth-url http-auth-headers]}]
-  (fetch-as-json http-auth-url http-auth-headers))
+  (*fetch-as-json* http-auth-url http-auth-headers))
 
 (defmethod fetch-auth :oauth
   [_ _database-id {:keys [oauth-token-url oauth-token-headers]}]
-  (fetch-as-json oauth-token-url oauth-token-headers))
+  (*fetch-as-json* oauth-token-url oauth-token-headers))
 
 (defmethod fetch-auth :azure-managed-identity
   [_ _database-id {:keys [azure-managed-identity-client-id]}]
-  (fetch-as-json (str "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fossrdbms-aad.database.windows.net&client_id="
+  (*fetch-as-json* (str "http://169.254.169.254/metadata/identity/oauth2/token?api-version=2018-02-01&resource=https%3A%2F%2Fossrdbms-aad.database.windows.net&client_id="
                       azure-managed-identity-client-id)
                  {"Metadata" "true"}))
-
-(defn fetch-and-incorporate-auth-provider-details
-  "Incorporates auth-provider responses with db-details.
-
-  If you have a database you need to pass the database-id as some providers will need to save the response (e.g. refresh-tokens)."
-  ([driver db-details]
-   (fetch-and-incorporate-auth-provider-details driver nil db-details))
-  ([driver database-id {:keys [auth-provider] :as db-details}]
-   (if auth-provider
-     (let [auth-provider (keyword auth-provider)]
-       (driver/incorporate-auth-provider-details
-        driver
-        auth-provider
-        (fetch-auth auth-provider database-id db-details)
-        db-details))
-     db-details)))
