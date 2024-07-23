@@ -28,27 +28,7 @@ jobs:
         ports:
           - "3306:3306"
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: master
-      - name: Prepare backend environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: cross-branch-migrations
-      - name: Run backend on master
-        run: clojure -M:run:ee & echo $! > metabase_pid
-      - name: Wait for Metabase to start
-        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-      - name: Stop Metabase on master
-        run: kill $(cat metabase_pid)
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-      - name: Run back-end on pull request branch
-        run: clojure -M:run:ee
-      - name: Wait for Metabase to start
-        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
-
+      - uses: ./.github/actions/cross-branch-migration-test
 
   # services:
   #   postgres:
