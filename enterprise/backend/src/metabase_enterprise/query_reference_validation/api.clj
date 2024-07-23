@@ -4,6 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.routes.common :refer [+auth]]
+   [metabase.models.query-field :as query-field]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [toucan2.core :as t2]))
 
@@ -17,85 +18,53 @@
 
 (def ^:private default-sort-direction "asc")
 
-(def ^:private card-joins
-  [[(t2/table-name :model/QueryField) :qf] [:and
-                                            [:= :qf.card_id :c.id]
-                                            [:= :qf.explicit_reference true]]
-   [(t2/table-name :model/Field) :f] [:and
-                                      [:= :qf.field_id :f.id]
-                                      [:= :f.active false]]])
-
-(defn- inactive-fields [cards]
-  (when (seq cards)
-    (t2/select :model/QueryField
-               {:select [:qf.card_id
-                         [:f.name :field]
-                         [:t.name :table]
-                         [:t.active :table_active]]
-                :from   [[(t2/table-name :model/QueryField) :qf]]
-                :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
-                         [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                :where  [:and
-                         [:= :qf.explicit_reference true]
-                         [:= :f.active false]
-                         [:in :card_id (map :id cards)]]})))
-
-(defn- inactive-errors [inactive-fields]
-  (mapv
-   (fn [{:keys [field table table_active]}]
-     {:type  (if table_active
-               :inactive-field
-               :inactive-table)
-      :table table
-      :field field})
-   inactive-fields))
-
 (defn- cards-with-inactive-fields
   [sort-column sort-direction offset limit]
-  (let [sort-dir-kw           (keyword sort-direction)
-        additional-joins      (case sort-column
-                                "name"           []
-                                "collection"     [[(t2/table-name :model/Collection) :coll] [:= :coll.id :c.collection_id]]
-                                "created_by"     [[(t2/table-name :model/User) :u] [:= :u.id :c.creator_id]]
-                                "last_edited_at" [])
-        extra-selects         (case sort-column
-                                "name"           [:c.name]
-                                "collection"     [[[:max :coll.name]]
-                                                  ;; ^^ All these `max`es are silly, but they're necessary since we
-                                                  ;; group by card
-                                                  [[:not= nil [:max :coll.name]] :is_child_collection]]
-                                "created_by"     [:u.first_name :u.last_name :u.email]
-                                "last_edited_at" [:c.updated_at])
-        order-by-column       (condp = sort-column
-                                "collection"     [[:is_child_collection sort-dir-kw]
-                                                  [[:max :coll.name] sort-dir-kw]]
-                                "created_by"     [[[:coalesce [:|| :u.first_name " " :u.last_name]
-                                                    :u.first_name :u.last_name :u.email]
-                                                   sort-dir-kw]]
-                                [(into extra-selects [sort-dir-kw])])
-        card-query            (m/assoc-some
-                               {:select    (into [:c.*] extra-selects)
-                                :from      [[(t2/table-name :model/Card) :c]]
-                                :join      card-joins
-                                :left-join additional-joins
-                                :where     [:= :c.archived false]
-                                :order-by  order-by-column
-                                :group-by  :c.id}
-                               :limit  limit
-                               :offset offset)
-        cards                 (t2/select :model/Card card-query)
-        id->inactive-fields   (group-by :card_id (inactive-fields cards))
-        add-errors            (fn [{:keys [id] :as card}]
-                                (assoc card :errors (inactive-errors (id->inactive-fields id))))]
+  (let [sort-dir-kw         (keyword sort-direction)
+        sorting-joins       (case sort-column
+                              "name"           []
+                              "collection"     [[(t2/table-name :model/Collection) :coll] [:= :coll.id :c.collection_id]]
+                              "created_by"     [[(t2/table-name :model/User) :u] [:= :u.id :c.creator_id]]
+                              "last_edited_at" [])
+        sorting-selects     (case sort-column
+                              "name"           [:c.name]
+                              "collection"     [[[:max :coll.name]]
+                                                ;; ^^ All these `max`es are silly, but they're necessary since we
+                                                ;; group by card
+                                                [[:not= nil [:max :coll.name]] :is_child_collection]]
+                              "created_by"     [:u.first_name :u.last_name :u.email]
+                              "last_edited_at" [:c.updated_at])
+        order-by-clause     (condp = sort-column
+                              "collection" [[:is_child_collection sort-dir-kw]
+                                            [[:max :coll.name] sort-dir-kw]]
+                              "created_by" [[[:coalesce [:|| :u.first_name " " :u.last_name]
+                                              :u.first_name :u.last_name :u.email]
+                                             sort-dir-kw]]
+                              [(into sorting-selects [sort-dir-kw])])
+        card-query          (query-field/cards-with-reference-errors
+                             (m/assoc-some
+                              {:select    (into [:c.*] sorting-selects)
+                               :from      [[(t2/table-name :model/Card) :c]]
+                               :left-join sorting-joins
+                               :where     [:= :c.archived false]
+                               :order-by  order-by-clause
+                               :group-by  :c.id}
+                              :limit  limit
+                              :offset offset))
+        cards               (t2/select :model/Card card-query)
+        id->errors          (query-field/reference-errors cards)
+        add-errors          (fn [{:keys [id] :as card}]
+                              (assoc card :errors (id->errors id)))]
     (map add-errors (t2/hydrate cards :collection :creator))))
 
 (defn- invalid-card-count
   []
   (:count
-   (t2/query-one {:select [[[:count [:distinct :c.id]] :count]]
-                  :from   [[(t2/table-name :model/Card) :c]]
-                  :join   card-joins
-                  :where  [:= :c.archived false]})))
+   (t2/query-one
+    (query-field/cards-with-reference-errors
+     {:select [[[:count [:distinct :c.id]] :count]]
+      :from   [[(t2/table-name :model/Card) :c]]
+      :where  [:= :c.archived false]}))))
 
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
