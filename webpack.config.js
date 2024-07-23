@@ -129,7 +129,6 @@ const config = (module.exports = {
     filename: "[name].[contenthash].js",
     publicPath: "app/dist/",
     hashFunction: "sha256",
-    clean: !devMode,
   },
 
   module: {
