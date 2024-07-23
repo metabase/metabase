@@ -7,9 +7,11 @@ import {
 } from "metabase/admin/performance/utils";
 import { useSelector } from "metabase/lib/redux";
 import { has24HourModeSetting } from "metabase/lib/time";
+import { getSetting } from "metabase/selectors/settings";
 import { getApplicationName } from "metabase/selectors/whitelabel";
 import type { SelectProps } from "metabase/ui";
 import { Box, Group, SegmentedControl, Select, Tooltip } from "metabase/ui";
+import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
 import type {
   ScheduleDayType,
   ScheduleFrameType,
@@ -17,24 +19,26 @@ import type {
 } from "metabase-types/api";
 
 import {
-  amAndPM,
+  type Weekday,
   defaultHour,
-  frames,
   getHours,
+  getScheduleStrings,
   minutes,
-  weekdayOfMonthOptions,
-  weekdays,
 } from "./constants";
 import type { UpdateSchedule } from "./types";
-import { getLongestSelectLabel } from "./utils";
+import { getLongestSelectLabel, measureTextWidthSafely } from "./utils";
+
+export type SelectFrameProps = {
+  schedule: ScheduleSettings;
+  updateSchedule: UpdateSchedule;
+  frames?: { label: string; value: ScheduleFrameType }[];
+};
 
 export const SelectFrame = ({
   schedule,
   updateSchedule,
-}: {
-  schedule: ScheduleSettings;
-  updateSchedule: UpdateSchedule;
-}) => {
+  frames = getScheduleStrings().frames,
+}: SelectFrameProps) => {
   return (
     <AutoWidthSelect
       value={schedule.schedule_frame}
@@ -55,6 +59,7 @@ export const SelectTime = ({
   updateSchedule: UpdateSchedule;
   timezone?: string | null;
 }) => {
+  const { amAndPM } = getScheduleStrings();
   const applicationName = useSelector(getApplicationName);
   const isClock12Hour = !has24HourModeSetting();
   const hourIn24HourFormat =
@@ -68,11 +73,12 @@ export const SelectTime = ({
     : hourIn24HourFormat;
   const amPm = hourIn24HourFormat >= 12 ? 1 : 0;
   const hourIndex = isClock12Hour && hour === 12 ? 0 : hour;
+  const value = hourIndex === 0 && isClock12Hour ? "12" : hourIndex.toString();
   return (
     <Group spacing={isClock12Hour ? "xs" : "sm"} style={{ rowGap: ".5rem" }}>
       {/* Select the hour */}
       <AutoWidthSelect
-        value={hourIndex.toString()}
+        value={value}
         data={getHours()}
         onChange={(value: string) => {
           const num = Number(value);
@@ -107,13 +113,16 @@ export const SelectTime = ({
   );
 };
 
+export type SelectWeekdayProps = {
+  schedule: ScheduleSettings;
+  updateSchedule: UpdateSchedule;
+};
+
 export const SelectWeekday = ({
   schedule,
   updateSchedule,
-}: {
-  schedule: ScheduleSettings;
-  updateSchedule: UpdateSchedule;
-}) => {
+}: SelectWeekdayProps) => {
+  const { weekdays } = getScheduleStrings();
   return (
     <AutoWidthSelect
       value={schedule.schedule_day}
@@ -125,23 +134,32 @@ export const SelectWeekday = ({
   );
 };
 
+export type SelectWeekdayOfMonthProps = {
+  schedule: ScheduleSettings;
+  updateSchedule: UpdateSchedule;
+  weekdayOfMonthOptions?: (
+    | Weekday
+    | { label: string; value: "calendar-day" }
+  )[];
+};
+
 /** Selects the weekday of the month, e.g. the first Monday of the month
   "First" is selected via SelectFrame. This component provides the weekday */
 export const SelectWeekdayOfMonth = ({
   schedule,
   updateSchedule,
-}: {
-  schedule: ScheduleSettings;
-  updateSchedule: UpdateSchedule;
-}) => (
-  <AutoWidthSelect
-    value={schedule.schedule_day || "calendar-day"}
-    onChange={(value: ScheduleDayType | "calendar-day") =>
-      updateSchedule("schedule_day", value === "calendar-day" ? null : value)
-    }
-    data={weekdayOfMonthOptions}
-  />
-);
+  weekdayOfMonthOptions = getScheduleStrings().weekdayOfMonthOptions,
+}: SelectWeekdayOfMonthProps) => {
+  return (
+    <AutoWidthSelect
+      value={schedule.schedule_day || "calendar-day"}
+      onChange={(value: ScheduleDayType | "calendar-day") =>
+        updateSchedule("schedule_day", value === "calendar-day" ? null : value)
+      }
+      data={weekdayOfMonthOptions}
+    />
+  );
+};
 
 export const SelectMinute = ({
   schedule,
@@ -164,26 +182,36 @@ export const SelectMinute = ({
   );
 };
 
-export const AutoWidthSelect = (props: SelectProps) => {
-  const longestLabel = useMemo(
-    () => getLongestSelectLabel(props.data),
-    [props.data],
+export const AutoWidthSelect = ({
+  style,
+  ...props
+}: { style?: Partial<FontStyle> } & SelectProps) => {
+  const fontFamily = useSelector(state =>
+    getSetting(state, "application-font"),
   );
-  const maxWidth =
-    longestLabel.length > 15 ? "unset" : `${longestLabel.length + 0.85}rem`;
+  const maxWidth = useMemo(() => {
+    const longestLabel = getLongestSelectLabel(props.data);
+    const maxWidth = `${
+      measureTextWidthSafely(longestLabel, 50, {
+        family: fontFamily,
+        ...style,
+      }) + 60
+    }px`;
+    return maxWidth;
+  }, [props.data, style, fontFamily]);
   return (
     <Select
       miw="5rem"
-      maw={maxWidth}
+      w={maxWidth}
       styles={{
         wrapper: {
-          paddingRight: 0,
+          paddingInlineEnd: 0,
           marginTop: 0,
         },
         label: {
           marginBottom: 0,
         },
-        input: { paddingRight: 0 },
+        input: { paddingInlineEnd: 0, lineHeight: "2.5rem" },
       }}
       {...props}
     />
