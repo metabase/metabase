@@ -37,7 +37,7 @@ export function setColumnType(oldType, newType) {
     .click();
 
   const scrollTimes = 3;
-  _.times(scrollTimes, () => {
+  Cypress._.times(scrollTimes, () => {
     cy.get(".ReactVirtualized__Grid.MB-Select").scrollTo("top");
     cy.wait(100);
   });
