@@ -15,7 +15,7 @@ describe("DatePicker", () => {
 
     expect(screen.getByText("Previous")).toBeInTheDocument();
     expect(screen.getByDisplayValue("30")).toBeInTheDocument();
-    expect(screen.getByText("days")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("days")).toBeInTheDocument();
   });
 
   it("should render 'Next 1 Month'", () => {
@@ -27,7 +27,9 @@ describe("DatePicker", () => {
     );
     expect(screen.getByText("Next")).toBeInTheDocument();
     expect(screen.getByDisplayValue("1")).toBeInTheDocument();
-    expect(screen.getByText("month")).toBeInTheDocument();
+    expect(screen.getByTestId("relative-date-unit-selector")).toHaveValue(
+      "month",
+    );
   });
 
   it("should render 'Current Week'", () => {
@@ -38,7 +40,9 @@ describe("DatePicker", () => {
       />,
     );
     expect(screen.getByText("Current")).toBeInTheDocument();
-    expect(screen.getByText("week")).toBeInTheDocument();
+    expect(screen.getByTestId("current-date-unit-selector")).toHaveValue(
+      "week",
+    );
   });
 
   it("should render 'Between'", () => {

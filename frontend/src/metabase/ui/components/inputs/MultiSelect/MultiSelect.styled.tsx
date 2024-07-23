@@ -38,6 +38,7 @@ export const getMultiSelectOverrides =
         clearButtonProps: {
           color: "text-dark",
         },
+        "data-testid": "multi-select",
       },
       styles: (
         theme,

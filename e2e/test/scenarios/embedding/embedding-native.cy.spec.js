@@ -90,7 +90,7 @@ describe("scenarios > embedding > native questions", () => {
 
       // Created At: Q2 2023
       filterWidget().contains("Created At").click();
-      cy.findByTestId("select-button").click();
+      cy.findByTestId("select-year-picker").click();
       popover().last().contains("2023").click();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Q2").click();
@@ -99,7 +99,7 @@ describe("scenarios > embedding > native questions", () => {
       filterWidget().contains("State").click();
       cy.findByPlaceholderText("Search the list").type("KS{enter}");
       cy.findAllByTestId(/-filter-value$/).should("have.length", 1);
-      cy.findByTestId("KS-filter-value").should("be.visible").click();
+      cy.findByLabelText("KS").should("be.visible").click();
       cy.button("Add filter").click();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
