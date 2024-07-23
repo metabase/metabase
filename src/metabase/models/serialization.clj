@@ -1486,6 +1486,15 @@
   (set/union (viz-click-behavior-descendants  viz)
              (viz-column-settings-descendants viz)))
 
+;;; Common transformers
+
+(defn fk "Export Foreign Key" [model & [field-name]]
+  (cond
+    (= model :model/Table) ^::fk [*export-table-fk* *import-table-fk*]
+    field-name             ^::fk [#(*export-fk-keyed* % model field-name) #(*import-fk-keyed* % model field-name)]
+    :else                  ^::fk [#(*export-fk* % model) #(*import-fk* % model)]))
+
+
 ;;; ## Memoizing appdb lookups
 
 (defmacro with-cache

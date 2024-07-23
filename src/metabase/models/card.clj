@@ -854,14 +854,10 @@
           ;; this column is not used anymore
           :cache_ttl]
    :transform
-   {:database_id            [#(serdes/*export-fk-keyed* % 'Database :name)
-                             #(serdes/*import-fk-keyed* % 'Database :name)]
-    :table_id               [serdes/*export-table-fk*
-                             serdes/*import-table-fk*]
-    :source_card_id         [#(serdes/*export-fk* % :model/Card)
-                             #(serdes/*import-fk* % :model/Card)]
-    :collection_id          [#(serdes/*export-fk* % 'Collection)
-                             #(serdes/*import-fk* % 'Collection)]
+   {:database_id            (serdes/fk :model/Database :name)
+    :table_id               (serdes/fk :model/Table)
+    :source_card_id         (serdes/fk :model/Card)
+    :collection_id          (serdes/fk :model/Collection)
     :creator_id             [serdes/*export-user*
                              serdes/*import-user*]
     :made_public_by_id      [serdes/*export-user*
