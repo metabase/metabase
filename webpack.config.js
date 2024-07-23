@@ -36,6 +36,7 @@ const edition = process.env.MB_EDITION || "oss";
 const shouldUseEslint =
   process.env.WEBPACK_BUNDLE !== "production" &&
   process.env.USE_ESLINT === "true";
+const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
 // Babel:
 const BABEL_CONFIG = {
@@ -53,7 +54,7 @@ const SWC_LOADER = {
       transform: {
         react: {
           runtime: "automatic",
-          refresh: devMode,
+          refresh: shouldEnableHotRefresh,
         },
       },
       parser: {
@@ -336,7 +337,7 @@ const config = (module.exports = {
   ],
 });
 
-if (WEBPACK_BUNDLE === "hot") {
+if (shouldEnableHotRefresh) {
   config.target = "web";
   // suffixing with ".hot" allows us to run both `yarn run build-hot` and `yarn run test` or `yarn run test-watch` simultaneously
   config.output.filename = "[name].hot.bundle.js";
@@ -380,7 +381,7 @@ if (WEBPACK_BUNDLE === "hot") {
   );
 }
 
-if (WEBPACK_BUNDLE !== "production") {
+if (devMode) {
   // replace minified files with un-minified versions
   for (const name in config.resolve.alias) {
     const minified = config.resolve.alias[name];
