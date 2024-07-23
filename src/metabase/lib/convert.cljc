@@ -553,8 +553,18 @@
                                                            ;; direction. Also, `:aggregation-options` is not allowed
                                                            ;; inside `:expressions` in legacy, we'll just have to toss
                                                            ;; the extra info.
-                                                           (if (#{:value :aggregation-options} (first legacy-clause))
+                                                           (cond
+                                                             (= (first legacy-clause) :aggregation-options)
                                                              (second legacy-clause)
+
+                                                             ;; do not unwrap `nil` `:value` clauses, these are used
+                                                             ;; internally by the Pivot QP and unwrapping them breaks
+                                                             ;; stuff
+                                                             (and (= (first legacy-clause) :value)
+                                                                  (some? (second legacy-clause)))
+                                                             (second legacy-clause)
+
+                                                             :else
                                                              legacy-clause)]))))
                 (update-list->legacy-boolean-expression :filters :filter))
             (disj stage-keys :aggregation :filters :expressions))))

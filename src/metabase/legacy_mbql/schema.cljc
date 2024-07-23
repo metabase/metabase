@@ -927,16 +927,12 @@
                        (is-clause? string-functions x)   :string
                        (is-clause? boolean-functions x)  :boolean
                        (is-clause? datetime-functions x) :datetime
-                       (is-clause? :case x)              :case
-                       (is-clause? :offset x)            :offset
                        :else                             :else))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
    [:datetime DatetimeExpression]
-   [:case     case]
-   [:offset   offset]
-   [:else     Field]])
+   [:else     (one-of case offset value expression field)]]) ; does it make sense for an expression DEFINITION to be another expression ref?
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
 

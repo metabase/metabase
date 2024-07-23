@@ -78,6 +78,10 @@
   [driver query context respond]
   (sql-jdbc.execute/execute-reducible-query driver query context respond))
 
+(defmethod driver/EXPERIMENTAL-execute-multiple-queries :sql-jdbc
+  [driver queries respond]
+  (sql-jdbc.execute/EXPERIMENTAL-execute-multiple-queries driver queries respond))
+
 (defmethod driver/notify-database-updated :sql-jdbc
   [_ database]
   (sql-jdbc.conn/invalidate-pool-for-db! database))

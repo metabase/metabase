@@ -14,11 +14,15 @@
    [metabase.driver.sql-jdbc.execute.diagnostic :as sql-jdbc.execute.diagnostic]
    [metabase.driver.sql-jdbc.execute.old-impl :as sql-jdbc.execute.old]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
+   [metabase.lib.convert :as lib.convert]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.setting :refer [defsetting]]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.limit :as limit]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -30,6 +34,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [potemkin :as p])
   (:import
    (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException
@@ -709,6 +714,7 @@
     (lib.metadata/database (qp.store/metadata-provider))
     {:session-timezone (qp.timezone/report-timezone-id-if-supported driver (lib.metadata/database (qp.store/metadata-provider)))}
     (fn [^Connection conn]
+      (println "<RUN QUERY>" sql) ; NOCOMMIT
       (with-open [stmt          (statement-or-prepared-statement driver conn sql params qp.pipeline/*canceled-chan*)
                   ^ResultSet rs (try
                                   (execute-statement-or-prepared-statement! driver stmt max-rows params sql)
@@ -738,10 +744,48 @@
                         (catch Throwable _
                           (log/warn "Statement cancelation failed."))))))))))))
 
+(mr/def ::compiled-legacy-query
+  [:map
+   [:database ::lib.schema.id/database]
+   [:native   ::qp.compile/compiled]])
+
+(mr/def ::compiled-pmbql-query
+  [:map
+   [:lib/type [:= :mbql/query]]
+   [:database ::lib.schema.id/database]
+   [:stages   [:sequential {:min 1, :max 1} ::lib.schema/stage.native]]])
+
+(mu/defn combine-native-queries :- ::compiled-legacy-query
+  "Combine multiple native queries into a single one with `UNION ALL`."
+  [queries :- [:sequential {:min 1} ::compiled-pmbql-query]]
+  (let [combined-sql    (str/join
+                         "\nUNION ALL\n"
+                         (for [query queries]
+                           (str \(
+                                (get-in query [:stages 0 :native])
+                                \))))
+        combined-params (into []
+                              (mapcat (fn [query]
+                                        (get-in query [:stages 0 :params])))
+                              queries)]
+    (-> (first queries)
+        lib.convert/->legacy-MBQL
+        (update :native #(assoc % :query combined-sql, :params combined-params)))))
+
+(mu/defn EXPERIMENTAL-execute-multiple-queries
+  "Default implementation of [[metabase.driver/EXPERIMENTAL-execute-multiple-queries]] for JDBC-based drivers."
+  [driver  :- :keyword
+   queries :- [:sequential {:min 1} ::compiled-pmbql-query]
+   respond :- [:=> [:cat :any :any] :any]]
+  (let [query   (combine-native-queries queries)
+        context {:canceled-chan qp.pipeline/*canceled-chan*}]
+    (execute-reducible-query driver query context respond)))
+
 (defn reducible-query
-  "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the
-  driver-specific configuration for the Connection and Statement/PreparedStatement. This is slightly different from [[execute-reducible-query]]
-  in that it is not intended to be used as part of middleware. Keywordizes column names. "
+  "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar
+  to [[jdbc/reducible-query]] but reuses the driver-specific configuration for the Connection and
+  Statement/PreparedStatement. This is slightly different from [[execute-reducible-query]] in that it is not intended
+  to be used as part of middleware. Keywordizes column names. "
   {:added "0.49.0", :arglists '([db [sql & params]])}
   [db [sql & params]]
   (let [driver (:engine db)]

@@ -55,7 +55,12 @@
 
 (mu/defn ^:private ->legacy :- mbql.s/Query
   [query]
-  (lib.convert/->legacy-MBQL query))
+  (try
+    (lib.convert/->legacy-MBQL query)
+    (catch Throwable e
+      (throw (ex-info (format "Error converting query to legacy: %s" (ex-message e))
+                      {:query query, :type qp.error-type/qp}
+                      e)))))
 
 (defn- ^:deprecated ensure-legacy [middleware-fn]
   (-> (fn [query]
@@ -115,6 +120,13 @@
    (ensure-legacy #'qp.middleware.enterprise/apply-download-limit)
    (ensure-legacy #'check-features/check-features)])
 
+(defn- middleware-fn-name [middleware-fn]
+  (if-let [fn-name (:name (meta middleware-fn))]
+    (if-let [fn-ns (:ns (meta middleware-fn))]
+      (symbol (format "%s/%s" (ns-name fn-ns) fn-name))
+      fn-name)
+    middleware-fn))
+
 (mu/defn preprocess :- [:map
                         [:database ::lib.schema.id/database]]
   "Fully preprocess a query, but do not compile it to a native query or execute it."
@@ -134,11 +146,7 @@
           (u/prog1 (middleware-fn query)
             (qp.debug/debug>
               (when-not (= <> query)
-                (let [middleware-fn-name (if-let [fn-name (:name (meta middleware-fn))]
-                                           (if-let [fn-ns (:ns (meta middleware-fn))]
-                                             (symbol (format "%s/%s" (ns-name fn-ns) fn-name))
-                                             fn-name)
-                                           middleware-fn)]
+                (let [middleware-fn-name (middleware-fn-name middleware-fn)]
                   (list middleware-fn-name '=> <>
                         ^{:portal.viewer/default :portal.viewer/diff}
                         (data/diff query <>)))))
@@ -147,7 +155,7 @@
               (throw (ex-info (format "Middleware did not return a valid query.")
                               {:fn middleware-fn, :query query, :result <>, :type qp.error-type/qp}))))
           (catch Throwable e
-            (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" middleware-fn (ex-message e))
+            (throw (ex-info (i18n/tru "Error preprocessing query in {0}: {1}" (middleware-fn-name middleware-fn) (ex-message e))
                             {:fn middleware-fn, :query query, :type qp.error-type/qp}
                             e))))))
      query

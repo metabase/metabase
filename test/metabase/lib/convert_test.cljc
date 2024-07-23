@@ -867,3 +867,24 @@
                                           :effective-type :type/BigInteger,
                                           :lib/uuid       "8d07e5d2-4806-44c2-ba89-cdf1cfd6c3b3"}
                                          48400]]]}]}))))
+
+(deftest ^:parallel convert-nil-value-test
+  (let [query {:lib/type :mbql/query
+               :database 1383
+               :stages   [{:lib/type     :mbql.stage/mbql,
+                           :source-table 6885
+                           :expressions  [[:value
+                                           {:lib/uuid            "cffee44b-210c-401f-bac3-e04ef95bd99e",
+                                            :base-type           :type/Text,
+                                            :effective-type      :type/Text,
+                                            :lib/expression-name "CATEGORY"}
+                                           nil]]
+                           :breakout     [[:expression
+                                           {:lib/uuid "bd0cf326-f78c-45c5-ad1f-5c2ba9b11234", :base-type :type/Text, :effective-type :type/Text}
+                                           "CATEGORY"]]}]}]
+    (is (=? {:type     :query
+             :database 1383
+             :query    {:source-table 6885
+                        :expressions  {"CATEGORY" [:value nil {:base_type :type/Text}]}
+                        :breakout     [[:expression "CATEGORY" {:base-type :type/Text}]]}}
+            (lib.convert/->legacy-MBQL query)))))

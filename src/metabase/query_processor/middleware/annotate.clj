@@ -152,10 +152,17 @@
   column."
   [:base_type :effective_type :coercion_strategy :semantic_type])
 
-(defn infer-expression-type
+(mu/defn infer-expression-type :- [:map [:base_type ::lib.schema.common/base-type]]
   "Infer base-type/semantic-type information about an `expression` clause."
   [expression]
   (cond
+    (mbql.u/is-clause? :value expression)
+    (let [[_value value opts] expression]
+      (or (when-let [type-from-opts ((some-fn :effective_type :base_type) opts)]
+            (merge {:base_type type-from-opts}
+                   opts))
+          (infer-expression-type value)))
+
     (string? expression)
     {:base_type :type/Text}
 
@@ -198,7 +205,7 @@
     ;; maybe this `infer-expression-type` should takes an `inner-query` and look up the
     ;; source expresison as well?
     (merge (select-keys (infer-expression-type (second expression)) [:converted_timezone])
-     {:base_type :type/DateTime})
+           {:base_type :type/DateTime})
 
     (mbql.u/is-clause? mbql.s/string-functions expression)
     {:base_type :type/Text}
