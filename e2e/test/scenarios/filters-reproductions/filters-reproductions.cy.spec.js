@@ -1376,14 +1376,13 @@ describe("issue 45877", () => {
     popover().within(() => {
       cy.findByPlaceholderText("Search the list").should("exist");
 
-      cy.get("input[type='checkbox']")
-        .should("have.length", 2)
-        .each($checkbox => {
-          cy.wrap($checkbox).should("not.be.checked");
-        });
-
-      cy.findAllByTestId("true-filter-value").should("have.length", 1);
-      cy.findAllByTestId("false-filter-value").should("have.length", 1).click();
+      cy.findAllByLabelText("true")
+        .should("have.length", 1)
+        .and("not.be.checked");
+      cy.findAllByLabelText("false")
+        .should("have.length", 1)
+        .and("not.be.checked")
+        .click();
 
       cy.button("Add filter").click();
     });
@@ -1393,10 +1392,9 @@ describe("issue 45877", () => {
     cy.get(POPOVER_ELEMENT).should("not.exist");
     cy.get("fieldset").should("contain", "false").click();
     popover().within(() => {
-      cy.findAllByTestId("true-filter-value").should("have.length", 1);
-      cy.findAllByTestId("false-filter-value")
+      cy.findAllByLabelText("true").should("have.length", 1);
+      cy.findAllByLabelText("false")
         .should("have.length", 1)
-        .find('input[type="checkbox"]')
         .should("be.checked");
     });
   });
