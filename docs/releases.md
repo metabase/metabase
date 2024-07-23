@@ -19,6 +19,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Enterprise Edition releases
 
+- [v1.50.14](https://github.com/metabase/metabase/releases/tag/v1.50.14)
 - [v1.50.13](https://github.com/metabase/metabase/releases/tag/v1.50.13)
 - [v1.50.12](https://github.com/metabase/metabase/releases/tag/v1.50.12)
 - [v1.50.11](https://github.com/metabase/metabase/releases/tag/v1.50.11)
@@ -187,6 +188,7 @@ To see what's new, check out all the [major release announcements](https://www.m
 
 ## Metabase Open Source Edition releases
 
+- [v0.50.14](https://github.com/metabase/metabase/releases/tag/v0.50.14)
 - [v0.50.13](https://github.com/metabase/metabase/releases/tag/v0.50.13)
 - [v0.50.12](https://github.com/metabase/metabase/releases/tag/v0.50.12)
 - [v0.50.11](https://github.com/metabase/metabase/releases/tag/v0.50.11)
