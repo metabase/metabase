@@ -106,7 +106,7 @@
 
 (defmacro defn-
   "Same as defn, but creates a private def."
-  [& [fn-name fn-tail]]
+  [fn-name & fn-tail]
   `(defn
      ~(with-meta fn-name (assoc (meta fn-name) :private true))
-     ~@(rest fn-tail)))
+     ~@fn-tail))
