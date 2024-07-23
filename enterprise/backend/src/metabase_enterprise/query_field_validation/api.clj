@@ -25,6 +25,31 @@
                                       [:= :qf.field_id :f.id]
                                       [:= :f.active false]]])
 
+(defn- inactive-fields [cards]
+  (when (seq cards)
+    (t2/select :model/QueryField
+               {:select [:qf.card_id
+                         [:f.name :field]
+                         [:t.name :table]
+                         [:t.active :table_active]]
+                :from   [[(t2/table-name :model/QueryField) :qf]]
+                :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
+                         [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                :where  [:and
+                         [:= :qf.explicit_reference true]
+                         [:= :f.active false]
+                         [:in :card_id (map :id cards)]]})))
+
+(defn- inactive-errors [inactive-fields]
+  (mapv
+   (fn [{:keys [field table table_active]}]
+     {:type  (if table_active
+               :inactive-field
+               :inactive-table)
+      :table table
+      :field field})
+   inactive-fields))
+
 (defn- cards-with-inactive-fields
   [sort-column sort-direction offset limit]
   (let [sort-dir-kw           (keyword sort-direction)
@@ -59,22 +84,9 @@
                                :limit  limit
                                :offset offset)
         cards                 (t2/select :model/Card card-query)
-        card-id->query-fields (when (seq cards)
-                                (group-by :card_id (t2/select :model/QueryField
-                                                              {:select [:qf.* [:f.name :column_name] [:t.name :table_name]]
-                                                               :from   [[(t2/table-name :model/QueryField) :qf]]
-                                                               :join   [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
-                                                                        [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                                                               :where  [:and
-                                                                        [:= :qf.explicit_reference true]
-                                                                        [:= :f.active false]
-                                                                        [:in :card_id (map :id cards)]]})))
-
+        id->inactive-fields   (group-by :card_id (inactive-fields cards))
         add-errors            (fn [{:keys [id] :as card}]
-                                (assoc-in card
-                                          [:errors :inactive-fields]
-                                          (for [{:keys [table_name column_name]} (card-id->query-fields id)]
-                                            {:table table_name :field column_name})))]
+                                (assoc card :errors (inactive-errors (id->inactive-fields id))))]
     (map add-errors (t2/hydrate cards :collection :creator))))
 
 (defn- invalid-card-count
