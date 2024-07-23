@@ -458,7 +458,7 @@ describe("scenarios > question > nested", () => {
     });
   });
 
-  it("should properly work with native questions (metabsae#15808, metabase#16938, metabase#18364)", () => {
+  it("should properly work with native questions (metabase#15808, metabase#16938, metabase#18364)", () => {
     const questionDetails = {
       name: "15808",
       native: { query: "select * from products limit 5" },
@@ -473,11 +473,9 @@ describe("scenarios > question > nested", () => {
     cy.wait("@dataset");
 
     // should allow to browse object details when exploring native query results (metabase#16938)
-    cy.get(".test-Table-ID")
-      .as("primaryKeys")
-      .should("have.length", 5)
-      .first()
-      .click();
+    cy.get(".test-Table-ID").as("primaryKeys");
+    cy.get("@primaryKeys").should("have.length", 5);
+    cy.get("@primaryKeys").first().click();
 
     cy.findByTestId("object-detail").within(() => {
       cy.findByText("Swaniawski, Casper and Hilll");
