@@ -14,8 +14,13 @@ import { getLoginStatus } from "embedding-sdk/store/selectors";
 import type { SdkDispatch } from "embedding-sdk/store/types";
 import type { SDKConfig, SDKConfigWithJWT } from "embedding-sdk/types";
 import api from "metabase/lib/api";
+import { useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import {
+  getApplicationName,
+  getShowMetabaseLinks,
+} from "metabase/selectors/whitelabel";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
@@ -34,10 +39,38 @@ const setupJwtAuth = (config: SDKConfigWithJWT, dispatch: SdkDispatch) => {
   };
 };
 
+const presentApiKeyUsageWarning = (
+  appName: string,
+  showMetabaseLinks: boolean,
+) => {
+  const headerStyle = "color: #509ee3; font-size: 16px; font-weight: bold;";
+  const textStyle = "color: #333; font-size: 14px;";
+  const highlightStyle = "color: #e53935; font-size: 14px; font-weight: bold;";
+  const linkStyle =
+    "color: #509ee3; font-size: 14px; text-decoration: underline;";
+
+  console.warn(
+    `%c${appName} Embedding SDK for React\n\n` +
+      `%cWarning: You are in development mode. API keys will %cnot%c work in production.\n` +
+      `Please switch to using a JWT token for production use.\n\n` +
+      showMetabaseLinks
+      ? `%cLearn more: %chttps://www.metabase.com/docs/latest/people-and-groups/authenticating-with-jwt`
+      : "",
+    headerStyle,
+    textStyle,
+    highlightStyle,
+    textStyle,
+    textStyle,
+    linkStyle,
+  );
+};
+
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
   const dispatch = useSdkDispatch();
 
   const loginStatus = useSdkSelector(getLoginStatus);
+  const appName = useSelector(getApplicationName);
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   useEffect(() => {
     registerVisualizationsOnce();
@@ -54,7 +87,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
       if (config.apiKey && window.location.hostname === "localhost") {
         api.apiKey = config.apiKey;
-        console.warn("You are using API Keys!! OOOH SO SCARY");
+        presentApiKeyUsageWarning(appName, showMetabaseLinks);
         dispatch(setEnvironmentType("dev"));
         dispatch(setLoginStatus({ status: "validated" }));
       } else if (config.jwtProviderUri) {
@@ -78,7 +111,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
         );
       }
     }
-  }, [config, dispatch, loginStatus.status]);
+  }, [appName, config, dispatch, loginStatus.status, showMetabaseLinks]);
 
   useEffect(() => {
     if (loginStatus.status === "validated") {

@@ -6,8 +6,9 @@ import { SdkError } from "embedding-sdk/components/private/PublicComponentWrappe
 import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapper/SdkLoader";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
-
-import { WatermarkOverlay } from "../WatermarkOverlay";
+import { useSelector } from "metabase/lib/redux";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Stack, Title, Anchor } from "metabase/ui";
 
 export const PublicComponentWrapper = ({
   children,
@@ -15,7 +16,8 @@ export const PublicComponentWrapper = ({
   children: JSX.Element;
 }) => {
   const loginStatus = useSdkSelector(getLoginStatus);
-  const sdkEnv = useSdkSelector(state => state.sdk.envMode);
+
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   let content = children;
 
@@ -32,13 +34,27 @@ export const PublicComponentWrapper = ({
   }
 
   if (loginStatus.status === "error") {
-    content = <SdkError message={loginStatus.error.message} />;
+    if (loginStatus.error.message === t`Can't use API Keys in production`) {
+      content = (
+        <Stack align="center" spacing={0}>
+          <Title order={4}>{`API keys do not work in production.`}</Title>
+          <Title order={6} c="gray">{`Please switch to using a JWT token for
+      production use.`}</Title>
+          {showMetabaseLinks && (
+            <Anchor
+              underline={true}
+              size="sm"
+              href="https://www.metabase.com/docs/latest/people-and-groups/authenticating-with-jwt"
+            >
+              {`Learn more here`}
+            </Anchor>
+          )}
+        </Stack>
+      );
+    } else {
+      content = <SdkError message={loginStatus.error.message} />;
+    }
   }
 
-  return (
-    <PublicComponentStylesWrapper>
-      {sdkEnv === "dev" && <WatermarkOverlay />}
-      {content}
-    </PublicComponentStylesWrapper>
-  );
+  return <PublicComponentStylesWrapper>{content}</PublicComponentStylesWrapper>;
 };
