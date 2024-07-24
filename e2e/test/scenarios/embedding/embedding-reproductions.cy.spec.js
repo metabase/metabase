@@ -537,6 +537,7 @@ describe("issue 27643", () => {
     cy.signInAsAdmin();
     resyncDatabase({
       dbId: PG_DB_ID,
+      tableName: "invoices",
     });
     withDatabase(PG_DB_ID, ({ INVOICES }) => {
       cy.wrap(INVOICES.EXPECTED_INVOICE).as(
