@@ -1420,10 +1420,11 @@ describe("issues 15279 and 24500", () => {
 
   const questionDetails = {
     name: "15279",
-    query: { "source-table": PEOPLE_ID },
+    query: { "source-table": PEOPLE_ID, limit: 2 },
   };
 
   const dashboardDetails = { parameters };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
