@@ -12,7 +12,7 @@ export const createQuestionAndDashboard = ({
   cardDetails,
 }: {
   questionDetails: StructuredQuestionDetails;
-  dashboardDetails: DashboardDetails;
+  dashboardDetails?: DashboardDetails;
   cardDetails?: Partial<DashboardCard>;
 }): Cypress.Chainable<
   Cypress.Response<DashboardCard> & { questionId: CardId }
