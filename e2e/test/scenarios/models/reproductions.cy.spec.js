@@ -1625,7 +1625,7 @@ describe("issues 35039 and 37009", () => {
 
   // This test follows #37009 repro steps because they are simpler than #35039 but still equivalent
   it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
-    // The repro requires that we update the query in any way while still preserving the comment.
+    // The repro requires that we update the query in a minor, non-impactful way.
     cy.log("Update the query and save");
     focusNativeEditor().type("{backspace}");
     cy.findByTestId("native-query-editor-container").icon("play").click();
