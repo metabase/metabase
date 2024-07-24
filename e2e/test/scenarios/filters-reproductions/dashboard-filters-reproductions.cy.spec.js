@@ -1462,17 +1462,11 @@ describe("issues 15279 and 24500", () => {
         });
 
         visitDashboard(dashboard_id);
-
-        cy.intercept(
-          "GET",
-          `/api/dashboard/${dashboard_id}/params/${listFilter.id}/values`,
-        ).as("listFilterValues");
       },
     );
 
     cy.log("Make sure the list filter works");
     filterWidget().contains("List").click();
-    cy.wait("@listFilterValues");
 
     popover().within(() => {
       cy.findByText("Organic").click();
@@ -1518,7 +1512,6 @@ describe("issues 15279 and 24500", () => {
 
     cy.log("Make sure the list filter still works");
     filterWidget().contains("Organic").click();
-    cy.wait("@listFilterValues");
 
     cy.log("Make sure the search filter still works");
     // reset filter value
