@@ -133,7 +133,7 @@ export const DashboardPickerModal = ({
       <EntityPickerModal
         title={title}
         onItemSelect={handleItemSelect}
-        canSelectItem={canSelectItem(selectedItem)}
+        canSelectItem={!isCreateDialogOpen && canSelectItem(selectedItem)}
         onConfirm={handleConfirm}
         onClose={onClose}
         selectedItem={selectedItem}

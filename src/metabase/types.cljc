@@ -66,6 +66,20 @@
 (derive :entity/SubscriptionTable :entity/GenericTable)
 (derive :entity/EventTable :entity/GenericTable)
 
+;;; Modifier Types
+
+;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific
+;; fields. For more details see the `driver-changelog.yml`, section `Metabase 0.50.0`.
+(derive :type/field-values-unsupported :type/*)
+
+;; `:type/fingerprint-unsupported` enables driver developers to opt out of fingerprinting for specific
+;; fields.
+(derive :type/fingerprint-unsupported :type/*)
+
+;; `:type/Large` enables driver developers to signal that the field values can be relatively large and can use a lot of
+;; memory. These types will be excluded from scanning and fingerprinting, and possibly other features in the future.
+(derive :type/Large :type/field-values-unsupported)
+(derive :type/Large :type/fingerprint-unsupported)
 
 ;;; Numeric Types
 
@@ -168,9 +182,13 @@
 
 (derive :type/PostgresEnum :type/Text)
 
+(derive :type/OracleCLOB :type/Text)
+(derive :type/OracleCLOB :type/Large)
+
 ;;; DateTime Types
 
 (derive :type/Temporal :type/*)
+(derive :type/Temporal :type/field-values-unsupported)
 
 (derive :type/Date :type/Temporal)
 ;; You could have Dates with TZ info but it's not supported by JSR-310 so we'll not worry about that for now.
@@ -245,13 +263,7 @@
 
 (derive :type/Boolean :type/*)
 (derive :type/DruidHyperUnique :type/*)
-
-;; `:type/field-values-unsupported` enables driver developers to opt out of field values calculation for specific
-;; fields. For more details see the `driver-changelog.yml`, section `Metabase 0.50.0`.
-(derive :type/field-values-unsupported :type/*)
-
 (derive :type/DruidHyperUnique :type/field-values-unsupported)
-(derive :type/DruidJSON :type/field-values-unsupported)
 
 ;;; The Snowflake `VARIANT` type is allowed to be anything, so just mark it as deriving from the core root types so
 ;;; we're allowed to use any sort of filter with it (whether it makes sense or not). See
@@ -260,8 +272,7 @@
            :type/Text
            :type/Temporal
            :type/Boolean
-           :type/Collection
-           :type/field-values-unsupported]]
+           :type/Collection]]
   (derive :type/SnowflakeVariant t))
 
 ;;; Text-Like Types: Things that should be displayed as text for most purposes but that *shouldn't* support advanced
@@ -278,7 +289,9 @@
 ;;; Structured/Collections
 
 (derive :type/Collection :type/*)
+(derive :type/Collection :type/Large)
 (derive :type/Structured :type/*)
+(derive :type/Structured :type/Large)
 
 (derive :type/Dictionary :type/Collection)
 (derive :type/Array :type/Collection)
@@ -287,7 +300,6 @@
 (derive :type/JSON :type/Structured)
 (derive :type/JSON :type/Collection)
 
-;; DruidJSON is specific -- it derives also :type/field-values-unsupported
 (derive :type/DruidJSON :type/JSON)
 
 ;; `:type/XML` -- an actual native XML data column
