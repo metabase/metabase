@@ -22,6 +22,7 @@ import {
   expressionEditorWidget,
   entityPickerModal,
   entityPickerModalTab,
+  startNewNativeQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -288,15 +289,19 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show field metadata hovercards for native query tables", () => {
-    openNativeEditor().type("select * from products");
+    startNewNativeQuestion({ query: "select * from products limit 1" });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    cy.get("[data-testid=cell-data]").contains("CATEGORY").realHover();
+    cy.log("Wait for the table to load");
+    cy.findAllByTestId("cell-data")
+      .should("be.visible")
+      .and("contain", "Gizmo");
 
-    hovercard().within(() => {
-      cy.contains("No special type");
-      cy.findByText("No description");
-    });
+    cy.log("Assert");
+    cy.findAllByTestId("header-cell").filter(":contains(CATEGORY)").realHover();
+    hovercard()
+      .should("contain", "No special type")
+      .and("contain", "No description");
   });
 
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
