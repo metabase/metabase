@@ -400,7 +400,8 @@
                      :data
                      (select-keys [:requested_timezone :results_timezone])))))))))
 
-;;; if this test is failing, take a look at [[metabase.api.dataset-test/drivers-test-2]], which runs the same query but
+;;; if this test is failing, take a look
+;;; at [[metabase.query-processor.pivot-test/identical-results-between-impls-test]], which runs the same query but
 ;;; directly against the QP instead of via the REST API
 (deftest ^:parallel pivot-dataset-test
   (mt/test-drivers (api.pivot-test-util/applicable-drivers)
@@ -453,6 +454,7 @@
                         (nth cols 3))))
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
+;;; see also [[metabase.query-processor.pivot-test/identical-results-between-impls-filter-test]]
 (deftest ^:parallel pivot-filter-dataset-test
   (mt/test-drivers (api.pivot-test-util/applicable-drivers)
     (mt/dataset test-data

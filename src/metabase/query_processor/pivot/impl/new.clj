@@ -110,8 +110,10 @@
 
 (mu/defn ^:private compile-pmbql-query :- ::compiled-query
   [query :- :map]
-  (assoc query :stages [(merge {:lib/type :mbql.stage/native}
-                               (set/rename-keys (qp.compile/compile query) {:query :native}))]))
+  (-> query
+      (assoc :stages [(merge {:lib/type :mbql.stage/native}
+                             (set/rename-keys (qp.compile/compile query) {:query :native}))])
+      (assoc-in [:info :pivot/compiled-from] query)))
 
 (mu/defmethod qp.pivot.impl.common/run-pivot-query :qp.pivot.impl/new :- :some
   "Legacy implementation for running pivot queries."

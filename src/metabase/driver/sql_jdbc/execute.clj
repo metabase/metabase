@@ -782,15 +782,40 @@
    [:database ::lib.schema.id/database]
    [:stages   [:sequential {:min 1, :max 1} ::lib.schema/stage.native]]])
 
+;;; if we do end needing to add a top-level ORDER BY to the UNION ALL this is a hacky but working PoC for doing so. See
+;;; https://metaboat.slack.com/archives/C04DN5VRQM6/p1721798965664409 for more on this
+
+#_(mu/defn ^:private MEGA-HACK-combine-native-queries-order-by :- [:maybe :string]
+  [driver  :- :keyword
+   queries :- [:sequential {:min 1} ::compiled-pmbql-query]]
+  (when-let [first-query (get-in queries [0 :info :pivot/compiled-from])]
+    (let [cols               (lib/returned-columns first-query)
+          order-by-col-names (into ["pivot-grouping"]
+                                   (map (fn [[_direction _opts expr]]
+                                          (:lib/desired-column-alias (lib.equality/find-matching-column expr cols))))
+                                   (lib/order-bys first-query))
+          hsql               {:order-by (mapv (fn [col-name]
+                                                [(h2x/identifier :table-alias col-name) :asc #_:nulls-last])
+                                              order-by-col-names)}
+          [sql & params]     (sql.qp/format-honeysql driver hsql)]
+      (assert (empty? params))
+      (log/debugf "Adding ORDER BY to UNION ALL query:\n%s" sql)
+      sql)))
+
 (mu/defn combine-native-queries :- ::compiled-legacy-query
   "Combine multiple native queries into a single one with `UNION ALL`."
-  [queries :- [:sequential {:min 1} ::compiled-pmbql-query]]
+  [_driver  :- :keyword
+   queries :- [:sequential {:min 1} ::compiled-pmbql-query]]
   (let [combined-sql    (str/join
                          "\nUNION ALL\n"
                          (for [query queries]
                            (str \(
                                 (get-in query [:stages 0 :native])
                                 \))))
+        ;; order-by        (MEGA-HACK-combine-native-queries-order-by driver queries)
+        ;; combined-sql    (if order-by
+        ;;                   (str combined-sql \newline order-by)
+        ;;                   combined-sql)
         combined-params (into []
                               (mapcat (fn [query]
                                         (get-in query [:stages 0 :params])))
@@ -805,7 +830,7 @@
   [driver  :- :keyword
    queries :- [:sequential {:min 1} ::compiled-pmbql-query]
    respond :- ::qp.schema/respond]
-  (let [query   (combine-native-queries queries)
+  (let [query   (combine-native-queries driver queries)
         context {:canceled-chan qp.pipeline/*canceled-chan*}]
     (execute-reducible-query driver query context respond)))
 

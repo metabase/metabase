@@ -34,8 +34,14 @@
                              driver/*driver*
                              [q1 q2]
                              respond)]
-          (is (= (:metadata single-results)
-                 (:metadata multi-results)))
+          ;; we don't really care if the database type is a little different in the UNION ALL version. For MySQL when we
+          ;; UNION ALL two MEDIUMTEXT columns we get a TEXT column in the result
+          (letfn [(cols [results]
+                    (mapv (fn [col]
+                            (dissoc col :database_type))
+                          (get-in results [:metadata :cols])))]
+            (is (= (cols single-results)
+                   (cols multi-results))))
           (is (= [[10 "Fred 62"                      20 34.1  -118.29 2]
                   [5  "Brite Spot Family Restaurant" 20 34.08 -118.26 2]]
                  (mt/formatted-rows

@@ -53,7 +53,7 @@
 (defn- do-identical-results-between-impls-test [query]
   (let [query             (lib/query
                            (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                           query)
+                            query)
         pivot-options     (#'qp.pivot/pivot-options query)
         num-breakouts     (count (lib/breakouts query))
         pivot-rows        (:pivot-rows pivot-options)
@@ -67,43 +67,46 @@
         legacy-rows       (mt/rows legacy-result)
         new-result        (binding [qp.pivot/*impl-override* :qp.pivot.impl/new]
                             (qp.pivot/run-pivot-query query))
-        new-rows          (mt/rows new-result)]
+        new-rows          (mt/rows new-result)
+        ;; bitmask column always added after the existing breakouts
+        bitmask-index     num-breakouts]
     (testing (format "options = %s\n" (pr-str pivot-options))
       (testing "should generate identical number of queries"
         (is (= (count legacy-subqueries)
                (count new-subqueries))))
       (testing "should return identical columns"
-        (is (= ["state" "source" "category" "pivot-grouping" "count" "sum"]
-               (mapv (comp u/lower-case-en :name) (get-in legacy-result [:data :cols]))
-               (mapv (comp u/lower-case-en :name) (get-in new-result [:data :cols])))))
-      (testing "legacy rows and new rows should have same set of group bitmasks. Rows should be ordered by bitmask"
+        (is (= (mapv :name (get-in legacy-result [:data :cols]))
+               (mapv :name (get-in new-result [:data :cols])))))
+      (testing "legacy rows and new rows should have same set of group bitmasks. Rows should be ordered by bitmask\n"
         (letfn [(group-bitmasks [rows]
                   (into []
-                        (comp (map #(nth % 3))
+                        (comp (map #(nth % bitmask-index))
                               (m/dedupe-by identity))
                         rows))]
-          (is (= bitmasks
-                 (group-bitmasks legacy-rows)
-                 (group-bitmasks new-rows)))))
+          (testing "legacy impl"
+            (is (= bitmasks
+                   (group-bitmasks legacy-rows))))
+          (testing "new impl"
+            (is (= bitmasks
+                   (group-bitmasks new-rows))))))
       (doseq [i    (range (count legacy-subqueries))
               :let [breakout-combo       (nth breakout-combos i)
                     bitmask              (nth bitmasks i)
                     group-row?           (fn [row]
-                                           (= (nth row 3) bitmask))
+                                           (= (nth row bitmask-index) bitmask))
                     legacy-subquery-rows (filterv group-row? legacy-rows)
                     new-subquery-rows    (filterv group-row? new-rows)]]
         (testing (format "\nSubquery #%d\nBreakout combinations = %s\nBitmask = %s\n" i breakout-combo bitmask)
-          (let []
-            (testing "\n++++ LEGACY SUBQUERY ++++\n"
-              (mt/with-native-query-testing-context (nth legacy-subqueries i)
-                (testing "\n++++ NEW SUBQUERY ++++\n"
-                  (mt/with-native-query-testing-context (nth new-subqueries i)
-                    (testing "Should return the same number of rows"
-                      (is (= (count legacy-subquery-rows)
-                             (count new-subquery-rows))))
-                    (testing "Should return identical rows"
-                      (is (= legacy-subquery-rows
-                             new-subquery-rows)))))))))))))
+          (testing "\n++++ LEGACY SUBQUERY ++++\n"
+            (mt/with-native-query-testing-context (nth legacy-subqueries i)
+              (testing "\n++++ NEW SUBQUERY ++++\n"
+                (mt/with-native-query-testing-context (nth new-subqueries i)
+                  (testing "Should return the same number of rows"
+                    (is (= (count legacy-subquery-rows)
+                           (count new-subquery-rows))))
+                  (testing "Should return identical rows"
+                    (is (= legacy-subquery-rows
+                           new-subquery-rows))))))))))))
 
 (defn- identical-results-between-impls-test-drivers []
   (->> (api.pivot-test-util/applicable-drivers)
@@ -121,6 +124,11 @@
   (testing "legacy and new impls should return identical results for the different subqueries"
     (mt/test-drivers (identical-results-between-impls-test-drivers)
       (do-identical-results-between-impls-test (api.pivot-test-util/pivot-query #_include-options true)))))
+
+(deftest ^:parallel identical-results-between-impls-filter-test
+  (testing "legacy and new impls should return identical results for the different subqueries"
+    (mt/test-drivers (identical-results-between-impls-test-drivers)
+      (do-identical-results-between-impls-test (api.pivot-test-util/filters-query)))))
 
 (defn test-query []
   (mt/$ids orders
@@ -671,25 +679,3 @@
              (mt/formatted-rows
               [str str int 2.0]
               (qp.pivot/run-pivot-query query)))))))
-
-;;; This is basically the same as [[metabase.api.dataset-test/pivot-dataset-test]] but hits the Pivot QP directly
-;;; instead of going thru the API endpoints
-(deftest ^:parallel drivers-test-2
-  (mt/test-drivers (api.pivot-test-util/applicable-drivers)
-    (let [result (binding [] #_[qp.pivot/*impl-override* :qp.pivot.impl/legacy]
-                   (qp.pivot/run-pivot-query (api.pivot-test-util/pivot-query)))
-          rows   (mt/rows result)]
-      (is (=? {:row_count 1144
-               :status    :completed
-               :data      {:cols #(= (count %) 6)
-                           :rows #(= (count %) 1144)}}
-              result))
-      (testing "first row"
-        (is (= ["AK" "Affiliate" "Doohickey" 0 18 81]
-               (first rows))))
-      (testing "1001st row"
-        (is (= ["WV" "Facebook" nil 4 45 292]
-               (nth rows 1000))))
-      (testing "last row"
-        (is (= [nil nil nil 7 18760 69540]
-               (last rows)))))))
