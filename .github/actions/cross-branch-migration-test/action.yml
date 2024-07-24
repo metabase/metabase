@@ -22,7 +22,14 @@ runs:
       shell: bash
 
     - name: Wait for Metabase to start
-      run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      run: |
+        while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do
+          if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
+            echo "Metabase process has exited."
+            exit 1
+          fi
+          sleep 1
+        done
       shell: bash
 
     - name: Stop Metabase on master
@@ -39,7 +46,14 @@ runs:
       shell: bash
 
     - name: Wait for Metabase to start
-      run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      run: |
+        while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do
+          if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
+            echo "Metabase process has exited."
+            exit 1
+          fi
+          sleep 1
+        done
       shell: bash
 
     - name: Stop Metabase on pull request branch
