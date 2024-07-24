@@ -120,7 +120,6 @@ describe("scenarios > metrics > editing", () => {
       });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("18,760");
     });
 
@@ -192,7 +191,6 @@ describe("scenarios > metrics > editing", () => {
       });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("4,939");
     });
 
@@ -209,7 +207,6 @@ describe("scenarios > metrics > editing", () => {
       });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("4,939");
     });
 
@@ -227,7 +224,6 @@ describe("scenarios > metrics > editing", () => {
       });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("5");
     });
 
@@ -244,7 +240,6 @@ describe("scenarios > metrics > editing", () => {
       });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("4,939");
     });
 
@@ -262,7 +257,6 @@ describe("scenarios > metrics > editing", () => {
       });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("5");
     });
 
@@ -279,7 +273,6 @@ describe("scenarios > metrics > editing", () => {
         values: ["Gadget"],
       });
       saveMetric();
-      runQuery();
       verifyScalarValue("4,939");
     });
 
@@ -296,7 +289,6 @@ describe("scenarios > metrics > editing", () => {
         maxValue: "October 20, 2022",
       });
       saveMetric();
-      runQuery();
       verifyScalarValue("6");
     });
   });
@@ -322,7 +314,6 @@ describe("scenarios > metrics > editing", () => {
       });
       addAggregation({ operatorName: "Count of rows" });
       saveMetric();
-      runQuery();
       verifyScalarValue("613");
     });
 
@@ -390,7 +381,6 @@ describe("scenarios > metrics > editing", () => {
       popover().button("Done").click();
       addAggregation({ operatorName: "Sum of ...", columnName: "Total2" });
       saveMetric();
-      runQuery();
       verifyScalarValue("755,310.84");
     });
 
@@ -408,7 +398,6 @@ describe("scenarios > metrics > editing", () => {
       popover().button("Done").click();
       addAggregation({ operatorName: "Average of ...", columnName: "Price2" });
       saveMetric();
-      runQuery();
       verifyScalarValue("111.38");
     });
 
@@ -431,7 +420,6 @@ describe("scenarios > metrics > editing", () => {
         maxValue: 100,
       });
       saveMetric();
-      runQuery();
       verifyScalarValue("3,326");
     });
 
@@ -461,7 +449,6 @@ describe("scenarios > metrics > editing", () => {
         values: ["Widget"],
       });
       saveMetric();
-      runQuery();
       verifyScalarValue("1,652");
     });
   });
@@ -476,7 +463,6 @@ describe("scenarios > metrics > editing", () => {
       addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
       addBreakout({ columnName: "Created At" });
       saveMetric();
-      runQuery();
       verifyLineAreaBarChart({ xAxis: "Created At", yAxis: "Sum of Total" });
     });
 
@@ -490,7 +476,6 @@ describe("scenarios > metrics > editing", () => {
       addBreakout({ columnName: "Latitude" });
       addBreakout({ columnName: "Longitude" });
       saveMetric();
-      runQuery();
       verifyPinMap();
     });
 
@@ -513,7 +498,6 @@ describe("scenarios > metrics > editing", () => {
         stageIndex: 1,
       });
       saveMetric();
-      runQuery();
       verifyLineAreaBarChart({
         xAxis: "Created At",
         yAxis: "Average of Count",
@@ -548,7 +532,6 @@ describe("scenarios > metrics > editing", () => {
       });
       popover().button("Update").click();
       saveMetric();
-      runQuery();
       verifyScalarValue("9,380");
     });
 
@@ -565,7 +548,6 @@ describe("scenarios > metrics > editing", () => {
         isPostAggregation: true,
       });
       saveMetric();
-      runQuery();
       verifyScalarValue("5");
     });
 
@@ -584,7 +566,6 @@ describe("scenarios > metrics > editing", () => {
         isPostAggregation: true,
       });
       saveMetric();
-      runQuery();
       verifyScalarValue("29,554.86");
     });
   });
@@ -767,12 +748,6 @@ function renameMetric(newName) {
   cy.intercept("PUT", "/api/card/*").as("updateCard");
   cy.findByTestId("saved-question-header-title").clear().type(newName).blur();
   cy.wait("@updateCard");
-}
-
-function runQuery() {
-  cy.intercept("POST", "/api/dataset").as("dataset");
-  cy.findAllByTestId("run-button").last().click();
-  cy.wait("@dataset");
 }
 
 function verifyScalarValue(value) {
