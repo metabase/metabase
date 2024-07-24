@@ -76,9 +76,9 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
           openldap: true
-          postgres: true
-          mysql: true
-          mongo: true
+          postgres: ${{ inputs.qa_db == 'postgres' }}
+          mysql: ${{ inputs.qa_db == 'postgres' }}
+          mongo: ${{ inputs.qa_db == 'mongo' }}
 
       - name: Download Metabase ${{ matrix.edition }} uberjar
         uses: ./.github/actions/e2e-download-uberjar
