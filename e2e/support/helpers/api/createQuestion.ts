@@ -6,7 +6,7 @@ import type {
   StructuredQuery,
 } from "metabase-types/api";
 
-type QuestionDetails = {
+export type QuestionDetails = {
   dataset_query: DatasetQuery;
   /**
    * Defaults to "test question".
@@ -161,7 +161,7 @@ const question = (
   }: Options = {},
 ) => {
   return cy
-    .request("POST", "/api/card", {
+    .request<Card>("POST", "/api/card", {
       name,
       description,
       dataset_query,
