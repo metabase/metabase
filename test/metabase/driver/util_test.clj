@@ -346,14 +346,18 @@
             http-provider-details)))))
 
 (deftest oauth-provider-tests
-  (let [oauth-provider-details {:auth-provider :oauth
+  (let [oauth-response {:access_token "foobar"
+                        :expires_in "84791"}
+        oauth-provider-details {:auth-provider :oauth
                                 :oauth-token-url (client/build-url "/testing/echo"
-                                                                   {:body (json/encode {:access_token "foobar"})})}]
-    (is (= {:access_token "foobar"} (auth-provider/fetch-auth :oauth nil oauth-provider-details)))
-    (is (= (merge oauth-provider-details {:password "foobar"})
-           (driver.u/fetch-and-incorporate-auth-provider-details
-            (tx/driver)
-            oauth-provider-details)))))
+                                                                   {:body (json/encode oauth-response)})}]
+    (is (= oauth-response (auth-provider/fetch-auth :oauth nil oauth-provider-details)))
+    (is (=? (merge oauth-provider-details
+                   {:password "foobar"
+                    :password-expiry-timestamp #(and (int? %) (> % (System/currentTimeMillis)))})
+            (driver.u/fetch-and-incorporate-auth-provider-details
+             (tx/driver)
+             oauth-provider-details)))))
 
 (deftest ^:parallel azure-managed-identity-provider-tests
   (let [client-id "client ID"

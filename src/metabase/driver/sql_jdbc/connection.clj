@@ -172,15 +172,17 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
         details-with-auth   (driver.u/fetch-and-incorporate-auth-provider-details
-                              driver
-                              id
-                              details-with-tunnel)
+                             driver
+                             id
+                             details-with-tunnel)
         spec                (connection-details->spec driver details-with-auth)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
-      (connection-pool-spec spec properties)
-      ;; also capture entries related to ssh tunneling for later use
-      (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
+     (connection-pool-spec spec properties)
+     ;; also capture entries related to ssh tunneling for later use
+     (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host])
+     ;; remember when the password expires
+     (select-keys details-with-auth [:password-expiry-timestamp]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color :red "Closing old connection pool for database %s ..." database-id))
@@ -233,6 +235,10 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   (log/warn (u/format-color :yellow "Hash of database %s details changed; marking pool invalid to reopen it" db-id))
   nil)
 
+(defn- log-password-expiry! [db-id]
+  (log/warn (u/format-color :yellow "Password of database %s expired; marking pool invalid to reopen it" db-id))
+  nil)
+
 (defn db->pooled-connection-spec
   "Return a JDBC connection spec that includes a cp30 `ComboPooledDataSource`. These connection pools are cached so we
   don't create multiple ones for the same DB."
@@ -271,6 +277,12 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
                                                     jdbc-spec-hash))))
                             (when log-invalidation?
                               (log-jdbc-spec-hash-change-msg! db-id))
+
+                            (let [{:keys [password-expiry-timestamp]} details]
+                              (and (int? password-expiry-timestamp)
+                                   (<= password-expiry-timestamp (System/currentTimeMillis))))
+                            (when log-invalidation?
+                              (log-password-expiry! db-id))
 
                             (nil? (:tunnel-session details)) ; no tunnel in use; valid
                             details

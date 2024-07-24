@@ -981,7 +981,11 @@
   [_driver auth-provider auth-provider-response details]
   (case auth-provider
     (:oauth :azure-managed-identity)
-    (assoc details :password (:access_token auth-provider-response))
+    (let [{:keys [access_token expires_in]} auth-provider-response]
+      (cond-> (assoc details :password access_token)
+        expires_in (assoc :password-expiry-timestamp (+ (System/currentTimeMillis)
+                                                        ;; renew the password a minute before expiry
+                                                        (* (- (parse-long expires_in) 60) 1000)))))
 
     (merge details auth-provider-response)))
 
