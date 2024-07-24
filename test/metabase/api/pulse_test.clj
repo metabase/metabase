@@ -1049,11 +1049,11 @@
                                    :recipients        ["user" "email"]
                                    :schedules         ["hourly" "daily" "weekly" "monthly"]
                                    :type              "email"}
-                           :http  {:alows_recipients false
-                                   :configured       true
-                                   :name             "Webhook"
-                                   :schedules        ["hourly" "daily" "weekly" "monthly"]
-                                   :type             "http"}
+                           :http  {:allows_recipients false
+                                   :configured        true
+                                   :name              "Webhook"
+                                   :schedules         ["hourly" "daily" "weekly" "monthly"]
+                                   :type              "http"}
                            :slack {:allows_recipients false
                                    :configured        true
                                    :fields            [{:displayName "Post to"

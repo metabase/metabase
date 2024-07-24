@@ -7,18 +7,26 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.channel.core :as channel]
+   [metabase.models.interface :as mi]
    [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(defn- remove-details-if-needed
+  "Remove the details field if the current user does not have write permissions for the channel."
+  [channel]
+  (if (mi/can-write? channel)
+    channel
+    (dissoc channel :details)))
+
 (api/defendpoint GET "/"
   "Get all channels"
   [:as {{:keys [include_inactive]} :body}]
   {include_inactive [:maybe {:default false} :boolean]}
-  (if include_inactive
-    (t2/select :model/Channel)
-    (t2/select :model/Channel :active true)))
+  (map remove-details-if-needed (if include_inactive
+                                          (t2/select :model/Channel)
+                                          (t2/select :model/Channel :active true))))
 
 (defn- test-channel-connection!
   "Test if a channel can be connected, throw an exception if it fails."
@@ -52,7 +60,7 @@
   "Get a channel"
   [id]
   {id ms/PositiveInt}
-  (api/check-404 (t2/select-one :model/Channel id)))
+  (-> (t2/select-one :model/Channel id) api/check-404 remove-details-if-needed))
 
 (api/defendpoint PUT "/:id"
   "Update a channel"
