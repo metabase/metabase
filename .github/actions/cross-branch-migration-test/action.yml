@@ -1,12 +1,16 @@
 name: Cross-branch migration test
 
+inputs:
+  base-ref:
+    required: true
+
 runs:
   using: "composite"
   steps:
     - name: Check out master request branch
       uses: actions/checkout@v4
       with:
-        ref: master
+        ref: ${{ inputs.base-ref }}
 
     - name: Prepare backend environment
       uses: ./.github/actions/prepare-backend

@@ -8397,7 +8397,7 @@ databaseChangeLog:
         - addDefaultValue:
             tableName: query_field
             columnName: explicit_reference
-            defaultValueBoolean: true
+            defaultValueBoolean: false
 
   - changeSet:
       id: v51.2024-07-10T12:28:10
