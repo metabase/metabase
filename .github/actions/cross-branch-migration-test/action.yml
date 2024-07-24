@@ -38,6 +38,10 @@ runs:
       run: kill $(cat metabase_pid)
       shell: bash
 
+    - name: Print Metabase logs from master
+      run: cat metabase.log
+      shell: bash
+
     - name: Check out pull request branch
       uses: actions/checkout@v4
       with:
@@ -62,4 +66,8 @@ runs:
 
     - name: Stop Metabase on pull request branch
       run: kill $(cat metabase_pid)
+      shell: bash
+
+    - name: Print Metabase logs from pull request branch
+      run: cat metabase.log
       shell: bash
