@@ -3,6 +3,7 @@
    [metabase.api.database :as api.database]
    [metabase.api.field :as api.field]
    [metabase.api.table :as api.table]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.util :as lib.util]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -32,7 +33,7 @@
                      (integer? id))]
       id)))
 
-(defn batch-fetch-query-metadata
+(defn- batch-fetch-query-metadata*
   "Fetch dependent metadata for ad-hoc queries."
   [queries]
   (let [source-ids                (into #{} (mapcat #(lib.util/collect-source-tables (:query %)))
@@ -48,14 +49,24 @@
                                         (field-ids->table-ids fk-target-field-ids))
         fk-target-tables          (api.table/batch-fetch-table-query-metadatas fk-target-table-ids)
         tables                    (concat source-tables fk-target-tables)
-        template-tag-field-ids    (into #{} (mapcat query->template-tag-field-ids) queries)]
+        template-tag-field-ids    (into #{} (mapcat query->template-tag-field-ids) queries)
+        query-database-ids        (into #{} (keep :database) queries)
+        database-ids              (into query-database-ids
+                                        (keep :db_id)
+                                        tables)]
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
-     :databases (sort-by :id (for [id (into #{} (map :db_id) tables)]
-                               (api.database/get-database id {})))
-     :tables    (sort-by :id tables)
+     :databases (->> (for [id database-ids]
+                       (api.database/get-database id {}))
+                     (sort-by :id))
+     :tables    (sort-by (comp str :id) tables)
      :fields    (or (sort-by :id (api.field/get-fields template-tag-field-ids))
                     [])}))
+
+(defn batch-fetch-query-metadata
+  "Fetch dependent metadata for ad-hoc queries."
+  [queries]
+  (batch-fetch-query-metadata* (map mbql.normalize/normalize queries)))
 
 (defn batch-fetch-card-metadata
   "Fetch dependent metadata for cards.
@@ -112,7 +123,7 @@
         dashboards (->> (:dashboard links)
                         (into #{} (map :id))
                         batch-fetch-linked-dashboards)]
-    {:cards      (sort-by :id link-cards)
+    {:cards      (sort-by (comp str :id) link-cards)
      :dashboards (sort-by :id dashboards)}))
 
 (defn batch-fetch-dashboard-metadata
