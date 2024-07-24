@@ -291,6 +291,7 @@ export type ExpressionParts = {
 export type ExpressionOptions = {
   "case-sensitive"?: boolean;
   "include-current"?: boolean;
+  "right-excluded"?: boolean;
 };
 
 declare const FilterOperator: unique symbol;

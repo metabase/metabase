@@ -347,20 +347,24 @@ export function relativeDateFilterClause({
     );
   }
 
-  return expressionClause("between", [
-    expressionClause("+", [
-      columnWithoutBucket,
-      expressionClause("interval", [-offsetValue, offsetBucket]),
-    ]),
-    expressionClause("relative-datetime", [
-      value !== "current" && value < 0 ? value : 0,
-      bucket,
-    ]),
-    expressionClause("relative-datetime", [
-      value !== "current" && value > 0 ? value : 0,
-      bucket,
-    ]),
-  ]);
+  return expressionClause(
+    "between",
+    [
+      expressionClause("+", [
+        columnWithoutBucket,
+        expressionClause("interval", [-offsetValue, offsetBucket]),
+      ]),
+      expressionClause("relative-datetime", [
+        value !== "current" && value < 0 ? value : 0,
+        bucket,
+      ]),
+      expressionClause("relative-datetime", [
+        value !== "current" && value > 0 ? value : 0,
+        bucket,
+      ]),
+    ],
+    { "right-excluded": true },
+  );
 }
 
 export function relativeDateFilterParts(

@@ -1350,8 +1350,14 @@
                (generate-pattern driver "%" arg nil options) options))
 
 (defmethod ->honeysql [:sql :between]
-  [driver [_ field min-val max-val]]
-  [:between (->honeysql driver field) (->honeysql driver min-val) (->honeysql driver max-val)])
+  [driver [_ col min-val max-val & {:as opts}]]
+  (def ooo opts)
+  (let [hsql-col (->honeysql driver col)
+        hsql-min (->honeysql driver min-val)
+        hsql-max (->honeysql driver max-val)]
+    (if (:right-excluded opts)
+      [:and [:>= hsql-col hsql-min] [:< hsql-col hsql-max]]
+      [:between hsql-col hsql-min hsql-max])))
 
 (defmethod ->honeysql [:sql :>]
   [driver [_ field value]]
