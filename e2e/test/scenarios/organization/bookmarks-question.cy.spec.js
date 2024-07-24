@@ -8,6 +8,8 @@ import {
   visitQuestion,
 } from "e2e/support/helpers";
 
+import { toggleQuestionBookmarkStatus } from "./helpers/bookmark-helpers";
+
 describe("scenarios > question > bookmarks", () => {
   beforeEach(() => {
     restore();
@@ -17,7 +19,7 @@ describe("scenarios > question > bookmarks", () => {
 
   it("should add, update bookmark name when question name is updated, then remove bookmark from question page", () => {
     visitQuestion(ORDERS_QUESTION_ID);
-    toggleBookmark();
+    toggleQuestionBookmarkStatus();
 
     openNavigationSidebar();
     navigationSidebar().within(() => {
@@ -64,7 +66,7 @@ describe("scenarios > question > bookmarks", () => {
     });
 
     // Remove bookmark
-    toggleBookmark({ wasSelected: true });
+    toggleQuestionBookmarkStatus({ wasSelected: true });
 
     navigationSidebar().within(() => {
       getSidebarSectionTitle(/Bookmarks/).should("not.exist");
@@ -72,11 +74,3 @@ describe("scenarios > question > bookmarks", () => {
     });
   });
 });
-
-function toggleBookmark({ wasSelected = false } = {}) {
-  const iconName = wasSelected ? "bookmark_filled" : "bookmark";
-  cy.findByTestId("qb-header-action-panel").within(() => {
-    cy.icon(iconName).click();
-  });
-  cy.wait("@toggleBookmark");
-}
