@@ -1,6 +1,5 @@
 (ns metabase.api.query-metadata
   (:require
-   [metabase.api.database :as api.database]
    [metabase.api.field :as api.field]
    [metabase.api.table :as api.table]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
@@ -8,6 +7,12 @@
    [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
+
+(defn- get-databases
+  [ids]
+  (when (seq ids)
+    (into [] (filter mi/can-read?)
+          (t2/select :model/Database :id [:in ids]))))
 
 (defn- field-ids->table-ids
   [field-ids]
@@ -56,9 +61,7 @@
                                         tables)]
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
-     :databases (->> (for [id database-ids]
-                       (api.database/get-database id {}))
-                     (sort-by :id))
+     :databases (sort-by :id (get-databases database-ids))
      :tables    (sort-by (comp str :id) tables)
      :fields    (or (sort-by :id (api.field/get-fields template-tag-field-ids))
                     [])}))
