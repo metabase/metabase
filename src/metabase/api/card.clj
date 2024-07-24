@@ -548,7 +548,7 @@
   "Get all of the required query metadata for a card."
   [id]
   {id ms/PositiveInt}
-  (api.query-metadata/card-metadata (get-card id)))
+  (api.query-metadata/batch-fetch-card-metadata [(get-card id)]))
 
 ;;; ------------------------------------------------- Deleting Cards -------------------------------------------------
 
