@@ -10,7 +10,8 @@
 
 (defmethod mi/can-write? :model/Channel
   [& _]
-  (perms/current-user-has-application-permissions? :setting))
+  (or (mi/superuser?)
+      (perms/current-user-has-application-permissions? :setting)))
 
 (defmethod serdes/entity-id "Channel"
   [_ {:keys [name]}]
