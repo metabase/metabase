@@ -22,6 +22,60 @@
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import (clojure.lang ExceptionInfo)))
 
+(def ^:private base-types-without-field-values
+  #{:type/*
+    :type/JSON
+    :type/Array
+    :type/DruidJSON
+    :type/Dictionary
+    :type/Structured
+    :type/Collection
+    :type/OracleCLOB
+    :type/SnowflakeVariant
+    :type/DruidHyperUnique
+    :type/TimeWithTZ
+    :type/TimeWithLocalTZ
+    :type/Time
+    :type/UpdatedTime
+    :type/Instant
+    :type/UpdatedDate
+    :type/JoinTimestamp
+    :type/DeletionTime
+    :type/CancelationDate
+    :type/CancelationTime
+    :type/DeletionDate
+    :type/DateTimeWithZoneID
+    :type/UpdatedTimestamp
+    :type/Birthdate
+    :type/Date
+    :type/SerializedJSON
+    :type/DateTimeWithZoneOffset
+    :type/Temporal
+    :type/CreationTimestamp
+    :type/Large
+    :type/JoinTime
+    :type/CreationTime
+    :type/DateTimeWithTZ
+    :type/JoinDate
+    :type/CancelationTimestamp
+    :type/CreationDate
+    :type/XML
+    :type/field-values-unsupported
+    :type/DeletionTimestamp
+    :type/TimeWithZoneOffset
+    :type/DateTime
+    :type/DateTimeWithLocalTZ
+    :type/Interval})
+
+(deftest ^:parallel base-type-should-have-field-values-test
+  (doseq [base-type (conj (descendants :type/*) :type/*)]
+    (let [expected (not (contains? base-types-without-field-values base-type))]
+      (testing (str base-type "should " (when-not expected "not ") "have field values")
+        (is (= expected
+               (#'field-values/field-should-have-field-values? {:has_field_values :list
+                                                                :visibility_type  :normal
+                                                                :base_type        base-type})))))))
+
 (deftest ^:parallel field-should-have-field-values?-test
   (doseq [[group input->expected] {"Text and Category Fields"
                                    {{:has_field_values :list
@@ -90,29 +144,7 @@
                                     {:base_type        :type/Time
                                      :has_field_values :list
                                      :visibility_type  :normal}
-                                    false}
-
-                                   "type/* fields should be excluded"
-                                   {{:has_field_values :list
-                                     :visibility_type  :normal
-                                     :base_type        :type/*}
-                                    false}
-
-                                   "type/Structured fields should be excluded"
-                                   (into {}
-                                         (for [base-type (conj (descendants :type/Structured) :type/Structured)]
-                                           [{:has_field_values :list
-                                             :visibility_type  :normal
-                                             :base_type        base-type}
-                                            false]))
-
-                                   "type/Collection fields should be excluded"
-                                   (into {}
-                                         (for [base-type (conj (descendants :type/Collection) :type/Collection)]
-                                           [{:has_field_values :list
-                                             :visibility_type  :normal
-                                             :base_type        base-type}
-                                            false]))}
+                                    false}}
           [input expected] input->expected]
     (testing (str group "\n")
       (testing (pr-str (list 'field-should-have-field-values? input))
