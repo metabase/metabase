@@ -233,8 +233,9 @@ class TableInteractive extends Component {
       column => column.source === "aggregation",
     );
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
+    const isModelEditor = this.props.queryBuilderMode === "dataset";
     const newShowDetailState =
-      !(isPivoted || hasAggregation || isNotebookPreview) &&
+      !(isPivoted || hasAggregation || isNotebookPreview || isModelEditor) &&
       !this.props.isEmbeddingSdk;
 
     if (newShowDetailState !== this.state.showDetailShortcut) {

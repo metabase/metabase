@@ -13,7 +13,7 @@ import {
 } from "metabase/visualizations/components/settings/ChartSettingsTableFormatting";
 import {
   columnSettings,
-  buildTableColumnSettings,
+  tableColumnSettings,
   getTitleForColumn,
   isPivoted as _isPivoted,
 } from "metabase/visualizations/lib/settings/column";
@@ -152,7 +152,7 @@ class Table extends Component<TableProps, TableState> {
       readDependencies: ["table.pivot", "table.pivot_column"],
       persistDefault: true,
     },
-    ...buildTableColumnSettings(),
+    ...tableColumnSettings,
     "table.column_widths": {},
     [DataGrid.COLUMN_FORMATTING_SETTING]: {
       section: t`Conditional Formatting`,
@@ -345,10 +345,14 @@ class Table extends Component<TableProps, TableState> {
       const columnSettings = settings["table.columns"] ?? [];
       const columnIndexes = findColumnIndexesForColumnSettings(
         cols,
-        this.props.isShowingDetailsOnlyColumns
-          ? columnSettings
-          : columnSettings.filter(({ enabled }) => enabled),
-      ).filter(columnIndex => columnIndex >= 0);
+        columnSettings,
+      ).filter(
+        (columnIndex, settingIndex) =>
+          columnIndex >= 0 &&
+          (this.props.isShowingDetailsOnlyColumns ||
+            (cols[columnIndex].visibility_type !== "details-only" &&
+              columnSettings[settingIndex].enabled)),
+      );
 
       this.setState({
         data: {
