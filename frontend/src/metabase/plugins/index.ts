@@ -9,7 +9,7 @@ import { t } from "ttag";
 import _ from "underscore";
 import type { AnySchema } from "yup";
 
-// import noResultsSource from "assets/img/no_results.svg";
+import noResultsSource from "assets/img/no_results.svg";
 import { strategies } from "metabase/admin/performance/constants/complex";
 import { UNABLE_TO_CHANGE_ADMIN_PERMISSIONS } from "metabase/admin/permissions/constants/messages";
 import {
@@ -206,12 +206,10 @@ export const PLUGIN_SELECTORS = {
     };
   },
   getNoDataIllustration: (_state: State): string => {
-    // return noResultsSource;
-    return null;
+    return noResultsSource;
   },
   getNoObjectIllustration: (_state: State): string => {
-    // return noResultsSource;
-    return null;
+    return noResultsSource;
   },
 };
 
