@@ -65,8 +65,8 @@
 (defmethod can-run-method :mbql.stage/mbql
   [query card-type]
   (or (not= card-type :metric)
-      (let [last-stage (lib.util/query-stage query -1)]
-        (= (-> last-stage :aggregation count) 1))))
+      (and (= (stage-count query) 1)
+           (= (-> (lib.util/query-stage query 0) :aggregation count) 1))))
 
 (mu/defn can-run :- :boolean
   "Returns whether the query is runnable. Manually validate schema for cljs."

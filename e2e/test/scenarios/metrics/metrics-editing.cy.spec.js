@@ -1,7 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
-  assertQueryBuilderRowCount,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -57,27 +56,6 @@ const PRODUCTS_SCALAR_METRIC = {
   type: "metric",
   query: {
     "source-table": PRODUCTS_ID,
-    aggregation: [["count"]],
-  },
-  display: "scalar",
-};
-
-const ORDERS_MULTI_STAGE_METRIC = {
-  name: "Orders metric mutli-stage",
-  type: "metric",
-  query: {
-    "source-query": {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [
-        [
-          "field",
-          ORDERS.CREATED_AT,
-          { "base-type": "type/DateTime", "temporal-unit": "month" },
-        ],
-      ],
-    },
-    filter: [">", ["field", "count", { "base-type": "type/Integer" }], 10],
     aggregation: [["count"]],
   },
   display: "scalar",
@@ -283,21 +261,14 @@ describe("scenarios > metrics > editing", () => {
       verifyScalarValue("4,939");
     });
 
-    it("should create a metric based on a multi-stage metric", () => {
-      createQuestion(ORDERS_MULTI_STAGE_METRIC);
+    it("should not allow to create a multi-stage metric", () => {
       startNewMetric();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_MULTI_STAGE_METRIC.name).click();
+        entityPickerModalTab("Models").click();
+        cy.findByText("Orders Model").click();
       });
-      addDateBetweenFilter({
-        columnName: "Created At: Month",
-        minValue: "May 7, 2020",
-        maxValue: "October 20, 2022",
-      });
-      saveMetric();
-      runQuery();
-      verifyScalarValue("6");
+      addAggregation({ operatorName: "Count of rows" });
+      getActionButton("Summarize").should("not.exist");
     });
   });
 
@@ -352,27 +323,6 @@ describe("scenarios > metrics > editing", () => {
         getActionButton("Join data").should("not.exist");
       });
     });
-
-    it("should join on the second stage of a metric query", () => {
-      createQuestion(ORDERS_SCALAR_METRIC);
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      });
-      addBreakout({ columnName: "Product ID" });
-      startNewJoin({ isPostAggregation: true });
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Products").click();
-      });
-      getNotebookStep("join", { stage: 1 }).within(() => {
-        cy.findByText("ID").should("be.visible");
-        cy.findByText("Product ID").should("be.visible");
-      });
-      visualize();
-      assertQueryBuilderRowCount(200);
-    });
   });
 
   describe("custom columns", () => {
@@ -394,7 +344,7 @@ describe("scenarios > metrics > editing", () => {
       verifyScalarValue("755,310.84");
     });
 
-    it.skip("should be able to use implicitly joinable columns in custom columns in metric queries (metabase#42360)", () => {
+    it("should be able to use implicitly joinable columns in custom columns in metric queries (metabase#42360)", () => {
       startNewMetric();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
@@ -493,32 +443,6 @@ describe("scenarios > metrics > editing", () => {
       runQuery();
       verifyPinMap();
     });
-
-    it("should add a breakout clause in a metric query with 2 stages", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
-      });
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Created At" });
-      addAggregation({
-        operatorName: "Average of ...",
-        columnName: "Count",
-        isPostAggregation: true,
-      });
-      addBreakout({
-        columnName: "Created At: Month",
-        bucketName: "Year",
-        stageIndex: 1,
-      });
-      saveMetric();
-      runQuery();
-      verifyLineAreaBarChart({
-        xAxis: "Created At",
-        yAxis: "Average of Count",
-      });
-    });
   });
 
   describe("aggregations", () => {
@@ -550,42 +474,6 @@ describe("scenarios > metrics > editing", () => {
       saveMetric();
       runQuery();
       verifyScalarValue("9,380");
-    });
-
-    it("should add an aggregation clause in a metric query with 2 stages", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
-      });
-      addAggregation({ operatorName: "Count of rows" });
-      addBreakout({ columnName: "Created At", bucketName: "Year" });
-      addAggregation({
-        operatorName: "Count of rows",
-        isPostAggregation: true,
-      });
-      saveMetric();
-      runQuery();
-      verifyScalarValue("5");
-    });
-
-    it("should add multiple aggregation columns in the first stage of a metric query", () => {
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
-      });
-      addAggregation({ operatorName: "Sum of ...", columnName: "Total" });
-      addAggregation({ operatorName: "Sum of ...", columnName: "Subtotal" });
-      addBreakout({ columnName: "Created At" });
-      addAggregation({
-        operatorName: "Average of ...",
-        columnName: "Sum of Subtotal",
-        isPostAggregation: true,
-      });
-      saveMetric();
-      runQuery();
-      verifyScalarValue("29,554.86");
     });
   });
 
@@ -622,52 +510,28 @@ function getPlusButton() {
   return cy.findAllByTestId("notebook-cell-item").last();
 }
 
-function startNewJoin({ stageIndex, isPostAggregation } = {}) {
-  if (isPostAggregation) {
-    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      getActionButton("Join data").click(),
-    );
-  } else {
-    getNotebookStep("data", { stage: stageIndex }).within(() =>
-      getActionButton("Join data").click(),
-    );
-  }
+function startNewJoin({ stageIndex } = {}) {
+  getNotebookStep("data", { stage: stageIndex }).within(() =>
+    getActionButton("Join data").click(),
+  );
 }
 
-function startNewCustomColumn({ stageIndex, isPostAggregation } = {}) {
-  if (isPostAggregation) {
-    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      getActionButton("Custom column").click(),
-    );
-  } else {
-    getNotebookStep("data", { stage: stageIndex }).within(() =>
-      getActionButton("Custom column").click(),
-    );
-  }
+function startNewCustomColumn({ stageIndex } = {}) {
+  getNotebookStep("data", { stage: stageIndex }).within(() =>
+    getActionButton("Custom column").click(),
+  );
 }
 
-function startNewFilter({ stageIndex, isPostAggregation } = {}) {
-  if (isPostAggregation) {
-    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      getActionButton("Filter").click(),
-    );
-  } else {
-    getNotebookStep("filter", { stage: stageIndex }).within(() =>
-      getPlusButton().click(),
-    );
-  }
+function startNewFilter({ stageIndex } = {}) {
+  getNotebookStep("filter", { stage: stageIndex }).within(() =>
+    getPlusButton().click(),
+  );
 }
 
-function startNewAggregation({ stageIndex, isPostAggregation } = {}) {
-  if (isPostAggregation) {
-    getNotebookStep("summarize", { stage: stageIndex }).within(() =>
-      getActionButton("Summarize").click(),
-    );
-  } else {
-    getNotebookStep("summarize", { stage: stageIndex })
-      .findByTestId("aggregate-step")
-      .within(() => getPlusButton().click());
-  }
+function startNewAggregation({ stageIndex } = {}) {
+  getNotebookStep("summarize", { stage: stageIndex })
+    .findByTestId("aggregate-step")
+    .within(() => getPlusButton().click());
 }
 
 function startNewBreakout({ stageIndex } = {}) {
@@ -701,27 +565,8 @@ function addNumberBetweenFilter({ tableName, columnName, minValue, maxValue }) {
   });
 }
 
-function addDateBetweenFilter({ tableName, columnName, minValue, maxValue }) {
-  startNewFilter();
-  popover().within(() => {
-    if (tableName) {
-      cy.findByText(tableName).click();
-    }
-    cy.findByText(columnName).click();
-    cy.findByText("Specific dates…").click();
-    cy.findByLabelText("Start date").clear().type(minValue);
-    cy.findByLabelText("End date").clear().type(maxValue);
-    cy.button("Add filter").click();
-  });
-}
-
-function addAggregation({
-  operatorName,
-  columnName,
-  stageIndex,
-  isPostAggregation,
-}) {
-  startNewAggregation({ stageIndex, isPostAggregation });
+function addAggregation({ operatorName, columnName, stageIndex }) {
+  startNewAggregation({ stageIndex });
 
   popover().within(() => {
     cy.findByText(operatorName).click();
