@@ -19,7 +19,6 @@ import {
   createNativeQuestion,
   queryBuilderMain,
   queryBuilderFooter,
-  resyncDatabase,
   withDatabase,
 } from "e2e/support/helpers";
 
@@ -535,10 +534,6 @@ describe("issue 27643", () => {
   beforeEach(() => {
     restore("postgres-12");
     cy.signInAsAdmin();
-    resyncDatabase({
-      dbId: PG_DB_ID,
-      tableName: "invoices",
-    });
     withDatabase(PG_DB_ID, ({ INVOICES }) => {
       cy.wrap(INVOICES.EXPECTED_INVOICE).as(
         "postgresInvoicesExpectedInvoiceId",
