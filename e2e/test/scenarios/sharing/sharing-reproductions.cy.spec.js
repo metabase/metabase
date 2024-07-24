@@ -438,29 +438,70 @@ describe("issue 22524", () => {
 });
 
 describeEE("issue 24223", () => {
-  function addParametersToDashboard() {
-    editDashboard();
+  const questionDetails = {
+    name: "24223",
+    query: {
+      "source-table": ORDERS_ID,
+      limit: 5,
+    },
+  };
 
-    setFilter("Text or Category", "Is");
+  const dropdownFilter = {
+    name: "Category",
+    slug: "category",
+    id: "b613dce5",
+    type: "string/=",
+    sectionId: "string",
+    default: ["Doohickey"],
+  };
 
-    cy.findByText("Select…").click();
-    popover().findByText("Category").click();
-    cy.findByText("No default").click();
-    popover().within(() => {
-      cy.findByText("Doohickey").click();
-      cy.button("Add filter").click();
-    });
+  const containsFilter = {
+    name: "Title",
+    slug: "title",
+    id: "ffb5da68",
+    type: "string/contains",
+    sectionId: "string",
+    default: ["Awesome"],
+  };
 
-    setFilter("Text or Category", "Contains", "Text contains");
+  const parameters = [dropdownFilter, containsFilter];
 
-    cy.findByText("Select…").click();
-    popover().findByText("Title").click();
-    cy.findByText("No default").click();
-    popover().find("input").type("Awesome");
-    popover().button("Add filter").click();
+  const dashboardDetails = { parameters };
 
-    saveDashboard();
-  }
+  const mapFiltersToCard = card_id => ({
+    parameter_mappings: [
+      {
+        parameter_id: dropdownFilter.id,
+        card_id,
+        target: [
+          "dimension",
+          [
+            "field",
+            PRODUCTS.CATEGORY,
+            {
+              "base-type": "type/Text",
+              "source-field": ORDERS.PRODUCT_ID,
+            },
+          ],
+        ],
+      },
+      {
+        parameter_id: containsFilter.id,
+        card_id,
+        target: [
+          "dimension",
+          [
+            "field",
+            PRODUCTS.TITLE,
+            {
+              "base-type": "type/Text",
+              "source-field": ORDERS.PRODUCT_ID,
+            },
+          ],
+        ],
+      },
+    ],
+  });
 
   beforeEach(() => {
     restore();
@@ -469,35 +510,40 @@ describeEE("issue 24223", () => {
     setupSMTP();
   });
 
-  it("should clear default filter", () => {
-    cy.visit(`/dashboard/${ORDERS_DASHBOARD_ID}`);
-    addParametersToDashboard();
-    cy.findByLabelText("subscriptions").click();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Email it").click();
-    cy.findByPlaceholderText("Enter user names or email addresses")
-      .click()
-      .type(`${admin.first_name} ${admin.last_name}{enter}`)
-      .blur(); // blur is needed to close the popover
+  it("should clear default filter (metabase#24223)", () => {
+    cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
+      ({ body: dashboardCard }) => {
+        const { card_id, dashboard_id } = dashboardCard;
 
-    cy.wait(500); // we need to wait here for some reason for CI to pass
+        cy.editDashboardCard(dashboardCard, mapFiltersToCard(card_id));
 
-    cy.findAllByText("Doohickey")
-      .last()
-      .closest("fieldset")
-      .icon("close")
-      .click();
-    cy.button("Done").click();
+        visitDashboard(dashboard_id);
+        cy.location("search").should("eq", "?category=Doohickey&title=Awesome");
+        cy.findByTestId("dashcard").should("contain", "36.37");
+      },
+    );
 
-    cy.get("[aria-label='Pulse Card']")
-      .findByText("Text contains is Awesome")
+    openAndAddEmailsToSubscriptions([`${admin.first_name} ${admin.last_name}`]);
+    cy.findByTestId("subscription-parameters-section").within(() => {
+      cy.findAllByTestId("field-set-content")
+        .filter(":contains(Doohickey)")
+        .icon("close")
+        .click();
+    });
+
+    sidebar().button("Done").click();
+
+    cy.findByLabelText("Pulse Card")
+      .should("contain", "Title is Awesome")
+      .and("not.contain", "1 more filter")
       .click();
 
     sendEmailAndVisitIt();
-    cy.get("table.header").within(() => {
-      cy.findByText("Text").should("not.exist");
-      cy.findByText("Awesome").parent().findByText("Text contains");
-    });
+    cy.get("table.header")
+      .should("contain", containsFilter.name)
+      .and("contain", "Awesome")
+      .and("not.contain", dropdownFilter.name)
+      .and("not.contain", "Doohickey");
   });
 });
 

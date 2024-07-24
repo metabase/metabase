@@ -54,6 +54,7 @@ function MutableParametersSection({
       className={cx(className)}
       initialState="expanded"
       bodyClass={CS.mt2}
+      data-testid="subscription-parameters-section"
     >
       <ParametersList
         className={cx(CS.alignStretch, CS.rowGap1)}
