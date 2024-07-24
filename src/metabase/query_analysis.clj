@@ -80,21 +80,27 @@
          :mbql/query true
          false)))
 
-(defn- query-field-ids
+(defn- explicit-references [field-ids]
+  (map #(hash-map :field-id % :explicit-reference true) field-ids))
+
+(defn- query-references
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
   so returns `{:explicit #{...int ids}}` map.
 
   Does not track wildcards for queries rendered as tables afterward."
   ([query]
-   (query-field-ids query (lib/normalized-query-type query)))
+   (query-references query (lib/normalized-query-type query)))
   ([query query-type]
    (case query-type
-     :native (try
-               (nqa/field-ids-for-native query)
-               (catch Exception e
-                 (log/error e "Error parsing SQL" query)))
-     :query {:explicit (mbql.u/referenced-field-ids query)}
-     :mbql/query {:explicit (lib.util/referenced-field-ids query)})))
+     :native     (try
+                   (nqa/references-for-native query)
+                   (catch Exception e
+                     (log/error e "Error parsing SQL" query)))
+     ;; For now, all model references are resolved transitively to the ultimate field ids.
+     ;; We may want to change to record model references directly rather than resolving them.
+     ;; This would remove the need to invalidate consuming cards when a given model changes.
+     :query      (explicit-references (mbql.u/referenced-field-ids query))
+     :mbql/query (explicit-references (lib.util/referenced-field-ids query)))))
 
 (defn update-query-analysis-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
@@ -104,7 +110,7 @@
   [{card-id :id, query :dataset_query}]
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
-      (let [{:keys [explicit implicit]} (query-field-ids query query-type)
+      (let [{:keys [explicit implicit]} (query-references query query-type)
             id->row          (fn [explicit? field-id]
                                {:card_id            card-id
                                 :field_id           field-id

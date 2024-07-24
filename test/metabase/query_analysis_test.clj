@@ -26,6 +26,12 @@
   (testing "other types are disabled"
     (is (false? (query-analysis/enabled-type? :unexpected)))))
 
+(defn- field-id-references [card-or-query]
+  (into #{}
+        (map :field-id)
+        (#'query-analysis/query-references
+         (:dataset_query card-or-query card-or-query))))
+
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
     (mt/with-temp [Card c1 {:dataset_query (mt/mbql-query venues
@@ -40,20 +46,17 @@
                                                        :alias        "Venues"
                                                        :condition    [:= $checkins.venue_id $venues.id]}]})}]
       (mt/$ids
-       (is (= {:explicit #{%venues.name %venues.price}}
-              (#'query-analysis/query-field-ids (:dataset_query c1))))
-       (is (= {:explicit nil}
-              (#'query-analysis/query-field-ids (:dataset_query c2))))
-       (is (= {:explicit #{%venues.id %checkins.venue_id}}
-              (#'query-analysis/query-field-ids (:dataset_query c3)))))))
+       (is (= #{%venues.name %venues.price} (field-id-references c1)))
+       (is (empty? (field-id-references c2)))
+       (is (= #{%venues.id %checkins.venue_id} (field-id-references c3))))))
   (testing "Parsing pMBQL query returns correct used fields"
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
           mlv2-query        (-> (lib/query metadata-provider venues)
                                 (lib/aggregate (lib/distinct venues-name)))]
-      (is (= {:explicit #{(mt/id :venues :name)}}
-             (#'query-analysis/query-field-ids mlv2-query))))))
+      (is (= #{(mt/id :venues :name)}
+             (field-id-references mlv2-query))))))
 
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"

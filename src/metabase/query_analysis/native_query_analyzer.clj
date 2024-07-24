@@ -30,9 +30,11 @@
 
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
-  {:from [[:metabase_field :f]]
+  {:select [[:f.id :field_id] [[:lower :f.name] :column]
+            [:t.id :table_id] [[:lower :t.name] :table]]
+   :from   [[:metabase_field :f]]
    ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
-   :join [[:metabase_table :t] [:= :table_id :t.id]]})
+   :join   [[:metabase_table :t] [:= :table_id :t.id]]})
 
 ;; NOTE: be careful when adding square braces, as the rules for nesting them are different.
 (def ^:private quotes "\"`")
@@ -48,6 +50,14 @@
 (def ^:private quote->stripper
   "Pre-constructed lambdas, to save some memory allocations."
   (zipmap quotes (map quote-stripper quotes)))
+
+(defn- strip-quotes [value]
+  (if-let [f (quote->stripper (first value))]
+    (f value)
+    value))
+
+(defn- normalized-key [value]
+  (u/lower-case-en (strip-quotes value)))
 
 (defn- field-query
   "Exact match for quoted fields, case-insensitive match for non-quoted fields"
@@ -87,15 +97,39 @@
      (field-query :f.name (:column column))
      (into [:or] (map table-query tables))]))
 
-(defn- explicit-field-ids-for-query
+(defn- strip-redundant-refs
+  "Strip out duplicate references, and unqualified references that are shadowed by found or qualified ones."
+  [references]
+  (let [qualified? (into #{} (comp (filter :table) (map :column)) references)]
+    (into #{}
+          (filter (fn [{:keys [table column]}]
+                    (or table (not (qualified? column)))))
+          references)))
+
+(defn- consolidate-columns
+  "Qualify analyzed columns with the corresponding database IDs, where we are able to resolve them."
+  [analyzed-columns database-columns]
+  (let [column->records       (group-by (comp :column) database-columns)
+        table+column->records (group-by (juxt :table :column) database-columns)]
+    (strip-redundant-refs
+     (mapcat (fn [{:keys [table column] :as reference}]
+               (or (if table
+                     (table+column->records [(normalized-key table) (normalized-key column)])
+                     (column->records (normalized-key column)))
+                   [(update-vals reference strip-quotes)]))
+             analyzed-columns))))
+
+(defn- explicit-references-for-query
   "Selects IDs of Fields that could be used in the query"
   [{column-maps :columns table-maps :tables} db-id]
   (let [columns (map :component column-maps)
         tables  (map :component table-maps)]
-    (t2/select-pks-set :model/Field (assoc field-and-table-fragment
-                                           :where [:and
-                                                   [:= :t.db_id db-id]
-                                                   (into [:or] (map (partial column-query tables) columns))]))))
+    (consolidate-columns
+     columns
+     (t2/select :model/Field (assoc field-and-table-fragment
+                                    :where [:and
+                                            [:= :t.db_id db-id]
+                                            (into [:or] (map (partial column-query tables) columns))])))))
 
 (defn- wildcard-tables
   "Given a parsed query, return the list of tables we are selecting from using a wildcard."
@@ -111,17 +145,20 @@
       ;; limit to the named tables
       (seq table-wildcards)            (map :component table-wildcards))))
 
-(defn- implicit-field-ids-for-query
+(defn- implicit-references-for-query
   "Similar to explicit-field-ids-for-query, but for wildcard selects"
   [parsed-query db-id]
   (when-let [tables (wildcard-tables parsed-query)]
-    (t2/select-pks-set :model/Field (merge field-and-table-fragment
-                                           {:where [:and
-                                                    [:= :t.db_id db-id]
-                                                    [:= :f.active true]
-                                                    (into [:or] (map table-query tables))]}))))
+    (t2/select :model/Field (merge field-and-table-fragment
+                                   {:where [:and
+                                            [:= :t.db_id db-id]
+                                            [:= :f.active true]
+                                            (into [:or] (map table-query tables))]}))))
 
-(defn- field-ids-for-sql
+(defn- mark-reference [refs explicit?]
+  (map #(assoc % :explicit-reference explicit?) refs))
+
+(defn- references-for-sql
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
   to return fields that are in the query.
@@ -129,18 +166,18 @@
   Explicit references are columns that are named in the query; implicit ones are from wildcards. If a field could be
   both explicit and implicit, it will *only* show up in the `:explicit` set."
   [driver query]
-  (let [db-id        (:database query)
-        macaw-opts   (nqa.impl/macaw-options driver)
-        sql-string   (:query (nqa.sub/replace-tags query))
-        parsed-query (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
-        explicit-ids (explicit-field-ids-for-query parsed-query db-id)
-        implicit-ids (set/difference
-                      (implicit-field-ids-for-query parsed-query db-id)
-                      explicit-ids)]
-    {:explicit explicit-ids
-     :implicit implicit-ids}))
+  (let [db-id         (:database query)
+        macaw-opts    (nqa.impl/macaw-options driver)
+        sql-string    (:query (nqa.sub/replace-tags query))
+        parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
+        explicit-refs (explicit-references-for-query parsed-query db-id)
+        implicit-refs (set/difference (implicit-references-for-query parsed-query db-id)
+                                      (set explicit-refs))]
+    ;; TODO: add table refs
+    (concat (mark-reference explicit-refs true)
+            (mark-reference implicit-refs false))))
 
-(defn field-ids-for-native
+(defn references-for-native
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Currently only support SQL-based dialects."
   [query]
@@ -148,4 +185,4 @@
     ;; TODO this approach is not extensible, we need to move to multimethods.
     ;; See https://github.com/metabase/metabase/issues/43516 for long term solution.
     (when (isa? driver/hierarchy driver :sql)
-      (field-ids-for-sql driver query))))
+      (references-for-sql driver query))))
