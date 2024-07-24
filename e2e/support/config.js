@@ -1,3 +1,5 @@
+import path from "node:path";
+
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -21,6 +23,23 @@ const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 
+// docs say that tsconfig paths should handle aliases, but they don't
+const assetsResolverPlugin = {
+  name: "assetsResolver",
+  setup(build) {
+    // Redirect all paths starting with "assets/" to "resources/"
+    build.onResolve({ filter: /^assets\// }, args => {
+      return {
+        path: path.join(
+          __dirname,
+          "../../resources/frontend_client/app",
+          args.path,
+        ),
+      };
+    });
+  },
+};
+
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
@@ -36,7 +55,7 @@ const defaultConfig = {
         loader: {
           ".svg": "text",
         },
-        plugins: [NodeModulesPolyfillPlugin()],
+        plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
         sourcemap: "inline",
       }),
     );
