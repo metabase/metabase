@@ -38,7 +38,7 @@ You can set the following types of permissions on a database, schema, or table:
 
 ## View data permissions
 
-{% include plans-blockquote.html feature="View data permission" %}
+{% include plans-blockquote.html feature="View data permissions" %}
 
 The **View data** permission determines what data people can see.
 
