@@ -30,8 +30,8 @@
 
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
-  {:select [[:f.id :field_id] [[:lower :f.name] :column]
-            [:t.id :table_id] [[:lower :t.name] :table]]
+  {:select [[:f.id :field-id] [[:lower :f.name] :column]
+            [:t.id :table-id] [[:lower :t.name] :table]]
    :from   [[:metabase_field :f]]
    ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
    :join   [[:metabase_table :t] [:= :table_id :t.id]]})
