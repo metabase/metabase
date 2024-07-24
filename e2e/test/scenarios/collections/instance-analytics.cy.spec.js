@@ -214,7 +214,7 @@ describeEE("scenarios > Metabase Analytics Collection (AuditV2) ", () => {
       newButton("SQL query").click();
 
       // sample DB should be the only one
-      cy.findByTestId("gui-builder-data")
+      cy.findByTestId("native-query-top-bar")
         .icon("cheverondown")
         .should("not.exist");
     });
