@@ -15,31 +15,6 @@ import type { LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
-const ORDERS_COUNT_OVER_TIME: StructuredQuestionDetails = {
-  display: "line",
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [
-      [
-        "field",
-        ORDERS.CREATED_AT,
-        {
-          "base-type": "type/DateTime",
-          "temporal-unit": "month",
-        },
-      ],
-    ],
-  },
-};
-
-const PEOPLE_QUESTION: StructuredQuestionDetails = {
-  query: {
-    "source-table": PEOPLE_ID,
-    limit: 1,
-  },
-};
-
 const CREATED_AT_FIELD: LocalFieldReference = [
   "field",
   ORDERS.CREATED_AT,
@@ -56,6 +31,22 @@ const CITY_FIELD: LocalFieldReference = [
     "base-type": "type/Text",
   },
 ];
+
+const ORDERS_COUNT_OVER_TIME: StructuredQuestionDetails = {
+  display: "line",
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [CREATED_AT_FIELD],
+  },
+};
+
+const PEOPLE_QUESTION: StructuredQuestionDetails = {
+  query: {
+    "source-table": PEOPLE_ID,
+    limit: 1,
+  },
+};
 
 describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   beforeEach(() => {
