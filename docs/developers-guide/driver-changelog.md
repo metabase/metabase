@@ -4,6 +4,17 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.50.16
+
+  - `:type/fingerprinting-unsupported` has been added in the `metabase.types` namespace. Similar to
+    `:type/field-values-unsupported` for field values scanning, it is used to determine whether a specific field
+    should have its fingerprint computed or not. At the time of writing that logic is performed in
+    `metabase.sync.analyze.fingerprint/fields-to-fingerprint-base-clause`.
+
+  - `:type/Large` has been also been added in the `metabase.types` namespace. It can be used by driver authors to
+    signal that a specific field contains large enough values to skip fingerprinting or field values scanning. It
+    can be used for other purposes as well in the future. Examples include Oracle CLOB or Postgres JSON columns.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
