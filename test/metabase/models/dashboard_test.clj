@@ -9,6 +9,7 @@
    [metabase.models.dashboard :as dashboard]
    [metabase.models.dashboard-card :as dashboard-card]
    [metabase.models.interface :as mi]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse-channel-test :as pulse-channel-test]
    [metabase.models.revision :as revision]
@@ -832,6 +833,18 @@
         ;; same setup as earlier test, we know the ParameterCard exists right now
       (t2/delete! Dashboard :id dashboard-id)
       (is (nil? (t2/select-one 'ParameterCard :card_id card-id))))))
+
+(deftest do-not-update-parameter-card-if-it-doesn't-change-test
+  (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
+    (mt/with-temp [:model/Card      {source-card-id :id} {}
+                   :model/Dashboard {dashboard-id :id} {:parameters [{:name       "Category Name"
+                                                                      :slug       "category_name"
+                                                                      :id         "_CATEGORY_NAME_"
+                                                                      :type       "category"
+                                                                      :values_source_type    "card"
+                                                                      :values_source_config {:card_id source-card-id}}]}]
+        (mt/with-dynamic-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
+          (t2/update! :model/Dashboard dashboard-id {:name "new name"})))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                         Collections Permissions Tests                                          |
