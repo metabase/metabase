@@ -130,29 +130,6 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       }),
       getDisabled: (series, settings) => !settings["pie._dimensionValues"],
     },
-    // this setting recomputes color assignment using pie.colors as the existing
-    // assignments in case the user previous modified pie.colors and a new value
-    // has appeared. Not ideal because those color values will be missing in the
-    // settings UI
-    "pie._colors": {
-      getValue: (series, settings) =>
-        getColorsForValues(
-          settings["pie._dimensionValues"],
-          settings["pie.colors"],
-        ),
-      readDependencies: ["pie._dimensionValues", "pie.colors"],
-    },
-    "pie._metricIndex": {
-      getValue: (
-        [
-          {
-            data: { cols },
-          },
-        ],
-        settings,
-      ) => _.findIndex(cols, col => col.name === settings["pie.metric"]),
-      readDependencies: ["pie.metric"],
-    },
     "pie._dimensionIndex": {
       getValue: (
         [
