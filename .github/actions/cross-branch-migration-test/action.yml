@@ -35,7 +35,7 @@ runs:
         done
       shell: bash
 
-    - name: Stop Metabase on master
+    - name: Stop Metabase on base branch
       run: kill $(cat metabase_pid)
       shell: bash
 
