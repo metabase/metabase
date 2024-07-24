@@ -1,3 +1,5 @@
+import type { PieArcDatum } from "d3";
+
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 
 export interface PieColumnDescriptors {
@@ -17,7 +19,7 @@ export interface PieSliceData {
   rowIndex?: number;
 }
 
-export type PieSlice = d3.layout.pie.Arc<PieSliceData>;
+export type PieSlice = PieArcDatum<PieSliceData>;
 
 export interface PieChartModel {
   slices: PieSlice[];

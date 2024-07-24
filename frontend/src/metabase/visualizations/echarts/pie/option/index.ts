@@ -1,5 +1,4 @@
 import Color from "color";
-import type d3 from "d3";
 import type { EChartsOption } from "echarts";
 import cloneDeep from "lodash.clonedeep";
 
@@ -74,7 +73,7 @@ function getRadiusOption(sideLength: number) {
 
 function getIsLabelVisible(
   label: string,
-  slice: d3.layout.pie.Arc<PieSliceData>,
+  slice: PieSlice,
   innerRadius: number,
   outerRadius: number,
   fontSize: number,
