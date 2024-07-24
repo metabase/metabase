@@ -1,15 +1,12 @@
 (ns metabase.api.query-metadata
   (:require
    [metabase.api.database :as api.database]
+   [metabase.api.field :as api.field]
    [metabase.api.table :as api.table]
    [metabase.lib.util :as lib.util]
-   [metabase.model.interface :as mi]
+   [metabase.models.interface :as mi]
    [metabase.util :as u]
    [toucan2.core :as t2]))
-
-(defn- xform-fields->fk-target-field-ids
-  [fields]
-  (into #{} (keep :fk_target_field_id) fields))
 
 (defn- field-ids->table-ids
   [field-ids]
@@ -27,6 +24,14 @@
               source-ids)
       (update-vals persistent!)))
 
+(defn- query->template-tag-field-ids [query]
+  (when-let [template-tags (some-> query :native :template-tags vals seq)]
+    (for [{tag-type :type, [dim-tag id _opts] :dimension} template-tags
+          :when (and (= tag-type :dimension)
+                     (= dim-tag :field)
+                     (integer? id))]
+      id)))
+
 (defn batch-fetch-query-metadata
   "Fetch dependent metadata for ad-hoc queries."
   [queries]
@@ -37,25 +42,31 @@
         source-tables             (concat (api.table/batch-fetch-table-query-metadatas source-table-ids)
                                           (api.table/batch-fetch-card-query-metadatas source-card-ids))
         fk-target-field-ids       (into #{} (comp (mapcat :fields)
-                                                  xform-fields->fk-target-field-ids)
+                                                  (keep :fk_target_field_id))
                                         source-tables)
         fk-target-table-ids       (into #{} (remove source-table-ids)
                                         (field-ids->table-ids fk-target-field-ids))
         fk-target-tables          (api.table/batch-fetch-table-query-metadatas fk-target-table-ids)
-        tables                    (concat source-tables fk-target-tables)]
+        tables                    (concat source-tables fk-target-tables)
+        template-tag-field-ids    (into #{} (mapcat query->template-tag-field-ids) queries)]
     {;; TODO: This is naive and issues multiple queries currently. That's probably okay for most dashboards,
      ;; since they tend to query only a handful of databases at most.
-     :databases (for [id (into #{} (map :db_id) tables)]
-                  (api.database/get-database id {}))
-     :tables    tables
-     :fields    []}))
+     :databases (sort-by :id (for [id (into #{} (map :db_id) tables)]
+                               (api.database/get-database id {})))
+     :tables    (sort-by :id tables)
+     :fields    (or (sort-by :id (api.field/get-fields template-tag-field-ids))
+                    [])}))
 
 (defn batch-fetch-card-metadata
-  "Fetch dependent metadata for cards."
+  "Fetch dependent metadata for cards.
+
+  Models and metrics need their definitions walked as well as their own, card-level metadata."
   [cards]
-  (let [queries (concat (map :dataset_query cards)
-                        (->> (filter #(= (:type %) :model) cards)
-                             (map (fn [card] {:query {:source-table (str "card__" (u/the-id card))}}))))]
+  (let [queries (into (vec (keep :dataset_query cards)) ; All the queries on all the cards
+                      ;; Plus the card-level metadata of each model and metric.
+                      (comp (filter (comp #{:metric :model} :type))
+                            (map (fn [card] {:query {:source-table (str "card__" (u/the-id card))}})))
+                      cards)]
     (batch-fetch-query-metadata queries)))
 
 (defn- click-behavior->link-details
@@ -97,12 +108,12 @@
                              (into #{} (comp (mapcat dashcard->click-behaviors)
                                              (keep click-behavior->link-details))
                                    dashcards))
-        link-cards (get-cards (into #{} (map :id) (:cards links)))
+        link-cards (get-cards (into #{} (map :id) (:card links)))
         dashboards (->> (:dashboard links)
                         (into #{} (map :id))
                         batch-fetch-linked-dashboards)]
-    {:cards      link-cards
-     :dashboards dashboards}))
+    {:cards      (sort-by :id link-cards)
+     :dashboards (sort-by :id dashboards)}))
 
 (defn batch-fetch-dashboard-metadata
   "Fetch dependent metadata for dashboards."
@@ -110,10 +121,13 @@
   (let [dashcards (mapcat :dashcards dashboards)
         cards     (for [{:keys [card series]} dashcards
                         :let   [all (conj series card)]
-                        card all
-                        :when (:dataset_query card)]
+                        card all]
                     card)
-        link-cards ]
-    (merge (batch-fetch-card-metadata cards)
-           {:cards      []
-            :dashboards []})))
+        card-ids  (into #{} (map :id) cards)
+        links     (batch-fetch-dashboard-links dashcards)]
+    (merge
+      (->> (remove (comp card-ids :id) (:cards links))
+           (concat cards)
+           batch-fetch-card-metadata)
+      {:cards      (or (:cards links)      [])
+       :dashboards (or (:dashboards links) [])})))
