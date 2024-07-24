@@ -8428,7 +8428,7 @@ databaseChangeLog:
       comment: Migrate the report_card.visualization_settings.column_settings field ref-based keys to name-based keys
       changes:
         - customChange:
-            class: "metabase.db.custom_migrations.MigrateLegacyFieldRefBasedColumnSettingKeys"
+            class: "metabase.db.custom_migrations.RemoveFieldRefsFromCardColumnSettings"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
