@@ -9,11 +9,11 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Chrome v111
+    - name: Install Chrome v108
       uses: browser-actions/setup-chrome@v1
       with:
-        # https://chromium.cypress.io/linux/stable/111.0.5563.146
-        chrome-version: 1097615
+        # https://vikyd.github.io/download-chromium-history-version
+        chrome-version: 1056773
       id: setup-chrome
 
     - name: Check to see if dependencies should be cached
