@@ -78,8 +78,6 @@
    ;; we don't care how many pages it took to load this dataset above. it will be a large
    ;; number because we're just tracking the number of times `get-query-results` gets invoked.
 
-   ;; TODO Temporarily disabling due to flakiness (#33140)
-
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
@@ -97,11 +95,14 @@
                    [4 "Wurstküche"]
                    [5 "Brite Spot Family Restaurant"]]
                   (take 5 results)))
-           (is (= (count results) (count (distinct results))))
+           (testing "results are not duplicated when pagination occurs (#45953)"
+             (is (= (count results) (count (distinct results)))))
            ;; the `(sort-by)` above will cause the entire resultset to be realized, so
            ;; we want to make sure that it really did retrieve 25 rows per request
            ;; this only works if the timeout has been temporarily set to 0 (see above)
-           (is (= 4 @pages-retrieved))))))))
+
+           ;; TODO Temporarily disabling due to flakiness (#33140)
+           #_(is (= 4 @pages-retrieved))))))))
 
 ;; These look like the macros from metabase.query-processor-test.expressions-test
 ;; but conform to bigquery naming rules
