@@ -11,7 +11,7 @@
    [dk.ative.docjure.spreadsheet :as spreadsheet]
    [medley.core :as m]
    [metabase.api.card :as api.card]
-   [metabase.api.pivots :as api.pivots]
+   [metabase.api.pivot-test-util :as api.pivot-test-util]
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -2809,10 +2809,10 @@
                  (m/map-vals boolean (select-keys card [:name :id])))))))))
 
 (deftest ^:parallel pivot-card-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (api.pivot-test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "POST /api/card/pivot/:card-id/query"
-        (t2.with-temp/with-temp [:model/Card card (api.pivots/pivot-card)]
+        (t2.with-temp/with-temp [:model/Card card (api.pivot-test-util/pivot-card)]
           (let [result (mt/user-http-request :rasta :post 202 (format "card/pivot/%d/query" (u/the-id card)))
                 rows   (mt/rows result)]
             (is (= 1144 (:row_count result)))

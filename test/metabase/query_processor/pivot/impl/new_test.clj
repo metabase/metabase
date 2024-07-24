@@ -28,17 +28,20 @@
                              :pivot-cols [2]})]
     (testing "can generate queries for each new breakout"
       (let [expected (mt/$ids
-                       [{:query {:breakout    [$orders.user_id->people.state
+                       [;; #0
+                        {:query {:breakout    [$orders.user_id->people.state
                                                $orders.user_id->people.source
                                                $orders.product_id->products.category
                                                [:expression "pivot-grouping"]]
                                  :expressions {"pivot-grouping" [:abs 0]}}}
+                        ;; #1
                         {:query {:breakout    [[:expression "STATE"]
                                                $orders.user_id->people.source
                                                $orders.product_id->products.category
                                                [:expression "pivot-grouping"]]
                                  :expressions {"STATE"          [:value nil {:effective-type :type/Text}]
                                                "pivot-grouping" [:abs 1]}}}
+                        ;; #2
                         {:query {:breakout    [[:expression "STATE"]
                                                [:expression "SOURCE"]
                                                $orders.product_id->products.category
@@ -46,12 +49,14 @@
                                  :expressions {"STATE"          [:value nil {:effective-type :type/Text}]
                                                "SOURCE"         [:value nil {:effective-type :type/Text}]
                                                "pivot-grouping" [:abs 3]}}}
+                        ;; #3
                         {:query {:breakout    [$orders.user_id->people.state
                                                $orders.user_id->people.source
                                                [:expression "CATEGORY"]
                                                [:expression "pivot-grouping"]]
                                  :expressions {"CATEGORY"       [:value nil {:effective-type :type/Text}]
                                                "pivot-grouping" [:abs 4]}}}
+                        ;; #4
                         {:query {:breakout    [[:expression "STATE"]
                                                $orders.user_id->people.source
                                                [:expression "CATEGORY"]
@@ -59,6 +64,7 @@
                                  :expressions {"STATE"          [:value nil {:effective-type :type/Text}]
                                                "CATEGORY"       [:value nil {:effective-type :type/Text}]
                                                "pivot-grouping" [:abs 5]}}}
+                        ;; #5
                         {:query {:breakout    [[:expression "STATE"]
                                                [:expression "SOURCE"]
                                                [:expression "CATEGORY"]

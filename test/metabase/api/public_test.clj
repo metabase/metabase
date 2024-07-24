@@ -10,7 +10,7 @@
    [metabase.analytics.snowplow-test :as snowplow-test]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
-   [metabase.api.pivots :as api.pivots]
+   [metabase.api.pivot-test-util :as api.pivot-test-util]
    [metabase.api.public :as api.public]
    [metabase.config :as config]
    [metabase.http-client :as client]
@@ -1576,11 +1576,11 @@
 ;;; --------------------------------------------- Pivot tables ---------------------------------------------
 
 (deftest pivot-public-card-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (api.pivot-test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "GET /api/public/pivot/card/:uuid/query"
         (mt/with-temporary-setting-values [enable-public-sharing true]
-          (with-temp-public-card [{uuid :public_uuid} (api.pivots/pivot-card)]
+          (with-temp-public-card [{uuid :public_uuid} (api.pivot-test-util/pivot-card)]
             (let [result (client/client :get 202 (format "public/pivot/card/%s/query" uuid))
                   rows   (mt/rows result)]
               (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
@@ -1605,7 +1605,7 @@
                                                      :type    "text"
                                                      :target  [:dimension (mt/$ids $orders.user_id->people.state)]
                                                      :default nil}]}]
-      (with-temp-public-card [card (api.pivots/pivot-card)]
+      (with-temp-public-card [card (api.pivot-test-util/pivot-card)]
         (let [dashcard (add-card-to-dashboard!
                         card
                         dash
@@ -1616,7 +1616,7 @@
 
 (deftest pivot-public-dashcard-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
-    (mt/test-drivers (api.pivots/applicable-drivers)
+    (mt/test-drivers (api.pivot-test-util/applicable-drivers)
       (mt/with-temporary-setting-values [enable-public-sharing true]
         (do-with-temp-dashboard-and-public-pivot-card
          (fn [dash card dashcard]
@@ -1655,7 +1655,7 @@
 
 (deftest public-pivot-dashcard-errors-test
   (testing "GET /api/public/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
-    (mt/test-drivers (api.pivots/applicable-drivers)
+    (mt/test-drivers (api.pivot-test-util/applicable-drivers)
       (do-with-temp-dashboard-and-public-pivot-card
        (fn [dash card dashcard]
          (testing "Shouldn't be able to execute a public DashCard if public sharing is disabled"

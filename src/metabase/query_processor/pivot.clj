@@ -39,50 +39,53 @@
                                      [:pivot-cols [:maybe [:sequential [:int {:min 0}]]]]]
   "Given a pivot table query and a card ID, looks at the `pivot_table.column_split` key in the card's visualization
   settings and generates pivot-rows and pivot-cols to use for generating subqueries."
-  [query        :- [:map
-                    [:database ::lib.schema.id/database]]
-   viz-settings :- [:maybe :map]]
-  (let [column-split         (:pivot_table.column_split viz-settings)
-        column-split-rows    (seq (:rows column-split))
-        column-split-columns (seq (:columns column-split))
-        index-in-breakouts   (when (or column-split-rows
-                                       column-split-columns)
-                               (let [metadata-provider (or (:lib/metadata query)
-                                                           (lib.metadata.jvm/application-database-metadata-provider (:database query)))
-                                     mlv2-query        (lib/query metadata-provider query)
-                                     breakouts         (into []
-                                                             (map-indexed (fn [i col]
-                                                                            (assoc col ::i i)))
-                                                             (lib/breakouts-metadata mlv2-query))]
-                                 (fn [legacy-ref]
-                                   (try
-                                     (::i (lib.equality/find-column-for-legacy-ref
-                                           mlv2-query
-                                           -1
-                                           legacy-ref
-                                           breakouts))
-                                     (catch Throwable e
-                                       (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
-                                       nil)))))
+  [query :- [:map
+             [:database ::lib.schema.id/database]]]
+  (or (when-let [opts (not-empty (select-keys query [:pivot-rows :pivot-cols]))]
+        (merge {:pivot-rows nil, :pivot-cols nil}
+               opts))
+      (let [viz-settings         (get-in query [:info :visualization-settings])
+            column-split         (:pivot_table.column_split viz-settings)
+            column-split-rows    (seq (:rows column-split))
+            column-split-columns (seq (:columns column-split))
+            index-in-breakouts   (when (or column-split-rows
+                                           column-split-columns)
+                                   (let [metadata-provider (or (:lib/metadata query)
+                                                               (lib.metadata.jvm/application-database-metadata-provider (:database query)))
+                                         mlv2-query        (lib/query metadata-provider query)
+                                         breakouts         (into []
+                                                                 (map-indexed (fn [i col]
+                                                                                (assoc col ::i i)))
+                                                                 (lib/breakouts-metadata mlv2-query))]
+                                     (fn [legacy-ref]
+                                       (try
+                                         (::i (lib.equality/find-column-for-legacy-ref
+                                               mlv2-query
+                                               -1
+                                               legacy-ref
+                                               breakouts))
+                                         (catch Throwable e
+                                           (log/errorf e "Error finding matching column for ref %s" (pr-str legacy-ref))
+                                           nil)))))
 
-        pivot-rows (when column-split-rows
-                     (into [] (keep index-in-breakouts) column-split-rows))
-        pivot-cols (when column-split-columns
-                     (into [] (keep index-in-breakouts) column-split-columns))]
-    {:pivot-rows pivot-rows
-     :pivot-cols pivot-cols}))
+            pivot-rows (when column-split-rows
+                         (into [] (keep index-in-breakouts) column-split-rows))
+            pivot-cols (when column-split-columns
+                         (into [] (keep index-in-breakouts) column-split-columns))]
+        {:pivot-rows pivot-rows
+         :pivot-cols pivot-cols})))
 
 (mr/def ::impl-name
   [:enum :qp.pivot.impl/new :qp.pivot.impl/legacy])
 
-(def ^:dynamic ^:private *impl-name-override*
+(def ^:dynamic ^:private *impl-override*
   "For test purposes, which pivot implementation to use. Overrides the normal way we check in [[impl-name]]."
   nil)
 
-(mu/defn impl-name :- ::impl-name
+(mu/defn impl :- ::impl-name
   "Which pivot query implementation should we use?"
   [driver :- :keyword]
-  (or *impl-name-override*
+  (or *impl-override*
       (if (get-method driver/EXPERIMENTAL-execute-multiple-queries driver)
         :qp.pivot.impl/new
         :qp.pivot.impl/legacy)))
@@ -100,14 +103,12 @@
      (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
        (let [rff           (or rff qp.reducible/default-rff)
              query         (lib/query (qp.store/metadata-provider) query)
-             pivot-options (or
-                            (not-empty (select-keys query [:pivot-rows :pivot-cols]))
-                            (pivot-options query (get-in query [:info :visualization-settings])))
+             pivot-options (pivot-options query)
              query         (assoc-in query [:middleware :pivot-options] pivot-options)
-             impl-name     (impl-name driver/*driver*)]
+             impl          (impl driver/*driver*)]
          (try
-           (qp.pivot.impl.common/run-pivot-query impl-name query rff)
+           (qp.pivot.impl.common/run-pivot-query impl query rff)
            (catch Throwable e
              (throw (ex-info (i18n/tru "Error executing pivot table query: {0}" (ex-message e))
-                             {:original-query query, :impl impl-name}
+                             {:original-query query, :impl impl}
                              e)))))))))

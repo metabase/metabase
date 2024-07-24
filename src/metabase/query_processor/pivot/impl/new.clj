@@ -29,57 +29,47 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
-(mu/defn ^:private add-pivot-group-breakout :- ::lib.schema/query
-  "Add the grouping field and expression to the query"
-  [query   :- ::lib.schema/query
-   bitmask :- ::qp.pivot.impl.common/bitmask]
-  (as-> query query
-    ;;TODO: replace this value with a bitmask or something to indicate the source better
-    (lib/expression query -1 "pivot-grouping" (lib/abs bitmask) {:add-to-fields? false})
-    ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
-    ;; grouping expression ref to the breakouts
-    (lib/breakout query (lib/expression-ref query "pivot-grouping"))
-    (do
-      (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
-      query)))
+(defn- add-null-breakout-expression [query original-breakout]
+  (let [null-expression-name (lib.metadata.calculation/column-name query original-breakout)
+        original-type        (lib/type-of query original-breakout)
+        expression           [:value {:lib/uuid       (str (random-uuid))
+                                      :base-type      original-type
+                                      :effective-type original-type}
+                              nil]
+        expression-options   {:add-to-fields? false}]
+    (as-> query query
+      (lib/expression query -1 null-expression-name expression expression-options)
+      (lib/breakout query (lib/expression-ref query null-expression-name)))))
 
-(mu/defn ^:private remove-non-aggregation-order-bys :- ::lib.schema/query
-  "Only keep existing aggregations in `:order-by` clauses from the query. Since we're adding our own breakouts (i.e.
-  `GROUP BY` and `ORDER BY` clauses) to do the pivot table stuff, existing `:order-by` clauses probably won't work --
-  `ORDER BY` isn't allowed for fields that don't appear in `GROUP BY`."
-  [query :- ::lib.schema/query]
-  (reduce
-   (fn [query [_tag _opts expr :as order-by]]
-     ;; keep any order bys on :aggregation references. Remove all other clauses.
-     (cond-> query
-       (not (lib.util/clause-of-type? expr :aggregation))
-       (lib/remove-clause order-by)))
-   query
-   (lib/order-bys query)))
+(mu/defn add-order-bys :- ::lib.schema/query
+  "Add new order bys to the query in the appropriate order for the non-NULL breakouts (which might be different from the
+  order of the breakouts). This will prevent the QP from automatically adding order bys in a different order."
+  [query                    :- ::lib.schema/query
+   breakout-indexes-to-keep :- [:maybe ::qp.pivot.impl.common/breakout-combination]]
+  (let [all-breakouts (lib/breakouts query)]
+    (reduce
+     (fn [query i]
+       (let [breakout (nth all-breakouts i)]
+         (lib/order-by query (lib.util/fresh-uuids breakout))))
+     query
+     breakout-indexes-to-keep)))
 
 (mu/defn replace-breakouts-with-null-expressions :- ::lib.schema/query
   "Keep the breakouts at indexes. Replace other breakouts with expressions that return `NULL`."
   [query                    :- ::lib.schema/query
    breakout-indexes-to-keep :- [:maybe ::qp.pivot.impl.common/breakout-combination]]
   (let [all-breakouts (lib/breakouts query)]
-    (reduce
-     (fn [query i]
-       (if (contains? (set breakout-indexes-to-keep) i)
-         (lib/breakout query (nth all-breakouts i))
-         (let [original-breakout    (nth all-breakouts i)
-               null-expression-name (lib.metadata.calculation/column-name query original-breakout)
-               original-type        (lib/type-of query (nth all-breakouts i))
-               expression           [:value {:lib/uuid       (str (random-uuid))
-                                             :base-type      original-type
-                                             :effective-type original-type}
-                                     nil]
-               expression-options   {:add-to-fields? false}]
-           (as-> query query
-             (lib/expression query -1 null-expression-name expression expression-options)
-             (lib/breakout query (lib/expression-ref query null-expression-name))))))
-     (-> (lib/remove-all-breakouts query)
-         (assoc :qp.pivot/breakout-combination breakout-indexes-to-keep))
-     (range 0 (count all-breakouts)))))
+    (as-> query query
+      (lib/remove-all-breakouts query)
+      (assoc query :qp.pivot/breakout-combination breakout-indexes-to-keep)
+      (reduce
+       (fn [query i]
+         (let [add-breakout (if (contains? (set breakout-indexes-to-keep) i)
+                              lib/breakout
+                              add-null-breakout-expression)]
+           (add-breakout query (nth all-breakouts i))))
+       query
+       (range 0 (count all-breakouts))))))
 
 (mr/def ::pivot-options
   [:map
@@ -101,9 +91,10 @@
                                                                (count all-breakouts)
                                                                breakout-indexes)]]
                           (-> query
-                              remove-non-aggregation-order-bys
+                              qp.pivot.impl.common/remove-non-aggregation-order-bys
                               (replace-breakouts-with-null-expressions breakout-indexes)
-                              (add-pivot-group-breakout group-bitmask)))]
+                              (qp.pivot.impl.common/add-pivot-group-breakout group-bitmask)
+                              (add-order-bys breakout-indexes)))]
       (conj (rest all-queries)
             (assoc-in (first all-queries) [:info :pivot/original-query] query)))
     (catch Throwable e
@@ -117,7 +108,8 @@
    [:database ::lib.schema.id/database]
    [:stages   [:sequential {:min 1, :max 1} ::lib.schema/stage.native]]])
 
-(defn- compile-pmbql-query [query]
+(mu/defn ^:private compile-pmbql-query :- ::compiled-query
+  [query :- :map]
   (assoc query :stages [(merge {:lib/type :mbql.stage/native}
                                (set/rename-keys (qp.compile/compile query) {:query :native}))]))
 

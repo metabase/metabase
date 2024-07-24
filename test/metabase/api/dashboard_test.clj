@@ -12,7 +12,7 @@
    [metabase.api.card-test :as api.card-test]
    [metabase.api.common :as api]
    [metabase.api.dashboard :as api.dashboard]
-   [metabase.api.pivots :as api.pivots]
+   [metabase.api.pivot-test-util :as api.pivot-test-util]
    [metabase.config :as config]
    [metabase.dashboard-subscription-test :as dashboard-subscription-test]
    [metabase.http-client :as client]
@@ -3673,10 +3673,10 @@
 
 (deftest dashboard-card-query-pivot-test
   (testing "POST /api/dashboard/pivot/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
-    (mt/test-drivers (api.pivots/applicable-drivers)
+    (mt/test-drivers (api.pivot-test-util/applicable-drivers)
       (mt/dataset test-data
         (mt/with-temp [Dashboard     {dashboard-id :id} {}
-                       Card          {card-id :id} (api.pivots/pivot-card)
+                       Card          {card-id :id} (api.pivot-test-util/pivot-card)
                        DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id :card_id card-id}]
           (let [result (mt/user-http-request :rasta :post 202 (dashcard-pivot-query-endpoint dashboard-id card-id dashcard-id))
                 rows   (mt/rows result)]

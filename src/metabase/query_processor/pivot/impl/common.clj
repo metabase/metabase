@@ -2,9 +2,15 @@
   "Things shared by both the [[metabase.query-processor.pivot.impl.legacy]]
   and [[metabase.query-processor.pivot.impl.new]] implementations."
   (:require
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.util :as lib.util]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.pivot.impl.common :as qp.pivot.impl.common]
+   [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -106,6 +112,34 @@
         [pivot-cols]
         ;; bottom right corner [_ _ _ _] => 1111 => Group #15
         [[]]))))))
+
+(mu/defn add-pivot-group-breakout :- ::lib.schema/query
+  "Add the grouping field and expression to the query"
+  [query   :- ::lib.schema/query
+   bitmask :- ::qp.pivot.impl.common/bitmask]
+  (as-> query query
+    ;;TODO: replace this value with a bitmask or something to indicate the source better
+    (lib/expression query -1 "pivot-grouping" (lib/abs bitmask) {:add-to-fields? false})
+    ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
+    ;; grouping expression ref to the breakouts
+    (lib/breakout query (lib/expression-ref query "pivot-grouping"))
+    (do
+      (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
+      query)))
+
+(mu/defn remove-non-aggregation-order-bys :- ::lib.schema/query
+  "Only keep existing aggregations in `:order-by` clauses from the query. Since we're adding our own breakouts (i.e.
+  `GROUP BY` and `ORDER BY` clauses) to do the pivot table stuff, existing `:order-by` clauses probably won't work --
+  `ORDER BY` isn't allowed for fields that don't appear in `GROUP BY`."
+  [query :- ::lib.schema/query]
+  (reduce
+   (fn [query [_tag _opts expr :as order-by]]
+     ;; keep any order bys on :aggregation references. Remove all other clauses.
+     (cond-> query
+       (not (lib.util/clause-of-type? expr :aggregation))
+       (lib/remove-clause order-by)))
+   query
+   (lib/order-bys query)))
 
 (defmulti run-pivot-query
   "Implementation for [[metabase.query-processor.pivot/run-pivot-query]]. Run a pivot query using the appropriate

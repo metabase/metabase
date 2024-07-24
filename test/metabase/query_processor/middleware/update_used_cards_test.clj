@@ -73,9 +73,9 @@
         (do-test! card-id #(pulse/send-pulse! pulse))))))
 
 (deftest update-used-card-timestamp-test
-  ;; the precision of `(t/offset-date-time)` can vary between machines, on my computer at least it nanosecond (9
-  ;; decimal place) precision while the Postgres app DB columns we're looking at only have microsecond (6 decimal
-  ;; place) precision. Truncate to microseconds so the tests don't randomly fail on different computers.
+  ;; the precision of `(t/offset-date-time)` can vary between JVMs, on my computer at least it has nanosecond (9 decimal
+  ;; place) precision while the Postgres app DB columns we're looking at only have microsecond (6 decimal place)
+  ;; precision. Truncate to milliseconds so the tests don't randomly fail on different computers.
   (let [now            (t/offset-date-time)
         one-hour-ago   (t/minus now (t/hours 1))
         two-hours-ago  (t/minus now (t/hours 2))

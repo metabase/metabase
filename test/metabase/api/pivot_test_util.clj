@@ -1,14 +1,22 @@
-(ns metabase.api.pivots
+(ns metabase.api.pivot-test-util
   (:require
    [metabase.test :as mt]))
 
 (defn applicable-drivers
   "Drivers that these pivot table tests should run on"
   []
+  ;; TODO -- drivers absolutely do not NEED `:left-join` support to be able to run pivot table queries, they only need
+  ;; it to run [[pivot-query]] below.
   (disj (mt/normal-drivers-with-feature :expressions :left-join)
-        ;; mongodb doesn't support foreign keys required by this test
+        ;; mongodb doesn't support foreign keys required by this test.
+        ;;
+        ;; TODO -- Now that #45381 has been implemented there should be no reason we can't run these tests for MongoDB.
+        ;; Pivot table queries should already work for it.
         :mongo
         ;; Disable on Redshift due to OutOfMemory issue (see #18834)
+        ;;
+        ;; TODO -- we should see if we can actually enable this again now, it was like 3 years ago that we disabled this
+        ;; and these tests should work.
         :redshift))
 
 (def pivot-query-options

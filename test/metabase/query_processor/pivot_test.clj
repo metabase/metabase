@@ -6,7 +6,7 @@
    [clojure.test :refer :all]
    [malli.core :as mc]
    [medley.core :as m]
-   [metabase.api.pivots :as api.pivots]
+   [metabase.api.pivot-test-util :as api.pivot-test-util]
    [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -16,6 +16,9 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot.impl.common :as qp.pivot.impl.common]
+   [metabase.query-processor.pivot.impl.legacy :as qp.pivot.impl.legacy]
+   [metabase.query-processor.pivot.impl.new :as qp.pivot.impl.new]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util :as u]))
@@ -24,11 +27,11 @@
 
 (deftest ^:parallel pivot-options-test
   (testing "`pivot-options` correctly generates pivot-rows and pivot-cols from a card's viz settings"
-    (let [query         (api.pivots/pivot-query false)
-          viz-settings  (:visualization_settings (api.pivots/pivot-card))
-          pivot-options {:pivot-rows [1 0], :pivot-cols [2]}]
-      (is (= pivot-options
-             (#'qp.pivot/pivot-options query viz-settings))))))
+    (let [viz-settings  (:visualization_settings (api.pivot-test-util/pivot-card))
+          query         (-> (api.pivot-test-util/pivot-query false)
+                            (assoc-in [:info :visualization-settings] viz-settings))]
+      (is (= {:pivot-rows [1 0], :pivot-cols [2]}
+             (#'qp.pivot/pivot-options query))))))
 
 (deftest ^:parallel ignore-bad-pivot-options-test
   (let [query         (mt/mbql-query products
@@ -42,9 +45,67 @@
                          {:pivot_table.column_split
                           {:rows    [$id]
                            :columns [[:field "RATING" {:base-type :type/Integer}]]}})
-                       [:pivot_table.column_split])]
+                       [:pivot_table.column_split])
+        query         (assoc-in query [:info :visualization-settings] viz-settings)]
     (is (= {:pivot-rows [], :pivot-cols []}
-           (#'qp.pivot/pivot-options query viz-settings)))))
+           (#'qp.pivot/pivot-options query)))))
+
+(deftest ^:parallel identical-results-between-impls-test
+  (testing "legacy and new impls should return identical results for the different subqueries"
+    (doseq [query [(api.pivot-test-util/pivot-query)
+                   (api.pivot-test-util/pivot-query #_include-options false)]]
+      (testing (format "\noriginal query =\n%s\n" (u/pprint-to-str query))
+        (let [query             (lib/query
+                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                 query)
+              pivot-options     (#'qp.pivot/pivot-options query)
+              num-breakouts     (count (lib/breakouts query))
+              pivot-rows        (:pivot-rows pivot-options)
+              pivot-cols        (:pivot-cols pivot-options)
+              breakout-combos   (qp.pivot.impl.common/breakout-combinations num-breakouts pivot-rows pivot-cols)
+              bitmasks          (mapv (partial qp.pivot.impl.common/group-bitmask num-breakouts) breakout-combos)
+              legacy-subqueries (#'qp.pivot.impl.legacy/generate-queries query pivot-options)
+              new-subqueries    (#'qp.pivot.impl.new/generate-queries query pivot-options)
+              legacy-result     (binding [qp.pivot/*impl-override* :qp.pivot.impl/legacy]
+                                  (qp.pivot/run-pivot-query query))
+              legacy-rows       (mt/rows legacy-result)
+              new-result        (binding [qp.pivot/*impl-override* :qp.pivot.impl/new]
+                                  (qp.pivot/run-pivot-query query))
+              new-rows          (mt/rows new-result)]
+          (testing "should generate identical number of queries"
+            (is (= (count legacy-subqueries)
+                   (count new-subqueries))))
+          (testing "should return identical columns"
+            (is (= ["STATE" "SOURCE" "CATEGORY" "pivot-grouping" "count" "sum"]
+                   (mapv :name (get-in legacy-result [:data :cols]))
+                   (mapv :name (get-in new-result [:data :cols])))))
+          (testing "legacy rows and new rows should have same set of group bitmasks"
+            (letfn [(group-bitmasks [rows]
+                      (into #{}
+                            (map #(nth % 3))
+                            rows))]
+              (is (= (into #{} bitmasks)
+                     (group-bitmasks legacy-rows)
+                     (group-bitmasks new-rows)))))
+          (doseq [i    (range (count legacy-subqueries))
+                  :let [breakout-combo       (nth breakout-combos i)
+                        bitmask              (nth bitmasks i)
+                        group-row?           (fn [row]
+                                               (= (nth row 3) bitmask))
+                        legacy-subquery-rows (filterv group-row? legacy-rows)
+                        new-subquery-rows    (filterv group-row? new-rows)]]
+            (testing (format "\nSubquery #%d\nBreakout combinations = %s\nBitmask = %s\n" i breakout-combo bitmask)
+              (let []
+                (testing "\n++++ LEGACY SUBQUERY ++++\n"
+                  (mt/with-native-query-testing-context (nth legacy-subqueries i)
+                    (testing "\n++++ NEW SUBQUERY ++++\n"
+                      (mt/with-native-query-testing-context (nth new-subqueries i)
+                        (testing "Should return the same number of rows"
+                          (is (= (count legacy-subquery-rows)
+                                 (count new-subquery-rows))))
+                        (testing "Should return identical rows"
+                          (is (= legacy-subquery-rows
+                                 new-subquery-rows)))))))))))))))
 
 (defn test-query []
   (mt/$ids orders
@@ -66,7 +127,7 @@
   (doseq [impl-name [:qp.pivot.impl/new
                      :qp.pivot.impl/legacy]]
     (testing (format "\nimpl = %s\n" impl-name)
-      (binding [qp.pivot/*impl-name-override* :qp.pivot.impl/new]
+      (binding [qp.pivot/*impl-override* :qp.pivot.impl/new]
         (thunk)))))
 
 (defmacro ^:private test-both-impls
@@ -99,12 +160,13 @@
         (testing "Sanity check: query should work in non-pivot mode"
           (is (=? {:status :completed}
                   (qp/process-query query))))
-        (let [viz-settings  (mt/$ids products
-                              {:pivot_table.column_split
-                               {:rows    [$category]
-                                :columns [$created_at]}})]
+        (let [viz-settings (mt/$ids products
+                             {:pivot_table.column_split
+                              {:rows    [$category]
+                               :columns [$created_at]}})
+              query         (assoc-in query [:info :visualization-settings] viz-settings)]
           (is (= {:pivot-rows [0], :pivot-cols [1]}
-                 (#'qp.pivot/pivot-options query viz-settings)))
+                 (#'qp.pivot/pivot-options query)))
           (test-both-impls
             (is (=? {:status    :completed
                      :row_count 156}
@@ -249,7 +311,7 @@
 
 (deftest ^:parallel return-correct-columns-test
   (test-both-impls
-    (let [results (qp.pivot/run-pivot-query (api.pivots/pivot-query))
+    (let [results (qp.pivot/run-pivot-query (api.pivot-test-util/pivot-query))
           rows    (mt/rows results)]
       (testing "Columns should come back in the expected order"
         (is (= ["User → State"
@@ -294,14 +356,14 @@
               ([acc] acc)
               ([acc _] (inc acc))))]
     (test-both-impls
-      (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivots/pivot-query))))
-             (qp.pivot/run-pivot-query (api.pivots/pivot-query) rff))))))
+      (is (= (count (mt/rows (qp.pivot/run-pivot-query (api.pivot-test-util/pivot-query))))
+             (qp.pivot/run-pivot-query (api.pivot-test-util/pivot-query) rff))))))
 
 (deftest ^:parallel parameters-query-test
   (test-both-impls
     (is (=? {:status    :completed
              :row_count 137}
-            (qp.pivot/run-pivot-query (api.pivots/parameters-query))))))
+            (qp.pivot/run-pivot-query (api.pivot-test-util/parameters-query))))))
 
 (deftest ^:parallel pivots-should-not-return-expressions-test
   (testing (str "Pivots should not return expression columns in the results if they are not explicitly included in "
@@ -569,7 +631,8 @@
 ;;; as [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/pivot-query-test]] but with
 ;;; the query we would see post-sandboxing
 (deftest ^:parallel drivers-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+  (mt/test-drivers (set/intersection (api.pivot-test-util/applicable-drivers)
+                                     (mt/normal-drivers-with-feature :left-join))
     (let [query (mt/mbql-query orders
                   {:source-query {:source-table $$orders
                                   :filter       [:= $user_id 1]}
@@ -593,3 +656,25 @@
              (mt/formatted-rows
               [str str int 2.0]
               (qp.pivot/run-pivot-query query)))))))
+
+;;; This is basically the same as [[metabase.api.dataset-test/pivot-dataset-test]] but hits the Pivot QP directly
+;;; instead of going thru the API endpoints
+(deftest ^:parallel drivers-test-2
+  (mt/test-drivers (api.pivot-test-util/applicable-drivers)
+    (let [result (binding [] #_[qp.pivot/*impl-override* :qp.pivot.impl/legacy]
+                   (qp.pivot/run-pivot-query (api.pivot-test-util/pivot-query)))
+          rows   (mt/rows result)]
+      (is (=? {:row_count 1144
+               :status    :completed
+               :data      {:cols #(= (count %) 6)
+                           :rows #(= (count %) 1144)}}
+              result))
+      (testing "first row"
+        (is (= ["AK" "Affiliate" "Doohickey" 0 18 81]
+               (first rows))))
+      (testing "1001st row"
+        (is (= ["WV" "Facebook" nil 4 45 292]
+               (nth rows 1000))))
+      (testing "last row"
+        (is (= [nil nil nil 7 18760 69540]
+               (last rows)))))))

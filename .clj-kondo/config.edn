@@ -403,7 +403,6 @@
     metabase.api.permission-graph                                 api.permission-graph
     metabase.api.permissions                                      api.permissions
     metabase.api.permissions-test-util                            perm-test-util
-    metabase.api.pivots                                           api.pivots
     metabase.api.premium-features                                 api.premium-features
     metabase.api.preview-embed                                    api.preview-embed
     metabase.api.public                                           api.public

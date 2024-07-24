@@ -10,7 +10,6 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.info :as lib.schema.info]
-   [metabase.lib.util :as lib.util]
    [metabase.query-processor :as qp]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.pipeline :as qp.pipeline]
@@ -21,34 +20,6 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
-
-(mu/defn ^:private add-pivot-group-breakout :- ::lib.schema/query
-  "Add the grouping field and expression to the query"
-  [query   :- ::lib.schema/query
-   bitmask :- ::qp.pivot.impl.common/bitmask]
-  (as-> query query
-    ;;TODO: replace this value with a bitmask or something to indicate the source better
-    (lib/expression query -1 "pivot-grouping" (lib/abs bitmask) {:add-to-fields? false})
-    ;; in PostgreSQL and most other databases, all the expressions must be present in the breakouts. Add a pivot
-    ;; grouping expression ref to the breakouts
-    (lib/breakout query (lib/expression-ref query "pivot-grouping"))
-    (do
-      (log/tracef "Added pivot-grouping expression to query\n%s" (u/pprint-to-str 'yellow query))
-      query)))
-
-(mu/defn ^:private remove-non-aggregation-order-bys :- ::lib.schema/query
-  "Only keep existing aggregations in `:order-by` clauses from the query. Since we're adding our own breakouts (i.e.
-  `GROUP BY` and `ORDER BY` clauses) to do the pivot table stuff, existing `:order-by` clauses probably won't work --
-  `ORDER BY` isn't allowed for fields that don't appear in `GROUP BY`."
-  [query :- ::lib.schema/query]
-  (reduce
-   (fn [query [_tag _opts expr :as order-by]]
-     ;; keep any order bys on :aggregation references. Remove all other clauses.
-     (cond-> query
-       (not (lib.util/clause-of-type? expr :aggregation))
-       (lib/remove-clause order-by)))
-   query
-   (lib/order-bys query)))
 
 (mu/defn ^:private keep-breakouts-at-indexes :- ::lib.schema/query
   "Keep the breakouts at indexes, reordering them if needed. Remove all other breakouts."
@@ -80,9 +51,9 @@
                                                                (count all-breakouts)
                                                                breakout-indexes)]]
                           (-> query
-                              remove-non-aggregation-order-bys
+                              qp.pivot.impl.common/remove-non-aggregation-order-bys
                               (keep-breakouts-at-indexes breakout-indexes)
-                              (add-pivot-group-breakout group-bitmask)))]
+                              (qp.pivot.impl.common/add-pivot-group-breakout group-bitmask)))]
       (conj (rest all-queries)
             (assoc-in (first all-queries) [:info :pivot/original-query] query)))
     (catch Throwable e
@@ -246,9 +217,9 @@
    subquery-breakout-combination :- ::qp.pivot.impl.common/breakout-combination]
   ;; all pivot queries consist of *breakout columns* + *other columns*. Breakout columns are always first, and the only
   ;; thing that can change between subqueries. The other columns will always be the same, and in the same order.
-  (let [;; one of the breakouts will always be for the pivot group breakout added by [[add-pivot-group-breakout]],
-        ;; always added last, but this is not included in the breakout combination, so add it in so we make sure it's
-        ;; mapped properly
+  (let [;; one of the breakouts will always be for the pivot group breakout added
+        ;; by [[qp.pivot.impl.common/add-pivot-group-breakout]], always added last, but this is not included in the
+        ;; breakout combination, so add it in so we make sure it's mapped properly
         subquery-breakout-combination
         (conj subquery-breakout-combination (dec num-canonical-breakouts))
 
@@ -303,7 +274,7 @@
   Some pivot subqueries exclude certain breakouts, so we need to fill in those missing columns with `nil` in the overall
   results -- "
   [query :- ::lib.schema/query]
-  (let [canonical-query         (add-pivot-group-breakout query 0) ; a query that returns ALL the result columns.
+  (let [canonical-query         (qp.pivot.impl.common/add-pivot-group-breakout query 0) ; a query that returns ALL the result columns.
         canonical-cols          (lib/returned-columns canonical-query)
         num-canonical-cols      (count canonical-cols)
         num-canonical-breakouts (count (filter #(= (:lib/source %) :source/breakouts)

@@ -12,7 +12,7 @@
    [metabase.api.card-test :as api.card-test]
    [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed.common :as api.embed.common]
-   [metabase.api.pivots :as api.pivots]
+   [metabase.api.pivot-test-util :as api.pivot-test-util]
    [metabase.api.public-test :as public-test]
    [metabase.config :as config]
    [metabase.http-client :as client]
@@ -1407,20 +1407,20 @@
        response-format))
 
 (deftest pivot-embed-query-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (api.pivot-test-util/applicable-drivers)
     (mt/dataset test-data
       (testing "GET /api/embed/pivot/card/:token/query"
         (testing "check that the endpoint doesn't work if embedding isn't enabled"
           (mt/with-temporary-setting-values [enable-embedding false]
             (with-new-secret-key
-              (with-temp-card [card (api.pivots/pivot-card)]
+              (with-temp-card [card (api.pivot-test-util/pivot-card)]
                 (is (= "Embedding is not enabled."
                        (client/client :get 400 (pivot-card-query-url card ""))))))))
 
         (with-embedding-enabled-and-new-secret-key
           (let [expected-status 202]
             (testing "it should be possible to run a Card successfully if you jump through the right hoops..."
-              (with-temp-card [card (merge {:enable_embedding true} (api.pivots/pivot-card))]
+              (with-temp-card [card (merge {:enable_embedding true} (api.pivot-test-util/pivot-card))]
                 (let [result (client/client :get expected-status (pivot-card-query-url card "") {:request-options nil})
                       rows   (mt/rows result)]
                   (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
@@ -1429,13 +1429,13 @@
                   (is (= 1144 (count rows)))))))
 
           (testing "check that if embedding *is* enabled globally but not for the Card the request fails"
-            (with-temp-card [card (api.pivots/pivot-card)]
+            (with-temp-card [card (api.pivot-test-util/pivot-card)]
               (is (= "Embedding is not enabled for this object."
                      (client/client :get 400 (pivot-card-query-url card ""))))))
 
           (testing (str "check that if embedding is enabled globally and for the object that requests fail if they are "
                         "signed with the wrong key")
-            (with-temp-card [card (merge {:enable_embedding true} (api.pivots/pivot-card))]
+            (with-temp-card [card (merge {:enable_embedding true} (api.pivot-test-util/pivot-card))]
               (is (= "Message seems corrupt or manipulated"
                      (client/client :get 400 (with-new-secret-key (pivot-card-query-url card ""))))))))))))
 
@@ -1445,11 +1445,11 @@
        "/card/" (:card_id dashcard)))
 
 (deftest pivot-dashcard-success-test
-  (mt/test-drivers (api.pivots/applicable-drivers)
+  (mt/test-drivers (api.pivot-test-util/applicable-drivers)
     (mt/dataset test-data
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
-                                       :card     (api.pivots/pivot-card)
+                                       :card     (api.pivot-test-util/pivot-card)
                                        :dashcard {:parameter_mappings []}}]
           (let [result (client/client :get 202 (pivot-dashcard-url dashcard))
                 rows   (mt/rows result)]
@@ -1463,7 +1463,7 @@
     (mt/with-temporary-setting-values [enable-embedding false]
       (with-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:parameters []}
-                                       :card     (api.pivots/pivot-card)
+                                       :card     (api.pivot-test-util/pivot-card)
                                        :dashcard {:parameter_mappings []}}]
           (is (= "Embedding is not enabled."
                  (client/client :get 400 (pivot-dashcard-url dashcard)))))))))
@@ -1472,7 +1472,7 @@
   (mt/dataset test-data
     (with-embedding-enabled-and-new-secret-key
       (with-temp-dashcard [dashcard {:dash     {:parameters []}
-                                     :card     (api.pivots/pivot-card)
+                                     :card     (api.pivot-test-util/pivot-card)
                                      :dashcard {:parameter_mappings []}}]
         (is (= "Embedding is not enabled for this object."
                (client/client :get 400 (pivot-dashcard-url dashcard))))))))
@@ -1483,7 +1483,7 @@
                   "with the wrong key")
       (with-embedding-enabled-and-new-secret-key
         (with-temp-dashcard [dashcard {:dash     {:enable_embedding true, :parameters []}
-                                       :card     (api.pivots/pivot-card)
+                                       :card     (api.pivot-test-util/pivot-card)
                                        :dashcard {:parameter_mappings []}}]
           (is (= "Message seems corrupt or manipulated"
                  (client/client :get 400 (with-new-secret-key (pivot-dashcard-url dashcard))))))))))
@@ -1499,7 +1499,7 @@
                                                                       :slug   "abc"
                                                                       :type   "id"
                                                                       :target [:dimension (mt/id :orders :id)]}]}
-                                       :card     (api.pivots/pivot-card)
+                                       :card     (api.pivot-test-util/pivot-card)
                                        :dashcard {:parameter_mappings []}}]
           (testing (str "check that if embedding is enabled globally and for the object requests fail if the token is "
                         "missing a `:locked` parameter")
@@ -1524,7 +1524,7 @@
       (with-temp-dashcard [dashcard {:dash     {:enable_embedding true
                                                 :embedding_params {:abc "disabled"}
                                                 :parameters       []}
-                                     :card     (api.pivots/pivot-card)
+                                     :card     (api.pivot-test-util/pivot-card)
                                      :dashcard {:parameter_mappings []}}]
         (testing (str "check that if embedding is enabled globally and for the object requests fail if they pass a "
                       "`:disabled` parameter")
@@ -1545,7 +1545,7 @@
                                                                     :slug    "abc"
                                                                     :type    "id"
                                                                     :target  [:dimension (mt/id :orders :id)]}]}
-                                     :card     (api.pivots/pivot-card)
+                                     :card     (api.pivot-test-util/pivot-card)
                                      :dashcard {:parameter_mappings []}}]
         (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
           (is (= "You can't specify a value for :abc if it's already set in the JWT."
