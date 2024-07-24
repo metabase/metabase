@@ -51,6 +51,7 @@ import {
   focusNativeEditor,
   onlyOnOSS,
   visitModel,
+  startNewNativeModel,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,
@@ -1673,12 +1674,8 @@ describe("issue 37009", () => {
   });
 
   it("should prevent saving new and updating existing models without result_metadata (metabase#37009)", () => {
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options")
-      .findByText("Use a native query")
-      .click();
+    startNewNativeModel({ query: "select * from products" });
 
-    focusNativeEditor().type("select * from products");
     cy.findByTestId("dataset-edit-bar")
       .button("Save")
       .should("be.disabled")
@@ -1698,7 +1695,7 @@ describe("issue 37009", () => {
       .last()
       .within(() => {
         cy.findByLabelText("Name").type("Model");
-        cy.findByText("Save").click();
+        cy.button("Save").click();
       });
     cy.wait("@saveCard")
       .its("request.body")
