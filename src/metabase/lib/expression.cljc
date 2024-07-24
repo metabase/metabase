@@ -21,6 +21,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.shared.util.i18n :as i18n]
    [metabase.types :as types]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
@@ -201,7 +202,7 @@
   [stage
    expression
    {:keys [add-to-fields?], :or {add-to-fields? true}, :as _options}]
-  (cond-> (update stage :expressions (fnil conj []) expression)
+  (cond-> (update stage :expressions u/conjv expression)
     ;; if there are explicit fields selected, add the expression to them
     (and (vector? (:fields stage))
          add-to-fields?)
