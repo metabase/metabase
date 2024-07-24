@@ -69,6 +69,8 @@
 ;;;    - For entities that existed before the column was added, have a portable way to rebuild them (see below on
 ;;;      hashing).
 
+(def ^:dynamic *current* "Instance/map being exported/imported currently" nil)
+
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
 
@@ -312,15 +314,17 @@
   serialize/deserialize data.
 
   For behavior, see `extract-by-spec` and `load-by-spec`."
-  (fn [model-name] model-name))
+  (fn [model-name _opts] model-name))
 
-(defmethod make-spec :default [_] nil)
+(defmethod make-spec :default [_ _] nil)
 
-(defn- extract-by-spec [model-name _opts instance]
-  (when-let [spec (make-spec model-name)]
-    (into (select-keys instance (:copy spec))
-          (for [[k [ser _des]] (:transform spec)]
-            [k (ser (get instance k))]))))
+(defn- extract-by-spec [model-name opts instance]
+  (binding [*current* instance]
+    (when-let [spec (make-spec model-name opts)]
+      (-> instance
+          (select-keys (:copy spec))
+          (into (for [[k [ser _des]] (:transform spec)]
+                  [k (ser (get instance k))]))))))
 
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
@@ -681,12 +685,14 @@
     (ingested-model ingested)))
 
 (defn- load-by-spec [ingested]
-  (let [model-name (ingested-model ingested)
-        spec       (make-spec model-name)]
-    (when spec
-      (into (select-keys ingested (:copy spec))
-            (for [[k [_ser des]] (:transform spec)]
-              [k (des (get ingested k))])))))
+  (binding [*current* ingested]
+    (let [model-name (ingested-model ingested)
+          spec       (make-spec model-name nil)]
+      (when spec
+        (-> ingested
+            (select-keys (:copy spec))
+            (into (for [[k [_ser des]] (:transform spec)]
+                    [k (des (get ingested k))])))))))
 
 (defn default-load-one!
   "Default implementation of `load-one!`"
