@@ -115,7 +115,7 @@
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
           viz-settings'               (assoc viz-settings :output-order output-order)
           row-count                   (volatile! 0)]
-      (fn
+      (fn rf
         ([]
          (log/trace "Writing initial metadata to results writer.")
          (qp.si/begin! results-writer
@@ -133,7 +133,7 @@
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
-(mu/defn ^:private streaming-result-fn :- fn?
+(mu/defn ^:private streaming-result-fn :- [:=> [:cat :some] :some]
   [results-writer   :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)
    ^OutputStream os :- (lib.schema.common/instance-of-class OutputStream)]
   (let [orig qp.pipeline/*result*]
@@ -149,7 +149,7 @@
           (.close os)))
       (orig result))))
 
-(defn do-with-streaming-rff
+(mu/defn do-with-streaming-rff
   "Context to pass to the QP to streaming results as `export-format` to an output stream. Can be used independently of
   the normal `streaming-response` macro, which is geared toward Ring responses.
 
@@ -158,15 +158,19 @@
        :csv os
        (fn [rff]
          (qp/process-query query rff))))"
-  [export-format os f]
+  [export-format :- ::qp.schema/export-format
+   os            :- (lib.schema.common/instance-of-class OutputStream)
+   f             :- [:=> [:cat ::qp.schema/rff] :any]]
   (let [results-writer (qp.si/streaming-results-writer export-format os)
         rff            (streaming-rff results-writer)]
     (binding [qp.pipeline/*result* (streaming-result-fn results-writer os)]
       (f rff))))
 
-(defn -streaming-response
+(mu/defn -streaming-response :- (lib.schema.common/instance-of-class StreamingResponse)
   "Impl for [[streaming-response]]."
-  ^StreamingResponse [export-format filename-prefix f]
+  ^StreamingResponse [export-format   :- ::qp.schema/export-format
+                      filename-prefix :- [:maybe :string]
+                      f               :- [:=> [:cat ::qp.schema/rff] :any]]
   (streaming-response/streaming-response (qp.si/stream-options export-format filename-prefix) [os canceled-chan]
     (do-with-streaming-rff
      export-format os

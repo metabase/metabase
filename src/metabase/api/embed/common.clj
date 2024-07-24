@@ -302,7 +302,7 @@
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
     (m/mapply api.public/process-query-for-card-with-id
-              card-id export-format parameters
+              card-id (keyword export-format) parameters
               :context     :embedded-question
               :constraints constraints
               :qp          qp

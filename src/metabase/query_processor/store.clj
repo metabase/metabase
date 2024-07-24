@@ -114,7 +114,7 @@
   [database-id-or-metadata-providerable :- ::database-id-or-metadata-providerable]
   (if (integer? database-id-or-metadata-providerable)
     (lib.metadata.jvm/application-database-metadata-provider database-id-or-metadata-providerable)
-    database-id-or-metadata-providerable))
+    (lib.metadata/->metadata-provider database-id-or-metadata-providerable)))
 
 (mu/defn ^:private validate-existing-provider
   "Impl for [[with-metadata-provider]]; if there's already a provider, just make sure we're not trying to change the

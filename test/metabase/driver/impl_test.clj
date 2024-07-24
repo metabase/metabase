@@ -93,7 +93,7 @@
                 [0 42 0])
        0)))
 
-(deftest driver-multimethods-in-changelog-test
+(deftest ^:parallel driver-multimethods-in-changelog-test
   (let [metadatas             (collect-metadatas)
         version->section-text (parse-drivers-changelog)]
     (doseq [m metadatas]

@@ -4,9 +4,11 @@
    [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]))
 
 (def ^:dynamic ^clojure.core.async.impl.channels.ManyToManyChannel *canceled-chan*
   "If this channel is bound, you can send it a message to cancel the query. You can check if it has received a message
@@ -23,15 +25,15 @@
   []
   (some-> *canceled-chan* a/poll!))
 
-(defn ^:dynamic *result*
+(mu/defn ^:dynamic *result* :- :some
   "Called exactly once with the final result, which is the result of either [[*reduce*]] (if query completed
   successfully), or an Exception (if it did not)."
-  [result]
+  [result :- :some]
   (if (instance? Throwable result)
     (throw result)
     result))
 
-(defn ^:dynamic *execute*
+(mu/defn ^:dynamic *execute* :- :some
   "Called by [[*run*]] to have driver run query. By default, [[metabase.driver/execute-reducible-query]]. `respond` is a
   callback with the signature:
 
@@ -39,17 +41,21 @@
 
   The implementation should call `respond` with this information once it is available. `response` MUST BE CALLED
   SYNCHRONOUSLY, and [[*execute*]] should ultimately return whatever it returns."
-  [driver query respond]
+  [driver  :- :keyword
+   query   :- :map
+   respond :- ::qp.schema/respond]
   (when-not (canceled?)
     ;; the context map that gets passed to [[driver/execute-reducible-query]] is for backwards compatibility for
     ;; pre-#35465 code
     (let [context {:canceled-chan *canceled-chan*}]
       (driver/execute-reducible-query driver query context respond))))
 
-(defn ^:dynamic *reduce*
+(mu/defn ^:dynamic *reduce* :- :some
   "Called by [[*run*]] (inside the `respond` callback provided by it) to reduce results of query. Reduces results, then
   calls [[*result*]] with the reduced results."
-  [rff metadata reducible-rows]
+  [rff            :- ::qp.schema/rff
+   metadata       :- ::qp.schema/metadata
+   reducible-rows :- ::qp.schema/reducible-rows]
   (when-not (canceled?)
     (let [[status rf-or-e] (try
                              [::ready-to-reduce (rff metadata)]
@@ -87,9 +93,10 @@
   (or (instance? InterruptedException e)
       (some-> (ex-cause e) interrupted-exception?)))
 
-(defn ^:dynamic *run*
+(mu/defn ^:dynamic *run* :- :some
   "Function for running the query. Calls [[*execute*]], then [[*reduce*]] on the results."
-  [query rff]
+  [query :- :map
+   rff   :- ::qp.schema/rff]
   (when-not (canceled?)
     (letfn [(respond [metadata reducible-rows]
               (*reduce* rff metadata reducible-rows))]

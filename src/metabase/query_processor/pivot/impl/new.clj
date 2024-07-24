@@ -16,14 +16,15 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util :as lib.util]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot.impl.common :as qp.pivot.impl.common]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.store :as qp.store]
-   [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -69,12 +70,14 @@
          (lib/breakout query (nth all-breakouts i))
          (let [original-breakout    (nth all-breakouts i)
                null-expression-name (lib.metadata.calculation/column-name query original-breakout)
-               original-type        (lib/type-of query (nth all-breakouts i))]
+               original-type        (lib/type-of query (nth all-breakouts i))
+               expression           [:value {:lib/uuid       (str (random-uuid))
+                                             :base-type      original-type
+                                             :effective-type original-type}
+                                     nil]
+               expression-options   {:add-to-fields? false}]
            (as-> query query
-             (lib/expression query null-expression-name [:value {:lib/uuid       (str (random-uuid))
-                                                                 :base-type      original-type
-                                                                 :effective-type original-type}
-                                                         nil])
+             (lib/expression query -1 null-expression-name expression expression-options)
              (lib/breakout query (lib/expression-ref query null-expression-name))))))
      (-> (lib/remove-all-breakouts query)
          (assoc :qp.pivot/breakout-combination breakout-indexes-to-keep))
@@ -88,7 +91,7 @@
 (mu/defn ^:private generate-queries :- [:sequential ::lib.schema/query]
   "Generate the additional queries to perform a generic pivot table"
   [query                                               :- ::lib.schema/query
-   {:keys [pivot-rows pivot-cols], :as _pivot-options} :- ::pivot-options]
+   {:keys [pivot-rows pivot-cols], :as _pivot-options} :- [:maybe ::pivot-options]]
   (try
     (let [all-breakouts (lib/breakouts query)
           all-queries   (for [breakout-indexes (u/prog1 (qp.pivot.impl.common/breakout-combinations
@@ -120,22 +123,22 @@
   (assoc query :stages [(merge {:lib/type :mbql.stage/native}
                                (set/rename-keys (qp.compile/compile query) {:query :native}))]))
 
-(mu/defn ^:private generate-compiled-queries :- [:sequential {:min 1} ::compiled-query]
-  [query         :- ::lib.schema/query
-   pivot-options :- ::pivot-options]
-  (qp.setup/with-qp-setup [query query]
-    (let [preprocessed (lib/query (qp.store/metadata-provider) (qp.preprocess/preprocess query))]
-      (mapv compile-pmbql-query
-            (generate-queries preprocessed pivot-options)))))
-
-(mu/defmethod qp.pivot.impl.common/run-pivot-query :qp.pivot.impl/new
+(mu/defmethod qp.pivot.impl.common/run-pivot-query :qp.pivot.impl/new :- :some
   "Legacy implementation for running pivot queries."
-  [_impl-name
-   query :- ::qp.schema/query
-   rff   :- ::qp.schema/rff]
-  (let [pivot-options           (or (get-in query [:middleware :pivot-options])
-                                    (throw (ex-info "Missing pivot options" {:query query, :type qp.error-type/qp})))
-        queries                 (generate-compiled-queries query pivot-options)
-        {:keys [metadata rows]} (driver/EXPERIMENTAL-execute-multiple-queries driver/*driver* queries)
-        rf                      (rff metadata)]
-    (transduce identity rf rows)))
+  [_impl-name :- :keyword
+   query      :- ::qp.schema/query
+   rff        :- ::qp.schema/rff]
+  (qp.setup/with-qp-setup [query query]
+    (let [pivot-options (or (get-in query [:middleware :pivot-options])
+                            (throw (ex-info "Missing pivot options" {:query query, :type qp.error-type/qp})))
+          ;; query         (lib/query (qp.store/metadata-provider) (qp.preprocess/preprocess query))
+          queries       (generate-queries query pivot-options)]
+      (binding [qp.pipeline/*execute* (fn [driver _query respond]
+                                        (let [compiled-queries (mapv compile-pmbql-query queries)]
+                                          (driver/EXPERIMENTAL-execute-multiple-queries driver compiled-queries respond)))]
+        (try
+          (qp/process-query (first queries) rff)
+          (catch Throwable e
+            (throw (ex-info (ex-message e)
+                            {:generated-queries queries}
+                            e))))))))

@@ -270,7 +270,7 @@
                                                         :fields       [&RP.reviews.id &RP.products.id &RP.products.ean]
                                                         :condition    [:= $product_id &RP.products.id]}]})])
           (is (=? {:status :completed}
-                 (qp/process-query (query-with-source-card 2 :limit 1)))))))))
+                  (qp/process-query (query-with-source-card 2 :limit 1)))))))))
 
 (deftest ^:parallel source-card-id-test
   (testing "Make sure we can run queries using source table `card__id` format."

@@ -5,10 +5,10 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema :as lib.schema]
-   [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.pivot-test :as qp.pivot-test]
    [metabase.query-processor.pivot.impl.new :as qp.pivot.impl.new]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (set! *warn-on-reflection* true)
 
@@ -92,16 +92,37 @@
             (is (=? (nth expected i)
                     (nth actual i)))))))))
 
-(deftest ^:parallel generate-compiled-queries-test
+(deftest ^:parallel generate-queries-test-2
   (testing "Just make sure we can compile everything ok"
     (is (malli= [:sequential
                  {:min 8, :max 8}
                  [:and
                   ::lib.schema/query
                   [:map
-                   [:stages [:sequential {:min 1, :max 1} ::lib.schema/stage.native]]]]]
-                (#'qp.pivot.impl.new/generate-compiled-queries
+                   [:stages [:sequential {:min 1, :max 1} ::lib.schema/stage.mbql]]]]]
+                (#'qp.pivot.impl.new/generate-queries
                  (lib/query
                   (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                    (qp.pivot-test/test-query))
                  {})))))
+
+(deftest ^:parallel generate-queries-test-3
+  (testing "Expressions implicitly included in `:fields` should get returned (#14604)"
+    (let [query         (lib/query
+                         (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                          (mt/mbql-query orders
+                            {:aggregation [[:count]]
+                             :breakout    [$user_id->people.source $product_id->products.category]
+                             :fields      [[:expression "test-expr"]]
+                             :expressions {"test-expr" [:ltrim "wheeee"]}}))
+          pivot-options {:pivot-rows [0]
+                         :pivot-cols [1]}]
+      (let [queries (#'qp.pivot.impl.new/generate-queries query pivot-options)]
+        (testing (format "\nqueries=\n%s" (u/pprint-to-str queries))
+          (is (= [["SOURCE" "CATEGORY" "pivot-grouping" "count" "test-expr"]
+                  ["SOURCE" "CATEGORY" "pivot-grouping" "count" "test-expr"]
+                  ["SOURCE" "CATEGORY" "pivot-grouping" "count" "test-expr"]
+                  ["SOURCE" "CATEGORY" "pivot-grouping" "count" "test-expr"]]
+                 (mapv (fn [query]
+                         (mapv :name (lib/returned-columns query)))
+                       queries))))))))

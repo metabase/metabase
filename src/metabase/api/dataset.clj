@@ -52,8 +52,7 @@
    & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc
              export-format :api}}]
-  (span/with-span!
-    {:name "run-query-async"}
+  (span/with-span! {:name "run-query-async"}
     (when (and (not= (:type query) "internal")
                (not= database lib.schema.id/saved-questions-virtual-database-id))
       (when-not database
@@ -75,7 +74,7 @@
                            (= (:type source-card) :model)
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (binding [qp.perms/*card-id* source-card-id]
-        (qp.streaming/streaming-response [rff export-format]
+        (qp.streaming/streaming-response [rff (keyword export-format)]
           (if was-pivot
             (qp.pivot/run-pivot-query (-> query
                                           (assoc :constraints (qp.constraints/default-query-constraints))

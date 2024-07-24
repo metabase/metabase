@@ -4,10 +4,8 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [medley.core :as m]
-   [metabase-enterprise.sandbox.models.group-table-access-policy
-    :refer [GroupTableAccessPolicy]]
-   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions
-    :as row-level-restrictions]
+   [metabase-enterprise.sandbox.models.group-table-access-policy :refer [GroupTableAccessPolicy]]
+   [metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions :as row-level-restrictions]
    [metabase-enterprise.test :as met]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
@@ -23,9 +21,9 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.middleware.cache-test :as cache-test]
    [metabase.query-processor.middleware.permissions :as qp.perms]
-   [metabase.query-processor.middleware.process-userland-query-test
-    :as process-userland-query-test]
+   [metabase.query-processor.middleware.process-userland-query-test :as process-userland-query-test]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.pivot-test :as qp.pivot-test]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
@@ -537,61 +535,77 @@
                     {:order-by [[:asc $id]]
                      :limit 2})))))))))
 
+(defn- correct-metadata-test-col-fns []
+  (let [cols          (fn []
+                        (mt/cols
+                         (mt/run-mbql-query venues
+                           {:order-by [[:asc $id]]
+                            :limit    2})))
+        original-cols (cols)
+        ;; `with-gtaps!` copies the test DB so this function will update the IDs in `original-cols` so they'll match
+        ;; up with the current copy
+        expected-cols (fn []
+                        (for [col  original-cols
+                              :let [id (mt/id :venues (keyword (u/lower-case-en (:name col))))]]
+                          (-> col
+                              (assoc :id id
+                                     :table_id (mt/id :venues)
+                                     :field_ref [:field id nil])
+                              (dissoc :fk_target_field_id))))]
+    {:cols cols, :expected-cols expected-cols}))
+
 (deftest correct-metadata-test
   (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
                 "Table (EE #390)\n")
-    (let [cols          (fn []
-                          (mt/cols
-                           (mt/run-mbql-query venues
-                             {:order-by [[:asc $id]]
-                              :limit    2})))
-          original-cols (cols)
-          ;; `with-gtaps!` copies the test DB so this function will update the IDs in `original-cols` so they'll match
-          ;; up with the current copy
-          expected-cols (fn []
-                          (for [col  original-cols
-                                :let [id (mt/id :venues (keyword (u/lower-case-en (:name col))))]]
-                            (-> col
-                                (assoc :id id
-                                       :table_id (mt/id :venues)
-                                       :field_ref [:field id nil])
-                                (dissoc :fk_target_field_id))))]
+    (let [{:keys [cols expected-cols]} (correct-metadata-test-col-fns)]
       (testing "A query with a simple attributes-based sandbox should have the same metadata"
         (met/with-gtaps! {:gtaps      {:venues (dissoc (venues-category-mbql-gtap-def) :query)}
                           :attributes {"cat" 50}}
           (is (=? (expected-cols)
-                  (cols)))))
+                  (cols))))))))
 
+(deftest correct-metadata-test-2
+  (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
+                "Table (EE #390)\n")
+    (let [{:keys [cols expected-cols]} (correct-metadata-test-col-fns)]
       (testing "A query with an equivalent MBQL query sandbox should have the same metadata"
         (met/with-gtaps! {:gtaps      {:venues (venues-category-mbql-gtap-def)}
                           :attributes {"cat" 50}}
           (is (=? (expected-cols)
-                  (cols)))))
+                  (cols))))))))
 
+(deftest correct-metadata-test-3
+  (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
+                "Table (EE #390)\n")
+    (let [{:keys [cols expected-cols]} (correct-metadata-test-col-fns)]
       (testing "A query with an equivalent native query sandbox should have the same metadata"
         (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
-                                                   {:query
-                                                    (str "SELECT ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
-                                                         "FROM VENUES "
-                                                         "WHERE CATEGORY_ID = {{cat}}")
+                                                    {:query
+                                                     (str "SELECT ID, NAME, CATEGORY_ID, LATITUDE, LONGITUDE, PRICE "
+                                                          "FROM VENUES "
+                                                          "WHERE CATEGORY_ID = {{cat}}")
 
-                                                    :template_tags
-                                                    {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+                                                     :template_tags
+                                                     {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
                                            :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
                           :attributes {"cat" 50}}
           (is (=? (expected-cols)
-                  (cols)))))
+                  (cols))))))))
 
+(deftest correct-metadata-test-4
+  (testing (str "We should return the same metadata as the original Table when running a query against a sandboxed "
+                "Table (EE #390)\n")
+    (let [{:keys [cols expected-cols]} (correct-metadata-test-col-fns)]
       (testing (str "If columns are added/removed/reordered we should still merge in metadata for the columns we're "
                     "able to match from the original Table")
         (met/with-gtaps! {:gtaps {:venues {:query (mt/native-query
-                                                   {:query
-                                                    (str "SELECT NAME, ID, LONGITUDE, PRICE, 1 AS ONE "
-                                                         "FROM VENUES "
-                                                         "WHERE CATEGORY_ID = {{cat}}")
+                                                    {:query
+                                                     (str "SELECT NAME, ID, LONGITUDE, PRICE, 1 AS ONE "
+                                                          "FROM VENUES "
+                                                          "WHERE CATEGORY_ID = {{cat}}")
 
-                                                    :template_tags
-                                                    {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
+                                                     :template_tags
+                                                     {:cat {:name "cat" :display_name "cat" :type "number" :required true}}})
                                            :remappings {:cat ["variable" ["template-tag" "cat"]]}}}
                           :attributes {"cat" 50}}
           (let [[id-col name-col _ _ longitude-col price-col] (expected-cols)]
@@ -1011,6 +1025,8 @@
                   (is (= [[1 1 14 37.65 2.07 39.72 nil "2019-02-11T21:40:27.892Z" 2 "Awesome Concrete Shoes"]]
                          (mt/rows (mt/run-mbql-query orders {:limit 1})))))))))))))
 
+;;; if this test is failing, check [[metabase.query-processor.pivot-test/drivers-test]], which is basically the same
+;;; test but it runs the query as it appears post-sandboxing directly
 (deftest pivot-query-test
   (mt/test-drivers (row-level-restrictions-fk-drivers)
     (testing "Pivot table queries should work with sandboxed users (#14969)"
@@ -1021,20 +1037,7 @@
                           :attributes {:user_id 1, :user_cat "Widget"}}
           (data-perms/set-table-permission! &group (mt/id :people) :perms/create-queries :query-builder)
           (data-perms/set-database-permission! &group (mt/id) :perms/view-data :unrestricted)
-          (is (= (->> [["Twitter" nil      0 401.51]
-                       ["Twitter" "Widget" 0 498.59]
-                       [nil       nil      1 401.51]
-                       [nil       "Widget" 1 498.59]
-                       ["Twitter" nil      2 900.1]
-                       [nil       nil      3 900.1]]
-                      (sort-by (let [nil-first? (mt/sorts-nil-first? driver/*driver* :type/Text)
-                                     sort-str   (fn [s]
-                                                  (cond
-                                                    (some? s)  s
-                                                    nil-first? "A"
-                                                    :else      "Z"))]
-                                 (fn [[x y group]]
-                                   [group (sort-str x) (sort-str y)]))))
+          (is (= (qp.pivot-test/drivers-test-expected-rows driver/*driver*)
                  (mt/formatted-rows [str str int 2.0]
                    (qp.pivot/run-pivot-query
                     (mt/mbql-query orders
@@ -1045,7 +1048,7 @@
                        :aggregation [[:sum $total]]
                        :breakout    [&P.people.source
                                      $product_id->products.category]
-                       :limit       5}))))))))))
+                       :limit       10}))))))))))
 
 (deftest caching-test
   (testing "Make sure Sandboxing works in combination with caching (#18579)"

@@ -1130,3 +1130,79 @@
     (binding [driver/*compile-with-inline-parameters* true]
       (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
              (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(deftest ^:parallel expression-with-same-name-as-unused-column-test
+  (testing "Handle an expression named CATEGORY that overshadows unused PRODUCTS.CATEGORY correctly (#46029)"
+    (let [query {:lib/type     :mbql/query
+                 :lib/metadata meta/metadata-provider
+                 :database     (meta/id)
+                 :stages       [{:lib/type     :mbql.stage/mbql
+                                 :source-table (meta/id :products)}
+                                {:lib/type    :mbql.stage/mbql
+                                 :expressions [[:value
+                                                {:lib/uuid            "e3b6ee32-fdc6-4115-bafa-b6cc0460d06e"
+                                                 :base-type           :type/Text
+                                                 :effective-type      :type/Text
+                                                 :lib/expression-name "CATEGORY"}
+                                                nil]
+                                               [:abs {:lib/uuid            "92f28262-35ef-4bb0-9a8d-49feb1046d25"
+                                                      :lib/expression-name "pivot-grouping"}
+                                                1]]
+                                 :aggregation [[:count {:lib/uuid "01c5c2ee-1cc7-48ba-b993-11fdceac2fd2"}]]
+                                 :breakout    [[:expression
+                                                {:lib/uuid       "c0d8fe94-f429-4839-8cad-b69e77e832b1"
+                                                 :base-type      :type/Text
+                                                 :effective-type :type/Text}
+                                                "CATEGORY"]
+                                               [:field
+                                                {:temporal-unit                                     :month
+                                                 :lib/uuid                                          "694b7bb2-5bd9-4694-ad24-8c988a1179f5"
+                                                 :metabase.lib.query/transformation-added-base-type true
+                                                 :base-type                                         :type/DateTimeWithLocalTZ
+                                                 :effective-type                                    :type/DateTimeWithLocalTZ}
+                                                (meta/id :products :created-at)]
+                                               [:expression
+                                                {:lib/uuid       "de5492f3-58a8-4650-8665-5c8d7907d99a"
+                                                 :base-type      :type/Integer
+                                                 :effective-type :type/Integer}
+                                                "pivot-grouping"]]}]}]
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (driver/with-driver :h2
+          (is (= ["SELECT"
+                  "  \"source\".\"CATEGORY\" AS \"CATEGORY\","
+                  "  DATE_TRUNC('month', \"source\".\"CREATED_AT\") AS \"CREATED_AT\","
+                  "  \"source\".\"pivot-grouping\" AS \"pivot-grouping\","
+                  "  COUNT(*) AS \"count\""
+                  "FROM"
+                  "  ("
+                  "    SELECT"
+                  "      \"source\".\"CREATED_AT\" AS \"CREATED_AT\","
+                  "      NULL AS \"CATEGORY\","
+                  "      ABS(1) AS \"pivot-grouping\""
+                  "    FROM"
+                  "      ("
+                  "        SELECT"
+                  "          \"PUBLIC\".\"PRODUCTS\".\"ID\" AS \"ID\","
+                  "          \"PUBLIC\".\"PRODUCTS\".\"EAN\" AS \"EAN\","
+                  "          \"PUBLIC\".\"PRODUCTS\".\"TITLE\" AS \"TITLE\","
+                  "          \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\","
+                  "          \"PUBLIC\".\"PRODUCTS\".\"VENDOR\" AS \"VENDOR\","
+                  "          \"PUBLIC\".\"PRODUCTS\".\"PRICE\" AS \"PRICE\","
+                  "          \"PUBLIC\".\"PRODUCTS\".\"RATING\" AS \"RATING\","
+                  "          \"PUBLIC\".\"PRODUCTS\".\"CREATED_AT\" AS \"CREATED_AT\""
+                  "        FROM"
+                  "          \"PUBLIC\".\"PRODUCTS\""
+                  "      ) AS \"source\""
+                  "  ) AS \"source\""
+                  "GROUP BY"
+                  "  \"source\".\"CATEGORY\","
+                  "  DATE_TRUNC('month', \"source\".\"CREATED_AT\"),"
+                  "  \"source\".\"pivot-grouping\""
+                  "ORDER BY"
+                  "  \"source\".\"CATEGORY\" ASC,"
+                  "  DATE_TRUNC('month', \"source\".\"CREATED_AT\") ASC,"
+                  "  \"source\".\"pivot-grouping\" ASC"]
+                 (->> (sql.qp/mbql->native :h2 (qp.preprocess/preprocess query))
+                      :query
+                      (driver/prettify-native-form :h2)
+                      str/split-lines))))))))

@@ -7,6 +7,7 @@
    [malli.core :as mc]
    [medley.core :as m]
    [metabase.api.pivots :as api.pivots]
+   [metabase.driver :as driver]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
@@ -101,10 +102,9 @@
         (let [viz-settings  (mt/$ids products
                               {:pivot_table.column_split
                                {:rows    [$category]
-                                :columns [$created_at]}})
-              pivot-options (#'qp.pivot/pivot-options query viz-settings)]
+                                :columns [$created_at]}})]
           (is (= {:pivot-rows [0], :pivot-cols [1]}
-                 pivot-options))
+                 (#'qp.pivot/pivot-options query viz-settings)))
           (test-both-impls
             (is (=? {:status    :completed
                      :row_count 156}
@@ -324,10 +324,12 @@
 (deftest ^:parallel pivots-should-not-return-expressions-test-2
   (let [query (assoc (mt/mbql-query orders
                        {:aggregation [[:count]]
-                        :breakout    [$user_id->people.source $product_id->products.category]})
+                        :breakout    [$user_id->people.source $product_id->products.category]
+                        :fields      [[:expression "test-expr"]]
+                        :expressions {"test-expr" [:ltrim "wheeee"]}})
                      :pivot-rows [0]
                      :pivot-cols [1])]
-    (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess"
+    (testing "If the expression is *explicitly* included in `:fields`, then return it, I guess (#14604)"
       ;; I'm not sure this behavior makes sense -- it seems liable to result in a query the FE can't handle
       ;; correctly, like #14604. The difference here is that #14064 was including expressions that weren't in
       ;; `:fields` at all, which was a clear bug -- while returning expressions that are referenced in `:fields` is
@@ -336,9 +338,7 @@
       ;; I do not think there are any situations where the frontend actually explicitly specifies `:fields` in a
       ;; pivot query, so we can revisit this behavior at a later date if needed.
       (test-both-impls
-        (let [results (qp.pivot/run-pivot-query (-> query
-                                                    (assoc-in [:query :fields] [[:expression "test-expr"]])
-                                                    (assoc-in [:query :expressions] {:test-expr [:ltrim "wheeee"]})))]
+        (let [results (qp.pivot/run-pivot-query query)]
           (is (= ["User → Source"
                   "Product → Category"
                   "pivot-grouping"
@@ -548,3 +548,48 @@
                    {:field_ref [:expression "pivot-grouping"]}
                    {:field_ref [:aggregation 0]}])
                 (mt/cols (qp.pivot/run-pivot-query query))))))))
+
+(defn drivers-test-expected-rows [driver]
+  (->> [["Twitter" nil      0 401.51]
+        ["Twitter" "Widget" 0 498.59]
+        [nil       nil      1 401.51]
+        [nil       "Widget" 1 498.59]
+        ["Twitter" nil      2 900.1]
+        [nil       nil      3 900.1]]
+       (sort-by (let [nil-first? (mt/sorts-nil-first? driver :type/Text)
+                      sort-str   (fn [s]
+                                   (cond
+                                     (some? s)  s
+                                     nil-first? "A"
+                                     :else      "Z"))]
+                  (fn [[x y group]]
+                    [group (sort-str x) (sort-str y)])))))
+
+;;; This test is basically the same
+;;; as [[metabase-enterprise.sandbox.query-processor.middleware.row-level-restrictions-test/pivot-query-test]] but with
+;;; the query we would see post-sandboxing
+(deftest ^:parallel drivers-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions)
+    (let [query (mt/mbql-query orders
+                  {:source-query {:source-table $$orders
+                                  :filter       [:= $user_id 1]}
+                   :joins        [{:source-table $$people
+                                   :fields       :all
+                                   :condition    [:= $user_id &People.people.id]
+                                   :alias        "People"}
+                                  {:source-query {:source-table $$products
+                                                  :filter       [:= $products.category "Widget"]}
+                                   :fields       :all
+                                   :condition    [:=
+                                                  $product_id
+                                                  &Products.id]
+                                   :alias        "Products"
+                                   :fk-field-id  %product_id}]
+                   :aggregation  [[:sum $total]]
+                   :breakout     [&People.people.source
+                                  &Products.products.category]
+                   :limit        10})]
+      (is (= (drivers-test-expected-rows driver/*driver*)
+             (mt/formatted-rows
+              [str str int 2.0]
+              (qp.pivot/run-pivot-query query)))))))

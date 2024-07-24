@@ -65,9 +65,10 @@
 (mu/defn ^:private generate-queries :- [:sequential ::lib.schema/query]
   "Generate the additional queries to perform a generic pivot table"
   [query                                               :- ::lib.schema/query
-   {:keys [pivot-rows pivot-cols], :as _pivot-options} :- [:map
-                                                           [:pivot-rows {:optional true} [:maybe ::qp.pivot.impl.common/pivot-rows]]
-                                                           [:pivot-cols {:optional true} [:maybe ::qp.pivot.impl.common/pivot-cols]]]]
+   {:keys [pivot-rows pivot-cols], :as _pivot-options} :- [:maybe
+                                                           [:map
+                                                            [:pivot-rows {:optional true} [:maybe ::qp.pivot.impl.common/pivot-rows]]
+                                                            [:pivot-cols {:optional true} [:maybe ::qp.pivot.impl.common/pivot-cols]]]]]
   (try
     (let [all-breakouts (lib/breakouts query)
           all-queries   (for [breakout-indexes (u/prog1 (qp.pivot.impl.common/breakout-combinations

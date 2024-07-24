@@ -711,7 +711,7 @@
    format_rows   [:maybe :boolean]
    export-format (into [:enum] api.dataset/export-formats)}
   (qp.card/process-query-for-card
-   card-id export-format
+   card-id (keyword export-format)
    :parameters  (json/parse-string parameters keyword)
    :constraints nil
    :context     (api.dataset/export-format->context export-format)
@@ -772,10 +772,11 @@
                  :or   {ignore_cache false}} :body}]
   {card-id      ms/PositiveInt
    ignore_cache [:maybe :boolean]}
-  (qp.card/process-query-for-card card-id :api
-                                    :parameters   parameters
-                                    :qp           qp.pivot/run-pivot-query
-                                    :ignore-cache ignore_cache))
+  (qp.card/process-query-for-card
+   card-id :api
+   :parameters   parameters
+   :qp           qp.pivot/run-pivot-query
+   :ignore-cache ignore_cache))
 
 (api/defendpoint POST "/:card-id/persist"
   "Mark the model (card) as persisted. Runs the query and saves it to the database backing the card and hot swaps this

@@ -26,6 +26,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2]))
 
@@ -169,14 +170,18 @@
    rff   :- [:maybe ::qp.schema/rff]]
   (qp/process-query (qp/userland-query query) rff))
 
-(defn process-query-for-card-default-run-fn
-  "Create the default `:make-run` function for [[process-query-for-card]]."
-  [qp export-format]
+(mr/def ::run-fn
+  [:=> [:cat #_query :map #_info [:maybe :map]] #_streaming-response :some])
+
+(mu/defn ^:private default-make-run :- ::run-fn
+  "Default `:make-run` function for [[process-query-for-card]]."
+  [qp            :- ::qp.schema/qp
+   export-format :- ::qp.schema/export-format]
   (^:once fn* [query info]
    (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
      (qp (update query :info merge info) rff))))
 
-(mu/defn process-query-for-card
+(mu/defn process-query-for-card :- :some
   "Run the query for Card with `parameters` and `constraints`. By default, returns results in a
   `metabase.async.streaming_response.StreamingResponse` (see [[metabase.async.streaming-response]]) that should be
   returned as the result of an API endpoint fn, but you can return something different by passing a different `:make-run`
@@ -194,14 +199,14 @@
   `context` is a keyword describing the situation in which this query is being ran, e.g. `:question` (from a Saved
   Question) or `:dashboard` (from a Saved Question in a Dashboard). See [[metabase.legacy-mbql.schema/Context]] for all valid
   options."
-  [card-id :- ::lib.schema.id/card
-   export-format
+  [card-id       :- ::lib.schema.id/card
+   export-format :- ::qp.schema/export-format
    & {:keys [parameters constraints context dashboard-id dashcard-id middleware qp make-run ignore-cache]
       :or   {constraints (qp.constraints/default-query-constraints)
              context     :question
              ;; param `make-run` can be used to control how the query is ran, e.g. if you need to customize the `context`
              ;; passed to the QP
-             make-run    process-query-for-card-default-run-fn}}]
+             make-run    default-make-run}}]
   {:pre [(int? card-id) (u/maybe? sequential? parameters)]}
   (let [card       (api/read-check (t2/select-one [Card :id :name :dataset_query :database_id :collection_id
                                                    :type :result_metadata :visualization_settings :display

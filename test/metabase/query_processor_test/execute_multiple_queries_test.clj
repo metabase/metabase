@@ -1,6 +1,7 @@
 (ns metabase.query-processor-test.execute-multiple-queries-test
   "Tests for [[metabase.driver/EXPERIMENTAL-execute-multiple-queries]]."
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.lib.convert :as lib.convert]
@@ -14,7 +15,7 @@
    :database (mt/id)
    :stages   [(merge
                {:lib/type :mbql.stage/native}
-               (qp.compile/compile query))]})
+               (set/rename-keys (qp.compile/compile query) {:query :native}))]})
 
 (deftest ^:parallel execute-multiple-queries-test
   (mt/test-drivers (mt/normal-drivers)

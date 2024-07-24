@@ -10,8 +10,8 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.async.util :as async.u]
    [metabase.driver.impl :as driver.impl]
-   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -445,20 +445,9 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
-(mr/def ::execute-query-response.metadata.col
+(mr/def ::execute-query.context
   [:map
-   [:name          :string]
-   [:base_type     ::lib.schema.common/base-type]
-   [:database_type :string]])
-
-(mr/def ::execute-query-response.metadata
-  [:map
-   [:cols [:sequential ::execute-query-response.metadata.col]]])
-
-(mr/def ::execute-query-response.rows
-  [:or
-   sequential?
-   (lib.schema.common/instance-of-class clojure.lang.IReduceInit)])
+   [:canceled-chan {:optional true} [:maybe async.u/PromiseChan]]])
 
 (defmulti execute-reducible-query
   "Execute a native query against that database and return rows that can be reduced using `transduce`/`reduce`. This
@@ -467,14 +456,13 @@
 
   `context` is a map that mostly exists for historic reasons, and has just one key, `:canceled-chan`, containing a
   `core.async` promise channel that will get a message if the query should be canceled because the upstream HTTP
-  connection has been closed early.
+  connection has been closed early. It matches the schema [[::execute-query.context]].
 
   Pass metadata about the columns and the reducible object to `respond`, which has the signature
 
     (respond results-metadata rows)
 
-  The `results-metadata` should match the `::execute-query-response.metadata` schema, and `rows` should match the
-  `::execute-query-response.rows` schema.
+  See the schema [[:metabase.query-processor.schema/respond]] for more details.
 
   You can use [[metabase.query-processor.reducible/reducible-rows]] to create reducible, streaming results.
 
@@ -491,11 +479,6 @@
   {:added "0.35.0", :arglists '([driver query context respond])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
-
-(mr/def ::execute-multiple-queries-response
-  [:map
-   [:metadata ::execute-query-response.metadata]
-   [:rows     ::execute-query-response.rows]])
 
 (defmulti EXPERIMENTAL-execute-multiple-queries
   "EXPERIMENTAL INTERNAL USE ONLY! DO NOT IMPLEMENT IN THIRD-PARTY DRIVERS! MAY BE REMOVED WITHOUT NOTICE!
@@ -514,7 +497,7 @@
   Note that this does not have a separate `context` parameter with a `:canceled-chan`; look
   at [[metabase.query-processor.pipeline/*canceled-chan*]] instead if you want to implement behavior if the query is
   canceled upstream."
-  {:added "0.51.0", :arglists '([driver queries])}
+  {:added "0.51.0", :changelog-test/ignore true, :arglists '([driver queries respond])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

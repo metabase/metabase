@@ -36,86 +36,96 @@
 (defn- basic-actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-basic-streaming export-format query)))
 
-(deftest basic-streaming-test
+(defn- basic-streaming-test-query []
+  (mt/mbql-query venues
+    {:order-by [[:asc $id]]
+     :limit    5}))
+
+;; Consistent formatting with CSVs and the UI
+(deftest ^:parallel basic-streaming-csv-test
   (testing "Test that the underlying qp.streaming context logic itself works correctly. Not an end-to-end test!"
-    (let [query (mt/mbql-query venues
-                  {:order-by [[:asc $id]]
-                   :limit    5})]
-      (doseq [export-format (qp.streaming/export-formats)]
-        (testing (u/colorize :yellow export-format)
-          (case export-format
-            :csv (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
-                         ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
-                         ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]
-                         ["3" "The Apple Pan" "11" "34.04060000° N" "118.42800000° W" "2"]
-                         ["4" "Wurstküche" "29" "33.99970000° N" "118.46500000° W" "2"]
-                         ["5" "Brite Spot Family Restaurant" "20" "34.07780000° N" "118.26100000° W" "2"]]
-                        (basic-actual-results* export-format query)))
-            ;; Consistent formatting with CSVs and the UI
-            :json (is (= [{"ID" "1",
-                           "Name" "Red Medicine",
-                           "Category ID" "4",
-                           "Latitude" "10.06460000° N",
-                           "Longitude" "165.37400000° W",
-                           "Price" "3"}
-                          {"ID" "2",
-                           "Name" "Stout Burgers & Beers",
-                           "Category ID" "11",
-                           "Latitude" "34.09960000° N",
-                           "Longitude" "118.32900000° W",
-                           "Price" "2"}
-                          {"ID" "3",
-                           "Name" "The Apple Pan",
-                           "Category ID" "11",
-                           "Latitude" "34.04060000° N",
-                           "Longitude" "118.42800000° W",
-                           "Price" "2"}
-                          {"ID" "4",
-                           "Name" "Wurstküche",
-                           "Category ID" "29",
-                           "Latitude" "33.99970000° N",
-                           "Longitude" "118.46500000° W",
-                           "Price" "2"}
-                          {"ID" "5",
-                           "Name" "Brite Spot Family Restaurant",
-                           "Category ID" "20",
-                           "Latitude" "34.07780000° N",
-                           "Longitude" "118.26100000° W",
-                           "Price" "2"}]
-                         (map #(update-keys % name) (basic-actual-results* export-format query))))
-            :xlsx (is (= [{"ID" 1.0,
-                           "Name" "Red Medicine",
-                           "Category ID" 4.0,
-                           "Latitude" "10.06460000° N",
-                           "Longitude" "165.37400000° W",
-                           "Price" 3.0}
-                          {"ID" 2.0,
-                           "Name" "Stout Burgers & Beers",
-                           "Category ID" 11.0,
-                           "Latitude" "34.09960000° N",
-                           "Longitude" "118.32900000° W",
-                           "Price" 2.0}
-                          {"ID" 3.0,
-                           "Name" "The Apple Pan",
-                           "Category ID" 11.0,
-                           "Latitude" "34.04060000° N",
-                           "Longitude" "118.42800000° W",
-                           "Price" 2.0}
-                          {"ID" 4.0,
-                           "Name" "Wurstküche",
-                           "Category ID" 29.0,
-                           "Latitude" "33.99970000° N",
-                           "Longitude" "118.46500000° W",
-                           "Price" 2.0}
-                          {"ID" 5.0,
-                           "Name" "Brite Spot Family Restaurant",
-                           "Category ID" 20.0,
-                           "Latitude" "34.07780000° N",
-                           "Longitude" "118.26100000° W",
-                           "Price" 2.0}]
-                         (basic-actual-results* export-format query)))
-            (is (= (expected-results* export-format query)
-                   (basic-actual-results* export-format query)))))))))
+    (is (= [["ID" "Name" "Category ID" "Latitude" "Longitude" "Price"]
+            ["1" "Red Medicine" "4" "10.06460000° N" "165.37400000° W" "3"]
+            ["2" "Stout Burgers & Beers" "11" "34.09960000° N" "118.32900000° W" "2"]
+            ["3" "The Apple Pan" "11" "34.04060000° N" "118.42800000° W" "2"]
+            ["4" "Wurstküche" "29" "33.99970000° N" "118.46500000° W" "2"]
+            ["5" "Brite Spot Family Restaurant" "20" "34.07780000° N" "118.26100000° W" "2"]]
+           (basic-actual-results* :csv (basic-streaming-test-query))))))
+
+(deftest ^:parallel basic-streaming-json-test
+  (testing "Test that the underlying qp.streaming context logic itself works correctly. Not an end-to-end test!"
+    (is (= [{"ID" "1",
+             "Name" "Red Medicine",
+             "Category ID" "4",
+             "Latitude" "10.06460000° N",
+             "Longitude" "165.37400000° W",
+             "Price" "3"}
+            {"ID" "2",
+             "Name" "Stout Burgers & Beers",
+             "Category ID" "11",
+             "Latitude" "34.09960000° N",
+             "Longitude" "118.32900000° W",
+             "Price" "2"}
+            {"ID" "3",
+             "Name" "The Apple Pan",
+             "Category ID" "11",
+             "Latitude" "34.04060000° N",
+             "Longitude" "118.42800000° W",
+             "Price" "2"}
+            {"ID" "4",
+             "Name" "Wurstküche",
+             "Category ID" "29",
+             "Latitude" "33.99970000° N",
+             "Longitude" "118.46500000° W",
+             "Price" "2"}
+            {"ID" "5",
+             "Name" "Brite Spot Family Restaurant",
+             "Category ID" "20",
+             "Latitude" "34.07780000° N",
+             "Longitude" "118.26100000° W",
+             "Price" "2"}]
+           (map #(update-keys % name)
+                (basic-actual-results* :json (basic-streaming-test-query)))))))
+
+(deftest ^:parallel basic-streaming-xlsx-test
+  (testing "Test that the underlying qp.streaming context logic itself works correctly. Not an end-to-end test!"
+    (is (= [{"ID" 1.0,
+             "Name" "Red Medicine",
+             "Category ID" 4.0,
+             "Latitude" "10.06460000° N",
+             "Longitude" "165.37400000° W",
+             "Price" 3.0}
+            {"ID" 2.0,
+             "Name" "Stout Burgers & Beers",
+             "Category ID" 11.0,
+             "Latitude" "34.09960000° N",
+             "Longitude" "118.32900000° W",
+             "Price" 2.0}
+            {"ID" 3.0,
+             "Name" "The Apple Pan",
+             "Category ID" 11.0,
+             "Latitude" "34.04060000° N",
+             "Longitude" "118.42800000° W",
+             "Price" 2.0}
+            {"ID" 4.0,
+             "Name" "Wurstküche",
+             "Category ID" 29.0,
+             "Latitude" "33.99970000° N",
+             "Longitude" "118.46500000° W",
+             "Price" 2.0}
+            {"ID" 5.0,
+             "Name" "Brite Spot Family Restaurant",
+             "Category ID" 20.0,
+             "Latitude" "34.07780000° N",
+             "Longitude" "118.26100000° W",
+             "Price" 2.0}]
+           (basic-actual-results* :xlsx (basic-streaming-test-query))))))
+
+(deftest ^:parallel basic-streaming-api-test
+  (testing "Test that the underlying qp.streaming context logic itself works correctly. Not an end-to-end test!"
+    (let [query (basic-streaming-test-query)]
+      (is (= (expected-results* :api query)
+             (basic-actual-results* :api query))))))
 
 (defn- actual-results* [export-format query]
   (maybe-remove-checksum (streaming.test-util/process-query-api-response-streaming export-format query)))

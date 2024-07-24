@@ -15,6 +15,7 @@
    [metabase.query-processor.middleware.pivot-export :as pivot-export]
    [metabase.query-processor.middleware.results-metadata :as results-metadata]
    [metabase.query-processor.middleware.visualization-settings :as viz-settings]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.setup :as qp.setup]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
@@ -44,11 +45,11 @@
    #'fetch-source-query/add-dataset-info])
 ;; ↑↑↑ POST-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
-(mu/defn post-processing-rff :- fn?
+(mu/defn post-processing-rff :- ::qp.schema/rff
   "Apply post-processing middleware to `rff`. Returns an rff."
   [preprocessed-query :- [:map
                           [:database ::lib.schema.id/database]]
-   rff                :- fn?]
+   rff                :- ::qp.schema/rff]
   (qp.setup/with-qp-setup [preprocessed-query preprocessed-query]
     (try
       (reduce

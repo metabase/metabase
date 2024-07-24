@@ -1,17 +1,19 @@
 (ns metabase.query-processor.reducible
   (:require
    [clojure.core.async :as a]
+   [metabase.async.util :as async.u]
    [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
 
-(defn default-rff
+(mu/defn default-rff :- ::qp.schema/rff
   "Default function returning a reducing function. Results are returned in the 'standard' map format e.g.
 
     {:data {:cols [...], :rows [...]}, :row_count ...}"
-  [metadata]
+  [metadata :- ::qp.schema/metadata]
   (let [row-count (volatile! 0)
         rows      (volatile! (transient []))]
     (fn default-rf
@@ -31,7 +33,7 @@
        (vswap! rows conj! row)
        result))))
 
-(defn reducible-rows
+(mu/defn reducible-rows :- ::qp.schema/reducible-rows
   "Utility function for generating reducible rows when implementing [[metabase.driver/execute-reducible-query]].
 
   `row-thunk` is a function that, when called, should return the next row in the results, or falsey if no more rows
@@ -39,7 +41,8 @@
   ([row-thunk]
    (reducible-rows row-thunk qp.pipeline/*canceled-chan*))
 
-  ([row-thunk canceled-chan]
+  ([row-thunk     :- [:=> [:cat] :some]
+    canceled-chan :- [:maybe async.u/PromiseChan]]
    (reify
      clojure.lang.IReduceInit
      (reduce [_ rf init]
@@ -58,7 +61,7 @@
                (log/trace "All rows consumed.")
                acc))))))))
 
-(mu/defn combine-additional-reducing-fns
+(mu/defn combine-additional-reducing-fns :- ::qp.schema/rf
   "Utility function for creating a reducing function that reduces results using `primary-rf` and some number of
   `additional-rfs`, then combines them into a final result with `combine`.
 
@@ -87,8 +90,8 @@
 
   4. The completing arity of the primary reducing function is not applied automatically, so be sure to apply it
   yourself in the appropriate place in the body of your `combine` function."
-  [primary-rf     :- ifn?
-   additional-rfs :- [:sequential ifn?]
+  [primary-rf     :- ::qp.schema/rf
+   additional-rfs :- [:sequential ::qp.schema/rf]
    combine        :- ifn?]
   (let [additional-accs (volatile! (mapv (fn [rf] (rf))
                                          additional-rfs))]

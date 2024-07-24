@@ -194,4 +194,4 @@
                   (u/pprint-to-str options))
       ;; we've already validated our parameters, so we don't need the [[qp.card]] namespace to do it again
       (binding [qp.card/*allow-arbitrary-mbql-parameters* true]
-        (m/mapply qp.card/process-query-for-card card-id export-format options)))))
+        (m/mapply qp.card/process-query-for-card card-id (keyword export-format) options)))))

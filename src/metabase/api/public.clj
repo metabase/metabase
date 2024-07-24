@@ -30,6 +30,7 @@
    [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.middleware.session :as mw.session]
    [metabase.util :as u]
@@ -130,9 +131,10 @@
    (when-not (qp.error-type/show-in-embeds? error-type)
      {:error (tru "An error occurred while running the query.")})))
 
-(defn- process-query-for-card-with-id-run-fn
+(mu/defn ^:private process-query-for-card-with-id-run-fn
   "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
-  [qp export-format]
+  [qp            :- ::qp.schema/qp
+   export-format :- ::qp.schema/export-format]
   (fn run [query info]
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
       (binding [qp.pipeline/*result* (comp qp.pipeline/*result* transform-qp-result)]
@@ -142,8 +144,8 @@
 (mu/defn process-query-for-card-with-id
   "Run the query belonging to Card with `card-id` with `parameters` and other query options (e.g. `:constraints`).
   Returns a `StreamingResponse` object that should be returned as the result of an API endpoint."
-  [card-id :- ::lib.schema.id/card
-   export-format
+  [card-id       :- ::lib.schema.id/card
+   export-format :- ::qp.schema/export-format
    parameters
    & {:keys [qp]
       :or   {qp qp.card/process-query-for-card-default-qp}
@@ -167,7 +169,7 @@
   [uuid export-format parameters & options]
   (validation/check-public-sharing-enabled)
   (let [card-id (api/check-404 (t2/select-one-pk Card :public_uuid uuid, :archived false))]
-    (apply process-query-for-card-with-id card-id export-format parameters options)))
+    (apply process-query-for-card-with-id card-id (keyword export-format) parameters options)))
 
 (api/defendpoint GET "/card/:uuid/query"
   "Fetch a publicly-accessible Card an return query results as well as `:card` information. Does not require auth

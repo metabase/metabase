@@ -129,14 +129,15 @@
                       {:source-query source-query}
                       e)))))
 
-(defn- card-gtap->source
+(mu/defn ^:private card-gtap->source :- mbql.s/SourceQuery
   [{card-id :card_id :as gtap}]
   (update-in (fetch-source-query-legacy/card-id->source-query-and-metadata card-id)
              [:source-query :parameters]
              concat
              (gtap->parameters gtap)))
 
-(defn- table-gtap->source [{table-id :table_id, :as gtap}]
+(mu/defn ^:private table-gtap->source :- mbql.s/SourceQuery
+  [{table-id :table_id, :as gtap}]
   {:source-query {:source-table table-id, :parameters (gtap->parameters gtap)}})
 
 (mu/defn ^:private mbql-query-metadata :- [:+ :map]

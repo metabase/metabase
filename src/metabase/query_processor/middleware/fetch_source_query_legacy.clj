@@ -24,7 +24,6 @@
 (def ^:private SourceQueryAndMetadata
   [:map
    [:source-query    mbql.s/SourceQuery]
-   [:database        ::mbql.s/DatabaseID]
    [:source-metadata [:maybe [:sequential mbql.s/SourceQueryMetadata]]]
    [:source-query/model?   {:optional true} :boolean]
    [:persisted-info/native {:optional true} :string]])
@@ -81,6 +80,5 @@
                                         (qp.persisted/persisted-info-native-query
                                          (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
                                          persisted-info)))
-              :database        database-id
               :source-metadata (seq (map mbql.normalize/normalize-source-metadata result-metadata))}
        (= card-type :model) (assoc :source-query/model? true)))))

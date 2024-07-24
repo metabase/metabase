@@ -25,6 +25,7 @@
    [metabase.query-processor.setup :as qp.setup]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
@@ -86,7 +87,7 @@
         :qp.pivot.impl/new
         :qp.pivot.impl/legacy)))
 
-(mu/defn run-pivot-query
+(mu/defn run-pivot-query :- :some
   "Run the pivot query. You are expected to wrap this call in [[metabase.query-processor.streaming/streaming-response]]
   yourself."
   ([query]
@@ -95,12 +96,18 @@
   ([query :- ::qp.schema/query
     rff   :- [:maybe ::qp.schema/rff]]
    (log/debugf "Running pivot query:\n%s" (u/pprint-to-str query))
-   (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
-     (qp.setup/with-qp-setup [query query]
+   (qp.setup/with-qp-setup [query query]
+     (binding [qp.perms/*card-id* (get-in query [:info :card-id])]
        (let [rff           (or rff qp.reducible/default-rff)
              query         (lib/query (qp.store/metadata-provider) query)
              pivot-options (or
                             (not-empty (select-keys query [:pivot-rows :pivot-cols]))
                             (pivot-options query (get-in query [:info :visualization-settings])))
-             query         (assoc-in query [:middleware :pivot-options] pivot-options)]
-         (qp.pivot.impl.common/run-pivot-query (impl-name driver/*driver*) query rff))))))
+             query         (assoc-in query [:middleware :pivot-options] pivot-options)
+             impl-name     (impl-name driver/*driver*)]
+         (try
+           (qp.pivot.impl.common/run-pivot-query impl-name query rff)
+           (catch Throwable e
+             (throw (ex-info (i18n/tru "Error executing pivot table query: {0}" (ex-message e))
+                             {:original-query query, :impl impl-name}
+                             e)))))))))
