@@ -7,7 +7,6 @@
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.util :as lib.util]
    [metabase.query-processor.error-type :as qp.error-type]
-   [metabase.query-processor.pivot.impl.common :as qp.pivot.impl.common]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
@@ -116,7 +115,7 @@
 (mu/defn add-pivot-group-breakout :- ::lib.schema/query
   "Add the grouping field and expression to the query"
   [query   :- ::lib.schema/query
-   bitmask :- ::qp.pivot.impl.common/bitmask]
+   bitmask :- ::bitmask]
   (as-> query query
     ;;TODO: replace this value with a bitmask or something to indicate the source better
     (lib/expression query -1 "pivot-grouping" (lib/abs bitmask) {:add-to-fields? false})
