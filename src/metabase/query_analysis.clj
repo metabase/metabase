@@ -42,7 +42,7 @@
 (defmacro with-execution*
   "Override the default execution mode, except in prod."
   [execution & body]
-  (assert (not (config/is-prod?)))
+  (assert (not config/is-prod?))
   `(binding [*analyze-execution-in-dev?*  ~execution
              *analyze-execution-in-test?* ~execution]
      ~@body))
