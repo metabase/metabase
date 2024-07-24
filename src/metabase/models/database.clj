@@ -433,12 +433,15 @@
 
 ;;; ------------------------------------------------ Serialization ----------------------------------------------------
 
-(defmethod serdes/extract-one "Database"
-  [_model-name {:keys [include-database-secrets]} entity]
-  (-> (serdes/extract-one-basics "Database" entity)
-      (update :creator_id serdes/*export-user*)
-      (dissoc :features) ; This is a synthetic column that isn't in the real schema.
-      (cond-> (not include-database-secrets) (dissoc :details))))
+(defmethod serdes/make-spec "Database"
+  [_model-name {:keys [include-database-secrets]}]
+  {:copy      [:auto_run_queries :cache_field_values_schedule :cache_ttl :caveats :created_at :dbms_version
+               :description :engine :initial_sync_status :is_audit :is_full_sync :is_on_demand :is_sample
+               :metadata_sync_schedule :name :points_of_interest :refingerprint :settings :timezone :uploads_enabled
+               :uploads_schema_name :uploads_table_prefix
+               (when include-database-secrets :details)]
+   :skip      [(when-not include-database-secrets :details)]
+   :transform {:creator_id [serdes/*export-user* serdes/*import-user*]}})
 
 (defmethod serdes/entity-id "Database"
   [_ {:keys [name]}]
@@ -451,13 +454,6 @@
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
   (t2/select-one Database :name id))
-
-(defmethod serdes/load-xform "Database"
-  [database]
-  (-> database
-      serdes/load-xform-basics
-      (update :creator_id serdes/*import-user*)
-      (assoc :initial_sync_status "complete")))
 
 (defmethod serdes/load-insert! "Database" [_ ingested]
   (let [m (get-method serdes/load-insert! :default)]
