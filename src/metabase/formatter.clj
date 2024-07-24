@@ -129,7 +129,7 @@
                                integral? 0
                                currency? (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
                                percent?  (min 2 decimals-in-value) ;; 5.5432 -> %554.32
-                               :else (if (>= scaled-value 1)
+                               :else (if (>= (abs scaled-value) 1)
                                        (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
                                        (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
                                          (if (> n-figs 2)
