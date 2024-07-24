@@ -6,9 +6,10 @@ export { createApiKey } from "./createApiKey";
 export { createCollection } from "./createCollection";
 export { createDashboard } from "./createDashboard";
 export type { DashboardDetails } from "./createDashboard";
-export { createNativeQuestion, createQuestion } from "./createQuestion";
+export { createNativeQuestion } from "./createNativeQuestion";
+export type { NativeQuestionDetails } from "./createNativeQuestion";
+export { createQuestion } from "./createQuestion";
 export type {
-  NativeQuestionDetails,
   QuestionDetails,
   StructuredQuestionDetails,
 } from "./createQuestion";
