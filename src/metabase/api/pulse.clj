@@ -316,8 +316,7 @@
      :row_count       (:row_count result)
      :col_count       (count (:cols (:data result)))}))
 
-;; TODO revert this to 400 before merging to master
-(def ^:private preview-card-width 1000)
+(def ^:private preview-card-width 400)
 
 (api/defendpoint GET "/preview_card_png/:id"
   "Get PNG rendering of a Card with `id`."
