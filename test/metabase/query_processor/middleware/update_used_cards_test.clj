@@ -12,6 +12,8 @@
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (defmacro with-used-cards-setup!
   [& body]
   `(mt/test-helpers-set-global-values!
@@ -71,18 +73,24 @@
         (do-test! card-id #(pulse/send-pulse! pulse))))))
 
 (deftest update-used-card-timestamp-test
-  (let [now           (t/offset-date-time)
-        one-hour-ago  (t/minus now (t/hours 1))
-        two-hours-ago (t/minus now (t/hours 2))]
+  ;; the precision of `(t/offset-date-time)` can vary between machines, on my computer at least it nanosecond (9
+  ;; decimal place) precision while the Postgres app DB columns we're looking at only have microsecond (6 decimal
+  ;; place) precision. Truncate to microseconds so the tests don't randomly fail on different computers.
+  (let [now            (t/offset-date-time)
+        one-hour-ago   (t/minus now (t/hours 1))
+        two-hours-ago  (t/minus now (t/hours 2))
+        truncate-to-ms (fn [t]
+                         (.truncatedTo (t/offset-date-time t) java.time.temporal.ChronoUnit/MILLIS))]
     (testing "update with multiple cards of the same ids will set timestamp to the latest"
       (mt/with-temp
         [:model/Card {card-id-1 :id} {:last_used_at two-hours-ago}]
         (#'qp.update-used-cards/update-used-cards!* [{:id card-id-1 :timestamp two-hours-ago}
                                                      {:id card-id-1 :timestamp one-hour-ago}])
-        (is (= one-hour-ago (t2/select-one-fn :last_used_at :model/Card card-id-1)))))
-
+        (is (= (truncate-to-ms one-hour-ago)
+               (truncate-to-ms (t2/select-one-fn :last_used_at :model/Card card-id-1))))))
     (testing "if the existing last_used_at is greater than the updating values, do not override it"
       (mt/with-temp
         [:model/Card {card-id-2 :id} {:last_used_at now}]
         (#'qp.update-used-cards/update-used-cards!* [{:id card-id-2 :timestamp one-hour-ago}])
-        (is (= now (t2/select-one-fn :last_used_at :model/Card card-id-2)))))))
+        (is (= (truncate-to-ms now)
+               (truncate-to-ms (t2/select-one-fn :last_used_at :model/Card card-id-2))))))))
