@@ -308,6 +308,7 @@
     "@types/react-dom": "^17.0.11",
     "set-value": "4.0.1",
     "source-map-js": "1.2.0",
+    "typescript": "^4.7.2",
     "unset-value": "2.0.1",
     "webpack-dev-middleware": "^5.3.4"
   },
