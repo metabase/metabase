@@ -18,7 +18,7 @@ runs:
         m2-cache-key: cross-branch-migrations
 
     - name: Run backend on master
-      run: clojure -M:run:ee & echo $! > metabase_pid
+      run: nohup clojure -M:run:ee & echo $! > metabase_pid
       shell: bash
 
     - name: Wait for Metabase to start
@@ -42,14 +42,14 @@ runs:
         ref: ${{ github.head_ref }}
 
     - name: Run backend on pull request branch
-      run: clojure -M:run:ee & echo $! > metabase_pid
+      run: nohup clojure -M:run:ee & echo $! > metabase_pid
       shell: bash
 
     - name: Wait for Metabase to start
       run: |
         while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do
           if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
-            echo "Metabase process has exited."
+            echo "Metabase process has exited. Check that your migration changes work on an instance that has been previously initialized on ${{ inputs.base_ref }}."
             exit 1
           fi
           sleep 1
