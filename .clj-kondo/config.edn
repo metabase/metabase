@@ -53,7 +53,7 @@
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [query= =? malli=])
+    (clojure.test/is [query= =? malli= qv=])
     (clojure.tools.macro/macrolet)
     instaparse.core/transform
     (metabase.async.streaming-response/streaming-response)
@@ -797,7 +797,7 @@
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
    metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!  macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
-   metabase-enterprise.query-field-validation.api-test/with-test-setup          macros.metabase-enterprise.query-field-validation.api-test/with-test-setup
+   metabase-enterprise.query-reference-validation.api-test/with-test-setup      macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
