@@ -138,6 +138,99 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     filter(defaultValueRequired).should("have.text", "Year");
   });
 
+  it("time parameters", () => {
+    createDashboardWithParameters(ORDERS_COUNT_OVER_TIME, [
+      {
+        name: "no default value, non-required",
+        slug: "no-default-value/non-required",
+        id: "fed1b910",
+        type: "date/single",
+        sectionId: "date",
+      },
+      {
+        name: "default value, non-required",
+        slug: "default-value/non-required",
+        id: "75d67d30",
+        type: "date/single",
+        sectionId: "date",
+        default: "2024-01-01",
+      },
+      {
+        name: "default value, required",
+        slug: "default-value/required",
+        id: "60f12ac2",
+        type: "date/single",
+        sectionId: "date",
+        default: "2024-01-01",
+        required: true,
+      },
+    ]);
+
+    const noDefaultNonRequired = "no default value, non-required";
+
+    cy.log("no default value, non-required - no value");
+    clearButton(noDefaultNonRequired).should("not.exist");
+    resetButton(noDefaultNonRequired).should("not.exist");
+    chevronIcon(noDefaultNonRequired).should("be.visible");
+
+    cy.log("no default value, non-required - value");
+    filter(noDefaultNonRequired).click();
+    popover().findByRole("textbox").clear().type("01/01/2024").blur();
+    popover().button("Add filter").click();
+    clearButton(noDefaultNonRequired).should("be.visible");
+    resetButton(noDefaultNonRequired).should("not.exist");
+    chevronIcon(noDefaultNonRequired).should("not.exist");
+    filter(noDefaultNonRequired).should("have.text", "January 1, 2024");
+    clearButton(noDefaultNonRequired).click();
+    filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+
+    const defaultValueNonRequired = "default value, non-required";
+
+    cy.log("default value, non-required - value same as default");
+    clearButton(defaultValueNonRequired).should("be.visible");
+    resetButton(defaultValueNonRequired).should("not.exist");
+    chevronIcon(defaultValueNonRequired).should("not.exist");
+    filter(defaultValueNonRequired).should("have.text", "January 1, 2024");
+    clearButton(defaultValueNonRequired).click();
+    filter(defaultValueNonRequired).should(
+      "have.text",
+      defaultValueNonRequired,
+    );
+
+    cy.log("default value, non-required - no value");
+    clearButton(defaultValueNonRequired).should("not.exist");
+    // resetButton(defaultValueNonRequired).should("be.visible"); // new behavior
+    // chevronIcon(defaultValueNonRequired).should("not.exist"); // new behavior
+    // TODO: test the button
+
+    cy.log("default value, non-required - value different than default");
+    filter(defaultValueNonRequired).click();
+    popover().findByRole("textbox").clear().type("01/01/2020").blur();
+    popover().button("Update filter").click();
+    // clearButton(defaultValueNonRequired).should("not.exist"); // new behavior
+    // resetButton(defaultValueNonRequired).should("be.visible"); // new behavior
+    chevronIcon(defaultValueNonRequired).should("not.exist");
+    // TODO: test the button
+
+    const defaultValueRequired = "default value, required";
+
+    cy.log("default value, required - value same as default");
+    clearButton(defaultValueRequired).should("not.exist");
+    resetButton(defaultValueRequired).should("not.exist");
+    chevronIcon(defaultValueRequired).should("not.exist");
+
+    cy.log("default value, required - value different than default");
+    filter(defaultValueRequired).click();
+    popover().findByRole("textbox").clear().type("01/01/2020").blur();
+    popover().button("Update filter").click();
+    clearButton(defaultValueRequired).should("not.exist");
+    resetButton(defaultValueRequired).should("be.visible");
+    chevronIcon(defaultValueRequired).should("not.exist");
+    filter(defaultValueRequired).should("have.text", "January 1, 2020");
+    resetButton(defaultValueRequired).click();
+    filter(defaultValueRequired).should("have.text", "January 1, 2024");
+  });
+
   function filter(label: string) {
     return cy.findByLabelText(label);
   }
