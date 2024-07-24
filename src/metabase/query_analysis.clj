@@ -104,7 +104,7 @@
   [{card-id :id, query :dataset_query}]
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
-      (let [{:keys [explicit implicit]} (query-field-ids query)
+      (let [{:keys [explicit implicit]} (query-field-ids query query-type)
             id->row          (fn [explicit? field-id]
                                {:card_id            card-id
                                 :field_id           field-id
