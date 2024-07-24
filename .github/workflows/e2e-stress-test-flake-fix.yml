@@ -20,6 +20,15 @@ on:
         type: string
         required: false
         default: "ee"
+      qa_db:
+        description: 'Select the type of Database you want to run your tests with'
+        type: choice
+        required: true
+        default: "none"
+        options:
+          - none
+          - postgres
+          - mongo
 
 jobs:
   workflow-summary:
@@ -44,8 +53,8 @@ jobs:
     name: Stress test E2E flake fix
     env:
       DISPLAY: ""
-      QA_DB_ENABLED: true
-      CYPRESS_QA_DB_MONGO: true
+      QA_DB_ENABLED: ${{ contains(fromJSON('["postgres", "mongo"]'), inputs.qa_db) }}
+      CYPRESS_QA_DB_MONGO: ${{ inputs.qa_db == "mongo" }}
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
