@@ -1,22 +1,19 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
-
-import { HeaderButton } from "../ViewTitleHeader.styled";
 
 export function QuestionSummarizeWidget({
   isShowingSummarySidebar,
   onEditSummary,
   onCloseSummary,
-  ...props
+  className,
 }) {
   return (
-    <HeaderButton
-      large
-      color={color("summarize")}
-      labelBreakpoint="sm"
+    <Button
+      color="summarize"
+      variant={isShowingSummarySidebar ? "filled" : "default"}
       onClick={async () => {
         if (isShowingSummarySidebar) {
           onCloseSummary();
@@ -25,10 +22,10 @@ export function QuestionSummarizeWidget({
         }
       }}
       active={isShowingSummarySidebar}
-      {...props}
+      className={className}
     >
       {t`Summarize`}
-    </HeaderButton>
+    </Button>
   );
 }
 
