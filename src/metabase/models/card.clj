@@ -184,8 +184,8 @@
     (when lib.metadata.jvm/*metadata-provider-cache*
       (try
         (prefetch-tables-for-cards! dataset-cards)
-      (catch Throwable t
-        (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
+        (catch Throwable t
+          (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
                 (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
@@ -566,7 +566,8 @@
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
-      (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
+      (when (:parameters changes)
+        (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
