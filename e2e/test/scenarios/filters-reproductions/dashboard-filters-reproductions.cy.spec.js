@@ -1404,13 +1404,16 @@ describe("issues 15279 and 24500", () => {
     sectionId: "string",
   };
 
-  // This filter is corrupted because it's missing `name` and `slug`
+  // Back when this issue was originally reported (around v47),
+  // it was enough to have a filter without `name` and `slug` in order to corrupt it.
+  // It seems that the backend validation is missing today or it's more relaxed.
+  // We're adding invalid `type` and `sectionId` to make sure the filter is still considered corrupted.
   const corruptedFilter = {
     name: "",
     slug: "",
     id: "af72ce9c",
-    type: "string/=",
-    sectionId: "string",
+    type: "foo",
+    sectionId: "bar",
   };
 
   const parameters = [listFilter, searchFilter, corruptedFilter];
