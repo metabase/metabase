@@ -10,7 +10,7 @@
    [toucan2.core :as db]))
 
 (deftest update-db-level-view-data-permissions!-test
-  (mt/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                    :model/Database         {database-id-1 :id}   {}
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
@@ -54,7 +54,7 @@
              :perms/download-results :no}}})))))
 
 (deftest update-db-level-create-queries-permissions!-test
-  (mt/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                    :model/Database         {database-id-1 :id}   {}
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
@@ -120,7 +120,7 @@
             {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}})))))
 
 (deftest update-db-level-data-access-permissions!-test
-  (mt/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                    :model/Database         {database-id-1 :id}   {}
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
@@ -437,7 +437,7 @@
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of native query perms doesn't fail if only one of them changes"
-    (mt/with-additional-premium-features #{:advanced-permissions}
+    (mt/with-additional-premium-features #{:advanced-permissions :sandboxes}
       (mt/with-temp [:model/Database {db-id :id}]
         (mt/with-no-data-perms-for-all-users!
           (let [ks [:groups (u/the-id (perms-group/all-users)) db-id]]
@@ -476,7 +476,7 @@
 
 (deftest no-op-partial-graph-updates
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
-    (mt/with-additional-premium-features #{:advanced-permissions}
+    (mt/with-additional-premium-features #{:advanced-permissions :sandboxes}
       (mt/with-temp [:model/PermissionsGroup group]
         ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
         (mt/with-current-user (mt/user->id :rasta)
