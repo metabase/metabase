@@ -1,20 +1,18 @@
 import { useField } from "formik";
-import type { HTMLAttributes } from "react";
 import { t } from "ttag";
 
-import FormField from "metabase/core/components/FormField";
 import { MappingEditor } from "metabase/core/components/MappingEditor";
+import { Box, Text, type BoxProps } from "metabase/ui";
 
-interface Props extends HTMLAttributes<HTMLDivElement> {
+type Props = BoxProps & {
   name: string;
-  title?: string;
-}
+  label?: string;
+};
 
-export const LoginAttributesWidget = ({
+export const FormKeyValueMapping = ({
   name = "login_attributes",
-  title = t`Attributes`,
-  className,
-  style,
+  label = t`Attributes`,
+  ...props
 }: Props) => {
   const [{ value }, , { setValue, setError }] = useField(name);
 
@@ -25,13 +23,19 @@ export const LoginAttributesWidget = ({
   };
 
   return (
-    <FormField className={className} style={style} title={title}>
+    <Box {...props}>
+      {label && (
+        <Text component="label" fw="bold">
+          {label}
+        </Text>
+      )}
+
       <MappingEditor
         value={value || {}}
         onChange={setValue}
         onError={handleError}
         addText={t`Add an attribute`}
       />
-    </FormField>
+    </Box>
   );
 };
