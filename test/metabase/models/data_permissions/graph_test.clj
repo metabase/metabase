@@ -1,7 +1,6 @@
 (ns metabase.models.data-permissions.graph-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.audit :as audit]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
@@ -21,7 +20,7 @@
       (testing "data permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
-                                       (data-perms.graph/update-data-perms-graph!* api-graph)
+                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                        (data-perms/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
@@ -65,7 +64,7 @@
                                      (do
                                        ;; Clear default perms for the group
                                        (db/delete! :model/DataPermissions :group_id group-id-1)
-                                       (data-perms.graph/update-data-perms-graph!* api-graph)
+                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                        (data-perms/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
@@ -135,7 +134,7 @@
       (testing "data-access permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
-                                       (data-perms.graph/update-data-perms-graph!* api-graph)
+                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                        (data-perms/data-permissions-graph :group-id group-id-1)))
           ;; Setting granular data access permissions
           {group-id-1
@@ -204,7 +203,7 @@
     (testing "download permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph!* api-graph)
+                                     (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular download permissions
         {group-id-1
@@ -269,7 +268,7 @@
     (testing "data model editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph!* api-graph)
+                                     (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular data model editing permissions
         {group-id-1
@@ -328,7 +327,7 @@
     (testing "database details editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph!* api-graph)
+                                     (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Granting permission to edit database details
         {group-id-1
@@ -352,11 +351,6 @@
 (deftest ellide?-test
   (is (not (#'data-perms.graph/ellide? :perms/view-data :unrestricted)))
   (is (#'data-perms.graph/ellide? :perms/view-data :blocked)))
-
-(defn replace-empty-map-with-nil [graph]
-  (walk/postwalk
-   (fn [x] (if (= x {}) nil x))
-   graph))
 
 (deftest perms-are-renamed-test
   (testing "Perm keys and values are correctly renamed, and permissions are ellided as necessary"
@@ -414,13 +408,6 @@
                                                                                2 :legacy-no-self-service}
                                                                      "OTHER" :legacy-no-self-service}})))
 
-(defn constrain-graph
-  "Filters out all non `group-id`X`db-id` permissions"
-  [group-id db-id graph]
-  (-> graph
-      (assoc :groups {group-id (get-in graph [:groups group-id])})
-      (assoc-in [:groups group-id] {db-id (get-in graph [:groups group-id db-id])})))
-
 (defn- test-query-graph [group]
   (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :create-queries "PUBLIC"]))
 
@@ -457,7 +444,7 @@
             (letfn [(perms []
                       (get-in (data-perms.graph/api-graph) ks))
                     (set-perms! [new-perms]
-                      (data-perms.graph/update-data-perms-graph! (assoc-in (data-perms.graph/api-graph) ks new-perms))
+                      (data-perms.graph/update-data-perms-graph! (assoc-in {} ks new-perms))
                       (perms))]
               (testing "Should initially have no perms"
                 (is (= nil
