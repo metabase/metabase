@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.v2.models-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
@@ -49,20 +50,30 @@
   (mt/with-empty-h2-app-db
     ;; When serialization spec is defined, it describes every column
     (doseq [m     serdes.models/exported-models
-            :let  [spec (serdes/make-spec m)]
+            :let  [spec (serdes/make-spec m nil)]
             :when spec]
       (let [t      (t2/table-name (keyword "model" m))
+            pk     (first (t2/primary-keys (keyword "model" m)))
             fields (u.conn/app-db-column-types (mdb/app-db) t)
-            spec'  (merge (zipmap (:copy spec) (repeat :copy))
-                          (zipmap (:skip spec) (repeat :skip))
-                          (:transform spec))]
-        (testing (format "%s should declare every column in serialization spec" m)
-          (is (= (->> (keys fields)
-                      (map u/lower-case-en)
-                      set)
-                 (->> (keys spec')
-                      (map name)
-                      set))))
+            spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
+                              (zipmap (:skip spec) (repeat :skip))
+                              (zipmap [pk :updated_at] (repeat :skip)) ; always skipped
+                              (:transform spec))
+                       ;; `nil`s are mostly fields which differ on `opts`
+                       (dissoc nil))]
+        (testing (format "%s has no duplicates in serialization spec\n" m)
+          (are [x y] (empty? (set/intersection (set x) (set y)))
+            (:copy spec) (:skip spec)
+            (:copy spec) (keys (:transform spec))
+            (:skip spec) (keys (:transform spec))))
+        (testing (format "%s should declare every column in serialization spec\n" m)
+          (is (set/subset?
+               (->> (keys fields)
+                    (map u/lower-case-en)
+                    set)
+               (->> (keys spec')
+                    (map name)
+                    set))))
         (testing "Foreign keys should be declared as such\n"
           (doseq [[fk _] (filter #(:fk (second %)) fields)
                   :let   [fk (u/lower-case-en fk)

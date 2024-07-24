@@ -840,12 +840,10 @@
                                      (when (:id m)       #{(serdes/field->path (:id m))})])))))
 
 (defmethod serdes/make-spec "Card"
-  [_model-name]
+  [_model-name _opts]
   {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
           :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
-   :skip [;; always instance-specific
-          :id :updated_at
-          ;; cache invalidation is instance-specific
+   :skip [;; cache invalidation is instance-specific
           :cache_invalidated_at
           ;; those are instance-specific analytic columns
           :view_count :last_used_at :initially_published_at
