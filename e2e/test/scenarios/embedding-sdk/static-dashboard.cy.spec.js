@@ -24,7 +24,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
     setTokenFeatures("all");
     setupJwt();
 
-    const textCard = getTextCardDetails({ col: 16 });
+    const textCard = getTextCardDetails({ col: 16, text: "Text text card" });
     const questionCard = {
       id: ORDERS_DASHBOARD_DASHCARD_ID,
       card_id: ORDERS_QUESTION_ID,
@@ -32,7 +32,9 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
       col: 0,
       size_x: 16,
       size_y: 8,
-      visualization_settings: {},
+      visualization_settings: {
+        "card.title": "Test question card",
+      },
     };
 
     cy.createDashboard(
@@ -47,6 +49,9 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
 
     cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
     cy.intercept("GET", "/api/user/current").as("getUser");
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
   });
 
   it("should show dashboard content", () => {
@@ -56,7 +61,7 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
         qs: { id: "embeddingsdk-staticdashboard--default", viewMode: "story" },
         onBeforeLoad: window => {
           window.JWT_SHARED_SECRET = JWT_SHARED_SECRET;
-          window.METABASE_INSTANCE_URL = "http://localhost:4000";
+          window.METABASE_INSTANCE_URL = Cypress.config().baseUrl;
           window.DASHBOARD_ID = dashboardId;
         },
       });
@@ -75,8 +80,10 @@ describeSDK("scenarios > embedding-sdk > static-dashboard", () => {
       .within(() => {
         cy.findByText("Embedding Sdk Test Dashboard").should("be.visible"); // dashboard title
 
-        cy.findByText("Orders").should("be.visible"); // question card content
-        cy.findByText("Text card").should("be.visible"); // text card content
+        cy.findByText("Text text card").should("be.visible"); // text card content
+
+        cy.wait("@dashcardQuery");
+        cy.findByText("Test question card").should("be.visible"); // question card content
       });
   });
 });
