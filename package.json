@@ -70,6 +70,7 @@
     "lodash.orderby": "^4.6.0",
     "moment-timezone": "^0.5.38",
     "mustache": "^2.3.2",
+    "node-fetch": "^3.3.2",
     "normalizr": "^3.0.2",
     "password-generator": "^2.0.1",
     "prop-types": "^15.5.7",

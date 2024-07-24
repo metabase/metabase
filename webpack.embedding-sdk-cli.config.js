@@ -9,6 +9,8 @@ const SDK_CLI_PATH = path.join(
   "/enterprise/frontend/src/embedding-sdk/cli",
 );
 
+const METABASE_SRC_PATH = path.join(__dirname, "/frontend/src/metabase");
+
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
 };
@@ -25,6 +27,9 @@ module.exports = {
   },
   resolve: {
     extensions: [".ts", ".js"],
+    alias: {
+      metabase: METABASE_SRC_PATH,
+    },
   },
   module: {
     rules: [

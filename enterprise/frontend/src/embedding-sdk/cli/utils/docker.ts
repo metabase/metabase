@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { getCurrentDockerPort } from "./get-current-docker-port";
 import { checkIsPortTaken } from "./is-port-taken";
 import { printError, printInfo, printSuccess } from "./print";
+import { getMetabaseInstanceEnvs } from "./setup-metabase-instance";
 
 const exec = promisify(execCallback);
 
@@ -38,6 +39,10 @@ interface ContainerInfo {
   Ports: string; // e.g. "0.0.0.0:3366->3000/tcp"
   Port: number | null; // parsed from Ports, e.g. 3366
   State: "running" | "exited";
+}
+
+interface StartContainerOptions {
+  setupToken: string;
 }
 
 /**
@@ -77,7 +82,9 @@ export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null>
 const randInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1) + min);
 
-export async function startLocalMetabaseContainer(): Promise<number | false> {
+export async function startLocalMetabaseContainer(
+  options: StartContainerOptions,
+): Promise<number | false> {
   let port = DEFAULT_PORT;
 
   printInfo(chalk.grey(CONTAINER_CHECK_MESSAGE));
@@ -127,8 +134,14 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
       port = randInt(3000, 3500);
     }
 
+    const envs = getMetabaseInstanceEnvs(options.setupToken);
+
+    const envFlags = Object.entries(envs)
+      .map(([key, value]) => `-e ${key}='${value}'`)
+      .join(" ");
+
     const { stderr, stdout } = await exec(
-      `docker run --detach -p ${port}:3000 --name ${CONTAINER_NAME} ${IMAGE_NAME}`,
+      `docker run --detach -p ${port}:3000 ${envFlags} --name ${CONTAINER_NAME} ${IMAGE_NAME}`,
     );
 
     // stderr may show a warning about architecture mismatch on
