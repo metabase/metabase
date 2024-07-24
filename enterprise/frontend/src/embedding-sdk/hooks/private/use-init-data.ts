@@ -6,12 +6,13 @@ import type { EmbeddingSessionToken } from "embedding-sdk";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
+  setEnvironmentType,
   setFetchRefreshTokenFn,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
 import type { SdkDispatch } from "embedding-sdk/store/types";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { SDKConfig, SDKConfigWithJWT } from "embedding-sdk/types";
 import api from "metabase/lib/api";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
@@ -23,9 +24,7 @@ interface InitDataLoaderParameters {
   config: SDKConfig;
 }
 
-const isValidJwtAuth = (config: SDKConfig) => !!config.jwtProviderUri;
-
-const setupJwtAuth = (config: SDKConfig, dispatch: SdkDispatch) => {
+const setupJwtAuth = (config: SDKConfigWithJWT, dispatch: SdkDispatch) => {
   api.onBeforeRequest = async () => {
     const tokenState = await dispatch(
       getOrRefreshSession(config.jwtProviderUri),
@@ -50,16 +49,31 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
   useEffect(() => {
     if (loginStatus.status === "uninitialized") {
+      dispatch(setEnvironmentType("prod"));
       api.basename = config.metabaseInstanceUrl;
 
-      if (isValidJwtAuth(config)) {
+      if (config.apiKey && window.location.hostname === "localhost") {
+        api.apiKey = config.apiKey;
+        console.warn("You are using API Keys!! OOOH SO SCARY");
+        dispatch(setEnvironmentType("dev"));
+        dispatch(setLoginStatus({ status: "validated" }));
+      } else if (config.jwtProviderUri) {
         setupJwtAuth(config, dispatch);
         dispatch(setLoginStatus({ status: "validated" }));
       } else {
+        let authErrorMessage: string;
+        if (config.jwtProviderUri) {
+          authErrorMessage = t`Invalid JWT URI provided`;
+        } else {
+          authErrorMessage = config.apiKey
+            ? t`Can't use API Keys in production`
+            : t`Invalid API Key`;
+        }
+
         dispatch(
           setLoginStatus({
             status: "error",
-            error: new Error(t`Invalid JWT URI provided.`),
+            error: new Error(authErrorMessage),
           }),
         );
       }

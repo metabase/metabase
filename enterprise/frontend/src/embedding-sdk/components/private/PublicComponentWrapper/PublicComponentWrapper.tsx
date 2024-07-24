@@ -7,12 +7,15 @@ import { SdkLoader } from "embedding-sdk/components/private/PublicComponentWrapp
 import { useSdkSelector } from "embedding-sdk/store";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
 
+import { WatermarkOverlay } from "../WatermarkOverlay";
+
 export const PublicComponentWrapper = ({
   children,
 }: {
   children: JSX.Element;
 }) => {
   const loginStatus = useSdkSelector(getLoginStatus);
+  const sdkEnv = useSdkSelector(state => state.sdk.envMode);
 
   let content = children;
 
@@ -32,5 +35,10 @@ export const PublicComponentWrapper = ({
     content = <SdkError message={loginStatus.error.message} />;
   }
 
-  return <PublicComponentStylesWrapper>{content}</PublicComponentStylesWrapper>;
+  return (
+    <PublicComponentStylesWrapper>
+      {sdkEnv === "dev" && <WatermarkOverlay />}
+      {content}
+    </PublicComponentStylesWrapper>
+  );
 };

@@ -3,9 +3,8 @@ import type { JSX } from "react";
 import type { FetchRequestTokenFn } from "embedding-sdk";
 import type { SdkErrorProps } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
 
-export type SDKConfig = {
+type BaseSDKConfig = {
   metabaseInstanceUrl: string;
-  jwtProviderUri: string;
   loaderComponent?: () => JSX.Element;
   errorComponent?: ({ message }: SdkErrorProps) => JSX.Element;
 
@@ -15,3 +14,15 @@ export type SDKConfig = {
    */
   fetchRequestToken?: FetchRequestTokenFn;
 };
+
+export type SDKConfigWithJWT = BaseSDKConfig & {
+  jwtProviderUri: string;
+  apiKey?: never;
+};
+
+export type SDKConfigWithApiKey = BaseSDKConfig & {
+  apiKey: string;
+  jwtProviderUri?: never;
+};
+
+export type SDKConfig = SDKConfigWithJWT | SDKConfigWithApiKey;

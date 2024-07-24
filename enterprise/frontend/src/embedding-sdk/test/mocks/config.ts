@@ -4,8 +4,8 @@ export const createMockConfig = ({
   jwtProviderUri,
   ...opts
 }: {
-  jwtProviderUri: SDKConfig["jwtProviderUri"];
-} & Partial<SDKConfig>): SDKConfig => ({
+  jwtProviderUri: string;
+} & Partial<Omit<SDKConfig, "jwtProviderUri" | "apiKey">>): SDKConfig => ({
   jwtProviderUri,
   metabaseInstanceUrl: "http://localhost",
   ...opts,
