@@ -110,14 +110,14 @@
   [{card-id :id, query :dataset_query}]
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
-      (let [{:keys [explicit implicit]} (query-references query query-type)
-            id->row          (fn [explicit? field-id]
-                               {:card_id            card-id
-                                :field_id           field-id
-                                :explicit_reference explicit?})
-            query-field-rows (concat
-                              (map (partial id->row true) explicit)
-                              (map (partial id->row false) implicit))]
+      (let [references       (query-references query query-type)
+            reference->row   (fn [{:keys [field-id explicit-reference]}]
+                               ;; For now we only persist references which resolve to known fields
+                               (when field-id
+                                 {:card_id            card-id
+                                  :field_id           field-id
+                                  :explicit_reference explicit-reference}))
+            query-field-rows (map reference->row references)]
         (query-field/update-query-fields-for-card! card-id query-field-rows)))))
 
 (defn- replaced-inner-query-for-native-card
