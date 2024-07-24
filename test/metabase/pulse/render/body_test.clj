@@ -539,10 +539,10 @@
                      {:source-table (mt/id :products)
                       :aggregation  [[:count]]
                       :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}
-            colours {:Doohickey "honeydew"
-                     :Gadget    "slategray"
-                     :Gizmo     "goldenrod"
-                     :Widget    "hotpink"}]
+            colours {:Doohickey "#AAAAAA"
+                     :Gadget    "#BBBBBB"
+                     :Gizmo     "#CCCCCC"
+                     :Widget    "#DDDDDD"}]
         (mt/with-temp [:model/Card {card-a-id :id} {:name                   "not-a-crumble"
                                                     :display                :pie
                                                     :visualization_settings {:pie.colors colours}
@@ -560,12 +560,12 @@
             ;; This is also true of the colours for the legend circle elements.
             ;; When legend and Totals are disabled, we should expect those elements not to exist in the render
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
-                                                  {:legend-els-colours ["honeydew" "slategray" "goldenrod" "hotpink"]
-                                                   :slice-els-colours  ["honeydew" "slategray" "goldenrod" "hotpink"]
+                                                  {:legend-els-colours ["#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"]
+                                                   :slice-els-colours  ["#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"]
                                                    :total-els-text     ["TOTAL"]}]
                                                  [card-b-doc "Renders without legend and 'total' when disabled in viz-settings."
                                                   {:legend-els-colours []
-                                                   :slice-els-colours  ["honeydew" "slategray" "goldenrod" "hotpink"]
+                                                   :slice-els-colours  ["#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"]
                                                    :total-els-text     []}]]]
               (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
                                          (map #(get-in % [:attrs :fill])))
