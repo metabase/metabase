@@ -251,8 +251,6 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     questionDetails: StructuredQuestionDetails,
     parameters: DashboardDetails["parameters"],
   ) {
-    const parameterIds = ["fed1b910", "75d67d30", "60f12ac2"];
-
     createQuestionAndDashboard({
       questionDetails,
       dashboardDetails: {
@@ -263,8 +261,8 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
         dashboard_id,
         cards: [
           {
-            parameter_mappings: parameterIds.map(parameterId => ({
-              parameter_id: parameterId,
+            parameter_mappings: parameters?.map(parameter => ({
+              parameter_id: parameter.id,
               card_id: checkNotNull(card_id),
               target: ["dimension", CREATED_AT_FIELD],
             })),
