@@ -13,7 +13,7 @@ import {
 import { checkNotNull } from "metabase/lib/types";
 import type { LocalFieldReference } from "metabase-types/api";
 
-const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
+const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
 const ORDERS_COUNT_OVER_TIME: StructuredQuestionDetails = {
   display: "line",
@@ -33,12 +33,27 @@ const ORDERS_COUNT_OVER_TIME: StructuredQuestionDetails = {
   },
 };
 
+const PEOPLE_QUESTION: StructuredQuestionDetails = {
+  query: {
+    "source-table": PEOPLE_ID,
+    limit: 1,
+  },
+};
+
 const CREATED_AT_FIELD: LocalFieldReference = [
   "field",
   ORDERS.CREATED_AT,
   {
     "base-type": "type/DateTime",
     "temporal-unit": "month",
+  },
+];
+
+const CITY_FIELD: LocalFieldReference = [
+  "field",
+  PEOPLE.CITY,
+  {
+    "base-type": "type/Text",
   },
 ];
 
@@ -49,7 +64,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   });
 
   it("temporal unit parameters", () => {
-    createDashboardWithParameters(ORDERS_COUNT_OVER_TIME, [
+    createDashboardWithParameters(ORDERS_COUNT_OVER_TIME, CREATED_AT_FIELD, [
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
@@ -124,7 +139,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   });
 
   it("time parameters", () => {
-    createDashboardWithParameters(ORDERS_COUNT_OVER_TIME, [
+    createDashboardWithParameters(ORDERS_COUNT_OVER_TIME, CREATED_AT_FIELD, [
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
@@ -201,6 +216,84 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     filter(defaultRequired).should("have.text", "January 1, 2024");
   });
 
+  it("location parameters", () => {
+    createDashboardWithParameters(PEOPLE_QUESTION, CITY_FIELD, [
+      {
+        name: "no default value, non-required",
+        slug: "no-default-value/non-required",
+        id: "fed1b910",
+        type: "string/=",
+        sectionId: "location",
+      },
+      {
+        name: "default value, non-required",
+        slug: "default-value/non-required",
+        id: "75d67d30",
+        type: "string/=",
+        sectionId: "location",
+        default: ["Bassett", "Thomson"],
+      },
+      {
+        name: "default value, required",
+        slug: "default-value/required",
+        id: "60f12ac2",
+        type: "string/=",
+        sectionId: "location",
+        required: true,
+        default: ["Bassett", "Thomson"],
+      },
+    ]);
+
+    const noDefaultNonRequired = "no default value, non-required";
+
+    cy.log("no default value, non-required, no current value");
+    checkButtonVisible(noDefaultNonRequired, "chevron");
+
+    cy.log("no default value, non-required, has current value");
+    filter(noDefaultNonRequired).click();
+    popover().findByRole("searchbox").clear().type("Bassett,Thomson").blur();
+    popover().button("Add filter").click();
+    checkButtonVisible(noDefaultNonRequired, "clear");
+    filter(noDefaultNonRequired).should("have.text", "2 selections");
+    clearButton(noDefaultNonRequired).click();
+    filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+
+    const defaultNonRequired = "default value, non-required";
+
+    cy.log("has default value, non-required, value same as default");
+    checkButtonVisible(defaultNonRequired, "clear");
+    filter(defaultNonRequired).should("have.text", "2 selections");
+    clearButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", defaultNonRequired);
+
+    cy.log("has default value, non-required, no current value");
+    // assertVisibleButton(noDefaultNonRequired, "reset"); // new behavior
+    // TODO: test the button
+
+    cy.log(
+      "has default value, non-required, current value different than default",
+    );
+    filter(defaultNonRequired).click();
+    popover().findByRole("searchbox").clear().type("Bassett").blur();
+    popover().button("Update filter").click();
+    // assertVisibleButton(noDefaultNonRequired, "reset"); // new behavior
+    // TODO: test the button
+
+    const defaultRequired = "default value, required";
+
+    cy.log("has default value, required, value same as default");
+    checkButtonVisible(defaultRequired, "none");
+
+    cy.log("has default value, required, current value different than default");
+    filter(defaultRequired).click();
+    popover().findByRole("searchbox").focus().type("Washington").blur();
+    popover().button("Update filter").click();
+    checkButtonVisible(defaultRequired, "reset");
+    filter(defaultRequired).should("have.text", "3 selections");
+    resetButton(defaultRequired).click();
+    filter(defaultRequired).should("have.text", "2 selections");
+  });
+
   function filter(label: string) {
     return cy.findByLabelText(label);
   }
@@ -219,6 +312,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
 
   function createDashboardWithParameters(
     questionDetails: StructuredQuestionDetails,
+    targetField: LocalFieldReference,
     parameters: DashboardDetails["parameters"],
   ) {
     createQuestionAndDashboard({
@@ -234,7 +328,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
             parameter_mappings: parameters?.map(parameter => ({
               parameter_id: parameter.id,
               card_id: checkNotNull(card_id),
-              target: ["dimension", CREATED_AT_FIELD],
+              target: ["dimension", targetField],
             })),
           },
         ],
