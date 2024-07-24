@@ -44,6 +44,7 @@ jobs:
           echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
           echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
           echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
+          echo '- `qa_db`: "${{ inputs.qa_db }}"' >> $GITHUB_STEP_SUMMARY
           echo '' >> $GITHUB_STEP_SUMMARY
           echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
 
