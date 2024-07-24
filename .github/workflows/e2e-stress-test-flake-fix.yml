@@ -54,7 +54,7 @@ jobs:
     env:
       DISPLAY: ""
       QA_DB_ENABLED: ${{ contains(fromJSON('["postgres", "mongo"]'), inputs.qa_db) }}
-      CYPRESS_QA_DB_MONGO: ${{ inputs.qa_db == "mongo" }}
+      CYPRESS_QA_DB_MONGO: ${{ inputs.qa_db == 'mongo' }}
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
       MB_SNOWPLOW_AVAILABLE: true
