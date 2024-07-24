@@ -50,9 +50,20 @@ title: Driver interface changelog
    - `metabase.query-processor.compile/compile-and-splice-parameters` has been removed; replace usages with
      `metabase.query-processor.compile/compile-with-inline-parameters`.
 
-- The three-arity of `metabase.driver.sql.query-processor/format-honeysql` (which had an additional parameter for
-  Honey SQL version) has been removed; replace all usages with the two-arity version. Honey SQL 2 has been the only
-  supported version since Metabase 0.49.0.
+  - The three-arity of `metabase.driver.sql.query-processor/format-honeysql` (which had an additional parameter for
+    Honey SQL version) has been removed; replace all usages with the two-arity version. Honey SQL 2 has been the only
+    supported version since Metabase 0.49.0.
+
+## Metabase 0.50.16
+
+  - `:type/fingerprinting-unsupported` has been added in the `metabase.types` namespace. Similar to
+    `:type/field-values-unsupported` for field values scanning, it is used to determine whether a specific field
+    should have its fingerprint computed or not. At the time of writing that logic is performed in
+    `metabase.sync.analyze.fingerprint/fields-to-fingerprint-base-clause`.
+
+  - `:type/Large` has been also been added in the `metabase.types` namespace. It can be used by driver authors to
+    signal that a specific field contains large enough values to skip fingerprinting or field values scanning. It
+    can be used for other purposes as well in the future. Examples include Oracle CLOB or Postgres JSON columns.
 
 - The `:skip-drop-db?` option sometimes passed to methods for loading and destroying test data is no longer passed,
   you can remove code that checks for it. Test data code is now better about avoiding unneeded/redundant calls to
@@ -107,7 +118,7 @@ title: Driver interface changelog
 - The `:foreign-keys` driver feature has been removed. `:metadata/keys-constraints` should be used for drivers that support
   foreign key relationships reporting during sync. Implicit joins now depend on the `:left-join` feature instead. The
   default value is true for `:sql` based drivers. All join features are now enabled for `:sql` based drivers
-  by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`, 
+  by default. Previously, those depended on the `:foreign-keys` feature. If your driver supports `:left-join`,
   the test for remapping and implicit joins will be now executed.
 
 -  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in tests. Currently, this is disabled only for `:sparksql`.
