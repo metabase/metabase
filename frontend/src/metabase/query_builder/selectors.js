@@ -1129,7 +1129,10 @@ export const getSubmittableQuestion = (state, question) => {
     queryResult: getFirstQueryResult(state),
     datasetQuery: getLastRunDatasetQuery(state),
   });
-  const { series } = getVisualizationTransformed(extractRemappings(rawSeries));
+
+  const series = rawSeries
+    ? getVisualizationTransformed(extractRemappings(rawSeries)).series
+    : null;
 
   const resultsMetadata = getResultsMetadata(state);
   const isResultDirty = getIsResultDirty(state);
