@@ -1462,55 +1462,76 @@ describe("issues 15279 and 24500", () => {
         });
 
         visitDashboard(dashboard_id);
+
+        cy.intercept(
+          "GET",
+          `/api/dashboard/${dashboard_id}/params/${listFilter.id}/values`,
+        ).as("listFilterValues");
       },
     );
 
-    cy.intercept("GET", "/api/dashboard/*/params/*/values").as("values");
-
-    // Check that list filter works
+    cy.log("Make sure the list filter works");
     filterWidget().contains("List").click();
-    cy.wait("@values");
+    cy.wait("@listFilterValues");
 
-    cy.findByPlaceholderText("Search the list").type("Or").blur();
-    popover().contains("Organic").click();
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByText("Organic").click();
+      cy.button("Add filter").click();
+    });
 
     cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("contain", "Dagmar Fay");
 
-    // Check that the search filter works
+    cy.log("Make sure the search filter works");
     filterWidget().contains("Search").click();
-    cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+      cy.button("Add filter").click();
+    });
 
     cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
       .and("not.contain", "Dagmar Fay");
 
-    // The corrupted filter is now present in the UI, but it doesn't work (as expected)
-    // People can now easily remove it
+    cy.log("Make sure corrupted filter cannot connect to any field");
+    // The corrupted filter is only visible when editing the dashboard
     editDashboard();
     cy.findByTestId("edit-dashboard-parameters-widget-container")
       .findByText("unnamed")
       .icon("gear")
       .click();
-    cy.findByRole("button", { name: "Remove" }).click();
+    cy.findByTestId("parameter-mapper-container").should(
+      "contain",
+      "No valid fields",
+    );
+
+    cy.log("Remove corrupted filter");
+    cy.findByTestId("dashboard-parameter-sidebar").button("Remove").click();
+
+    cy.log("Make sure UI updated before we save the dashboard");
+    cy.findByTestId("dashcard-container")
+      .should("contain", "Lora Cronin")
+      .and("not.contain", "Dagmar Fay");
+
     saveDashboard();
 
-    // Check the list filter again
-    filterWidget().contains("List").parent().click();
-    cy.wait("@values");
+    cy.log("Make sure the list filter still works");
+    filterWidget().contains("Organic").click();
+    cy.wait("@listFilterValues");
 
-    cy.log("Check that the search filter works");
-
+    cy.log("Make sure the search filter still works");
     // reset filter value
     filterWidget().contains("Search").parent().icon("close").click();
+    cy.findByTestId("dashcard-container")
+      .should("contain", "Lora Cronin")
+      .and("contain", "Dagmar Fay");
 
     filterWidget().contains("Search").click();
-
-    cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
-    cy.button("Add filter").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search by Name").type("Lora Cronin");
+      cy.button("Add filter").click();
+    });
 
     cy.findByTestId("dashcard-container")
       .should("contain", "Lora Cronin")
