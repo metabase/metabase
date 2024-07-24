@@ -63,9 +63,10 @@
   corresponding Metabase Field for field metadata from the DB, or vice versa. Will prefer exact matches."
   [field-metadata :- TableMetadataFieldWithOptionalID
    other-metadata :- [:set TableMetadataFieldWithOptionalID]]
-  (let [matches (keep
+  (let [field-meta-canonical (canonical-name field-metadata)
+        matches (keep
                   (fn [other-field-metadata]
-                    (when (= (canonical-name field-metadata)
+                    (when (= field-meta-canonical
                              (canonical-name other-field-metadata))
                       other-field-metadata))
                   other-metadata)]
