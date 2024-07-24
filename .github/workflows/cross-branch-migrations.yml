@@ -104,9 +104,13 @@ jobs:
       MB_DB_PORT: 3306
       MB_DB_DBNAME: circle_test
       MB_DB_USER: root
+      MB_MYSQL_TEST_USER: root
     services:
       mysql:
         image: mysql:latest
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: true
+          MYSQL_DATABASE: circle_test
         ports:
           - "3306:3306"
     steps:
