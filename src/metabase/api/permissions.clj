@@ -149,7 +149,7 @@
             new       (or new {})]
         (perms.u/log-permissions-changes old new)
         (perms.u/check-revision-numbers old-graph new-graph)
-        (data-perms.graph/update-data-perms-graph! new)
+        (data-perms.graph/update-data-perms-graph! {:groups new})
         (perms.u/save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
         (let [sandbox-updates        (:sandboxes new-graph)
               sandboxes              (when sandbox-updates
