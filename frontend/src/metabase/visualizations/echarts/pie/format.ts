@@ -32,13 +32,11 @@ export function getPieChartFormatters(
   const formatDimension = (value: unknown) =>
     renderingContext.formatValue(value, {
       ...dimensionColSettings,
-      majorWidth: 0,
     });
 
   const formatMetric = (value: unknown) =>
     renderingContext.formatValue(value, {
       ...metricColSettings,
-      majorWidth: 0,
     });
 
   const formatPercent = (value: unknown, location: "legend" | "chart") =>
@@ -46,7 +44,6 @@ export function getPieChartFormatters(
       column: metricColSettings.column,
       number_separators: metricColSettings.number_separators as string,
       number_style: "percent",
-      majorWidth: 0,
       decimals: computeMaxDecimalsForValues(
         chartModel.slices.map(s => s.data.normalizedPercentage),
         {
