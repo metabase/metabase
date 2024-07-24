@@ -18,7 +18,9 @@ runs:
         m2-cache-key: cross-branch-migrations
 
     - name: Run backend on master
-      run: nohup clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
+      run: |
+        clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
+        tail -F metabase.log &
       shell: bash
 
     - name: Wait for Metabase to start
@@ -42,7 +44,9 @@ runs:
         ref: ${{ github.head_ref }}
 
     - name: Run backend on pull request branch
-      run: nohup clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
+      run: |
+        clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
+        tail -F metabase.log &
       shell: bash
 
     - name: Wait for Metabase to start
