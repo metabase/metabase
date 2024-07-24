@@ -17,7 +17,7 @@ runs:
       with:
         m2-cache-key: cross-branch-migrations
 
-    - name: Run backend on master
+    - name: Run backend on base branch
       run: |
         clojure -M:run:ee > metabase.log 2>&1 & echo $! > metabase_pid
         tail -F metabase.log &
