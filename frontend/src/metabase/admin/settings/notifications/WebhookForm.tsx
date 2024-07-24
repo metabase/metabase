@@ -9,6 +9,7 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
+import { FormKeyValueMapping } from "metabase/forms/components/FormKeyValueMapping";
 import { Button, Chip, Flex, Alert, Text, Group, Icon } from "metabase/ui";
 import type { NotificationAuthMethods } from "metabase-types/api";
 
@@ -27,6 +28,7 @@ export type WebhookFormProps = {
   name: string;
   description: string;
   "auth-method": NotificationAuthMethods;
+  "auth-info": Record<string, string>;
 };
 
 type TestStatus = null | "good" | "bad";
@@ -53,6 +55,7 @@ export const WebhookForm = ({
       details: {
         url: values.url,
         "auth-method": values["auth-method"],
+        "auth-info": values["auth-info"],
       },
     })
       .unwrap()
@@ -126,8 +129,11 @@ export const WebhookForm = ({
             mb="1.5rem"
             maw="21rem"
           />
-
-          <FormChipGroup name="auth-method" label="Authentication method">
+          <FormChipGroup
+            name="auth-method"
+            label="Authentication method"
+            groupProps={{ mb: "1.5rem" }}
+          >
             <Chip value="none" variant="brand">
               None
             </Chip>
@@ -141,6 +147,9 @@ export const WebhookForm = ({
               Request body
             </Chip>
           </FormChipGroup>
+          {values["auth-method"] !== "none" && (
+            <FormKeyValueMapping name="auth-info" label="Auth info" />
+          )}
           <Flex
             mt="1.5rem"
             justify={onDelete ? "space-between" : "end"}

@@ -2,17 +2,18 @@ import { useField } from "formik";
 import type { Ref } from "react";
 import { forwardRef, useCallback } from "react";
 
-import type { ChipGroupProps } from "metabase/ui";
+import type { ChipGroupProps, GroupProps } from "metabase/ui";
 import { Chip, Group, Text } from "metabase/ui";
 
 export interface FormChipGroupProps
   extends Omit<ChipGroupProps, "value" | "error"> {
   name: string;
   label: string;
+  groupProps?: GroupProps;
 }
 
 export const FormChipGroup = forwardRef(function FormChipGroup(
-  { name, onChange, label, children, ...props }: FormChipGroupProps,
+  { name, onChange, label, children, groupProps, ...props }: FormChipGroupProps,
   ref: Ref<HTMLDivElement>,
 ) {
   const [{ value }, _, { setValue }] = useField(name);
@@ -32,7 +33,9 @@ export const FormChipGroup = forwardRef(function FormChipGroup(
           {label}
         </Text>
       )}
-      <Group ref={ref}>{children}</Group>
+      <Group ref={ref} {...groupProps}>
+        {children}
+      </Group>
     </Chip.Group>
   );
 });

@@ -32,6 +32,7 @@ export const EditWebhookModal = ({
       details: {
         url: vals.url,
         "auth-method": vals["auth-method"],
+        "auth-info": vals["auth-info"],
       },
     }).unwrap();
 
@@ -50,6 +51,7 @@ export const EditWebhookModal = ({
       name: channel.name,
       description: channel.description,
       "auth-method": channel.details["auth-method"],
+      "auth-info": channel.details["auth-info"] || { "": "" },
     }),
     [channel],
   );
