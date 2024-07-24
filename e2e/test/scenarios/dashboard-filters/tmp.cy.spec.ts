@@ -110,8 +110,9 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     clearButton(noDefaultNonRequired).should("be.visible");
     resetButton(noDefaultNonRequired).should("not.exist");
     chevronIcon(noDefaultNonRequired).should("not.exist");
+    filter(noDefaultNonRequired).should("have.text", "Month");
     clearButton(noDefaultNonRequired).click();
-    filter(noDefaultNonRequired).should("not.have.value");
+    filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
 
     const defaultValueNonRequired = "default value, non-required";
 
@@ -119,9 +120,14 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     clearButton(defaultValueNonRequired).should("be.visible");
     resetButton(defaultValueNonRequired).should("not.exist");
     chevronIcon(defaultValueNonRequired).should("not.exist");
+    filter(defaultValueNonRequired).should("have.text", "Year");
+    clearButton(defaultValueNonRequired).click();
+    filter(defaultValueNonRequired).should(
+      "have.text",
+      defaultValueNonRequired,
+    );
 
     cy.log("default value, non-required - no value");
-    clearButton(defaultValueNonRequired).click();
     clearButton(defaultValueNonRequired).should("not.exist");
     // resetButton(defaultValueNonRequired).should("be.visible"); // new behavior
     // chevronIcon(defaultValueNonRequired).should("not.exist"); // new behavior
@@ -148,6 +154,9 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     clearButton(defaultValueRequired).should("not.exist");
     resetButton(defaultValueRequired).should("be.visible");
     chevronIcon(defaultValueRequired).should("not.exist");
+    filter(defaultValueRequired).should("have.text", "Month");
+    resetButton(defaultValueRequired).click();
+    filter(defaultValueRequired).should("have.text", "Year");
   });
 
   function filter(label: string) {
