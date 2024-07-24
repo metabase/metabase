@@ -9,7 +9,7 @@ import type {
 } from "./types";
 
 const SCHEMA_NAME = "embed_flow";
-const SCHEMA_VERSION = "1-0-1";
+const SCHEMA_VERSION = "1-0-2";
 
 // We changed the UI to `Look and Feel` now
 type Appearance = {
