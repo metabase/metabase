@@ -8425,10 +8425,19 @@ databaseChangeLog:
       id: v51.2024-07-23T15:58:10
       validCheckSum: ANY
       author: ranquild
-      comment: Migrate the report_card.visualization_settings.column_settings field ref-based keys to name-based keys
+      comment: Remove field refs from report_card.visualization_settings.column_settings
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.RemoveFieldRefsFromCardColumnSettings"
+
+  - changeSet:
+      id: v51.2024-07-23T16:20:15
+      validCheckSum: ANY
+      author: ranquild
+      comment: Remove field refs from report_dashboardcard.visualization_settings.column_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.RemoveFieldRefsFromDashboardCardColumnSettings"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
