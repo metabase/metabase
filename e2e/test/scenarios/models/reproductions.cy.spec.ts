@@ -798,6 +798,7 @@ describe("issue 33844", () => {
       cy.wait("@updateModel");
       cy.wait("@dataset");
     }
+    tableInteractive().findByText("User ID").should("be.visible");
     tableInteractive().findByText("ID").should("not.exist");
     cy.findAllByTestId("detail-shortcut").first().click();
     modal().within(() => {
