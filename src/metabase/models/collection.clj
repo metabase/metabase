@@ -520,46 +520,26 @@
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- ancestors* :- [:maybe [:sequential (ms/InstanceOf Collection)]]
-  [{:keys [location]}]
-  (when-let [ancestor-ids (seq (location-path->ids location))]
-    (t2/select [Collection :name :id :personal_owner_id]
-      :id [:in ancestor-ids]
-      {:order-by [:location]})))
-
-(mi/define-simple-hydration-method ^:private ancestors
-  :ancestors
-  "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
-  highest-level (e.g. most distant) ancestor."
-  [collection]
-  (ancestors* collection))
-
-(mu/defn- effective-ancestors* :- [:sequential [:or RootCollection (ms/InstanceOf Collection)]]
-  [collection :- CollectionWithLocationAndIDOrRoot]
-  (if (collection.root/is-root-collection? collection)
-    []
-    (filter mi/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
-
-(mi/define-simple-hydration-method effective-ancestors
+(mi/define-batched-hydration-method effective-ancestors
   :effective_ancestors
-  "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
-  in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
-  Collections, nested like:
-
-    A > B > C > D
-
-  The ancestors of D are:
-
-    [Root] > A > B > C
-
-  If the current User is allowed to see A and C, but not B, `effective-ancestors` of D will be:
-
-    [Root] > A > C
-
-  Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
-  can effectively treat A as the parent of C."
-  [collection]
-  (effective-ancestors* collection))
+  "Efficiently hydrate the `:effective_ancestors` of collections."
+  [collections]
+  (let [collection-id->collection (into {} (for [collection collections] [(:id collection) collection]))
+        to-fetch (into #{} (comp (keep effective-location-path)
+                                 (mapcat location-path->ids)
+                                 (remove collection-id->collection))
+                       collections)
+        collection-id->collection (merge (if (seq to-fetch)
+                                           (t2/select-pk->fn identity :model/Collection :id [:in to-fetch])
+                                           {})
+                                         collection-id->collection)
+        annotate (fn [collection]
+                   (cond-> collection
+                     (:id collection) (assoc :effective_ancestors
+                                             (->> (effective-location-path collection)
+                                                  location-path->ids
+                                                  (map collection-id->collection)))))]
+    (map annotate collections)))
 
 (mu/defn- parent-id* :- [:maybe ms/PositiveInt]
   [{:keys [location]} :- CollectionWithLocationOrRoot]

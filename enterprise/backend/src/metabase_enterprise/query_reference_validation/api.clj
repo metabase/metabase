@@ -63,7 +63,7 @@
         id->errors          (query-field/reference-errors cards)
         add-errors          (fn [{:keys [id] :as card}]
                               (assoc card :errors (id->errors id)))]
-    (map add-errors (t2/hydrate cards :collection :creator))))
+    (map add-errors (t2/hydrate cards [:collection :effective_ancestors] :creator))))
 
 (defn- invalid-card-count
   []
@@ -73,6 +73,17 @@
      {:select [[[:count [:distinct :c.id]] :count]]
       :from   [[(t2/table-name :model/Card) :c]]
       :where  [:= :c.archived false]}))))
+
+(defn- present [card]
+  (-> card
+      (select-keys [:id :description :collection_id :name :entity_id :archived :collection_position
+                    :display :collection_preview :dataset_query :last_used_at :errors :collection])
+      (update :collection (fn present-collection [collection]
+                            {:id (:id collection)
+                             :name (:name collection)
+                             :authority_level (:authority_level collection)
+                             :type (:type collection)
+                             :effective_ancestors (map #(select-keys % [:id :name :authority_level :type]) (:effective_ancestors collection))}))))
 
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
@@ -99,7 +110,7 @@
                                            :limit mw.offset-paging/*limit*
                                            :offset mw.offset-paging/*offset*})]
     {:total  (invalid-card-count)
-     :data   cards
+     :data   (map present cards)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
 
