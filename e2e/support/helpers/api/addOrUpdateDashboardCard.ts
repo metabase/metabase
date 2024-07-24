@@ -5,15 +5,7 @@ import type {
   DashboardId,
 } from "metabase-types/api";
 
-const DEFAULT_CARD = {
-  id: -1,
-  row: 0,
-  col: 0,
-  size_x: 11,
-  size_y: 8,
-  visualization_settings: {},
-  parameter_mappings: [],
-};
+import { DEFAULT_CARD } from "./updateDashboardCards";
 
 export function addOrUpdateDashboardCard({
   card_id,

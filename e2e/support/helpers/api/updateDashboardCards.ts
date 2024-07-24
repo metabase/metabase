@@ -1,6 +1,6 @@
 import type { Dashboard, DashboardCard, DashboardId } from "metabase-types/api";
 
-const DEFAULT_CARD = {
+export const DEFAULT_CARD = {
   id: -1,
   row: 0,
   col: 0,
