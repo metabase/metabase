@@ -27,10 +27,9 @@
     (is (false? (query-analysis/enabled-type? :unexpected)))))
 
 (defn- field-id-references [card-or-query]
-  (into #{}
-        (map :field-id)
-        (#'query-analysis/query-references
-         (:dataset_query card-or-query card-or-query))))
+  (->> (:dataset_query card-or-query card-or-query)
+       #'query-analysis/query-references
+       (into #{} (map :field-id))))
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
@@ -55,8 +54,7 @@
           venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
           mlv2-query        (-> (lib/query metadata-provider venues)
                                 (lib/aggregate (lib/distinct venues-name)))]
-      (is (= #{(mt/id :venues :name)}
-             (field-id-references mlv2-query))))))
+      (is (= #{(mt/id :venues :name)} (field-id-references mlv2-query))))))
 
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"
