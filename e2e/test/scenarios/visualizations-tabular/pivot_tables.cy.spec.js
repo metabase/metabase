@@ -1000,7 +1000,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
     assertTopMostRowTotalValue("149");
 
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.findByTextEnsureVisible("Sort").click();
 
@@ -1150,7 +1150,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     // confirm that it's loading
     main().findByText("Doing science...").should("be.visible");
 
-    cy.icon("notebook").click();
+    openNotebook();
 
     main().findByText("User → Source").click();
 

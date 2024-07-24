@@ -3,6 +3,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
+  openNotebook,
   remapDisplayValueToFK,
   visitQuestion,
   visitQuestionAdhoc,
@@ -279,7 +280,7 @@ describe("scenarios > question > nested", () => {
 
     // Although the test will fail on the previous step, we're including additional safeguards against regressions once the issue is fixed
     // It can potentially fail at two more places. See [1] and [2]
-    cy.icon("notebook").click();
+    openNotebook();
     cy.findAllByTestId("notebook-cell-item")
       .contains(/^Products → Category$/) /* [1] */
       .click();
@@ -558,7 +559,7 @@ describe("scenarios > question > nested", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Showing 100 rows");
 
-    cy.icon("notebook").click();
+    openNotebook();
     cy.findAllByTestId("notebook-cell-item").contains(/Users? → ID/);
 
     function saveQuestion() {

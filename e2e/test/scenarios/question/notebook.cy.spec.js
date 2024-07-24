@@ -47,7 +47,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.button("Visualize").click();
 
