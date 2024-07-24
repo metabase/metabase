@@ -275,7 +275,6 @@
 (lib.common/defop concat [s1 s2 & more])
 (lib.common/defop substring [s start end])
 (lib.common/defop replace [s search replacement])
-(lib.common/defop regexextract [s regex])
 (lib.common/defop regex-match-first [s regex])
 (lib.common/defop length [s])
 (lib.common/defop trim [s])
@@ -331,7 +330,7 @@
   Pass nil to `expression-position` for new expressions.
   The rules for determining which columns can be broken out by are as follows:
 
-  1. custom `:expressions` in this stage of the query, that come before the `expression-position`
+  1. Custom `:expressions` in this stage of the query`
 
   2. Fields 'exported' by the previous stage of the query, if there is one;
      otherwise Fields from the current `:source-table`
@@ -346,19 +345,21 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int
-    expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
-   (let [indexed-expressions (into {} (map-indexed (fn [idx expr]
-                                                     [(lib.util/expression-name expr) idx])
-                                                   (expressions query stage-number)))
-         unavailable-expressions (fn [column]
-                                   (or (not expression-position)
-                                       (not= (:lib/source column) :source/expressions)
-                                       (< (get indexed-expressions (:name column)) expression-position)))
-         stage (lib.util/query-stage query stage-number)
+    ;; The legacy format, which uses a map to represent the expressions loses the ordering,
+    ;; if ten or more expressions are used. Preserving the order would require to use a
+    ;; map type preserving the order both when converting to the legacy format and when
+    ;; converting from JS to CLJ. This could be done by changing the legacy format or
+    ;; using flatland.ordered.map/ordered-map or array-map or something similar.
+    ;; Unfortunately, ordered-map doesn't implement IEditableCollection in CLJS, which means
+    ;; that some functions (e.g., update-keys, update-vals) unexpectedly convert them to a
+    ;; potentially unordered map. (One might even forget that select-keys returns a "normal"
+    ;; Clojure map, so there are plenty of possibilities to mess this up.)
+    ;; Changing the legacy/wire format is probably the right way to go, but that's a bigger
+    ;; endeavor.
+    _expression-position :- [:maybe ::lib.schema.common/int-greater-than-or-equal-to-zero]]
+   (let [stage (lib.util/query-stage query stage-number)
          columns (lib.metadata.calculation/visible-columns query stage-number stage)]
-     (->> columns
-          (filterv unavailable-expressions)
-          not-empty))))
+     (not-empty columns))))
 
 (mu/defn expression-ref :- :mbql.clause/expression
   "Find the expression with `expression-name` using [[resolve-expression]], then create a ref for it. Intended for use
@@ -441,7 +442,7 @@
    (cyclic-definition node->children start []))
   ([node->children node path]
    (if (some #{node} path)
-     (conj path node)
+     (drop-while (complement #{node}) (conj path node))
      (some #(cyclic-definition node->children % (conj path node))
            (node->children node)))))
 
@@ -485,7 +486,7 @@
            :friendly true})
         (when (and (= expression-mode :expression)
                    (lib.util.match/match-one expr :offset))
-          {:message  (i18n/tru "OFFSET is not supported in custom expressions")
+          {:message  (i18n/tru "OFFSET is not supported in custom columns")
            :friendly true})
         (when (and (= expression-mode :expression)
                    (lib.util.match/match-one expr :offset)

@@ -15,6 +15,6 @@ export const canExploreResults = (question: Question): boolean => {
     question.isSaved() &&
     question.parameters().length === 0 &&
     canNest &&
-    isEditable // originally "canRunAdhocQuery"
+    isEditable
   );
 };

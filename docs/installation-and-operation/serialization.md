@@ -448,7 +448,7 @@ Currently, you can only import exported artifacts into a Metabase instance that 
 Most options are defined when exporting data from a Metabase. To view a list of import flags, run:
 
 ```
-java -jar metabase help import
+java -jar metabase.jar help import
 ```
 
 Which prints out:

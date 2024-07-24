@@ -38,6 +38,7 @@
                               :schemas                                false
                               :datetime-diff                          true
                               :now                                    true
+                              :identifiers-with-spaces                true
                               ;; SQLite `LIKE` clauses are case-insensitive by default, and thus cannot be made case-sensitive. So let people know
                               ;; we have this 'feature' so the frontend doesn't try to present the option to you.
                               :case-sensitivity-string-filter-options false

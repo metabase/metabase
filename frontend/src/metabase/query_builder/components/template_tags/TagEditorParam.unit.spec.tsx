@@ -5,7 +5,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
-import { renderWithProviders, screen } from "__support__/ui";
+import { renderWithProviders, screen, waitFor } from "__support__/ui";
 import { checkNotNull } from "metabase/lib/types";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { TemplateTag } from "metabase-types/api";
@@ -125,7 +125,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
-      await userEvent.click(await screen.findByText("People"));
+      await waitForElementsToLoad("People");
+
+      await userEvent.click(screen.getByText("People"));
       await userEvent.click(await screen.findByText("Source"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -144,7 +146,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
-      await userEvent.click(await screen.findByText("People"));
+      await waitForElementsToLoad("People");
+
+      await userEvent.click(screen.getByText("People"));
       await userEvent.click(await screen.findByText("Name"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -163,7 +167,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
-      await userEvent.click(await screen.findByText("Orders"));
+      await waitForElementsToLoad("Orders");
+
+      await userEvent.click(screen.getByText("Orders"));
       await userEvent.click(await screen.findByText("Quantity"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -182,7 +188,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
-      await userEvent.click(await screen.findByText("Reviews"));
+      await waitForElementsToLoad("Reviews");
+
+      await userEvent.click(screen.getByText("Reviews"));
       await userEvent.click(await screen.findByText("Rating"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -201,7 +209,9 @@ describe("TagEditorParam", () => {
       });
       const { setTemplateTag } = setup({ tag });
 
-      await userEvent.click(await screen.findByText("Name"));
+      await waitForElementsToLoad("Name");
+
+      await userEvent.click(screen.getByText("Name"));
       await userEvent.click(await screen.findByText("Address"));
 
       expect(setTemplateTag).toHaveBeenCalledWith({
@@ -307,3 +317,12 @@ describe("TagEditorParam", () => {
     });
   });
 });
+
+async function waitForElementsToLoad(text: string) {
+  await waitFor(
+    () => {
+      expect(screen.getByText(text)).toBeInTheDocument();
+    },
+    { timeout: 10000 },
+  );
+}

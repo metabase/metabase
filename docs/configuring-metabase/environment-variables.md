@@ -457,10 +457,10 @@ Enable admins to create publicly viewable links (and embeddable iframes) for Que
 ### `MB_ENABLE_QUERY_CACHING`
 
 - Type: boolean
-- Default: `false`
+- Default: `true`
 - [Configuration file name](./config-file.md): `enable-query-caching`
 
-Enabling caching will save the results of queries that take a long time to run.
+Allow caching results of queries that take a long time to run.
 
 ### `MB_ENABLE_XRAYS`
 
@@ -1263,6 +1263,16 @@ Password for opening the keystore.
 
 Absolute path to the Keystore file to use for signing SAML requests.
 
+### `MB_SAML_SLO_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `saml-slo-enabled`
+
+Is SAML Single Log Out enabled?
+
 ### `MB_SAML_USER_PROVISIONING_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1465,7 +1475,7 @@ Fetch size for result sets. We want to ensure that the jdbc ResultSet objects ar
 ### `MB_SQL_PARSING_ENABLED`
 
 - Type: boolean
-- Default: `true`
+- Default: `false`
 
 SQL Parsing is disabled.
 
@@ -1952,20 +1962,6 @@ Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
-
-### `MB_QUERY_CACHING_MIN_TTL`
-
-Type: integer<br>
-Default: `60`
-
-Metabase will cache all saved questions with an average query execution time longer than this many seconds.
-
-### `MB_QUERY_CACHING_TTL_RATIO`
-
-Type: integer<br>
-Default: `10`
-
-To determine how long each saved question's cached result should stick around, we take the query's average execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 

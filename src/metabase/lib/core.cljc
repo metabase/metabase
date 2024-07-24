@@ -169,7 +169,7 @@
   concat
   substring
   replace
-  regexextract
+  regex-match-first
   length
   trim
   ltrim

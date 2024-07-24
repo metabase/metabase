@@ -3,6 +3,7 @@ import * as Lib from "metabase-lib";
 import { BooleanFilterPicker } from "../BooleanFilterPicker";
 import { CoordinateFilterPicker } from "../CoordinateFilterPicker";
 import { DateFilterPicker } from "../DateFilterPicker";
+import { DefaultFilterPicker } from "../DefaultFilterPicker";
 import { NumberFilterPicker } from "../NumberFilterPicker";
 import { StringFilterPicker } from "../StringFilterPicker";
 import { TimeFilterPicker } from "../TimeFilterPicker";
@@ -51,7 +52,7 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isTime(column)) {
     return TimeFilterPicker;
   }
-  if (Lib.isDate(column)) {
+  if (Lib.isTemporal(column)) {
     return DateFilterPicker;
   }
   if (Lib.isCoordinate(column)) {
@@ -63,5 +64,5 @@ function getFilterWidget(column: Lib.ColumnMetadata) {
   if (Lib.isStringOrStringLike(column)) {
     return StringFilterPicker;
   }
-  return null;
+  return DefaultFilterPicker;
 }
