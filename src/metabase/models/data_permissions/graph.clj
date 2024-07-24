@@ -389,8 +389,8 @@
    (update-data-perms-graph!* (assoc-in (-> api-graph :groups) ks new-value))))
 
 (mu/defn update-data-perms-graph!
-  "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally validates the revision number,
-   logs the changes, and ensures impersonations and sandboxes are consistent."
+  "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally ensures
+  impersonations and sandboxes are consistent if necessary."
   ([graph-updates :- api.permission-graph/DataPermissionsGraph]
    (when (seq graph-updates)
      (let [group-updates (:groups graph-updates)]
