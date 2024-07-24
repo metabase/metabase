@@ -82,7 +82,7 @@
   "For test purposes, which pivot implementation to use. Overrides the normal way we check in [[impl-name]]."
   nil)
 
-(mu/defn impl :- ::impl-name
+(mu/defn ^:private impl :- ::impl-name
   "Which pivot query implementation should we use?"
   [driver :- :keyword]
   (or *impl-override*

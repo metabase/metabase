@@ -50,62 +50,77 @@
     (is (= {:pivot-rows [], :pivot-cols []}
            (#'qp.pivot/pivot-options query)))))
 
+(defn- do-identical-results-between-impls-test [query]
+  (let [query             (lib/query
+                           (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                           query)
+        pivot-options     (#'qp.pivot/pivot-options query)
+        num-breakouts     (count (lib/breakouts query))
+        pivot-rows        (:pivot-rows pivot-options)
+        pivot-cols        (:pivot-cols pivot-options)
+        breakout-combos   (qp.pivot.impl.common/breakout-combinations num-breakouts pivot-rows pivot-cols)
+        bitmasks          (mapv (partial qp.pivot.impl.common/group-bitmask num-breakouts) breakout-combos)
+        legacy-subqueries (#'qp.pivot.impl.legacy/generate-queries query pivot-options)
+        new-subqueries    (#'qp.pivot.impl.new/generate-queries query pivot-options)
+        legacy-result     (binding [qp.pivot/*impl-override* :qp.pivot.impl/legacy]
+                            (qp.pivot/run-pivot-query query))
+        legacy-rows       (mt/rows legacy-result)
+        new-result        (binding [qp.pivot/*impl-override* :qp.pivot.impl/new]
+                            (qp.pivot/run-pivot-query query))
+        new-rows          (mt/rows new-result)]
+    (testing (format "options = %s\n" (pr-str pivot-options))
+      (testing "should generate identical number of queries"
+        (is (= (count legacy-subqueries)
+               (count new-subqueries))))
+      (testing "should return identical columns"
+        (is (= ["state" "source" "category" "pivot-grouping" "count" "sum"]
+               (mapv (comp u/lower-case-en :name) (get-in legacy-result [:data :cols]))
+               (mapv (comp u/lower-case-en :name) (get-in new-result [:data :cols])))))
+      (testing "legacy rows and new rows should have same set of group bitmasks. Rows should be ordered by bitmask"
+        (letfn [(group-bitmasks [rows]
+                  (into []
+                        (comp (map #(nth % 3))
+                              (m/dedupe-by identity))
+                        rows))]
+          (is (= bitmasks
+                 (group-bitmasks legacy-rows)
+                 (group-bitmasks new-rows)))))
+      (doseq [i    (range (count legacy-subqueries))
+              :let [breakout-combo       (nth breakout-combos i)
+                    bitmask              (nth bitmasks i)
+                    group-row?           (fn [row]
+                                           (= (nth row 3) bitmask))
+                    legacy-subquery-rows (filterv group-row? legacy-rows)
+                    new-subquery-rows    (filterv group-row? new-rows)]]
+        (testing (format "\nSubquery #%d\nBreakout combinations = %s\nBitmask = %s\n" i breakout-combo bitmask)
+          (let []
+            (testing "\n++++ LEGACY SUBQUERY ++++\n"
+              (mt/with-native-query-testing-context (nth legacy-subqueries i)
+                (testing "\n++++ NEW SUBQUERY ++++\n"
+                  (mt/with-native-query-testing-context (nth new-subqueries i)
+                    (testing "Should return the same number of rows"
+                      (is (= (count legacy-subquery-rows)
+                             (count new-subquery-rows))))
+                    (testing "Should return identical rows"
+                      (is (= legacy-subquery-rows
+                             new-subquery-rows)))))))))))))
+
+(defn- identical-results-between-impls-test-drivers []
+  (->> (api.pivot-test-util/applicable-drivers)
+       ;; only test drivers using the new implementation by default
+       (filter (fn [driver]
+                 (= (#'qp.pivot/impl driver) :qp.pivot.impl/new)))))
+
+;;; same test as below, but this query does not include `:pivot-rows` and `:pivot-cols` options
+(deftest ^:parallel identical-results-between-impls-no-options-test
+  (testing "legacy and new impls should return identical results for the different subqueries"
+    (mt/test-drivers (identical-results-between-impls-test-drivers)
+      (do-identical-results-between-impls-test (api.pivot-test-util/pivot-query #_include-options false)))))
+
 (deftest ^:parallel identical-results-between-impls-test
   (testing "legacy and new impls should return identical results for the different subqueries"
-    (doseq [query [(api.pivot-test-util/pivot-query)
-                   (api.pivot-test-util/pivot-query #_include-options false)]]
-      (testing (format "\noriginal query =\n%s\n" (u/pprint-to-str query))
-        (let [query             (lib/query
-                                 (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                 query)
-              pivot-options     (#'qp.pivot/pivot-options query)
-              num-breakouts     (count (lib/breakouts query))
-              pivot-rows        (:pivot-rows pivot-options)
-              pivot-cols        (:pivot-cols pivot-options)
-              breakout-combos   (qp.pivot.impl.common/breakout-combinations num-breakouts pivot-rows pivot-cols)
-              bitmasks          (mapv (partial qp.pivot.impl.common/group-bitmask num-breakouts) breakout-combos)
-              legacy-subqueries (#'qp.pivot.impl.legacy/generate-queries query pivot-options)
-              new-subqueries    (#'qp.pivot.impl.new/generate-queries query pivot-options)
-              legacy-result     (binding [qp.pivot/*impl-override* :qp.pivot.impl/legacy]
-                                  (qp.pivot/run-pivot-query query))
-              legacy-rows       (mt/rows legacy-result)
-              new-result        (binding [qp.pivot/*impl-override* :qp.pivot.impl/new]
-                                  (qp.pivot/run-pivot-query query))
-              new-rows          (mt/rows new-result)]
-          (testing "should generate identical number of queries"
-            (is (= (count legacy-subqueries)
-                   (count new-subqueries))))
-          (testing "should return identical columns"
-            (is (= ["STATE" "SOURCE" "CATEGORY" "pivot-grouping" "count" "sum"]
-                   (mapv :name (get-in legacy-result [:data :cols]))
-                   (mapv :name (get-in new-result [:data :cols])))))
-          (testing "legacy rows and new rows should have same set of group bitmasks"
-            (letfn [(group-bitmasks [rows]
-                      (into #{}
-                            (map #(nth % 3))
-                            rows))]
-              (is (= (into #{} bitmasks)
-                     (group-bitmasks legacy-rows)
-                     (group-bitmasks new-rows)))))
-          (doseq [i    (range (count legacy-subqueries))
-                  :let [breakout-combo       (nth breakout-combos i)
-                        bitmask              (nth bitmasks i)
-                        group-row?           (fn [row]
-                                               (= (nth row 3) bitmask))
-                        legacy-subquery-rows (filterv group-row? legacy-rows)
-                        new-subquery-rows    (filterv group-row? new-rows)]]
-            (testing (format "\nSubquery #%d\nBreakout combinations = %s\nBitmask = %s\n" i breakout-combo bitmask)
-              (let []
-                (testing "\n++++ LEGACY SUBQUERY ++++\n"
-                  (mt/with-native-query-testing-context (nth legacy-subqueries i)
-                    (testing "\n++++ NEW SUBQUERY ++++\n"
-                      (mt/with-native-query-testing-context (nth new-subqueries i)
-                        (testing "Should return the same number of rows"
-                          (is (= (count legacy-subquery-rows)
-                                 (count new-subquery-rows))))
-                        (testing "Should return identical rows"
-                          (is (= legacy-subquery-rows
-                                 new-subquery-rows)))))))))))))))
+    (mt/test-drivers (identical-results-between-impls-test-drivers)
+      (do-identical-results-between-impls-test (api.pivot-test-util/pivot-query #_include-options true)))))
 
 (defn test-query []
   (mt/$ids orders
