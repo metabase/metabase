@@ -3,10 +3,10 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
-   [metabase.auth-provider :as auth-provider]
    [metabase.connection-pool :as connection-pool]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
@@ -163,22 +163,6 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
     (or (:default port-info)
         (:placeholder port-info))))
 
-(defn fetch-and-incorporate-auth-provider-details
-  "Incorporates auth-provider responses with db-details.
-
-  If you have a database you need to pass the database-id as some providers will need to save the response (e.g. refresh-tokens)."
-  ([driver db-details]
-   (fetch-and-incorporate-auth-provider-details driver nil db-details))
-  ([driver database-id {:keys [auth-provider] :as db-details}]
-   (if auth-provider
-     (let [auth-provider (keyword auth-provider)]
-       (driver/incorporate-auth-provider-details
-        driver
-        auth-provider
-        (auth-provider/fetch-auth auth-provider database-id db-details)
-        db-details))
-     db-details)))
-
 (defn- create-pool!
   "Create a new C3P0 `ComboPooledDataSource` for connecting to the given `database`."
   [{:keys [id details], driver :engine, :as database}]
@@ -187,7 +171,7 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details  ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
-        details-with-auth   (fetch-and-incorporate-auth-provider-details
+        details-with-auth   (driver.u/fetch-and-incorporate-auth-provider-details
                               driver
                               id
                               details-with-tunnel)
@@ -331,9 +315,9 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   [driver details f]
   (let [details (update details :port #(or % (default-ssh-tunnel-target-port driver)))]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
-      (let [details-with-auth (fetch-and-incorporate-auth-provider-details
-                                driver
-                                details-with-tunnel)
+      (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
+                               driver
+                               details-with-tunnel)
             spec (connection-details->spec driver details-with-auth)]
         (f spec)))))
 

@@ -1,15 +1,19 @@
 (ns metabase.driver.util-test
   (:require
+   [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.auth-provider :as auth-provider]
    [metabase.driver :as driver]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
+   [metabase.http-client :as client]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
    [metabase.query-processor.store :as qp.store]
    [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u])
   (:import
@@ -312,3 +316,55 @@
             (let [log-messages (mt/with-log-messages-for-level [metabase.driver.util :error]
                                  (is (false? (driver.u/supports? :test-driver :expressions db))))]
               (is (nil? log-messages)))))))))
+
+(defmethod auth-provider/fetch-auth ::test-me
+  [_provider _db-id details]
+  (is (= "testing" (:key details)))
+  {:password "qux"})
+
+(deftest ^:parallel simple-test
+  (let [details {:username "test"
+                 :password "ignored"
+                 :auth-provider ::test-me
+                 :key "testing"}]
+    (mt/with-temp [:model/Database db {:details details}]
+      (is (=? (assoc details :password "qux")
+              (driver.u/fetch-and-incorporate-auth-provider-details
+               (:engine db)
+               (:id db)
+               (:details db)))))))
+
+(deftest http-provider-tests
+  (let [original-details (:details (mt/db))
+        http-provider-details {:auth-provider "http"
+                               :http-auth-url (client/build-url "/testing/echo"
+                                                                {:body (json/encode original-details)})}]
+    (is (= original-details (auth-provider/fetch-auth :http nil http-provider-details)))
+    (is (= (merge http-provider-details original-details)
+           (driver.u/fetch-and-incorporate-auth-provider-details
+            (tx/driver)
+            http-provider-details)))))
+
+(deftest oauth-provider-tests
+  (let [oauth-provider-details {:auth-provider :oauth
+                                :oauth-token-url (client/build-url "/testing/echo"
+                                                                   {:body (json/encode {:access_token "foobar"})})}]
+    (is (= {:access_token "foobar"} (auth-provider/fetch-auth :oauth nil oauth-provider-details)))
+    (is (= (merge oauth-provider-details {:password "foobar"})
+           (driver.u/fetch-and-incorporate-auth-provider-details
+            (tx/driver)
+            oauth-provider-details)))))
+
+(deftest ^:parallel azure-managed-identity-provider-tests
+  (let [client-id "client ID"
+        provider-details {:auth-provider :azure-managed-identity
+                          :azure-managed-identity-client-id client-id}
+        response-body {:access_token "foobar"}]
+    (binding [auth-provider/*fetch-as-json* (fn [url _headers]
+                                              (is (str/includes? url client-id))
+                                              response-body)]
+      (is (= response-body (auth-provider/fetch-auth :azure-managed-identity nil provider-details)))
+      (is (= (merge provider-details {:password "foobar"})
+             (driver.u/fetch-and-incorporate-auth-provider-details
+              (tx/driver)
+              provider-details))))))
