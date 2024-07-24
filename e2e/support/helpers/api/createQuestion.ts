@@ -128,16 +128,6 @@ export const createNativeQuestion = (
   );
 };
 
-export const archiveQuestion = (
-  id: Card["id"],
-): Cypress.Chainable<Cypress.Response<Card>> => {
-  cy.log(`Archiving a question with id: ${id}`);
-
-  return cy.request("PUT", `/api/card/${id}`, {
-    archived: true,
-  });
-};
-
 const question = (
   {
     name = "test question",
