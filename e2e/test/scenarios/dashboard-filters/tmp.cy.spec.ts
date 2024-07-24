@@ -7,6 +7,7 @@ import {
   restore,
   updateDashboardCards,
   visitDashboard,
+  type DashboardDetails,
   type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
@@ -45,58 +46,36 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-
-    const parameterIds = ["fed1b910", "75d67d30", "60f12ac2"];
-
-    createQuestionAndDashboard({
-      questionDetails: ORDERS_COUNT_OVER_TIME,
-      dashboardDetails: {
-        parameters: [
-          {
-            name: "no default value, non-required",
-            slug: "no-default-value/non-required",
-            id: parameterIds[0],
-            type: "temporal-unit",
-            sectionId: "temporal-unit",
-          },
-          {
-            name: "default value, non-required",
-            slug: "default-value/non-required",
-            id: parameterIds[1],
-            type: "temporal-unit",
-            sectionId: "temporal-unit",
-            default: "year",
-          },
-          {
-            name: "default value, required",
-            slug: "default-value/required",
-            id: parameterIds[2],
-            type: "temporal-unit",
-            sectionId: "temporal-unit",
-            default: "year",
-            required: true,
-          },
-        ],
-      },
-    }).then(({ body: { dashboard_id, card_id } }) => {
-      updateDashboardCards({
-        dashboard_id,
-        cards: [
-          {
-            parameter_mappings: parameterIds.map(parameterId => ({
-              parameter_id: parameterId,
-              card_id: checkNotNull(card_id),
-              target: ["dimension", CREATED_AT_FIELD],
-            })),
-          },
-        ],
-      });
-
-      visitDashboard(dashboard_id);
-    });
   });
 
   it("temporal unit parameters", () => {
+    createDashboardWithParameters(ORDERS_COUNT_OVER_TIME, [
+      {
+        name: "no default value, non-required",
+        slug: "no-default-value/non-required",
+        id: "fed1b910",
+        type: "temporal-unit",
+        sectionId: "temporal-unit",
+      },
+      {
+        name: "default value, non-required",
+        slug: "default-value/non-required",
+        id: "75d67d30",
+        type: "temporal-unit",
+        sectionId: "temporal-unit",
+        default: "year",
+      },
+      {
+        name: "default value, required",
+        slug: "default-value/required",
+        id: "60f12ac2",
+        type: "temporal-unit",
+        sectionId: "temporal-unit",
+        default: "year",
+        required: true,
+      },
+    ]);
+
     const noDefaultNonRequired = "no default value, non-required";
 
     cy.log("no default value, non-required - no value");
@@ -173,5 +152,34 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
 
   function chevronIcon(label: string) {
     return filter(label).icon("chevrondown");
+  }
+
+  function createDashboardWithParameters(
+    questionDetails: StructuredQuestionDetails,
+    parameters: DashboardDetails["parameters"],
+  ) {
+    const parameterIds = ["fed1b910", "75d67d30", "60f12ac2"];
+
+    createQuestionAndDashboard({
+      questionDetails,
+      dashboardDetails: {
+        parameters,
+      },
+    }).then(({ body: { dashboard_id, card_id } }) => {
+      updateDashboardCards({
+        dashboard_id,
+        cards: [
+          {
+            parameter_mappings: parameterIds.map(parameterId => ({
+              parameter_id: parameterId,
+              card_id: checkNotNull(card_id),
+              target: ["dimension", CREATED_AT_FIELD],
+            })),
+          },
+        ],
+      });
+
+      visitDashboard(dashboard_id);
+    });
   }
 });
