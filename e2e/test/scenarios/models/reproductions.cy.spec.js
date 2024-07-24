@@ -1597,51 +1597,49 @@ describe("issue 32963", () => {
 });
 
 describe("issues 35039 and 37009", () => {
+  // We only need to ensure there is a comment. Any comment.
+  const query = "select * from products limit 1 -- foo";
+
+  const cardDetails = {
+    name: "35039",
+    type: "model",
+    native: { query },
+    visualization_settings: {},
+  };
+
   beforeEach(() => {
     restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.signInAsNormalUser();
+
+    createNativeQuestion(cardDetails).then(({ body: { id } }) => {
+      // It is crucial for this repro to go directly to the "edit query definition" page!
+      // When the repro was created back in v47-v48, it was still possible to save a new model
+      // without running the query first. This resulted in the missing `result_metadata`.
+      // It's not possible to replicate that using UI anymore, so our best bet is to create a model
+      // using API, and then to visit this page directly.
+      cy.visit(`/model/${id}/query`);
+    });
+    assertResultsLoaded();
   });
 
   // This test follows #37009 repro steps because they are simpler than #35039 but still equivalent
   it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options")
-      .findByText("Use a native query")
-      .click();
-
-    focusNativeEditor().type("select * from products -- where true=false");
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("dataset-edit-bar").button("Save").click();
-    modal()
-      .last()
-      .within(() => {
-        cy.findByLabelText("Name").type("Model").realPress("Tab");
-        cy.findByText("Save").click();
-      });
-
-    openQuestionActions();
-    popover().findByText("Edit query definition").click();
-
-    focusNativeEditor().type(
-      "{backspace}{backspace}{backspace}{backspace}{backspace}",
-    );
+    // The repro requires that we update the query in any way while still preserving the comment.
+    cy.log("Update the query and save");
+    focusNativeEditor().type("{backspace}");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
     cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.findByText("Save changes").click();
-      cy.findByText("Saving…").should("not.exist");
+      cy.button("Save changes").click();
+      cy.button("Saving…").should("not.exist");
     });
 
-    cy.findByTestId("query-builder-main").within(() => {
-      cy.findByText("Doing science...").should("be.visible");
-      cy.findByText("Doing science...").should("not.exist");
-    });
+    assertResultsLoaded();
 
-    cy.icon("notebook").click();
+    cy.log("Start new ad-hoc question and make sure all columns are there");
+    openNotebook();
     cy.findByTestId("fields-picker").click();
     popover().within(() => {
       cy.findByText("ID").should("exist");
@@ -1654,6 +1652,10 @@ describe("issues 35039 and 37009", () => {
       cy.findByText("CREATED_AT").should("exist");
     });
   });
+
+  function assertResultsLoaded() {
+    cy.findAllByTestId("cell-data").should("contain", "Rustic Paper Wallet");
+  }
 });
 
 describe("issue 37009", () => {
