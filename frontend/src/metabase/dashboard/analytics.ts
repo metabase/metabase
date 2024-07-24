@@ -3,7 +3,7 @@ import type { DashboardId, DashboardWidth } from "metabase-types/api";
 
 import type { SectionId } from "./sections";
 
-const DASHBOARD_SCHEMA_VERSION = "1-1-4";
+const DASHBOARD_SCHEMA_VERSION = "1-1-5";
 
 export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
@@ -12,10 +12,25 @@ export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   });
 };
 
-export const trackExportDashboardToPDF = (dashboardId: DashboardId) => {
+type DashboardAccessedVia =
+  | "internal"
+  | "public-link"
+  | "static-embed"
+  | "interactive-iframe-embed"
+  | "sdk-embed";
+
+export const trackExportDashboardToPDF = ({
+  dashboardId,
+  dashboardAccessedVia,
+}: {
+  dashboardId?: DashboardId;
+  dashboardAccessedVia: DashboardAccessedVia;
+}) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
     event: "dashboard_pdf_exported",
-    dashboard_id: dashboardId,
+    // we send 0 because the snowplow table requires a value
+    dashboard_id: dashboardId ?? 0,
+    dashboard_accessed_via: dashboardAccessedVia,
   });
 };
 

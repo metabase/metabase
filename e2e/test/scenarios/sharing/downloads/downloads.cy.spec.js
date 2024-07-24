@@ -351,6 +351,7 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
       expectGoodSnowplowEvent({
         event: "dashboard_pdf_exported",
         dashboard_id: dashboard.id,
+        dashboard_accessed_via: "internal",
       });
     });
   });

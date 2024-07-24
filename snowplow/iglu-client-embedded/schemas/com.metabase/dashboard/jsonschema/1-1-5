@@ -91,6 +91,13 @@
         "boolean",
         "null"
       ]
+    },
+    "dashboard_accessed_via": {
+      "description": "Indicate if the dashboard was accessed via metabase ('internal'), public link, static embed etc",
+      "type": [
+        "string",
+        "null"
+      ]
     }
   },
   "required": [
