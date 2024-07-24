@@ -398,14 +398,7 @@
       fks   (set/union #{fks})
       true  (disj this))))
 
-(defn- extract-dimensions [dimensions]
-  (->> (for [dim dimensions]
-         (-> (into (sorted-map) dim)
-             (dissoc :field_id :updated_at) ; :field_id is implied by the nesting under that field.
-             (update :human_readable_field_id serdes/*export-field-fk*)))
-       (sort-by :created_at)))
-
-(defmethod serdes/make-spec "Field" [_model-name _opts]
+(defmethod serdes/make-spec "Field" [_model-name opts]
   {:copy      [:active :base_type :caveats :coercion_strategy :created_at :custom_position :database_indexed
                :database_is_auto_increment :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate :json_unfolding
@@ -415,14 +408,7 @@
    :transform {:table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
-               :dimensions         [#(let [dims (or % (t2/select Dimension :field_id (:id serdes/*current*)))]
-                                       (extract-dimensions dims))
-                                    #(doseq [dim %]
-                                       (let [local (t2/select-one Dimension :entity_id (:entity_id dim))
-                                             dim   (assoc dim
-                                                          :field_id    (:id serdes/*current*)
-                                                          :serdes/meta [{:model "Dimension" :id (:entity_id dim)}])]
-                                         (serdes/load-one! dim local)))]}})
+               :dimensions         (serdes/nested :model/Dimension :field_id opts)}})
 
 (defmethod serdes/storage-path "Field" [field _]
   (-> (serdes/path field)

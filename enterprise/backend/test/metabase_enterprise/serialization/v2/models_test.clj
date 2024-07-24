@@ -49,7 +49,9 @@
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db
     ;; When serialization spec is defined, it describes every column
-    (doseq [m     serdes.models/exported-models
+    (doseq [m     (-> (methods serdes/make-spec)
+                      (dissoc :default)
+                      keys) #_ serdes.models/exported-models
             :let  [spec (serdes/make-spec m nil)]
             :when spec]
       (let [t      (t2/table-name (keyword "model" m))

@@ -5,7 +5,6 @@
   (:require
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
-   [metabase.util.date-2 :as u.date]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -36,12 +35,9 @@
    :created_at])
 
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
-;; Dimensions are inlined onto their parent Fields.
-;; We can reuse the [[serdes/load-one!]] logic by implementing [[serdes/load-xform]] though.
-(defmethod serdes/load-xform "Dimension"
-  [dim]
-  (-> dim
-      serdes/load-xform-basics
-      ;; No need to handle :field_id, it was just added as the raw ID by the caller; see Field's load-one!
-      (update            :human_readable_field_id serdes/*import-field-fk*)
-      (update            :created_at              u.date/parse)))
+
+(defmethod serdes/make-spec "Dimension" [_model-name _opts]
+  {:copy      [:name :type :created_at :entity_id]
+   :skip      [; Dimensions are inlined in their Fields, no need to refer the Field itself
+               :field_id]
+   :transform {:human_readable_field_id (serdes/fk :model/Field)}})

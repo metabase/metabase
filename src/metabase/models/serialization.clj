@@ -21,6 +21,7 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
@@ -691,8 +692,11 @@
       (when spec
         (-> ingested
             (select-keys (:copy spec))
-            (into (for [[k [_ser des]] (:transform spec)]
-                    [k (des (get ingested k))])))))))
+            (into (for [[k [_ser des]] (:transform spec)
+                        :let [res (des (get ingested k))]
+                        ;; we skip adding column when result is `nil`, so that nested fields can sit in `:transform`
+                        :when res]
+                    [k res])))))))
 
 (defn default-load-one!
   "Default implementation of `load-one!`"
@@ -1497,8 +1501,24 @@
 (defn fk "Export Foreign Key" [model & [field-name]]
   (cond
     (= model :model/Table) ^::fk [*export-table-fk* *import-table-fk*]
+    (= model :model/Field) ^::fk [*export-field-fk* *import-field-fk*]
     field-name             ^::fk [#(*export-fk-keyed* % model field-name) #(*import-fk-keyed* % model field-name)]
     :else                  ^::fk [#(*export-fk* % model) #(*import-fk* % model)]))
+
+(defn nested "Nested entities" [model backward-fk opts]
+  (let [model-name (name model)]
+    [(fn [data]
+       (let [entities (or data
+                          (t2/select model backward-fk (:id *current*)))]
+         (->> (mapv #(extract-one model-name opts %) entities)
+              (sort-by :created_at))))
+     (fn [lst]
+       (doseq [{:keys [entity_id] :as ingested} lst]
+         (let [local    (t2/select-one model :entity_id entity_id)
+               ingested (assoc ingested
+                               backward-fk (:id *current*)
+                               :serdes/meta [{:model model-name :id entity_id}])]
+           (serdes/load-one! ingested local))))]))
 
 
 ;;; ## Memoizing appdb lookups
