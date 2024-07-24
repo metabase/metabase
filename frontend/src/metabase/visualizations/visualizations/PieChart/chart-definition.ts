@@ -1,7 +1,6 @@
 import { t } from "ttag";
 import _ from "underscore";
 
-import { getColorsForValues } from "metabase/lib/colors/charts";
 import { formatValue } from "metabase/lib/formatting";
 import {
   ChartSettingsError,
