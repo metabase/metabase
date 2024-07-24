@@ -814,6 +814,7 @@ describe("issue 33844", () => {
     cy.findByLabelText("Table and details views").click();
     cy.button("Save changes").click();
     cy.wait("@updateModel");
+    cy.wait("@dataset");
     tableInteractive().findByText("ID").should("be.visible");
   }
 
