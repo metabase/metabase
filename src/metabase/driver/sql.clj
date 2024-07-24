@@ -63,6 +63,17 @@
       (seq referenced-card-ids)
       (update :metabase.models.query.permissions/referenced-card-ids set/union referenced-card-ids))))
 
+(defmulti json-field-length
+  "Return a form that calculates the length of a JSON field for a given driver.
+  `json-field-identifier` is the identifier for the JSON field."
+  {:arglists '([driver json-field-identifier])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod json-field-length :default
+  [_driver _native-form]
+  ;; we rely on this to tell if the method is implemented for this driver or not
+  :nyi)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Connection Impersonation                                          |

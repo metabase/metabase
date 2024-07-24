@@ -965,3 +965,7 @@
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
   "NONE")
+
+(defmethod driver.sql/json-field-length :postgres
+  [_ json-field-identifier]
+  [:length [:cast json-field-identifier :text]])

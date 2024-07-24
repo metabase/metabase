@@ -8,6 +8,7 @@
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
@@ -575,36 +576,55 @@
                                         (false? (:json_unfolding existing-field))))]
         (remove should-not-unfold? json-fields)))))
 
+(def ^:dynamic *nested-field-columns-max-row-length*
+  "Max total string length from the JSON fields in a single row before we avoid parsing it.
+  Marked as dynamic because we mutate it for tests."
+  50000)
+
+(def ^:dynamic *nested-field-columns-query-timeout*
+  "Timeout for the query to fetch a sample of rows to describe JSON fields.
+   Marked as dynamic because we mutate it for tests."
+  20000)
+
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
 
   If the table has PKs, try to fetch both first and last rows (see #25744).
   Else fetch the first n rows only."
-  [table-identifier json-field-identifiers pk-identifiers]
+  [driver table-identifier json-field-identifiers pk-identifiers]
   (let [pks-expr         (mapv vector pk-identifiers)
         table-expr       [table-identifier]
-        json-field-exprs (mapv vector json-field-identifiers)]
+        json-field-exprs (mapv vector json-field-identifiers)
+        max-size-clause  (if (= (get-method driver.sql/json-field-length driver) :nyi)
+                           (:= 1 1)
+                           [:< (into [:+] (map #(driver.sql/json-field-length driver %)
+                                               json-field-exprs))
+                            [:inline *nested-field-columns-max-row-length*]])]
     (if (seq pk-identifiers)
       {:select json-field-exprs
        :from   [table-expr]
        ;; mysql doesn't support limit in subquery, so we're using inner join here
-       :join  [[{:union [{:nest {:select   pks-expr
-                                 :from     [table-expr]
-                                 :order-by (mapv #(vector % :asc) pk-identifiers)
-                                 :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
-                         {:nest {:select   pks-expr
-                                 :from     [table-expr]
-                                 :order-by (mapv #(vector % :desc) pk-identifiers)
-                                 :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
-                :result]
-               (into [:and]
-                     (for [pk-identifier pk-identifiers]
-                       [:=
-                        (h2x/identifier :field :result (last (h2x/identifier->components pk-identifier)))
-                        pk-identifier]))]}
+       :join   [[{:union-all [{:nest {:select   pks-expr
+                                      :from     [table-expr]
+                                      :order-by (mapv #(vector % :asc) pk-identifiers)
+                                      :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
+                              {:nest {:select   pks-expr
+                                      :from     [table-expr]
+                                      :order-by (mapv #(vector % :desc) pk-identifiers)
+                                      :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
+                 :result]
+                (into [:and]
+                      (for [pk-identifier pk-identifiers]
+                        [:=
+                         (h2x/identifier :field :result (last (h2x/identifier->components pk-identifier)))
+                         pk-identifier]))]
+       :where  max-size-clause}
       {:select json-field-exprs
        :from   [table-expr]
-       :limit  (sql.qp/inline-num metadata-queries/nested-field-sample-limit)})))
+       :limit  (sql.qp/inline-num metadata-queries/nested-field-sample-limit)
+       ;; evaluating max-size-clause is potentially expensive if there are few rows that are below the max size, so we need to apply a
+       ;; timeout to this query in case all rows are large.
+       :where  max-size-clause})))
 
 (defn- describe-json-fields
   [driver jdbc-spec table json-fields pks]
@@ -616,8 +636,8 @@
                            (mapv #(apply h2x/identifier :field (into table-identifier-info [%])) pks))
         sql-args         (sql.qp/format-honeysql
                           driver
-                          (sample-json-row-honey-sql table-identifier json-field-identifiers pk-identifiers))
-        query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})
+                          (sample-json-row-honey-sql driver table-identifier json-field-identifiers pk-identifiers))
+        query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity, :timeout *nested-field-columns-query-timeout*})
         field-types      (transduce (map json-map->types) describe-json-rf query)
         fields           (field-types->fields field-types)]
     (if (> (count fields) max-nested-field-columns)

@@ -15,6 +15,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -34,8 +35,17 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
-   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
-   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
+   (java.sql
+    DatabaseMetaData
+    ResultSet
+    ResultSetMetaData
+    Types)
+   (java.time
+    LocalDateTime
+    OffsetDateTime
+    OffsetTime
+    ZoneOffset
+    ZonedDateTime)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
@@ -910,3 +920,7 @@
                   (when-let [privileges (not-empty (set/union all-table-privileges (get table-privileges table-name)))]
                     [table-name privileges])))
           table-names)))
+
+(defmethod driver.sql/json-field-length :mysql
+  [_ json-field-identifier]
+  [:length [:cast json-field-identifier :longtext]])

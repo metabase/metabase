@@ -105,6 +105,15 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
+(defmulti describe-nested-field-columns-sql
+  "Return a SQL query used to get row sample to describe json columns.
+
+  If the table has PKs, try to fetch both first and last rows (see #25744).
+  Else fetch the first n rows only."
+  {:added "0.47.0" :arglists '(^String [driver table-identifier json-field-identifiers pk-identifiers])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
 (defmulti current-user-table-privileges
   "Returns the rows of data as arrays needed to populate the table_privileges table
    with the DB connection's current user privileges.
