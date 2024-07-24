@@ -525,7 +525,7 @@
   "Efficiently hydrate the `:effective_ancestors` of collections."
   [collections]
   (let [collection-id->collection (into {} (for [collection collections] [(:id collection) collection]))
-        to-fetch (into #{} (comp (keep effective-location-path)
+        to-fetch (into #{} (comp (keep #(some-> % effective-location-path))
                                  (mapcat location-path->ids)
                                  (remove collection-id->collection))
                        collections)
@@ -535,10 +535,12 @@
                                          collection-id->collection)
         annotate (fn [collection]
                    (cond-> collection
-                     (:id collection) (assoc :effective_ancestors
-                                             (->> (effective-location-path collection)
-                                                  location-path->ids
-                                                  (map collection-id->collection)))))]
+                     (and (:id collection)
+                          (not (collection.root/is-root-collection? collection)))
+                     (assoc :effective_ancestors
+                            (->> (effective-location-path collection)
+                                 location-path->ids
+                                 (map collection-id->collection)))))]
     (map annotate collections)))
 
 (mu/defn- parent-id* :- [:maybe ms/PositiveInt]
