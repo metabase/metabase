@@ -27,6 +27,7 @@ runs:
       run: |
         while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}' > /dev/null; do
           if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
+            cat metabase.log
             echo "Metabase process has exited."
             exit 1
           fi
@@ -36,10 +37,6 @@ runs:
 
     - name: Stop Metabase on master
       run: kill $(cat metabase_pid)
-      shell: bash
-
-    - name: Print Metabase logs from master
-      run: cat metabase.log
       shell: bash
 
     - name: Check out pull request branch
@@ -57,6 +54,7 @@ runs:
       run: |
         while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}' > /dev/null; do
           if ! kill -0 $(cat metabase_pid) 2>/dev/null; then
+            cat metabase.log
             echo "Metabase process has exited. Check that your migration changes work on an instance that has been previously initialized on your PR's target branch."
             exit 1
           fi
@@ -66,8 +64,4 @@ runs:
 
     - name: Stop Metabase on pull request branch
       run: kill $(cat metabase_pid)
-      shell: bash
-
-    - name: Print Metabase logs from pull request branch
-      run: cat metabase.log
       shell: bash
