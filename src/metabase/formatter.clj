@@ -63,11 +63,11 @@
      0
      (let [val-string (-> (condp = (type value)
                             java.math.BigDecimal (.toPlainString ^BigDecimal value)
-                            java.lang.Double (format "%.20f" value)
-                            java.lang.Float (format "%.20f" value)
+                            java.lang.Double     (format "%.20f" value)
+                            java.lang.Float      (format "%.20f" value)
                             (str value))
                           (strip-trailing-zeroes (str decimal)))
-           [_n d] (str/split val-string #"[^\d*]")]
+           d          (last (str/split val-string #"[^\d*]"))]
        (count d)))))
 
 (defn- sig-figs-after-decimal

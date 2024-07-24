@@ -90,6 +90,8 @@
       ;; and show as many decimals as necessary to display these 2 sig-figs
       (is (= ["2"    "0"]      [(format 2 nil)       (format 0 nil)]))
       (is (= ["2.1"  "0.1"]    [(format 2.1 nil)     (format 0.1 nil)]))
+      (is (= ["0.57" "-0.57"]  [(format 0.57 nil)    (format -0.57 nil)]))
+      (is (= ["2.57" "-2.57"]  [(format 2.57 nil)    (format -2.57 nil)]))
       (is (= ["2.01" "0.01"]   [(format 2.01 nil)    (format 0.01 nil)]))
       (is (= ["2"    "0.001"]  [(format 2.001 nil)   (format 0.001 nil)]))
       (is (= ["2.01" "0.006"]  [(format 2.006 nil)   (format 0.006 nil)]))
