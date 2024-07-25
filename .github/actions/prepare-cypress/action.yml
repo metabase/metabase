@@ -9,10 +9,11 @@ outputs:
 runs:
   using: "composite"
   steps:
-    - name: Install Chrome v126
+    - name: Install Chrome v127
       uses: browser-actions/setup-chrome@v1
       with:
-        chrome-version: 126
+        # https://github.com/browser-actions/setup-chrome/issues/216#issuecomment-1292337561
+        chrome-version: 1313161
       id: setup-chrome
 
     - name: Check to see if dependencies should be cached
