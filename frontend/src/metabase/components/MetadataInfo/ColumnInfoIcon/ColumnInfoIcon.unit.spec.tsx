@@ -42,7 +42,12 @@ describe("QueryColumnInfoIcon", () => {
     const col = findColumn("PRODUCTS", "CATEGORY");
 
     render(
-      <QueryColumnInfoIcon query={query} stageIndex={0} column={col} size={18} />,
+      <QueryColumnInfoIcon
+        query={query}
+        stageIndex={0}
+        column={col}
+        size={18}
+      />,
     );
 
     const iconContainer = screen.getByLabelText("More info");
@@ -52,18 +57,14 @@ describe("QueryColumnInfoIcon", () => {
 
 describe("TableColumnInfoIcon", () => {
   it("should render with default size of 14px", () => {
-    render(
-      <TableColumnInfoIcon field={{} as any} icon="string" />,
-    );
+    render(<TableColumnInfoIcon field={{} as any} icon="string" />);
 
     const iconContainer = screen.getByLabelText("More info");
     expect(iconContainer).toHaveStyle("font-size: 14px");
   });
 
   it("should render with custom size", () => {
-    render(
-      <TableColumnInfoIcon field={{} as any} icon="string" size={18} />,
-    );
+    render(<TableColumnInfoIcon field={{} as any} icon="string" size={18} />);
 
     const iconContainer = screen.getByLabelText("More info");
     expect(iconContainer).toHaveStyle("font-size: 18px");
