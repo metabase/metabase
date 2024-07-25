@@ -30,7 +30,13 @@ export const WidgetStatusButton = ({
   };
 
   return (
-    <Tooltip disabled={!label} label={label}>
+    <Tooltip
+      disabled={!label}
+      label={label}
+      // We set hidden={true} so that tooltip can be hidden immediately once user clicks the button.
+      // Otherwise user would still see the animation of a disappearing tooltip but with no content.
+      hidden={!label}
+    >
       <Button
         className={S.root}
         compact
