@@ -50,10 +50,10 @@
 
 (defn- field-reference [table column]
   (let [reference (nqa/field-reference (mt/id) table column)]
-    ;; check that we found a valid reference
-    (assert (= #{:table-id :table :field-id :column} (set (keys reference))))
-    (assert (every? some? (vals reference)))
-    ;; the case depends on the driver, and we use what's in the database
+    ;; sanity-check that this is the right reference
+    (assert (= (mt/id table) (:table-id reference)))
+    (assert (= (mt/id table column) (:field-id reference)))
+    ;; sanity-check the names, whose case depends on the driver
     (assert (= (name table) (u/lower-case-en (:table reference))))
     (assert (= (name column) (u/lower-case-en (:column reference))))
     ;; tag it
