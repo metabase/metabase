@@ -123,12 +123,11 @@
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
       (let [references       (query-references query query-type)
-            reference->row   (fn [{:keys [field-id explicit-reference]}]
-                               ;; For now we only persist references which resolve to known fields
-                               (when field-id
-                                 {:card_id            card-id
-                                  :field_id           field-id
-                                  :explicit_reference explicit-reference}))
+            reference->row   (fn [{:keys [column field-id explicit-reference]}]
+                               {:card_id            card-id
+                                :column             column
+                                :field_id           field-id
+                                :explicit_reference explicit-reference})
             query-field-rows (map reference->row (:fields references))]
         (query-field/update-query-fields-for-card! card-id query-field-rows)))))
 
