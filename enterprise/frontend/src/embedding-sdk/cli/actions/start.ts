@@ -1,7 +1,5 @@
 import { confirm, input } from "@inquirer/prompts";
 
-import { uuid } from "metabase/lib/uuid";
-
 import {
   checkIsDockerRunning,
   startLocalMetabaseContainer,
@@ -56,9 +54,7 @@ export async function start() {
 
     const password = generateRandomDemoPassword();
 
-    const setupToken = uuid();
-
-    const port = await startLocalMetabaseContainer({ setupToken });
+    const port = await startLocalMetabaseContainer();
 
     if (!port) {
       return;
@@ -68,12 +64,15 @@ export async function start() {
 
     await pollUntilMetabaseInstanceReady(instanceUrl);
 
-    await setupMetabaseInstance({
-      instanceUrl,
-      setupToken,
+    const setupSuccess = await setupMetabaseInstance({
       email,
       password,
+      instanceUrl,
     });
+
+    if (!setupSuccess) {
+      return;
+    }
 
     await showGettingStartedGuide(port);
   } catch (error) {

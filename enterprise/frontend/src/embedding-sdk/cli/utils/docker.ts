@@ -6,7 +6,6 @@ import { promisify } from "util";
 import { getCurrentDockerPort } from "./get-current-docker-port";
 import { checkIsPortTaken } from "./is-port-taken";
 import { printError, printInfo, printSuccess } from "./print";
-import { getMetabaseInstanceEnvs } from "./setup-metabase-instance";
 
 const exec = promisify(execCallback);
 
@@ -31,6 +30,12 @@ const messageContainerStarted = (
 const CONTAINER_CHECK_MESSAGE =
   "Checking if Metabase is already running in a Docker container...";
 
+const METABASE_INSTANCE_DEFAULT_ENVS: Record<string, string> = {
+  MB_EMBEDDING_APP_ORIGIN: "http://localhost:*",
+  MB_ENABLE_EMBEDDING: "true",
+  MB_EMBEDDING_HOMEPAGE: "visible",
+};
+
 /** Container information returned by "docker ps" */
 interface ContainerInfo {
   ID: string;
@@ -39,10 +44,6 @@ interface ContainerInfo {
   Ports: string; // e.g. "0.0.0.0:3366->3000/tcp"
   Port: number | null; // parsed from Ports, e.g. 3366
   State: "running" | "exited";
-}
-
-interface StartContainerOptions {
-  setupToken: string;
 }
 
 /**
@@ -82,9 +83,7 @@ export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null>
 const randInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1) + min);
 
-export async function startLocalMetabaseContainer(
-  options: StartContainerOptions,
-): Promise<number | false> {
+export async function startLocalMetabaseContainer(): Promise<number | false> {
   let port = DEFAULT_PORT;
 
   printInfo(chalk.grey(CONTAINER_CHECK_MESSAGE));
@@ -134,9 +133,8 @@ export async function startLocalMetabaseContainer(
       port = randInt(3000, 3500);
     }
 
-    const envs = getMetabaseInstanceEnvs(options.setupToken);
-
-    const envFlags = Object.entries(envs)
+    // Pass default configuration as environment variables
+    const envFlags = Object.entries(METABASE_INSTANCE_DEFAULT_ENVS)
       .map(([key, value]) => `-e ${key}='${value}'`)
       .join(" ");
 

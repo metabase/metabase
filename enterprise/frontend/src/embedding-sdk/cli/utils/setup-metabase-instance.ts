@@ -1,36 +1,42 @@
 import fetch from "node-fetch";
 
+import { CONTAINER_NAME } from "./docker";
 import { printError } from "./print";
 
 interface SetupOptions {
   instanceUrl: string;
-  setupToken: string;
   email: string;
   password: string;
 }
 
 const SITE_NAME = "Metabase Embedding SDK Demo";
 
-export function getMetabaseInstanceEnvs(setupToken: string) {
-  return {
-    MB_EMBEDDING_APP_ORIGIN: "http://localhost:*",
-    MB_ENABLE_EMBEDDING: "true",
-    MB_EMBEDDING_HOMEPAGE: "visible",
-    MB_SETUP_TOKEN: setupToken,
-  };
-}
+const SETUP_TOKEN_MISSING_ERROR = `The instance has already been set up before. Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
 
 export async function setupMetabaseInstance(
   options: SetupOptions,
 ): Promise<boolean> {
   const { instanceUrl } = options;
 
-  console.log("MB Options:", options);
+  let res = await fetch(`${instanceUrl}/api/session/properties`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json" },
+  });
 
-  let res = await fetch(`${instanceUrl}/api/setup`, {
+  // Retrieve the current setup token of the current Metabase instance
+  const properties = (await res.json()) as { "setup-token": string };
+  const setupToken = properties["setup-token"];
+
+  if (!setupToken) {
+    printError(SETUP_TOKEN_MISSING_ERROR);
+
+    return false;
+  }
+
+  res = await fetch(`${instanceUrl}/api/setup`, {
     method: "POST",
     body: JSON.stringify({
-      token: options.setupToken,
+      token: setupToken,
       user: {
         email: options.email,
         password: options.password,
@@ -44,16 +50,17 @@ export async function setupMetabaseInstance(
         site_locale: "en",
       },
     }),
-    headers: {
-      "content-type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
   });
 
   if (!res.ok) {
-    const errorBody = await res.json();
+    const { errors } = (await res.json()) as { errors: Record<string, string> };
 
-    printError(`Failed to setup Metabase instance.`);
-    console.log(errorBody);
+    printError(`\n  Failed to setup Metabase instance.`);
+
+    if (errors) {
+      console.log("\n", errors);
+    }
 
     return false;
   }
@@ -66,16 +73,17 @@ export async function setupMetabaseInstance(
       "setup-license-active-at-setup": false,
       "setup-embedding-autoenabled": true,
     }),
-    headers: {
-      "content-type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
   });
 
   if (!res.ok) {
-    const errorBody = await res.json();
+    const { errors } = (await res.json()) as { errors: Record<string, string> };
 
-    printError(`Failed to define Metabase settings.`);
-    console.log(errorBody);
+    printError(`\n  Failed to define Metabase settings.\n`);
+
+    if (errors) {
+      console.log("\n", errors);
+    }
 
     return false;
   }
