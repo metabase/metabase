@@ -514,7 +514,8 @@ describe("issue 27643", () => {
       name: "27643",
       database: PG_DB_ID,
       native: {
-        query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
+        query:
+          "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]] limit 1",
         "template-tags": {
           [TEMPLATE_TAG_NAME]: {
             id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
