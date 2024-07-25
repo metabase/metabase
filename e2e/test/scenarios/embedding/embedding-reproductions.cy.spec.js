@@ -20,6 +20,7 @@ import {
   queryBuilderMain,
   queryBuilderFooter,
   withDatabase,
+  visitPublicQuestion,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -628,24 +629,13 @@ describe("issue 27643", () => {
         createNativeQuestion(getQuestionDetails(fieldId), {
           wrapId: true,
           idAlias: "questionId",
+          visitQuestion: true,
         });
-      });
-
-      cy.get("@questionId").then(questionId => {
-        cy.request("POST", `/api/card/${questionId}/public_link`).then(
-          ({ body: { uuid } }) => {
-            cy.wrap(uuid).as("questionPublicUuid");
-          },
-        );
       });
     });
 
     it("should allow a native question filter to map to a boolean field filter parameter in static embedding (metabase#27643)", () => {
       cy.log("Test the question");
-      cy.get("@questionId").then(questionId => {
-        visitQuestion(questionId);
-      });
-
       toggleFilterWidgetValues(["false"]);
       queryBuilderMain().button("Get Answer").click();
       queryBuilderFooter().findByText("Showing 455 rows").should("be.visible");
@@ -664,10 +654,10 @@ describe("issue 27643", () => {
         .should("be.visible");
 
       cy.log("Test the public question");
-      cy.signOut();
-      cy.get("@questionPublicUuid").then(uuid => {
-        cy.visit(`/public/question/${uuid}`);
+      cy.get("@questionId").then(questionId => {
+        visitPublicQuestion(questionId);
       });
+
       toggleFilterWidgetValues(["false"]);
       cy.findByTestId("visualization-root")
         .findByText("Rows 1-13 of 455")
