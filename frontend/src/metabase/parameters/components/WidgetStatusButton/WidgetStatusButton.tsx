@@ -12,7 +12,6 @@ type Props = {
   onClick?: () => void;
 };
 
-const BUTTON_SIZE = 28;
 const ICON_SIZE = 12;
 
 export const WidgetStatusButton = ({
@@ -37,8 +36,6 @@ export const WidgetStatusButton = ({
       leftIcon={<Icon name={icon} size={iconSize} />}
       radius="md"
       variant="subtle"
-      w={BUTTON_SIZE}
-      h={BUTTON_SIZE}
       onClick={handleClick}
     />
   );
