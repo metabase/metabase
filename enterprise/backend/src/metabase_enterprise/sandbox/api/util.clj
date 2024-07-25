@@ -64,7 +64,7 @@
             (reduce set/union #{} (vals group-id->sandboxes)))))
 
 (defn enforced-sandboxes-for-tables
-  "Given set of table-ids, return the sandboxes that should be enforced for the current user on any of the tables. A
+  "Given collection of table-ids, return the sandboxes that should be enforced for the current user on any of the tables. A
   sandbox is not enforced if the user is in a different permissions group that grants full access to the table."
   [table-ids]
   (let [enforced-sandboxes-for-user @data-perms/*sandboxes-for-user*]
