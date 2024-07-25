@@ -43,7 +43,7 @@ const confirmStep = async (message: string) => {
   } while (!confirmed);
 };
 
-export async function showGettingStartedGuide(port: number) {
+export async function showGettingStartedGuide(port: number, apiKey: string) {
   const isSdkInPackageJson = await checkHasSdkInPackageJson();
 
   if (!isSdkInPackageJson) {
@@ -56,7 +56,7 @@ export async function showGettingStartedGuide(port: number) {
 
   const instanceUrl = `http://localhost:${port}`;
 
-  const codeSample = getCodeSample(instanceUrl);
+  const codeSample = getCodeSample(instanceUrl, apiKey);
   console.log("\n" + codeSample.trim());
 
   printInfo("Please paste the code above in your application.\n");

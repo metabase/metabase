@@ -1,4 +1,4 @@
-export const getCodeSample = (url: string) => `
+export const getCodeSample = (url: string, apiKey: string) => `
 import {
   MetabaseProvider,
   InteractiveDashboard,
@@ -7,7 +7,7 @@ import {
 /** @type {import('@metabase/embedding-sdk-react').SDKConfig} */
 const config = {
   metabaseInstanceUrl: \`${url}\`,
-  apiKey: 'INSERT_API_KEY_HERE'
+  apiKey: '${apiKey}'
 }
 
 export const Analytics = () => (

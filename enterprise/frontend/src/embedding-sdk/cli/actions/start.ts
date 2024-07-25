@@ -2,6 +2,7 @@ import fs from "fs/promises";
 
 import { confirm, input } from "@inquirer/prompts";
 
+import { createApiKey } from "../utils/create-api-key";
 import {
   checkIsDockerRunning,
   startLocalMetabaseContainer,
@@ -86,17 +87,21 @@ export async function start() {
       return;
     }
 
-    const setupSuccess = await setupMetabaseInstance({
+    const setupResult = await setupMetabaseInstance({
       email,
       password,
       instanceUrl,
     });
 
-    if (!setupSuccess) {
+    if (!setupResult) {
       return;
     }
 
-    await showGettingStartedGuide(port);
+    const { cookie } = setupResult;
+
+    const apiKey = await createApiKey({ instanceUrl, cookie });
+
+    await showGettingStartedGuide(port, apiKey);
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.includes("force closed the prompt")) {

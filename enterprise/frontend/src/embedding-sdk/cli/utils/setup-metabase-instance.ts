@@ -32,7 +32,7 @@ const CREATE_ADMIN_USER_FAILED_MESSAGE = `
 
 export async function setupMetabaseInstance(
   options: SetupOptions,
-): Promise<boolean> {
+): Promise<{ cookie: string } | null> {
   const { instanceUrl } = options;
 
   const spinner = ora();
@@ -46,7 +46,7 @@ export async function setupMetabaseInstance(
   // therefore we cannot ensure the setup steps are performed.
   const onInstanceConfigured = () => {
     showError(INSTANCE_CONFIGURED_MESSAGE);
-    return false;
+    return null;
   };
 
   // The API is not immediately ready after the health check.
@@ -97,7 +97,7 @@ export async function setupMetabaseInstance(
 
         // TODO: improve password generation so it does not match the common passwords list.
         if (errors.password.includes("password is too common")) {
-          return false;
+          return null;
         }
 
         if (errors) {
@@ -107,7 +107,7 @@ export async function setupMetabaseInstance(
         printInfo(errorMessage);
       }
 
-      return false;
+      return null;
     }
 
     const cookie = res.headers.get("set-cookie") ?? "";
@@ -136,12 +136,12 @@ export async function setupMetabaseInstance(
       showError(EMBEDDING_FAILED_MESSAGE);
       console.log(errorMessage);
 
-      return false;
+      return null;
     }
 
     spinner.succeed();
 
-    return true;
+    return { cookie };
   } catch (error) {
     spinner.fail("Failed to setup Metabase instance.");
 
@@ -149,6 +149,6 @@ export async function setupMetabaseInstance(
       console.log(error.message);
     }
 
-    return false;
+    return null;
   }
 }
