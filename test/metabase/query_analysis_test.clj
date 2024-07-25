@@ -8,6 +8,7 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
    [metabase.test :as mt]
+   [metabase.util :as u]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 (deftest native-query-enabled-test
@@ -28,8 +29,12 @@
 
 (defn- field-id-references [card-or-query]
   (->> (:dataset_query card-or-query card-or-query)
-       #'query-analysis/query-references
-       (into #{} (map :field-id))))
+       (#'query-analysis/query-references)
+       ;; lowercase names to avoid tests being driver-dependent
+       (map #(-> %
+                 (update :table u/lower-case-en)
+                 (update :column u/lower-case-en)))
+       (sort-by (juxt :table :column))))
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
@@ -44,17 +49,27 @@
                                              {:joins [{:source-table (str "card__" (:id c2))
                                                        :alias        "Venues"
                                                        :condition    [:= $checkins.venue_id $venues.id]}]})}]
-      (mt/$ids
-       (is (= #{%venues.name %venues.price} (field-id-references c1)))
-       (is (empty? (field-id-references c2)))
-       (is (= #{%venues.id %checkins.venue_id} (field-id-references c3))))))
+      (is (= (mt/$ids
+              [{:table-id (mt/id :venues), :table "venues", :field-id %venues.name, :column "name", :explicit-reference true}
+               {:table-id (mt/id :venues), :table "venues", :field-id %venues.price, :column "price", :explicit-reference true}])
+             (field-id-references c1)))
+      (is (empty? (field-id-references c2)))
+      (is (= (mt/$ids
+              [{:table-id (mt/id :checkins), :table "checkins", :field-id %checkins.venue_id, :column "venue_id", :explicit-reference true}
+               {:table-id (mt/id :venues), :table "venues", :field-id %venues.id, :column "id", :explicit-reference true}])
+             (field-id-references c3)))))
   (testing "Parsing pMBQL query returns correct used fields"
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
           mlv2-query        (-> (lib/query metadata-provider venues)
                                 (lib/aggregate (lib/distinct venues-name)))]
-      (is (= #{(mt/id :venues :name)} (field-id-references mlv2-query))))))
+      (is (= [{:table-id (mt/id :venues)
+               :table "venues"
+               :field-id (mt/id :venues :name)
+               :column "name"
+               :explicit-reference true}]
+             (field-id-references mlv2-query))))))
 
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"

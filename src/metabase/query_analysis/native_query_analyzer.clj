@@ -124,11 +124,11 @@
 (defn field-reference
   "Used by tests"
   [db-id table column]
-  (t2/select-one :model/Field (assoc field-and-table-fragment
-                                     :where [:and
-                                             [:= :t.db_id db-id]
-                                             (column-query nil {:table  (name table)
-                                                                :column (name column)})])))
+  (t2/select-one :model/QueryField (assoc field-and-table-fragment
+                                          :where [:and
+                                                  [:= :t.db_id db-id]
+                                                  (column-query nil {:table  (name table)
+                                                                     :column (name column)})])))
 
 (defn- explicit-references-for-query
   "Selects IDs of Fields that could be used in the query"
@@ -137,10 +137,10 @@
         tables  (map :component table-maps)]
     (consolidate-columns
      columns
-     (t2/select :model/Field (assoc field-and-table-fragment
-                                    :where [:and
-                                            [:= :t.db_id db-id]
-                                            (into [:or] (map (partial column-query tables) columns))])))))
+     (t2/select :model/QueryField (assoc field-and-table-fragment
+                                         :where [:and
+                                                 [:= :t.db_id db-id]
+                                                 (into [:or] (map (partial column-query tables) columns))])))))
 
 (defn- wildcard-tables
   "Given a parsed query, return the list of tables we are selecting from using a wildcard."
@@ -160,11 +160,11 @@
   "Similar to explicit-field-ids-for-query, but for wildcard selects"
   [parsed-query db-id]
   (when-let [tables (wildcard-tables parsed-query)]
-    (t2/select :model/Field (merge field-and-table-fragment
-                                   {:where [:and
-                                            [:= :t.db_id db-id]
-                                            [:= :f.active true]
-                                            (into [:or] (map table-query tables))]}))))
+    (t2/select :model/QueryField (merge field-and-table-fragment
+                                        {:where [:and
+                                                 [:= :t.db_id db-id]
+                                                 [:= :f.active true]
+                                                 (into [:or] (map table-query tables))]}))))
 
 (defn- mark-reference [refs explicit?]
   (map #(assoc % :explicit-reference explicit?) refs))

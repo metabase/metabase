@@ -81,7 +81,13 @@
          false)))
 
 (defn- explicit-references [field-ids]
-  (map #(hash-map :field-id % :explicit-reference true) field-ids))
+  (when (seq field-ids)
+    (t2/select :model/QueryField {:select [[:t.id :table-id] [:t.name :table]
+                                           [:f.id :field-id] [:f.name :column]
+                                           [true :explicit-reference]]
+                                  :from   [[(t2/table-name :model/Field) :f]]
+                                  :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                                  :where  [:in :f.id field-ids]})))
 
 (defn- query-references
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
