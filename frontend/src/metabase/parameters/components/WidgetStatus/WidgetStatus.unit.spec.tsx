@@ -2,7 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import { render, screen } from "__support__/ui";
 
-import { WidgetStatusButton } from "./WidgetStatusButton";
+import { WidgetStatus } from "./WidgetStatus";
 import type { Status } from "./types";
 
 interface SetupOpts {
@@ -12,12 +12,12 @@ interface SetupOpts {
 function setup({ status }: SetupOpts) {
   const onClick = jest.fn();
 
-  render(<WidgetStatusButton status={status} onClick={onClick} />);
+  render(<WidgetStatus status={status} onClick={onClick} />);
 
   return { onClick };
 }
 
-describe("WidgetStatusButton", () => {
+describe("WidgetStatus", () => {
   describe("status='clear'", () => {
     it("renders correctly", () => {
       setup({ status: "clear" });

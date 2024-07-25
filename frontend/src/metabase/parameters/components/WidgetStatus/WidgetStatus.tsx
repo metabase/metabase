@@ -2,7 +2,7 @@ import type { MouseEvent } from "react";
 
 import { Button, Flex, Icon, rem, Tooltip } from "metabase/ui";
 
-import S from "./WidgetStatusButton.module.css";
+import S from "./WidgetStatus.module.css";
 import type { Status } from "./types";
 import { getStatusConfig } from "./utils";
 
@@ -11,7 +11,7 @@ type Props = {
   onClick?: () => void;
 };
 
-export const WidgetStatusButton = ({ status, onClick }: Props) => {
+export const WidgetStatus = ({ status, onClick }: Props) => {
   const { icon, label } = getStatusConfig(status);
 
   const handleClick = (event: MouseEvent) => {

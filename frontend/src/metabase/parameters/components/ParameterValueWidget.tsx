@@ -21,7 +21,7 @@ import {
 import type { Dashboard, ParameterId } from "metabase-types/api";
 
 import { ParameterDropdownWidget } from "./ParameterDropdownWidget";
-import { WidgetStatusButton } from "./WidgetStatusButton";
+import { WidgetStatus } from "./WidgetStatus";
 
 export type ParameterValueWidgetProps = {
   parameter: UiParameter;
@@ -77,7 +77,7 @@ export const ParameterValueWidget = ({
   const getOptionalActionIcon = () => {
     if (value != null) {
       return (
-        <WidgetStatusButton
+        <WidgetStatus
           status="clear"
           onClick={() => {
             setValue(null);
@@ -88,7 +88,7 @@ export const ParameterValueWidget = ({
     }
 
     if (!hasNoPopover(parameter)) {
-      return <WidgetStatusButton status="empty" />;
+      return <WidgetStatus status="empty" />;
     }
   };
 
@@ -101,7 +101,7 @@ export const ParameterValueWidget = ({
       !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
-        <WidgetStatusButton
+        <WidgetStatus
           status="reset"
           onClick={() => setParameterValueToDefault?.(parameter.id)}
         />
@@ -121,7 +121,7 @@ export const ParameterValueWidget = ({
 
     if (!icon) {
       // This is required to keep input width constant
-      return <WidgetStatusButton status="none" />;
+      return <WidgetStatus status="none" />;
     }
 
     return icon;
