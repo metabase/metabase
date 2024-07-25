@@ -287,9 +287,6 @@ describe("scenarios > dashboard card resizing", { tags: "@flaky" }, () => {
             });
           });
 
-          saveDashboard();
-          editDashboard();
-
           dashcards.forEach(({ card }, index) => {
             resizeDashboardCard({
               card: getDashboardCard(index),
