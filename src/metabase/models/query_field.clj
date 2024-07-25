@@ -13,8 +13,6 @@
   "Given some HoneySQL query map with :model/Card bound as :c, restrict this query to only return cards
   with invalid references."
   [card-query-map]
-  ;; NOTE: We anticipate a schema change to support missing references that will result in left-joins and
-  ;; where clauses being appended as well.
   (-> card-query-map
       (update :join concat
               [[(t2/table-name :model/QueryField) :qf]
