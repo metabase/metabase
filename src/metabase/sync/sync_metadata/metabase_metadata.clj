@@ -27,7 +27,7 @@
    [:field-name [:maybe ms/NonBlankString]]
    [:k          :keyword]])
 
-(mu/defn ^:private parse-keypath :- KeypathComponents
+(mu/defn- parse-keypath :- KeypathComponents
   "Parse a `keypath` into components for easy use."
   ;; TODO: this does not support schemas in dbs :(
   [keypath :- ms/NonBlankString]
@@ -40,7 +40,7 @@
      :field-name (when third-part second-part)
      :k          (keyword (or third-part second-part first-part))}))
 
-(mu/defn ^:private set-property! :- :boolean
+(mu/defn- set-property! :- :boolean
   "Set a property for a Field or Table in `database`. Returns `true` if a property was successfully set."
   [database                          :- i/DatabaseInstance
    {:keys [table-name field-name k]} :- KeypathComponents
@@ -60,7 +60,7 @@
             (pos? (t2/update! Table table-id {k value}))))
         (pos? (t2/update! Database (u/the-id database) {k value}))))))
 
-(mu/defn ^:private sync-metabase-metadata-table!
+(mu/defn- sync-metabase-metadata-table!
   "Databases may include a table named `_metabase_metadata` (case-insentive) which includes descriptions or other
   metadata about the `Tables` and `Fields` it contains. This table is *not* synced normally, i.e. a Metabase `Table`
   is not created for it. Instead, *this* function is called, which reads the data it contains and updates the relevant

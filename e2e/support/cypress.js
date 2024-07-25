@@ -7,12 +7,6 @@ import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
 
-const runWithReplay = Cypress.env("REPLAYIO_ENABLED");
-
-if (runWithReplay) {
-  require("@replayio/cypress/support");
-}
-
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
 Cypress.on("test:before:run", () => {

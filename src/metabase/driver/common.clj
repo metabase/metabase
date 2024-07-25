@@ -226,6 +226,32 @@
   added to the plugin manifest as connection properties, similar to the keys in the `default-options` map."
   {:cloud-ip-address-info cloud-ip-address-info})
 
+(def auth-provider-options
+  "Options for using an auth provider instead of a literal password."
+  [{:name "use-auth-provider"
+    :type :section
+    :default false}
+   {:name "auth-provider"
+    :display-name (deferred-tru "Auth provider")
+    :type :select
+    :options [{:name (deferred-tru "Azure Managed Identity")
+               :value "azure-managed-identity"}
+              {:name (deferred-tru "OAuth")
+               :value "oauth"}]
+    :default "azure-managed-identity"
+    :visible-if {"use-auth-provider" true}}
+   {:name "azure-managed-identity-client-id"
+    :display-name (deferred-tru "Client ID")
+    :required true
+    :visible-if {"auth-provider" "azure-managed-identity"}}
+   {:name "oauth-token-url"
+    :display-name (deferred-tru "Auth token URL")
+    :required true
+    :visible-if {"auth-provider" "oauth"}}
+   {:name "oauth-token-headers"
+    :display-name (deferred-tru "Auth token request headers (a JSON map)")
+    :visible-if {"auth-provider" "oauth"}}])
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               Class -> Base Type                                               |

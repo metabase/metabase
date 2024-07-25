@@ -12,7 +12,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -79,29 +78,31 @@
    ;; we don't care how many pages it took to load this dataset above. it will be a large
    ;; number because we're just tracking the number of times `get-query-results` gets invoked.
 
-   ;; TODO Temporarily disabling due to flakiness (#33140)
-   #_
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
-       (with-bindings {#'bigquery/*page-size*             25
-                       #'bigquery/*page-callback*         page-callback}
-         (let [actual (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                             [(t2/select-one Field :id (mt/id :venues :id))
-                              (t2/select-one Field :id (mt/id :venues :name))]
-                             (constantly conj))
-                           (sort-by first)
-                           (take 5))]
+       (with-bindings {#'bigquery/*page-size*     25
+                       #'bigquery/*page-callback* page-callback}
+         (let [results (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                              [(t2/select-one Field :id (mt/id :venues :id))
+                               (t2/select-one Field :id (mt/id :venues :name))]
+                              (constantly conj))
+                            (sort-by first)
+                            (take 5))]
            (is (= [[1 "Red Medicine"]
                    [2 "Stout Burgers & Beers"]
                    [3 "The Apple Pan"]
                    [4 "Wurstküche"]
                    [5 "Brite Spot Family Restaurant"]]
-                  actual))
+                  (take 5 results)))
+           (testing "results are not duplicated when pagination occurs (#45953)"
+             (is (= (count results) (count (distinct results)))))
            ;; the `(sort-by)` above will cause the entire resultset to be realized, so
            ;; we want to make sure that it really did retrieve 25 rows per request
            ;; this only works if the timeout has been temporarily set to 0 (see above)
-           (is (= 4 @pages-retrieved))))))))
+
+           ;; TODO Temporarily disabling due to flakiness (#33140)
+           #_(is (= 4 @pages-retrieved))))))))
 
 ;; These look like the macros from metabase.query-processor-test.expressions-test
 ;; but conform to bigquery naming rules
@@ -483,79 +484,79 @@
 
 (deftest chain-filter-with-fields-from-table-requires-a-filter-test
   (testing "#40673"
-    (mt/test-driver :bigquery-cloud-sdk
-      (binding [qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests* true]
-        (mt/with-model-cleanup [:model/Table]
-          (let [category-table-name "cf_category"
-                product-table-name  "cf_product"]
-            (try
-              (doseq [sql [(format "CREATE TABLE %s (id INT64, category STRING, PRIMARY KEY(id) NOT ENFORCED)
+    (mt/test-driver
+     :bigquery-cloud-sdk
+     (mt/with-model-cleanup [:model/Table]
+       (let [category-table-name "cf_category"
+             product-table-name  "cf_product"]
+         (try
+           (doseq [sql [(format "CREATE TABLE %s (id INT64, category STRING, PRIMARY KEY(id) NOT ENFORCED)
                                    PARTITION BY _PARTITIONDATE
                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name category-table-name))
-                           (format "INSERT INTO %s (id, category)
+                                (fmt-table-name category-table-name))
+                        (format "INSERT INTO %s (id, category)
                                    VALUES (1, \"coffee\"), (2, \"tea\");"
-                                   (fmt-table-name category-table-name))
-                           (format "CREATE TABLE %s (id INT64, category_id INT64, name STRING)
+                                (fmt-table-name category-table-name))
+                        (format "CREATE TABLE %s (id INT64, category_id INT64, name STRING)
                                    PARTITION BY _PARTITIONDATE
                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name product-table-name))
-                           (format "ALTER TABLE %1$s
+                                (fmt-table-name product-table-name))
+                        (format "ALTER TABLE %1$s
                                    ADD CONSTRAINT fk_product_category_id FOREIGN KEY (category_id)
                                    REFERENCES %2$s(id) NOT ENFORCED;"
-                                   (fmt-table-name product-table-name)
-                                   (fmt-table-name category-table-name))
-                           (format "INSERT INTO %s (id, category_id, name)
+                                (fmt-table-name product-table-name)
+                                (fmt-table-name category-table-name))
+                        (format "INSERT INTO %s (id, category_id, name)
                                    VALUES (1, 1, \"Americano\"), (2, 1, \"Cold brew\"), (3, 2, \"Herbal\"), (4, 2, \"Oolong\");"
-                                   (fmt-table-name product-table-name))]]
-                (bigquery.tx/execute! sql))
-              (sync/sync-database! (mt/db) {:scan :schema})
+                                (fmt-table-name product-table-name))]]
+             (bigquery.tx/execute! sql))
+           (sync/sync-database! (mt/db) {:scan :schema})
               ;; Fake fk relationship for bigquery because apparently fk on bigquery is not a thing.
               ;; We want this to test whether chain filter add a filter on partitioned fields from joned tables.
-              (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
-              (mt/with-temp
-                [:model/Card          card-category {:database_id   (mt/id)
-                                                     :table_id      (mt/id :cf_category)
-                                                     :dataset_query (mt/mbql-query cf_category)}
-                 :model/Card          card-product  {:database_id   (mt/id)
-                                                     :table_id      (mt/id :cf_product)
-                                                     :dataset_query (mt/mbql-query cf_product)}
-                 :model/Dashboard     dashboard     {:parameters [{:name "Category"
-                                                                   :slug "category"
-                                                                   :id   "_CATEGORY_"
-                                                                   :type :string/=}
-                                                                  {:name "Product Name"
-                                                                   :slug "Product name"
-                                                                   :id   "_NAME_"
-                                                                   :type :string/=}]}
-                 :model/DashboardCard _dashcard     {:card_id            (:id card-category)
-                                                     :dashboard_id       (:id dashboard)
-                                                     :parameter_mappings [{:parameter_id "_CATEGORY_"
-                                                                           :card_id      (:id card-category)
-                                                                           :target       [:dimension (mt/$ids $cf_category.category)]}]}
-                 :model/DashboardCard _dashcard     {:card_id            (:id card-product)
-                                                     :dashboard_id       (:id dashboard)
-                                                     :parameter_mappings [{:parameter_id "_NAME_"
-                                                                           :card_id      (:id card-product)
-                                                                           :target       [:dimension (mt/$ids $cf_product.name)]}]}]
+           (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
+           (mt/with-temp
+             [:model/Card          card-category {:database_id   (mt/id)
+                                                  :table_id      (mt/id :cf_category)
+                                                  :dataset_query (mt/mbql-query cf_category)}
+              :model/Card          card-product  {:database_id   (mt/id)
+                                                  :table_id      (mt/id :cf_product)
+                                                  :dataset_query (mt/mbql-query cf_product)}
+              :model/Dashboard     dashboard     {:parameters [{:name "Category"
+                                                                :slug "category"
+                                                                :id   "_CATEGORY_"
+                                                                :type :string/=}
+                                                               {:name "Product Name"
+                                                                :slug "Product name"
+                                                                :id   "_NAME_"
+                                                                :type :string/=}]}
+              :model/DashboardCard _dashcard     {:card_id            (:id card-category)
+                                                  :dashboard_id       (:id dashboard)
+                                                  :parameter_mappings [{:parameter_id "_CATEGORY_"
+                                                                        :card_id      (:id card-category)
+                                                                        :target       [:dimension (mt/$ids $cf_category.category)]}]}
+              :model/DashboardCard _dashcard     {:card_id            (:id card-product)
+                                                  :dashboard_id       (:id dashboard)
+                                                  :parameter_mappings [{:parameter_id "_NAME_"
+                                                                        :card_id      (:id card-product)
+                                                                        :target       [:dimension (mt/$ids $cf_product.name)]}]}]
 
-                (testing "chained filter works"
-                  (is (= {:has_more_values false
-                          :values          [["Americano"] ["Cold brew"]]}
-                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values?%s=%s"
-                                                                           (:id dashboard) "_NAME_" "_CATEGORY_" "coffee")))))
-                (testing "getting values works"
-                  (is (= {:has_more_values false
-                          :values          [["Americano"] ["Cold brew"] ["Herbal"] ["Oolong"]]}
-                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values" (:id dashboard) "_NAME_")))))
-                (testing "searching values works"
-                  (is (= {:has_more_values false
-                          :values          [["Oolong"]]}
-                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/search/oo" (:id dashboard) "_NAME_"))))))
+             (testing "chained filter works"
+               (is (= {:has_more_values false
+                       :values          [["Americano"] ["Cold brew"]]}
+                      (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values?%s=%s"
+                                                                        (:id dashboard) "_NAME_" "_CATEGORY_" "coffee")))))
+             (testing "getting values works"
+               (is (= {:has_more_values false
+                       :values          [["Americano"] ["Cold brew"] ["Herbal"] ["Oolong"]]}
+                      (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values" (:id dashboard) "_NAME_")))))
+             (testing "searching values works"
+               (is (= {:has_more_values false
+                       :values          [["Oolong"]]}
+                      (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/search/oo" (:id dashboard) "_NAME_"))))))
 
-             (finally
-               (doseq [table-name [product-table-name category-table-name]]
-                 (drop-table-if-exists! table-name))))))))))
+           (finally
+             (doseq [table-name [product-table-name category-table-name]]
+               (drop-table-if-exists! table-name)))))))))
 
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk

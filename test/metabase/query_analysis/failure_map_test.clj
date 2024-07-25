@@ -9,6 +9,7 @@
   {:id (swap! id-generator inc) :dataset_query (rand)})
 
 (def ^:private max-retries @#'failure-map/max-retries)
+
 (def ^:private max-size @#'failure-map/max-size)
 
 (deftest failure-map-non-retryable-test
@@ -43,7 +44,8 @@
       (is (every? failure-map/non-retryable? random-cards)))
     (testing "But the number that we recall is bounded\n"
       (let [extra-card (random-card)]
-        (failure-map/track-failure! extra-card)
+        (dotimes [_ max-retries]
+          (failure-map/track-failure! extra-card))
         (is (false? (failure-map/non-retryable? extra-card)))
         (testing "... with replacement"
           (failure-map/track-success! (first random-cards))

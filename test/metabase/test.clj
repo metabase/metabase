@@ -197,7 +197,6 @@
   rows
   rows+column-names
   with-database-timezone-id
-  with-mock-fks-for-drivers-without-fk-constraints
   with-report-timezone-id!
   with-results-timezone-id]
 
