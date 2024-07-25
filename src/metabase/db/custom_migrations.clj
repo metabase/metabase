@@ -1516,7 +1516,7 @@
                                            :from   [:report_card]
                                            :where  [:like :visualization_settings "%column_settings%"]}))))
 
-(define-reversible-migration RemoveFieldRefsFromCardColumnSettings
+(define-reversible-migration MigrateLegacyColumnKeysInCardVizSettings
   (update-legacy-column-keys-in-card-viz-settings migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-card-viz-settings rollback-legacy-column-keys-in-viz-settings))
 
@@ -1534,7 +1534,7 @@
                                            :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
                                            :where  [:like :c.visualization_settings "%column_settings%"]}))))
 
-(define-reversible-migration RemoveFieldRefsFromDashboardCardColumnSettings
+(define-reversible-migration MigrateLegacyColumnKeysInDashboardCardVizSettings
   (update-legacy-column-keys-in-dashboard-card-viz-settings migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-dashboard-card-viz-settings rollback-legacy-column-keys-in-viz-settings))
 
@@ -1555,6 +1555,6 @@
                                                          [:like :object "%visualization_settings%"]
                                                          [:like :object "%column_settings%"]]}))))
 
-(define-reversible-migration RemoveFieldRefsFromCardRevisionColumnSettings
+(define-reversible-migration MigrateLegacyColumnKeysInCardRevisionVizSettings
   (update-legacy-column-keys-in-card-revision-viz-settings migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-card-revision-viz-settings rollback-legacy-column-keys-in-viz-settings))
