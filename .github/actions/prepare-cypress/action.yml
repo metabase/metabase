@@ -12,8 +12,7 @@ runs:
     - name: Install Chrome v111
       uses: browser-actions/setup-chrome@v1
       with:
-        # https://chromium.cypress.io/linux/stable/111.0.5563.146
-        chrome-version: 1097615
+        chrome-version: 127.0.6533.72
       id: setup-chrome
 
     - name: Check to see if dependencies should be cached
