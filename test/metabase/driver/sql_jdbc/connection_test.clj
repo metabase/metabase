@@ -237,7 +237,8 @@
       (let [db-details (:details (mt/db))
             oauth-db-details (-> db-details
                                  (dissoc :password)
-                                 (assoc :auth-provider :azure-managed-identity
+                                 (assoc :use-auth-provider true
+                                        :auth-provider :azure-managed-identity
                                         :azure-managed-identity-client-id "client ID"))
             ;; we return an expired token which forces a renewal when a second connection is requested
             ;; (the first time it is used without checking for expiry)

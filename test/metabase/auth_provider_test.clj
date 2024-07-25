@@ -11,7 +11,8 @@
 (deftest auth-integration-test
   (mt/test-drivers #{:postgres :mysql}
     (let [original-details (:details (mt/db))
-          auth-details {:auth-provider :http
+          auth-details {:use-auth-provider true
+                        :auth-provider :http
                         :http-auth-url (client/build-url "/testing/echo"
                                                          {:body (json/encode original-details)})}]
       (mt/with-temp [:model/Database db
