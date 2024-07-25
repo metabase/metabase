@@ -11,7 +11,7 @@ type Props = {
   onClick?: () => void;
 };
 
-const COMPACT_BUTTON_PADDING = 3;
+const COMPACT_BUTTON_PADDING = 4;
 
 /**
  * Account for compact button's padding, so that the size of this component's root element
