@@ -560,19 +560,22 @@
             ;; This is also true of the colours for the legend circle elements.
             ;; When legend and Totals are disabled, we should expect those elements not to exist in the render
             (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
-                                                  {:legend-els-colours ["#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"]
-                                                   :slice-els-colours  ["#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"]
-                                                   :total-els-text     ["TOTAL"]}]
+                                                  {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :total-els-text     #{"TOTAL"}}]
                                                  [card-b-doc "Renders without legend and 'total' when disabled in viz-settings."
-                                                  {:legend-els-colours []
-                                                   :slice-els-colours  ["#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"]
-                                                   :total-els-text     []}]]]
+                                                  {:legend-els-colours #{}
+                                                   :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :total-els-text     #{}}]]]
               (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
-                                         (map #(get-in % [:attrs :fill])))
+                                         (map #(get-in % [:attrs :fill]))
+                                         set)
                     slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
-                                         (map #(get-in % [:attrs :fill])))
+                                         (map #(get-in % [:attrs :fill]))
+                                         set)
                     total-elements  (->> (hik.s/select (hik.s/find-in-text #"TOTAL") doc)
-                                         (map (fn [el] (-> el :content first))))]
+                                         (map (fn [el] (-> el :content first)))
+                                         set)]
                 (testing test-str
                   (is (= expectations
                          {:legend-els-colours legend-elements
