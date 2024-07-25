@@ -104,7 +104,7 @@
                       {:driver driver, :honeysql-query honeysql-query}
                       e)))))
 
-(mu/defn ^:private reduce-results* :- :some
+(mu/defn- reduce-results* :- :some
   [honeysql-query :- :map
    rff            :- ::qp.schema/rff
    init]

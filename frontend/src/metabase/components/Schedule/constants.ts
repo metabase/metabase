@@ -153,3 +153,27 @@ export enum Cron {
   NoSpecificValue = "?",
   NoSpecificValue_Escaped = "\\?",
 }
+
+export type ScheduleComponentType =
+  | "frequency"
+  | "frame"
+  | "weekdayOfMonth"
+  | "weekday"
+  | "time"
+  | "amPm"
+  | "minute";
+
+export const getScheduleComponentLabel = (
+  componentType: ScheduleComponentType,
+) => {
+  const map: Record<ScheduleComponentType, string> = {
+    frequency: t`Frequency`,
+    frame: t`First, 15th, or last of the month`,
+    weekdayOfMonth: t`Day of the month`,
+    weekday: t`Day of the week`,
+    time: t`Time`,
+    amPm: t`AM/PM`,
+    minute: t`Minute`,
+  };
+  return map[componentType];
+};

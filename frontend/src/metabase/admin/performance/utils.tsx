@@ -1,4 +1,5 @@
-import { t } from "ttag";
+import { match } from "ts-pattern";
+import { c, t } from "ttag";
 import { memoize } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
@@ -235,9 +236,23 @@ export const getShortStrategyLabel = (
   }
   const type = strategies[strategy.type];
   const mainLabel = getLabelString(type.shortLabel ?? type.label, model);
-  if (strategy.type === "schedule") {
-    const frequency = getFrequencyFromCron(strategy.schedule);
-    return `${mainLabel}: ${frequency}`;
+  /** Part of the label shown after the colon */
+  const subLabel = match(strategy)
+    .with({ type: "schedule" }, strategy =>
+      getFrequencyFromCron(strategy.schedule),
+    )
+    .with(
+      { type: "duration" },
+      strategy =>
+        c(
+          "{0} is a number. Indicates a number of hours (the length of a cache)",
+        ).t`${strategy.duration}h`,
+    )
+    .otherwise(() => null);
+  if (subLabel) {
+    return c(
+      "{0} is the primary label for a cache invalidation strategy. {1} is a further description.",
+    ).t`${mainLabel}: ${subLabel}`;
   } else {
     return mainLabel;
   }

@@ -74,7 +74,7 @@
   (when-not (ellide? type value)
     [(->api-keys type) ((->api-vals type) value)]))
 
-(mu/defn ^:private api-table-perms
+(mu/defn- api-table-perms
   "Helper to transform 'leaf' values with table-level schemas in the data permissions graph into an API-style data permissions value.
    Coalesces permissions at the schema level if all table-level permissions within a schema are identical."
   [type :- data-perms/PermissionType
