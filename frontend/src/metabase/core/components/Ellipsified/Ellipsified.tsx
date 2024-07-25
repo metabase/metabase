@@ -28,7 +28,7 @@ export const Ellipsified = ({
   tooltip,
   children,
   tooltipMaxWidth,
-  lines,
+  lines = 1,
   placement = "top",
   "data-testid": dataTestId,
   id,
