@@ -216,6 +216,14 @@
 (defn- mark-reference [refs explicit?]
   (map #(assoc % :explicit-reference explicit?) refs))
 
+(defn- deduce-or-fetch-table-refs [parsed-query db-id field-refs]
+  (let [tables    (map :component (:tables parsed-query))
+        implicit? (into #{} (map (juxt :schema :table)) field-refs)]
+    (if (every? implicit? (map (juxt :schema :table) tables))
+      (distinct (map #(dissoc % :field-id :column) field-refs))
+      ;; if any tables are references without referencing any of their columns, we might as well fetch every table
+      (table-refs-for-query parsed-query db-id))))
+
 (defn- references-for-sql
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
   query. Errs on the side of optimism: i.e., it may return fields that are *not* in the query, and is unlikely to fail
@@ -230,11 +238,12 @@
         parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
         explicit-refs (explicit-field-refs-for-query parsed-query db-id)
         implicit-refs (set/difference (set (implicit-references-for-query parsed-query db-id))
-                                      (set explicit-refs))]
-    ;; TODO we can optimize this to only fetch tables which have not been implicitly fetched by a field yet
-    {:tables (table-refs-for-query parsed-query db-id)
-     :fields (concat (mark-reference explicit-refs true)
-                     (mark-reference implicit-refs false))}))
+                                      (set explicit-refs))
+        field-refs    (concat (mark-reference explicit-refs true)
+                             (mark-reference implicit-refs false))
+        table-refs    (deduce-or-fetch-table-refs parsed-query db-id field-refs)]
+    {:tables table-refs
+     :fields field-refs}))
 
 (defn references-for-native
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
