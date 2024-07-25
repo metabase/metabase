@@ -6,9 +6,9 @@ import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type {
-  QuestionDashboardCard,
   ClickBehavior,
   ClickBehaviorType,
+  DashboardCard,
 } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";
@@ -19,7 +19,7 @@ import { BehaviorOptionIcon } from "./TypeSelector.styled";
 
 interface BehaviorOptionProps {
   value: ClickBehaviorType;
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   icon: IconName;
   hasNextStep: boolean;
   selected: boolean;
@@ -61,7 +61,7 @@ export const BehaviorOption = ({
 };
 
 interface TypeSelectorProps {
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   clickBehavior: ClickBehavior;
   parameters: UiParameter[];
   updateSettings: (settings?: ClickBehavior) => void;

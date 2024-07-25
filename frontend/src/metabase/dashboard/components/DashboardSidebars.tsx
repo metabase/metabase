@@ -15,12 +15,12 @@ import SharingSidebar from "metabase/sharing/components/SharingSidebar";
 import type {
   CardId,
   Dashboard as IDashboard,
+  DashboardCard,
   DashboardId,
   DashboardTabId,
   DashCardId,
   DashCardVisualizationSettings,
   ParameterId,
-  QuestionDashboardCard,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
@@ -43,7 +43,7 @@ interface DashboardSidebarsProps {
     cardId: CardId;
     tabId: DashboardTabId | null;
   }) => void;
-  clickBehaviorSidebarDashcard: QuestionDashboardCard | null;
+  clickBehaviorSidebarDashcard: DashboardCard | null;
   onReplaceAllDashCardVisualizationSettings: (
     id: DashCardId,
     settings: DashCardVisualizationSettings | null | undefined,

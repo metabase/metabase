@@ -13,11 +13,11 @@ import {
 import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   Dashboard,
-  QuestionDashboardCard,
   DashCardId,
   ClickBehavior,
   DatasetColumn,
   DashCardVisualizationSettings,
+  DashboardCard,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";
@@ -30,7 +30,7 @@ function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
 
 interface Props {
   dashboard: Dashboard;
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   hideClickBehaviorSidebar: () => void;
   onUpdateDashCardColumnSettings: (

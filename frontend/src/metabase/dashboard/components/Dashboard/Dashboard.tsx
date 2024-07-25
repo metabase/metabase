@@ -9,11 +9,11 @@ import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import {
   moveDashboardToCollection,
-  type navigateToNewCardFromDashboard,
   type NewDashCardOpts,
   setArchivedDashboard,
   type SetDashboardAttributesOpts,
 } from "metabase/dashboard/actions";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import type {
   DashboardDisplayOptionControls,
@@ -31,14 +31,13 @@ import type {
   DashboardId,
   DashboardTabId,
   DashCardId,
+  DashCardVisualizationSettings,
   ParameterId,
   ParameterValueOrArray,
-  QuestionDashboardCard,
   TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
-  VisualizationSettings,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
@@ -79,7 +78,7 @@ export type DashboardProps = {
   slowCards: Record<DashCardId, boolean>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   loadingStartTime: number | null;
-  clickBehaviorSidebarDashcard: QuestionDashboardCard | null;
+  clickBehaviorSidebarDashcard: DashboardCard | null;
   isAddParameterPopoverOpen: boolean;
   sidebar: State["dashboard"]["sidebar"];
   isHeaderVisible: boolean;
@@ -114,8 +113,10 @@ export type DashboardProps = {
   onChangeLocation: (location: Location) => void;
 
   setParameterName: (id: ParameterId, name: string) => void;
-  setParameterType: (id: ParameterId, type: string) => void;
-  navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
+  setParameterType: (id: ParameterId, type: string, sectionId: string) => void;
+  navigateToNewCardFromDashboard: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
   setParameterDefaultValue: (id: ParameterId, value: unknown) => void;
   setParameterRequired: (id: ParameterId, value: boolean) => void;
   setParameterTemporalUnits: (
@@ -141,11 +142,11 @@ export type DashboardProps = {
 
   onReplaceAllDashCardVisualizationSettings: (
     id: DashCardId,
-    settings?: Partial<VisualizationSettings> | null,
+    settings: DashCardVisualizationSettings | null | undefined,
   ) => void;
   onUpdateDashCardVisualizationSettings: (
     id: DashCardId,
-    settings?: Partial<VisualizationSettings> | null,
+    settings: DashCardVisualizationSettings | null | undefined,
   ) => void;
   onUpdateDashCardColumnSettings: (
     id: DashCardId,
@@ -159,7 +160,7 @@ export type DashboardProps = {
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
-    queryParams?: Query;
+    queryParams: Query;
     options?: {
       clearCache?: boolean;
       preserveParameters?: boolean;

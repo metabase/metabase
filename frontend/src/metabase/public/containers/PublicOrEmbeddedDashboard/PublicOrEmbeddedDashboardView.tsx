@@ -20,7 +20,7 @@ import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
   EmbedHideParameters,
-  EmbedNightModeControls,
+  DashboardNightModeControls,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
@@ -92,7 +92,7 @@ export function PublicOrEmbeddedDashboardView({
   cardTitled: boolean;
   downloadsEnabled: boolean;
 } & DashboardRefreshPeriodControls &
-  EmbedNightModeControls &
+  DashboardNightModeControls &
   DashboardFullscreenControls) {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
