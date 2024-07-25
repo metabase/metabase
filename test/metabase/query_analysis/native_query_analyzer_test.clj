@@ -3,7 +3,8 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.query-analysis.native-query-analyzer :as nqa]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.util :as u]))
 
 (deftest ^:parallel field-quoting-test
   (testing "unquoted fields are case-insensitive"
@@ -38,16 +39,24 @@
                       {:field-id 3 :table "t3" :column "c3"}]))))))
 
 (defn- refs [sql]
-  (sort-by (juxt :table :column) (#'nqa/references-for-native (mt/native-query {:query sql}))))
+  (->> (mt/native-query {:query sql})
+       (#'nqa/references-for-native)
+       (sort-by (juxt :table :column))))
 
 (defn- explicit-reference [table column found?]
-  (merge
-   {:table              (name table)
-    :column             (name column)
-    :explicit-reference true}
-   (when found?
-     {:table-id (mt/id table)
-      :field-id (mt/id table column)})))
+  (if-not found?
+    {:table              (name table)
+     :column             (name column)
+     :explicit-reference true}
+    (let [reference (nqa/field-reference (mt/id) table column)]
+      ;; check that we found a valid reference
+      (assert (= #{:table-id :table :field-id :column} (set (keys reference))))
+      (assert (every? some? (vals reference)))
+      ;; the case depends on the driver, and we use what's in the database
+      (assert (= (name table) (u/lower-case-en (:table reference))))
+      (assert (= (name column) (u/lower-case-en (:column reference))))
+      ;; tag it
+      (assoc reference :explicit-reference true))))
 
 (deftest ^:parallel field-matching-test
   (testing "simple query matches"
@@ -58,6 +67,9 @@
            (refs "select \"id\" from venues")))
     (is (= [(explicit-reference :venues :id true)]
            (refs "select \"ID\" from venues"))))
+  (testing "unresolved references use case verbatim"
+    (is (= "id" (:column (first (refs "select \"id\" from unknown")))))
+    (is (= "ID" (:column (first (refs "select \"ID\" from unknown"))))))
   (testing "you can mix quoted and unquoted names"
     (is (= [(explicit-reference :venues :id true)
             (explicit-reference :venues :name true)]

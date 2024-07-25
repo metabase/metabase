@@ -30,8 +30,8 @@
 
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
-  {:select [[:f.id :field-id] [[:lower :f.name] :column]
-            [:t.id :table-id] [[:lower :t.name] :table]]
+  {:select [[:f.id :field-id] [:f.name :column]
+            [:t.id :table-id] [:t.name :table]]
    :from   [[:metabase_field :f]]
    ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
    :join   [[:metabase_table :t] [:= :table_id :t.id]]})
@@ -109,8 +109,10 @@
 (defn- consolidate-columns
   "Qualify analyzed columns with the corresponding database IDs, where we are able to resolve them."
   [analyzed-columns database-columns]
-  (let [column->records       (group-by (comp :column) database-columns)
-        table+column->records (group-by (juxt :table :column) database-columns)]
+  (let [->tab-key             (comp u/lower-case-en :table)
+        ->col-key             (comp u/lower-case-en :column)
+        column->records       (group-by (comp ->col-key) database-columns)
+        table+column->records (group-by (juxt ->tab-key ->col-key) database-columns)]
     (strip-redundant-refs
      (mapcat (fn [{:keys [table column] :as reference}]
                (or (if table
@@ -118,6 +120,15 @@
                      (column->records (normalized-key column)))
                    [(update-vals reference strip-quotes)]))
              analyzed-columns))))
+
+(defn field-reference
+  "Used by tests"
+  [db-id table column]
+  (t2/select-one :model/Field (assoc field-and-table-fragment
+                                     :where [:and
+                                             [:= :t.db_id db-id]
+                                             (column-query nil {:table  (name table)
+                                                                :column (name column)})])))
 
 (defn- explicit-references-for-query
   "Selects IDs of Fields that could be used in the query"
