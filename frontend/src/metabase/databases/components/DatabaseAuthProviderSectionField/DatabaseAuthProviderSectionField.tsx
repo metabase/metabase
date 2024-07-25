@@ -4,15 +4,15 @@ import { t } from "ttag";
 
 import FormField from "metabase/core/components/FormField";
 
-import { SectionButton } from "./DatabaseHostameSectionField.styled";
+import { SectionButton } from "./DatabaseAuthProviderSectionField.styled";
 
-export interface DatabaseHostnameSectionFieldProps {
+export interface DatabaseAuthProviderSectionFieldProps {
   name: string;
 }
 
-const DatabaseHostnameSectionField = ({
+const DatabaseAuthProviderSectionField = ({
   name,
-}: DatabaseHostnameSectionFieldProps): JSX.Element => {
+}: DatabaseAuthProviderSectionFieldProps): JSX.Element => {
   const [{ value }, , { setValue }] = useField(name);
 
   const handleClick = useCallback(() => {
@@ -22,11 +22,11 @@ const DatabaseHostnameSectionField = ({
   return (
     <FormField>
       <SectionButton type="button" onClick={handleClick}>
-        {value ? t`Use account name` : t`Use hostname`}
+        {value ? t`Use password` : t`Use an authentication provider`}
       </SectionButton>
     </FormField>
   );
 };
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage
-export default DatabaseHostnameSectionField;
+export default DatabaseAuthProviderSectionField;
