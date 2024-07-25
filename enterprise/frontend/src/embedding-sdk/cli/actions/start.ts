@@ -2,6 +2,7 @@ import { confirm, input } from "@inquirer/prompts";
 
 import {
   checkIsDockerRunning,
+  CONTAINER_NAME,
   startLocalMetabaseContainer,
 } from "../utils/docker";
 import { generateRandomDemoPassword } from "../utils/generate-password";
@@ -19,6 +20,11 @@ const START_MESSAGE = `
 const DOCKER_NOT_RUNNING_MESSAGE = `
   Docker is not running. Please install and start the Docker daemon before running this command.
   For more information, see https://docs.docker.com/engine/install
+`;
+
+const INSTANCE_NOT_READY_ERROR = `
+  Could not connect to your local Metabase instance.
+  Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.
 `;
 
 const isEmail = (email: string) => email.match(/^\S+@\S+\.\S+$/) !== null;
@@ -62,7 +68,13 @@ export async function start() {
 
     const instanceUrl = `http://localhost:${port}`;
 
-    await pollUntilMetabaseInstanceReady(instanceUrl);
+    const instanceReady = await pollUntilMetabaseInstanceReady(instanceUrl);
+
+    if (!instanceReady) {
+      printError(INSTANCE_NOT_READY_ERROR);
+
+      return;
+    }
 
     const setupSuccess = await setupMetabaseInstance({
       email,

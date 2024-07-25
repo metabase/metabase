@@ -1,8 +1,8 @@
 export function generateRandomDemoPassword(): string {
-  const lowerCaseChars = "abcdefghijklmnopqrstuvwxyz";
+  const chars = "abcdefghijklmnopqrstuvwxyz";
   const numbers = "0123456789";
 
-  const allChars = lowerCaseChars + numbers;
+  const allChars = chars + chars.toUpperCase() + numbers;
   const length = 10;
 
   let password = "";

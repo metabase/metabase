@@ -1,6 +1,7 @@
 import { exec as execCallback } from "child_process";
 
 import chalk from "chalk";
+import ora from "ora";
 import { promisify } from "util";
 
 import { getCurrentDockerPort } from "./get-current-docker-port";
@@ -26,9 +27,6 @@ const messageContainerStarted = (
   port: number,
 ) => `Your local Metabase instance has been started on port ${port}.
   Use the "docker ps" command to see the Docker container's status.`;
-
-const CONTAINER_CHECK_MESSAGE =
-  "Checking if Metabase is already running in a Docker container...";
 
 const METABASE_INSTANCE_DEFAULT_ENVS: Record<string, string> = {
   MB_EMBEDDING_APP_ORIGIN: "http://localhost:*",
@@ -86,8 +84,6 @@ const randInt = (min: number, max: number) =>
 export async function startLocalMetabaseContainer(): Promise<number | false> {
   let port = DEFAULT_PORT;
 
-  printInfo(chalk.grey(CONTAINER_CHECK_MESSAGE));
-
   const container = await getLocalMetabaseContainer();
 
   if (container) {
@@ -105,25 +101,25 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
     if (container.State === "exited") {
       const { stderr, stdout } = await exec(`docker start ${CONTAINER_NAME}`);
 
-      // stderr may show a warning about architecture mismatch on
-      // Apple Silicon, but it does not prevent the container from starting.
-      if (stderr) {
-        printInfo(chalk.grey(stderr.trim()));
-      }
-
       if (stdout.trim().includes(CONTAINER_NAME)) {
         printSuccess(messageContainerStarted(port));
         return port;
+      }
+
+      if (stderr) {
+        printInfo(chalk.grey(stderr.trim()));
       }
 
       return false;
     }
   }
 
+  const loadingSpinner = ora(
+    "Starting Metabase in a Docker container...",
+  ).start();
+
   // if the container has never been run before, we should run it.
   try {
-    printInfo("Starting Metabase in a Docker container...");
-
     // If the port is already taken, we should try another port.
     while (await checkIsPortTaken(port)) {
       console.log(
@@ -142,15 +138,14 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
       `docker run --detach -p ${port}:3000 ${envFlags} --name ${CONTAINER_NAME} ${IMAGE_NAME}`,
     );
 
-    // stderr may show a warning about architecture mismatch on
-    // Apple Silicon, but it does not prevent the container from starting.
-    if (stderr) {
-      printInfo(chalk.grey(stderr.trim()));
-    }
-
     if (stdout) {
+      loadingSpinner.stop();
       printSuccess(messageContainerStarted(port));
       return port;
+    }
+
+    if (stderr) {
+      printInfo(chalk.grey(stderr.trim()));
     }
 
     return false;
@@ -161,5 +156,7 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
     }
 
     return false;
+  } finally {
+    loadingSpinner.stop();
   }
 }
