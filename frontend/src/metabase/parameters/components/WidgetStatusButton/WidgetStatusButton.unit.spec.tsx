@@ -71,24 +71,20 @@ describe("WidgetStatusButton", () => {
       setup({ status: "empty" });
 
       expect(screen.getByLabelText("chevrondown icon")).toBeInTheDocument();
-      expect(screen.getByRole("button")).toBeDisabled();
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
 
     it("does not have tooltip", async () => {
       setup({ status: "empty" });
 
-      await userEvent.hover(screen.getByRole("button"), {
-        pointerEventsCheck: 0,
-      });
+      await userEvent.hover(screen.getByRole("img"));
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
 
     it("is not clickable", async () => {
       const { onClick } = setup({ status: "empty" });
 
-      await userEvent.click(screen.getByRole("button"), {
-        pointerEventsCheck: 0,
-      });
+      await userEvent.click(screen.getByRole("img"));
       expect(onClick).not.toHaveBeenCalled();
     });
   });
@@ -98,24 +94,20 @@ describe("WidgetStatusButton", () => {
       setup({ status: "none" });
 
       expect(screen.getByLabelText("empty icon")).toBeInTheDocument();
-      expect(screen.getByRole("button")).toBeDisabled();
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
     });
 
     it("does not have tooltip", async () => {
       setup({ status: "none" });
 
-      await userEvent.hover(screen.getByRole("button"), {
-        pointerEventsCheck: 0,
-      });
+      await userEvent.hover(screen.getByRole("img"));
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
 
     it("is not clickable", async () => {
       const { onClick } = setup({ status: "none" });
 
-      await userEvent.click(screen.getByRole("button"), {
-        pointerEventsCheck: 0,
-      });
+      await userEvent.click(screen.getByRole("img"));
       expect(onClick).not.toHaveBeenCalled();
     });
   });
