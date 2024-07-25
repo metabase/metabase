@@ -23,9 +23,6 @@
                             :model/Field      {field-1 :id}  {:active   false
                                                               :name     "FA"
                                                               :table_id table-1}
-                            :model/Field      {field-1b :id} {:active   false
-                                                              :name     "FAB"
-                                                              :table_id table-1}
                             :model/Field      {field-2 :id}  {:active   false
                                                               :name     "FB"
                                                               :table_id table-1}
@@ -35,19 +32,25 @@
                             ;; QFs not to include:
                             ;; - Field is still active
                             :model/QueryField {}             {:card_id  card-1
+                                                              :column   "tax"
                                                               :field_id (mt/id :orders :tax)}
                             ;; - Implicit reference
                             :model/QueryField {}             {:card_id            card-2
+                                                              :column             "FA"
                                                               :field_id           field-1
                                                               :explicit_reference false}
                             ;; QFs to include:
                             :model/QueryField {qf-1 :id}     {:card_id  card-1
+                                                              :column   "FA"
                                                               :field_id field-1}
                             :model/QueryField {qf-1b :id}    {:card_id  card-1
-                                                              :field_id field-1b}
+                                                              :column   "FAB"
+                                                              :field_id nil}
                             :model/QueryField {qf-2 :id}     {:card_id  card-2
+                                                              :column   "FB"
                                                               :field_id field-2}
                             :model/QueryField {qf-3 :id}     {:card_id  card-3
+                                                              :column   "FC"
                                                               :field_id field-3}]
      (mt/with-premium-features #{:query-reference-validation}
        (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-1b qf-2 qf-3])))))
@@ -155,6 +158,20 @@
   `(do-report
     (qv=-report ~message ~expected ~actual ~unexpected)))
 
+(deftest premium-feature-test
+  (testing "It requires the premium feature"
+    (mt/with-premium-features #{}
+      (is (= (str "Query Reference Validation is a paid feature not currently available to your instance. Please upgrade to"
+                  " use it. Learn more at metabase.com/upgrade/")
+             (mt/user-http-request :crowberto :get 402 url))))))
+
+(defn- strip-unrelated
+  "This is a despearate workaround to trim the diffs from qv=. Ideally we rather make qv= smarter."
+  [response]
+  (-> response
+      (select-keys [:total :limit :offset :data])
+      (update :data (partial map #(select-keys % [:id :name :errors])))))
+
 (deftest list-invalid-cards-basic-test
   (testing "Only returns cards with problematic field refs"
     (with-test-setup
@@ -163,21 +180,17 @@
                 [{:id     card-1
                   :name   "A"
                   :errors [{:type "inactive-field", :table "T1", :field "FA"}
-                           {:type "inactive-field", :table "T1", :field "FAB"}]}
+                           ;; TODO fix the table name here once we track it in QueryField
+                           {:type "unknown-field", :table "unknown", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
                   :errors [{:type "inactive-field", :table "T1", :field "FB"}]}
                  {:id     card-3
                   :name   "C"
                   :errors [{:type "inactive-table", :table "T2", :field "FC"}]}]}
-               (get!)
+               (strip-unrelated (get!))
                [{:id   card-4
-                 :name "D"}]))))
-  (testing "It requires the premium feature"
-    (mt/with-premium-features #{}
-      (is (= (str "Query Reference Validation is a paid feature not currently available to your instance. Please upgrade to"
-                  " use it. Learn more at metabase.com/upgrade/")
-             (mt/user-http-request :crowberto :get 402 url))))))
+                 :name "D"}])))))
 
 (deftest pagination-test
   (testing "Lets you page results"
@@ -189,11 +202,12 @@
                 [{:id     card-1
                   :name   "A"
                   :errors [{:type "inactive-field", :table "T1", :field "FA"}
-                           {:type "inactive-field", :table "T1", :field "FAB"}]}
+                           ;; TODO fix the table name here once we track it in QueryField
+                           {:type "unknown-field", :table "unknown", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
                   :errors [{:type "inactive-field", :table "T1", :field "FB"}]}]}
-               (get! {:limit 2})
+               (strip-unrelated (get! {:limit 2}))
                [{:id   card-3
                  :name "C"}
                 {:id   card-4
@@ -205,7 +219,7 @@
                 [{:id     card-3
                   :name   "C"
                   :errors [{:type "inactive-table", :table "T2", :field "FC"}]}]}
-               (get! {:limit 1 :offset 2})
+               (strip-unrelated (get! {:limit 1 :offset 2}))
                [{:id   card-1
                  :name "A"}
                 {:id   card-2
