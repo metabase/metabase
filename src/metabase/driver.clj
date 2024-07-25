@@ -970,7 +970,7 @@
 (defmulti incorporate-auth-provider-details
   "A multimethod for driver specific behavior required to incorporate response of an auth-provider into the DB details.
    In most cases this means setting the :password and/or :username based on the auth-provider and its response."
-  {:added "0.32.0" :arglists '([driver auth-provider auth-provider-response details])}
+  {:added "0.50.17" :arglists '([driver auth-provider auth-provider-response details])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
 

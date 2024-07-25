@@ -113,6 +113,12 @@ title: Driver interface changelog
 -  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in
    tests. Currently, this is disabled only for `:sparksql`.
 
+## Metabase 0.50.17
+
+- Added method `metabase.driver/incorporate-auth-provider-details` for driver specific behavior required to
+  incorporate response of an auth-provider into the DB details.  In most cases this means setting the :password
+  and/or :username based on the auth-provider and its response.
+
 ## Metabase 0.50.16
 
 - `:type/fingerprinting-unsupported` has been added in the `metabase.types` namespace. Similar to
