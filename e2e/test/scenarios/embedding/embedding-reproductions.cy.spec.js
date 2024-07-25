@@ -543,7 +543,7 @@ describe("issue 27643", () => {
     });
   });
 
-  describe("dashboards", () => {
+  describe("should allow a dashboard filter to map to a boolean field filter parameter (metabase#27643)", () => {
     beforeEach(() => {
       const dashboardParameter = {
         id: "2850aeab",
@@ -589,7 +589,7 @@ describe("issue 27643", () => {
         });
     });
 
-    it("should allow a dashboard filter to map to a boolean field filter parameter in static embedding (metabase#27643)", () => {
+    it("in static embedding and in public dashboard scenarios (metabase#27643-1)", () => {
       cy.log("Test the dashboard");
       toggleFilterWidgetValues(["false"]);
       getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
@@ -617,7 +617,7 @@ describe("issue 27643", () => {
     });
   });
 
-  describe("questions", () => {
+  describe("should allow a native question filter to map to a boolean field filter parameter (metabase#27643)", () => {
     beforeEach(() => {
       cy.get("@postgresInvoicesExpectedInvoiceId").then(fieldId => {
         createNativeQuestion(getQuestionDetails(fieldId), {
@@ -628,7 +628,7 @@ describe("issue 27643", () => {
       });
     });
 
-    it("should allow a native question filter to map to a boolean field filter parameter in static embedding (metabase#27643)", () => {
+    it("in static embedding and in public question scenarios (metabase#27643-2)", () => {
       cy.log("Test the question");
       toggleFilterWidgetValues(["false"]);
       queryBuilderMain().button("Get Answer").click();
