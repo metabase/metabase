@@ -29,12 +29,11 @@
 (defmacro with-stale-items [inputs & body]
   (let [processed-inputs
         (map (fn [[model binding args]]
-               (if-let [column (case model
-                                 :model/Card :last_used_at
-                                 :model/Dashboard :last_viewed_at
-                                 nil)]
-                 [model binding `(assoc ~args ~column (datetime-months-ago 7))]
-                 [model binding `~args]))
+               (let [column (case model
+                              :model/Card :last_used_at
+                              :model/Dashboard :last_viewed_at
+                              (throw (ex-info "`with-stale` only works for cards or dashboards." {})))]
+                 [model binding `(assoc ~args ~column (datetime-months-ago 7))]))
              (partition-all 3 inputs))]
     `(mt/with-temp ~(vec (apply concat processed-inputs))
        ~@body)))

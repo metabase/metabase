@@ -10,7 +10,7 @@
 (set! *warn-on-reflection* true)
 
 (def ^:private FindStaleContentArgs
-  [:map {}
+  [:map
    [:collection-ids [:set {:doc "The set of collection IDs to search for stale content."} [:maybe :int]]]
    [:cutoff-date [:time/local-date {:doc "The cutoff date for stale content."}]]
    [:limit  [:maybe {:doc "The limit for pagination."} :int]]

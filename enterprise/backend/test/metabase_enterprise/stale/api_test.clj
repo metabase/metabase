@@ -102,77 +102,79 @@
                         (map :name)
                         set)))))))
     (testing "I can get stale items from the root collection"
-      (stale.test/with-stale-items [:model/Card card-a {:name "Card in root"}
-                                    :model/Dashboard dashboard-a {:name "Dashboard in root"}
-                                    :model/Collection {coll-id :id} {}
-                                    :model/Card card-b {:name "Card in coll"
-                                                        :collection_id coll-id}
-                                    :model/Dashboard dashboard-b {:name "Dashboard in coll"
-                                                                  :collection_id coll-id}]
-        (is (= #{"Card in root"
-                 "Card in coll"
-                 "Dashboard in root"
-                 "Dashboard in coll"}
-               (->> (mt/user-http-request :crowberto :get 200 "collection/root/stale"
-                                          :is_recursive true)
-                    :data
-                    (filter #(contains? #{(u/the-id card-a)
-                                          (u/the-id card-b)
-                                          (u/the-id dashboard-a)
-                                          (u/the-id dashboard-b)}
-                                        (:id %)))
-                    (map :name)
-                    set)))))
+      (mt/with-temp [:model/Collection {coll-id :id} {}]
+        (stale.test/with-stale-items [:model/Card card-a {:name "Card in root"}
+                                      :model/Dashboard dashboard-a {:name "Dashboard in root"}
+                                      :model/Card card-b {:name "Card in coll"
+                                                          :collection_id coll-id}
+                                      :model/Dashboard dashboard-b {:name "Dashboard in coll"
+                                                                    :collection_id coll-id}]
+          (is (= #{"Card in root"
+                   "Card in coll"
+                   "Dashboard in root"
+                   "Dashboard in coll"}
+                 (->> (mt/user-http-request :crowberto :get 200 "collection/root/stale"
+                                            :is_recursive true)
+                      :data
+                      (filter #(contains? #{(u/the-id card-a)
+                                            (u/the-id card-b)
+                                            (u/the-id dashboard-a)
+                                            (u/the-id dashboard-b)}
+                                          (:id %)))
+                      (map :name)
+                      set))))))
     (testing "the collection data is included"
-      (stale.test/with-stale-items [:model/Card card-in-root {:name "A Card in root"}
-                                    :model/Dashboard dashboard-in-root {:name "B Dashboard in root"}
+      (mt/with-temp [:model/Collection {top-coll-id :id
+                                        top-coll-name :name
+                                        :as top-coll} {}
 
-                                    :model/Collection {top-coll-id :id
-                                                       top-coll-name :name
-                                                       :as top-coll} {}
+                     :model/Collection
+                     {child-coll-id :id
+                      child-coll-name :name}
+                     {:location (collection/children-location top-coll)}]
+        (stale.test/with-stale-items [:model/Card card-in-root {:name "A Card in root"}
+                                      :model/Dashboard dashboard-in-root {:name "B Dashboard in root"}
 
-                                    :model/Card card-in-top-level-coll {:name "C Card in coll"
-                                                                        :collection_id top-coll-id}
-                                    :model/Dashboard dashboard-in-top-level-coll {:name "D Dashboard in coll"
-                                                                                  :collection_id top-coll-id}
+                                      :model/Card card-in-top-level-coll {:name "C Card in coll"
+                                                                          :collection_id top-coll-id}
+                                      :model/Dashboard dashboard-in-top-level-coll {:name "D Dashboard in coll"
+                                                                                    :collection_id top-coll-id}
 
-                                    :model/Collection {child-coll-id :id
-                                                       child-coll-name :name} {:location (collection/children-location top-coll)}
-                                    :model/Card card-in-child-coll {:name "E Card in coll"
-                                                                    :collection_id child-coll-id}
-                                    :model/Dashboard dashboard-in-child-coll {:name "F Dashboard in coll"
-                                                                              :collection_id child-coll-id}]
-        (is (= [;; the first two items are in the root collection
-                {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
-                {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
+                                      :model/Card card-in-child-coll {:name "E Card in coll"
+                                                                      :collection_id child-coll-id}
+                                      :model/Dashboard dashboard-in-child-coll {:name "F Dashboard in coll"
+                                                                                :collection_id child-coll-id}]
+          (is (= [;; the first two items are in the root collection
+                  {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
+                  {:id nil :name nil :type nil :authority_level nil :effective_ancestors []}
 
-                ;; next we have two items in our top-level collection
-                {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
-                {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
+                  ;; next we have two items in our top-level collection
+                  {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
+                  {:id top-coll-id :name top-coll-name :type nil :authority_level nil :effective_ancestors []}
 
-                ;; finally we have 2 items in our child collection
-                {:id child-coll-id
-                 :name child-coll-name
-                 :type nil
-                 :authority_level nil
-                 :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :authority_level nil}]}
-                {:id child-coll-id
-                 :name child-coll-name
-                 :type nil
-                 :authority_level nil
-                 :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :authority_level nil}]}]
+                  ;; finally we have 2 items in our child collection
+                  {:id child-coll-id
+                   :name child-coll-name
+                   :type nil
+                   :authority_level nil
+                   :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :authority_level nil}]}
+                  {:id child-coll-id
+                   :name child-coll-name
+                   :type nil
+                   :authority_level nil
+                   :effective_ancestors [{:id top-coll-id :name (:name top-coll) :type nil :authority_level nil}]}]
 
-               (->> (mt/user-http-request :crowberto :get 200 "collection/root/stale"
-                                          :is_recursive true :sort_column "name")
-                    :data
-                    (filter #(contains? #{(u/the-id card-in-root)
-                                          (u/the-id card-in-top-level-coll)
-                                          (u/the-id card-in-child-coll)
-                                          (u/the-id dashboard-in-root)
-                                          (u/the-id dashboard-in-top-level-coll)
-                                          (u/the-id dashboard-in-child-coll)}
-                                        (:id %)))
-                    (map :collection))))))))
+                 (->> (mt/user-http-request :crowberto :get 200 "collection/root/stale"
+                                            :is_recursive true :sort_column "name")
+                      :data
+                      (filter #(contains? #{(u/the-id card-in-root)
+                                            (u/the-id card-in-top-level-coll)
+                                            (u/the-id card-in-child-coll)
+                                            (u/the-id dashboard-in-root)
+                                            (u/the-id dashboard-in-top-level-coll)
+                                            (u/the-id dashboard-in-child-coll)}
+                                          (:id %)))
+                      (map :collection)))))))))
 
 (deftest stale-items-limits-and-offsets-work-correctly
   (mt/with-premium-features #{:stale}
