@@ -52,7 +52,7 @@ const getDownloadedResourceType = ({
   token,
   question,
 }: Partial<DownloadQueryResultsOpts>): DownloadedResourceType => {
-  const cardId = question.id();
+  const cardId = question?.id();
 
   if (dashcardId != null && token != null) {
     return "static-embed-dashcard";
