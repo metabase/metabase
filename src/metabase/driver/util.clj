@@ -667,8 +667,8 @@
   If you have a database you need to pass the database-id as some providers will need to save the response (e.g. refresh-tokens)."
   ([driver db-details]
    (fetch-and-incorporate-auth-provider-details driver nil db-details))
-  ([driver database-id {:keys [auth-provider] :as db-details}]
-   (if auth-provider
+  ([driver database-id {:keys [use-auth-provider auth-provider] :as db-details}]
+   (if use-auth-provider
      (let [auth-provider (keyword auth-provider)]
        (driver/incorporate-auth-provider-details
         driver

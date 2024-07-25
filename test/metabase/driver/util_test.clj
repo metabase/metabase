@@ -325,6 +325,7 @@
 (deftest ^:parallel simple-test
   (let [details {:username "test"
                  :password "ignored"
+                 :use-auth-provider true
                  :auth-provider ::test-me
                  :key "testing"}]
     (mt/with-temp [:model/Database db {:details details}]
@@ -336,39 +337,56 @@
 
 (deftest http-provider-tests
   (let [original-details (:details (mt/db))
-        http-provider-details {:auth-provider "http"
-                               :http-auth-url (client/build-url "/testing/echo"
-                                                                {:body (json/encode original-details)})}]
-    (is (= original-details (auth-provider/fetch-auth :http nil http-provider-details)))
-    (is (= (merge http-provider-details original-details)
+        provider-details {:use-auth-provider true
+                          :auth-provider "http"
+                          :http-auth-url (client/build-url "/testing/echo"
+                                                           {:body (json/encode original-details)})}]
+    (is (= original-details (auth-provider/fetch-auth :http nil provider-details)))
+    (is (= (merge provider-details original-details)
            (driver.u/fetch-and-incorporate-auth-provider-details
             (tx/driver)
-            http-provider-details)))))
+            provider-details)))))
 
 (deftest oauth-provider-tests
   (let [oauth-response {:access_token "foobar"
                         :expires_in "84791"}
-        oauth-provider-details {:auth-provider :oauth
-                                :oauth-token-url (client/build-url "/testing/echo"
-                                                                   {:body (json/encode oauth-response)})}]
-    (is (= oauth-response (auth-provider/fetch-auth :oauth nil oauth-provider-details)))
-    (is (=? (merge oauth-provider-details
+        provider-details {:use-auth-provider true
+                          :auth-provider :oauth
+                          :oauth-token-url (client/build-url "/testing/echo"
+                                                             {:body (json/encode oauth-response)})}]
+    (is (= oauth-response (auth-provider/fetch-auth :oauth nil provider-details)))
+    (is (=? (merge provider-details
                    {:password "foobar"
                     :password-expiry-timestamp #(and (int? %) (> % (System/currentTimeMillis)))})
             (driver.u/fetch-and-incorporate-auth-provider-details
              (tx/driver)
-             oauth-provider-details)))))
+             provider-details)))))
 
 (deftest ^:parallel azure-managed-identity-provider-tests
-  (let [client-id "client ID"
-        provider-details {:auth-provider :azure-managed-identity
-                          :azure-managed-identity-client-id client-id}
-        response-body {:access_token "foobar"}]
-    (binding [auth-provider/*fetch-as-json* (fn [url _headers]
-                                              (is (str/includes? url client-id))
-                                              response-body)]
-      (is (= response-body (auth-provider/fetch-auth :azure-managed-identity nil provider-details)))
-      (is (= (merge provider-details {:password "foobar"})
-             (driver.u/fetch-and-incorporate-auth-provider-details
-              (tx/driver)
-              provider-details))))))
+  (testing "password gets resolved"
+    (let [client-id "client ID"
+          provider-details {:use-auth-provider true
+                            :auth-provider :azure-managed-identity
+                            :azure-managed-identity-client-id client-id
+                            :password "xyz"}
+          response-body {:access_token "foobar"}]
+      (binding [auth-provider/*fetch-as-json* (fn [url _headers]
+                                                (is (str/includes? url client-id))
+                                                response-body)]
+        (is (= response-body (auth-provider/fetch-auth :azure-managed-identity nil provider-details)))
+        (is (= (merge provider-details {:password "foobar"})
+               (driver.u/fetch-and-incorporate-auth-provider-details
+                (tx/driver)
+                provider-details))))))
+  (testing "existing password doesn't get overwritten if not using an auth provider"
+    (let [client-id "client ID"
+          provider-details {:use-auth-provider false
+                            :auth-provider :azure-managed-identity
+                            :azure-managed-identity-client-id client-id
+                            :password "xyz"}]
+      (binding [auth-provider/*fetch-as-json* (fn [_url _headers]
+                                                (is false "should not get called"))]
+        (is (= provider-details
+               (driver.u/fetch-and-incorporate-auth-provider-details
+                (tx/driver)
+                provider-details)))))))
