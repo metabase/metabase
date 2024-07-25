@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 import { Checkbox, DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
@@ -11,7 +12,6 @@ import {
   ItemTitle,
   ItemIcon,
 } from "./FieldPicker.styled";
-import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 export interface FieldPickerItem {
   column: Lib.ColumnMetadata;

@@ -4,9 +4,9 @@ import { t } from "ttag";
 
 import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicker/BucketPickerPopover";
 import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 import Tooltip from "metabase/core/components/Tooltip";
 import * as Lib from "metabase-lib";
-import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 import {
   AddButton,

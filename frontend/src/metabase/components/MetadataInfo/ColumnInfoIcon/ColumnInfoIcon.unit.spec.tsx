@@ -1,9 +1,9 @@
 import { fireEvent, render, screen } from "__support__/ui";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 
 import { QueryColumnInfoIcon, TableColumnInfoIcon } from "./ColumnInfoIcon";
-import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 function setup(table: string, column: string) {
   const query = createQuery();
@@ -35,7 +35,7 @@ describe("QueryColumnInfoIcon", () => {
   it("should render with IconContainer", () => {
     setup("PRODUCTS", "CATEGORY");
     const iconContainer = screen.getByLabelText("More info");
-    expect(iconContainer).toHaveAttribute("class", expect.stringContaining("IconContainer"));
+    expect(iconContainer).toHaveClass("IconContainer");
   });
 });
 
@@ -43,6 +43,6 @@ describe("TableColumnInfoIcon", () => {
   it("should render with IconContainer", () => {
     render(<TableColumnInfoIcon field={{} as any} icon="string" />);
     const iconContainer = screen.getByLabelText("More info");
-    expect(iconContainer).toHaveAttribute("class", expect.stringContaining("IconContainer"));
+    expect(iconContainer).toHaveClass("IconContainer");
   });
 });

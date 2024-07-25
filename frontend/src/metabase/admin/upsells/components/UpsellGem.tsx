@@ -1,5 +1,6 @@
-import { FixedSizeIcon } from "metabase/ui";
 import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
+import { FixedSizeIcon } from "metabase/ui";
+
 import { upsellColors } from "./Upsells.styled";
 
 export const UpsellGem = () => {
