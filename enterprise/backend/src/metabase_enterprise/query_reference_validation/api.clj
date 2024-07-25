@@ -74,9 +74,9 @@
         cards               (t2/select :model/Card card-query)
         id->errors          (query-field/reference-errors cards)
         add-errors          (fn [{:keys [id] :as card}]
-                              (assoc card :errors (id->errors id)))]
+                              (assoc card :errors (sort-by :table (id->errors id))))]
     {:data (map (comp present add-errors) (t2/hydrate cards [:collection :effective_ancestors] :creator))
-     :total (t2/count :model/Card card-query)}))
+     :total (t2/count :model/Card (dissoc card-query :limit :offset))}))
 
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
