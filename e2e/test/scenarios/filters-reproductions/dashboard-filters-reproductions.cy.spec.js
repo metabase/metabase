@@ -1467,7 +1467,9 @@ describe("issues 15279 and 24500", () => {
 
     popover().within(() => {
       cy.findByTextEnsureVisible("Organic").click();
-      cy.findByTestId("Organic-filter-value").should("be.checked");
+      cy.findByTestId("Organic-filter-value")
+        .find("input")
+        .should("be.checked");
       cy.button("Add filter").click();
     });
 
@@ -1510,7 +1512,10 @@ describe("issues 15279 and 24500", () => {
 
     cy.log("Make sure the list filter still works");
     filterWidget().contains("Organic").click();
-    popover().findByTestId("Organic-filter-value").should("be.checked");
+    popover()
+      .findByTestId("Organic-filter-value")
+      .find("input")
+      .should("be.checked");
 
     cy.log("Make sure the search filter still works");
     // reset filter value
