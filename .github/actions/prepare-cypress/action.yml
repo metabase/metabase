@@ -13,6 +13,7 @@ runs:
       uses: browser-actions/setup-chrome@v1
       with:
         chrome-version: 127.0.6533.72
+        install-chromedriver: true
       id: setup-chrome
 
     - name: Check to see if dependencies should be cached
