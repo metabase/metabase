@@ -3,6 +3,7 @@
   multimethods for SQL JDBC drivers."
   (:require
    [clojure.java.jdbc :as jdbc]
+   [metabase.auth-provider :as auth-provider]
    [metabase.connection-pool :as connection-pool]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -170,7 +171,11 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details  ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
-        spec                (connection-details->spec driver details-with-tunnel)
+        details-with-auth   (auth-provider/fetch-and-incorporate-auth-provider-details
+                              driver
+                              id
+                              details-with-tunnel)
+        spec                (connection-details->spec driver details-with-auth)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
       (connection-pool-spec spec properties)
@@ -310,7 +315,10 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   [driver details f]
   (let [details (update details :port #(or % (default-ssh-tunnel-target-port driver)))]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
-      (let [spec (connection-details->spec driver details-with-tunnel)]
+      (let [details-with-auth (auth-provider/fetch-and-incorporate-auth-provider-details
+                                driver
+                                details-with-tunnel)
+            spec (connection-details->spec driver details-with-auth)]
         (f spec)))))
 
 (defmacro with-connection-spec-for-testing-connection
