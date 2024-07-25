@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import ora from "ora";
 
-import { CONTAINER_NAME } from "./docker";
+import { CONTAINER_NAME, EMBEDDING_DEMO_SETUP_TOKEN } from "./docker";
 import { printError, printInfo } from "./print";
 
 interface SetupOptions {
@@ -10,8 +10,7 @@ interface SetupOptions {
   password: string;
 }
 
-const SITE_NAME = "Metabase Embedding SDK Demo";
-
+export const SITE_NAME = "Metabase Embedding SDK Demo";
 export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
 
 const INSTANCE_CONFIGURED_MESSAGE = `
@@ -51,32 +50,14 @@ export async function setupMetabaseInstance(
   try {
     spinner.start("Preparing to setup the instance...");
 
-    let res = await fetch(`${instanceUrl}/api/session/properties`, {
-      method: "GET",
-      headers: { "Content-Type": "application/json" },
-    });
-
-    // We will get an auth error when the instance has been configured.
-    if (res.status !== 200) {
-      return onInstanceConfigured();
-    }
-
-    // Retrieve the current setup token of the current Metabase instance
-    const properties = (await res.json()) as { "setup-token": string };
-    const setupToken = properties["setup-token"];
-
-    // If the setup token has been cleared, assume instance is configured.
-    if (!setupToken) {
-      return onInstanceConfigured();
-    }
-
     spinner.succeed();
     spinner.start("Creating an admin user...");
 
-    res = await fetch(`${instanceUrl}/api/setup`, {
+    let res = await fetch(`${instanceUrl}/api/setup`, {
       method: "POST",
       body: JSON.stringify({
-        token: setupToken,
+        // Instead of fetching /api/session/properties, we can use the demo setup token.
+        token: EMBEDDING_DEMO_SETUP_TOKEN,
         user: {
           email: options.email,
           password: options.password,
