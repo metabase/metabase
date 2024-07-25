@@ -7,6 +7,7 @@
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -185,3 +186,7 @@
            {:version "0.0"
             :semantic-version [0 0]
             :flavor "fallback"}))))
+
+(defmethod driver.sql/json-field-length :druid-jdbc
+  [_ json-field-identifier]
+  [:strlen [:cast json-field-identifier :varchar]])

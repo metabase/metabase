@@ -288,6 +288,10 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod driver.sql/json-field-length :postgres
+  [_ json-field-identifier]
+  [:length [:cast json-field-identifier :text]])
+
 (defn- ->timestamp [honeysql-form]
   (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
 
@@ -965,7 +969,3 @@
 (defmethod driver.sql/default-database-role :postgres
   [_ _]
   "NONE")
-
-(defmethod driver.sql/json-field-length :postgres
-  [_ json-field-identifier]
-  [:length [:cast json-field-identifier :text]])
