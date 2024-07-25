@@ -11,6 +11,7 @@ import {
   isVirtualDashCard,
 } from "metabase/dashboard/utils";
 import { useSelector } from "metabase/lib/redux";
+import { isJWT } from "metabase/lib/utils";
 import { isUuid } from "metabase/lib/uuid";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName, IconProps } from "metabase/ui";
@@ -219,19 +220,22 @@ export function DashCardVisualization({
         result={mainSeries}
         dashcardId={dashcard.id}
         dashboardId={dashboard.id}
-        token={isEmbed ? String(dashcard.dashboard_id) : undefined}
+        token={
+          isJWT(dashcard.dashboard_id)
+            ? String(dashcard.dashboard_id)
+            : undefined
+        }
         uuid={isUuid(dashcard.dashboard_id) ? dashcard.dashboard_id : undefined}
       />
     );
   }, [
     question,
-    dashcard.id,
-    dashcard.dashboard_id,
     series,
-    isEmbed,
+    isXray,
     isPublicOrEmbedded,
     isEditing,
-    isXray,
+    dashcard.id,
+    dashcard.dashboard_id,
     dashboard.id,
     downloadsEnabled,
   ]);

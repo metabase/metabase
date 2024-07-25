@@ -1,5 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   type StructuredQuestionDetails,
   createNativeQuestion,
@@ -40,6 +43,8 @@ import {
   rightSidebar,
   assertQueryBuilderRowCount,
   navigationSidebar,
+  newButton,
+  tableInteractive,
 } from "e2e/support/helpers";
 import type { CardId, FieldReference } from "metabase-types/api";
 
@@ -770,6 +775,106 @@ describe("issue 25885", () => {
   });
 });
 
+describe("issue 33844", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card").as("createModel");
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  function testModelMetadata(isNew: boolean) {
+    cy.log("make a column visible only in detail views");
+    cy.findByTestId("detail-shortcut").should("not.exist");
+    tableHeaderClick("ID");
+    cy.findByLabelText("Detail views only").click();
+    cy.button(isNew ? "Save" : "Save changes").click();
+    if (isNew) {
+      modal().button("Save").click();
+      cy.wait("@createModel");
+    } else {
+      cy.wait("@updateModel");
+      cy.wait("@dataset");
+    }
+    tableInteractive().findByText("User ID").should("be.visible");
+    tableInteractive().findByText("ID").should("not.exist");
+    cy.findAllByTestId("detail-shortcut").first().click();
+    modal().within(() => {
+      cy.findByText("Order").should("be.visible");
+      cy.findByText("ID").should("be.visible");
+      cy.findByTestId("object-detail-close-button").click();
+    });
+
+    cy.log("make the column visible in table views");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("ID");
+    cy.findByLabelText("Detail views only").should("be.checked");
+    cy.findByLabelText("Table and details views").click();
+    cy.button("Save changes").click();
+    cy.wait("@updateModel");
+    cy.wait("@dataset");
+    tableInteractive().findByText("ID").should("be.visible");
+  }
+
+  it("should show hidden PKs in model metadata editor and object details after creating a model (metabase#33844)", () => {
+    cy.visit("/");
+    newButton("Model").click();
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    testModelMetadata(true);
+  });
+
+  it("should show hidden PKs in model metadata editor and object details after updating a model (metabase#33844,metabase#45924)", () => {
+    visitModel(ORDERS_QUESTION_ID);
+    cy.wait("@dataset");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    testModelMetadata(false);
+  });
+});
+
+describe("issue 45924", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("PUT", "/api/card/*").as("updateCard");
+  });
+
+  it("should preserve model metadata when re-running the query (metabase#45924)", () => {
+    visitModel(ORDERS_QUESTION_ID);
+    cy.wait("@dataset");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("ID");
+    cy.findByLabelText("Display name").clear().type("ID1");
+    cy.findByTestId("dataset-edit-bar").findByText("Query").click();
+    cy.findByTestId("action-buttons").button("Sort").click();
+    popover().findByText("ID").click();
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    tableHeaderClick("ID1");
+    cy.findByLabelText("Display name").should("have.value", "ID1");
+    cy.findByTestId("dataset-edit-bar").button("Save changes").click();
+    cy.wait("@updateCard");
+    cy.wait("@dataset");
+    tableInteractive().findByText("ID1").should("be.visible");
+  });
+});
+
 describeEE("issue 43088", () => {
   beforeEach(() => {
     restore();
@@ -985,4 +1090,162 @@ describe("issue 35840", () => {
     modal().findByText(modelName).click();
     checkColumnMapping("Questions", questionName);
   });
+});
+
+describe("issue 34514", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/database/*/schema/*").as("fetchTables");
+    cy.intercept("GET", "/api/database/*").as("fetchDatabase");
+
+    cy.visit("/");
+    // It's important to navigate via UI so that there are
+    // enough entries in the browser history to go back to.
+    newButton("Model").click();
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+  });
+
+  it("should not make network request with invalid query (metabase#34514)", () => {
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.wait("@fetchTables");
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+    assertQueryTabState();
+
+    cy.go("back");
+    assertBackToEmptyState();
+  });
+
+  it("should allow browser history navigation between tabs (metabase#34514)", () => {
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.wait("@fetchTables");
+      cy.findByText("Orders").click();
+    });
+
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+    assertQueryTabState();
+
+    cy.findByTestId("editor-tabs-metadata-name").click();
+    assertMetadataTabState();
+
+    // Close the TabHinToast component.
+    // This isn't a part of the test scenario but it helps with flakiness.
+    cy.icon("close").click();
+
+    cy.go("back");
+    cy.wait(["@dataset", "@fetchDatabase"]); // This should be removed when (metabase#45787) is fixed
+    assertQueryTabState();
+
+    cy.go("back");
+    assertBackToEmptyState();
+  });
+
+  function assertQueryTabState() {
+    entityPickerModal().should("not.exist");
+    cy.button("Save").should("be.enabled");
+    getNotebookStep("data").findByText("Orders").should("be.visible");
+    cy.findByTestId("TableInteractive-root")
+      .findByText("39.72")
+      .should("be.visible");
+  }
+
+  function assertMetadataTabState() {
+    cy.findByLabelText("Description")
+      .should("be.visible")
+      .and("include.value", "This is a unique ID for the product.");
+    cy.button("Save").should("be.enabled");
+  }
+
+  function assertBackToEmptyState() {
+    entityPickerModal().should("be.visible");
+    entityPickerModal().button("Close").click();
+
+    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
+    cy.button("Save").should("be.disabled");
+    getNotebookStep("data")
+      .findByText("Pick your starting data")
+      .should("be.visible");
+    cy.findByTestId("TableInteractive-root").should("not.exist");
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("We're experiencing server issues").should("not.exist");
+      cy.findByText("Here's where your results will appear").should(
+        "be.visible",
+      );
+    });
+  }
+});
+
+describe.skip("issues 28270, 33708", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    createQuestion(
+      {
+        type: "model",
+        query: {
+          "source-table": PRODUCTS_ID,
+        },
+      },
+      { visitQuestion: true },
+    );
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("shows object relationships when model-based ad-hoc question has a filter (metabase#28270)", () => {
+    checkRelationships();
+    modal().icon("close").click();
+
+    tableHeaderClick("Title");
+    popover().findByText("Filter by this column").click();
+    popover().findByLabelText("Filter operator").click();
+    popover().last().findByText("Contains").click();
+    popover().findByLabelText("Filter value").type("a,");
+    popover().button("Add filter").click();
+
+    checkRelationships();
+  });
+
+  it("shows object relationships after navigating back from relationships question (metabase#33708)", () => {
+    checkRelationships();
+
+    modal().findByText("Orders").click();
+    cy.wait("@dataset");
+    cy.go("back");
+    cy.go("back"); // TODO: remove this when (metabase#33709) is fixed
+
+    checkRelationships();
+  });
+
+  function openObjectDetails() {
+    cy.findAllByTestId("cell-data").eq(8).should("have.text", "1").click();
+  }
+
+  function checkRelationships() {
+    openObjectDetails();
+
+    cy.wait(["@dataset", "@dataset"]);
+
+    modal().within(() => {
+      cy.findByTestId("fk-relation-orders")
+        .should("be.visible")
+        .and("contain.text", "93")
+        .and("contain.text", "Orders");
+
+      cy.findByTestId("fk-relation-reviews")
+        .should("be.visible")
+        .and("contain.text", "8")
+        .and("contain.text", "Reviews");
+    });
+  }
 });

@@ -41,6 +41,7 @@ describeEE(
 
         popover()
           .findByTestId("public-link-input")
+          .should("not.have.value", "")
           .invoke("val")
           .then(url => {
             publicLink = url as string;

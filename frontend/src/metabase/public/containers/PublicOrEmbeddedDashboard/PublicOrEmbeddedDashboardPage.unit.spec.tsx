@@ -13,6 +13,7 @@ import {
   waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
+import registerVisualizations from "metabase/visualizations/register";
 import type { DashboardCard, DashboardTab } from "metabase-types/api";
 import {
   createMockCard,
@@ -28,6 +29,8 @@ import { PublicOrEmbeddedDashboardPage } from "./PublicOrEmbeddedDashboardPage";
 const MOCK_TOKEN =
   "eyJhbGciOiJIUzI1NiJ9.eyJyZXNvdXJjZSI6eyJkYXNoYm9hcmQiOjExfSwicGFyYW1zIjp7fSwiaWF0IjoxNzEyNjg0NTA1LCJfZW1iZWRkaW5nX3BhcmFtcyI6e319.WbZTB-cQYh4gjh61ZzoLOcFbJ6j6RlOY3GS4fwzv3W4";
 const DASHBOARD_TITLE = '"My test dash"';
+
+registerVisualizations();
 
 describe("PublicOrEmbeddedDashboardPage", () => {
   beforeAll(() => {
@@ -156,7 +159,7 @@ describe("PublicOrEmbeddedDashboardPage", () => {
 
 async function setup({
   hash,
-  queryString,
+  queryString = "",
   numberOfTabs = 1,
 }: { hash?: string; queryString?: string; numberOfTabs?: number } = {}) {
   const tabs: DashboardTab[] = [];
@@ -191,6 +194,14 @@ async function setup({
 
   setupEmbedDashboardEndpoints(MOCK_TOKEN, dashboard, dashcards);
 
+  const pathname = `/embed/dashboard/${MOCK_TOKEN}`;
+  const hashString = hash ? `#${hash}` : "";
+  const href = `${pathname}${queryString}${hashString}`;
+
+  // Setting initial window.location state,
+  // so it can be used by getInitialSelectedTabId
+  window.history.replaceState({}, "", href);
+
   const view = renderWithProviders(
     <Route
       path="embed/dashboard/:token"
@@ -199,9 +210,7 @@ async function setup({
     {
       storeInitialState: createMockState(),
       withRouter: true,
-      initialRoute: `embed/dashboard/${MOCK_TOKEN}${
-        queryString ? `?` + queryString : ""
-      }${hash ? "#" + hash : ""}`,
+      initialRoute: href,
     },
   );
 

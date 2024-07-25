@@ -152,6 +152,7 @@ const InteractiveDashboardInner = ({
             dashboardId={dashboardId}
             parameterQueryParams={initialParameterValues}
             hideParameters={displayOptions.hideParameters}
+            background={displayOptions.background}
             titled={displayOptions.titled}
             cardTitled={withCardTitle}
             theme={theme}

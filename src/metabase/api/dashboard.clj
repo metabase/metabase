@@ -96,8 +96,9 @@
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
     (t2/hydrate dashboard [:dashcards
-                           [:card :can_write :can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                           [:series :can_write :can_run_adhoc_query]
+                           ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                           [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                           [:series :can_write #_:can_run_adhoc_query]
                            :dashcard/action
                            :dashcard/linkcard-info]
                 :can_restore
@@ -1016,7 +1017,14 @@
                            :expression   dimension
                            :template-tag (:dimension ttag)
                            (log/error "cannot handle this dimension" {:dimension dimension}))
-               field-id  (params/param-target->field-id dimension card)]
+               field-id  (or
+                          ;; Get the field id from the field-clause if it contains it. This is the common case
+                          ;; for mbql queries.
+                          (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
+                          ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                          ;; This is the common case for native queries in which mappings from original columns
+                          ;; have been performed using model metadata.
+                          (:id (qp.util/field->field-info dimension (:result_metadata card))))]
         :when field-id]
     {:field-id field-id
      :op       (param-type->op (:type param))
@@ -1228,10 +1236,10 @@
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
   [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body}          :body
                                          {dashboard-load-id "dashboard_load_id"} :query-params}]
-  {dashboard-id  ms/PositiveInt
-   dashcard-id   ms/PositiveInt
-   card-id       ms/PositiveInt
-   parameters    [:maybe [:sequential ParameterWithID]]}
+  {dashboard-id ms/PositiveInt
+   dashcard-id  ms/PositiveInt
+   card-id      ms/PositiveInt
+   parameters   [:maybe [:sequential ParameterWithID]]}
   (with-dashboard-load-id dashboard-load-id
     (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
                        (merge

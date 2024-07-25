@@ -77,6 +77,8 @@ export function PublicOrEmbeddedQuestionView({
       setParameterValue={setParameterValue}
       enableParameterRequiredBehavior
       setParameterValueToDefault={setParameterValueToDefault}
+      // We don't support background: false on questions (metabase#43838)
+      background
       bordered={bordered}
       hide_parameters={hide_parameters}
       theme={theme}
