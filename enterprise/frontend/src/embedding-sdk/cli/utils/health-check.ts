@@ -36,7 +36,7 @@ export async function pollUntilMetabaseInstanceReady(
 
       // Endpoint returns 503 when Metabase is not ready yet.
       // It returns 200 when Metabase is ready.
-      if (res.ok) {
+      if (res.status === 200) {
         spinner.succeed();
         return true;
       }

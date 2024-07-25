@@ -4,6 +4,7 @@ import ora from "ora";
 import { CONTAINER_NAME } from "./constants";
 import { EMBEDDING_DEMO_SETUP_TOKEN } from "./docker";
 import { printError, printInfo } from "./print";
+import { retry } from "./retry";
 
 interface SetupOptions {
   instanceUrl: string;
@@ -51,28 +52,33 @@ export async function setupMetabaseInstance(
   try {
     spinner.start("Creating an admin user...");
 
-    let res = await fetch(`${instanceUrl}/api/setup`, {
-      method: "POST",
-      body: JSON.stringify({
-        // Instead of fetching /api/session/properties, we can use the demo setup token.
-        token: EMBEDDING_DEMO_SETUP_TOKEN,
-        user: {
-          email: options.email,
-          password: options.password,
-          password_confirm: options.password,
-          last_name: "Embedding",
-          first_name: "Demo",
-          site_name: SITE_NAME,
-        },
-        prefs: {
-          site_name: SITE_NAME,
-          site_locale: "en",
-        },
-      }),
-      headers: { "Content-Type": "application/json" },
-    });
+    let res = await retry(
+      () =>
+        fetch(`${instanceUrl}/api/setup`, {
+          method: "POST",
+          body: JSON.stringify({
+            // Instead of fetching /api/session/properties, we can use the demo setup token.
+            token: EMBEDDING_DEMO_SETUP_TOKEN,
+            user: {
+              email: options.email,
+              password: options.password,
+              password_confirm: options.password,
+              last_name: "Embedding",
+              first_name: "Demo",
+              site_name: SITE_NAME,
+            },
+            prefs: {
+              site_name: SITE_NAME,
+              site_locale: "en",
+            },
+          }),
+          headers: { "content-type": "application/json" },
+          signal: AbortSignal.timeout(8000),
+        }),
+      { retries: 8, delay: 500 },
+    );
 
-    if (res.status !== 200) {
+    if (!res.ok) {
       const errorMessage = await res.text();
 
       // The /api/setup route can only be used to create the first user, however a user currently exists.
@@ -115,10 +121,10 @@ export async function setupMetabaseInstance(
         "setup-license-active-at-setup": false,
         "setup-embedding-autoenabled": true,
       }),
-      headers: { "Content-Type": "application/json", Cookie: cookie },
+      headers: { "content-type": "application/json", cookie },
     });
 
-    if (res.status !== 200) {
+    if (!res.ok) {
       const errorMessage = await res.text();
 
       if (errorMessage.includes("Unauthenticated")) {
@@ -126,7 +132,7 @@ export async function setupMetabaseInstance(
       }
 
       showError(EMBEDDING_FAILED_MESSAGE);
-      console.log(res.statusText, errorMessage);
+      console.log(errorMessage);
 
       return false;
     }

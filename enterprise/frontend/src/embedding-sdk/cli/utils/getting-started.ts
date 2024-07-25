@@ -3,7 +3,7 @@ import fs from "fs/promises";
 import { confirm } from "@inquirer/prompts";
 
 import { getCodeSample } from "./code-sample";
-import { CONTAINER_NAME } from "./docker";
+import { CONTAINER_NAME } from "./constants";
 import { printInfo } from "./print";
 
 const INSTALL_SDK_MESSAGE = `

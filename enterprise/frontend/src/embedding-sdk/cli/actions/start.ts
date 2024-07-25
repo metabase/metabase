@@ -1,3 +1,5 @@
+import fs from "fs/promises";
+
 import { confirm, input } from "@inquirer/prompts";
 
 import {
@@ -61,6 +63,12 @@ export async function start() {
     });
 
     const password = generateRandomDemoPassword();
+
+    // Store the login credentials to a file.
+    await fs.writeFile(
+      "./METABASE_LOGIN.txt",
+      `Email: ${email}\nPassword: ${password}`,
+    );
 
     const port = await startLocalMetabaseContainer();
 
