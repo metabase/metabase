@@ -630,6 +630,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       visualize();
 
+      cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell").should("contain", "Median of Price");
     });
 
@@ -660,6 +661,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       visualize();
 
+      cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell")
         .should("contain", "Median of Median of Mega price")
         .should("contain", "Median of Count");

@@ -148,8 +148,20 @@ describe("DashCard", () => {
     expect(screen.getByText("What a cool section")).toBeVisible();
   });
 
-  it("should not display the ellipsis menu for (unsaved) xray dashboards (metabase#33637)", async () => {
+  it("should not display the ellipsis menu for (unsaved) xray dashboards (metabase#33637)", () => {
     setup({ isXray: true });
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
+  it("should not display the 'Download results' action when dashcard query is running", () => {
+    setup({ dashcardData: {} });
+    // in this case the dashcard menu would be empty so it's not rendered at all
+    expect(queryIcon("ellipsis")).not.toBeInTheDocument();
+  });
+
+  it("should not display the 'Download results' action when dashcard query is running in public/embedded dashboards", () => {
+    setup({ isPublicOrEmbedded: true, dashcardData: {} });
+    // in this case the dashcard menu would be empty so it's not rendered at all
     expect(queryIcon("ellipsis")).not.toBeInTheDocument();
   });
 
