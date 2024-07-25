@@ -13,6 +13,7 @@ import {
   assertQueryBuilderRowCount,
   commandPalette,
   commandPaletteSearch,
+  createDashboardWithTabs,
   createNativeQuestion,
   createQuestion,
   dashboardParametersContainer,
@@ -2378,16 +2379,6 @@ describe("issue 31662", () => {
   });
 });
 describe("issue 38245", () => {
-  function createDashboardWithTabs({ dashcards, tabs, ...dashboardDetails }) {
-    return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-        ...dashboard,
-        dashcards,
-        tabs,
-      }).then(({ body: dashboard }) => cy.wrap(dashboard));
-    });
-  }
-
   function filterPanel() {
     return cy.findByTestId("edit-dashboard-parameters-widget-container");
   }
