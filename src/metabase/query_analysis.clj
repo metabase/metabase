@@ -123,8 +123,9 @@
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
       (let [references       (query-references query query-type)
-            reference->row   (fn [{:keys [column field-id explicit-reference]}]
+            reference->row   (fn [{:keys [table column field-id explicit-reference]}]
                                {:card_id            card-id
+                                :table              table
                                 :column             column
                                 :field_id           field-id
                                 :explicit_reference explicit-reference})

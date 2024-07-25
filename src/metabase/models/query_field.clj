@@ -39,8 +39,7 @@
     (->> (t2/select :model/QueryField
                     {:select    [:qf.card_id
                                  [:qf.column :field]
-                                 ;; TODO once we store a table name on query_field we can use that instead
-                                 [[:coalesce :t.name "unknown"] :table]
+                                 [:qf.table :table]
                                  [[:= :f.id nil] :field_unknown]
                                  [[:coalesce :t.active false] :table_active]]
                      :from      [[(t2/table-name :model/QueryField) :qf]]
