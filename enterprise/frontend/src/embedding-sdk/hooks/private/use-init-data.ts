@@ -9,7 +9,6 @@ import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
-  setEnvironmentType,
   setFetchRefreshTokenFn,
   setLoginStatus,
 } from "embedding-sdk/store/reducer";
@@ -51,7 +50,6 @@ const setupLocalApiKey = (
   apiKey: SDKConfigWithApiKey["apiKey"],
 ) => {
   api.apiKey = apiKey;
-  dispatch(setEnvironmentType("dev"));
   dispatch(setLoginStatus({ status: "validated" }));
 };
 
@@ -74,7 +72,6 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
       return;
     }
 
-    dispatch(setEnvironmentType("prod"));
     api.basename = config.metabaseInstanceUrl;
 
     const authErrorMessage = match<[SDKConfig, string], string | void>([

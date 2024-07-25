@@ -44,8 +44,6 @@ export type LoginStatus =
   | LoginStatusLoading
   | LoginStatusError;
 
-export type SdkEnvMode = "dev" | "prod";
-
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
 export type SdkErrorComponentProps = { message: string | ReactNode };
@@ -54,7 +52,6 @@ export type SdkErrorComponent = ({
 }: SdkErrorComponentProps) => JSX.Element;
 
 export type SdkState = {
-  envMode: SdkEnvMode;
   metabaseInstanceUrl: SDKConfig["metabaseInstanceUrl"];
   token: EmbeddingSessionTokenState;
   loginStatus: LoginStatus;

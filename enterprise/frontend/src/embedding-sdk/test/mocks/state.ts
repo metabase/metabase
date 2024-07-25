@@ -35,7 +35,6 @@ export const createMockSdkState = ({
     loaderComponent: null,
     errorComponent: null,
     fetchRefreshTokenFn: null,
-    envMode: "prod",
     ...opts,
   };
 };

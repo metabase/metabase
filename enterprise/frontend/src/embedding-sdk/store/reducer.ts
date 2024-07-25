@@ -20,7 +20,6 @@ const SET_METABASE_CLIENT_URL = "sdk/SET_METABASE_CLIENT_URL";
 const SET_LOADER_COMPONENT = "sdk/SET_LOADER_COMPONENT";
 const SET_ERROR_COMPONENT = "sdk/SET_ERROR_COMPONENT";
 const SET_FETCH_REQUEST_TOKEN_FN = "sdk/SET_FETCH_REQUEST_TOKEN_FN";
-const SET_ENVIRONMENT_TYPE = "sdk/SET_ENVIRONMENT_TYPE";
 
 export const setLoginStatus = createAction<LoginStatus>(SET_LOGIN_STATUS);
 export const setMetabaseClientUrl = createAction<string>(
@@ -35,8 +34,6 @@ export const setErrorComponent = createAction<null | SdkErrorComponent>(
 export const setFetchRefreshTokenFn = createAction<null | FetchRequestTokenFn>(
   SET_FETCH_REQUEST_TOKEN_FN,
 );
-export const setEnvironmentType =
-  createAction<SdkState["envMode"]>(SET_ENVIRONMENT_TYPE);
 
 const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
 const REFRESH_TOKEN = "sdk/token/REFRESH_TOKEN";
@@ -101,7 +98,6 @@ const initialState: SdkState = {
   loaderComponent: null,
   errorComponent: null,
   fetchRefreshTokenFn: null,
-  envMode: "prod",
 };
 
 export const sdk = createReducer(initialState, builder => {
@@ -164,10 +160,5 @@ export const sdk = createReducer(initialState, builder => {
   builder.addCase(setFetchRefreshTokenFn, (state, action) => ({
     ...state,
     fetchRefreshTokenFn: action.payload,
-  }));
-
-  builder.addCase(setEnvironmentType, (state, action) => ({
-    ...state,
-    envMode: action.payload,
   }));
 });
