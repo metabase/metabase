@@ -53,8 +53,7 @@
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
 (def ^:private get-tables-sql
-  ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
-  ;; It does not return tables from datashares, which is a relatively new feature of redshift.
+  ;; Cal 2024-04-09 This query does not return tables from datashares, which is a relatively new feature of redshift.
   ;; See https://github.com/dbt-labs/dbt-redshift/issues/742 for an implementation for DBT's integration with redshift
   ;; for inspiration, and the JDBC driver itself:
   ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
@@ -63,17 +62,19 @@
     "\n"
     ["select"
      "  table_name as name,"
-     "  schema_name as schema,"
+     "  table_schema as schema,"
      "  table_type as type,"
      "  remarks as description"
-     "from svv_all_tables t"
-     "where schema_name !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
-       ;; for external tables, USAGE privileges on a schema is sufficient to select
-     "  and pg_catalog.has_schema_privilege(schema_name, 'USAGE')"
+     ;; svv_all_tables would include tables from other databases that the user has access to via redshift datashares,
+     ;; which we don't support yet.
+     "from svv_tables t"
+     "where table_schema !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
+     "  and pg_catalog.has_schema_privilege(table_schema, 'USAGE')"
+     ;; for external tables, USAGE privileges on a schema is sufficient to select
      "   and ("
-     "     case when type = 'EXTERNAL TABLE' then true else"
-     "       (pg_catalog.has_table_privilege('\"'||schema_name||'\".\"'||table_name||'\"','SELECT')"
-     "         or pg_catalog.has_any_column_privilege('\"'||schema_name||'\".\"'||table_name||'\"','SELECT'))"
+     "     case when table_type = 'EXTERNAL TABLE' then true else"
+     "       (pg_catalog.has_table_privilege('\"'||table_schema||'\".\"'||table_name||'\"','SELECT')"
+     "         or pg_catalog.has_any_column_privilege('\"'||table_schema||'\".\"'||table_name||'\"','SELECT'))"
      "       end"
      "   )"])])
 
