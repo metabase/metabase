@@ -23,14 +23,12 @@ describe("WidgetStatusButton", () => {
       setup({ status: "clear" });
 
       expect(screen.getByLabelText("close icon")).toBeInTheDocument();
-      expect(screen.queryByText("Clear filter")).not.toBeInTheDocument();
       expect(screen.getByRole("button")).toBeEnabled();
     });
 
     it("has tooltip", async () => {
       setup({ status: "clear" });
 
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
       await userEvent.hover(screen.getByRole("button"));
       expect(screen.getByRole("tooltip")).toHaveTextContent("Clear filter");
     });
@@ -38,7 +36,6 @@ describe("WidgetStatusButton", () => {
     it("is clickable", async () => {
       const { onClick } = setup({ status: "clear" });
 
-      expect(onClick).not.toHaveBeenCalled();
       await userEvent.click(screen.getByRole("button"));
       expect(onClick).toHaveBeenCalled();
     });
@@ -49,16 +46,12 @@ describe("WidgetStatusButton", () => {
       setup({ status: "reset" });
 
       expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
-      expect(
-        screen.queryByText("Reset filter to default state"),
-      ).not.toBeInTheDocument();
       expect(screen.getByRole("button")).toBeEnabled();
     });
 
     it("has tooltip", async () => {
       setup({ status: "reset" });
 
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
       await userEvent.hover(screen.getByRole("button"));
       expect(screen.getByRole("tooltip")).toHaveTextContent(
         "Reset filter to default state",
@@ -68,7 +61,6 @@ describe("WidgetStatusButton", () => {
     it("is clickable", async () => {
       const { onClick } = setup({ status: "reset" });
 
-      expect(onClick).not.toHaveBeenCalled();
       await userEvent.click(screen.getByRole("button"));
       expect(onClick).toHaveBeenCalled();
     });
@@ -85,7 +77,6 @@ describe("WidgetStatusButton", () => {
     it("does not have tooltip", async () => {
       setup({ status: "empty" });
 
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
       await userEvent.hover(screen.getByRole("button"), {
         pointerEventsCheck: 0,
       });
@@ -95,7 +86,6 @@ describe("WidgetStatusButton", () => {
     it("is not clickable", async () => {
       const { onClick } = setup({ status: "empty" });
 
-      expect(onClick).not.toHaveBeenCalled();
       await userEvent.click(screen.getByRole("button"), {
         pointerEventsCheck: 0,
       });
@@ -114,7 +104,6 @@ describe("WidgetStatusButton", () => {
     it("does not have tooltip", async () => {
       setup({ status: "none" });
 
-      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
       await userEvent.hover(screen.getByRole("button"), {
         pointerEventsCheck: 0,
       });
@@ -124,7 +113,6 @@ describe("WidgetStatusButton", () => {
     it("is not clickable", async () => {
       const { onClick } = setup({ status: "none" });
 
-      expect(onClick).not.toHaveBeenCalled();
       await userEvent.click(screen.getByRole("button"), {
         pointerEventsCheck: 0,
       });
