@@ -51,21 +51,6 @@ jobs:
       - run: yarn build-pure:cljs
         name: Compile CLJS
 
-      - name: Debug Git before running lint-staged
-        run: |
-          echo "Git status:"
-          git status
-          echo "Git diff --name-status:"
-          git diff --name-status
-          echo "Git stash"
-          git stash list
-
-          BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
-          echo "BASE_COMMIT: $BASE_COMMIT"
-          echo "CURRENT_COMMIT: $(git rev-parse HEAD)"
-          echo "DIFF: $BASE_COMMIT...HEAD"
-          echo "DIFF_SHORT: $(git diff --name-status $BASE_COMMIT...HEAD)"
-
       - name: Run lint-staged
         if: steps.changes.outputs.frontend_all == 'true'
         continue-on-error: true
@@ -73,22 +58,13 @@ jobs:
           BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
           npx lint-staged --shell --no-stash -d -v --diff="$BASE_COMMIT...HEAD"
 
-      - name: Debug Git after running lint-staged
-        run: |
-          echo "Git status:"
-          git status
-          echo "Git diff --name-status:"
-          git diff --name-status
-          echo "Git stash"
-          git stash list
-
       # You must include this step after running all auto-fixing steps
-      # - uses: stefanzweifel/git-auto-commit-action@v5
-      #   with:
-      #     commit_message: "fix(${{ github.run_id }}): auto linting" # The commit message MUST start with "fix(${{ github.run_id }}):"
-      #     skip_fetch: true
-      #     skip_checkout: true
+      - uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "fix(${{ github.run_id }}): auto linting" # The commit message MUST start with "fix(${{ github.run_id }}):"
+          skip_fetch: true
+          skip_checkout: true
 
-      # - name: Check types
-      #   if: steps.changes.outputs.frontend_all == 'true'
-      #   run: yarn type-check-pure
+      - name: Check types
+        if: steps.changes.outputs.frontend_all == 'true'
+        run: yarn type-check-pure
