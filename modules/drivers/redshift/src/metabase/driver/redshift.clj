@@ -71,12 +71,9 @@
      "where table_schema !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
      "  and pg_catalog.has_schema_privilege(table_schema, 'USAGE')"
      ;; for external tables, USAGE privileges on a schema is sufficient to select
-     "   and ("
-     "     case when table_type = 'EXTERNAL TABLE' then true else"
-     "       (pg_catalog.has_table_privilege('\"'||table_schema||'\".\"'||table_name||'\"','SELECT')"
-     "         or pg_catalog.has_any_column_privilege('\"'||table_schema||'\".\"'||table_name||'\"','SELECT'))"
-     "       end"
-     "   )"])])
+     "   and (table_type <> 'EXTERNAL TABLE'"
+     "        and (pg_catalog.has_table_privilege('\"'||table_schema||'\".\"'||table_name||'\"','SELECT')"
+     "             or pg_catalog.has_any_column_privilege('\"'||table_schema||'\".\"'||table_name||'\"','SELECT')))"])])
 
 (defn- describe-database-tables
   [database]
