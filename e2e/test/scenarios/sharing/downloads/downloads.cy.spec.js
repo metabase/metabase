@@ -375,6 +375,7 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
     expectGoodSnowplowEvent({
       event: "download_results_clicked",
       resource_type: "dashcard",
+      accessed_via: "internal",
       export_type: "png",
     });
   });

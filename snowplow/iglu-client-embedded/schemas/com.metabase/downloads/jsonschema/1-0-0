@@ -22,7 +22,15 @@
         "null"
       ],
       "maxLength": 1024,
-      "description": "The reason of resource, question, dashcard, public question etc"
+      "description": "The type of resource: question, dashcard or ad-hoc-question"
+    },
+    "accessed_via": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024,
+      "description": "How was the resource accessed: internal, public-link, static-embed, sdk or interactive embedding"
     },
     "export_type": {
       "type": [

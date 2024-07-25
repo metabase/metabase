@@ -2,6 +2,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import api, { GET, POST } from "metabase/lib/api";
+import { isWithinIframe } from "metabase/lib/dom";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
@@ -36,14 +37,18 @@ interface DownloadQueryResultsParams {
   params?: URLSearchParams | string;
 }
 
-export type DownloadedResourceType =
-  | "dashcard"
-  | "question"
-  | "public-dashcard"
-  | "public-question"
-  | "static-embed-dashcard"
-  | "static-embed-question"
-  | "dataset";
+export type ResourceType = "question" | "dashcard" | "ad-hoc-question";
+export type ResourceAccessedVia =
+  | "internal"
+  | "public-link"
+  | "static-embed"
+  | "interactive-iframe-embed"
+  | "sdk-embed";
+
+export type DownloadedResourceInfo = {
+  resourceType: ResourceType;
+  accessedVia: ResourceAccessedVia;
+};
 
 const getDownloadedResourceType = ({
   dashboardId,
@@ -51,31 +56,43 @@ const getDownloadedResourceType = ({
   uuid,
   token,
   question,
-}: Partial<DownloadQueryResultsOpts>): DownloadedResourceType => {
+}: Partial<DownloadQueryResultsOpts>): DownloadedResourceInfo => {
   const cardId = question?.id();
 
+  const isInIframe = isWithinIframe();
+
   if (dashcardId != null && token != null) {
-    return "static-embed-dashcard";
+    return { resourceType: "dashcard", accessedVia: "static-embed" };
   } else if (dashboardId != null && uuid != null) {
-    return "public-dashcard";
+    return { resourceType: "dashcard", accessedVia: "public-link" };
   } else if (dashboardId != null && dashcardId != null) {
-    return "dashcard";
+    return {
+      resourceType: "dashcard",
+      accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
+    };
   } else if (uuid != null) {
-    return "public-question";
+    return { resourceType: "question", accessedVia: "public-link" };
   } else if (token != null) {
-    return "static-embed-question";
+    return { resourceType: "question", accessedVia: "static-embed" };
   } else if (cardId != null) {
-    return "question";
+    return {
+      resourceType: "question",
+      accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
+    };
   } else {
-    return "dataset";
+    return {
+      resourceType: "ad-hoc-question",
+      accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
+    };
   }
 };
 
 export const downloadQueryResults =
   (opts: DownloadQueryResultsOpts) => async () => {
-    const downloadedResource = getDownloadedResourceType(opts);
+    const { resourceType, accessedVia } = getDownloadedResourceType(opts);
     trackDownloadResults({
-      resourceType: downloadedResource,
+      resourceType,
+      accessedVia,
       exportType: opts.type,
     });
     if (opts.type === Urls.exportFormatPng) {
@@ -122,7 +139,7 @@ const getDatasetParams = ({
   // Formatting is always enabled for Excel
   const format_rows = enableFormatting && type !== "xlsx" ? "true" : "false";
 
-  const resourceType = getDownloadedResourceType({
+  const { accessedVia, resourceType: resource } = getDownloadedResourceType({
     dashboardId,
     dashcardId,
     uuid,
@@ -130,26 +147,56 @@ const getDatasetParams = ({
     question,
   });
 
-  if (resourceType === "static-embed-dashcard") {
-    return {
-      method: "GET",
-      url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-      params: Urls.getEncodedUrlSearchParams({ ...params, format_rows }),
-    };
+  // Public links use special endpoints that use uuids instead of ids
+  if (accessedVia === "public-link") {
+    if (resource === "dashcard") {
+      return {
+        method: "POST",
+        url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${type}`,
+        params: new URLSearchParams({ format_rows }),
+        body: {
+          parameters: result?.json_query?.parameters ?? [],
+        },
+      };
+    }
+    if (resource === "question" && uuid) {
+      return {
+        method: "GET",
+        url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
+        params: new URLSearchParams({
+          parameters: JSON.stringify(result?.json_query?.parameters ?? []),
+          format_rows,
+        }),
+      };
+    }
   }
 
-  if (resourceType === "public-dashcard") {
-    return {
-      method: "POST",
-      url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-      params: new URLSearchParams({ format_rows }),
-      body: {
-        parameters: result?.json_query?.parameters ?? [],
-      },
-    };
+  // Static embeds use special endpoints that use signed tokens instead of ids
+  if (accessedVia === "static-embed") {
+    if (resource === "dashcard") {
+      return {
+        method: "GET",
+        url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
+        params: Urls.getEncodedUrlSearchParams({ ...params, format_rows }),
+      };
+    }
+
+    if (resource === "question" && token) {
+      // For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
+      // of like ?params=<json-encoded-params-array> like the other endpoints do.
+      const params = new URLSearchParams(window.location.search);
+      params.set("format_rows", format_rows);
+      return {
+        method: "GET",
+        url: Urls.embedCard(token, type),
+        params,
+      };
+    }
   }
 
-  if (resourceType === "dashcard") {
+  // Normal endpoints, also used by internal, interactive embedding and sdk
+
+  if (resource === "dashcard") {
     return {
       method: "POST",
       url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
@@ -160,30 +207,7 @@ const getDatasetParams = ({
     };
   }
 
-  if (resourceType === "public-question" && uuid) {
-    return {
-      method: "GET",
-      url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
-      params: new URLSearchParams({
-        parameters: JSON.stringify(result?.json_query?.parameters ?? []),
-        format_rows,
-      }),
-    };
-  }
-
-  if (resourceType === "static-embed-question" && token) {
-    // For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
-    // of like ?params=<json-encoded-params-array> like the other endpoints do.
-    const params = new URLSearchParams(window.location.search);
-    params.set("format_rows", format_rows);
-    return {
-      method: "GET",
-      url: Urls.embedCard(token, type),
-      params,
-    };
-  }
-
-  if (resourceType === "question") {
+  if (resource === "question") {
     return {
       method: "POST",
       url: `/api/card/${cardId}/query/${type}`,
@@ -193,7 +217,7 @@ const getDatasetParams = ({
       },
     };
   }
-  if (resourceType === "dataset") {
+  if (resource === "ad-hoc-question") {
     return {
       method: "POST",
       url: `/api/dataset/${type}`,
