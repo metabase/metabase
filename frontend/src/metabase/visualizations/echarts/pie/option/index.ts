@@ -184,7 +184,7 @@ export function getPieChartOption(
 
   return {
     // Unlike the cartesian chart, `animationDuration: 0` does not prevent the
-    // chart from animating on initial render, so we unfroutnately have to
+    // chart from animating on initial render, so we unfortunately have to
     // disable all animations.
     animation: false,
     textStyle: {
