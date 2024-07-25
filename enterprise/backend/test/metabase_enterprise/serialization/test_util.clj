@@ -64,7 +64,7 @@
      ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
      ;;   redefs not great for parallelism
     (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
-      ~@body)) )
+      ~@body)))
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix "-" (mt/random-name))

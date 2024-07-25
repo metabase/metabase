@@ -672,70 +672,70 @@
 (deftest dashboard-with-tabs-test
   (testing "Dashboard with tabs must be deserialized correctly"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-     (ts/with-dbs [source-db dest-db]
-       (ts/with-db source-db
-         ;; preparation
-         (t2.with-temp/with-temp
-           [Dashboard           {dashboard-id :id
-                                 dashboard-eid :entity_id} {:name "Dashboard with tab"}
-            Card                {card-id-1 :id
-                                 card-eid-1 :entity_id}    {:name "Card 1"}
-            Card                {card-id-2 :id
-                                 card-eid-2 :entity_id}    {:name "Card 2"}
-            :model/DashboardTab {tab-id-1 :id
-                                 tab-eid-1 :entity_id}     {:name "Tab 1" :position 0 :dashboard_id dashboard-id}
-            :model/DashboardTab {tab-id-2 :id
-                                 tab-eid-2 :entity_id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
-            DashboardCard       _                          {:dashboard_id     dashboard-id
-                                                            :card_id          card-id-1
-                                                            :dashboard_tab_id tab-id-1}
-            DashboardCard       _                          {:dashboard_id     dashboard-id
-                                                            :card_id          card-id-2
-                                                            :dashboard_tab_id tab-id-1}
-            DashboardCard       _                          {:dashboard_id     dashboard-id
-                                                            :card_id          card-id-1
-                                                            :dashboard_tab_id tab-id-2}
-            DashboardCard       _                          {:dashboard_id     dashboard-id
-                                                            :card_id          card-id-2
-                                                            :dashboard_tab_id tab-id-2}]
-           (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
-             (storage/store! (seq extraction) dump-dir))
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          ;; preparation
+          (t2.with-temp/with-temp
+            [Dashboard           {dashboard-id :id
+                                  dashboard-eid :entity_id} {:name "Dashboard with tab"}
+             Card                {card-id-1 :id
+                                  card-eid-1 :entity_id}    {:name "Card 1"}
+             Card                {card-id-2 :id
+                                  card-eid-2 :entity_id}    {:name "Card 2"}
+             :model/DashboardTab {tab-id-1 :id
+                                  tab-eid-1 :entity_id}     {:name "Tab 1" :position 0 :dashboard_id dashboard-id}
+             :model/DashboardTab {tab-id-2 :id
+                                  tab-eid-2 :entity_id}     {:name "Tab 2" :position 1 :dashboard_id dashboard-id}
+             DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                             :card_id          card-id-1
+                                                             :dashboard_tab_id tab-id-1}
+             DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                             :card_id          card-id-2
+                                                             :dashboard_tab_id tab-id-1}
+             DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                             :card_id          card-id-1
+                                                             :dashboard_tab_id tab-id-2}
+             DashboardCard       _                          {:dashboard_id     dashboard-id
+                                                             :card_id          card-id-2
+                                                             :dashboard_tab_id tab-id-2}]
+            (let [extraction (serdes/with-cache (into [] (extract/extract {})))]
+              (storage/store! (seq extraction) dump-dir))
 
-           (testing "ingest and load"
-             (ts/with-db dest-db
-               ;; ingest
-               (testing "doing ingestion"
-                 (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                     "successful"))
-               (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
-                                       (t2/hydrate :tabs :dashcards))
-                     new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
-                     new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
-                     new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
-                     new-card-id-2 (t2/select-one-pk Card :entity_id card-eid-2)]
+            (testing "ingest and load"
+              (ts/with-db dest-db
+                ;; ingest
+                (testing "doing ingestion"
+                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                      "successful"))
+                (let [new-dashboard (-> (t2/select-one Dashboard :entity_id dashboard-eid)
+                                        (t2/hydrate :tabs :dashcards))
+                      new-tab-id-1  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-1)
+                      new-tab-id-2  (t2/select-one-pk :model/DashboardTab :entity_id tab-eid-2)
+                      new-card-id-1 (t2/select-one-pk Card :entity_id card-eid-1)
+                      new-card-id-2 (t2/select-one-pk Card :entity_id card-eid-2)]
 
-                 (is (=? [{:id           new-tab-id-1
-                           :dashboard_id (:id new-dashboard)
-                           :name         "Tab 1"
-                           :position     0}
-                          {:id           new-tab-id-2
-                           :dashboard_id (:id new-dashboard)
-                           :name         "Tab 2"
-                           :position     1}]
-                         (:tabs new-dashboard)))
-                 (is (=? [{:card_id          new-card-id-1
-                           :dashboard_id     (:id new-dashboard)
-                           :dashboard_tab_id new-tab-id-1}
-                          {:card_id          new-card-id-2
-                           :dashboard_id     (:id new-dashboard)
-                           :dashboard_tab_id new-tab-id-1}
-                          {:card_id          new-card-id-1
-                           :dashboard_id     (:id new-dashboard)
-                           :dashboard_tab_id new-tab-id-2}
-                          {:card_id          new-card-id-2
-                           :dashboard_id     (:id new-dashboard)
-                           :dashboard_tab_id new-tab-id-2}]
-                         (:dashcards new-dashboard))))))))))))
+                  (is (=? [{:id           new-tab-id-1
+                            :dashboard_id (:id new-dashboard)
+                            :name         "Tab 1"
+                            :position     0}
+                           {:id           new-tab-id-2
+                            :dashboard_id (:id new-dashboard)
+                            :name         "Tab 2"
+                            :position     1}]
+                          (:tabs new-dashboard)))
+                  (is (=? [{:card_id          new-card-id-1
+                            :dashboard_id     (:id new-dashboard)
+                            :dashboard_tab_id new-tab-id-1}
+                           {:card_id          new-card-id-2
+                            :dashboard_id     (:id new-dashboard)
+                            :dashboard_tab_id new-tab-id-1}
+                           {:card_id          new-card-id-1
+                            :dashboard_id     (:id new-dashboard)
+                            :dashboard_tab_id new-tab-id-2}
+                           {:card_id          new-card-id-2
+                            :dashboard_id     (:id new-dashboard)
+                            :dashboard_tab_id new-tab-id-2}]
+                          (:dashcards new-dashboard))))))))))))
 
 (deftest premium-features-test
   (testing "with :serialization enabled on the token"
@@ -866,3 +866,24 @@
               (testing ".yaml files not containing valid yaml are just logged and do not break ingestion process"
                 (is (=? [[:error Throwable "Error reading file unreadable.yaml"]]
                         logs))))))))))
+
+(deftest channel-test
+  (mt/test-helpers-set-global-values!
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (mt/with-temp
+            [:model/Channel _ {:name "My HTTP channel"
+                               :type :channel/http
+                               :details {:url         "http://example.com"
+                                         :auth-method :none}}]
+            (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) dump-dir)
+            (ts/with-db dest-db
+              (testing "doing ingestion"
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful")
+                (is (=? {:name    "My HTTP channel"
+                         :type    :channel/http
+                         :details {:url         "http://example.com"
+                                   :auth-method "none"}}
+                        (t2/select-one :model/Channel :name "My HTTP channel")))))))))))

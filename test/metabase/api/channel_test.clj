@@ -74,13 +74,15 @@
 
 (deftest list-channels-test
   (mt/with-temp [:model/Channel chn-1 default-test-channel
-                 :model/Channel chn-2 (assoc default-test-channel :active false)]
+                 :model/Channel chn-2 (assoc default-test-channel
+                                             :active false
+                                             :name "Channel 2")]
     (testing "return active channels only"
       (is (= [(update chn-1 :type ns-keyword->str)]
              (mt/user-http-request :crowberto :get 200 "channel"))))
 
     (testing "return all if include_inactive is true"
-      (is (= (map #(update % :type ns-keyword->str) [chn-1 chn-2])
+      (is (= (map #(update % :type ns-keyword->str) [chn-1 (assoc chn-2 :name "Channel 2")])
              (mt/user-http-request :crowberto :get 200 "channel" {:include_inactive true}))))))
 
 (deftest create-channel-error-handling-test
