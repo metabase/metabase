@@ -18,7 +18,7 @@ export async function pollUntilMetabaseInstanceReady(
   let attempts = 0;
 
   const spinner = ora(
-    "Waiting for the Metabase instance to be ready. This usually takes 1 to 5 minutes.",
+    "Waiting for the Metabase instance to be ready (~2 mins)",
   );
 
   while (attempts < HEALTH_CHECK_MAX_ATTEMPTS) {

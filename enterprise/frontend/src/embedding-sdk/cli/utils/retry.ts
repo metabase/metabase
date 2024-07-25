@@ -7,7 +7,7 @@ export async function retry<T>(
   task: () => Promise<T>,
   options?: { retries?: number; delay?: number },
 ): Promise<T> {
-  const { retries = 3, delay = 1000 } = options ?? {};
+  const { retries = 10, delay = 1000 } = options ?? {};
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {

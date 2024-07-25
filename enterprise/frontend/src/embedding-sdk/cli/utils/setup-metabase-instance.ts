@@ -49,8 +49,10 @@ export async function setupMetabaseInstance(
     return false;
   };
 
+  // The API is not immediately ready after the health check.
+  // We keep retrying until the request stops timing out.
   try {
-    spinner.start("Creating an admin user...");
+    spinner.start("Creating an admin user (~2 mins)");
 
     let res = await retry(
       () =>
@@ -73,9 +75,9 @@ export async function setupMetabaseInstance(
             },
           }),
           headers: { "content-type": "application/json" },
-          signal: AbortSignal.timeout(8000),
+          signal: AbortSignal.timeout(2500),
         }),
-      { retries: 8, delay: 500 },
+      { retries: 20, delay: 0 },
     );
 
     if (!res.ok) {
