@@ -127,7 +127,7 @@ describeEE("scenarios > admin > performance > schedule strategy", () => {
           .with("hourly", () => 1)
           .with("daily", () => 4)
           .with("weekly", () => 5)
-          .with("monthly", () => 5)
+          .with("monthly", () => 6)
           .exhaustive();
         scheduleStrategyFormFields.within(() => {
           cy.get("[aria-label]").should(
