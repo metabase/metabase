@@ -8413,9 +8413,10 @@ databaseChangeLog:
               - column:
                   name: name
                   remarks: channel name
-                  type: ${text.type}
+                  type: varchar(254)
                   constraints:
                     nullable: false
+                    unique: true
               - column:
                   name: description
                   remarks: channel description

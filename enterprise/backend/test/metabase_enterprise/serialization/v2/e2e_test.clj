@@ -18,7 +18,6 @@
                             ParameterCard
                             Table]]
    [metabase.models.action :as action]
-   [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.serialization :as serdes]
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
@@ -868,32 +867,23 @@
                 (is (=? [[:error Throwable "Error reading file unreadable.yaml"]]
                         logs))))))))))
 
-
 (deftest channel-test
-  (with-redefs [pulse-channel/update-send-pulse-trigger-if-needed! (fn [& _] nil)]
-    (mt/test-helpers-set-global-values!
-      (ts/with-random-dump-dir [dump-dir "serdesv2-"]
-        (ts/with-dbs [source-db dest-db]
-          (ts/with-db source-db
-            (mt/with-temp
-              [:model/Channel      {channel-id :id} {:name "My HTTP channel"
-                                                     :type :channel/http
-                                                     :details {:url "http://example.com"
-                                                               :auth-method :none}}
-               :model/Pulse        {pulse-id :id}   {:name            "My Pulse"
-                                                     :alert_condition "rows"}
-               :model/PulseChannel _                {:channel_id channel-id
-                                                     :channel_type :http
-                                                     :pulse_id pulse-id}]
-              (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) dump-dir)
-              (ts/with-db dest-db
-                (testing "doing ingestion"
-                  (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
-                      "successful")
-                  (let [new-channel (t2/select-one :model/Channel :name "My HTTP channel")
-                        pulse       (t2/select-one :model/Pulse :name "My Pulse")]
-                    (is (some? new-channel))
-                    (is (t2/exists? :model/PulseChannel
-                                    :pulse_id     (:id pulse)
-                                    :channel_id   (:id new-channel)
-                                    :channel_type :http))))))))))))
+  (mt/test-helpers-set-global-values!
+    (ts/with-random-dump-dir [dump-dir "serdesv2-"]
+      (ts/with-dbs [source-db dest-db]
+        (ts/with-db source-db
+          (mt/with-temp
+            [:model/Channel _ {:name "My HTTP channel"
+                               :type :channel/http
+                               :details {:url         "http://example.com"
+                                         :auth-method :none}}]
+            (storage/store! (seq (serdes/with-cache (into [] (extract/extract {})))) dump-dir)
+            (ts/with-db dest-db
+              (testing "doing ingestion"
+                (is (serdes/with-cache (serdes.load/load-metabase! (ingest/ingest-yaml dump-dir)))
+                    "successful")
+                (is (=? {:name    "My HTTP channel"
+                         :type    :channel/http
+                         :details {:url         "http://example.com"
+                                   :auth-method "none"}}
+                        (t2/select-one :model/Channel :name "My HTTP channel")))))))))))
