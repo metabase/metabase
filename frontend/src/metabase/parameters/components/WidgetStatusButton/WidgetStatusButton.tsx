@@ -1,6 +1,6 @@
 import type { MouseEvent } from "react";
 
-import { Button, Icon, Tooltip } from "metabase/ui";
+import { Button, Flex, Icon, Tooltip } from "metabase/ui";
 
 import S from "./WidgetStatusButton.module.css";
 import type { Status } from "./types";
@@ -12,7 +12,7 @@ type Props = {
   onClick?: () => void;
 };
 
-const ICON_SIZE = 12;
+const ICON_SIZE = 16;
 
 export const WidgetStatusButton = ({
   iconSize = ICON_SIZE,
@@ -30,7 +30,6 @@ export const WidgetStatusButton = ({
 
   const button = (
     <Button
-      className={S.root}
       compact
       disabled={disabled}
       leftIcon={<Icon name={icon} size={iconSize} />}
@@ -51,8 +50,28 @@ export const WidgetStatusButton = ({
      * 2. Tooltip won't reappear when focus is automatically brought back to the button but
      *    user isn't hovering the button.
      */
-    return <Tooltip label={label}>{button}</Tooltip>;
+    return (
+      <Flex
+        align="center"
+        className={S.root}
+        /* trick to prevent this element from affecting parent's height */
+        h={0}
+        ml="auto"
+      >
+        <Tooltip label={label}>{button}</Tooltip>
+      </Flex>
+    );
   }
 
-  return <>{button}</>;
+  return (
+    <Flex
+      align="center"
+      className={S.root}
+      /* trick to prevent this element from affecting parent's height */
+      h={0}
+      ml="auto"
+    >
+      {button}
+    </Flex>
+  );
 };
