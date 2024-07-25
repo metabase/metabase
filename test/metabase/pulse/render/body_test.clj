@@ -964,8 +964,8 @@
               (is (=  ids-to-colour
                      (keep
                       (fn [[id row-els]]
-                        (let [{:keys [attrs] :as el} (first row-els)
-                              style-str              (:style attrs)]
+                        (let [{:keys [attrs]} (first row-els)
+                              style-str       (:style attrs)]
                           (when (str/includes? style-str "background-color")
                             id)))
                       (map vector
