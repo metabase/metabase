@@ -15,6 +15,7 @@ interface EllipsifiedProps {
   children?: ReactNode;
   tooltipMaxWidth?: number | "auto";
   lines?: number;
+  multiline?: boolean;
   placement?: FloatingPosition;
   "data-testid"?: string;
   id?: string;
@@ -29,6 +30,7 @@ export const Ellipsified = ({
   children,
   tooltipMaxWidth,
   lines = 1,
+  multiline = false,
   placement = "top",
   "data-testid": dataTestId,
   id,
@@ -47,6 +49,7 @@ export const Ellipsified = ({
       label={canSkipTooltipRendering ? undefined : tooltip || children || " "}
       position={placement}
       width={tooltipMaxWidth}
+      multiline={multiline}
     >
       <EllipsifiedRoot
         ref={ref}
