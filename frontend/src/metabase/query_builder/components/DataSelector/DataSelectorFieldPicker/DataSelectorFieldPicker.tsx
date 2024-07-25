@@ -73,7 +73,7 @@ const DataSelectorFieldPicker = ({
 
   const renderItemIcon = (item: FieldWithName) =>
     item.field && (
-      <IconContainer size="18px">
+      <IconContainer style={{ fontSize: "18px" }}>
         <TableColumnInfoIcon
           field={item.field}
           position="top-end"

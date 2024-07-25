@@ -39,5 +39,4 @@ export const IconContainer = styled.span`
   justify-content: center;
   width: 1em;
   height: 1em;
-  font-size: ${props => props.size || "14px"};
 `;

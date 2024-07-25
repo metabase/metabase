@@ -149,7 +149,7 @@ function renderItemIcon(item: ColumnListItem | SegmentListItem) {
   if (item.column) {
     const { query, stageIndex, column } = item;
     return (
-      <IconContainer size="18px">
+      <IconContainer style={{ fontSize: "18px" }}>
         <QueryColumnInfoIcon
           query={query}
           stageIndex={stageIndex}
