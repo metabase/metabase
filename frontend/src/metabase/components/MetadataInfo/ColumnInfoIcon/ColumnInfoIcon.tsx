@@ -41,7 +41,10 @@ export function QueryColumnInfoIcon({
 
   return (
     <QueryColumnInfoPopover {...props} delay={delay}>
-      <IconContainer style={{ fontSize: `${size}px` }} aria-label={t`More info`}>
+      <IconContainer
+        style={{ fontSize: `${size}px` }}
+        aria-label={t`More info`}
+      >
         <PopoverDefaultIcon
           className={className}
           name={icon ?? getColumnIcon(column)}
@@ -76,7 +79,10 @@ export function TableColumnInfoIcon({
 }: TableColumnInfoIconProps) {
   return (
     <TableColumnInfoPopover {...props} field={field} delay={delay}>
-      <IconContainer style={{ fontSize: `${size}px` }} aria-label={t`More info`}>
+      <IconContainer
+        style={{ fontSize: `${size}px` }}
+        aria-label={t`More info`}
+      >
         <PopoverDefaultIcon className={className} name={icon} color={color} />
         <PopoverHoverTarget
           className={className}
