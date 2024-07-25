@@ -261,7 +261,7 @@
 
 (defmethod driver.sql/json-field-length :mysql
   [_ json-field-identifier]
-  [:length [:cast json-field-identifier :longtext]])
+  [:length [:cast json-field-identifier :char]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   [:from_unixtime expr])
