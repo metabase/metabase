@@ -48,6 +48,13 @@
    :column             (name column)
    :explicit-reference true})
 
+(defn- table-reference [table]
+  (let [reference (nqa/table-reference (mt/id) table)]
+    ;; sanity-check that this is the right reference
+    (assert (= (mt/id table) (:table-id reference)))
+    ;; sanity-check the names, whose case depends on the driver
+    (assert (= (name table) (u/lower-case-en (:table reference))))))
+
 (defn- field-reference [table column]
   (let [reference (nqa/field-reference (mt/id) table column)]
     ;; sanity-check that this is the right reference

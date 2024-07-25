@@ -121,6 +121,14 @@
                    [(update-vals reference strip-quotes)]))
              analyzed-columns))))
 
+(defn table-reference
+  "Used by tests"
+  [db-id table]
+  (t2/select-one [:model/Table [:id :table-id] [:name :table]]
+                 {:where [:and
+                          [:= :t.db_id db-id]
+                          (table-query {:table (name table)})]}))
+
 (defn field-reference
   "Used by tests"
   [db-id table column]
