@@ -6,6 +6,7 @@ import { replace } from "react-router-redux";
 import { useMount } from "react-use";
 import _ from "underscore";
 
+import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper"; // Import the component
 import { NotFound } from "metabase/components/ErrorPages";
 import Actions from "metabase/entities/actions";
 import Databases from "metabase/entities/databases";
@@ -138,7 +139,7 @@ function ModelDetailPage({
   }, [mainTable, hasFetchedTableMetadata, fetchTableForeignKeys]);
 
   useEffect(() => {
-    if (tab === "actions" && !hasActionsTab) {
+    if (tab === "actions" && !hasActionsTab && model) {
       const nextUrl = Urls.modelDetail(model.card(), FALLBACK_TAB);
       onChangeLocation(nextUrl);
     }
@@ -178,25 +179,27 @@ function ModelDetailPage({
     [model, onChangeCollection],
   );
 
-  if (model.isArchived()) {
-    return <NotFound />;
-  }
-
   return (
     <>
-      <ModelDetailPageView
-        model={model}
-        mainTable={mainTable}
-        tab={tab}
-        hasDataPermissions={hasDataPermissions}
-        hasActionsTab={hasActionsTab}
-        hasNestedQueriesEnabled={hasNestedQueriesEnabled}
-        supportsNestedQueries={supportsNestedQueries}
-        onChangeName={handleNameChange}
-        onChangeDescription={handleDescriptionChange}
-        onChangeCollection={handleCollectionChange}
-      />
-      {/* Required for rendering child `ModalRoute` elements */}
+      <DelayedLoadingAndErrorWrapper
+        loading={!model || !mainTable}
+        error={model?.error || mainTable?.error}
+      >
+        {() => (
+          <ModelDetailPageView
+            model={model}
+            mainTable={mainTable}
+            tab={tab}
+            hasDataPermissions={hasDataPermissions}
+            hasActionsTab={hasActionsTab}
+            hasNestedQueriesEnabled={hasNestedQueriesEnabled}
+            supportsNestedQueries={supportsNestedQueries}
+            onChangeName={handleNameChange}
+            onChangeDescription={handleDescriptionChange}
+            onChangeCollection={handleCollectionChange}
+          />
+        )}
+      </DelayedLoadingAndErrorWrapper>
       {children}
     </>
   );

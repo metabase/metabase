@@ -186,6 +186,7 @@ type SetupOpts = {
   collections?: Collection[];
   usedBy?: Card[];
   settings?: Partial<Settings>;
+  beforeLoading?: () => void;
 };
 
 async function setup({
@@ -196,6 +197,7 @@ async function setup({
   collections = [],
   usedBy = [],
   settings = {},
+  beforeLoading,
 }: SetupOpts) {
   const storeInitialState = createMockState({
     settings: createMockSettingsState(settings),
@@ -245,6 +247,10 @@ async function setup({
   const slug = `${model.id()}-${name}`;
   const baseUrl = `/model/${slug}/detail`;
   const initialRoute = `${baseUrl}/${tab}`;
+
+  if (beforeLoading) {
+    beforeLoading();
+  }
 
   const { history } = renderWithProviders(
     <>
@@ -304,8 +310,32 @@ describe("ModelDetailPage", () => {
         model: getModel({ name: "My Model", description: "Foo Bar" }),
       });
 
-      expect(screen.getByText("My Model")).toBeInTheDocument();
-      expect(screen.getByLabelText("Description")).toHaveTextContent("Foo Bar");
+      expect(await screen.findByText("My Model")).toBeInTheDocument();
+      expect(await screen.findByLabelText("Description")).toHaveTextContent("Foo Bar");
+    });
+
+    it("shows loading state while data is being fetched", async () => {
+      const { model } = await setup({
+        model: getModel(),
+        beforeLoading: () => {
+          jest.spyOn(Questions.selectors, "getObject").mockReturnValue(null);
+        },
+      });
+
+      expect(await screen.findByTestId("loading-spinner")).toBeInTheDocument();
+      expect(screen.queryByText(model.displayName())).not.toBeInTheDocument();
+    });
+
+    it("shows error state when there's an error", async () => {
+      const errorMessage = "Failed to load model";
+      await setup({
+        model: getModel(),
+        beforeLoading: () => {
+          jest.spyOn(Questions.selectors, "getObject").mockReturnValue({ error: errorMessage });
+        },
+      });
+
+      expect(await screen.findByText(errorMessage)).toBeInTheDocument();
     });
 
     it("displays model creator", async () => {
