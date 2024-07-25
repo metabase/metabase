@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import Link from "metabase/core/components/Link";
 import { breakpointMaxLarge } from "metabase/styled-components/theme";
 
@@ -18,6 +18,7 @@ export const AdminNavLink = styled(Link)<AdminNavLinkProps>`
   ${breakpointMaxLarge} {
     padding-inline: 0.85rem;
   }
+
   color: ${props =>
     props.isSelected
       ? "var(--mb-color-text-white)"
