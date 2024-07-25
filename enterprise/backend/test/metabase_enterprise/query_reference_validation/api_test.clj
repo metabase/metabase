@@ -32,24 +32,30 @@
                             ;; QFs not to include:
                             ;; - Field is still active
                             :model/QueryField {}             {:card_id  card-1
+                                                              :table    "ORDERS"
                                                               :column   "tax"
                                                               :field_id (mt/id :orders :tax)}
                             ;; - Implicit reference
                             :model/QueryField {}             {:card_id            card-2
+                                                              :table              "T1"
                                                               :column             "FA"
                                                               :field_id           field-1
                                                               :explicit_reference false}
                             ;; QFs to include:
                             :model/QueryField {qf-1 :id}     {:card_id  card-1
+                                                              :table    "T1"
                                                               :column   "FA"
                                                               :field_id field-1}
                             :model/QueryField {qf-1b :id}    {:card_id  card-1
+                                                              :table    "T1"
                                                               :column   "FAB"
                                                               :field_id nil}
                             :model/QueryField {qf-2 :id}     {:card_id  card-2
+                                                              :table    "T1"
                                                               :column   "FB"
                                                               :field_id field-2}
                             :model/QueryField {qf-3 :id}     {:card_id  card-3
+                                                              :table    "T2"
                                                               :column   "FC"
                                                               :field_id field-3}]
      (mt/with-premium-features #{:query-reference-validation}
@@ -180,8 +186,7 @@
                 [{:id     card-1
                   :name   "A"
                   :errors [{:type "inactive-field", :table "T1", :field "FA"}
-                           ;; TODO fix the table name here once we track it in QueryField
-                           {:type "unknown-field", :table "unknown", :field "FAB"}]}
+                           {:type "unknown-field",  :table "T1", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
                   :errors [{:type "inactive-field", :table "T1", :field "FB"}]}
@@ -202,8 +207,7 @@
                 [{:id     card-1
                   :name   "A"
                   :errors [{:type "inactive-field", :table "T1", :field "FA"}
-                           ;; TODO fix the table name here once we track it in QueryField
-                           {:type "unknown-field", :table "unknown", :field "FAB"}]}
+                           {:type "unknown-field",  :table "T1", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
                   :errors [{:type "inactive-field", :table "T1", :field "FB"}]}]}
