@@ -1,5 +1,3 @@
-import { match } from "ts-pattern";
-
 import {
   type ScheduleComponentType,
   getScheduleComponentLabel,
@@ -14,16 +12,17 @@ export const saveCacheStrategyForm = (options?: {
   /** 'Model' as in 'type of object' */
   model?: CacheableModel;
 }) => {
-  // FIXME: Since this code will get backported, don't use ts-pattern
-  const expectedRoute = match(options)
+  let expectedRoute: string;
+  if (options?.strategyType === "nocache" && options?.model === "root") {
     // When setting the default policy to "Don't cache", we delete the policy in the BE
-    .with(
-      { strategyType: "nocache", model: "root" },
-      () => "@deleteCacheConfig",
-    )
+    expectedRoute = "@deleteCacheConfig";
+  } else if (options?.strategyType === "inherit") {
     // When setting a database's policy to "Use default", we delete the policy in the BE
-    .with({ strategyType: "inherit" }, () => "@deleteCacheConfig")
-    .otherwise(() => "@putCacheConfig");
+    expectedRoute = "@deleteCacheConfig";
+  } else {
+    // Otherwise we update the cache config
+    expectedRoute = "@putCacheConfig";
+  }
   cy.log("Save the cache strategy form");
   cacheStrategyForm().button(/Save/).click();
   return cy.wait(expectedRoute);
