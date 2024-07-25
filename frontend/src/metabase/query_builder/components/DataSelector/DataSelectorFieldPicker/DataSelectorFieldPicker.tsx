@@ -5,6 +5,7 @@ import {
   HoverParent,
   TableColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 import AccordionList from "metabase/core/components/AccordionList";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
@@ -19,7 +20,6 @@ import {
   HeaderContainer,
   HeaderName,
 } from "./DataSelectorFieldPicker.styled";
-import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 type DataSelectorFieldPickerProps = {
   fields: Field[];

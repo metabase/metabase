@@ -5,9 +5,9 @@ import {
   HoverParent,
   TableColumnInfoIcon,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
-import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 export const NodeListItemName = styled.span`
   font-weight: 700;

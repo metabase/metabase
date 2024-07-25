@@ -12,6 +12,7 @@ import _ from "underscore";
 
 import { QueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { HoverParent } from "metabase/components/MetadataInfo/InfoIcon";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 import { Popover as InfoPopover } from "metabase/components/MetadataInfo/Popover";
 import CS from "metabase/css/core/index.css";
 import { color } from "metabase/lib/colors";
@@ -45,8 +46,6 @@ import {
   GroupTitle,
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
-
-import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 type WithIndex<T> = T & {
   index: number;

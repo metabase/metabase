@@ -77,11 +77,7 @@ export function TableColumnInfoIcon({
   return (
     <TableColumnInfoPopover {...props} field={field} delay={delay}>
       <IconContainer size={`${size}px`} aria-label={t`More info`}>
-        <PopoverDefaultIcon
-          className={className}
-          name={icon}
-          color={color}
-        />
+        <PopoverDefaultIcon className={className} name={icon} color={color} />
         <PopoverHoverTarget
           className={className}
           name="info_filled"
