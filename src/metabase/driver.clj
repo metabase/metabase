@@ -10,6 +10,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.auth-provider :as auth-provider]
    [metabase.driver.impl :as driver.impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -984,8 +985,9 @@
     (let [{:keys [access_token expires_in]} auth-provider-response]
       (cond-> (assoc details :password access_token)
         expires_in (assoc :password-expiry-timestamp (+ (System/currentTimeMillis)
-                                                        ;; renew the password a minute before expiry
-                                                        (* (- (parse-long expires_in) 60) 1000)))))
+                                                        (* (- (parse-long expires_in)
+                                                              auth-provider/azure-auth-token-renew-slack-seconds)
+                                                           1000)))))
 
     (merge details auth-provider-response)))
 

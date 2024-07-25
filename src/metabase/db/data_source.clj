@@ -23,18 +23,14 @@
   []
   (System/currentTimeMillis))
 
-(def ^:private azure-auth-token-renew-slack-seconds
-  "How many seconds before expiry we should prefer renewal.
-  This is a fairly arbitrary value, it's used just to avoid situations when we decide to use an
-  auth token which expires before we can put it to use."
-  60)
-
 (defn- renew-azure-managed-identity-password
   [client-id]
   (let [{:keys [access_token expires_in]}
         (auth-provider/fetch-auth :azure-managed-identity nil {:azure-managed-identity-client-id client-id})]
     {:password access_token
-     :expiry (+ (*current-millis*) (* (- (parse-long expires_in) azure-auth-token-renew-slack-seconds) 1000))}))
+     :expiry (+ (*current-millis*) (* (- (parse-long expires_in)
+                                         auth-provider/azure-auth-token-renew-slack-seconds)
+                                      1000))}))
 
 (defn- ensure-azure-managed-identity-password
   "Make sure there is a \"password\" property in `properties` and returns a [[Properties]]

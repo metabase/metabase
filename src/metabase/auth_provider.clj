@@ -4,6 +4,12 @@
    [clj-http.client :as http]
    [medley.core :as m]))
 
+(def azure-auth-token-renew-slack-seconds
+  "How many seconds before expiry we should prefer renewal.
+  This is a fairly arbitrary value, it's used just to avoid situations when we decide to use an
+  auth token which expires before we can put it to use."
+  60)
+
 (defmulti fetch-auth
   "Multimethod for auth-provider implementations.
    In general, implementations shouldn't change the shape of responses or names

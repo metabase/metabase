@@ -171,7 +171,7 @@
   (testing "password is set if it's missing"
     (let [now 0
           expiry-secs 1000
-          expiry (+ now (* (- expiry-secs @#'mdb.data-source/azure-auth-token-renew-slack-seconds) 1000))
+          expiry (+ now (* (- expiry-secs auth-provider/azure-auth-token-renew-slack-seconds) 1000))
           props (doto (Properties.)
                   (.setProperty "azure-managed-identity-client-id" "client ID"))]
       (binding [auth-provider/*fetch-as-json* (fn [_url _headers]
@@ -187,7 +187,7 @@
   (testing "nothing happens if a fresh enough password is present"
     (let [now 0
           expiry-secs 1000
-          expiry (+ now (* (- expiry-secs @#'mdb.data-source/azure-auth-token-renew-slack-seconds) 1000))
+          expiry (+ now (* (- expiry-secs auth-provider/azure-auth-token-renew-slack-seconds) 1000))
           props (doto (Properties.)
                   (.putAll {"azure-managed-identity-client-id" "client ID"
                             "password" "access token"
@@ -204,7 +204,7 @@
   (testing "a new password is set if the old one is stale"
     (let [now 0
           expiry-secs 1000
-          expiry (+ now (* (- expiry-secs @#'mdb.data-source/azure-auth-token-renew-slack-seconds) 1000))
+          expiry (+ now (* (- expiry-secs auth-provider/azure-auth-token-renew-slack-seconds) 1000))
           props (doto (Properties.)
                   (.putAll {"azure-managed-identity-client-id" "client ID"
                             "password" "access token"
