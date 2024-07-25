@@ -126,7 +126,8 @@
                                 :emoji true}}
         link-section    {:type "section"
                          :fields [{:type "mrkdwn"
-                                   :text (str "<" (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard)) "| See this dashboard>")}]}
+                                   :text (str "<" (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard)) "|"
+                                              "Sent from " (public-settings/site-name) ">")}]}
         creator-section {:type   "section"
                          :fields [{:type "mrkdwn"
                                    :text (str "Sent by " (-> pulse :creator :common_name))}]}
@@ -138,16 +139,6 @@
                           {:type   "section"
                            :fields filter-fields})]
     {:blocks (filter some? [header-section link-section filter-section creator-section])}))
-
-(defn- slack-dashboard-footer
-  "Returns a block element with the footer text and link which should be at the end of a Slack dashboard subscription."
-  [pulse dashboard]
-  {:blocks
-   [{:type "divider"}
-    {:type "context"
-     :elements [{:type "mrkdwn"
-                 :text (str "<" (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard)) "|"
-                            "*Sent from " (public-settings/site-name) "*>")}]}]})
 
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
@@ -164,5 +155,4 @@
     {:channel-id  channel-id
      :attachments (remove nil?
                           (flatten [(slack-dashboard-header pulse dashboard)
-                                    (create-slack-attachment-data payload)
-                                    (slack-dashboard-footer pulse dashboard)]))}))
+                                    (create-slack-attachment-data payload)]))}))
