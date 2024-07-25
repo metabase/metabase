@@ -961,10 +961,13 @@
           (mt/with-current-user (mt/user->id :rasta)
             (let [card-doc     (render.tu/render-card-as-hickory card-id)
                   card-row-els (hik.s/select (hik.s/tag :tr) card-doc)]
-              (is (= (mapv str ids-to-colour)
+              (is (=  ids-to-colour
                      (keep
-                      (fn [{:keys [attrs] :as el}]
-                        (let [style-str (:style attrs)]
+                      (fn [[id row-els]]
+                        (let [{:keys [attrs] :as el} (first row-els)
+                              style-str              (:style attrs)]
                           (when (str/includes? style-str "background-color")
-                            (-> el :content first))))
-                      (mapcat :content (take 20 card-row-els))))))))))))
+                            id)))
+                      (map vector
+                       (range)
+                       (map :content (take 20 card-row-els)))))))))))))
