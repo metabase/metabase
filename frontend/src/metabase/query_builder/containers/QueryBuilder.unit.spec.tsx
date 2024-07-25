@@ -124,7 +124,7 @@ describe("QueryBuilder", () => {
 
         const executionTime = await screen.findByTestId("execution-time");
         expect(executionTime).toBeInTheDocument();
-        expect(executionTime).toHaveTextContent("123 ms");
+        expect(executionTime).toHaveTextContent("123ms");
       });
 
       it("renders query execution time for native questions", async () => {
@@ -137,7 +137,7 @@ describe("QueryBuilder", () => {
 
         const executionTime = await screen.findByTestId("execution-time");
         expect(executionTime).toBeInTheDocument();
-        expect(executionTime).toHaveTextContent("123 ms");
+        expect(executionTime).toHaveTextContent("123ms");
       });
     });
   });
