@@ -563,8 +563,8 @@
                                                   {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :total-els-text     #{"TOTAL"}}]
-                                                 [card-b-doc "Renders without legend and 'total' when disabled in viz-settings."
-                                                  {:legend-els-colours #{}
+                                                 [card-b-doc "Renders legend even if disabled in viz-settings, so that static pie charts are legible, but does not render total if it is disabled."
+                                                  {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
                                                    :total-els-text     #{}}]]]
               (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
