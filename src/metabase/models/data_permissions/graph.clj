@@ -106,7 +106,7 @@
 
 (defn- rename-perm
   "Transforms a 'leaf' value with db-level or table-level perms in the data permissions graph into an API-style data permissions value.
-  There's some tricks in here that ellide table-level and table-level permissions values that are the most-permissive setting."
+  There's some tricks in here that ellide schema-level and table-level permissions values that are the most-permissive setting."
   [perm-map]
   (let [granular-keys [:perms/download-results :perms/manage-table-metadata
                        :perms/view-data :perms/create-queries]]
