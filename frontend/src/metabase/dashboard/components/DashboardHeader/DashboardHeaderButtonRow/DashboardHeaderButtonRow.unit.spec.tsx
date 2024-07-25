@@ -211,9 +211,6 @@ const expectButtonInHeader = async ({
       `${DASHBOARD_EXPECTED_DATA_MAP[action].icon} icon`,
     ),
   );
-  console.log("*".repeat(30));
-  console.log("action:", action);
-  console.log("*".repeat(30));
   const { tooltip } = DASHBOARD_EXPECTED_DATA_MAP[action];
   expect(screen.getByText(checkNotNull(tooltip))).toBeInTheDocument();
 };
