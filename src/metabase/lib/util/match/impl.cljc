@@ -41,8 +41,9 @@
   [replace-fn clause-parents form]
   (cond
     (map? form)
-    (into form (for [[k v] form]
-                 [k (replace-fn (conj clause-parents k) v)]))
+    (reduce-kv (fn [form k v]
+                 (assoc form k (replace-fn (conj clause-parents k) v)))
+               form form)
 
     (sequential? form)
     (mapv (partial replace-fn (if (keyword? (first form))

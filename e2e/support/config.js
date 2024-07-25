@@ -14,7 +14,7 @@ const isEnterprise = process.env["MB_EDITION"] === "ee";
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
-const isQaDatabase = process.env["QA_DB_ENABLED"];
+const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 
 const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
