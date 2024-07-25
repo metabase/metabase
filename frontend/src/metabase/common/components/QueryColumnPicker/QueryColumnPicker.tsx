@@ -9,11 +9,11 @@ import {
   QueryColumnInfoIcon,
   HoverParent,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 import type { ColorName } from "metabase/lib/colors/types";
 import type { IconName } from "metabase/ui";
 import { DelayGroup } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 import { BucketPickerPopover } from "./BucketPickerPopover";
 import { StyledAccordionList } from "./QueryColumnPicker.styled";

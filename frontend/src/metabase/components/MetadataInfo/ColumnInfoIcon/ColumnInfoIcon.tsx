@@ -85,4 +85,3 @@ export function TableColumnInfoIcon({
 }
 
 TableColumnInfoIcon.HoverParent = HoverParent;
-
