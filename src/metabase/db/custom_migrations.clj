@@ -1480,30 +1480,30 @@
       (column->column-key column)
       (json/generate-string [:ref field-ref]))))
 
-(defn- visualization-settings->columns [visualization_settings]
-  (if-let [columns (:table.columns visualization_settings)]
+(defn- viz-settings->columns [viz-settings]
+  (if-let [columns (:table.columns viz-settings)]
     (into []
           (map (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}))
           columns)
     []))
 
-(defn- migrate-legacy-column-setting-keys [visualization_settings columns]
+(defn- migrate-legacy-column-keys-in-viz-settings [viz-settings columns]
   (let [key->column (m/index-by column->legacy-column-key columns)]
-    (m/update-existing visualization_settings :column_settings update-keys
+    (m/update-existing viz-settings :column_settings update-keys
                        (fn [key]
                          (if-let [column (get key->column (str key))]
                            (keyword (column->column-key column))
                            key)))))
 
-(defn- rollback-legacy-column-setting-keys [visualization_settings columns]
+(defn- rollback-legacy-column-keys-in-viz-settings [viz-settings columns]
   (let [key->column (m/index-by column->column-key columns)]
-    (m/update-existing visualization_settings :column_settings update-keys
+    (m/update-existing viz-settings :column_settings update-keys
                        (fn [key]
                          (if-let [column (get key->column (str key))]
                            (keyword (column->legacy-column-key column))
                            key)))))
 
-(defn- update-field-refs-in-card-column-settings [update-viz-settings]
+(defn- update-legacy-column-keys-in-card-viz-settings [update-viz-settings]
   (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
                       (let [parsed-viz-settings    (json/parse-string visualization_settings keyword)
                             parsed-result-metadata (json/parse-string result_metadata keyword)
@@ -1517,10 +1517,10 @@
                                            :where  [:like :visualization_settings "%column_settings%"]}))))
 
 (define-reversible-migration RemoveFieldRefsFromCardColumnSettings
-  (update-field-refs-in-card-column-settings migrate-legacy-column-setting-keys)
-  (update-field-refs-in-card-column-settings rollback-legacy-column-setting-keys))
+  (update-legacy-column-keys-in-card-viz-settings migrate-legacy-column-keys-in-viz-settings)
+  (update-legacy-column-keys-in-card-viz-settings rollback-legacy-column-keys-in-viz-settings))
 
-(defn- update-field-refs-in-dashboard-card-column-settings [update-viz-settings]
+(defn- update-legacy-column-keys-in-dashboard-card-viz-settings [update-viz-settings]
   (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
                       (let [parsed-viz-settings    (json/parse-string visualization_settings keyword)
                             parsed-result-metadata (json/parse-string result_metadata keyword)
@@ -1535,14 +1535,14 @@
                                            :where  [:like :c.visualization_settings "%column_settings%"]}))))
 
 (define-reversible-migration RemoveFieldRefsFromDashboardCardColumnSettings
-  (update-field-refs-in-dashboard-card-column-settings migrate-legacy-column-setting-keys)
-  (update-field-refs-in-dashboard-card-column-settings rollback-legacy-column-setting-keys))
+  (update-legacy-column-keys-in-dashboard-card-viz-settings migrate-legacy-column-keys-in-viz-settings)
+  (update-legacy-column-keys-in-dashboard-card-viz-settings rollback-legacy-column-keys-in-viz-settings))
 
-(defn- update-field-refs-in-card-revision-column-settings [update-viz-settings]
+(defn- update-legacy-column-keys-in-card-revision-viz-settings [update-viz-settings]
   (let [update-one! (fn [{:keys [id object]}]
                       (let [parsed-object          (json/parse-string object keyword)
                             parsed-viz-settings    (:visualization_settings parsed-object)
-                            columns                (visualization-settings->columns parsed-viz-settings)
+                            columns                (viz-settings->columns parsed-viz-settings)
                             updated-viz-settings   (update-viz-settings parsed-viz-settings columns)
                             updated-object         (assoc parsed-object :visualization_settings updated-viz-settings)]
                         (when (not= parsed-object updated-object)
@@ -1556,5 +1556,5 @@
                                                          [:like :object "%column_settings%"]]}))))
 
 (define-reversible-migration RemoveFieldRefsFromCardRevisionColumnSettings
-  (update-field-refs-in-card-revision-column-settings migrate-legacy-column-setting-keys)
-  (update-field-refs-in-card-revision-column-settings rollback-legacy-column-setting-keys))
+  (update-legacy-column-keys-in-card-revision-viz-settings migrate-legacy-column-keys-in-viz-settings)
+  (update-legacy-column-keys-in-card-revision-viz-settings rollback-legacy-column-keys-in-viz-settings))
