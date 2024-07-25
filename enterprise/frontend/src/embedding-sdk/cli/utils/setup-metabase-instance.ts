@@ -2,7 +2,7 @@ import fetch from "node-fetch";
 import ora from "ora";
 
 import { CONTAINER_NAME } from "./docker";
-import { printError } from "./print";
+import { printError, printInfo } from "./print";
 
 interface SetupOptions {
   instanceUrl: string;
@@ -36,7 +36,7 @@ export async function setupMetabaseInstance(
     });
 
     // We will get an "unauthenticated" error when the instance has been configured.
-    if (!res.ok) {
+    if (res.status !== 200 || !res.ok) {
       showError(INSTANCE_CONFIGURED_MESSAGE);
       return false;
     }
@@ -74,19 +74,24 @@ export async function setupMetabaseInstance(
     if (!res.ok) {
       const textResponse = await res.text();
 
-      if (textResponse.includes("user currently exists")) {
+      // The /api/setup route can only be used to create the first user, however a user currently exists.
+      if (textResponse.includes("a user currently exists")) {
         showError(INSTANCE_CONFIGURED_MESSAGE);
         return false;
       }
 
-      const { errors } = JSON.parse(textResponse) as {
-        errors: Record<string, string>;
-      };
-
       showError(`Failed to setup Metabase instance.`);
 
-      if (errors) {
-        console.log("\n", errors);
+      try {
+        const { errors } = JSON.parse(textResponse) as {
+          errors: Record<string, string>;
+        };
+
+        if (errors) {
+          printInfo(JSON.stringify(errors, null, 2));
+        }
+      } catch (error) {
+        printInfo(textResponse);
       }
 
       return false;
@@ -108,7 +113,7 @@ export async function setupMetabaseInstance(
         errors: Record<string, string>;
       };
 
-      printError(`Failed to define Metabase settings.\n`);
+      showError(`Failed to define Metabase settings.\n`);
 
       if (errors) {
         console.log("\n", errors);
@@ -116,6 +121,8 @@ export async function setupMetabaseInstance(
 
       return false;
     }
+
+    setupSpinner.stop();
 
     return true;
   } catch (error) {
@@ -125,8 +132,8 @@ export async function setupMetabaseInstance(
       console.log(error.message);
     }
 
-    return false;
-  } finally {
     setupSpinner.stop();
+
+    return false;
   }
 }
