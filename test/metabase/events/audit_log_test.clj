@@ -542,7 +542,8 @@
                 :details  {:id          (:id channel)
                            :name        "Test channel"
                            :description nil
-                           :type        "channel/metabase-test"}
+                           :type        "channel/metabase-test"
+                           :active      true}
                 :topic    :channel-create
                 :model    "Channel"}
                (mt/latest-audit-log-entry :channel-create (:id channel)))))

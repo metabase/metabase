@@ -48,4 +48,4 @@
 
 (defmethod audit-log/model-details :model/Channel
   [channel _event-type]
-  (select-keys channel [:id :name :description :type]))
+  (select-keys channel [:id :name :description :type :active]))

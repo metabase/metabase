@@ -155,7 +155,8 @@
               (is (= {:details  {:description "Test channel description"
                                  :id          id
                                  :name        "Test channel"
-                                 :type        "channel/metabase-test"}
+                                 :type        "channel/metabase-test"
+                                 :active      true}
                       :model    "Channel"
                       :model_id id
                       :topic    :channel-create
