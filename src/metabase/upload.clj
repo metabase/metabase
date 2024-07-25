@@ -134,7 +134,7 @@
     (str truncated-name-without-time
          (t/format time-format (strictly-monotonic-now)))))
 
-(mu/defn ^:private database-type
+(mu/defn- database-type
   [driver
    column-type :- (into [:enum] upload-types/column-types)]
   (let [external-type (keyword "metabase.upload" (name column-type))]

@@ -314,7 +314,7 @@
           (perms/grant-collection-readwrite-permissions! (perms-group/all-users) collection-id)
           (test-automagic-analysis (t2/select-one Card :id card-id) 2))))))
 
-(mu/defn ^:private result-metadata-for-query :- [:maybe [:sequential :map]]
+(mu/defn- result-metadata-for-query :- [:maybe [:sequential :map]]
   [query :- :map]
   #_{:clj-kondo/ignore [:deprecated-var]}
   (qp.metadata/legacy-result-metadata query nil))

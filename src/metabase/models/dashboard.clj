@@ -98,11 +98,12 @@
   [dashboard]
   (let [changes (t2/changes dashboard)]
     (u/prog1 (maybe-populate-initially-published-at dashboard)
-     (params/assert-valid-parameters dashboard)
-     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-     (collection/check-collection-namespace Dashboard (:collection_id dashboard))
-     (when (:archived changes)
-       (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
+      (params/assert-valid-parameters dashboard)
+      (when (:parameters changes)
+        (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
+      (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+      (when (:archived changes)
+        (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -542,7 +543,7 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
-(mu/defn ^:private dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union

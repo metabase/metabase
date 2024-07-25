@@ -35,15 +35,21 @@ export function openNativeEditor({
 
   databaseName && cy.findByText(databaseName).click();
 
+  // We are first loading databases to see if we should show the
+  // database selector or simply display the previously selected database
+  cy.findAllByTestId("loading-indicator").should("not.exist");
+
   return focusNativeEditor().as(alias);
 }
 
 export function focusNativeEditor() {
-  return cy
-    .findByTestId("native-query-editor")
+  cy.findByTestId("native-query-editor")
     .should("be.visible")
     .should("have.class", "ace_editor")
-    .click()
+    .click();
+
+  return cy
+    .findByTestId("native-query-editor")
     .should("have.class", "ace_focus");
 }
 

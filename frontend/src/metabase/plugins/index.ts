@@ -32,6 +32,7 @@ import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  Database as DatabaseType,
   Bookmark,
   CacheableDashboard,
   CacheableModel,
@@ -364,6 +365,7 @@ export const PLUGIN_CACHING = {
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
+  /** Metadata describing the different kinds of strategies */
   strategies: strategies,
 };
 
@@ -466,6 +468,10 @@ export const PLUGIN_DASHBOARD_HEADER = {
 
 export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
+};
+
+export const PLUGIN_AUDIT = {
+  isAuditDb: (_db: DatabaseType) => false,
 };
 
 export const PLUGIN_UPLOAD_MANAGEMENT = {

@@ -1,4 +1,7 @@
 (ns metabase.task.analyze-queries
+  "The background worker which performs the analysis of queries, and updates the database in accordance.
+  Restricts the CPU and database load corresponding to this analysis via a crude rate limiting algorithm that puts the
+  worker to sleep such that it is active at most [[max-cpu-usage-fraction]] of the time."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.simple :as simple]
@@ -14,10 +17,10 @@
 
 (set! *warn-on-reflection* true)
 
-(def ^:private max-cpu-usage-ratio 0.2)
+(def ^:private max-cpu-usage-fraction 0.2)
 
 (def ^:private wait-ratio
-  (/ (- 1 max-cpu-usage-ratio) max-cpu-usage-ratio))
+  (/ (- 1 max-cpu-usage-fraction) max-cpu-usage-fraction))
 
 (def ^:private fail-wait-ms (* 2 1000))
 
