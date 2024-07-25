@@ -85,7 +85,7 @@
       (finally
         (.. lock readLock unlock)))))
 
-(mu/defn ^:private add-extra-metadata!
+(mu/defn- add-extra-metadata!
   "Add extra metadata like Field base-type, etc."
   [{:keys [table-definitions], :as _database-definition} :- [:map
                                                              [:table-definitions {:optional true} [:maybe [:sequential :map]]]]
@@ -250,7 +250,7 @@
         (test.tz/with-system-timezone-id! "UTC"
           (tx/create-db! driver dbdef))))))
 
-(mu/defn ^:private create-and-sync-Database!
+(mu/defn- create-and-sync-Database!
   "Add DB object to Metabase DB. Return an instance of `:model/Database`."
   [driver                                           :- :keyword
    {:keys [database-name], :as database-definition} :- [:map [:database-name :string]]]

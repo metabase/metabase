@@ -16,7 +16,7 @@
 ;;; |                                         FETCHING OUR CURRENT METADATA                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private fields->parent-id->fields :- [:map-of common/ParentID [:set common/TableMetadataFieldWithID]]
+(mu/defn- fields->parent-id->fields :- [:map-of common/ParentID [:set common/TableMetadataFieldWithID]]
   [fields :- [:maybe [:sequential i/FieldInstance]]]
   (->> (for [field fields]
          {:parent-id                 (:parent_id field)
@@ -42,7 +42,7 @@
                      (set (for [field fields]
                             (dissoc field :parent-id)))))))
 
-(mu/defn ^:private add-nested-fields :- common/TableMetadataFieldWithID
+(mu/defn- add-nested-fields :- common/TableMetadataFieldWithID
   "Recursively add entries for any nested-fields to `field`."
   [metabase-field    :- common/TableMetadataFieldWithID
    parent-id->fields :- [:map-of common/ParentID [:set common/TableMetadataFieldWithID]]]
@@ -64,7 +64,7 @@
      (set (for [metabase-field (get parent-id->fields top-level-parent-id)]
             (add-nested-fields metabase-field parent-id->fields))))))
 
-(mu/defn ^:private table->fields :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn- table->fields :- [:maybe [:sequential i/FieldInstance]]
   "Fetch active Fields from the Metabase application database for a given `table`."
   [table :- i/TableInstance]
   (t2/select [:model/Field :name :database_type :base_type :effective_type :coercion_strategy :semantic_type
