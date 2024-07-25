@@ -433,7 +433,7 @@
             (is (= #{{:short_json "{\"a\":\"x\"}", :long_json "{\"a\":\"x\"}"}
                      {:short_json "{\"b\":\"y\"}", :long_json nil}}
                    (into #{} (sample))))
-            (testing "If driver.sql/json-field-length is not implemented for the driver, then return the value even if it exceeds the max length"
+            (testing "If driver.sql/json-field-length is not implemented for the driver don't omit the long value"
               (letfn [(do-with-removed-method [thunk]
                         (let [original-method (get-method driver.sql/json-field-length driver/*driver*)]
                           (if (= original-method (get-method driver.sql/json-field-length :default))
