@@ -14,7 +14,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private find-gtap-question :- [:maybe (ms/InstanceOf Card)]
+(mu/defn- find-gtap-question :- [:maybe (ms/InstanceOf Card)]
   "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
   `user-or-user-id`. Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
@@ -33,7 +33,7 @@
   [table :- (ms/InstanceOf Table)]
   (boolean (seq (sandbox.api.util/enforced-sandboxes-for api/*current-user-id* #{(:id table)}))))
 
-(mu/defn ^:private query->fields-ids :- [:maybe [:sequential :int]]
+(mu/defn- query->fields-ids :- [:maybe [:sequential :int]]
   [{{{:keys [fields]} :query} :dataset_query} :- [:maybe :map]]
   (lib.util.match/match fields [:field (id :guard integer?) _] id))
 

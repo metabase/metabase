@@ -36,7 +36,7 @@
 ;;; |                                           Deduplicate Field Aliases                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private increment-identifier-string :- :string
+(mu/defn- increment-identifier-string :- :string
   [last-component :- :string]
   (if-let [[_ existing-suffix] (re-find #"^.*_(\d+$)" last-component)]
     ;; if last-component already has an alias like col_2 then increment it to col_3
@@ -45,7 +45,7 @@
     ;; otherwise just stick a _2 on the end so it's col_2
     (str last-component "_2")))
 
-(mu/defn ^:private increment-identifier
+(mu/defn- increment-identifier
   "Add an appropriate suffix to a keyword `identifier` to make it distinct from previous usages of the same identifier,
   e.g.
 

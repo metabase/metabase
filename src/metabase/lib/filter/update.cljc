@@ -35,7 +35,7 @@
   (and (lib.util/clause-of-type? expr :field)
        (lib.equality/find-matching-column expr [column])))
 
-(mu/defn ^:private remove-existing-filters-against-column :- ::lib.schema/query
+(mu/defn- remove-existing-filters-against-column :- ::lib.schema/query
   "Remove any existing filters clauses that use `column` as the first arg in a stage of a `query`."
   [query        :- ::lib.schema/query
    stage-number :- :int
@@ -84,7 +84,7 @@
   (let [units [:minute :hour :day :week :month :quarter :year]]
     (zipmap units (cons nil units))))
 
-(mu/defn ^:private temporal-filter-find-best-breakout-unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
+(mu/defn- temporal-filter-find-best-breakout-unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
   "If the current breakout `unit` will not return at least [[temporal-filter-min-num-points]], find the largest unit
   that will."
   [unit  :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
@@ -98,7 +98,7 @@
         (recur next-largest-unit)
         unit))))
 
-(mu/defn ^:private temporal-filter-update-breakouts :- ::lib.schema/query
+(mu/defn- temporal-filter-update-breakouts :- ::lib.schema/query
   "Update the first breakout against `column` so it uses `new-unit` rather than the original unit (if any); remove all
   other breakouts against that column."
   [query        :- ::lib.schema/query

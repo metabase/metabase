@@ -58,7 +58,7 @@
                                                (with-join-alias field-ref new-alias))
                                              fields))))))
 
-(mu/defn ^:private standard-join-condition? :- :boolean
+(mu/defn- standard-join-condition? :- :boolean
   "Whether this join condition is a binary condition with two `:field` references (a LHS and a RHS), as you'd produce
   in the frontend using functions like [[join-condition-operators]], [[join-condition-lhs-columns]],
   and [[join-condition-rhs-columns]]."
@@ -97,7 +97,7 @@
     (let [[operator opts lhs rhs] condition]
       [operator opts lhs (apply f rhs args)])))
 
-(mu/defn ^:private with-join-alias-update-join-conditions :- lib.join.util/PartialJoin
+(mu/defn- with-join-alias-update-join-conditions :- lib.join.util/PartialJoin
   "Impl for [[with-join-alias]] for a join: recursively update the `:join-alias` for inside the `:conditions` of the
   join.
 
@@ -196,7 +196,7 @@
   (throw (ex-info "You can't calculate a metadata map for a join! Use lib.metadata.calculation/returned-columns-method instead."
                   {})))
 
-(mu/defn ^:private column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
+(mu/defn- column-from-join-fields :- lib.metadata.calculation/ColumnMetadataWithSource
   "For a column that comes from a join `:fields` list, add or update metadata as needed, e.g. include join name in the
   display name."
   [query           :- ::lib.schema/query
@@ -225,7 +225,7 @@
            :display-name (lib.metadata.calculation/display-name query stage-number option)}
     default (assoc :default true)))
 
-(mu/defn ^:private add-source-and-desired-aliases :- :map
+(mu/defn- add-source-and-desired-aliases :- :map
   [join           :- [:map
                       [:alias
                        {:error/message "Join must have an alias to determine column aliases!"}
@@ -636,7 +636,7 @@
 ;;; options for each respective part. At the time of this writing, selecting one does not filter out incompatible
 ;;; options for the other parts, but hopefully we can implement this in the future -- see #31174
 
-(mu/defn ^:private sort-join-condition-columns :- [:sequential ::lib.schema.metadata/column]
+(mu/defn- sort-join-condition-columns :- [:sequential ::lib.schema.metadata/column]
   "Sort potential join condition columns as returned by [[join-condition-lhs-columns]]
   or [[join-condition-rhs-columns]]. PK columns are returned first, followed by FK columns, followed by other columns.
   Otherwise original order is maintained."
@@ -773,7 +773,7 @@
    ;; currently hardcoded to these six operators regardless of LHS and RHS.
    lib.filter.operator/join-operators))
 
-(mu/defn ^:private fk-columns-to :- [:maybe [:sequential
+(mu/defn- fk-columns-to :- [:maybe [:sequential
                                              {:min 1}
                                              [:and
                                               ::lib.schema.metadata/column
