@@ -1,4 +1,3 @@
-import { match } from "ts-pattern";
 import _ from "underscore";
 
 import {
@@ -8,7 +7,7 @@ import {
   setTokenFeatures,
 } from "e2e/support/helpers";
 import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
-import type { CacheableModel, ScheduleType } from "metabase-types/api";
+import type { CacheableModel } from "metabase-types/api";
 
 import { interceptRoutes } from "./helpers/e2e-performance-helpers";
 import {
@@ -81,21 +80,21 @@ describeEE("scenarios > admin > performance > schedule strategy", () => {
     [ { frequency: "monthly", frame: "last", weekdayOfMonth: "Wednesday", time: "12:00", amPm: "AM" }, "0 0 0 ? * 4L" ],
 
     [ { frequency: "monthly", frame: "15th", time: "12:00", amPm: "AM" }, "0 0 0 15 * ?" ],
-    [ { frequency: "monthly", frame: "15th", time: "11:00", amPm: "PM" }, "0 0 0 15 * ?" ],
+    [ { frequency: "monthly", frame: "15th", time: "11:00", amPm: "PM" }, "0 0 23 15 * ?" ],
 
   ];
 
   (["root", "database"] as CacheableModel[]).forEach(model => {
-    schedules.forEach(([scheduleParts, cronExpression]) => {
+    schedules.forEach(([schedule, cronExpression]) => {
       it(`can set on ${model}: ${
-        Object.values(scheduleParts).join(" ") || "default values"
+        Object.values(schedule).join(" ") || "default values"
       }, yielding a cron of ${cronExpression}`, () => {
         openStrategyFormForDatabaseOrDefaultPolicy(
           model === "root" ? "default policy" : "Sample Database",
           "No caching",
         );
         scheduleRadioButton().click();
-        _.pairs(scheduleParts).forEach(([componentType, optionToClick]) => {
+        _.pairs(schedule).forEach(([componentType, optionToClick]) => {
           if (componentType === "amPm") {
             // AM/PM is a segmented control, not a select
             cacheStrategyForm()
@@ -115,27 +114,46 @@ describeEE("scenarios > admin > performance > schedule strategy", () => {
           expect(body.model).to.eq(model);
           expect(body.strategy.schedule).to.eq(cronExpression);
         });
-        const scheduleStrategyFormFields = cacheStrategyForm().findByLabelText(
-          "Describe how often the cache should be invalidated",
-        );
         cy.log(
           "Ensure there are no unexpected components among the schedule strategy form fields",
         );
-        // FIXME: Since this code will get backported, don't use ts-pattern
-        const expectedNumberOfFormFields = match(
-          (scheduleParts.frequency || "hourly") as ScheduleType,
-        )
-          .with("hourly", () => 1)
-          .with("daily", () => 4)
-          .with("weekly", () => 5)
-          .with("monthly", () => 6)
-          .exhaustive();
-        scheduleStrategyFormFields.within(() => {
-          cy.get("[aria-label]").should(
-            "have.length",
-            expectedNumberOfFormFields,
-          );
-        });
+        const expectedFieldLabels: string[] = [];
+        expectedFieldLabels.push("Frequency");
+        switch (schedule.frequency) {
+          case "hourly":
+            break;
+          case "daily":
+            expectedFieldLabels.push("Time", "AM/PM", "Your Metabase timezone");
+            break;
+          case "weekly":
+            expectedFieldLabels.push(
+              "Day of the week",
+              "Time",
+              "AM/PM",
+              "Your Metabase timezone",
+            );
+            break;
+          case "monthly":
+            expectedFieldLabels.push("First, 15th, or last of the month");
+            if (schedule.frame !== "15th") {
+              expectedFieldLabels.push("Day of the month");
+            }
+            expectedFieldLabels.push("Time", "AM/PM", "Your Metabase timezone");
+            break;
+          default:
+            throw new Error(
+              `Unexpected schedule frequency: ${schedule.frequency}`,
+            );
+        }
+        cacheStrategyForm()
+          .findByLabelText("Describe how often the cache should be invalidated")
+          .find("[aria-label]")
+          .then($labels => {
+            const labels = $labels
+              .get()
+              .map($el => $el.getAttribute("aria-label"));
+            expect(labels).to.deep.equal(expectedFieldLabels);
+          });
       });
     });
   });
