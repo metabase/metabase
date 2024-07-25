@@ -7,6 +7,7 @@ import type { Status } from "./types";
 import { getStatusConfig } from "./utils";
 
 type Props = {
+  iconSize?: number;
   status: Status;
   onClick?: () => void;
 };
@@ -14,7 +15,11 @@ type Props = {
 const BUTTON_SIZE = 28;
 const ICON_SIZE = 12;
 
-export const WidgetStatusButton = ({ status, onClick }: Props) => {
+export const WidgetStatusButton = ({
+  iconSize = ICON_SIZE,
+  status,
+  onClick,
+}: Props) => {
   const { disabled, icon, label } = getStatusConfig(status);
 
   const handleClick = (event: MouseEvent) => {
@@ -30,7 +35,7 @@ export const WidgetStatusButton = ({ status, onClick }: Props) => {
         className={S.root}
         compact
         disabled={disabled}
-        leftIcon={<Icon name={icon} size={ICON_SIZE} />}
+        leftIcon={<Icon name={icon} size={iconSize} />}
         radius="md"
         variant="subtle"
         w={BUTTON_SIZE}
