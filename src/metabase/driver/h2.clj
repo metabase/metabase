@@ -184,7 +184,7 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(mu/defn ^:private classify-query :- [:maybe
+(mu/defn- classify-query :- [:maybe
                                       [:map
                                        [:command-types [:vector pos-int?]]
                                        [:remaining-sql [:maybe :string]]]]

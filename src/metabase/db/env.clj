@@ -40,7 +40,7 @@
         "postgresql" :postgres
         (keyword subprotocol)))))
 
-(mu/defn ^:private env->db-type :- [:enum :postgres :mysql :h2]
+(mu/defn- env->db-type :- [:enum :postgres :mysql :h2]
   [{:keys [mb-db-connection-uri mb-db-type]}]
   (or (some-> mb-db-connection-uri raw-connection-string->type)
       mb-db-type))

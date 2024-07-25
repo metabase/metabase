@@ -511,7 +511,7 @@
     (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
-(mu/defn ^:private check-parameter-mapping-permissions
+(mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
   [parameter-mappings :- [:sequential dashboard-card/ParamMapping]]
@@ -1005,7 +1005,7 @@
     (keyword (name type))
     :=))
 
-(mu/defn ^:private param->fields
+(mu/defn- param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (for [{:keys [target] {:keys [card]} :dashcard} mappings
         :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
@@ -1031,7 +1031,7 @@
      :options  (merge (:options ttag)
                       (:options param))}))
 
-(mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
+(mu/defn- chain-filter-constraints :- chain-filter/Constraints
   [dashboard constraint-param-key->value]
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]

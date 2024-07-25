@@ -47,14 +47,14 @@
   (into {} (for [[group-id perms] (group-by :group_id (t2/select Permissions))]
              {group-id (set (map :object perms))})))
 
-(mu/defn ^:private perms-type-for-collection :- CollectionPermissions
+(mu/defn- perms-type-for-collection :- CollectionPermissions
   [permissions-set collection-or-id]
   (cond
     (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-or-id)) :write
     (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-or-id))      :read
     :else                                                                                                :none))
 
-(mu/defn ^:private group-permissions-graph :- GroupPermissionsGraph
+(mu/defn- group-permissions-graph :- GroupPermissionsGraph
   "Return the permissions graph for a single group having `permissions-set`."
   [collection-namespace permissions-set collection-ids]
   (into
@@ -62,7 +62,7 @@
    (for [collection-id collection-ids]
      {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
-(mu/defn ^:private non-personal-collection-ids :- [:set ms/PositiveInt]
+(mu/defn- non-personal-collection-ids :- [:set ms/PositiveInt]
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
   [collection-namespace :- [:maybe ms/KeywordOrString]]
@@ -131,7 +131,7 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(mu/defn ^:private update-collection-permissions!
+(mu/defn- update-collection-permissions!
   "Update the permissions for group ID with `group-id` on collection with ID
   `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
   [collection-namespace :- [:maybe ms/KeywordOrString]
@@ -148,7 +148,7 @@
       :read  (perms/grant-collection-read-permissions! group-id collection-id)
       :none  nil)))
 
-(mu/defn ^:private update-group-permissions!
+(mu/defn- update-group-permissions!
   [collection-namespace :- [:maybe ms/KeywordOrString]
    group-id             :- ms/PositiveInt
    new-group-perms      :- GroupPermissionsGraph]

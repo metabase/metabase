@@ -52,7 +52,7 @@
 ;; newly re-fingerprinted Fields, because we'll know to skip the ones from last time since their value of
 ;; `last_analyzed` is not `nil`.
 
-(mu/defn ^:private update-last-analyzed!
+(mu/defn- update-last-analyzed!
   [tables :- [:sequential i/TableInstance]]
   (when-let [ids (seq (map u/the-id tables))]
     ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
@@ -61,12 +61,12 @@
                        :last_analyzed       nil}
                 {:last_analyzed :%now})))
 
-(mu/defn ^:private update-fields-last-analyzed!
+(mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
   [table :- i/TableInstance]
   (update-last-analyzed! [table]))
 
-(mu/defn ^:private update-fields-last-analyzed-for-db!
+(mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
   [_database :- i/DatabaseInstance
    tables    :- [:sequential i/TableInstance]]
