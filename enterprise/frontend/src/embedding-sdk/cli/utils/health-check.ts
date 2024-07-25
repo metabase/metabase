@@ -17,15 +17,18 @@ export async function pollUntilMetabaseInstanceReady(
   let attempts = 0;
 
   while (attempts < HEALTH_CHECK_MAX_ATTEMPTS) {
-    const res = await fetch(`${baseUrl}/health`, {
-      method: "GET",
-    });
+    // fetch will throw an error if the server is not reachable
+    try {
+      const res = await fetch(`${baseUrl}/health`, {
+        method: "GET",
+      });
 
-    // Endpoint returns 503 when Metabase is not ready yet.
-    // It returns 200 when Metabase is ready.
-    if (res.ok) {
-      return true;
-    }
+      // Endpoint returns 503 when Metabase is not ready yet.
+      // It returns 200 when Metabase is ready.
+      if (res.ok) {
+        return true;
+      }
+    } catch (error) {}
 
     attempts++;
 

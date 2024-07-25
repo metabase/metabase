@@ -1,5 +1,7 @@
 import fetch from "node-fetch";
 
+import { printError } from "./print";
+
 interface SetupOptions {
   instanceUrl: string;
   setupToken: string;
@@ -20,8 +22,10 @@ export function getMetabaseInstanceEnvs(setupToken: string) {
 
 export async function setupMetabaseInstance(
   options: SetupOptions,
-): Promise<void> {
+): Promise<boolean> {
   const { instanceUrl } = options;
+
+  console.log("MB Options:", options);
 
   let res = await fetch(`${instanceUrl}/api/setup`, {
     method: "POST",
@@ -40,10 +44,18 @@ export async function setupMetabaseInstance(
         site_locale: "en",
       },
     }),
+    headers: {
+      "content-type": "application/json",
+    },
   });
 
   if (!res.ok) {
-    throw new Error(`Failed to setup Metabase instance.`);
+    const errorBody = await res.json();
+
+    printError(`Failed to setup Metabase instance.`);
+    console.log(errorBody);
+
+    return false;
   }
 
   res = await fetch(`${instanceUrl}/api/setting`, {
@@ -54,8 +66,19 @@ export async function setupMetabaseInstance(
       "setup-license-active-at-setup": false,
       "setup-embedding-autoenabled": true,
     }),
+    headers: {
+      "content-type": "application/json",
+    },
   });
+
   if (!res.ok) {
-    throw new Error(`Failed to configure Metabase settings.`);
+    const errorBody = await res.json();
+
+    printError(`Failed to define Metabase settings.`);
+    console.log(errorBody);
+
+    return false;
   }
+
+  return true;
 }
