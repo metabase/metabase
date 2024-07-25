@@ -138,9 +138,9 @@
               new-graph     (assoc-in current-graph
                                       [:groups group-id (mt/id)]
                                       {:view-data :blocked :create-queries :query-builder-and-native})]
-          (is (=? {:message #".*Invalid DB permissions: If you have write access for native queries, you must have data access to all schemas.*"}
+          (is (=? #"Cannot parse permissions graph because it is invalid.*"
                   (mt/with-premium-features #{:advanced-permissions}
-                    (mt/user-http-request :crowberto :put 500 "permissions/graph" new-graph)))))))))
+                    (mt/user-http-request :crowberto :put 400 "permissions/graph" new-graph)))))))))
 
 (deftest delete-database-delete-block-perms-test
   (testing "If a Database gets DELETED, any block permissions for it should get deleted too."
