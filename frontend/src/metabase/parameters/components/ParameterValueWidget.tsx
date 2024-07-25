@@ -8,7 +8,6 @@ import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
-import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -22,6 +21,7 @@ import {
 import type { Dashboard, ParameterId } from "metabase-types/api";
 
 import { ParameterDropdownWidget } from "./ParameterDropdownWidget";
+import { WidgetStatusButton } from "./WidgetStatusButton";
 
 export type ParameterValueWidgetProps = {
   parameter: UiParameter;
@@ -77,8 +77,8 @@ export const ParameterValueWidget = ({
   const getOptionalActionIcon = () => {
     if (value != null) {
       return (
-        <WidgetStatusIcon
-          name="close"
+        <WidgetStatusButton
+          status="clear"
           onClick={() => {
             setValue(null);
             close();
@@ -89,9 +89,9 @@ export const ParameterValueWidget = ({
 
     if (!hasNoPopover(parameter)) {
       return (
-        <WidgetStatusIcon
-          name="chevrondown"
-          size={mimicMantine ? 16 : undefined}
+        <WidgetStatusButton
+          iconSize={mimicMantine ? 16 : undefined}
+          status="empty"
         />
       );
     }
@@ -106,8 +106,8 @@ export const ParameterValueWidget = ({
       !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
-        <WidgetStatusIcon
-          name="time_history"
+        <WidgetStatusButton
+          status="reset"
           onClick={() => setParameterValueToDefault?.(parameter.id)}
         />
       );
@@ -126,7 +126,7 @@ export const ParameterValueWidget = ({
 
     if (!icon) {
       // This is required to keep input width constant
-      return <WidgetStatusIcon name="empty" />;
+      return <WidgetStatusButton status="none" />;
     }
 
     return icon;
