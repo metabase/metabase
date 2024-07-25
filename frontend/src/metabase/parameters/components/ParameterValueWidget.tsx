@@ -88,12 +88,7 @@ export const ParameterValueWidget = ({
     }
 
     if (!hasNoPopover(parameter)) {
-      return (
-        <WidgetStatusButton
-          iconSize={mimicMantine ? 16 : undefined}
-          status="empty"
-        />
-      );
+      return <WidgetStatusButton status="empty" />;
     }
   };
 

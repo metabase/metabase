@@ -9,7 +9,6 @@ import type { IconName } from "metabase/ui";
 export type Status = "clear" | "reset" | "empty" | "none";
 
 export type StatusConfig = {
-  disabled?: boolean;
   icon: IconName;
-  label: string | null;
+  label?: string;
 };

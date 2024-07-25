@@ -19,17 +19,13 @@ export const getStatusConfig = (status: Status): StatusConfig => {
 
   if (status === "empty") {
     return {
-      disabled: true,
       icon: "chevrondown",
-      label: null,
     };
   }
 
   if (status === "none") {
     return {
-      disabled: true,
       icon: "empty",
-      label: null,
     };
   }
 
