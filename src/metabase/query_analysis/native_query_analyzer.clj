@@ -182,7 +182,7 @@
         sql-string    (:query (nqa.sub/replace-tags query))
         parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
         explicit-refs (explicit-references-for-query parsed-query db-id)
-        implicit-refs (set/difference (implicit-references-for-query parsed-query db-id)
+        implicit-refs (set/difference (set (implicit-references-for-query parsed-query db-id))
                                       (set explicit-refs))]
     ;; TODO: add table refs
     (concat (mark-reference explicit-refs true)
