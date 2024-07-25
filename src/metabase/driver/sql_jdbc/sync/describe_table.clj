@@ -581,11 +581,6 @@
   Marked as dynamic because we mutate it for tests."
   50000)
 
-(def ^:dynamic *nested-field-columns-query-timeout*
-  "Timeout for the query to fetch a sample of rows to describe JSON fields.
-   Marked as dynamic because we mutate it for tests."
-  20000)
-
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
 
@@ -594,16 +589,19 @@
   [driver table-identifier json-field-identifiers pk-identifiers]
   (let [pks-expr         (mapv vector pk-identifiers)
         table-expr       [table-identifier]
-        json-field-exprs (mapv vector json-field-identifiers)
-        max-size-clause  (if (= (get-method driver.sql/json-field-length driver) :nyi)
-                           (:= 1 1)
-                           [:< (into [:+] (map #(driver.sql/json-field-length driver %)
-                                               json-field-exprs))
-                            [:inline *nested-field-columns-max-row-length*]])]
+        json-field-exprs (mapv (fn [field]
+                                 [[:case
+                                   [:<
+                                    [:inline *nested-field-columns-max-row-length*]
+                                    (driver.sql/json-field-length driver field)]
+                                   nil
+                                   :else
+                                   field]
+                                  (last (h2x/identifier->components field))])
+                               json-field-identifiers)]
     (if (seq pk-identifiers)
       {:select json-field-exprs
        :from   [table-expr]
-       ;; mysql doesn't support limit in subquery, so we're using inner join here
        :join   [[{:union-all [{:nest {:select   pks-expr
                                       :from     [table-expr]
                                       :order-by (mapv #(vector % :asc) pk-identifiers)
@@ -617,18 +615,13 @@
                       (for [pk-identifier pk-identifiers]
                         [:=
                          (h2x/identifier :field :result (last (h2x/identifier->components pk-identifier)))
-                         pk-identifier]))]
-       :where  max-size-clause}
+                         pk-identifier]))]}
       {:select json-field-exprs
        :from   [table-expr]
-       :limit  (sql.qp/inline-num metadata-queries/nested-field-sample-limit)
-       ;; evaluating max-size-clause is potentially expensive if there are few rows that are below the max size, so we need to apply a
-       ;; timeout to this query in case all rows are large.
-       :where  max-size-clause})))
+       :limit  (sql.qp/inline-num metadata-queries/nested-field-sample-limit)})))
 
-(defn- describe-json-fields
+(defn- sample-json-reducible-query
   [driver jdbc-spec table json-fields pks]
-  (log/infof "Inferring schema for %d JSON fields in %s" (count json-fields) (sync-util/name-for-logging table))
   (let [table-identifier-info [(:schema table) (:name table)]
         json-field-identifiers (mapv #(apply h2x/identifier :field (into table-identifier-info [(:name %)])) json-fields)
         table-identifier (apply h2x/identifier :table table-identifier-info)
@@ -636,10 +629,15 @@
                            (mapv #(apply h2x/identifier :field (into table-identifier-info [%])) pks))
         sql-args         (sql.qp/format-honeysql
                           driver
-                          (sample-json-row-honey-sql driver table-identifier json-field-identifiers pk-identifiers))
-        query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity, :timeout *nested-field-columns-query-timeout*})
-        field-types      (transduce (map json-map->types) describe-json-rf query)
-        fields           (field-types->fields field-types)]
+                          (sample-json-row-honey-sql driver table-identifier json-field-identifiers pk-identifiers))]
+    (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})))
+
+(defn- describe-json-fields
+  [driver jdbc-spec table json-fields pks]
+  (log/infof "Inferring schema for %d JSON fields in %s" (count json-fields) (sync-util/name-for-logging table))
+  (let [query       (sample-json-reducible-query driver jdbc-spec table json-fields pks)
+        field-types (transduce (map json-map->types) describe-json-rf query)
+        fields      (field-types->fields field-types)]
     (if (> (count fields) max-nested-field-columns)
       (do
         (log/warnf "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
