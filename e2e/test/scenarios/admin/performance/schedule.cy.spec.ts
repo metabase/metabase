@@ -121,6 +121,7 @@ describeEE("scenarios > admin > performance > schedule strategy", () => {
         cy.log(
           "Ensure there are no unexpected components among the schedule strategy form fields",
         );
+        // FIXME: Since this code will get backported, don't use ts-pattern
         const expectedNumberOfFormFields = match(
           (scheduleParts.frequency || "hourly") as ScheduleType,
         )
