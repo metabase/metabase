@@ -12,7 +12,7 @@ import { DIMENSIONS, TOTAL_TEXT } from "../constants";
 import type { PieChartFormatters } from "../format";
 import type { PieChartModel, PieSlice, PieSliceData } from "../model/types";
 
-import { SUNBURST_SERIES_OPTION, TOTAL_GRAPHIC_OPTION } from "./constants";
+import { SUNBURST_SERIES_OPTION } from "./constants";
 
 function getSliceByKey(key: PieSliceData["key"], slices: PieSlice[]) {
   const slice = slices.find(s => s.data.key === key);
@@ -34,34 +34,52 @@ function getTotalGraphicOption(
   hoveredIndex: number | undefined,
   outerRadius: number,
 ) {
-  const graphicOption = cloneDeep(TOTAL_GRAPHIC_OPTION);
-
   // Don't display any text if there isn't enough width
   if (outerRadius * 2 < DIMENSIONS.totalDiameterThreshold) {
-    return graphicOption;
+    return undefined;
   }
 
-  graphicOption.children.forEach(child => {
-    child.style.fontFamily = renderingContext.fontFamily;
-  });
-
-  graphicOption.children[0].style.text = formatters.formatMetric(
-    hoveredIndex != null
-      ? chartModel.slices[hoveredIndex].data.displayValue
-      : chartModel.total,
-  );
-  graphicOption.children[0].style.fill = renderingContext.getColor("text-dark");
-
-  graphicOption.children[1].style.text =
-    hoveredIndex != null
-      ? formatters
-          .formatDimension(chartModel.slices[hoveredIndex].data.key)
-          .toUpperCase()
-      : TOTAL_TEXT;
-  graphicOption.children[1].style.fill =
-    renderingContext.getColor("text-light");
-
-  return graphicOption;
+  return {
+    type: "group",
+    top: "center",
+    left: "center",
+    children: [
+      {
+        type: "text",
+        cursor: "text",
+        style: {
+          fontSize: "22px",
+          fontWeight: "700",
+          textAlign: "center",
+          fontFamily: renderingContext.fontFamily,
+          fill: renderingContext.getColor("text-dark"),
+          text: formatters.formatMetric(
+            hoveredIndex != null
+              ? chartModel.slices[hoveredIndex].data.displayValue
+              : chartModel.total,
+          ),
+        },
+      },
+      {
+        type: "text",
+        cursor: "text",
+        top: 26,
+        style: {
+          fontSize: "14px",
+          fontWeight: "700",
+          textAlign: "center",
+          fontFamily: renderingContext.fontFamily,
+          fill: renderingContext.getColor("text-light"),
+          text:
+            hoveredIndex != null
+              ? formatters
+                  .formatDimension(chartModel.slices[hoveredIndex].data.key)
+                  .toUpperCase()
+              : TOTAL_TEXT,
+        },
+      },
+    ],
+  };
 }
 
 function getRadiusOption(sideLength: number) {
