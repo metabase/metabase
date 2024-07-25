@@ -354,6 +354,30 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
       });
     });
   });
+
+  it("should send the `download_results_clicked` event when downloading dashcards results", () => {
+    cy.createDashboardWithQuestions({
+      dashboardName: "saving pngs dashboard",
+      questions: [canSavePngQuestion, cannotSavePngQuestion],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+
+    showDashboardCardActions(0);
+    getDashboardCard(0).findByText("Created At").should("be.visible");
+    getDashboardCardMenu(0).click();
+
+    popover().within(() => {
+      cy.findByText("Download results").click();
+      cy.findByText(".png").click();
+    });
+
+    expectGoodSnowplowEvent({
+      event: "download_results_clicked",
+      resource_type: "dashcard",
+      export_type: "png",
+    });
+  });
 });
 
 function assertOrdersExport(length) {

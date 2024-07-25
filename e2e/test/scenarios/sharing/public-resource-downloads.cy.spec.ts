@@ -88,6 +88,12 @@ describeEE(
           },
           assertNotEmptyObject,
         );
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "public-dashcard",
+          export_type: "csv",
+        });
       });
     });
 
@@ -129,6 +135,12 @@ describeEE(
         popover().findByText(".png").click();
 
         cy.verifyDownload(".png", { contains: true });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "public-question",
+          export_type: "png",
+        });
       });
 
       it("should be able to download a public card as CSV", () => {
@@ -148,6 +160,12 @@ describeEE(
           },
           assertNotEmptyObject,
         );
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "public-question",
+          export_type: "csv",
+        });
       });
     });
   },

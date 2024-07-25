@@ -99,6 +99,12 @@ describeEE(
         popover().findByText(".csv").click();
 
         cy.verifyDownload(".csv", { contains: true });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "static-embed-dashcard",
+          export_type: "csv",
+        });
       });
     });
 
@@ -153,6 +159,12 @@ describeEE(
         popover().findByText(".png").click();
 
         cy.verifyDownload(".png", { contains: true });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "static-embed-question",
+          export_type: "png",
+        });
       });
 
       it("should be able to download a static embedded card as CSV", () => {
@@ -175,6 +187,12 @@ describeEE(
         popover().findByText(".csv").click();
 
         cy.verifyDownload(".csv", { contains: true });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "static-embed-question",
+          export_type: "csv",
+        });
       });
     });
   },

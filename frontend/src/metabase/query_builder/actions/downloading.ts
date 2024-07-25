@@ -1,3 +1,4 @@
+import { match, P } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -13,6 +14,8 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+
+import { trackDownloadResults } from "./downloading-analytics";
 
 export interface DownloadQueryResultsOpts {
   type: string;
@@ -34,8 +37,55 @@ interface DownloadQueryResultsParams {
   params?: URLSearchParams | string;
 }
 
+export type DownloadedResourceType =
+  | "dashcard"
+  | "question"
+  | "public-dashcard"
+  | "public-question"
+  | "static-embed-dashcard"
+  | "static-embed-question"
+  | "dataset";
+
+const getDownloadedResourceType = ({
+  dashboardId,
+  dashcardId,
+  uuid,
+  token,
+  question,
+}: DownloadQueryResultsOpts): DownloadedResourceType => {
+  return match({
+    dashboardId,
+    dashcardId,
+    uuid,
+    token,
+    question,
+    cardId: question.id(),
+  })
+    .with(
+      { dashcardId: P.nonNullable, token: P.nonNullable },
+      () => "static-embed-dashcard" as const,
+    )
+    .with(
+      { dashboardId: P.nonNullable, uuid: P.nonNullable },
+      () => "public-dashcard" as const,
+    )
+    .with(
+      { dashboardId: P.nonNullable, dashcardId: P.nonNullable },
+      () => "dashcard" as const,
+    )
+    .with({ uuid: P.nonNullable }, () => "public-question" as const)
+    .with({ token: P.nonNullable }, () => "static-embed-question" as const)
+    .with({ cardId: P.nonNullable }, () => "question" as const)
+    .otherwise(() => "dataset" as const);
+};
+
 export const downloadQueryResults =
   (opts: DownloadQueryResultsOpts) => async () => {
+    const downloadedResource = getDownloadedResourceType(opts);
+    trackDownloadResults({
+      resourceType: downloadedResource,
+      exportType: opts.type,
+    });
     if (opts.type === Urls.exportFormatPng) {
       await downloadChart(opts);
     } else {

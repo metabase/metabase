@@ -1,0 +1,32 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Downloads results from questions and dashcards",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "downloads",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "download_results_clicked"
+      ],
+      "description": "The type of event being recorded."
+    },
+    "resource_type": {
+      "type": "string",
+      "description": "The reason of resource, question, dashcard, public question etc"
+    },
+    "export_type": {
+      "type": "string",
+      "description": "The export type, csv, png etc"
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}
