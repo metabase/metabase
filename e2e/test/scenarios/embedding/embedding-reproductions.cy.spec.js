@@ -607,6 +607,8 @@ describe("issue 27643", () => {
 
       cy.log("Test the public dashboard");
       cy.get("@dashboardId").then(dashboardId => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
         visitPublicDashboard(dashboardId);
       });
 
@@ -647,6 +649,8 @@ describe("issue 27643", () => {
 
       cy.log("Test the public question");
       cy.get("@questionId").then(questionId => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
         visitPublicQuestion(questionId);
       });
 
