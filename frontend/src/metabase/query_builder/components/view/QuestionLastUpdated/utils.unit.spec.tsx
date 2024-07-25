@@ -23,10 +23,10 @@ describe("getTimePassedSince", () => {
     const { interval, unit, expected } = test;
     it(`${interval} ${unit}s ago -> ${expected}`, () => {
       expect(
-        getTimePassedSince(
-          dayjs().subtract(interval, unit).toISOString(),
-          getAbbreviatedRelativeTimeStrings(),
-        ),
+        getTimePassedSince({
+          timestamp: dayjs().subtract(interval, unit).toISOString(),
+          relativeTimeStrings: getAbbreviatedRelativeTimeStrings(),
+        }),
       ).toBe(expected);
     });
   });
