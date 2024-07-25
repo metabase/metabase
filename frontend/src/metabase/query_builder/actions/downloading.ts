@@ -1,4 +1,3 @@
-import { match, P } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -53,30 +52,23 @@ const getDownloadedResourceType = ({
   token,
   question,
 }: DownloadQueryResultsOpts): DownloadedResourceType => {
-  return match({
-    dashboardId,
-    dashcardId,
-    uuid,
-    token,
-    question,
-    cardId: question.id(),
-  })
-    .with(
-      { dashcardId: P.nonNullable, token: P.nonNullable },
-      () => "static-embed-dashcard" as const,
-    )
-    .with(
-      { dashboardId: P.nonNullable, uuid: P.nonNullable },
-      () => "public-dashcard" as const,
-    )
-    .with(
-      { dashboardId: P.nonNullable, dashcardId: P.nonNullable },
-      () => "dashcard" as const,
-    )
-    .with({ uuid: P.nonNullable }, () => "public-question" as const)
-    .with({ token: P.nonNullable }, () => "static-embed-question" as const)
-    .with({ cardId: P.nonNullable }, () => "question" as const)
-    .otherwise(() => "dataset" as const);
+  const cardId = question.id();
+
+  if (dashcardId != null && token != null) {
+    return "static-embed-dashcard";
+  } else if (dashboardId != null && uuid != null) {
+    return "public-dashcard";
+  } else if (dashboardId != null && dashcardId != null) {
+    return "dashcard";
+  } else if (uuid != null) {
+    return "public-question";
+  } else if (token != null) {
+    return "static-embed-question";
+  } else if (cardId != null) {
+    return "question";
+  } else {
+    return "dataset";
+  }
 };
 
 export const downloadQueryResults =
