@@ -1,12 +1,12 @@
 import type { JSX } from "react";
 
 import type { FetchRequestTokenFn } from "embedding-sdk";
-import type { SdkErrorProps } from "embedding-sdk/components/private/PublicComponentWrapper/SdkError";
+import type { SdkErrorComponent } from "embedding-sdk/store/types";
 
 type BaseSDKConfig = {
   metabaseInstanceUrl: string;
   loaderComponent?: () => JSX.Element;
-  errorComponent?: ({ message }: SdkErrorProps) => JSX.Element;
+  errorComponent?: SdkErrorComponent;
 
   /**
    * Specifies a function to fetch the refresh token.

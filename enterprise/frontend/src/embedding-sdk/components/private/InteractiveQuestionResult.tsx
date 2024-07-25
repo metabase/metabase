@@ -116,7 +116,7 @@ export const InteractiveQuestionResult = ({
           h="100%"
           pos="relative"
           align="flex-start"
-          style={{ overflow: "hidden" }}
+          className={CS.overflowHidden}
         >
           <ResultView
             questionView={questionView}

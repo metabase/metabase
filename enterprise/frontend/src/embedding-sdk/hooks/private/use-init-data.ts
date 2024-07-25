@@ -1,8 +1,11 @@
 import { useEffect } from "react";
+import { match, P } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import type { EmbeddingSessionToken } from "embedding-sdk";
+import { presentApiKeyUsageWarning } from "embedding-sdk";
+import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
   getOrRefreshSession,
@@ -12,15 +15,16 @@ import {
 } from "embedding-sdk/store/reducer";
 import { getLoginStatus } from "embedding-sdk/store/selectors";
 import type { SdkDispatch } from "embedding-sdk/store/types";
-import type { SDKConfig, SDKConfigWithJWT } from "embedding-sdk/types";
+import type {
+  SDKConfig,
+  SDKConfigWithApiKey,
+  SDKConfigWithJWT,
+} from "embedding-sdk/types";
 import api from "metabase/lib/api";
 import { useSelector } from "metabase/lib/redux";
 import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
-import {
-  getApplicationName,
-  getShowMetabaseLinks,
-} from "metabase/selectors/whitelabel";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
@@ -29,40 +33,26 @@ interface InitDataLoaderParameters {
   config: SDKConfig;
 }
 
-const setupJwtAuth = (config: SDKConfigWithJWT, dispatch: SdkDispatch) => {
+const setupJwtAuth = (
+  jwtProviderUri: SDKConfigWithJWT["jwtProviderUri"],
+  dispatch: SdkDispatch,
+) => {
   api.onBeforeRequest = async () => {
-    const tokenState = await dispatch(
-      getOrRefreshSession(config.jwtProviderUri),
-    );
+    const tokenState = await dispatch(getOrRefreshSession(jwtProviderUri));
 
     api.sessionToken = (tokenState.payload as EmbeddingSessionToken | null)?.id;
   };
+
+  dispatch(setLoginStatus({ status: "validated" }));
 };
 
-const presentApiKeyUsageWarning = (
-  appName: string,
-  showMetabaseLinks: boolean,
+const setupLocalApiKey = (
+  dispatch: SdkDispatch,
+  apiKey: SDKConfigWithApiKey["apiKey"],
 ) => {
-  const headerStyle = "color: #509ee3; font-size: 16px; font-weight: bold;";
-  const textStyle = "color: #333; font-size: 14px;";
-  const highlightStyle = "color: #e53935; font-size: 14px; font-weight: bold;";
-  const linkStyle =
-    "color: #509ee3; font-size: 14px; text-decoration: underline;";
-
-  console.warn(
-    `%c${appName} Embedding SDK for React\n\n` +
-      `%cWarning: You are in development mode. API keys will %cnot%c work in production.\n` +
-      `Please switch to using a JWT token for production use.\n\n` +
-      showMetabaseLinks
-      ? `%cLearn more: %chttps://www.metabase.com/docs/latest/people-and-groups/authenticating-with-jwt`
-      : "",
-    headerStyle,
-    textStyle,
-    highlightStyle,
-    textStyle,
-    textStyle,
-    linkStyle,
-  );
+  api.apiKey = apiKey;
+  dispatch(setEnvironmentType("dev"));
+  dispatch(setLoginStatus({ status: "validated" }));
 };
 
 export const useInitData = ({ config }: InitDataLoaderParameters) => {
@@ -70,7 +60,6 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
 
   const loginStatus = useSdkSelector(getLoginStatus);
   const appName = useSelector(getApplicationName);
-  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   useEffect(() => {
     registerVisualizationsOnce();
@@ -81,37 +70,73 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   }, [dispatch, config.fetchRequestToken]);
 
   useEffect(() => {
-    if (loginStatus.status === "uninitialized") {
-      dispatch(setEnvironmentType("prod"));
-      api.basename = config.metabaseInstanceUrl;
-
-      if (config.apiKey && window.location.hostname === "localhost") {
-        api.apiKey = config.apiKey;
-        presentApiKeyUsageWarning(appName, showMetabaseLinks);
-        dispatch(setEnvironmentType("dev"));
-        dispatch(setLoginStatus({ status: "validated" }));
-      } else if (config.jwtProviderUri) {
-        setupJwtAuth(config, dispatch);
-        dispatch(setLoginStatus({ status: "validated" }));
-      } else {
-        let authErrorMessage: string;
-        if (config.jwtProviderUri) {
-          authErrorMessage = t`Invalid JWT URI provided`;
-        } else {
-          authErrorMessage = config.apiKey
-            ? t`Can't use API Keys in production`
-            : t`Invalid API Key`;
-        }
-
-        dispatch(
-          setLoginStatus({
-            status: "error",
-            error: new Error(authErrorMessage),
-          }),
-        );
-      }
+    if (loginStatus.status !== "uninitialized") {
+      return;
     }
-  }, [appName, config, dispatch, loginStatus.status, showMetabaseLinks]);
+
+    dispatch(setEnvironmentType("prod"));
+    api.basename = config.metabaseInstanceUrl;
+
+    const authErrorMessage = match<[SDKConfig, string], string | void>([
+      config,
+      window.location.pathname,
+    ])
+      .with(
+        [
+          {
+            apiKey: P.select("apiKey"),
+            jwtProviderUri: P.select("jwtProviderUri", P.nullish),
+          },
+          "localhost",
+        ],
+        ({ apiKey }) => {
+          presentApiKeyUsageWarning(appName);
+          setupLocalApiKey(dispatch, apiKey);
+        },
+      )
+      .with(
+        [
+          {
+            apiKey: P.select("apiKey"),
+            jwtProviderUri: P.select("jwtProviderUri", P.nullish),
+          },
+          P.not("localhost"),
+        ],
+        () => getErrorMessage("PROD_API_KEY"),
+      )
+      .with(
+        [
+          {
+            apiKey: P.select("apiKey", P.nullish),
+            jwtProviderUri: P.select("jwtProviderUri"),
+          },
+          P._,
+        ],
+        ({ jwtProviderUri }) => {
+          setupJwtAuth(jwtProviderUri, dispatch);
+        },
+      )
+      .with(
+        [
+          {
+            apiKey: P.select("apiKey", P.nullish),
+            jwtProviderUri: P.select("jwtProviderUri", P.nullish),
+          },
+          P._,
+        ],
+        () => getErrorMessage("NO_AUTH_PROVIDED"),
+      )
+      .otherwise(() => t`Unknown error`);
+
+    if (authErrorMessage) {
+      dispatch(
+        setLoginStatus({
+          status: "error",
+          error: new Error(authErrorMessage),
+        }),
+      );
+    }
+  }, [appName, config, dispatch, loginStatus.status]);
 
   useEffect(() => {
     if (loginStatus.status === "validated") {
@@ -131,9 +156,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
             dispatch(
               setLoginStatus({
                 status: "error",
-                error: new Error(
-                  t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
-                ),
+                error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
               }),
             );
             return;
@@ -144,9 +167,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
           dispatch(
             setLoginStatus({
               status: "error",
-              error: new Error(
-                t`Could not authenticate: invalid JWT URI or JWT provider did not return a valid JWT token`,
-              ),
+              error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
             }),
           );
         }
