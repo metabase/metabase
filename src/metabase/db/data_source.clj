@@ -148,10 +148,13 @@
      (->DataSource s (some-> (not-empty m) connection-pool/map->properties)))))
 
 (defn- remove-shadowed-azure-managed-identity-client-id
-  "A normal password takes precedence over Azure managed identity."
+  "A normal password takes precedence over Azure managed identity and we don't want
+  an empty string to be taken for a valid client ID."
   [spec]
   (cond-> spec
-    (:password spec) (dissoc :azure-managed-identity-client-id)))
+    (or (empty? (:azure-managed-identity-client-id spec))
+        (seq (:password spec)))
+    (dissoc :azure-managed-identity-client-id)))
 
 (defn broken-out-details->DataSource
   "Return a [[javax.sql.DataSource]] given a broken-out Metabase connection details."

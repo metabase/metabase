@@ -1,7 +1,6 @@
 (ns metabase.test.initialize.db
   (:require
    [metabase.db :as mdb]
-   [metabase.db.env :as mdb.env]
    [metabase.task :as task]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -10,9 +9,6 @@
 (set! *warn-on-reflection* true)
 
 (defn init! []
-  (when (#{:mysql :postgres} mdb.env/db-type)
-    (log/fatal "Initializing DB for" mdb.env/db-type (pr-str mdb.env/env)))
-  (System/exit 1)
   (log/info (u/format-color 'blue "Setting up %s test DB and running migrations..." (mdb/db-type)))
   (#'task/set-jdbc-backend-properties!)
   (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
