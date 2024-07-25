@@ -51,7 +51,7 @@ const getDownloadedResourceType = ({
   uuid,
   token,
   question,
-}: DownloadQueryResultsOpts): DownloadedResourceType => {
+}: Partial<DownloadQueryResultsOpts>): DownloadedResourceType => {
   const cardId = question.id();
 
   if (dashcardId != null && token != null) {
@@ -118,13 +118,19 @@ const getDatasetParams = ({
   visualizationSettings,
 }: DownloadQueryResultsOpts): DownloadQueryResultsParams => {
   const cardId = question.id();
-  const isQuestionInStaticEmbedDashboard =
-    dashcardId != null && cardId != null && token != null;
 
   // Formatting is always enabled for Excel
   const format_rows = enableFormatting && type !== "xlsx" ? "true" : "false";
 
-  if (isQuestionInStaticEmbedDashboard) {
+  const resourceType = getDownloadedResourceType({
+    dashboardId,
+    dashcardId,
+    uuid,
+    token,
+    question,
+  });
+
+  if (resourceType === "static-embed-dashcard") {
     return {
       method: "GET",
       url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
@@ -132,9 +138,7 @@ const getDatasetParams = ({
     };
   }
 
-  const isQuestionInPublicDashboard =
-    dashboardId != null && cardId != null && uuid != null;
-  if (isQuestionInPublicDashboard) {
+  if (resourceType === "public-dashcard") {
     return {
       method: "POST",
       url: `/api/public/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/${type}`,
@@ -145,9 +149,7 @@ const getDatasetParams = ({
     };
   }
 
-  const isDashboard =
-    dashboardId != null && dashcardId != null && cardId != null;
-  if (isDashboard) {
+  if (resourceType === "dashcard") {
     return {
       method: "POST",
       url: `/api/dashboard/${dashboardId}/dashcard/${dashcardId}/card/${cardId}/query/${type}`,
@@ -158,8 +160,7 @@ const getDatasetParams = ({
     };
   }
 
-  const isPublicQuestion = uuid != null;
-  if (isPublicQuestion) {
+  if (resourceType === "public-question" && uuid) {
     return {
       method: "GET",
       url: Urls.publicQuestion({ uuid, type, includeSiteUrl: false }),
@@ -170,8 +171,7 @@ const getDatasetParams = ({
     };
   }
 
-  const isEmbeddedQuestion = token != null;
-  if (isEmbeddedQuestion) {
+  if (resourceType === "static-embed-question" && token) {
     // For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
     // of like ?params=<json-encoded-params-array> like the other endpoints do.
     const params = new URLSearchParams(window.location.search);
@@ -183,8 +183,7 @@ const getDatasetParams = ({
     };
   }
 
-  const isSavedQuery = cardId != null;
-  if (isSavedQuery) {
+  if (resourceType === "question") {
     return {
       method: "POST",
       url: `/api/card/${cardId}/query/${type}`,
@@ -194,16 +193,19 @@ const getDatasetParams = ({
       },
     };
   }
+  if (resourceType === "dataset") {
+    return {
+      method: "POST",
+      url: `/api/dataset/${type}`,
+      params: new URLSearchParams({ format_rows }),
+      body: {
+        query: _.omit(result?.json_query ?? {}, "constraints"),
+        visualization_settings: visualizationSettings ?? {},
+      },
+    };
+  }
 
-  return {
-    method: "POST",
-    url: `/api/dataset/${type}`,
-    params: new URLSearchParams({ format_rows }),
-    body: {
-      query: _.omit(result?.json_query ?? {}, "constraints"),
-      visualization_settings: visualizationSettings ?? {},
-    },
-  };
+  throw new Error("Unknown resource type");
 };
 
 export function getDatasetDownloadUrl(
