@@ -120,6 +120,9 @@ describeEE("scenarios > admin > performance > schedule strategy", () => {
         const expectedFieldLabels: string[] = [];
         expectedFieldLabels.push("Frequency");
         switch (schedule.frequency) {
+          case undefined:
+            // This means the frequency was not changed; the default frequency (hourly) is selected
+            break;
           case "hourly":
             break;
           case "daily":
