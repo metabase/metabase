@@ -534,6 +534,7 @@ describe("issue 27643", () => {
   };
 
   beforeEach(() => {
+    // This issue was only reproducible against the Postgres database.
     restore("postgres-12");
     cy.signInAsAdmin();
     withDatabase(PG_DB_ID, ({ INVOICES }) => {
