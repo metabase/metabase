@@ -121,7 +121,7 @@ export function PieChart(props: VisualizationProps) {
       className={props.className}
       gridSize={props.gridSize}
       hovered={props.hovered}
-      isDashboard={props.isDashboard}
+      isDashboard={isDashboard}
     >
       <ChartRenderer
         option={option}

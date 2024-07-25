@@ -196,7 +196,12 @@ export function getPieChartOption(
         color: labelColor,
         formatter: () => (isLabelVisible ? label : " "),
       },
-      emphasis: { itemStyle: { color: s.data.color } },
+      emphasis: {
+        itemStyle: {
+          color: s.data.color,
+          borderColor: renderingContext.theme.pie.borderColor,
+        },
+      },
       blur: {
         itemStyle: {
           // We have to fade the slices through `color` rather than `opacity`
