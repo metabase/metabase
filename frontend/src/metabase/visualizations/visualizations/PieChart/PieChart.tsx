@@ -15,7 +15,14 @@ import { getTooltipModel, useChartEvents } from "./use-chart-events";
 Object.assign(PieChart, PIE_CHART_DEFINITION);
 
 export function PieChart(props: VisualizationProps) {
-  const { fontFamily, rawSeries, settings, onRender } = props;
+  const {
+    fontFamily,
+    rawSeries,
+    settings,
+    onRender,
+    isDashboard,
+    isFullscreen,
+  } = props;
   const hoveredIndex = props.hovered?.index;
 
   const chartRef = useRef<EChartsType>();
@@ -28,6 +35,8 @@ export function PieChart(props: VisualizationProps) {
 
   const renderingContext = useBrowserRenderingContext({
     fontFamily,
+    isDashboard,
+    isFullscreen,
   });
   const chartModel = useMemo(
     () => getPieChartModel(rawSeries, settings, renderingContext, showWarning),

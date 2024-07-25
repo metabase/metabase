@@ -54,6 +54,9 @@ export interface VisualizationTheme {
       };
     };
   };
+  pie: {
+    borderColor: string;
+  };
 }
 
 export type OnChangeCardAndRunOpts = {

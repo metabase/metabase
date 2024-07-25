@@ -231,6 +231,7 @@ export function getPieChartOption(
       radius: [innerRadius, outerRadius],
       itemStyle: {
         borderWidth,
+        borderColor: renderingContext.theme.pie.borderColor,
       },
       label: {
         rotate: 0,
