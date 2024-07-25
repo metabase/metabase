@@ -17,11 +17,17 @@
       "description": "The type of event being recorded."
     },
     "resource_type": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "The reason of resource, question, dashcard, public question etc"
     },
     "export_type": {
-      "type": "string",
+      "type": [
+        "string",
+        "null"
+      ],
       "description": "The export type, csv, png etc"
     }
   },
