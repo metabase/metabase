@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
@@ -415,20 +416,39 @@
     [{:field-name "short_json", :base-type :type/JSON}
      {:field-name "long_json",  :base-type :type/JSON}]
     [[(json/generate-string {:a "x"}) (json/generate-string {:a "x"})]
-     [(json/generate-string {:b "y"}) (json/generate-string {:b (apply str (repeat 1000 "y"))})]]]])
+     [(json/generate-string {:b "y"}) (json/generate-string {:b (apply str (repeat 10 "y"))})]]]])
+
+(defn do-with-removed-method [driver thunk]
+  (let [original-method (get-method driver.sql/json-field-length driver)]
+    (if (= original-method (get-method driver.sql/json-field-length :default))
+      (thunk)
+      (do (remove-method driver.sql/json-field-length driver)
+          (thunk)
+          (defmethod driver.sql/json-field-length driver [driver field]
+            (original-method driver field))))))
 
 (deftest long-json-sample-json-query-test
   (testing "Long JSON values should be omitted from the sample for describe-table (#45163)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
-      (binding [sql-jdbc.describe-table/*nested-field-columns-max-row-length* 10]
+      (binding [sql-jdbc.describe-table/*nested-field-columns-max-row-length*
+                (dec (count (json/generate-string {:b (apply str (repeat 10 "y"))})))]
         (mt/dataset long-json
           (sync/sync-database! (mt/db) {:scan :schema})
           (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                 table       (t2/select-one :model/Table :db_id (mt/id) :name "long_json_table")
                 json-fields (t2/select :model/Field :table_id (:id table) :name [:in ["short_json" "long_json"]])
-                pks         ["id"]]
-            (is (= #{{:short_json "{\"a\":\"x\"}", :long_json "{\"a\":\"x\"}"} {:short_json "{\"b\":\"y\"}", :long_json nil}}
-                   (into #{} (#'sql-jdbc.describe-table/sample-json-reducible-query driver/*driver* jdbc-spec table json-fields pks))))
+                pks         ["id"]
+                sample      #(#'sql-jdbc.describe-table/sample-json-reducible-query driver/*driver* jdbc-spec table json-fields pks)]
+            (is (= #{{:short_json "{\"a\":\"x\"}", :long_json "{\"a\":\"x\"}"}
+                     {:short_json "{\"b\":\"y\"}", :long_json nil}}
+                   (into #{} (sample))))
+            (testing "If driver.sql/json-field-length is not implemented for the driver, then return the value even if it exceeds the max length"
+              (do-with-removed-method
+               driver/*driver*
+               (fn []
+                 (is (= #{{:short_json "{\"a\":\"x\"}", :long_json "{\"a\":\"x\"}"}
+                          {:short_json "{\"b\":\"y\"}", :long_json "{\"b\":\"yyyyyyyyyy\"}"}}
+                        (into #{} (sample)))))))
             (testing "The resulting synced fields exclude the field that corresponds to the long value"
               (is (= #{"id"
                        "short_json"

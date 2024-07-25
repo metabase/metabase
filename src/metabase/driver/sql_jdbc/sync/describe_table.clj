@@ -590,14 +590,16 @@
   (let [pks-expr         (mapv vector pk-identifiers)
         table-expr       [table-identifier]
         json-field-exprs (mapv (fn [field]
-                                 [[:case
-                                   [:<
-                                    [:inline *nested-field-columns-max-row-length*]
-                                    (driver.sql/json-field-length driver field)]
-                                   nil
-                                   :else
-                                   field]
-                                  (last (h2x/identifier->components field))])
+                                 (if (= (driver.sql/json-field-length driver field) :nyi)
+                                   [field]
+                                   [[:case
+                                     [:<
+                                      [:inline *nested-field-columns-max-row-length*]
+                                      (driver.sql/json-field-length driver field)]
+                                     nil
+                                     :else
+                                     field]
+                                    (last (h2x/identifier->components field))]))
                                json-field-identifiers)]
     (if (seq pk-identifiers)
       {:select json-field-exprs
