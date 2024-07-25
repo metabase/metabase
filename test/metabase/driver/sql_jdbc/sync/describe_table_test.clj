@@ -418,15 +418,6 @@
     [[(json/generate-string {:a "x"}) (json/generate-string {:a "x"})]
      [(json/generate-string {:b "y"}) (json/generate-string {:b (apply str (repeat 10 "y"))})]]]])
 
-(defn do-with-removed-method [driver thunk]
-  (let [original-method (get-method driver.sql/json-field-length driver)]
-    (if (= original-method (get-method driver.sql/json-field-length :default))
-      (thunk)
-      (do (remove-method driver.sql/json-field-length driver)
-          (thunk)
-          (defmethod driver.sql/json-field-length driver [driver field]
-            (original-method driver field))))))
-
 (deftest long-json-sample-json-query-test
   (testing "Long JSON values should be omitted from the sample for describe-table (#45163)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
@@ -443,12 +434,19 @@
                      {:short_json "{\"b\":\"y\"}", :long_json nil}}
                    (into #{} (sample))))
             (testing "If driver.sql/json-field-length is not implemented for the driver, then return the value even if it exceeds the max length"
-              (do-with-removed-method
-               driver/*driver*
-               (fn []
-                 (is (= #{{:short_json "{\"a\":\"x\"}", :long_json "{\"a\":\"x\"}"}
-                          {:short_json "{\"b\":\"y\"}", :long_json "{\"b\":\"yyyyyyyyyy\"}"}}
-                        (into #{} (sample)))))))
+              (letfn [(do-with-removed-method [thunk]
+                        (let [original-method (get-method driver.sql/json-field-length driver/*driver*)]
+                          (if (= original-method (get-method driver.sql/json-field-length :default))
+                            (thunk)
+                            (do (remove-method driver.sql/json-field-length driver/*driver*)
+                                (thunk)
+                                (defmethod driver.sql/json-field-length driver/*driver* [driver field]
+                                  (original-method driver field))))))]
+                (do-with-removed-method
+                 (fn []
+                   (is (= #{{:short_json "{\"a\":\"x\"}", :long_json "{\"a\":\"x\"}"}
+                            {:short_json "{\"b\":\"y\"}", :long_json "{\"b\":\"yyyyyyyyyy\"}"}}
+                          (into #{} (sample))))))))
             (testing "The resulting synced fields exclude the field that corresponds to the long value"
               (is (= #{"id"
                        "short_json"

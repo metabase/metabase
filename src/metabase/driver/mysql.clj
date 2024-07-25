@@ -35,17 +35,8 @@
    [metabase.util.log :as log])
   (:import
    (java.io File)
-   (java.sql
-    DatabaseMetaData
-    ResultSet
-    ResultSetMetaData
-    Types)
-   (java.time
-    LocalDateTime
-    OffsetDateTime
-    OffsetTime
-    ZoneOffset
-    ZonedDateTime)
+   (java.sql DatabaseMetaData ResultSet ResultSetMetaData Types)
+   (java.time LocalDateTime OffsetDateTime OffsetTime ZonedDateTime ZoneOffset)
    (java.time.format DateTimeFormatter)))
 
 (set! *warn-on-reflection* true)
