@@ -52,7 +52,9 @@ jobs:
         run: yarn build-pure:cljs
 
       - name: Build Storybook
-        run: yarn build-storybook
+        # We won't be able to use Storybook play's `userEvent` with production build
+        # see https://github.com/storybookjs/storybook/issues/19758
+        run: NODE_ENV=development yarn build-storybook
 
       - name: Serve Storybook
         run: yarn http-server storybook-static -p 6006 &
