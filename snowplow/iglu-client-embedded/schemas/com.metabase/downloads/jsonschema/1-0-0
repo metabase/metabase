@@ -21,6 +21,7 @@
         "string",
         "null"
       ],
+      "maxLength": 1024,
       "description": "The reason of resource, question, dashcard, public question etc"
     },
     "export_type": {
@@ -28,6 +29,7 @@
         "string",
         "null"
       ],
+      "maxLength": 1024,
       "description": "The export type, csv, png etc"
     }
   },
