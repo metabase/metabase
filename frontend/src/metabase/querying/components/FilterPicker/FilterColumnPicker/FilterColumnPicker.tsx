@@ -143,7 +143,7 @@ function omitItemDescription() {
 
 function renderItemIcon(item: ColumnListItem | SegmentListItem) {
   if (isSegmentListItem(item)) {
-    return <Icon name="star" size={18} />;
+    return <Icon name="star" />;
   }
 
   if (item.column) {

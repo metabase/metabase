@@ -11,6 +11,7 @@ import {
   ItemTitle,
   ItemIcon,
 } from "./FieldPicker.styled";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 export interface FieldPickerItem {
   column: Lib.ColumnMetadata;
@@ -91,13 +92,14 @@ export const FieldPicker = ({
                 disabled={item.isDisabled}
                 onChange={event => onToggle(item.column, event.target.checked)}
               />
-              <ItemIcon
-                query={query}
-                stageIndex={stageIndex}
-                column={item.column}
-                position="top-start"
-                size={16}
-              />
+              <IconContainer>
+                <ItemIcon
+                  query={query}
+                  stageIndex={stageIndex}
+                  column={item.column}
+                  position="top-start"
+                />
+              </IconContainer>
               <ItemTitle>{item.columnInfo.displayName}</ItemTitle>
             </Label>
           </li>

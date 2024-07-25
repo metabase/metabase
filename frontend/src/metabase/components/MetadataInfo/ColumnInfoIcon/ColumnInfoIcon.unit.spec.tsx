@@ -3,6 +3,7 @@ import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 
 import { QueryColumnInfoIcon, TableColumnInfoIcon } from "./ColumnInfoIcon";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 function setup(table: string, column: string) {
   const query = createQuery();
@@ -11,7 +12,9 @@ function setup(table: string, column: string) {
   const col = findColumn(table, column);
 
   return render(
-    <QueryColumnInfoIcon query={query} stageIndex={-1} column={col} />,
+    <IconContainer>
+      <QueryColumnInfoIcon query={query} stageIndex={-1} column={col} />
+    </IconContainer>,
   );
 }
 
@@ -29,44 +32,17 @@ describe("QueryColumnInfoIcon", () => {
     expect(await screen.findByText("Category")).toBeInTheDocument();
   });
 
-  it("should render with default size of 14px", () => {
+  it("should render with IconContainer", () => {
     setup("PRODUCTS", "CATEGORY");
     const iconContainer = screen.getByLabelText("More info");
-    expect(iconContainer).toHaveStyle("font-size: 14px");
-  });
-
-  it("should render with custom size", () => {
-    const query = createQuery();
-    const columns = Lib.visibleColumns(query, 0);
-    const findColumn = columnFinder(query, columns);
-    const col = findColumn("PRODUCTS", "CATEGORY");
-
-    render(
-      <QueryColumnInfoIcon
-        query={query}
-        stageIndex={0}
-        column={col}
-        size={18}
-      />,
-    );
-
-    const iconContainer = screen.getByLabelText("More info");
-    expect(iconContainer).toHaveStyle("font-size: 18px");
+    expect(iconContainer).toHaveAttribute("class", expect.stringContaining("IconContainer"));
   });
 });
 
 describe("TableColumnInfoIcon", () => {
-  it("should render with default size of 14px", () => {
+  it("should render with IconContainer", () => {
     render(<TableColumnInfoIcon field={{} as any} icon="string" />);
-
     const iconContainer = screen.getByLabelText("More info");
-    expect(iconContainer).toHaveStyle("font-size: 14px");
-  });
-
-  it("should render with custom size", () => {
-    render(<TableColumnInfoIcon field={{} as any} icon="string" size={18} />);
-
-    const iconContainer = screen.getByLabelText("More info");
-    expect(iconContainer).toHaveStyle("font-size: 18px");
+    expect(iconContainer).toHaveAttribute("class", expect.stringContaining("IconContainer"));
   });
 });

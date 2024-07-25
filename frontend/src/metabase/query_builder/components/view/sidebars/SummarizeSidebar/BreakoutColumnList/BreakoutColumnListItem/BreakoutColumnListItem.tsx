@@ -6,6 +6,7 @@ import { BucketPickerPopover } from "metabase/common/components/QueryColumnPicke
 import { HoverParent } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import Tooltip from "metabase/core/components/Tooltip";
 import * as Lib from "metabase-lib";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 import {
   AddButton,
@@ -70,20 +71,22 @@ export function BreakoutColumnListItem({
     >
       <Content onClick={handleListItemClick}>
         <TitleContainer>
-          <ColumnTypeIcon
-            query={query}
-            stageIndex={stageIndex}
-            column={item.column}
-            position="left"
-            size={18}
-          />
+          <IconContainer>
+            <ColumnTypeIcon
+              query={query}
+              stageIndex={stageIndex}
+              column={item.column}
+              position="left"
+            />
+          </IconContainer>
           <Title data-testid="dimension-list-item-name">{displayName}</Title>
         </TitleContainer>
         <BucketPickerPopover
           query={query}
           stageIndex={stageIndex}
           column={item.column}
-          color="summarize"
+          color="summ
+arize"
           isEditing={isSelected}
           hasChevronDown
           hasBinning
