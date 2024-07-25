@@ -9,14 +9,8 @@
    [java-time.api :as t]
    [metabase.analytics.sdk :as sdk]
    [metabase.events :as events]
-   #_
-   [metabase.lib.core :as lib] ;; Bryan 7/24: Why are many of these requires commented out??
-   #_
-   [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
    [metabase.query-processor.schema :as qp.schema]
-   #_
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
