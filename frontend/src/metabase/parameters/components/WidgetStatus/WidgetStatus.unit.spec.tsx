@@ -45,7 +45,7 @@ describe("WidgetStatus", () => {
     it("renders correctly", () => {
       setup({ status: "reset" });
 
-      expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
+      expect(screen.getByLabelText("revert icon")).toBeInTheDocument();
       expect(screen.getByRole("button")).toBeEnabled();
     });
 

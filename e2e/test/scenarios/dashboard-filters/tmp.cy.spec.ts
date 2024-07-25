@@ -306,7 +306,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   }
 
   function resetIcon(label: string) {
-    return filter(label).icon("refresh");
+    return filter(label).icon("revert");
   }
 
   function clearButton(label: string) {

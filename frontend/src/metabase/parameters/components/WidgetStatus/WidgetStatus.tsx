@@ -53,7 +53,7 @@ export const WidgetStatus = ({ status, onClick }: Props) => {
           <Button
             aria-label={t`Reset filter to default state`}
             compact
-            leftIcon={<Icon name="refresh" />}
+            leftIcon={<Icon name="revert" />}
             m={rem(BUTTON_MARGIN)}
             radius="md"
             variant="subtle"
