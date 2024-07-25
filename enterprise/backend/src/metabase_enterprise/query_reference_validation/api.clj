@@ -44,7 +44,7 @@
         card-query          (query-field/cards-with-reference-errors
                              (m/assoc-some
                               ;; TODO this table has a lot of fields... we should whittle down to what we need.
-                              {:select    (into [:c.id :c.name] sorting-selects)
+                              {:select    (into [:c.*] sorting-selects)
                                :from      [[(t2/table-name :model/Card) :c]]
                                :left-join sorting-joins
                                :where     [:= :c.archived false]
