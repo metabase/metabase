@@ -549,18 +549,19 @@
   availability of EE code and the necessary premium feature. Returns a fn which, when invoked, applies its args to one
   of the EE implementation, the OSS implementation, or the fallback function."
   [ee-ns ee-fn-name]
-  (fn [& args]
-    (u/ignore-exceptions (classloader/require ee-ns))
-    (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
-      (cond
-        (and ee (check-feature feature))
-        (apply ee args)
+  (let [try-require-ee-ns-once (delay (u/ignore-exceptions (classloader/require ee-ns)))]
+    (fn [& args]
+      @try-require-ee-ns-once
+      (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
+        (cond
+          (and ee (check-feature feature))
+          (apply ee args)
 
-        (and ee (fn? fallback))
-        (apply fallback args)
+          (and ee (fn? fallback))
+          (apply fallback args)
 
-        :else
-        (apply oss args)))))
+          :else
+          (apply oss args))))))
 
 (defn- validate-ee-args
   "Throws an exception if the required :feature option is not present."
