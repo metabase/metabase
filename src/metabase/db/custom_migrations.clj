@@ -1466,10 +1466,10 @@
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
 
-(defn- column-setting-key [{:keys [name]}]
+(defn- column->column-key [{:keys [name]}]
   (json/generate-string [:name name]))
 
-(defn- column-setting-legacy-key [{name :name field-ref :field_ref :as column}]
+(defn- column->legacy-column-key [{name :name field-ref :field_ref :as column}]
   (let [field-ref (or field-ref [:field name nil])
         [ref-type field-id-or-name ref-options] field-ref
         field-ref (if (and (#{:field :expression :aggregation} ref-type) ref-options)
@@ -1477,109 +1477,84 @@
                     field-ref)]
     (if (or (and (= ref-type :field) (string? field-id-or-name))
             (= ref-type :aggregation))
-      (column-setting-key column)
+      (column->column-key column)
       (json/generate-string [:ref field-ref]))))
 
-(defn- migrate-legacy-column-setting-keys [visualization_settings result_metadata]
-  (let [key->column (m/index-by column-setting-legacy-key result_metadata)]
-    (m/update-existing visualization_settings "column_settings" update-keys
+(defn- visualization-settings->columns [visualization_settings]
+  (if-let [columns (:table.columns visualization_settings)]
+    (into []
+          (map (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}))
+          columns)
+    []))
+
+(defn- migrate-legacy-column-setting-keys [visualization_settings columns]
+  (let [key->column (m/index-by column->legacy-column-key columns)]
+    (m/update-existing visualization_settings :column_settings update-keys
                        (fn [key]
-                         (if-let [column (get key->column key)]
-                           (column-setting-key column)
+                         (if-let [column (get key->column (str key))]
+                           (column->column-key column)
                            key)))))
 
-(defn- rollback-legacy-column-setting-keys [visualization_settings result_metadata]
-  (let [key->column (m/index-by column-setting-key result_metadata)]
-    (m/update-existing visualization_settings "column_settings" update-keys
+(defn- rollback-legacy-column-setting-keys [visualization_settings columns]
+  (let [key->column (m/index-by column->column-key columns)]
+    (m/update-existing visualization_settings :column_settings update-keys
                        (fn [key]
-                         (if-let [column (get key->column key)]
-                           (column-setting-legacy-key column)
+                         (if-let [column (get key->column (str key))]
+                           (column->legacy-column-key column)
                            key)))))
+
+(defn- update-field-refs-in-card-column-settings [update-viz-settings]
+  (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
+                      (let [parsed-viz-settings    (json/parse-string visualization_settings keyword)
+                            parsed-result-metadata (json/parse-string result_metadata keyword)
+                            updated-viz-settings   (update-viz-settings parsed-viz-settings parsed-result-metadata)]
+                        (when (not= parsed-viz-settings updated-viz-settings)
+                              (t2/query-one {:update :report_card
+                                             :set    {:visualization_settings (json/generate-string updated-viz-settings)}
+                                             :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
+                                           :from   [:report_card]
+                                           :where  [:like :visualization_settings "%column_settings%"]}))))
 
 (define-reversible-migration RemoveFieldRefsFromCardColumnSettings
-  (let [migrate-one! (fn [{:keys [id visualization_settings result_metadata]}]
-                       (let [parsed-viz-settings    (json/parse-string visualization_settings)
-                             parsed-result-metadata (json/parse-string result_metadata true)
-                             updated-viz-settings   (migrate-legacy-column-setting-keys parsed-viz-settings
-                                                                                         parsed-result-metadata)]
-                         (when (not= parsed-viz-settings updated-viz-settings)
-                           (t2/query-one {:update :report_card
-                                          :set    {:visualization_settings (json/generate-string updated-viz-settings)}
-                                          :where  [:= :id id]}))))]
-    (run! migrate-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
-                                           :from   [:report_card]
-                                           :where  [:and [:like :visualization_settings "%column_settings%"]
-                                                         [:or [:like :visualization_settings "%ref\\\\\"%"]
-                                                              ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                              [:like :visualization_settings "%ref\\\\\\\"%"]]]})))
-  (let [rollback-one! (fn [{:keys [id visualization_settings result_metadata]}]
-                        (let [parsed-viz-settings    (json/parse-string visualization_settings)
-                              parsed-result-metadata (json/parse-string result_metadata true)
-                              updated-viz-settings   (rollback-legacy-column-setting-keys parsed-viz-settings
-                                                                                          parsed-result-metadata)]
-                          (when (not= parsed-viz-settings updated-viz-settings)
-                            (t2/query-one {:update :report_card
-                                           :set    {:visualization_settings (json/generate-string updated-viz-settings)}
-                                           :where  [:= :id id]}))))]
-    (run! rollback-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
-                                             :from   [:report_card]
-                                             :where  [:and [:like :visualization_settings "%column_settings%"]
-                                                           [:or [:like :visualization_settings "%name\\\\\"%"]
-                                                                ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                                [:like :visualization_settings "%name\\\\\\\"%"]]]}))))
+  (update-field-refs-in-card-column-settings migrate-legacy-column-setting-keys)
+  (update-field-refs-in-card-column-settings rollback-legacy-column-setting-keys))
+
+(defn- update-field-refs-in-dashboard-card-column-settings [update-viz-settings]
+  (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
+                      (let [parsed-viz-settings    (json/parse-string visualization_settings keyword)
+                            parsed-result-metadata (json/parse-string result_metadata keyword)
+                            updated-viz-settings   (update-viz-settings parsed-viz-settings parsed-result-metadata)]
+                        (when (not= parsed-viz-settings updated-viz-settings)
+                              (t2/query-one {:update :report_dashboardcard
+                                             :set    {:visualization_settings (json/generate-string updated-viz-settings)}
+                                             :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:dc.id :dc.visualization_settings :c.result_metadata]
+                                           :from   [[:report_card :c]]
+                                           :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
+                                           :where  [:like :c.visualization_settings "%column_settings%"]}))))
 
 (define-reversible-migration RemoveFieldRefsFromDashboardCardColumnSettings
-  (let [migrate-one! (fn [{:keys [id visualization_settings result_metadata]}]
-                       (let [parsed-viz-settings    (json/parse-string visualization_settings)
-                             parsed-result-metadata (json/parse-string result_metadata true)
-                             updated-viz-settings   (migrate-legacy-column-setting-keys parsed-viz-settings
-                                                                                         parsed-result-metadata)]
-                         (when (not= parsed-viz-settings updated-viz-settings)
-                           (t2/query-one {:update :report_dashboardcard
-                                          :set    {:visualization_settings (json/generate-string updated-viz-settings)}
-                                          :where  [:= :id id]}))))]
-    (run! migrate-one! (t2/reducible-query {:select [:dc.id :dc.visualization_settings :c.result_metadata]
-                                            :from   [[:report_card :c]]
-                                            :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
-                                            :where  [:and [:like :c.visualization_settings "%column_settings%"]
-                                                          [:or [:like :c.visualization_settings "%ref\\\\\"%"]
-                                                               ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                               [:like :c.visualization_settings "%ref\\\\\\\"%"]]]})))
-  (let [rollback-one! (fn [{:keys [id visualization_settings result_metadata]}]
-                        (let [parsed-viz-settings    (json/parse-string visualization_settings)
-                              parsed-result-metadata (json/parse-string result_metadata true)
-                              updated-viz-settings   (rollback-legacy-column-setting-keys parsed-viz-settings
-                                                                                          parsed-result-metadata)]
-                          (when (not= parsed-viz-settings updated-viz-settings)
-                            (t2/query-one {:update :report_dashboardcard
-                                           :set    {:visualization_settings (json/generate-string updated-viz-settings)}
-                                           :where  [:= :id id]}))))]
-    (run! rollback-one! (t2/reducible-query {:select [:dc.id :dc.visualization_settings :c.result_metadata]
-                                             :from   [[:report_card :c]]
-                                             :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
-                                             :where  [:and [:like :c.visualization_settings "%column_settings%"]
-                                                           [:or [:like :c.visualization_settings "%name\\\\\"%"]
-                                                                ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                                [:like :c.visualization_settings "%name\\\\\\\"%"]]]}))))
+  (update-field-refs-in-dashboard-card-column-settings migrate-legacy-column-setting-keys)
+  (update-field-refs-in-dashboard-card-column-settings rollback-legacy-column-setting-keys))
+
+(defn- update-field-refs-in-card-revision-column-settings [update-viz-settings]
+  (let [update-one! (fn [{:keys [id object]}]
+                      (let [parsed-object          (json/parse-string object keyword)
+                            parsed-viz-settings    (:visualization_settings parsed-object)
+                            columns                (visualization-settings->columns parsed-viz-settings)
+                            updated-viz-settings   (update-viz-settings parsed-viz-settings columns)
+                            updated-object         (assoc parsed-object :visualization_settings updated-viz-settings)]
+                        (when (not= parsed-object updated-object)
+                              (t2/query-one {:update :revision
+                                             :set    {:object (json/generate-string updated-object)}
+                                             :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:id :object]
+                                           :from   [[:revision]]
+                                           :where  [:and [:= :model "Card"]
+                                                         [:like :object "%visualization_settings%"]
+                                                         [:like :object "%column_settings%"]]}))))
 
 (define-reversible-migration RemoveFieldRefsFromCardRevisionColumnSettings
-  (let [migrate-one! (fn [{:keys [id object result_metadata]}]
-                       (let [parsed-object          (json/parse-string object)
-                             parsed-viz-settings    (get parsed-object "visualization_settings")
-                             parsed-result-metadata (json/parse-string result_metadata true)
-                             updated-viz-settings   (migrate-legacy-column-setting-keys parsed-viz-settings
-                                                                                        parsed-result-metadata)
-                             updated-object (assoc parsed-object "visualization_settings" updated-viz-settings)]
-                         (when (not= parsed-object updated-object)
-                           (t2/query-one {:update :revision
-                                          :set    {:object (json/generate-string updated-object)}
-                                          :where  [:= :id id]}))))]
-    (run! migrate-one! (t2/reducible-query {:select [:r.id :r.object :c.result_metadata]
-                                            :from   [[:report_card :c]]
-                                            :join   [[:revision :r] [:= :r.model_id :c.id]]
-                                            :where  [:and [:= :r.model "Card"]
-                                                          [:like :r.object "%visualization_settings%"]
-                                                          [:like :r.object "%column_settings%"]
-                                                          [:or [:like :r.object "%ref\\\\\"%"]
-                                                               ;; MySQL with NO_BACKSLASH_ESCAPES disabled:
-                                                               [:like :r.object "%ref\\\\\\\"%"]]]}))))
+  (update-field-refs-in-card-revision-column-settings migrate-legacy-column-setting-keys)
+  (update-field-refs-in-card-revision-column-settings rollback-legacy-column-setting-keys))
