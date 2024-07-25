@@ -14,6 +14,7 @@ import {
   addPostgresDatabase,
   focusNativeEditor,
   createQuestion,
+  startNewNativeModel,
 } from "e2e/support/helpers";
 
 import { runQuery } from "../native-filters/helpers/e2e-sql-filter-helpers";
@@ -553,18 +554,15 @@ describe("issue 30680", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not render native editor buttons when 'Metadata' tab is open", () => {
-    cy.visit("/model/new");
+  it("should not render native editor buttons when 'Metadata' tab is open (metabase#30680)", () => {
+    startNewNativeModel({ query: "select 1" });
+    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
 
-    cy.findByTestId("new-model-options")
-      .findByText("Use a native query")
-      .click();
-
-    focusNativeEditor().type("select * from orders ", { delay: 100 });
     runNativeQuery();
-
+    cy.findByTestId("editor-tabs-metadata").should("not.be.disabled");
     cy.findByTestId("editor-tabs-metadata-name").click();
 
+    cy.findByTestId("sidebar-content").should("exist");
     cy.findByTestId("native-query-editor-sidebar").should("not.exist");
   });
 });

@@ -2,6 +2,7 @@ import userEvent from "@testing-library/user-event";
 
 import {
   setupCardCreateEndpoint,
+  setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
   setupCardsEndpoints,
 } from "__support__/server-mocks";
@@ -14,7 +15,10 @@ import {
 } from "__support__/ui";
 import { serializeCardForUrl } from "metabase/lib/card";
 import registerVisualizations from "metabase/visualizations/register";
-import { createMockCardQueryMetadata } from "metabase-types/api/mocks";
+import {
+  createMockCardQueryMetadata,
+  createMockDataset,
+} from "metabase-types/api/mocks";
 
 import {
   TEST_COLLECTION,
@@ -94,6 +98,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
         initialRoute: "/model/new",
       });
       setupCardCreateEndpoint();
+      setupCardQueryEndpoints(TEST_NATIVE_CARD, createMockDataset());
       setupCardQueryMetadataEndpoint(
         TEST_NATIVE_CARD,
         createMockCardQueryMetadata({

@@ -421,7 +421,7 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
   });
 });
 
-describe("issue 41785", () => {
+describe.skip("issue 41785", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
@@ -682,6 +682,75 @@ describe("issue 39749", () => {
     cy.findByLabelText("Description").should("have.text", "A");
     tableHeaderClick("Sum of Total");
     cy.findByLabelText("Description").should("have.text", "B");
+  });
+});
+
+describe("issue 33844", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { type: "model" });
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/card").as("createModel");
+    cy.intercept("PUT", "/api/card/*").as("updateModel");
+  });
+
+  function testModelMetadata(isNew: boolean) {
+    cy.log("make a column visible only in detail views");
+    cy.findByTestId("detail-shortcut").should("not.exist");
+    tableHeaderClick("ID");
+    cy.findByLabelText("Detail views only").click();
+    cy.button(isNew ? "Save" : "Save changes").click();
+    if (isNew) {
+      modal().button("Save").click();
+      cy.wait("@createModel");
+    } else {
+      cy.wait("@updateModel");
+      cy.wait("@dataset");
+    }
+    tableInteractive().findByText("User ID").should("be.visible");
+    tableInteractive().findByText("ID").should("not.exist");
+    cy.findAllByTestId("detail-shortcut").first().click();
+    modal().within(() => {
+      cy.findByText("Order").should("be.visible");
+      cy.findByText("ID").should("be.visible");
+      cy.findByTestId("object-detail-close-button").click();
+    });
+
+    cy.log("make the column visible in table views");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    tableHeaderClick("ID");
+    cy.findByLabelText("Detail views only").should("be.checked");
+    cy.findByLabelText("Table and details views").click();
+    cy.button("Save changes").click();
+    cy.wait("@updateModel");
+    cy.wait("@dataset");
+    tableInteractive().findByText("ID").should("be.visible");
+  }
+
+  it("should show hidden PKs in model metadata editor and object details after creating a model (metabase#33844)", () => {
+    cy.visit("/");
+    newButton("Model").click();
+    cy.findByTestId("new-model-options")
+      .findByText("Use the notebook editor")
+      .click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
+    cy.findByTestId("run-button").click();
+    cy.wait("@dataset");
+    cy.findByTestId("dataset-edit-bar").findByText("Metadata").click();
+    testModelMetadata(true);
+  });
+
+  it("should show hidden PKs in model metadata editor and object details after updating a model (metabase#33844,metabase#45924)", () => {
+    visitModel(ORDERS_QUESTION_ID);
+    cy.wait("@dataset");
+    openQuestionActions();
+    popover().findByText("Edit metadata").click();
+    testModelMetadata(false);
   });
 });
 

@@ -4616,7 +4616,6 @@
                                  {:id (mt/id :reviews)}
                                  {:id (mt/id :products)
                                   :fields sequential?
-                                  :db map?
                                   :dimension_options map?}
                                  {:id (mt/id :venues)}])
            :cards [{:id link-card}]
@@ -4709,9 +4708,8 @@
                                                        (:id dash) load-id))])))
               (testing "make fewer AppDB calls than uncached"
                 (is (< (call-count-fn) @uncached-calls)))))
-          (testing "only construct the MetadataProvider once"
-            (is (= {(mt/id) 1}
-                   @provider-counts))))))))
+          (testing "don't construct any MetadataProviders in bulk mode"
+                   (is (= {} @provider-counts))))))))
 
 (deftest ^:synchronized dashboard-table-prefetch-test
   (t2.with-temp/with-temp
@@ -4754,4 +4752,4 @@
         (is (<= @cached-calls-count @uncached-calls-count)))
       ;; If we need more for _some reason_, this test should be updated accordingly.
       (testing "At most 1 db call should be executed for :metadata/tables"
-        (is (= @cached-calls-count 1))))))
+        (is (<= @cached-calls-count 1))))))

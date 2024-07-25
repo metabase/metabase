@@ -538,12 +538,49 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       });
     });
 
+    cy.get("@dashboardId").then(dashboardId => {
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: { source: [] },
+      };
+
+      visitEmbeddedPage(payload);
+
+      // wait for the results to load
+
+      // The ID default (1 and 2) should apply, because it is disabled.
+      // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
+      // The Source default ('Facebook') should not apply because the param is locked but the value is unset
+      // If either the Name or Source default applied the result would be 0.
+
+      cy.contains("Test Dashboard");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+    });
+    //visitIframe();
+  });
+
+  it("locked parameters require a value to be specified in the JWT", () => {
+    openStaticEmbeddingModal({ activeTab: "parameters" });
+
+    // ID param is disabled by default
+    setEmbeddingParameter("Name", "Editable");
+    setEmbeddingParameter("Source", "Locked");
+    publishChanges("dashboard", ({ request }) => {
+      assert.deepEqual(request.body.embedding_params, {
+        source: "locked",
+        name: "enabled",
+      });
+    });
+
     visitIframe();
-    // The ID default (1 and 2) should apply, because it is disabled.
-    // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
-    // The Source default ('Facebook') should not apply because the param is locked but the value is unset
-    // If either the Name or Source default applied the result would be 0.
-    cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+
+    // The Source parameter is 'locked', and no value has been specified in the token,
+    // thus the API responds with "You must specify a value for :source in the JWT."
+    // and the card will not display.
+
+    getDashboardCard()
+      .findByText("There was a problem displaying this chart.")
+      .should("be.visible");
   });
 });
 
