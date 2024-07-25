@@ -22,7 +22,7 @@ export async function setupMetabaseInstance(
 ): Promise<boolean> {
   const { instanceUrl } = options;
 
-  const setupSpinner = ora("Setting up your Metabase instance...").start();
+  const setupSpinner = ora();
 
   const showError = (message: string) => {
     setupSpinner.stop();
@@ -30,13 +30,15 @@ export async function setupMetabaseInstance(
   };
 
   try {
+    setupSpinner.start("Getting a setup token...");
+
     let res = await fetch(`${instanceUrl}/api/session/properties`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
 
     // We will get an "unauthenticated" error when the instance has been configured.
-    if (res.status !== 200 || !res.ok) {
+    if (!res.ok) {
       showError(INSTANCE_CONFIGURED_MESSAGE);
       return false;
     }
@@ -50,6 +52,8 @@ export async function setupMetabaseInstance(
       showError(INSTANCE_CONFIGURED_MESSAGE);
       return false;
     }
+
+    setupSpinner.text = "Creating an admin user...";
 
     res = await fetch(`${instanceUrl}/api/setup`, {
       method: "POST",
@@ -80,7 +84,7 @@ export async function setupMetabaseInstance(
         return false;
       }
 
-      showError(`Failed to setup Metabase instance.`);
+      showError(`Failed to create the admin user.`);
 
       try {
         const { errors } = JSON.parse(textResponse) as {
@@ -96,6 +100,8 @@ export async function setupMetabaseInstance(
 
       return false;
     }
+
+    setupSpinner.text = "Enabling embedding features...";
 
     res = await fetch(`${instanceUrl}/api/setting`, {
       method: "PUT",
@@ -113,7 +119,7 @@ export async function setupMetabaseInstance(
         errors: Record<string, string>;
       };
 
-      showError(`Failed to define Metabase settings.\n`);
+      showError(`Failed to enable embedding features.\n`);
 
       if (errors) {
         console.log("\n", errors);

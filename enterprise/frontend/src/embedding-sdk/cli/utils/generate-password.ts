@@ -3,7 +3,7 @@ export function generateRandomDemoPassword(): string {
   const numbers = "0123456789";
 
   const allChars = chars + chars.toUpperCase() + numbers;
-  const length = 10;
+  const length = 12;
 
   let password = "";
 
