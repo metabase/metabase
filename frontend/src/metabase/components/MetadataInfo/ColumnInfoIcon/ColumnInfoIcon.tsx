@@ -16,7 +16,8 @@ import {
   PopoverHoverTarget,
   PopoverDefaultIcon,
   HoverParent,
-} from "../InfoIcon";
+  IconContainer,
+} from "../InfoIcon/InfoIcon.styled";
 export { HoverParent };
 
 type QueryColumnInfoIconProps = QueryColumnInfoPopoverProps & {
@@ -28,7 +29,7 @@ type QueryColumnInfoIconProps = QueryColumnInfoPopoverProps & {
 export function QueryColumnInfoIcon({
   className,
   delay,
-  size,
+  size = 14,
   icon,
   color,
   ...props
@@ -39,24 +40,20 @@ export function QueryColumnInfoIcon({
     : {};
 
   return (
-    <>
-      <QueryColumnInfoPopover {...props} delay={delay}>
-        <span aria-label={t`More info`}>
-          <PopoverDefaultIcon
-            className={className}
-            name={icon ?? getColumnIcon(column)}
-            size={size}
-            color={color}
-          />
-          <PopoverHoverTarget
-            className={className}
-            name="info_filled"
-            hasDescription={Boolean(description)}
-            size={size}
-          />
-        </span>
-      </QueryColumnInfoPopover>
-    </>
+    <QueryColumnInfoPopover {...props} delay={delay}>
+      <IconContainer size={`${size}px`} aria-label={t`More info`}>
+        <PopoverDefaultIcon
+          className={className}
+          name={icon ?? getColumnIcon(column)}
+          color={color}
+        />
+        <PopoverHoverTarget
+          className={className}
+          name="info_filled"
+          hasDescription={Boolean(description)}
+        />
+      </IconContainer>
+    </QueryColumnInfoPopover>
   );
 }
 
@@ -73,26 +70,24 @@ export function TableColumnInfoIcon({
   delay,
   field,
   icon,
-  size,
+  size = 14,
   color,
   ...props
 }: TableColumnInfoIconProps) {
   return (
     <TableColumnInfoPopover {...props} field={field} delay={delay}>
-      <span aria-label={t`More info`}>
+      <IconContainer size={`${size}px`} aria-label={t`More info`}>
         <PopoverDefaultIcon
           className={className}
           name={icon}
-          size={size}
           color={color}
         />
         <PopoverHoverTarget
           className={className}
           name="info_filled"
           hasDescription={Boolean(field.description)}
-          size={size}
         />
-      </span>
+      </IconContainer>
     </TableColumnInfoPopover>
   );
 }

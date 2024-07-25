@@ -46,6 +46,8 @@ import {
   PopoverHoverTarget,
 } from "./ExpressionEditorSuggestions.styled";
 
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
+
 type WithIndex<T> = T & {
   index: number;
 };
@@ -276,14 +278,16 @@ function ExpressionEditorSuggestionsListItem({
           />
         )}
         {!helpText && suggestion.column && (
-          <QueryColumnInfoIcon
-            query={query}
-            stageIndex={stageIndex}
-            column={suggestion.column}
-            position="top-start"
-            color={isHighlighted ? color("brand-white") : color("text-light")}
-            className={CS.mr1}
-          />
+          <IconContainer size="14px">
+            <QueryColumnInfoIcon
+              query={query}
+              stageIndex={stageIndex}
+              column={suggestion.column}
+              position="top-start"
+              color={isHighlighted ? color("brand-white") : color("text-light")}
+              className={CS.mr1}
+            />
+          </IconContainer>
         )}
         <SuggestionTitle>
           {suggestion.name.slice(0, start)}

@@ -13,6 +13,7 @@ export const ItemIcon = styled(QueryColumnInfoIcon)`
   margin: 0 0.5em;
   margin-left: 0.75em;
   color: var(--mb-color-text-light);
+  font-size: 14px;
 `;
 
 export const ItemList = styled.ul`

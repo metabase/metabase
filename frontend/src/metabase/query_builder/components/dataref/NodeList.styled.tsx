@@ -7,6 +7,7 @@ import {
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 export const NodeListItemName = styled.span`
   font-weight: 700;
@@ -80,6 +81,10 @@ export const QuestionId = styled.span`
 `;
 
 export const NodeListInfoIcon = styled(TableColumnInfoIcon)`
+  margin-left: auto;
+`;
+
+export const NodeListInfoIconContainer = styled(IconContainer)`
   margin-left: auto;
 `;
 

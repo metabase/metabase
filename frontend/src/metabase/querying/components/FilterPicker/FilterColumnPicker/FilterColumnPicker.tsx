@@ -9,6 +9,7 @@ import {
   QueryColumnInfoIcon,
   HoverParent,
 } from "metabase/components/MetadataInfo/ColumnInfoIcon";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 import type { IconName } from "metabase/ui";
 import { DelayGroup, Icon } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -148,13 +149,14 @@ function renderItemIcon(item: ColumnListItem | SegmentListItem) {
   if (item.column) {
     const { query, stageIndex, column } = item;
     return (
-      <QueryColumnInfoIcon
-        query={query}
-        stageIndex={stageIndex}
-        column={column}
-        position="top-start"
-        size={18}
-      />
+      <IconContainer size="18px">
+        <QueryColumnInfoIcon
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          position="top-start"
+        />
+      </IconContainer>
     );
   }
 }

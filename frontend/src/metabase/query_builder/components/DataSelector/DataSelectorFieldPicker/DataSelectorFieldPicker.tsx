@@ -19,6 +19,7 @@ import {
   HeaderContainer,
   HeaderName,
 } from "./DataSelectorFieldPicker.styled";
+import { IconContainer } from "metabase/components/MetadataInfo/InfoIcon/InfoIcon.styled";
 
 type DataSelectorFieldPickerProps = {
   fields: Field[];
@@ -72,12 +73,13 @@ const DataSelectorFieldPicker = ({
 
   const renderItemIcon = (item: FieldWithName) =>
     item.field && (
-      <TableColumnInfoIcon
-        field={item.field}
-        position="top-end"
-        size={18}
-        icon={item.field.dimension().icon() as unknown as IconName}
-      />
+      <IconContainer size="18px">
+        <TableColumnInfoIcon
+          field={item.field}
+          position="top-end"
+          icon={item.field.dimension().icon() as unknown as IconName}
+        />
+      </IconContainer>
     );
 
   return (
