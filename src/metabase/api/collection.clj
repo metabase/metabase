@@ -1147,8 +1147,10 @@
            (collection/perms-for-moving collection-before-update new-parent)))
 
         ;; We can't move a collection to the Trash
-        (api/check-400
-         (not (collection/is-trash? new-parent)))
+        (api/check
+         (not (collection/is-trash? new-parent))
+         [400 "You cannot modify the Trash Collection."])
+
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 

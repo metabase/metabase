@@ -85,7 +85,8 @@
                    (mt/user-http-request :rasta :put 400 (str "pulse/" id) {:collection_id (collection/trash-collection-id)}))))))))
   (testing "Cannot move a a collection to the trash"
     (let [{id :id} (mt/user-http-request :crowberto :post 200 "collection" {:name "Collection in trash"})]
-      (is (= "Invalid Request." (mt/user-http-request :crowberto :put 400 (str "collection/" id) {:parent_id (collection/trash-collection-id)})))))
+      (is (= "You cannot modify the Trash Collection."
+             (mt/user-http-request :crowberto :put 400 (str "collection/" id) {:parent_id (collection/trash-collection-id)})))))
   (testing "Cannot move a native query snippet to the trash"
     (let [{id :id} (mt/user-http-request :crowberto :post 200 "native-query-snippet" {:name    (str (random-uuid))
                                                                                       :content "SELECT 1"})]
@@ -95,3 +96,13 @@
                                                                           :default    false
                                                                           :creator_id (mt/user->id :crowberto)})]
       (is (= "You cannot modify the Trash Collection." (mt/user-http-request :crowberto :put 400 (str "timeline/" id) {:collection_id (collection/trash-collection-id)}))))))
+
+(deftest cannot-edit-the-trash
+  (testing "cannot archive the trash"
+    (is (= "You cannot modify the Trash Collection."
+           (mt/user-http-request :crowberto :put 400 (str "collection/" (collection/trash-collection-id))
+                                 {:archived true}))))
+  (testing "cannot change the trash name"
+    (is (= "You cannot modify the Trash Collection."
+           (mt/user-http-request :crowberto :put 400 (str "collection/" (collection/trash-collection-id))
+                                 {:name "New Name"})))))
