@@ -545,6 +545,12 @@
         (is (= []
                (effective-ancestors d)))))))
 
+(deftest effective-ancestors-root-collection-test
+  ;; happens if we do, e.g. `(t2/hydrate a-card-in-the-root-collection [:collection :effective_ancestors])`
+  (testing "The Root collection or `nil` should not get `:effective_ancestors` attached"
+    (is (= [nil nil]
+           (map :effective_ancestors (t2/hydrate [nil collection/root-collection] :effective_ancestors))))))
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                              Nested Collections: Descendants & Effective Children                              |
