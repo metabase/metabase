@@ -55,7 +55,7 @@ jobs:
         if: steps.changes.outputs.frontend_all == 'true'
         run: |
           BASE_COMMIT=$(git merge-base origin/${{ github.event.repository.default_branch }} HEAD)
-          npx lint-staged --shell --no-stash -diff="$BASE_COMMIT...HEAD"
+          npx lint-staged --shell --no-stash --diff="$BASE_COMMIT...HEAD"
 
       # You must include this step after running all auto-fixing steps
       - uses: stefanzweifel/git-auto-commit-action@v5
