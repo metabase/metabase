@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import type { FormikHelpers } from "formik";
 import { t } from "ttag";
+import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
 import {
@@ -10,8 +11,21 @@ import {
   FormTextInput,
 } from "metabase/forms";
 import { FormKeyValueMapping } from "metabase/forms/components/FormKeyValueMapping";
+import { useActionButtonLabel } from "metabase/hooks/use-action-button-label";
 import { Button, Chip, Flex, Alert, Text, Group, Icon } from "metabase/ui";
 import type { NotificationAuthMethods } from "metabase-types/api";
+
+const validationSchema = Yup.object({
+  url: Yup.string()
+    .url(t`Please enter a correctly formatted URL`)
+    .required(),
+  name: Yup.string().required(t`Please add a name`),
+  description: Yup.string().required(t`Please add a description`),
+  "auth-method": Yup.string()
+    .required()
+    .equals(["none", "header", "query-param", "request-body"]),
+  "auth-info": Yup.object(),
+});
 
 const styles = {
   input: {
@@ -31,25 +45,40 @@ export type WebhookFormProps = {
   "auth-info": Record<string, string>;
 };
 
-type TestStatus = null | "good" | "bad";
+type WebhookFormikHelpers = FormikHelpers<WebhookFormProps>;
+
+export const handleFieldError = (e: any) => {
+  if (!e.data) {
+    return;
+  } else if (typeof e.data === "string") {
+    throw { data: { errors: { url: e.data } } };
+  } else if (e.data.message) {
+    throw { data: { errors: { url: e.data.message } } };
+  } else if (typeof e.data.errors === "object") {
+    throw e;
+  }
+};
 
 export const WebhookForm = ({
   onSubmit,
   onCancel,
   onDelete,
   initialValues,
+  submitLabel = t`Create destination`,
 }: {
   onSubmit: (props: WebhookFormProps) => void;
   onCancel: () => void;
   onDelete?: () => void;
   initialValues: WebhookFormProps;
+  submitLabel?: string;
 }) => {
-  const [testStatus, setTestStatus] = useState<TestStatus>(null);
+  const { label: testButtonLabel, setLabel: setTestButtonLabel } =
+    useActionButtonLabel({ defaultLabel: t`Send a test` });
   const [testChannel] = useTestChannelMutation();
 
   const handleTest = async (
     values: WebhookFormProps,
-    setFieldError: (field: string, message: string | undefined) => void,
+    setFieldError: WebhookFormikHelpers["setFieldError"],
   ) => {
     await testChannel({
       details: {
@@ -59,33 +88,30 @@ export const WebhookForm = ({
       },
     })
       .unwrap()
-
       .then(
         () => {
-          setTestStatus("good");
           setFieldError("url", undefined);
+          setTestButtonLabel(t`Success`);
         },
         e => {
-          setTestStatus("bad");
-          setFieldError("url", e.data);
+          setTestButtonLabel(t`Test failed`);
+          if (typeof e === "string") {
+            setFieldError("url", e);
+          } else if (typeof e.data === "string") {
+            setFieldError("url", e.data);
+          } else if (e.data?.message) {
+            setFieldError("url", e.data.message);
+          }
         },
       );
   };
 
-  const statusIcon = useMemo(() => {
-    if (testStatus === null) {
-      return null;
-    }
-    if (testStatus === "good") {
-      return <Icon name="check" color="green" />;
-    }
-    if (testStatus === "bad") {
-      return <Icon name="close" color="red" />;
-    }
-  }, [testStatus]);
-
   return (
-    <FormProvider initialValues={initialValues} onSubmit={onSubmit}>
+    <FormProvider
+      initialValues={initialValues}
+      onSubmit={onSubmit}
+      validationSchema={validationSchema}
+    >
       {({ dirty, values, setFieldError }) => (
         <Form>
           <Alert
@@ -110,8 +136,9 @@ export const WebhookForm = ({
             <Button
               h="2.5rem"
               onClick={() => handleTest(values, setFieldError)}
-              rightIcon={statusIcon}
-            >{t`Send a test`}</Button>
+            >
+              {testButtonLabel}
+            </Button>
           </Flex>
           <FormTextInput
             name="name"
@@ -148,7 +175,11 @@ export const WebhookForm = ({
             </Chip>
           </FormChipGroup>
           {values["auth-method"] !== "none" && (
-            <FormKeyValueMapping name="auth-info" label="Auth info" />
+            <FormKeyValueMapping
+              name="auth-info"
+              label="Auth info"
+              mappingEditorProps={{ addButtonProps: { pl: 0 } }}
+            />
           )}
           <Flex
             mt="1.5rem"
@@ -169,7 +200,7 @@ export const WebhookForm = ({
               <Button onClick={onCancel}>{t`Cancel`}</Button>
               <FormSubmitButton
                 disabled={!dirty}
-                label={t`Create destination`}
+                label={submitLabel}
                 variant="filled"
               />
             </Group>

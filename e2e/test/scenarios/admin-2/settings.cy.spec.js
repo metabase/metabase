@@ -1133,3 +1133,51 @@ describe("scenarios > admin > settings > map settings", () => {
     });
   });
 });
+
+// Ensure the webhook tester docker container is running
+// docker run --rm -p 9080:8080/tcp tarampampam/webhook-tester serve --create-session 00000000-0000-0000-0000-000000000000
+describe("notifications", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+  it("Should allow you to create and edit Notifications", () => {
+    cy.visit("/admin/settings/notifications");
+
+    cy.findByRole("heading", { name: "Add a webhook" }).click();
+
+    modal().within(() => {
+      cy.findByRole("heading", { name: "New alert webhook" }).should("exist");
+
+      cy.findByLabelText("Webhook URL").type(
+        "http://127.0.0.1:9080/00000000-0000-0000-0000-000000000000/404",
+      );
+      cy.findByLabelText("Give it a name").type("Awesome Hook");
+      cy.findByLabelText("Description").type("The best hook ever");
+      cy.button("Create destination").click();
+
+      cy.findByText("Unable to connect channel").should("exist");
+      cy.findByLabelText("Webhook URL")
+        .clear()
+        .type("http://127.0.0.1:9080/00000000-0000-0000-0000-000000000000/");
+      cy.button("Create destination").click();
+    });
+
+    cy.findByRole("button", { name: /Add another/ }).should("exist");
+
+    cy.findByRole("heading", { name: "Awesome Hook" }).click();
+
+    modal().within(() => {
+      cy.findByRole("heading", { name: "Edit this webhook" }).should("exist");
+      cy.findByLabelText("Give it a name").clear().type("Updated Hook");
+      cy.button("Save changes").click();
+    });
+
+    cy.findByRole("heading", { name: "Updated Hook" }).click();
+
+    modal()
+      .button(/Delete this destination/)
+      .click();
+    cy.findByRole("heading", { name: "Add a webhook" }).should("exist");
+  });
+});

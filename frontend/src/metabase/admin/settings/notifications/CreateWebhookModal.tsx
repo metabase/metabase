@@ -3,7 +3,11 @@ import { t } from "ttag";
 import { useCreateChannelMutation } from "metabase/api/channel";
 import { Modal } from "metabase/ui";
 
-import { WebhookForm, type WebhookFormProps } from "./WebhookForm";
+import {
+  handleFieldError,
+  WebhookForm,
+  type WebhookFormProps,
+} from "./WebhookForm";
 
 interface CreateWebhookModalProps {
   isOpen: boolean;
@@ -15,6 +19,7 @@ const initialValues = {
   name: "",
   description: "",
   "auth-method": "none" as const,
+  "auth-info": { "": "" },
 };
 
 export const CreateWebhookModal = ({
@@ -22,18 +27,25 @@ export const CreateWebhookModal = ({
   onClose,
 }: CreateWebhookModalProps) => {
   const [createChannel] = useCreateChannelMutation();
-  const handleSumbit = async (vals: WebhookFormProps) => {
-    await createChannel({
+  const handleSubmit = async (vals: WebhookFormProps) => {
+    return createChannel({
       name: vals.name,
       type: "channel/http",
       description: vals.description,
       details: {
         url: vals.url,
         "auth-method": vals["auth-method"],
+        "auth-info": vals["auth-info"],
       },
-    }).unwrap();
-
-    onClose();
+    })
+      .unwrap()
+      .then(() => {
+        onClose();
+      })
+      .catch(e => {
+        handleFieldError(e);
+        throw e;
+      });
   };
 
   return (
@@ -46,7 +58,7 @@ export const CreateWebhookModal = ({
         </Modal.Header>
         <Modal.Body>
           <WebhookForm
-            onSubmit={handleSumbit}
+            onSubmit={handleSubmit}
             onCancel={onClose}
             initialValues={initialValues}
           />
