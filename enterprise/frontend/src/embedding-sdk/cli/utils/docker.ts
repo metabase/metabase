@@ -18,14 +18,15 @@ const exec = promisify(execCallback);
  */
 const DEFAULT_PORT = 3366;
 
-const messageContainerRunning = (port: number) =>
-  `Your local Metabase instance is already running on port ${port}.
-  Use the "docker ps" command to see the Docker container's status.`;
+const messageContainerRunning = (port: number) => `
+  Your local Metabase instance is already running on port ${port}.
+  Use the "docker ps" command to see the Docker container's status.
+`;
 
-const messageContainerStarted = (
-  port: number,
-) => `Your local Metabase instance has been started on port ${port}.
-  Use the "docker ps" command to see the Docker container's status.`;
+const messageContainerStarted = (port: number) => `
+  Your local Metabase instance has been started on port ${port}.
+  Use the "docker ps" command to see the Docker container's status.
+`;
 
 /**
  * Use the same setup token for every demo instances.

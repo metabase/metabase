@@ -24,7 +24,6 @@ export async function pollUntilMetabaseInstanceReady(
   while (attempts < HEALTH_CHECK_MAX_ATTEMPTS) {
     // The instance is not yet ready. Show a message so users can anticipate the wait.
     if (attempts === 1) {
-      console.log();
       spinner.start();
     }
 
@@ -36,7 +35,7 @@ export async function pollUntilMetabaseInstanceReady(
 
       // Endpoint returns 503 when Metabase is not ready yet.
       // It returns 200 when Metabase is ready.
-      if (res.status === 200) {
+      if (res.ok) {
         spinner.succeed();
         return true;
       }
