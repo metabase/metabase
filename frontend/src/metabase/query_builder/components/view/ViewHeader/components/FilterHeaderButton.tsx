@@ -2,10 +2,11 @@ import { t } from "ttag";
 
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
-import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
+
+import { FilterButton } from "../ViewTitleHeader.styled";
 
 interface FilterHeaderButtonProps {
   className?: string;
@@ -17,14 +18,14 @@ export function FilterHeaderButton({
   onOpenModal,
 }: FilterHeaderButtonProps) {
   return (
-    <Button
+    <FilterButton
       color="filter"
       className={className}
       onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
       data-testid="question-filter-header"
     >
       {t`Filter`}
-    </Button>
+    </FilterButton>
   );
 }
 

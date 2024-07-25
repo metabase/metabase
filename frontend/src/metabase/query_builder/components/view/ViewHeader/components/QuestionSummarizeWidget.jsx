@@ -1,8 +1,9 @@
 /* eslint-disable react/prop-types */
 import { t } from "ttag";
 
-import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
+
+import { SummarizeButton } from "../ViewTitleHeader.styled";
 
 export function QuestionSummarizeWidget({
   isShowingSummarySidebar,
@@ -11,7 +12,7 @@ export function QuestionSummarizeWidget({
   className,
 }) {
   return (
-    <Button
+    <SummarizeButton
       color="summarize"
       variant={isShowingSummarySidebar ? "filled" : "default"}
       onClick={async () => {
@@ -21,11 +22,11 @@ export function QuestionSummarizeWidget({
           onEditSummary();
         }
       }}
-      active={isShowingSummarySidebar}
+      data-active={isShowingSummarySidebar}
       className={className}
     >
       {t`Summarize`}
-    </Button>
+    </SummarizeButton>
   );
 }
 

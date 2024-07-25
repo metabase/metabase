@@ -78,6 +78,26 @@ export const SavedQuestionHeaderButtonContainer = styled.div<{
   right: ${props => (props.isModelOrMetric ? "0px" : "0.38rem")};
 `;
 
+export const FilterButton = styled(MantineButton)`
+  transition: background 300ms linear, border 300ms linear;
+
+  &:hover {
+    color: var(--mb-color-filter);
+    border-color: color-mix(in srgb, var(--mb-color-filter) 30%, white);
+    background-color: color-mix(in srgb, var(--mb-color-filter) 10%, white);
+  }
+` as unknown as typeof MantineButton;
+
+export const SummarizeButton = styled(MantineButton)`
+  transition: background 300ms linear, border 300ms linear;
+
+  &:hover:not([data-active="true"]) {
+    color: var(--mb-color-summarize);
+    border-color: color-mix(in srgb, var(--mb-color-summarize) 40%, white);
+    background-color: color-mix(in srgb, var(--mb-color-summarize) 15%, white);
+  }
+` as unknown as typeof MantineButton;
+
 export const HeaderButton = styled(Button)<{
   active: boolean;
 }>`
