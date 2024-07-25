@@ -114,7 +114,7 @@
   (let [error-msg (trs "Unable to connect to Metabase {0} DB." (name db-type))]
     (try (assert ((requiring-resolve 'metabase.driver.sql-jdbc.connection/can-connect-with-spec?) {:datasource data-source}) error-msg)
          (catch Throwable e
-           (throw (ex-info (str error-msg (pr-str data-source)) {} e)))))
+           (throw (ex-info error-msg {} e)))))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (let [metadata (.getMetaData conn)]
       (log/infof "Successfully verified %s %s application database connection. %s"
