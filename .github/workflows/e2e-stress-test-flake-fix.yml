@@ -27,7 +27,7 @@ on:
         default: "none"
         options:
           - none
-          - postgres
+          - sql
           - mongo
 
 jobs:
@@ -54,7 +54,7 @@ jobs:
     name: Stress test E2E flake fix
     env:
       DISPLAY: ""
-      QA_DB_ENABLED: ${{ contains(fromJSON('["postgres", "mongo"]'), inputs.qa_db) }}
+      QA_DB_ENABLED: ${{ contains(fromJSON('["sql", "mongo"]'), inputs.qa_db) }}
       CYPRESS_QA_DB_MONGO: ${{ inputs.qa_db == 'mongo' }}
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
@@ -76,8 +76,8 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
           maildev: true
           openldap: true
-          postgres: ${{ inputs.qa_db == 'postgres' }}
-          mysql: ${{ inputs.qa_db == 'postgres' }}
+          postgres: ${{ inputs.qa_db == 'sql' }}
+          mysql: ${{ inputs.qa_db == 'sql' }}
           mongo: ${{ inputs.qa_db == 'mongo' }}
 
       - name: Download Metabase ${{ matrix.edition }} uberjar
