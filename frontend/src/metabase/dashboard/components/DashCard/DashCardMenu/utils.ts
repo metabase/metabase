@@ -16,7 +16,6 @@ export const canEditQuestion = (question: Question) => {
 export const canDownloadResults = (result?: Dataset) => {
   return (
     !!result?.data &&
-    !result.error &&
     PLUGIN_FEATURE_LEVEL_PERMISSIONS.canDownloadResults(result)
   );
 };
