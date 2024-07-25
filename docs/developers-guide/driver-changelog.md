@@ -4,6 +4,12 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.50.17
+
+- Added method `metabase.driver/incorporate-auth-provider-details` for driver specific behavior required to
+  incorporate response of an auth-provider into the DB details.  In most cases this means setting the :password
+  and/or :username based on the auth-provider and its response.
+
 ## Metabase 0.50.16
 
   - `:type/fingerprinting-unsupported` has been added in the `metabase.types` namespace. Similar to
