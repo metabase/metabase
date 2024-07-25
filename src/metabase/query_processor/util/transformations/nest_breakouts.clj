@@ -18,7 +18,7 @@
 (defn- stage-has-breakout? [stage]
   (seq (:breakout stage)))
 
-(mu/defn ^:private fields-used-in-breakouts-aggregations-or-expressions :- [:set [:or :mbql.clause/field :mbql.clause/expression]]
+(mu/defn- fields-used-in-breakouts-aggregations-or-expressions :- [:set [:or :mbql.clause/field :mbql.clause/expression]]
   [stage :- ::lib.schema/stage]
   ;; use an ordered set so we preserve the order we saw things when we walked the query so the fields we return are
   ;; determinate. Otherwise tests using this are liable to be flaky because results can change because test metadata has
@@ -31,7 +31,7 @@
         (lib.util.match/match (concat (:breakout stage) (:aggregation stage) (:expressions stage))
           #{:field :expression})))
 
-(mu/defn ^:private new-first-stage :- ::lib.schema/stage
+(mu/defn- new-first-stage :- ::lib.schema/stage
   "Remove breakouts, aggregations, order bys, and limit. Add `:fields` to return the things needed by the second stage."
   [stage :- ::lib.schema/stage]
   (-> stage
@@ -40,7 +40,7 @@
                       lib.util/fresh-uuids
                       (fields-used-in-breakouts-aggregations-or-expressions stage)))))
 
-(mu/defn ^:private update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage :- ::lib.schema.metadata/column
+(mu/defn- update-metadata-from-previous-stage-to-produce-correct-ref-in-current-stage :- ::lib.schema.metadata/column
   "Force a `[:field {} <name>]` ref."
   [col :- ::lib.schema.metadata/column]
   (-> col
@@ -56,7 +56,7 @@
                                   nil))
       (lib/with-binning nil)))
 
-(mu/defn ^:private update-second-stage-refs :- ::lib.schema/stage
+(mu/defn- update-second-stage-refs :- ::lib.schema/stage
   [stage            :- ::lib.schema/stage
    first-stage-cols :- [:sequential ::lib.schema.metadata/column]]
   (lib.util.match/replace stage
@@ -67,7 +67,7 @@
           lib/ref)
       (lib.util/fresh-uuids &match))))
 
-(mu/defn ^:private new-second-stage :- ::lib.schema/stage
+(mu/defn- new-second-stage :- ::lib.schema/stage
   "All references need to be updated to be prior-stage references using the desired alias from the previous stage.
   Remove expressions, joins, and source(s)."
   [query       :- ::lib.schema/query
@@ -80,7 +80,7 @@
         (dissoc :expressions :joins :source-table :source-card :lib/stage-metadata :filters)
         (update-second-stage-refs first-stage-cols))))
 
-(mu/defn ^:private nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]
+(mu/defn- nest-breakouts-in-stage :- [:maybe [:sequential {:min 2, :max 2} ::lib.schema/stage]]
   [query :- ::lib.schema/query
    path  :- ::lib.walk/stage-path
    stage :- ::lib.schema/stage]

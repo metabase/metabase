@@ -21,7 +21,7 @@
     (when-not (= value ::nil)
       value)))
 
-(mu/defn ^:private store-metadata!
+(mu/defn- store-metadata!
   [cache
    metadata-type :- ::lib.schema.metadata/type
    id            :- pos-int?

@@ -16,7 +16,7 @@
   (:import
    (clojure.lang ExceptionInfo)))
 
-(mu/defn ^:private resolve-referenced-card-resources*
+(mu/defn- resolve-referenced-card-resources*
   "Done for side effects; warm the MetadataProvider."
   [query :- ::lib.schema/query]
   (doseq [referenced-card (lib/template-tags-referenced-cards query)
@@ -27,7 +27,7 @@
     (qp.resolve-source-table/resolve-source-tables resolved-query)
     (qp.resolve-fields/resolve-fields resolved-query)))
 
-(mu/defn ^:private card-subquery-graph
+(mu/defn- card-subquery-graph
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    graph                 :- :map
    card-id               :- ::lib.schema.id/card]
@@ -44,7 +44,7 @@
      graph
      (lib/template-tag-card-ids card-query))))
 
-(mu/defn ^:private circular-ref-error :- ::lib.schema.common/non-blank-string
+(mu/defn- circular-ref-error :- ::lib.schema.common/non-blank-string
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    from-card             :- ::lib.schema.id/card
    to-card               :- ::lib.schema.id/card]
@@ -61,7 +61,7 @@
      (tru "This query has circular referencing sub-queries. ")
      (tru "These questions seem to be part of the problem: \"{0}\" and \"{1}\"." from-name to-name))))
 
-(mu/defn ^:private check-for-circular-references
+(mu/defn- check-for-circular-references
   "Done for side effects; [[card-subquery-graph]] will throw if there are circular references."
   [query :- ::lib.schema/query]
   (try
