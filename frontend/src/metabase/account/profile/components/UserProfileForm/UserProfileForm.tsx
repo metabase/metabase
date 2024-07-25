@@ -25,7 +25,7 @@ const LOCAL_PROFILE_SCHEMA = SSO_PROFILE_SCHEMA.shape({
 
 export interface UserProfileFormProps {
   user: User;
-  locales: LocaleData[] | null
+  locales: LocaleData[] | null;
   isSsoUser: boolean;
   onSubmit: (user: User, data: UserProfileData) => void;
 }
