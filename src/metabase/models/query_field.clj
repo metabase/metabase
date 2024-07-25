@@ -69,7 +69,13 @@
   Returns `nil` (and logs the error) if there was a parse error."
   [card-id query-field-rows]
   (t2/with-transaction [_conn]
-    (let [existing            (t2/select :model/QueryField :card_id card-id)
+    (t2/delete! :model/QueryField :card_id card-id)
+    (t2/insert! :model/QueryField query-field-rows)
+
+    ;; let's wait and see if we get flakes again.
+    ;; the following diff algorithm broke once we could no longer depend on :field_id being non-null
+
+    #_(let [existing            (t2/select :model/QueryField :card_id card-id)
           {:keys [to-update
                   to-create
                   to-delete]} (u/row-diff existing query-field-rows
