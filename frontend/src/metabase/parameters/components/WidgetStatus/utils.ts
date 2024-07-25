@@ -7,7 +7,7 @@ export const getStatusConfig = (status: Status): StatusConfig => {
     return {
       button: true,
       icon: "close",
-      label: t`Clear filter`,
+      label: t`Clear`,
     };
   }
 

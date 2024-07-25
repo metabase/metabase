@@ -30,7 +30,7 @@ describe("WidgetStatus", () => {
       setup({ status: "clear" });
 
       await userEvent.hover(screen.getByRole("button"));
-      expect(screen.getByRole("tooltip")).toHaveTextContent("Clear filter");
+      expect(screen.getByRole("tooltip")).toHaveTextContent("Clear");
     });
 
     it("is clickable", async () => {

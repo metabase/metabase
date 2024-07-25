@@ -310,7 +310,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   }
 
   function clearButton(label: string) {
-    return filter(label).findByLabelText("Clear filter");
+    return filter(label).findByLabelText("Clear");
   }
 
   function resetButton(label: string) {
