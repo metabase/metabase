@@ -289,12 +289,20 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     return cy.findByLabelText(label);
   }
 
-  function clearButton(label: string) {
+  function clearIcon(label: string) {
     return filter(label).icon("close");
   }
 
+  function resetIcon(label: string) {
+    return filter(label).icon("refresh");
+  }
+
+  function clearButton(label: string) {
+    return filter(label).findByLabelText("Clear filter");
+  }
+
   function resetButton(label: string) {
-    return filter(label).icon("time_history");
+    return filter(label).findByLabelText("Reset filter to default state");
   }
 
   function chevronIcon(label: string) {
@@ -336,9 +344,9 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
      */
     button: "chevron" | "reset" | "clear" | "none",
   ) {
-    clearButton(label).should(button === "clear" ? "be.visible" : "not.exist");
+    clearIcon(label).should(button === "clear" ? "be.visible" : "not.exist");
 
-    resetButton(label).should(button === "reset" ? "be.visible" : "not.exist");
+    resetIcon(label).should(button === "reset" ? "be.visible" : "not.exist");
 
     chevronIcon(label).should(
       button === "chevron" ? "be.visible" : "not.exist",

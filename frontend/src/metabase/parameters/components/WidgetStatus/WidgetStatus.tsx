@@ -31,6 +31,7 @@ export const WidgetStatus = ({ status, onClick }: Props) => {
       {button && (
         <Tooltip label={label}>
           <Button
+            aria-label={label}
             compact
             leftIcon={<Icon name={icon} />}
             m={rem(-3)} //account for compact button padding, so that it perfectly aligns with icon when there is no label
