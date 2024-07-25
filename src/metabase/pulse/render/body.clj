@@ -66,7 +66,7 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(mu/defn ^:private format-cell
+(mu/defn- format-cell
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
     (types/temporal-field? col)
@@ -129,7 +129,7 @@
        100)
     (- max-value min-value))))
 
-(mu/defn ^:private query-results->row-seq
+(mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
   [timezone-id :- [:maybe :string]
    remapping-lookup
@@ -153,7 +153,7 @@
                                                 [fmt-fn maybe-remapped-row-cell])]]
               (fmt-fn row-cell))})))
 
-(mu/defn ^:private prep-for-html-rendering
+(mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
   ([timezone-id :- [:maybe :string]

@@ -29,7 +29,7 @@
 (def ^:private tag-regexes
   [variable-tag-regex snippet-tag-regex card-tag-regex])
 
-(mu/defn ^:private recognize-template-tags :- [:set ::common/non-blank-string]
+(mu/defn- recognize-template-tags :- [:set ::common/non-blank-string]
   "Given the text of a native query, extract a possibly-empty set of template tag strings from it."
   [query-text :- ::common/non-blank-string]
   (into #{}

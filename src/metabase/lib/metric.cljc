@@ -22,7 +22,7 @@
   (when (integer? metric-id)
     (lib.metadata/metric query metric-id)))
 
-(mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
+(mu/defn- metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
   (when dataset-query
     (let [normalized-definition (cond-> dataset-query

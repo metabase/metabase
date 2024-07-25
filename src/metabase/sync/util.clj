@@ -89,7 +89,7 @@
         (finally
           (swap! operation->db-ids update operation #(disj % (u/the-id database-or-id))))))))
 
-(mu/defn ^:private with-sync-events
+(mu/defn- with-sync-events
   "Publish events related to beginning and ending a sync-like process, e.g. `:sync-database` or `:cache-values`, for a
   `database-id`. `f` is executed between the logging of the two events."
   {:style/indent [:form]}
@@ -451,7 +451,7 @@
     :log-summary-fn (when log-summary-fn
                       (comp str log-summary-fn))}))
 
-(mu/defn ^:private run-step-with-metadata :- StepNameWithMetadata
+(mu/defn- run-step-with-metadata :- StepNameWithMetadata
   "Runs `step` on `database` returning metadata from the run"
   [database :- i/DatabaseInstance
    {:keys [step-name sync-fn log-summary-fn] :as _step} :- StepDefinition]
@@ -482,7 +482,7 @@
                       :end-time end-time
                       :log-summary-fn log-summary-fn)]))
 
-(mu/defn ^:private make-log-sync-summary-str
+(mu/defn- make-log-sync-summary-str
   "The logging logic from `log-sync-summary`. Separated for testing purposes as the `log/debug` macro won't invoke
   this function unless the logging level is at debug (or higher)."
   [operation :- :string
@@ -513,7 +513,7 @@
                         (format "Duration: %s" (calculate-duration-str start-time end-time))])))
    "#################################################################\n"))
 
-(mu/defn ^:private log-sync-summary
+(mu/defn- log-sync-summary
   "Log a sync/analyze summary message with info from each step"
   [operation :- :string
    database :- i/DatabaseInstance

@@ -217,7 +217,7 @@
    [:sender-name {:optional true} [:maybe :string]]
    [:reply-to    {:optional true} [:maybe [:sequential ms/Email]]]])
 
-(mu/defn ^:private test-smtp-settings :- SMTPStatus
+(mu/defn- test-smtp-settings :- SMTPStatus
   "Tests an SMTP configuration by attempting to connect and authenticate if an authenticated method is passed
   in `:security`."
   [{:keys [host port user pass sender security], :as details} :- SMTPSettings]
@@ -245,7 +245,7 @@
   us from getting banned on Outlook.com."
   500)
 
-(mu/defn ^:private guess-smtp-security :- [:maybe [:enum :tls :starttls :ssl]]
+(mu/defn- guess-smtp-security :- [:maybe [:enum :tls :starttls :ssl]]
   "Attempts to use each of the security methods in security order with the same set of credentials. This is used only
   when the initial connection attempt fails, so it won't overwrite a functioning configuration. If this uses something
   other than the provided method, a warning gets printed on the config page.

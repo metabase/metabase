@@ -215,7 +215,7 @@
   (into [:map] (map #(vector % [:=> [:cat :string] :boolean])
                     (remove non-inferable-types value-types))))
 
-(mu/defn ^:private settings->type->check :- type->check-schema
+(mu/defn- settings->type->check :- type->check-schema
   [{:keys [number-separators] :as _settings}]
   (let [int-string?   (regex-matcher (int-regex number-separators))
         float-or-int? (regex-matcher (float-or-int-regex number-separators))
