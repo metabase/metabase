@@ -106,7 +106,8 @@
      :or   {edition (edition-from-env-var)
             steps   (keys all-steps)}}]
    (let [version (or version
-                     (version-properties/current-snapshot-version edition))]
+                     (version-properties/current-snapshot-version edition))
+         start-time-ms (System/currentTimeMillis)]
      (u/step (format "Running build steps for %s version %s: %s"
                      (case edition
                        :oss "Community (OSS) Edition"
@@ -118,7 +119,8 @@
                                       (throw (ex-info (format "Invalid step: %s" step-name)
                                                       {:step        step-name
                                                        :valid-steps (keys all-steps)})))]]
-         (step-fn {:version version, :edition edition}))
+         (step-fn {:version version, :edition edition})
+         (u/announce "Did %s in %d ms." step-name (- (System/currentTimeMillis) start-time-ms)))
        (u/announce "All build steps finished.")))))
 
 (defn build-cli

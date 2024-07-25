@@ -2,10 +2,17 @@ import { render, screen } from "@testing-library/react";
 
 import type { SelectProps } from "metabase/ui";
 
-import { addScheduleComponents, getLongestSelectLabel } from "./utils";
+import {
+  fillScheduleTemplate,
+  getLongestSelectLabel,
+  combineConsecutiveStrings,
+} from "./utils";
 
-describe("utils", () => {
-  describe("addScheduleComponents", () => {
+const allowAnyAmountOfWhitespace = (str: string) =>
+  new RegExp(str.replace(/ /g, "\\s*"));
+
+describe("Schedule utility functions", () => {
+  describe("fillScheduleTemplate", () => {
     // Mock translation dictionary
     const translations = {
       // English strings
@@ -42,7 +49,7 @@ describe("utils", () => {
       const { invalidate, monthly, first, tuesday, twelvePm } = translations.en;
       const scheduleDescription =
         translations.en["{0} {1} on the {2} {3} at {4}"];
-      const scheduleReactNode = addScheduleComponents(scheduleDescription, [
+      const scheduleReactNode = fillScheduleTemplate(scheduleDescription, [
         <div key="verb">{invalidate} </div>,
         <div key="frequency">{monthly} </div>,
         <div key="frame">{first} </div>,
@@ -52,7 +59,9 @@ describe("utils", () => {
       render(<div data-testid="schedule">{scheduleReactNode}</div>);
       const scheduleElement = screen.getByTestId("schedule");
       expect(scheduleElement).toHaveTextContent(
-        "Invalidate monthly on the first Tuesday at 12:00pm",
+        allowAnyAmountOfWhitespace(
+          "Invalidate monthly on the first Tuesday at 12:00pm",
+        ),
       );
     });
 
@@ -60,7 +69,7 @@ describe("utils", () => {
       const { invalidate, monthly, first, tuesday, twelvePm } = translations.de;
       const scheduleDescription =
         translations.de["{0} {1} on the {2} {3} at {4}"];
-      const scheduleReactNode = addScheduleComponents(scheduleDescription, [
+      const scheduleReactNode = fillScheduleTemplate(scheduleDescription, [
         <div key="verb">{invalidate} </div>,
         <div key="frequency">{monthly} </div>,
         <div key="frame">{first} </div>,
@@ -70,7 +79,9 @@ describe("utils", () => {
       render(<div data-testid="schedule">{scheduleReactNode}</div>);
       const scheduleElement = screen.getByTestId("schedule");
       expect(scheduleElement).toHaveTextContent(
-        "monatlich am erste Dienstag um 12:00 Uhr ungültig machen",
+        allowAnyAmountOfWhitespace(
+          "monatlich am erste Dienstag um 12:00 Uhr ungültig machen",
+        ),
       );
     });
   });
@@ -129,5 +140,43 @@ describe("utils", () => {
       const result = getLongestSelectLabel(data);
       expect(result).toBe("valid label");
     });
+  });
+});
+
+describe("combineConsecutiveStrings", () => {
+  it("should combine consecutive strings into one", () => {
+    const input = ["hello", "world", 42, "foo", "bar", null, "baz"];
+    const expectedOutput = ["hello world", 42, "foo bar", null, "baz"];
+    expect(combineConsecutiveStrings(input)).toEqual(expectedOutput);
+  });
+
+  it("should handle arrays without consecutive strings correctly", () => {
+    const input = [42, "hello", null, undefined, "world"];
+    const expectedOutput = [42, "hello", null, undefined, "world"];
+    expect(combineConsecutiveStrings(input)).toEqual(expectedOutput);
+  });
+
+  it("should handle an empty array correctly", () => {
+    const input: any[] = [];
+    const expectedOutput: any[] = [];
+    expect(combineConsecutiveStrings(input)).toEqual(expectedOutput);
+  });
+
+  it("should handle an array with only one type of element correctly", () => {
+    const input = ["hello", "world", "foo", "bar"];
+    const expectedOutput = ["hello world foo bar"];
+    expect(combineConsecutiveStrings(input)).toEqual(expectedOutput);
+  });
+
+  it("should handle an array with no strings correctly", () => {
+    const input = [42, null, undefined, true, false];
+    const expectedOutput = [42, null, undefined, true, false];
+    expect(combineConsecutiveStrings(input)).toEqual(expectedOutput);
+  });
+
+  it("should handle array with consecutive and non-consecutive strings correctly", () => {
+    const input = ["one", "two", 3, "four", "five", 6, "seven"];
+    const expectedOutput = ["one two", 3, "four five", 6, "seven"];
+    expect(combineConsecutiveStrings(input)).toEqual(expectedOutput);
   });
 });
