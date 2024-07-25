@@ -75,6 +75,20 @@ export const ParameterValueWidget = ({
   const [isOpen, { close, toggle }] = useDisclosure();
 
   const getOptionalActionIcon = () => {
+    const { default: defaultValue } = parameter;
+
+    if (
+      defaultValue &&
+      !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
+    ) {
+      return (
+        <WidgetStatus
+          status="reset"
+          onClick={() => setParameterValueToDefault?.(parameter.id)}
+        />
+      );
+    }
+
     if (value != null) {
       return (
         <WidgetStatus
