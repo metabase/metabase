@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { t } from "ttag";
 
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import CS from "metabase/css/core/index.css";
 import {
   SummarizeAggregationItemList,
   SummarizeBreakoutColumnList,
@@ -69,26 +70,28 @@ const SummarizeInner = ({
   });
 
   return (
-    <Stack w="100%" h="100%">
-      <SummarizeAggregationItemList
-        query={query}
-        stageIndex={stageIndex}
-        aggregations={aggregations}
-        onAddAggregations={handleAddAggregations}
-        onUpdateAggregation={handleUpdateAggregation}
-        onRemoveAggregation={handleRemoveAggregation}
-      />
-      <Divider my="lg" />
-      {hasAggregations && (
-        <SummarizeBreakoutColumnList
+    <Stack className={CS.overflowHidden} h="inherit" w="100%">
+      <Stack className={CS.overflowYScroll}>
+        <SummarizeAggregationItemList
           query={query}
           stageIndex={stageIndex}
-          onAddBreakout={handleAddBreakout}
-          onUpdateBreakout={handleUpdateBreakout}
-          onRemoveBreakout={handleRemoveBreakout}
-          onReplaceBreakouts={handleReplaceBreakouts}
+          aggregations={aggregations}
+          onAddAggregations={handleAddAggregations}
+          onUpdateAggregation={handleUpdateAggregation}
+          onRemoveAggregation={handleRemoveAggregation}
         />
-      )}
+        <Divider my="lg" />
+        {hasAggregations && (
+          <SummarizeBreakoutColumnList
+            query={query}
+            stageIndex={stageIndex}
+            onAddBreakout={handleAddBreakout}
+            onUpdateBreakout={handleUpdateBreakout}
+            onRemoveBreakout={handleRemoveBreakout}
+            onReplaceBreakouts={handleReplaceBreakouts}
+          />
+        )}
+      </Stack>
 
       <Group>
         <Button variant="filled" onClick={onApplyFilter}>
