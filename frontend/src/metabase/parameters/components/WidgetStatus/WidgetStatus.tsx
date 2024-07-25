@@ -1,19 +1,25 @@
 import type { MouseEvent } from "react";
+import { t } from "ttag";
 
 import { Button, Flex, Icon, rem, Tooltip } from "metabase/ui";
 
 import S from "./WidgetStatus.module.css";
 import type { Status } from "./types";
-import { getStatusConfig } from "./utils";
 
 type Props = {
   status: Status;
   onClick?: () => void;
 };
 
-export const WidgetStatus = ({ status, onClick }: Props) => {
-  const { button, icon, label } = getStatusConfig(status);
+const COMPACT_BUTTON_PADDING = 3;
 
+/**
+ * Account for compact button's padding, so that the size of this component's root element
+ * is the same regardless of whether the button is rendered or not.
+ */
+const BUTTON_MARGIN = -COMPACT_BUTTON_PADDING;
+
+export const WidgetStatus = ({ status, onClick }: Props) => {
   const handleClick = (event: MouseEvent) => {
     if (onClick) {
       event.stopPropagation();
@@ -28,13 +34,13 @@ export const WidgetStatus = ({ status, onClick }: Props) => {
       h={0} // trick to prevent this element from affecting parent's height
       ml="auto"
     >
-      {button && (
-        <Tooltip label={label}>
+      {status === "clear" && (
+        <Tooltip label={t`Clear`}>
           <Button
-            aria-label={label}
+            aria-label={t`Clear`}
             compact
-            leftIcon={<Icon name={icon} />}
-            m={rem(-3)} //account for compact button padding, so that it perfectly aligns with icon when there is no label
+            leftIcon={<Icon name="close" />}
+            m={rem(BUTTON_MARGIN)}
             radius="md"
             variant="subtle"
             onClick={handleClick}
@@ -42,7 +48,23 @@ export const WidgetStatus = ({ status, onClick }: Props) => {
         </Tooltip>
       )}
 
-      {!label && <Icon name={icon} />}
+      {status === "reset" && (
+        <Tooltip label={t`Reset filter to default state`}>
+          <Button
+            aria-label={t`Reset filter to default state`}
+            compact
+            leftIcon={<Icon name="refresh" />}
+            m={rem(BUTTON_MARGIN)}
+            radius="md"
+            variant="subtle"
+            onClick={handleClick}
+          />
+        </Tooltip>
+      )}
+
+      {status === "empty" && <Icon name="chevrondown" />}
+
+      {status === "none" && <Icon name="empty" />}
     </Flex>
   );
 };
