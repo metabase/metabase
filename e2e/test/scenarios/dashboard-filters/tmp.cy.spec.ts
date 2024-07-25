@@ -207,7 +207,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     filter(defaultRequired).should("have.text", "January 1, 2024");
   });
 
-  it("location parameters", () => {
+  it("location parameters - multiple values", () => {
     createDashboardWithParameters(PEOPLE_QUESTION, CITY_FIELD, [
       {
         name: "no default value, non-required",
