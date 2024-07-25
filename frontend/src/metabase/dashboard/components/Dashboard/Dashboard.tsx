@@ -33,7 +33,8 @@ import type {
   DashCardId,
   ParameterId,
   ParameterValueOrArray,
-  RowValue,
+  QuestionDashboardCard,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
@@ -43,7 +44,6 @@ import type {
   DashboardSidebarName,
   SelectedTabId,
   State,
-  StoreDashcard,
 } from "metabase-types/store";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
@@ -66,9 +66,6 @@ import {
 
 export type DashboardProps = {
   route: Route;
-  params: {
-    slug: string;
-  };
   children?: ReactNode;
   canManageSubscriptions: boolean;
   isAdmin: boolean;
@@ -82,7 +79,7 @@ export type DashboardProps = {
   slowCards: Record<DashCardId, boolean>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   loadingStartTime: number | null;
-  clickBehaviorSidebarDashcard: StoreDashcard | null;
+  clickBehaviorSidebarDashcard: QuestionDashboardCard | null;
   isAddParameterPopoverOpen: boolean;
   sidebar: State["dashboard"]["sidebar"];
   isHeaderVisible: boolean;
@@ -119,9 +116,12 @@ export type DashboardProps = {
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (id: ParameterId, type: string) => void;
   navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
-  setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
+  setParameterDefaultValue: (id: ParameterId, value: unknown) => void;
   setParameterRequired: (id: ParameterId, value: boolean) => void;
-  setParameterTemporalUnits: (id: ParameterId, value: boolean) => void;
+  setParameterTemporalUnits: (
+    id: ParameterId,
+    temporalUnits: TemporalUnit[],
+  ) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
   setParameterSourceType: (
@@ -132,17 +132,20 @@ export type DashboardProps = {
     id: ParameterId,
     config: ValuesSourceConfig,
   ) => void;
-  setParameterFilteringParameters: (parameters: ParameterId[]) => void;
+  setParameterFilteringParameters: (
+    parameterId: ParameterId,
+    filteringParameters: ParameterId[],
+  ) => void;
   showAddParameterPopover: () => void;
   removeParameter: (id: ParameterId) => void;
 
   onReplaceAllDashCardVisualizationSettings: (
     id: DashCardId,
-    settings: Partial<VisualizationSettings>,
+    settings?: Partial<VisualizationSettings> | null,
   ) => void;
   onUpdateDashCardVisualizationSettings: (
     id: DashCardId,
-    settings: Partial<VisualizationSettings>,
+    settings?: Partial<VisualizationSettings> | null,
   ) => void;
   onUpdateDashCardColumnSettings: (
     id: DashCardId,
@@ -512,10 +515,9 @@ function Dashboard(props: DashboardProps) {
                 setParameterRequired={props.setParameterRequired}
                 setParameterTemporalUnits={props.setParameterTemporalUnits}
                 isFullscreen={props.isFullscreen}
-                params={props.params}
                 sidebar={props.sidebar}
                 closeSidebar={props.closeSidebar}
-                selectedTabId={props.selectedTabId}
+                selectedTabId={selectedTabId}
                 onCancel={() => setSharing(false)}
               />
             </DashboardBody>
