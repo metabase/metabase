@@ -4,15 +4,13 @@ import chalk from "chalk";
 import ora from "ora";
 import { promisify } from "util";
 
+import { CONTAINER_NAME, IMAGE_NAME } from "./constants";
 import { getCurrentDockerPort } from "./get-current-docker-port";
 import { checkIsPortTaken } from "./is-port-taken";
 import { printError, printInfo, printSuccess } from "./print";
 import { SITE_NAME } from "./setup-metabase-instance";
 
 const exec = promisify(execCallback);
-
-const IMAGE_NAME = "metabase/metabase-enterprise:latest";
-export const CONTAINER_NAME = "metabase-enterprise-embedding";
 
 /**
  * Default port for the local Metabase instance.

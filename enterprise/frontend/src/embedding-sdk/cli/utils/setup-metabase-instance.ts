@@ -1,7 +1,8 @@
 import fetch from "node-fetch";
 import ora from "ora";
 
-import { CONTAINER_NAME, EMBEDDING_DEMO_SETUP_TOKEN } from "./docker";
+import { CONTAINER_NAME } from "./constants";
+import { EMBEDDING_DEMO_SETUP_TOKEN } from "./docker";
 import { printError, printInfo } from "./print";
 
 interface SetupOptions {
@@ -48,9 +49,6 @@ export async function setupMetabaseInstance(
   };
 
   try {
-    spinner.start("Preparing to setup the instance...");
-
-    spinner.succeed();
     spinner.start("Creating an admin user...");
 
     let res = await fetch(`${instanceUrl}/api/setup`, {
