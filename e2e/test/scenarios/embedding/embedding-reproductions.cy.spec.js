@@ -21,6 +21,7 @@ import {
   queryBuilderFooter,
   withDatabase,
   visitPublicQuestion,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -584,21 +585,12 @@ describe("issue 27643", () => {
           };
 
           cy.editDashboardCard(dashboardCard, mapFilterToCard);
-
-          cy.request("POST", `/api/dashboard/${dashboard_id}/public_link`).then(
-            ({ body: { uuid } }) => {
-              cy.wrap(uuid).as("dashboardPublicUuid");
-            },
-          );
+          visitDashboard(dashboard_id);
         });
     });
 
     it("should allow a dashboard filter to map to a boolean field filter parameter in static embedding (metabase#27643)", () => {
       cy.log("Test the dashboard");
-      cy.get("@dashboardId").then(dashboardId => {
-        visitDashboard(dashboardId);
-      });
-
       toggleFilterWidgetValues(["false"]);
       getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
 
@@ -614,10 +606,10 @@ describe("issue 27643", () => {
       getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
 
       cy.log("Test the public dashboard");
-      cy.signOut();
-      cy.get("@dashboardPublicUuid").then(uuid => {
-        cy.visit(`/public/dashboard/${uuid}`);
+      cy.get("@dashboardId").then(dashboardId => {
+        visitPublicDashboard(dashboardId);
       });
+
       toggleFilterWidgetValues(["false"]);
       getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
     });
