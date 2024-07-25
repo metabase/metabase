@@ -12,7 +12,7 @@ import {
   metricSetting,
 } from "metabase/visualizations/lib/settings/utils";
 import {
-  getDefaultColors,
+  getColors,
   getDefaultPercentVisibility,
   getDefaultShowLegend,
   getDefaultSliceThreshold,
@@ -122,7 +122,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       section: t`Display`,
       title: t`Colors`,
       widget: "colors",
-      getDefault: getDefaultColors,
+      getValue: getColors,
       getProps: (series, settings) => ({
         seriesValues: settings["pie._dimensionValues"] || [],
         seriesTitles: settings["pie._dimensionTitles"] || [],

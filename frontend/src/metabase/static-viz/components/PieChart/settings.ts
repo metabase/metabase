@@ -7,7 +7,7 @@ import {
   getDefaultDimensionAndMetric,
 } from "metabase/visualizations/lib/utils";
 import {
-  getDefaultColors,
+  getColors,
   getDefaultPercentVisibility,
   getDefaultShowLegend,
   getDefaultShowTotal,
@@ -52,11 +52,7 @@ export function computeStaticPieChartSettings(
     "pie.slice_threshold",
     getDefaultSliceThreshold(),
   );
-  fillWithDefaultValue(
-    settings,
-    "pie.colors",
-    getDefaultColors(rawSeries, settings),
-  );
+  settings["pie.colors"] = getColors(rawSeries, settings);
 
   return settings;
 }

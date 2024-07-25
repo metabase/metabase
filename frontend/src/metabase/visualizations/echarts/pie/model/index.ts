@@ -6,7 +6,6 @@ import { findWithIndex } from "metabase/lib/arrays";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { checkNotNull } from "metabase/lib/types";
 import { pieNegativesWarning } from "metabase/visualizations/lib/warnings";
-import { getDefaultColors } from "metabase/visualizations/shared/settings/pie";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -101,19 +100,16 @@ export function getPieChartModel(
     return currTotal + metricValue;
   }, 0);
 
-  // sometimes viz settings are malformed and "pie.colors" does not contain a
-  // key for the current dimension value, so we need to compute defaults to
-  // ensure every key has a color
-  const defaultColors = getDefaultColors(rawSeries, settings);
-  const colors = { ...defaultColors, ...settings["pie.colors"] };
-
   const [slices, others] = _.chain(rows)
     .map((row, index): PieSliceData => {
       const { dimensionValue, metricValue } = getRowValues(row, colDescs);
 
+      if (!settings["pie.colors"]) {
+        throw Error("missing `pie.colors` setting");
+      }
       // older viz settings can have hsl values that need to be converted since
       // batik does not support hsl
-      const color = Color(colors[String(dimensionValue)]).hex();
+      const color = Color(settings["pie.colors"][String(dimensionValue)]).hex();
 
       let key: string | number;
       if (dimensionValue == null) {

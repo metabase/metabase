@@ -11,7 +11,7 @@ export const getDefaultPercentVisibility = () => "legend";
 
 export const getDefaultSliceThreshold = () => SLICE_THRESHOLD * 100;
 
-export function getDefaultColors(
+export function getColors(
   rawSeries: RawSeries,
   currentSettings: Partial<ComputedVisualizationSettings>,
 ): ComputedVisualizationSettings["pie.colors"] {
@@ -26,5 +26,13 @@ export function getDefaultColors(
   );
   const dimensionValues = rows.map(r => String(r[dimensionIndex]));
 
-  return getColorsForValues(dimensionValues, currentSettings["pie.colors"]);
+  // Sometimes viz settings are malformed and "pie.colors" does not
+  // contain a key for the current dimension value, so we need to compute
+  // defaults to ensure every key has a color.
+  const defaultColors = getColorsForValues(
+    dimensionValues,
+    currentSettings["pie.colors"],
+  );
+
+  return { ...defaultColors, ...currentSettings["pie.colors"] };
 }
