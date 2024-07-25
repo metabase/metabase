@@ -1492,7 +1492,7 @@
     (m/update-existing visualization_settings :column_settings update-keys
                        (fn [key]
                          (if-let [column (get key->column (str key))]
-                           (column->column-key column)
+                           (keyword (column->column-key column))
                            key)))))
 
 (defn- rollback-legacy-column-setting-keys [visualization_settings columns]
@@ -1500,7 +1500,7 @@
     (m/update-existing visualization_settings :column_settings update-keys
                        (fn [key]
                          (if-let [column (get key->column (str key))]
-                           (column->legacy-column-key column)
+                           (keyword (column->legacy-column-key column))
                            key)))))
 
 (defn- update-field-refs-in-card-column-settings [update-viz-settings]
