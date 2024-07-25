@@ -14,6 +14,7 @@ export const saveCacheStrategyForm = (options?: {
   /** 'Model' as in 'type of object' */
   model?: CacheableModel;
 }) => {
+  // FIXME: Since this code will get backported, don't use ts-pattern
   const expectedRoute = match(options)
     // When setting the default policy to "Don't cache", we delete the policy in the BE
     .with(
