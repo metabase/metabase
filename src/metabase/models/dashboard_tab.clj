@@ -5,7 +5,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -64,12 +63,10 @@
   [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
    (serdes/infer-self-path "DashboardTab" dashcard)])
 
-(defmethod serdes/load-xform "DashboardTab"
-  [dashtab]
-  (-> dashtab
-      (dissoc :serdes/meta)
-      (update :dashboard_id serdes/*import-fk* :model/Dashboard)
-      (update :created_at   #(if (string? %) (u.date/parse %) %))))
+(defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
+  {:copy      [:created_at :entity_id :name :position]
+   :skip      []
+   :transform {:dashboard_id (serdes/parent-ref)}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 

@@ -38,6 +38,6 @@
 
 (defmethod serdes/make-spec "Dimension" [_model-name _opts]
   {:copy      [:name :type :created_at :entity_id]
-   :skip      [; Dimensions are inlined in their Fields, no need to refer the Field itself
-               :field_id]
-   :transform {:human_readable_field_id (serdes/fk :model/Field)}})
+   :skip      []
+   :transform {:human_readable_field_id (serdes/fk :model/Field)
+               :field_id (serdes/parent-ref)}})

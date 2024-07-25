@@ -583,104 +583,28 @@
   (eduction (map #(t2/hydrate % [:dashcards :series]))
             (serdes/extract-query-collections Dashboard opts)))
 
-(defn export-dashboard-card-series
-  "Given the hydrated `:series` of a DashboardCard, as a vector of maps, converts it to a portable form with
-  the card IDs replaced with their entity IDs."
-  [cards]
-  (mapv (fn [card]
-          {:card_id (serdes/*export-fk* (:id card) :model/Card)})
-        cards))
-
-(defn- extract-dashcard
-  [dashcard]
-  (-> (into (sorted-map) dashcard)
-      (dissoc :id :collection_authority_level :dashboard_id :updated_at)
-      (update :card_id                serdes/*export-fk* 'Card)
-      (update :action_id              serdes/*export-fk* 'Action)
-      (update :dashboard_tab_id       serdes/*export-fk* :model/DashboardTab)
-      (update :series                 export-dashboard-card-series)
-      (update :parameter_mappings     serdes/export-parameter-mappings)
-      (update :visualization_settings serdes/export-visualization-settings)))
-
-(defn- extract-dashtab
-  [dashtab]
-  (dissoc dashtab :id :dashboard_id :updated_at))
-
-(defmethod serdes/extract-one "Dashboard"
-  [_model-name _opts dash]
-  (let [dash (cond-> dash
-               (nil? (:dashcards dash))
-               (t2/hydrate [:dashcards :series])
-               (nil? (:tabs dash))
-               (t2/hydrate :tabs))]
-    (-> (serdes/extract-one-basics "Dashboard" dash)
-        (update :dashcards         #(mapv extract-dashcard %))
-        (update :tabs              #(mapv extract-dashtab %))
-        (update :parameters        serdes/export-parameters)
-        (update :collection_id     serdes/*export-fk* Collection)
-        (update :creator_id        serdes/*export-user*)
-        (update :made_public_by_id serdes/*export-user*)
-        (dissoc :view_count
-                :last_viewed_at))))
-
-(defmethod serdes/load-xform "Dashboard"
-  [dash]
-  (-> dash
-      serdes/load-xform-basics
-      ;; Deliberately not doing anything to :dashcards - they get handled by load-one! below.
-      (update :collection_id     serdes/*import-fk* Collection)
-      (update :parameters        serdes/import-parameters)
-      (update :creator_id        serdes/*import-user*)
-      (update :made_public_by_id serdes/*import-user*)))
-
-(defn- dashcard-for [dashcard dashboard]
-  (assoc dashcard
-         :dashboard_id (:entity_id dashboard)
-         :serdes/meta  (remove nil?
-                               [{:model "Dashboard"     :id (:entity_id dashboard)}
-                                (when-let [dashtab-eeid (last (:dashboard_tab_id dashcard))]
-                                  {:model "DashboardTab" :id dashtab-eeid})
-                                {:model "DashboardCard" :id (:entity_id dashcard)}])))
-
-(defn- dashtab-for [tab dashboard]
-  (assoc tab
-         :dashboard_id (:entity_id dashboard)
-         :serdes/meta  [{:model "Dashboard"    :id (:entity_id dashboard)}
-                        {:model "DashboardTab" :id (:entity_id tab)}]))
-
-(defn- drop-excessive-nested!
-  "Remove nested entities which are not present in incoming serialization load"
-  [hydration-key ingested local]
-  (let [local-nested    (get (t2/hydrate local hydration-key) hydration-key)
-        ingested-nested (get ingested hydration-key)
-        to-remove       (set/difference (set (map :entity_id local-nested))
-                                        (set (map :entity_id ingested-nested)))
-        model           (t2/model (first local-nested))]
-    (when (seq to-remove)
-      (t2/delete! model :entity_id [:in to-remove]))))
-
-;; Call the default load-one! for the Dashboard, then for each DashboardCard.
-(defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :tabs) maybe-local)]
-
-    (drop-excessive-nested! :tabs ingested dashboard)
-    (doseq [tab (:tabs ingested)]
-      (serdes/load-one! (dashtab-for tab dashboard)
-                        (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
-
-    (drop-excessive-nested! :dashcards ingested dashboard)
-    (doseq [dashcard (:dashcards ingested)]
-      (serdes/load-one! (dashcard-for dashcard dashboard)
-                        (t2/select-one :model/DashboardCard :entity_id (:entity_id dashcard))))))
+(defmethod serdes/make-spec "Dashboard" [_model-name opts]
+  {:copy      [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_position :created_at
+                :description :embedding_params :enable_embedding :entity_id :initially_published_at :name
+                :points_of_interest :position :public_uuid :show_in_getting_started :width]
+   :skip      [;; those stats are inherently local state
+               :view_count :last_viewed_at]
+   :transform {:collection_id     (serdes/fk :model/Collection)
+               :creator_id        [serdes/*export-user* serdes/*import-user*]
+               :made_public_by_id [serdes/*export-user* serdes/*import-user*]
+               :parameters        [serdes/export-parameters serdes/import-parameters]
+               :tabs              (serdes/nested :model/DashboardTab :dashboard_id opts)
+               :dashcards         (serdes/nested :model/DashboardCard :dashboard_id opts)}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
-  (->> (mapcat serdes/mbql-deps parameter_mappings)
-       (concat (serdes/visualization-settings-deps visualization_settings))
-       (concat (when card_id   #{[{:model "Card"   :id card_id}]}))
-       (concat (when action_id #{[{:model "Action" :id action_id}]}))
-       (concat (for [s series] [{:model "Card" :id (:card_id s)}]))
-       set))
+  (set
+   (concat
+    (mapcat serdes/mbql-deps parameter_mappings)
+    (serdes/visualization-settings-deps visualization_settings)
+    (when card_id   #{[{:model "Card" :id card_id}]})
+    (when action_id #{[{:model "Action" :id action_id}]})
+    (for [s series] [{:model "Card" :id (:card_id s)}]))))
 
 (defmethod serdes/dependencies "Dashboard"
   [{:keys [collection_id dashcards parameters]}]

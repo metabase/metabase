@@ -21,7 +21,6 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.interface :as mi]
-   [metabase.models.serialization :as serdes]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
@@ -217,10 +216,9 @@
   For example, a Card's or Dashboard's `:name` field."
   [model-name entity slug-key]
   (let [self  (infer-self-path model-name entity)
-        label (get entity slug-key)]
-    [(if label
-       (assoc self :label (u/slugify label {:unicode? true}))
-       self)]))
+        label (slug-key entity)]
+    [(-> self
+         (m/assoc-some :label (some-> label (u/slugify {:unicode? true}))))]))
 
 (defmethod generate-path :default [model-name entity]
   ;; This default works for most models, but needs overriding for nested ones.
@@ -314,18 +312,27 @@
   `:transform` is a map from field name to a `{:ser (fn [v] ...) :des (fn [v] ...)}` map with functions to
   serialize/deserialize data.
 
-  For behavior, see `extract-by-spec` and `load-by-spec`."
+  For behavior, see `extract-by-spec` and `xform-by-spec`."
   (fn [model-name _opts] model-name))
 
 (defmethod make-spec :default [_ _] nil)
 
 (defn- extract-by-spec [model-name opts instance]
-  (binding [*current* instance]
-    (when-let [spec (make-spec model-name opts)]
-      (-> instance
-          (select-keys (:copy spec))
-          (into (for [[k [ser _des]] (:transform spec)]
-                  [k (ser (get instance k))]))))))
+  (try
+    (binding [*current* instance]
+      (when-let [spec (make-spec model-name opts)]
+        (-> (select-keys instance (:copy spec))
+            ;; won't assoc if `generate-path` returned `nil`
+            (m/assoc-some :serdes/meta (generate-path model-name instance))
+            (into (for [[k [ser _des]] (:transform spec)
+                        :let [res (ser (get instance k))]
+                        ;; include only non-nil transform results
+                        :when res]
+                    [k res])))))
+    (catch Exception e
+      (throw (ex-info (format "Error extracting %s %s" model-name (:id instance))
+                      (assoc (ex-data e) :model model-name :id (:id instance))
+                      e)))))
 
 (defmulti extract-all
   "Entry point for extracting all entities of a particular model:
@@ -377,7 +384,7 @@
 (defn log-and-extract-one
   "Extracts a single entity; will replace `extract-one` as public interface once `extract-one` overrides are gone."
   [model opts instance]
-  (log/infof "Extracting %s %s" model (:id instance))
+  (log/infof "Extracting %s %s %s" model (:id instance) (entity-id model instance))
   (try
     (extract-one model opts instance)
     (catch Exception e
@@ -432,8 +439,7 @@
 
 (defmethod extract-one :default [model-name opts entity]
   ;; `extract-by-spec` is called here since most of tests use `extract-one` right now
-  (or (some-> (extract-by-spec model-name opts entity)
-              (assoc :serdes/meta (generate-path model-name entity)))
+  (or (extract-by-spec model-name opts entity)
       (extract-one-basics model-name entity)))
 
 (defmulti descendants
@@ -685,29 +691,37 @@
   (fn [ingested _]
     (ingested-model ingested)))
 
-(defn- load-by-spec [ingested]
+(defn- xform-by-spec [model-name ingested]
   (binding [*current* ingested]
-    (let [model-name (ingested-model ingested)
-          spec       (make-spec model-name nil)]
+    (let [spec (make-spec model-name nil)]
       (when spec
-        (-> ingested
-            (select-keys (:copy spec))
-            (into (for [[k [_ser des]] (:transform spec)
+        (-> (select-keys ingested (:copy spec))
+            (into (for [[k [_ser des :as transform]] (:transform spec)
+                        :when (not (::post (meta transform)))
                         :let [res (des (get ingested k))]
-                        ;; we skip adding column when result is `nil`, so that nested fields can sit in `:transform`
+                        ;; do not try to insert nil values if transformer keeps silence
                         :when res]
                     [k res])))))))
+
+(defn- spec-post-process! [model-name ingested instance]
+  (binding [*current* instance]
+    (let [spec (make-spec model-name nil)]
+      (doseq [[k [_ser des :as transform]] (:transform spec)
+              :when (::post (meta transform))]
+        (des (get ingested k))))))
 
 (defn default-load-one!
   "Default implementation of `load-one!`"
   [ingested maybe-local]
-  (let [model    (ingested-model ingested)
-        adjusted (or (load-by-spec ingested)
-                     (load-xform ingested))]
-    (binding [mi/*deserializing?* true]
-      (if (nil? maybe-local)
-        (load-insert! model adjusted)
-        (load-update! model adjusted maybe-local)))))
+  (let [model-name (ingested-model ingested)
+        adjusted   (or (xform-by-spec model-name ingested)
+                       (load-xform ingested))
+        instance (binding [mi/*deserializing?* true]
+                   (if (nil? maybe-local)
+                     (load-insert! model-name adjusted)
+                     (load-update! model-name adjusted maybe-local)))]
+    (spec-post-process! model-name ingested instance)
+    instance))
 
 (defmethod load-one! :default [ingested maybe-local]
   (default-load-one! ingested maybe-local))
@@ -1500,26 +1514,39 @@
 
 (defn fk "Export Foreign Key" [model & [field-name]]
   (cond
+    ;; this `::fk` is used in tests to determine that foreign keys are handled
     (= model :model/Table) ^::fk [*export-table-fk* *import-table-fk*]
     (= model :model/Field) ^::fk [*export-field-fk* *import-field-fk*]
     field-name             ^::fk [#(*export-fk-keyed* % model field-name) #(*import-fk-keyed* % model field-name)]
     :else                  ^::fk [#(*export-fk* % model) #(*import-fk* % model)]))
 
 (defn nested "Nested entities" [model backward-fk opts]
-  (let [model-name (name model)]
+  (let [model-name (name model)
+        sorter     (:sort-by opts :created_at)
+        key-field  (:key-field opts :entity_id)]
+    ^::post
     [(fn [data]
-       (let [entities (or data
-                          (t2/select model backward-fk (:id *current*)))]
+       ;; if this looks weird, see :series hydration for DashboardCard, it supplies Cards while we need to serialize
+       ;; DashboardCardSeries instances
+       (let [entities (if (t2/instance-of? model (first data))
+                        data
+                        (t2/select model backward-fk (:id *current*)))]
          (->> (mapv #(extract-one model-name opts %) entities)
-              (sort-by :created_at))))
+              (sort-by sorter))))
      (fn [lst]
-       (doseq [{:keys [entity_id] :as ingested} lst]
-         (let [local    (t2/select-one model :entity_id entity_id)
-               ingested (assoc ingested
-                               backward-fk (:id *current*)
-                               :serdes/meta [{:model model-name :id entity_id}])]
-           (serdes/load-one! ingested local))))]))
+       (let [parent-id (:id *current*)
+             loaded    (for [ingested lst
+                             ;; it's not always entity-id though, not for DashcardCardSeries
+                             :let     [entity-id (get ingested key-field)]]
+                         (let [ingested (assoc ingested
+                                               backward-fk parent-id
+                                               :serdes/meta [{:model model-name :id entity-id}])
+                               local    (load-find-local (:serdes/meta ingested))]
+                        (load-one! ingested local)))]
+         (t2/delete! model backward-fk parent-id :id [:not-in (map :id loaded)])))]))
 
+(defn parent-ref "Transformer for parent id for nested entities" []
+  ^::fk [(constantly nil) identity])
 
 ;;; ## Memoizing appdb lookups
 

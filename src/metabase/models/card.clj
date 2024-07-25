@@ -856,20 +856,13 @@
     :table_id               (serdes/fk :model/Table)
     :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
-    :creator_id             [serdes/*export-user*
-                             serdes/*import-user*]
-    :made_public_by_id      [serdes/*export-user*
-                             serdes/*import-user*]
-    :dataset_query          [serdes/export-mbql
-                             serdes/import-mbql]
-    :parameters             [serdes/export-parameters
-                             serdes/import-parameters]
-    :parameter_mappings     [serdes/export-parameter-mappings
-                             serdes/import-parameter-mappings]
-    :visualization_settings [serdes/export-visualization-settings
-                             serdes/import-visualization-settings]
-    :result_metadata        [export-result-metadata
-                             import-result-metadata]}})
+    :creator_id             [serdes/*export-user* serdes/*import-user*]
+    :made_public_by_id      [serdes/*export-user* serdes/*import-user*]
+    :dataset_query          [serdes/export-mbql serdes/import-mbql]
+    :parameters             [serdes/export-parameters serdes/import-parameters]
+    :parameter_mappings     [serdes/export-parameter-mappings serdes/import-parameter-mappings]
+    :visualization_settings [serdes/export-visualization-settings serdes/import-visualization-settings]
+    :result_metadata        [export-result-metadata import-result-metadata]}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings

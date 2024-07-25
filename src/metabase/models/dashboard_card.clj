@@ -9,7 +9,6 @@
    [metabase.models.pulse-card :refer [PulseCard]]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -363,35 +362,18 @@
              (serdes/infer-self-path "DashboardTab" (t2/select-one :model/DashboardTab :id (:dashboard_tab_id dashcard))))
            (serdes/infer-self-path "DashboardCard" dashcard)]))
 
-(defmethod serdes/load-xform "DashboardCard"
-  [dashcard]
-  (-> dashcard
-      ;; Deliberately not doing anything to :series, they get handled by load-one! below
-      (dissoc :serdes/meta)
-      (update :card_id                serdes/*import-fk* :model/Card)
-      (update :action_id              serdes/*import-fk* :model/Action)
-      (update :dashboard_id           serdes/*import-fk* :model/Dashboard)
-      (update :dashboard_tab_id       serdes/*import-fk* :model/DashboardTab)
-      (update :created_at             #(if (string? %) (u.date/parse %) %))
-      (update :parameter_mappings     serdes/import-parameter-mappings)
-      (update :visualization_settings serdes/import-visualization-settings)))
-
-(defn- dashboard-card-series-xform
-  [ingested]
-  (-> ingested
-      (update :card_id          serdes/*import-fk* :model/Card)
-      (update :dashboardcard_id serdes/*import-fk* :model/DashboardCard)))
-
-(defmethod serdes/load-one! "DashboardCard"
-  [ingested maybe-local]
-  (let [dashcard ((get-method serdes/load-one! :default) (dissoc ingested :series) maybe-local)]
-    ;; drop all existing series for this card and recreate them
-    ;; TODO: this is unnecessary, but it is simple to implement
-    (t2/delete! :model/DashboardCardSeries :dashboardcard_id (:id dashcard))
-    (doseq [[idx single-series] (map-indexed vector (:series ingested))] ;; a single series has a :card_id only
-      ;; instead of load-one! we use load-insert! here because :serdes/meta isn't necessary because no other
-      ;; entities depend on DashboardCardSeries
-      (serdes/load-insert! "DashboardCardSeries" (-> single-series
-                                                     (assoc :dashboardcard_id (:entity_id dashcard)
-                                                            :position idx)
-                                                     dashboard-card-series-xform)))))
+(defmethod serdes/make-spec "DashboardCard" [_model-name opts]
+  {:copy      [:col :created_at :entity_id :row :size_x :size_y]
+   :skip      []
+   :transform {:dashboard_id           (serdes/parent-ref)
+               :card_id                (serdes/fk :model/Card)
+               :action_id              (serdes/fk :model/Action)
+               :dashboard_tab_id       (serdes/fk :model/DashboardTab)
+               :parameter_mappings     [serdes/export-parameter-mappings
+                                        serdes/import-parameter-mappings]
+               :visualization_settings [serdes/export-visualization-settings
+                                        serdes/import-visualization-settings]
+               :series                 (serdes/nested :model/DashboardCardSeries :dashboardcard_id
+                                                      (assoc opts
+                                                             :sort-by :position
+                                                             :key-field :card_id))}})

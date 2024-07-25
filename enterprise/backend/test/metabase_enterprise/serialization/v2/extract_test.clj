@@ -593,7 +593,8 @@
       (testing "Inlined dashcards include their series' card entity IDs"
         (let [ser (serdes/extract-one "Dashboard" {} (t2/select-one Dashboard :id dash-id))]
           (is (=? {:entity_id dash-eid
-                   :dashcards [{:entity_id dc1-eid, :series (mt/exactly=? [{:card_id c2-eid} {:card_id c3-eid}])}
+                   :dashcards [{:entity_id dc1-eid
+                                :series (mt/exactly=? [{:position 0 :card_id c2-eid} {:position 1 :card_id c3-eid}])}
                                {:entity_id dc2-eid, :series []}]}
                   ser))
 

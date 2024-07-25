@@ -861,7 +861,7 @@
             (let [logs (mt/with-log-messages-for-level ['metabase-enterprise :error]
                          (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
                                           (map (comp second second))
-                                          (map #(.getName %))
+                                          (map #(.getName ^File %))
                                           set)]
                            (testing "Hidden YAML wasn't read even though it's not throwing errors"
                              (is (not (contains? files ".hidden.yaml"))))))]
