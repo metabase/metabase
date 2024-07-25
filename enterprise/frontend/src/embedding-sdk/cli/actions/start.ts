@@ -2,7 +2,6 @@ import { confirm, input } from "@inquirer/prompts";
 
 import {
   checkIsDockerRunning,
-  CONTAINER_NAME,
   startLocalMetabaseContainer,
 } from "../utils/docker";
 import { generateRandomDemoPassword } from "../utils/generate-password";
@@ -10,7 +9,10 @@ import { showGettingStartedGuide } from "../utils/getting-started";
 import { pollUntilMetabaseInstanceReady } from "../utils/health-check";
 import { checkInReactProject } from "../utils/is-in-react-project";
 import { printError } from "../utils/print";
-import { setupMetabaseInstance } from "../utils/setup-metabase-instance";
+import {
+  DELETE_CONTAINER_MESSAGE,
+  setupMetabaseInstance,
+} from "../utils/setup-metabase-instance";
 
 const START_MESSAGE = `
   This command will help you bootstrap a local Metabase instance and embed
@@ -24,7 +26,7 @@ const DOCKER_NOT_RUNNING_MESSAGE = `
 
 const INSTANCE_NOT_READY_ERROR = `
   Could not connect to your local Metabase instance.
-  Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.
+  ${DELETE_CONTAINER_MESSAGE}
 `;
 
 const isEmail = (email: string) => email.match(/^\S+@\S+\.\S+$/) !== null;

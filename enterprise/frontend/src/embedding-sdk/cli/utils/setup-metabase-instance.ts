@@ -12,9 +12,21 @@ interface SetupOptions {
 
 const SITE_NAME = "Metabase Embedding SDK Demo";
 
+export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
+
 const INSTANCE_CONFIGURED_MESSAGE = `
   The instance has already been configured.
-  Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.
+  ${DELETE_CONTAINER_MESSAGE}
+`;
+
+const EMBEDDING_FAILED_MESSAGE = `
+  Failed to enable embedding features.
+  ${DELETE_CONTAINER_MESSAGE}
+`;
+
+const CREATE_ADMIN_USER_FAILED_MESSAGE = `
+  Failed to create the admin user.
+  ${DELETE_CONTAINER_MESSAGE}
 `;
 
 export async function setupMetabaseInstance(
@@ -31,7 +43,10 @@ export async function setupMetabaseInstance(
 
   // If the instance we are configuring is not clean,
   // therefore we cannot ensure the setup steps are performed.
-  const onInstanceConfigured = () => showError(INSTANCE_CONFIGURED_MESSAGE);
+  const onInstanceConfigured = () => {
+    showError(INSTANCE_CONFIGURED_MESSAGE);
+    return false;
+  };
 
   try {
     spinner.start("Preparing to setup the instance...");
@@ -41,12 +56,9 @@ export async function setupMetabaseInstance(
       headers: { "Content-Type": "application/json" },
     });
 
-    console.log("yessssss");
-
     // We will get an auth error when the instance has been configured.
     if (res.status !== 200) {
-      onInstanceConfigured();
-      return false;
+      return onInstanceConfigured();
     }
 
     // Retrieve the current setup token of the current Metabase instance
@@ -55,8 +67,7 @@ export async function setupMetabaseInstance(
 
     // If the setup token has been cleared, assume instance is configured.
     if (!setupToken) {
-      onInstanceConfigured();
-      return false;
+      return onInstanceConfigured();
     }
 
     spinner.succeed();
@@ -83,33 +94,36 @@ export async function setupMetabaseInstance(
     });
 
     if (res.status !== 200) {
-      const textResponse = await res.text();
+      const errorMessage = await res.text();
 
       // The /api/setup route can only be used to create the first user, however a user currently exists.
-      if (textResponse.includes("a user currently exists")) {
-        onInstanceConfigured();
-        return false;
+      if (errorMessage.includes("a user currently exists")) {
+        return onInstanceConfigured();
       }
 
-      showError(`Failed to create the admin user.`);
+      showError(CREATE_ADMIN_USER_FAILED_MESSAGE);
 
       try {
-        const { errors } = JSON.parse(textResponse) as {
+        const { errors } = JSON.parse(errorMessage) as {
           errors: Record<string, string>;
         };
+
+        // TODO: improve password generation so it does not match the common passwords list.
+        if (errors.password.includes("password is too common")) {
+          return false;
+        }
 
         if (errors) {
           printInfo(JSON.stringify(errors, null, 2));
         }
       } catch (error) {
-        printInfo(textResponse);
+        printInfo(errorMessage);
       }
 
       return false;
     }
 
-    const cookie = res.headers.get("cookie");
-    console.log("Cookie =", cookie);
+    const cookie = res.headers.get("set-cookie") ?? "";
 
     spinner.succeed();
     spinner.start("Enabling embedding features...");
@@ -122,26 +136,18 @@ export async function setupMetabaseInstance(
         "setup-license-active-at-setup": false,
         "setup-embedding-autoenabled": true,
       }),
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", Cookie: cookie },
     });
 
     if (res.status !== 200) {
-      showError(`Failed to enable embedding features.\n`);
+      const errorMessage = await res.text();
 
-      const textResponse = await res.text();
-
-      if (textResponse.includes("Unauthenticated")) {
-        onInstanceConfigured();
-        return false;
+      if (errorMessage.includes("Unauthenticated")) {
+        return onInstanceConfigured();
       }
 
-      const { errors } = JSON.parse(textResponse) as {
-        errors: Record<string, string>;
-      };
-
-      if (errors) {
-        console.log("\n", errors);
-      }
+      showError(EMBEDDING_FAILED_MESSAGE);
+      console.log(res.statusText, errorMessage);
 
       return false;
     }
