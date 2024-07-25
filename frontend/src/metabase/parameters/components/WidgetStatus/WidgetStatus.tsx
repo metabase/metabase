@@ -12,7 +12,7 @@ type Props = {
 };
 
 export const WidgetStatus = ({ status, onClick }: Props) => {
-  const { icon, label } = getStatusConfig(status);
+  const { button, icon, label } = getStatusConfig(status);
 
   const handleClick = (event: MouseEvent) => {
     if (onClick) {
@@ -28,7 +28,7 @@ export const WidgetStatus = ({ status, onClick }: Props) => {
       h={0} // trick to prevent this element from affecting parent's height
       ml="auto"
     >
-      {label && (
+      {button && (
         <Tooltip label={label}>
           <Button
             compact

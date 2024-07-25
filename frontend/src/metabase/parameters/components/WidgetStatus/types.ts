@@ -8,7 +8,14 @@ import type { IconName } from "metabase/ui";
  */
 export type Status = "clear" | "reset" | "empty" | "none";
 
-export type StatusConfig = {
-  icon: IconName;
-  label?: string;
-};
+export type StatusConfig =
+  | {
+      button: true;
+      icon: IconName;
+      label: string;
+    }
+  | {
+      button?: never;
+      label?: never;
+      icon: IconName;
+    };
