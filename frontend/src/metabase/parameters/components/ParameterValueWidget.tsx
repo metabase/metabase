@@ -68,6 +68,7 @@ export const ParameterValueWidget = ({
   const [isFocused, setIsFocused] = useState(false);
 
   const hasValue = !parameterHasNoDisplayValue(value);
+  const fieldHasValueOrFocus = parameter.value != null || isFocused;
   const noPopover = hasNoPopover(parameter);
   const parameterTypeIcon = getParameterIconName(parameter);
   const showTypeIcon = !isEditing && !hasValue && !isFocused;
@@ -83,6 +84,7 @@ export const ParameterValueWidget = ({
     ) {
       return (
         <WidgetStatus
+          highlighted={fieldHasValueOrFocus}
           status="reset"
           onClick={() => setParameterValueToDefault?.(parameter.id)}
         />
@@ -92,6 +94,7 @@ export const ParameterValueWidget = ({
     if (value != null) {
       return (
         <WidgetStatus
+          highlighted={fieldHasValueOrFocus}
           status="clear"
           onClick={() => {
             setValue(null);
@@ -116,6 +119,7 @@ export const ParameterValueWidget = ({
     ) {
       return (
         <WidgetStatus
+          highlighted={fieldHasValueOrFocus}
           status="reset"
           onClick={() => setParameterValueToDefault?.(parameter.id)}
         />

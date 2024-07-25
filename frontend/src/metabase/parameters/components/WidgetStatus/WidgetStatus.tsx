@@ -7,6 +7,7 @@ import S from "./WidgetStatus.module.css";
 import type { Status } from "./types";
 
 type Props = {
+  highlighted?: boolean;
   status: Status;
   onClick?: () => void;
 };
@@ -19,7 +20,7 @@ const COMPACT_BUTTON_PADDING = 4;
  */
 const BUTTON_MARGIN = -COMPACT_BUTTON_PADDING;
 
-export const WidgetStatus = ({ status, onClick }: Props) => {
+export const WidgetStatus = ({ highlighted, status, onClick }: Props) => {
   const handleClick = (event: MouseEvent) => {
     if (onClick) {
       event.stopPropagation();
@@ -38,6 +39,7 @@ export const WidgetStatus = ({ status, onClick }: Props) => {
         <Tooltip label={t`Clear`}>
           <Button
             aria-label={t`Clear`}
+            color={highlighted ? undefined : "text-medium"}
             compact
             leftIcon={<Icon name="close" />}
             m={rem(BUTTON_MARGIN)}
@@ -52,6 +54,7 @@ export const WidgetStatus = ({ status, onClick }: Props) => {
         <Tooltip label={t`Reset filter to default state`}>
           <Button
             aria-label={t`Reset filter to default state`}
+            color={highlighted ? undefined : "text-medium"}
             compact
             leftIcon={<Icon name="revert" />}
             m={rem(BUTTON_MARGIN)}
