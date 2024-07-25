@@ -17,7 +17,7 @@ const ICON_SIZE = 12;
 export const WidgetStatusButton = ({ status, onClick }: Props) => {
   const { disabled, icon, label } = getStatusConfig(status);
 
-  const handleOnClick = (event: MouseEvent) => {
+  const handleClick = (event: MouseEvent) => {
     if (onClick) {
       event.stopPropagation();
       onClick();
@@ -35,7 +35,7 @@ export const WidgetStatusButton = ({ status, onClick }: Props) => {
         variant="subtle"
         w={BUTTON_SIZE}
         h={BUTTON_SIZE}
-        onClick={handleOnClick}
+        onClick={handleClick}
       />
     </Tooltip>
   );
