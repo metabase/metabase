@@ -8,7 +8,11 @@ import {
 import { Modal } from "metabase/ui";
 import type { NotificationChannel } from "metabase-types/api";
 
-import { WebhookForm, type WebhookFormProps } from "./WebhookForm";
+import {
+  handleFieldError,
+  WebhookForm,
+  type WebhookFormProps,
+} from "./WebhookForm";
 
 interface CreateWebhookModalProps {
   isOpen: boolean;
@@ -25,7 +29,7 @@ export const EditWebhookModal = ({
   const [deleteChannel] = useDeleteChannelMutation();
 
   const handleSumbit = async (vals: WebhookFormProps) => {
-    await editChannel({
+    return editChannel({
       id: channel.id,
       name: vals.name,
       description: vals.description,
@@ -34,9 +38,14 @@ export const EditWebhookModal = ({
         "auth-method": vals["auth-method"],
         "auth-info": vals["auth-info"],
       },
-    }).unwrap();
-
-    onClose();
+    })
+      .unwrap()
+      .then(() => {
+        onClose();
+      })
+      .catch(e => {
+        handleFieldError(e);
+      });
   };
 
   const handleDelete = async () => {
@@ -51,7 +60,9 @@ export const EditWebhookModal = ({
       name: channel.name,
       description: channel.description,
       "auth-method": channel.details["auth-method"],
-      "auth-info": channel.details["auth-info"] || { "": "" },
+      "auth-info": Object.keys(channel.details["auth-info"] || {}).some(Boolean)
+        ? channel.details["auth-info"]
+        : { "": "" },
     }),
     [channel],
   );
@@ -70,6 +81,7 @@ export const EditWebhookModal = ({
             onCancel={onClose}
             onDelete={handleDelete}
             initialValues={initialValues}
+            submitLabel={t`Save changes`}
           />
         </Modal.Body>
       </Modal.Content>

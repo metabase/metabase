@@ -57,7 +57,7 @@ export const NotificationSettings = () => {
         </Flex>
         {channels?.length === 0 ? (
           <ChannelBox
-            title={t`Add a webook`}
+            title={t`Add a webhook`}
             description={t`Specify a webhook URL where you can send the content of Alerts`}
             onClick={() => setWebhookModal("create")}
             icon="webhook"
