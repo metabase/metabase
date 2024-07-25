@@ -1006,9 +1006,9 @@
   :hierarchy #'hierarchy)
 
 (defmethod normalize-db-details ::driver
-  [_ db-details]
+  [_ database]
   ;; no normalization by default
-  db-details)
+  database)
 
 (defmulti superseded-by
   "Returns the driver that supersedes the given `driver`.  A non-nil return value means that the given `driver` is
