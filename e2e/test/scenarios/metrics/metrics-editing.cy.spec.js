@@ -1,6 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_MODEL_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  appBar,
+  commandPalette,
   createQuestion,
   echartsContainer,
   enterCustomColumnDetails,
@@ -97,8 +99,16 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText("Orders").click();
       });
       addAggregation({ operatorName: "Count of rows" });
-      saveMetric();
+      saveMetric({ name: "my new metric" });
       verifyScalarValue("18,760");
+
+      cy.log(
+        "newly created metric should be visible in recents (metabase#442223)",
+      );
+      appBar()
+        .findByText(/search/i)
+        .click();
+      commandPalette().findByText("my new metric").should("be.visible");
     });
 
     it("should be able to rename a metric", () => {
