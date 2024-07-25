@@ -97,37 +97,15 @@
      (field-query :f.name (:column column))
      (into [:or] (map table-query tables))]))
 
-(defn- strip-redundant-refs
-  "Strip out duplicate references, and unqualified references that are shadowed by found or qualified ones."
-  [references]
-  (let [qualified? (into #{} (comp (filter :table) (map :column)) references)]
-    (into #{}
-          (filter (fn [{:keys [table column]}]
-                    (or table (not (qualified? column)))))
-          references)))
-
-(defn- consolidate-columns
-  "Qualify analyzed columns with the corresponding database IDs, where we are able to resolve them."
-  [analyzed-columns database-columns]
-  (let [->tab-key             (comp u/lower-case-en :table)
-        ->col-key             (comp u/lower-case-en :column)
-        column->records       (group-by (comp ->col-key) database-columns)
-        table+column->records (group-by (juxt ->tab-key ->col-key) database-columns)]
-    (strip-redundant-refs
-     (mapcat (fn [{:keys [table column] :as reference}]
-               (or (if table
-                     (table+column->records [(normalized-key table) (normalized-key column)])
-                     (column->records (normalized-key column)))
-                   [(update-vals reference strip-quotes)]))
-             analyzed-columns))))
-
 (defn table-reference
   "Used by tests"
   [db-id table]
-  (t2/select-one [:model/Table [:id :table-id] [:name :table]]
-                 {:where [:and
-                          [:= :t.db_id db-id]
-                          (table-query {:table (name table)})]}))
+  (t2/select-one :model/QueryTable
+                 {:select [[:t.id :table-id] [:t.name :table]]
+                  :from   [[(t2/table-name :model/Table) :t]]
+                  :where  [:and
+                           [:= :t.db_id db-id]
+                           (table-query {:table (name table)})]}))
 
 (defn field-reference
   "Used by tests"
@@ -138,8 +116,69 @@
                                                   (column-query nil {:table  (name table)
                                                                      :column (name column)})])))
 
-(defn- explicit-references-for-query
-  "Selects IDs of Fields that could be used in the query"
+(defn- strip-redundant-refs
+  "Strip out duplicate references, and unqualified references that are shadowed by found or qualified ones."
+  [references]
+  ;; TODO handle schema
+  (let [qualified? (into #{} (comp (filter :table) (map :column)) references)]
+    (into #{}
+          (filter (fn [{:keys [table column]}]
+                    (or table (not (qualified? column)))))
+          references)))
+
+(defn- strip-redundant-table-refs
+  "Strip out duplicate references, and unqualified references that are shadowed by found or qualified ones."
+  [references]
+  (let [qualified? (into #{} (comp (filter :schema) (map :table)) references)]
+    (into #{}
+          (filter (fn [{:keys [schema table]}]
+                    (or schema (not (qualified? table)))))
+          references)))
+
+(defn- consolidate-columns
+  "Qualify analyzed columns with the corresponding database IDs, where we are able to resolve them."
+  [analyzed-columns database-columns]
+  ;; TODO we should handle schema as well
+  (let [->tab-key             (comp u/lower-case-en :table)
+        ->col-key             (comp u/lower-case-en :column)
+        column->records       (group-by ->col-key database-columns)
+        table+column->records (group-by (juxt ->tab-key ->col-key) database-columns)]
+    (strip-redundant-refs
+     (mapcat (fn [{:keys [table column] :as reference}]
+               (or (if table
+                     (table+column->records [(normalized-key table) (normalized-key column)])
+                     (column->records (normalized-key column)))
+                   [(update-vals reference strip-quotes)]))
+             analyzed-columns))))
+
+(defn- consolidate-tables [analyzed-tables database-tables]
+  (let [->schema-key          (comp u/lower-case-en :schema)
+        ->table-key           (comp u/lower-case-en :table)
+        table->records        (group-by ->table-key database-tables)
+        schema+table->records (group-by (juxt ->schema-key ->table-key) database-tables)]
+    (strip-redundant-table-refs
+     (mapcat (fn [{:keys [schema table] :as reference}]
+               (or (if schema
+                     (schema+table->records [(normalized-key schema) (normalized-key table)])
+                     (table->records (normalized-key table)))
+                   [(update-vals reference strip-quotes)]))
+             analyzed-tables))))
+
+(defn- table-refs-for-query
+  "Given the results of query analysis, return references to the corresponding tables and cards."
+  [{table-maps :tables} db-id]
+  (let [tables (map :component table-maps)]
+    (consolidate-tables
+     tables
+     (t2/select :model/QueryTable
+                {:select [[:t.id :table-id] [:t.name :table]]
+                 :from   [[(t2/table-name :model/Table) :t]]
+                 :where  [:and
+                         [:= :t.db_id db-id]
+                         (into [:or] (map table-query tables))]}))))
+
+(defn- explicit-field-refs-for-query
+  "Given the results of query analysis, return references to the corresponding fields and model outputs."
   [{column-maps :columns table-maps :tables} db-id]
   (let [columns (map :component column-maps)
         tables  (map :component table-maps)]
@@ -189,12 +228,13 @@
         macaw-opts    (nqa.impl/macaw-options driver)
         sql-string    (:query (nqa.sub/replace-tags query))
         parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
-        explicit-refs (explicit-references-for-query parsed-query db-id)
+        explicit-refs (explicit-field-refs-for-query parsed-query db-id)
         implicit-refs (set/difference (set (implicit-references-for-query parsed-query db-id))
                                       (set explicit-refs))]
-    ;; TODO: add table refs
-    (concat (mark-reference explicit-refs true)
-            (mark-reference implicit-refs false))))
+    ;; TODO we can optimize this to only fetch tables which have not been implicitly fetched by a field yet
+    {:tables (table-refs-for-query parsed-query db-id)
+     :fields (concat (mark-reference explicit-refs true)
+                     (mark-reference implicit-refs false))}))
 
 (defn references-for-native
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's

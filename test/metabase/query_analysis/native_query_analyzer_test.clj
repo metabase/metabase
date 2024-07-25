@@ -39,9 +39,13 @@
                       {:field-id 3 :table "t3" :column "c3"}]))))))
 
 (defn- refs [sql]
-  (->> (mt/native-query {:query sql})
-       (#'nqa/references-for-native)
-       (sort-by (juxt :table :column))))
+  (-> (mt/native-query {:query sql})
+      (#'nqa/references-for-native)
+      (update-vals
+       (partial sort-by (juxt :table :column)))))
+
+(defn- field-refs [sql]
+  (:fields (refs sql)))
 
 (defn- missing-reference [table column]
   {:table              (name table)
@@ -53,7 +57,8 @@
     ;; sanity-check that this is the right reference
     (assert (= (mt/id table) (:table-id reference)))
     ;; sanity-check the names, whose case depends on the driver
-    (assert (= (name table) (u/lower-case-en (:table reference))))))
+    (assert (= (name table) (u/lower-case-en (:table reference))))
+    reference))
 
 (defn- field-reference [table column]
   (let [reference (nqa/field-reference (mt/id) table column)]
@@ -69,48 +74,54 @@
 (deftest ^:parallel field-matching-simple-test
   (testing "simple query matches"
     (is (= [(field-reference :venues :id)]
-           (refs "select id from venues")))))
+           (field-refs "select id from venues")))))
 
 (deftest ^:parallel field-matching-case-test
   (testing "quotes stop case matching"
     (is (= [(missing-reference :venues :id)]
-           (refs "select \"id\" from venues")))
+           (field-refs "select \"id\" from venues")))
     (is (= [(field-reference :venues :id)]
-           (refs "select \"ID\" from venues"))))
+           (field-refs "select \"ID\" from venues"))))
   (testing "unresolved references use case verbatim"
     (is (= [{:column "id", :table "unKnown", :explicit-reference true}]
-           (refs "select \"id\" from unKnown")))
+           (field-refs "select \"id\" from unKnown")))
     (is (= [{:column "ID", :table "unknowN", :explicit-reference true}]
-           (refs "select ID from unknowN"))))
+           (field-refs "select ID from unknowN"))))
   (testing "resolved references normalize the case"
-    (is (not= "veNUES" (:table (first (refs "select id from veNUES")))))
-    (is (= "venues" (u/lower-case-en (:table (first (refs "select id from veNUES")))))))
+    (is (not= "veNUES" (:table (first (field-refs "select id from veNUES")))))
+    (is (= "venues" (u/lower-case-en (:table (first (field-refs "select id from veNUES")))))))
   (testing "you can mix quoted and unquoted names"
     (is (= [(field-reference :venues :id)
             (field-reference :venues :name)]
-           (refs "select v.\"ID\", v.name from venues v")))
+           (field-refs "select v.\"ID\", v.name from venues v")))
     (is (= [(field-reference :venues :id)
             (field-reference :venues :name)]
-           (refs "select v.`ID`, v.name from venues v")))))
+           (field-refs "select v.`ID`, v.name from venues v")))))
 
 (deftest ^:parallel field-matching-multi-test
   (testing "It will find all relevant columns if query is not specific"
     (is (= [(field-reference :checkins :id)
             (field-reference :venues :id)]
-           (refs "select id from venues join checkins"))))
+           (field-refs "select id from venues join checkins"))))
   (testing "But if you are specific - then it's a concrete field"
     (is (= [(field-reference :venues :id)]
-           (refs "select v.id from venues v join checkins"))))
+           (field-refs "select v.id from venues v join checkins"))))
   (testing "And wildcards are matching everything"
     (is (= {false 10}
-           (frequencies (map :explicit-reference (refs "select * from venues v join checkins")))))
+           (frequencies (map :explicit-reference (field-refs "select * from venues v join checkins")))))
     (is (= {false 6}
-           (frequencies (map :explicit-reference (refs "select v.* from venues v join checkins")))))))
+           (frequencies (map :explicit-reference (field-refs "select v.* from venues v join checkins")))))))
 
 (deftest ^:parallel field-matching-keywords-test
   (when (not (contains? #{:snowflake :oracle} driver/*driver*))
     (testing "Analysis does not fail due to keywords that are only reserved in other databases"
       (is (= [(field-reference :venues :id)]
-             (refs "select id as final from venues")))
+             (field-refs "select id as final from venues")))
       (is (= [(missing-reference :venues :final)]
-             (refs "select final from venues"))))))
+             (field-refs "select final from venues"))))))
+
+(deftest ^:parallel table-without-field-reference-test
+  (testing "We track table dependencies even when there are no fields being used"
+    (is (= {:tables [(table-reference :venues)]
+            :fields []}
+           (refs "select count(*) from venues")))))
