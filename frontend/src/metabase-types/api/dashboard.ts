@@ -250,6 +250,7 @@ export type CreateDashboardRequest = {
   cache_ttl?: number;
   collection_id?: CollectionId | null;
   collection_position?: number | null;
+  tabs?: DashboardTab[];
 };
 
 export type UpdateDashboardRequest = {
