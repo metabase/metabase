@@ -587,14 +587,15 @@ describe("issue 27643", () => {
           };
 
           cy.editDashboardCard(dashboardCard, mapFilterToCard);
-          visitDashboard(dashboard_id);
         });
     });
 
     it("in static embedding and in public dashboard scenarios (metabase#27643-1)", () => {
       cy.log("Test the dashboard");
+      visitDashboard("@dashboardId");
+      getDashboardCard().should("contain", "true");
       toggleFilterWidgetValues(["false"]);
-      getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
+      getDashboardCard().should("contain", "false");
 
       cy.log("Test the embedded dashboard");
       cy.get("@dashboardId").then(dashboard => {
@@ -602,20 +603,22 @@ describe("issue 27643", () => {
           resource: { dashboard },
           params: {},
         });
-      });
 
-      toggleFilterWidgetValues(["false"]);
-      getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
+        getDashboardCard().should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        getDashboardCard().should("contain", "false");
+      });
 
       cy.log("Test the public dashboard");
       cy.get("@dashboardId").then(dashboardId => {
         // We were signed out due to the previous visitEmbeddedPage
         cy.signInAsAdmin();
         visitPublicDashboard(dashboardId);
-      });
 
-      toggleFilterWidgetValues(["false"]);
-      getDashboardCard().findByText("Rows 1-4 of 455").should("be.visible");
+        getDashboardCard().should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        getDashboardCard().should("contain", "false");
+      });
     });
   });
 
