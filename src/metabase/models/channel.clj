@@ -1,5 +1,6 @@
 (ns ^{:added "0.51.0"} metabase.models.channel
   (:require
+   [metabase.models.audit-log :as audit-log]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.serialization :as serdes]
@@ -44,3 +45,7 @@
   [instance]
   (assert-channel-type instance)
   instance)
+
+(defmethod audit-log/model-details :model/Channel
+  [channel _event-type]
+  (select-keys channel [:id :name :description :type]))
