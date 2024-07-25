@@ -21,12 +21,13 @@ const afterInstallStepsMessage = (url: string) => `
   1. Go to "Embedding" > "Interactive Embedding"
   2. Add "http://localhost:*" to authorized origins to enable CORS.
   3. Create an API key at ${url}/admin/settings/authentication/api-keys
-  4. Paste the API key into the code, replacing "INSERT_API_KEY_HERE".
 `;
 
 const DOCS_MESSAGE = `
   Metabase is running in a Docker container. To stop it, run "docker stop ${CONTAINER_NAME}".
   Documentation for the SDK can be found here: https://www.npmjs.com/package/@metabase/embedding-sdk-react
+
+  Anonymous usage statistics are enabled. You can disable this in the instance settings.
 
   Thank you for trying out Metabase Embedding SDK for React.
 `;

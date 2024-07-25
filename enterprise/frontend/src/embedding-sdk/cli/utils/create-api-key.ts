@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import ora from "ora";
 
-import { printError } from "embedding-sdk/cli/utils/print";
+import { printError } from "./print";
 
 interface Options {
   instanceUrl: string;
@@ -11,7 +11,7 @@ interface Options {
 export async function createApiKey(options: Options): Promise<string | null> {
   const { instanceUrl, cookie } = options;
 
-  const spinner = ora();
+  const spinner = ora("Generating a new API key...").start();
 
   const res = await fetch(`${instanceUrl}/api/api-key`, {
     method: "POST",
@@ -26,7 +26,6 @@ export async function createApiKey(options: Options): Promise<string | null> {
     const errorMessage = await res.text();
 
     spinner.fail();
-
     printError("Failed to create an API key.");
     console.log(errorMessage);
 

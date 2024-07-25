@@ -101,6 +101,10 @@ export async function start() {
 
     const apiKey = await createApiKey({ instanceUrl, cookie });
 
+    if (!apiKey) {
+      return;
+    }
+
     await showGettingStartedGuide(port, apiKey);
   } catch (error) {
     if (error instanceof Error) {

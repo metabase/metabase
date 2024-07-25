@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import ora from "ora";
 
-import { CONTAINER_NAME } from "./constants";
+import { CONTAINER_NAME, SITE_NAME } from "./constants";
 import { EMBEDDING_DEMO_SETUP_TOKEN } from "./docker";
 import { printError, printInfo } from "./print";
 import { retry } from "./retry";
@@ -12,7 +12,6 @@ interface SetupOptions {
   password: string;
 }
 
-export const SITE_NAME = "Metabase Embedding SDK Demo";
 export const DELETE_CONTAINER_MESSAGE = `Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.`;
 
 const INSTANCE_CONFIGURED_MESSAGE = `

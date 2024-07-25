@@ -4,19 +4,17 @@ import chalk from "chalk";
 import ora from "ora";
 import { promisify } from "util";
 
-import { CONTAINER_NAME, IMAGE_NAME } from "./constants";
+import {
+  CONTAINER_NAME,
+  DEFAULT_PORT,
+  IMAGE_NAME,
+  SITE_NAME,
+} from "./constants";
 import { getCurrentDockerPort } from "./get-current-docker-port";
 import { checkIsPortTaken } from "./is-port-taken";
 import { printError, printInfo, printSuccess } from "./print";
-import { SITE_NAME } from "./setup-metabase-instance";
 
 const exec = promisify(execCallback);
-
-/**
- * Default port for the local Metabase instance.
- * Make sure this port is unlikely to be in use.
- */
-const DEFAULT_PORT = 3366;
 
 const messageContainerRunning = (port: number) => `
   Your local Metabase instance is already running on port ${port}.
