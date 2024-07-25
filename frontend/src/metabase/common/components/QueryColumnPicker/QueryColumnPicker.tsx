@@ -169,12 +169,14 @@ export function QueryColumnPicker({
 
   const renderItemIcon = useCallback(
     (item: ColumnListItem) => (
-      <QueryColumnInfoIcon
-        query={query}
-        stageIndex={stageIndex}
-        column={item.column}
-        position="top-start"
-      />
+      <IconContainer>
+        <QueryColumnInfoIcon
+          query={query}
+          stageIndex={stageIndex}
+          column={item.column}
+          position="top-start"
+        />
+      </IconContainer>
     ),
     [query, stageIndex],
   );

@@ -277,7 +277,7 @@ function ExpressionEditorSuggestionsListItem({
           />
         )}
         {!helpText && suggestion.column && (
-          <IconContainer style={{ fontSize: "14px" }}>
+          <IconContainer>
             <QueryColumnInfoIcon
               query={query}
               stageIndex={stageIndex}

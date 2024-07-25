@@ -21,7 +21,6 @@ import {
 export { HoverParent };
 
 type QueryColumnInfoIconProps = QueryColumnInfoPopoverProps & {
-  size?: number;
   icon?: IconName;
   color?: string;
 };
@@ -29,7 +28,6 @@ type QueryColumnInfoIconProps = QueryColumnInfoPopoverProps & {
 export function QueryColumnInfoIcon({
   className,
   delay,
-  size = 14,
   icon,
   color,
   ...props
@@ -41,10 +39,7 @@ export function QueryColumnInfoIcon({
 
   return (
     <QueryColumnInfoPopover {...props} delay={delay}>
-      <IconContainer
-        style={{ fontSize: `${size}px` }}
-        aria-label={t`More info`}
-      >
+      <IconContainer aria-label={t`More info`}>
         <PopoverDefaultIcon
           className={className}
           name={icon ?? getColumnIcon(column)}
@@ -64,7 +59,6 @@ QueryColumnInfoIcon.HoverParent = HoverParent;
 
 type TableColumnInfoIconProps = TableColumnInfoPopoverProps & {
   icon: IconName;
-  size?: number;
   color?: string;
 };
 
@@ -73,16 +67,12 @@ export function TableColumnInfoIcon({
   delay,
   field,
   icon,
-  size = 14,
   color,
   ...props
 }: TableColumnInfoIconProps) {
   return (
     <TableColumnInfoPopover {...props} field={field} delay={delay}>
-      <IconContainer
-        style={{ fontSize: `${size}px` }}
-        aria-label={t`More info`}
-      >
+      <IconContainer aria-label={t`More info`}>
         <PopoverDefaultIcon className={className} name={icon} color={color} />
         <PopoverHoverTarget
           className={className}
@@ -95,3 +85,4 @@ export function TableColumnInfoIcon({
 }
 
 TableColumnInfoIcon.HoverParent = HoverParent;
+
