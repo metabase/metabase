@@ -151,7 +151,8 @@
    {metabase.actions               #{metabase.actions.core}
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
-                                     metabase.analytics.stats}                                      ; TODO -- consolidate these into a real API namespace.
+                                     metabase.analytics.stats
+                                     metabase.analytics.sdk}                                      ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
@@ -369,6 +370,7 @@
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.test                                      met
+    metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
     metabase.analyze.query-results                                qr
     metabase.analyze.classifiers.category                         classifiers.category
