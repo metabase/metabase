@@ -56,6 +56,11 @@ title: Driver interface changelog
 
 ## Metabase 0.50.16
 
+  - The `metabase.driver.sql/json-field-length` method has been added. It should be implemented for all drivers that
+    derive from :sql and support the :nested-field-columns feature. If implemented, Metabase will skip querying large
+    JSON values during the "sync-fields" step that could otherwise slow down the inference of nested field columns and
+    cause Metabase to run out of heap space.
+
   - `:type/fingerprinting-unsupported` has been added in the `metabase.types` namespace. Similar to
     `:type/field-values-unsupported` for field values scanning, it is used to determine whether a specific field
     should have its fingerprint computed or not. At the time of writing that logic is performed in
