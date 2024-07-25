@@ -13,7 +13,7 @@ interface SetupOptions {
 const SITE_NAME = "Metabase Embedding SDK Demo";
 
 const INSTANCE_CONFIGURED_MESSAGE = `
-  The instance has been configured before.
+  The instance has already been configured.
   Please delete the container with "docker rm -f ${CONTAINER_NAME}" and try again.
 `;
 
@@ -22,24 +22,30 @@ export async function setupMetabaseInstance(
 ): Promise<boolean> {
   const { instanceUrl } = options;
 
-  const setupSpinner = ora();
+  const spinner = ora();
 
   const showError = (message: string) => {
-    setupSpinner.stop();
+    spinner.fail();
     printError(message);
   };
 
+  // If the instance we are configuring is not clean,
+  // therefore we cannot ensure the setup steps are performed.
+  const onInstanceConfigured = () => showError(INSTANCE_CONFIGURED_MESSAGE);
+
   try {
-    setupSpinner.start("Getting a setup token...");
+    spinner.start("Preparing to setup the instance...");
 
     let res = await fetch(`${instanceUrl}/api/session/properties`, {
       method: "GET",
       headers: { "Content-Type": "application/json" },
     });
 
-    // We will get an "unauthenticated" error when the instance has been configured.
-    if (!res.ok) {
-      showError(INSTANCE_CONFIGURED_MESSAGE);
+    console.log("yessssss");
+
+    // We will get an auth error when the instance has been configured.
+    if (res.status !== 200) {
+      onInstanceConfigured();
       return false;
     }
 
@@ -49,11 +55,12 @@ export async function setupMetabaseInstance(
 
     // If the setup token has been cleared, assume instance is configured.
     if (!setupToken) {
-      showError(INSTANCE_CONFIGURED_MESSAGE);
+      onInstanceConfigured();
       return false;
     }
 
-    setupSpinner.text = "Creating an admin user...";
+    spinner.succeed();
+    spinner.start("Creating an admin user...");
 
     res = await fetch(`${instanceUrl}/api/setup`, {
       method: "POST",
@@ -75,12 +82,12 @@ export async function setupMetabaseInstance(
       headers: { "Content-Type": "application/json" },
     });
 
-    if (!res.ok) {
+    if (res.status !== 200) {
       const textResponse = await res.text();
 
       // The /api/setup route can only be used to create the first user, however a user currently exists.
       if (textResponse.includes("a user currently exists")) {
-        showError(INSTANCE_CONFIGURED_MESSAGE);
+        onInstanceConfigured();
         return false;
       }
 
@@ -101,7 +108,11 @@ export async function setupMetabaseInstance(
       return false;
     }
 
-    setupSpinner.text = "Enabling embedding features...";
+    const cookie = res.headers.get("cookie");
+    console.log("Cookie =", cookie);
+
+    spinner.succeed();
+    spinner.start("Enabling embedding features...");
 
     res = await fetch(`${instanceUrl}/api/setting`, {
       method: "PUT",
@@ -114,12 +125,19 @@ export async function setupMetabaseInstance(
       headers: { "Content-Type": "application/json" },
     });
 
-    if (!res.ok) {
-      const { errors } = (await res.json()) as {
+    if (res.status !== 200) {
+      showError(`Failed to enable embedding features.\n`);
+
+      const textResponse = await res.text();
+
+      if (textResponse.includes("Unauthenticated")) {
+        onInstanceConfigured();
+        return false;
+      }
+
+      const { errors } = JSON.parse(textResponse) as {
         errors: Record<string, string>;
       };
-
-      showError(`Failed to enable embedding features.\n`);
 
       if (errors) {
         console.log("\n", errors);
@@ -128,17 +146,15 @@ export async function setupMetabaseInstance(
       return false;
     }
 
-    setupSpinner.stop();
+    spinner.succeed();
 
     return true;
   } catch (error) {
-    printError("Failed to setup Metabase instance.");
+    spinner.fail("Failed to setup Metabase instance.");
 
     if (error instanceof Error) {
       console.log(error.message);
     }
-
-    setupSpinner.stop();
 
     return false;
   }

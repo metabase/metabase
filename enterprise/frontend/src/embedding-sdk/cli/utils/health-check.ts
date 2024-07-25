@@ -17,7 +17,7 @@ export async function pollUntilMetabaseInstanceReady(
 ): Promise<boolean> {
   let attempts = 0;
 
-  const loadingSpinner = ora(
+  const spinner = ora(
     "Waiting for the Metabase instance to be ready. This usually takes 1 to 5 minutes.",
   );
 
@@ -25,7 +25,7 @@ export async function pollUntilMetabaseInstanceReady(
     // The instance is not yet ready. Show a message so users can anticipate the wait.
     if (attempts === 1) {
       console.log();
-      loadingSpinner.start();
+      spinner.start();
     }
 
     // fetch will throw an error if the server is not reachable
@@ -37,7 +37,7 @@ export async function pollUntilMetabaseInstanceReady(
       // Endpoint returns 503 when Metabase is not ready yet.
       // It returns 200 when Metabase is ready.
       if (res.ok) {
-        loadingSpinner.stop();
+        spinner.succeed();
         return true;
       }
     } catch (error) {}
@@ -46,6 +46,8 @@ export async function pollUntilMetabaseInstanceReady(
 
     await delay(HEALTH_CHECK_WAIT);
   }
+
+  spinner.fail();
 
   return false;
 }

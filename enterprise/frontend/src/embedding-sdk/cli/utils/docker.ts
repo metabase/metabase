@@ -114,9 +114,7 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
     }
   }
 
-  const loadingSpinner = ora(
-    "Starting Metabase in a Docker container...",
-  ).start();
+  const spinner = ora("Starting Metabase in a Docker container.").start();
 
   // if the container has never been run before, we should run it.
   try {
@@ -139,10 +137,12 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
     );
 
     if (stdout) {
-      loadingSpinner.stop();
+      spinner.succeed();
       printSuccess(messageContainerStarted(port));
       return port;
     }
+
+    spinner.fail();
 
     if (stderr) {
       printInfo(chalk.grey(stderr.trim()));
@@ -150,13 +150,13 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
 
     return false;
   } catch (error) {
+    spinner.fail();
+
     if (error instanceof Error) {
       printError("Failed to start Metabase.");
       console.log(error.message);
     }
 
     return false;
-  } finally {
-    loadingSpinner.stop();
   }
 }
