@@ -18,7 +18,6 @@ import {
   getDashboardCard,
   createNativeQuestion,
   queryBuilderMain,
-  queryBuilderFooter,
   withDatabase,
   visitPublicQuestion,
   visitPublicDashboard,
@@ -628,16 +627,17 @@ describe("issue 27643", () => {
         createNativeQuestion(getQuestionDetails(fieldId), {
           wrapId: true,
           idAlias: "questionId",
-          visitQuestion: true,
         });
       });
     });
 
     it("in static embedding and in public question scenarios (metabase#27643-2)", () => {
       cy.log("Test the question");
+      visitQuestion("@questionId");
+      cy.findAllByTestId("cell-data").should("contain", "true");
       toggleFilterWidgetValues(["false"]);
       queryBuilderMain().button("Get Answer").click();
-      queryBuilderFooter().findByText("Showing 455 rows").should("be.visible");
+      cy.findAllByTestId("cell-data").should("contain", "false");
 
       cy.log("Test the embedded question");
       cy.get("@questionId").then(question => {
@@ -645,24 +645,22 @@ describe("issue 27643", () => {
           resource: { question },
           params: {},
         });
-      });
 
-      toggleFilterWidgetValues(["false"]);
-      cy.findByTestId("visualization-root")
-        .findByText("Rows 1-13 of 455")
-        .should("be.visible");
+        cy.findAllByTestId("cell-data").should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        cy.findAllByTestId("cell-data").should("contain", "false");
+      });
 
       cy.log("Test the public question");
       cy.get("@questionId").then(questionId => {
         // We were signed out due to the previous visitEmbeddedPage
         cy.signInAsAdmin();
         visitPublicQuestion(questionId);
-      });
 
-      toggleFilterWidgetValues(["false"]);
-      cy.findByTestId("visualization-root")
-        .findByText("Rows 1-13 of 455")
-        .should("be.visible");
+        cy.findAllByTestId("cell-data").should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        cy.findAllByTestId("cell-data").should("contain", "false");
+      });
     });
   });
 });
