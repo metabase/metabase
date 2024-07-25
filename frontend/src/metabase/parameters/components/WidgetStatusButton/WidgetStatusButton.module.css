@@ -1,4 +1,4 @@
 .root {
   margin-left: auto;
-  flex-shrink: 0;
+  flex: 0 0 auto;
 }
