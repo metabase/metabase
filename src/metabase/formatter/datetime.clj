@@ -61,8 +61,9 @@
                               ;; and not have any metadata. Since we don't know the metadata, we can never
                               ;; match a key with metadata, even if we do have the correct name or id
                               (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
-    (or (all-cols-settings {::mb.viz/column-name column-name})
-        (all-cols-settings {::mb.viz/field-id field-id-or-name}))))
+    (or (all-cols-settings {::mb.viz/field-id field-id-or-name})
+        (all-cols-settings {::mb.viz/column-name field-id-or-name}
+        (all-cols-settings {::mb.viz/column-name column-name})))))
 
 (defn- determine-time-format
   "Given viz-settings with a time-style and possible time-enabled (precision) entry, create the format string.
