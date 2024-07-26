@@ -425,7 +425,7 @@
   "Parses given json (a string or a reader) into a map of paths to types, i.e. `{[\"bob\"} String}`.
 
   Uses Jackson Streaming API to skip allocating data structures, eschews allocating values when possible.
-  Respects *nested-field-columns-max-row-length*."
+  Respects [[nested-field-columns-max-row-length]]."
   [v path]
   (if-not (json-object? v)
     {}
@@ -609,6 +609,7 @@
     (if (seq pk-identifiers)
       {:select json-field-exprs
        :from   [table-expr]
+       ;; mysql doesn't support limit in subquery, so we're using inner join here
        :join   [[{:union-all [{:nest {:select   pks-expr
                                       :from     [table-expr]
                                       :order-by (mapv #(vector % :asc) pk-identifiers)
