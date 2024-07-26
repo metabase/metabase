@@ -6,8 +6,8 @@ import { Button, Flex, Icon, rem, Tooltip } from "metabase/ui";
 type Props =
   | {
       className?: string;
-      status: "clear" | "reset";
       highlighted: boolean;
+      status: "clear" | "reset";
       onClick: () => void;
     }
   | {
