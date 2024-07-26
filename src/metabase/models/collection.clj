@@ -520,27 +520,27 @@
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mu/defn- effective-ancestors*
+  "Given a collection, return the effective ancestors of that collection."
+  [collection :- CollectionWithLocationOrRoot]
+  (if-not (collection.root/is-root-collection? collection)
+    (some->> (effective-location-path collection)
+             location-path->ids
+             (map (collection-id->collection))
+             (map #(select-keys % [:name :id :personal_owner_id :type]))
+             (map #(t2/instance :model/Collection %))
+             (cons (root-collection-with-ui-details (:namespace collection)))
+             (filter mi/can-read?))
+    []))
+
 (mi/define-batched-hydration-method effective-ancestors
   :effective_ancestors
   "Efficiently hydrate the `:effective_ancestors` of collections."
   [collections]
-  (let [collection-id->collection (into {} (for [collection collections] [(:id collection) collection]))
-        to-fetch (into #{} (comp (keep #(some-> % effective-location-path))
-                                 (mapcat location-path->ids)
-                                 (remove collection-id->collection))
-                       collections)
-        collection-id->collection (merge (if (seq to-fetch)
-                                           (t2/select-pk->fn identity :model/Collection :id [:in to-fetch])
-                                           {})
-                                         collection-id->collection)
-        annotate (fn [collection]
+  (let [annotate (fn [collection]
                    (cond-> collection
-                     (and (:id collection)
-                          (not (collection.root/is-root-collection? collection)))
-                     (assoc :effective_ancestors
-                            (->> (effective-location-path collection)
-                                 location-path->ids
-                                 (map collection-id->collection)))))]
+                     (some? collection)
+                     (assoc :effective_ancestors (effective-ancestors* collection))))]
     (map annotate collections)))
 
 (mu/defn- parent-id* :- [:maybe ms/PositiveInt]

@@ -90,14 +90,14 @@
                             :name (t2/select-one-fn :name :model/Collection :id coll-2)
                             :authority_level nil
                             :type nil
-                            :effective_ancestors []}}
+                            :effective_ancestors [{:id "root" :name "Our analytics" :authority_level nil}]}}
               {:collection {:id coll-3
                             :name (t2/select-one-fn :name :model/Collection :id coll-3)
                             :authority_level nil
                             :type nil
-                            :effective_ancestors [{:id coll-2
+                            :effective_ancestors [{:id "root" :name "Our analytics" :authority_level nil}
+                                                  {:id coll-2
                                                    :name (t2/select-one-fn :name :model/Collection :id coll-2)
-                                                   :authority_level nil
                                                    :type nil}]}}]
              (map #(select-keys % [:collection]) (:data (get!))))))))
 
