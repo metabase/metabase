@@ -177,17 +177,45 @@
                          [:= :t.db_id db-id]
                          (into [:or] (map table-query tables))]}))))
 
+(defn- fill-missing-table-ids
+  "See if we can qualify the schema and table-id for any field refs which couldn't resolve their field"
+  [table-refs field-refs]
+  ;; Note, at this point we have given up on any pretense of respecting case sensitivity
+  (let [t->ids  (group-by (comp u/lower-case-en :table) table-refs)
+        s+t->id (u/index-by (juxt (comp u/lower-case-en :schema)
+                                  (comp u/lower-case-en :table))
+                            table-refs)]
+    (into (empty field-refs)
+          (mapcat (fn [{:keys [schema table table-id] :as ref}]
+                    (if table-id
+                      [ref]
+                      (or (if schema
+                            (when-let [table-ref (s+t->id [(u/lower-case-en schema)
+                                                           (u/lower-case-en table)])]
+                              [(merge ref table-ref)])
+                            (seq (map #(merge ref %) (t->ids (u/lower-case-en table)))))
+                          [ref]))))
+          field-refs)))
+
+(fill-missing-table-ids
+ [{:schema 1 :table 2 :table-id 3}]
+ [{:schema 4 :table 5 :table-id 6}
+  {:schema nil :table 2}
+  {:schema 7 :table 2}])
+
 (defn- explicit-field-refs-for-query
   "Given the results of query analysis, return references to the corresponding fields and model outputs."
-  [{column-maps :columns table-maps :tables} db-id]
+  [{column-maps :columns table-maps :tables} db-id table-refs]
   (let [columns (map :component column-maps)
         tables  (map :component table-maps)]
-    (consolidate-columns
-     columns
-     (t2/select :model/QueryField (assoc field-and-table-fragment
-                                         :where [:and
-                                                 [:= :t.db_id db-id]
-                                                 (into [:or] (map (partial column-query tables) columns))])))))
+    (fill-missing-table-ids
+     table-refs
+     (consolidate-columns
+      columns
+      (t2/select :model/QueryField (assoc field-and-table-fragment
+                                          :where [:and
+                                                  [:= :t.db_id db-id]
+                                                  (into [:or] (map (partial column-query tables) columns))]))))))
 
 (defn- wildcard-tables
   "Given a parsed query, return the list of tables we are selecting from using a wildcard."
@@ -230,7 +258,7 @@
         sql-string    (:query (nqa.sub/replace-tags query))
         parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
         table-refs    (table-refs-for-query parsed-query db-id)
-        explicit-refs (explicit-field-refs-for-query parsed-query db-id)
+        explicit-refs (explicit-field-refs-for-query parsed-query db-id table-refs)
         implicit-refs (-> (implicit-references-for-query parsed-query db-id)
                           (set/difference explicit-refs))
         field-refs    (concat (mark-reference explicit-refs true)
