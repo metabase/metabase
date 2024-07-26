@@ -1,5 +1,3 @@
-import type { IconName } from "metabase/ui";
-
 /**
  * clear - to indicate the value can be removed
  * reset - to indicate the value can be reset to default
@@ -7,15 +5,3 @@ import type { IconName } from "metabase/ui";
  * none - when the component is not needed, but we still render it to preserve space for it
  */
 export type Status = "clear" | "reset" | "empty" | "none";
-
-export type StatusConfig =
-  | {
-      button: true;
-      icon: IconName;
-      label: string;
-    }
-  | {
-      button?: never;
-      label?: never;
-      icon: IconName;
-    };
