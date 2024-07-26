@@ -44,7 +44,7 @@ export const WidgetStatus = ({
         <Tooltip label={t`Clear`}>
           <Button
             aria-label={t`Clear`}
-            color={highlighted ? undefined : "text-secondary"}
+            color={highlighted ? undefined : "text-medium"}
             compact
             leftIcon={<Icon name="close" />}
             m={rem(BUTTON_MARGIN)}
@@ -59,7 +59,7 @@ export const WidgetStatus = ({
         <Tooltip label={t`Reset filter to default state`}>
           <Button
             aria-label={t`Reset filter to default state`}
-            color={highlighted ? undefined : "text-secondary"}
+            color={highlighted ? undefined : "text-medium"}
             compact
             leftIcon={<Icon name="revert" />}
             m={rem(BUTTON_MARGIN)}
