@@ -63,7 +63,7 @@
               (merge {:id [:in {:select [:mf.id]
                                 :from   [[:metabase_field :mf]]
                                 :join   [[:metabase_table :mt] [:= :mf.table_id :mt.id]]
-                                :where  [:= :mt.db_id (:id database)]}]}
+                                :where  [:and :mt.active [:= :mt.db_id (:id database)]]}]}
                      sync.fingerprint/incomplete-analysis-kvs)
               {:last_analyzed :%now}))
 
