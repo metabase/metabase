@@ -194,7 +194,7 @@ const getDatasetParams = ({
     }
   }
 
-  // Normal endpoints, also used by internal, interactive embedding and sdk
+  // Normal endpoints used by internal, interactive embedding and sdk
 
   if (resource === "dashcard") {
     return {
