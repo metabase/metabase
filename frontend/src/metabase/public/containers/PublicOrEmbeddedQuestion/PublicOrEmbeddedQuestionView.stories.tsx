@@ -1,6 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story } from "@storybook/react";
+import { userEvent, within } from "@storybook/testing-library";
 import { useEffect, type ComponentProps } from "react";
 import { Provider } from "react-redux";
 
@@ -123,6 +124,25 @@ export const DarkThemeDefault = Template.bind({});
 DarkThemeDefault.args = {
   ...defaultArgs,
   theme: "night",
+};
+
+export const DarkThemeDownload = Template.bind({});
+DarkThemeDownload.args = {
+  ...defaultArgs,
+  theme: "night",
+  downloadsEnabled: true,
+};
+
+DarkThemeDownload.play = async ({ canvasElement }) => {
+  console.log("[DEBUG]", `play()`);
+  const canvas = within(canvasElement);
+
+  const downloadButton = await canvas.findByTestId("download-button");
+  await userEvent.click(downloadButton!);
+
+  const documentElement = within(document.documentElement);
+  const pngButton = await documentElement.findByText(".png");
+  await userEvent.click(pngButton);
 };
 
 // Transparent theme

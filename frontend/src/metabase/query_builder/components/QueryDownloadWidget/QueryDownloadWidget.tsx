@@ -54,11 +54,10 @@ const QueryDownloadWidget = ({
     <Popover opened={isPopoverOpen} onClose={() => setIsPopoverOpen(false)}>
       <Popover.Target>
         <Flex className={className}>
-          {loading ? (
-            <Tooltip label={t`Downloading…`}>
-              <LoadingSpinner size={18} />
-            </Tooltip>
-          ) : (
+          {loading ? null : (
+            // <Tooltip label={t`Downloading…`}>
+            //   <LoadingSpinner size={18} />
+            // </Tooltip>
             <Tooltip label={t`Download full results`}>
               <DownloadIcon
                 onClick={() => setIsPopoverOpen(!isPopoverOpen)}
