@@ -275,6 +275,10 @@
               (lib.metadata.calculation/display-name query stage-number expr style)
               (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))))
 
+(defmethod lib.metadata.calculation/display-name-method :relative-time-interval
+  [_query _stage-number _clause _style]
+  "Relative time interval")
+
 (defmethod lib.metadata.calculation/display-name-method :relative-datetime
   [_query _stage-number [_tag _opts n unit] _style]
   (i18n/tru "{0}" (lib.temporal-bucket/describe-temporal-interval n unit)))

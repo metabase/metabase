@@ -234,6 +234,20 @@
      [:relative-datetime 1 unit]
      [:relative-datetime n unit]]))
 
+(defn desugar-relative-time-interval
+  "Transform `:relative-time-interval` to `:and` expression."
+  [m]
+  (lib.util.match/replace
+   m
+   [:relative-time-interval col value bucket offset-value offset-bucket]
+   ;; TODO: Ramifications of setting temporal unit to :default? Seems to be the right thing.
+   ;; TODO: Simplify.
+   (let [no-bucket-col    (update col 2 dissoc :temporal-unit)
+         shifted-col-expr [:+ no-bucket-col [:interval (- offset-value) offset-bucket]]]
+     [:and
+      [:>= shifted-col-expr [:relative-datetime value bucket]]
+      [:<  shifted-col-expr [:+ [:relative-datetime value bucket] [:interval 1 bucket]]]])))
+
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
 
@@ -376,6 +390,7 @@
       desugar-multi-argument-comparisons
       desugar-does-not-contain
       desugar-time-interval
+      desugar-relative-time-interval
       desugar-is-null-and-not-null
       desugar-is-empty-and-not-empty
       desugar-inside
