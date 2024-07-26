@@ -40,28 +40,33 @@
                                                               :field_id           field-1
                                                               :explicit_reference false}
                             ;; QFs to include:
-                            :model/QueryField {qf-1 :id}     {:card_id  card-1
+                            :model/QueryField {}             {:card_id  card-1
                                                               :table    "T1"
                                                               :column   "FA"
                                                               :table_id table-1
                                                               :field_id field-1}
-                            :model/QueryField {qf-1b :id}    {:card_id  card-1
+                            :model/QueryField {}             {:card_id  card-1
                                                               :table    "T1"
                                                               :column   "FAB"
                                                               :table_id table-1
                                                               :field_id nil}
-                            :model/QueryField {qf-2 :id}     {:card_id  card-2
+                            :model/QueryField {}             {:card_id  card-2
                                                               :table    "T2"
                                                               :column   "FB"
                                                               :table_id table-2
                                                               :field_id field-2}
-                            :model/QueryField {qf-3 :id}     {:card_id  card-3
+                            :model/QueryField {}             {:card_id  card-2
+                                                              :table    "T2"
+                                                              :column   "FBB"
+                                                              :table_id table-2
+                                                              :field_id nil}
+                            :model/QueryField {}             {:card_id  card-3
                                                               :table    "T3"
                                                               :column   "FC"
                                                               :table_id  nil
                                                               :field_id nil}]
      (mt/with-premium-features #{:query-reference-validation}
-       (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-1b qf-2 qf-3])))))
+       (mt/call-with-map-params f [card-1 card-2 card-3 card-4])))))
 
 (defmacro ^:private with-test-setup
   "Creates some non-stale QueryFields and anaphorically provides stale QueryField IDs called `qf-{1-3}` and `qf-1b` and
@@ -71,7 +76,7 @@
   `card-4` is guaranteed not to have problems"
   [& body]
   `(do-with-test-setup
-    (mt/with-anaphora [qf-1 qf-1b qf-2 qf-3 card-1 card-2 card-3 card-4]
+    (mt/with-anaphora [card-1 card-2 card-3 card-4]
       ~@body)))
 
 (def ^:private url "ee/query-reference-validation/invalid-cards")
@@ -101,8 +106,7 @@
    {expected-total :total expected-limit :limit expected-offset :offset expected-data :data}
    {actual-total :total actual-limit :limit actual-offset :offset actual-data :data}
    unexpected]
-  (let [results [
-                 ;; Total
+  (let [results [;; Total
                  (merge {:expected {:total expected-total}
                          :actual   {:total actual-total}}
                         (if (<= expected-total actual-total)
@@ -124,17 +128,17 @@
                           {:type :fail
                            :diffs [actual-offset [expected-offset nil]]}))
                  ;; Data
-                 (merge {:expected {:data expected-data}
-                         :actual   {:data actual-data}}
-                        (let [trimmed-actual-data (map #(select-keys % (keys (first expected-data))) actual-data)
-                              actual-set          (into #{} trimmed-actual-data)
-                              expected-set        (into #{} expected-data)]
+                 (let [trimmed-actual-data (map #(select-keys % (keys (first expected-data))) actual-data)
+                       actual-set          (into #{} trimmed-actual-data)
+                       expected-set        (into #{} expected-data)]
+                   (merge {:expected {:data expected-data}
+                           :actual   {:data trimmed-actual-data}}
                           (if (and (some? actual-data)
                                    (mt/ordered-subset? expected-data trimmed-actual-data approx=))
                             {:type :pass}
-                            {:type :fail
-                             :diffs [actual-data [(set/difference expected-set actual-set)
-                                                  (set/difference actual-set expected-set)]]})))
+                            {:type  :fail
+                             :diffs [trimmed-actual-data [(set/difference expected-set actual-set)
+                                                          (set/difference actual-set expected-set)]]})))
                  ;; Unexpected
                  (if (none-found? unexpected actual-data)
                    {:type :pass}
@@ -173,13 +177,6 @@
                   " use it. Learn more at metabase.com/upgrade/")
              (mt/user-http-request :crowberto :get 402 url))))))
 
-(defn- strip-unrelated
-  "This is a despearate workaround to trim the diffs from qv=. Ideally we rather make qv= smarter."
-  [response]
-  (-> response
-      (select-keys [:total :limit :offset :data])
-      (update :data (partial map #(select-keys % [:id :name :errors])))))
-
 (deftest list-invalid-cards-basic-test
   (testing "Only returns cards with problematic field refs"
     (with-test-setup
@@ -191,11 +188,11 @@
                            {:type "unknown-field",  :table "T1", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
-                  :errors [{:type "inactive-table", :table "T2", :field "FB"}]}
+                  :errors [{:type "inactive-table", :table "T2"}]}
                  {:id     card-3
                   :name   "C"
-                  :errors [{:type "unknown-table",  :table "T3", :field "FC"}]}]}
-               (strip-unrelated (get!))
+                  :errors [{:type "unknown-table",  :table "T3"}]}]}
+               (get!)
                [{:id   card-4
                  :name "D"}])))))
 
@@ -212,8 +209,8 @@
                            {:type "unknown-field",  :table "T1", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
-                  :errors [{:type "inactive-table", :table "T2", :field "FB"}]}]}
-               (strip-unrelated (get! {:limit 2}))
+                  :errors [{:type "inactive-table", :table "T2"}]}]}
+               (get! {:limit 2})
                [{:id   card-3
                  :name "C"}
                 {:id   card-4
@@ -224,8 +221,8 @@
                 :data
                 [{:id     card-3
                   :name   "C"
-                  :errors [{:type "unknown-table", :table "T3", :field "FC"}]}]}
-               (strip-unrelated (get! {:limit 1 :offset 2}))
+                  :errors [{:type "unknown-table", :table "T3"}]}]}
+               (get! {:limit 1 :offset 2})
                [{:id   card-1
                  :name "A"}
                 {:id   card-2
