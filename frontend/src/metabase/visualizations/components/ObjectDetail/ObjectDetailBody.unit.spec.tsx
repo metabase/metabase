@@ -53,5 +53,34 @@ describe("ObjectDetailBody", () => {
     fireEvent.click(cellElement);
 
     expect(handleClick).toHaveBeenCalledTimes(1);
+    expect(handleClick).toHaveBeenCalledWith(expect.objectContaining({
+      target: expect.any(HTMLElement),
+    }));
+  });
+
+  it("does not call handleClick for 'View more' / 'View less' clicks", () => {
+    const handleClick = jest.fn();
+    render(
+      <ObjectDetailBody
+        data={testDataset}
+        objectName="Large Sandstone Socks"
+        zoomedRow={testDataset.rows[2]}
+        settings={{
+          column: () => null,
+        }}
+        hasRelationships={false}
+        onVisualizationClick={() => null}
+        visualizationIsClickable={() => false}
+        tableForeignKeys={[]}
+        tableForeignKeyReferences={{}}
+        followForeignKey={() => null}
+        handleClick={handleClick}
+      />,
+    );
+
+    const viewMoreElement = screen.getByText("View more");
+    fireEvent.click(viewMoreElement);
+
+    expect(handleClick).not.toHaveBeenCalled();
   });
 });

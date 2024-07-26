@@ -308,8 +308,9 @@ export function ObjectDetailView({
       }
 
       if (onVisualizationClick && visualizationIsClickable) {
+        const clickedElement = (event.target as HTMLElement).closest(".cellData");
         const clicked = {
-          element: event.target.closest(".cellData") ? "cell" : "header",
+          element: clickedElement || event.target,
           event,
         };
         if (visualizationIsClickable(clicked)) {
