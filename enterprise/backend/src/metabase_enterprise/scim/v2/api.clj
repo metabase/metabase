@@ -159,12 +159,14 @@
                                    :offset   offset
                                    :order-by [[:id :asc]]})
         results-count  (count users)
-        items-per-page (if (< results-count limit) results-count limit)]
-    {:schemas      [list-schema-uri]
-     :totalResults (t2/count :model/User {:where where-clause})
-     :startIndex   offset
-     :itemsPerPage items-per-page
-     :Resources    (map mb-user->scim users)}))
+        items-per-page (if (< results-count limit) results-count limit)
+        result         {:schemas      [list-schema-uri]
+                        :totalResults (t2/count :model/User {:where where-clause})
+                        :startIndex   offset
+                        :itemsPerPage items-per-page
+                        :Resources    (map mb-user->scim users)}]
+    (log/errorf "result: %s" result)
+    result))
 
 (defendpoint GET "/Users/:id"
   "Fetch a single user."
