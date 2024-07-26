@@ -1468,7 +1468,7 @@
 
 (defn- keyword-except-column-key
   "Converts an object key to a keyword if it's not a column key. Both new and old column keys are arrays serialized
-  to JSON and therefore they start with '['. Column keys are kept as string for comparison."
+  to JSON and therefore they start with '['. Column keys are kept as strings for comparison."
   [key]
   (if (str/starts-with? key "[") key (keyword key)))
 
