@@ -46,10 +46,10 @@ export type PulseParameter = {
   value?: string;
 };
 
-type ChannelDetails = {
+export type ChannelDetails = {
   url: string;
   "auth-method": NotificationAuthMethods;
-  "auth-info": Record<string, string>;
+  "auth-info"?: Record<string, string>;
 };
 
 export type NotificationAuthMethods =
