@@ -58,9 +58,9 @@ export const ToasterButton = styled.button`
 export const ToasterDismiss = styled.button`
   cursor: pointer;
   transition: color 200ms ease;
-  color: var(--mb-color-bg-dark);
+  color: ${alpha(color("text-white"), 0.8)};
 
   &:hover {
-    color: ${() => lighten("bg-dark", 0.3)};
+    color: ${color("text-white")};
   }
 `;

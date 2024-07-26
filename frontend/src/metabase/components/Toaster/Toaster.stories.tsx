@@ -22,3 +22,29 @@ Default.args = {
     alert("Dismissed");
   },
 };
+
+export const SuccessToast = Template.bind({});
+SuccessToast.args = {
+  message: "Operation completed successfully!",
+  isShown: true,
+  className: "bg-success text-white",
+  onConfirm: () => {
+    alert("Confirmed");
+  },
+  onDismiss: () => {
+    alert("Dismissed");
+  },
+};
+
+export const ErrorToast = Template.bind({});
+ErrorToast.args = {
+  message: "An error occurred. Please try again.",
+  isShown: true,
+  className: "bg-error text-white",
+  onConfirm: () => {
+    alert("Confirmed");
+  },
+  onDismiss: () => {
+    alert("Dismissed");
+  },
+};
