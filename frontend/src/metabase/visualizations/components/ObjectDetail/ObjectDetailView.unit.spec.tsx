@@ -351,7 +351,7 @@ describe("ObjectDetailView", () => {
 
     it("should not show implicit public delete action", async () => {
       const action = await findActionInActionMenu(implicitPublicDeleteAction);
-      expect(action).not.toBeInTheDocument();
+      expect(action).not toBeInTheDocument();
     });
 
     it("should not show implicit archived update action", async () => {
@@ -361,7 +361,8 @@ describe("ObjectDetailView", () => {
 
     it("should not show implicit archived delete action", async () => {
       const action = await findActionInActionMenu(implicitArchivedDeleteAction);
-      expect(action).not.toBeInTheDocument();
+      expect(action).not toBeInTheDocument();
+    });
     });
 
     it("should not show query action", async () => {
@@ -518,6 +519,29 @@ describe("ObjectDetailView", () => {
 
     expect(onVisualizationClick).toHaveBeenCalledTimes(1);
     expect(visualizationIsClickable).toHaveBeenCalledTimes(1);
+    expect(onVisualizationClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        element: expect.any(HTMLElement),
+        event: expect.any(Object),
+      }),
+    );
+  });
+
+  it("should not trigger onVisualizationClick for non-cell elements", async () => {
+    const onVisualizationClick = jest.fn();
+    const visualizationIsClickable = jest.fn(() => true);
+
+    setup({
+      question: mockDataset,
+      onVisualizationClick,
+      visualizationIsClickable,
+    });
+
+    const nonCellElement = screen.getByTestId("object-detail");
+    await userEvent.click(nonCellElement);
+
+    expect(onVisualizationClick).not.toHaveBeenCalled();
+    expect(visualizationIsClickable).not.toHaveBeenCalled();
   });
 });
 

@@ -296,33 +296,34 @@ export function ObjectDetailView({
   }, [closeObjectDetail, handleActionSuccess]);
 
   const handleClick = useCallback(
-    (event: React.MouseEvent<HTMLElement>) => {
-      const target = event.target as HTMLElement;
-      if (
-        target.tagName === "SPAN" &&
-        (target.textContent === "View more" ||
-          target.textContent === "View less")
-      ) {
-        event.stopPropagation();
-        return;
-      }
+  (event: React.MouseEvent<HTMLElement>) => {
+    const target = event.target as HTMLElement;
+    if (
+      target.tagName === "SPAN" &&
+      (target.textContent === "View more" ||
+        target.textContent === "View less")
+    ) {
+      event.stopPropagation();
+      return;
+    }
 
-      if (onVisualizationClick && visualizationIsClickable) {
-        const clickedElement = (event.target as HTMLElement).closest(
-          ".cellData",
-        );
-        const clicked = {
-          element: clickedElement || event.target,
+    if (onVisualizationClick && visualizationIsClickable) {
+      const clickedElement = (event.currentTarget as HTMLElement).closest(
+        ".cellData",
+      );
+      if (clickedElement instanceof Element) {
+        const clicked: Lib.ClickObject = {
+          element: clickedElement,
           event,
         };
         if (visualizationIsClickable(clicked)) {
           onVisualizationClick(clicked);
         }
       }
-    },
-    [onVisualizationClick, visualizationIsClickable],
-  );
-
+    }
+  },
+  [onVisualizationClick, visualizationIsClickable],
+);
   if (!data) {
     return null;
   }
@@ -415,3 +416,4 @@ export function ObjectDetailView({
     </>
   );
 }
+
