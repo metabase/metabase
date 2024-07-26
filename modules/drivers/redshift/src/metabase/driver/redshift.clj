@@ -5,7 +5,6 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -54,8 +53,7 @@
   (apply (get-method driver/describe-table :sql-jdbc) args))
 
 (def ^:private get-tables-sql
-  ;; Cal 2024-04-09 This query uses tables that the JDBC redshift driver currently uses.
-  ;; It does not return tables from datashares, which is a relatively new feature of redshift.
+  ;; Cal 2024-04-09 This query does not return tables from datashares, which is a relatively new feature of redshift.
   ;; See https://github.com/dbt-labs/dbt-redshift/issues/742 for an implementation for DBT's integration with redshift
   ;; for inspiration, and the JDBC driver itself:
   ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
@@ -63,26 +61,18 @@
   [(str/join
     "\n"
     ["select"
-     "  c.relname as name,"
-     "  n.nspname as schema,"
-     "  case c.relkind"
-     "    when 'r' then 'table'"
-     "    when 'p' then 'partitioned table'"
-     "    when 'v' then 'view'"
-     "    when 'f' then 'foreign table'"
-     "    when 'm' then 'materialized view'"
-     "    end as type,"
-     "  d.description"
-     "  from pg_catalog.pg_namespace n, pg_catalog.pg_class c"
-     "  left join pg_catalog.pg_description d on c.oid = d.objoid and d.objsubid = 0"
-     "  left join pg_catalog.pg_class dc on d.classoid=dc.oid and dc.relname='pg_class'"
-     "  left join pg_catalog.pg_namespace dn on dn.oid=dc.relnamespace and dn.nspname='pg_catalog'"
-     "  where c.relnamespace = n.oid"
-     "    and n.nspname !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
-     "    and c.relkind in ('r', 'p', 'v', 'f', 'm')"
-     "    and pg_catalog.has_schema_privilege(n.nspname, 'USAGE')"
-     "    and (pg_catalog.has_table_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT')"
-     "         or pg_catalog.has_any_column_privilege('\"'||n.nspname||'\".\"'||c.relname||'\"','SELECT'))"
+     "  table_name as name,"
+     "  schema_name as schema,"
+     "  table_type as type,"
+     "  remarks as description"
+     ;; svv_all_tables would include tables from other databases that the user has access to via redshift datashares,
+     ;; which we don't support yet.
+     "from svv_redshift_tables t"
+     "where schema_name !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
+     "  and database_name = current_database()"
+     "  and pg_catalog.has_schema_privilege(schema_name, 'USAGE')"
+     "  and (pg_catalog.has_table_privilege('\"'||schema_name||'\".\"'||table_name||'\"','SELECT')"
+     "       or pg_catalog.has_any_column_privilege('\"'||schema_name||'\".\"'||table_name||'\"','SELECT'))"
      "union all"
      "select"
      "  tablename as name,"
@@ -107,25 +97,9 @@
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
 (defmethod driver/describe-database :redshift
-  [driver database]
+  [_driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
-  ;;
-  ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
-  ;; fix #45874
-  (try
-    (u/auto-retry (if config/is-prod? 2 5)
-      (try
-        {:tables (into #{} (describe-database-tables database))}
-        (catch Throwable e
-          ;; during test/REPL runs, wait a second before throwing the exception, that way when we do our retry there is
-          ;; a better chance of it succeeding.
-          (when-not config/is-prod?
-            (Thread/sleep 1000))
-          (throw e))))
-    (catch Throwable e
-      (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
-                      {}
-                      e)))))
+  {:tables (into #{} (describe-database-tables database))})
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]
