@@ -300,7 +300,8 @@ export function ObjectDetailView({
       const target = event.target as HTMLElement;
       if (
         target.tagName === "SPAN" &&
-        (target.textContent === "View more" || target.textContent === "View less")
+        (target.textContent === "View more" ||
+          target.textContent === "View less")
       ) {
         event.stopPropagation();
         return;
@@ -316,7 +317,7 @@ export function ObjectDetailView({
         }
       }
     },
-    [onVisualizationClick, visualizationIsClickable]
+    [onVisualizationClick, visualizationIsClickable],
   );
 
   if (!data) {
