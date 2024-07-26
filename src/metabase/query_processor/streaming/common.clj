@@ -96,8 +96,9 @@
   "Generates the column titles that should be used in the export, taking into account viz settings."
   [ordered-cols col-settings format-rows?]
   (for [col ordered-cols]
-    (let [col-settings'   (update-keys col-settings #(select-keys % [::mb.viz/field-id ::mb.viz/column-name]))
-          format-settings (get col-settings' {::mb.viz/column-name (:name col)})
+    (let [col-name        (or (:remapped_from col) (:name col))
+          col-settings'   (update-keys col-settings #(select-keys % [::mb.viz/field-id ::mb.viz/column-name]))
+          format-settings (get col-settings' {::mb.viz/column-name col-name})
           is-currency?    (or (isa? (:semantic_type col) :type/Currency)
                               (= (::mb.viz/number-style format-settings) "currency"))
           merged-settings (if is-currency?

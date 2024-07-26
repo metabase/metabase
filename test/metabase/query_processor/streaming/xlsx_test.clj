@@ -437,15 +437,15 @@
 
     (testing "Misc format strings are included correctly in exports"
       (is (= ["[$€]#,##0.00"]
-             (second (xlsx-export [{:field_ref [:field 0] :name "Col" :semantic_type :type/Cost}]
-                                  {::mb.viz/column-settings {{::mb.viz/field-id 0}
+             (second (xlsx-export [{:name "Col" :semantic_type :type/Cost}]
+                                  {::mb.viz/column-settings {{::mb.viz/column-name "Col"}
                                                              {::mb.viz/currency           "EUR"
                                                               ::mb.viz/currency-in-header false}}}
                                   [[1.23]]
                                   parse-format-strings))))
       (is (= ["yyyy.m.d, h:mm:ss am/pm"]
-             (second (xlsx-export [{:field_ref [:field 0] :name "Col" :effective_type :type/Temporal}]
-                                  {::mb.viz/column-settings {{::mb.viz/field-id 0}
+             (second (xlsx-export [{:name "Col" :effective_type :type/Temporal}]
+                                  {::mb.viz/column-settings {{::mb.viz/column-name "Col"}
                                                              {::mb.viz/date-style     "YYYY/M/D",
                                                               ::mb.viz/date-separator ".",
                                                               ::mb.viz/time-style     "h:mm A",
@@ -477,8 +477,8 @@
     (is (= ["Display name"]
            (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}] {} []))))
     (is (= ["Column title"]
-           (first (xlsx-export [{:id 0, :display_name "Display name", :name "Name"}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Column title"}}}
+           (first (xlsx-export [{:display_name "Display name", :name "Name"}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "Name"} {::mb.viz/column-title "Column title"}}}
                                []))))
     ;; Columns can be correlated to viz settings by :name if :id is missing (e.g. for native queries)
     (is (= ["Column title"]
@@ -489,43 +489,43 @@
   (testing "Currency is included in column title if necessary"
     ;; Dollar symbol is included by default if semantic type of column derives from :type/Currency
     (is (= ["Col ($)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {}}}
+           (first (xlsx-export [{:name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "Col"} {}}}
                                []))))
     ;; Currency code is used if requested in viz settings
     (is (= ["Col (USD)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+           (first (xlsx-export [{:name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "Col"}
                                                           {::mb.viz/currency "USD",
                                                            ::mb.viz/currency-style "code"}}}
                                []))))
     ;; Currency name is used if requested in viz settings
     (is (= ["Col (US dollars)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+           (first (xlsx-export [{:name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "Col"}
                                                           {::mb.viz/currency "USD",
                                                            ::mb.viz/currency-style "name"}}}
                                []))))
     ;; Currency type from viz settings is respected
     (is (= ["Col (€)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "EUR"}}}
+           (first (xlsx-export [{:name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "Col"} {::mb.viz/currency "EUR"}}}
                                []))))
     ;; Falls back to code if native symbol is not supported
     (is (= ["Col (KGS)"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+           (first (xlsx-export [{:name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "Col"}
                                                           {::mb.viz/currency "KGS", ::mb.viz/currency-style "symbol"}}}
                                []))))
     ;; Currency not included unless semantic type of column derives from :type/Currency
     (is (= ["Col"]
-           (first (xlsx-export [{:id 0, :name "Col"}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/currency "USD"}}}
+           (first (xlsx-export [{:name "Col"}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "Col"} {::mb.viz/currency "USD"}}}
                                []))))
     ;; Currency not included if ::mb.viz/currency-in-header is false
     (is (= ["Col"]
-           (first (xlsx-export [{:id 0, :name "Col", :semantic_type :type/Cost}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0}
+           (first (xlsx-export [{:name "Col", :semantic_type :type/Cost}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "Col"}
                                                           {::mb.viz/currency "USD",
                                                            ::mb.viz/currency-style "code",
                                                            ::mb.viz/currency-in-header false}}}
@@ -533,16 +533,16 @@
 
   (testing "If a col is remapped to a foreign key field, the title is taken from the viz settings for its fk_field_id (#18573)"
     (is (= ["Correct title"]
-           (first (xlsx-export [{:id 0, :fk_field_id 1, :remapped_from "FIELD_1"}]
-                               {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/column-title "Incorrect title"}
-                                                          {::mb.viz/field-id 1} {::mb.viz/column-title "Correct title"}}}
+           (first (xlsx-export [{:name "FIELD_1", :remapped_from "FIELD_2"}]
+                               {::mb.viz/column-settings {{::mb.viz/column-name "FIELD_1"} {::mb.viz/column-title "Incorrect title"}
+                                                          {::mb.viz/column-name "FIELD_2"} {::mb.viz/column-title "Correct title"}}}
                                []))))))
 
 (deftest scale-test
   (testing "scale is applied to data prior to export"
     (is (= [2.0]
-           (second (xlsx-export [{:id 0, :name "Col"}]
-                                {::mb.viz/column-settings {{::mb.viz/field-id 0} {::mb.viz/scale 2}}}
+           (second (xlsx-export [{::name "Col"}]
+                                {::mb.viz/column-settings {{::mb.viz/column-name "Col"} {::mb.viz/scale 2}}}
                                 [[1.0]]))))))
 
 (deftest misc-data-test
