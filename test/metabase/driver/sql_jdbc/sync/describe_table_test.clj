@@ -430,10 +430,12 @@
                   table       (t2/select-one :model/Table :db_id (mt/id) :name "long_json_table")
                   json-fields (t2/select :model/Field :table_id (:id table) :name [:in ["short_json" "long_json"]])
                   pks         ["id"]
-                  sample      #(#'sql-jdbc.describe-table/sample-json-reducible-query driver/*driver* jdbc-spec table json-fields pks)]
-              (is (= #{{:short_json "{\"a\":\"x\"}", :long_json "{\"a\":\"x\"}"}
-                       {:short_json "{\"b\":\"y\"}", :long_json nil}}
-                     (into #{} (sample))))
+                  sample      (fn []
+                                (let [rows (#'sql-jdbc.describe-table/sample-json-reducible-query driver/*driver* jdbc-spec table json-fields pks)]
+                                  (into #{} (map #(update-vals % json/parse-string)) rows)))]
+              (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
+                       {:short_json {"b" "y"}, :long_json nil}}
+                     (sample)))
               (testing "If driver.sql/json-field-length is not implemented for the driver don't omit the long value"
                 (letfn [(do-with-removed-method [thunk]
                           (let [original-method (get-method driver.sql/json-field-length driver/*driver*)]
@@ -445,9 +447,9 @@
                                     (original-method driver field))))))]
                   (do-with-removed-method
                    (fn []
-                     (is (= #{{:short_json "{\"a\":\"x\"}", :long_json "{\"a\":\"x\"}"}
-                              {:short_json "{\"b\":\"y\"}", :long_json "{\"b\":\"yyyyyyyyyy\"}"}}
-                            (into #{} (sample))))))))
+                     (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
+                              {:short_json {"b" "y"}, :long_json {"b" "yyyyyyyyyy"}}}
+                            (sample)))))))
               (testing "The resulting synced fields exclude the field that corresponds to the long value"
                 (is (= #{"id"
                          "short_json"
