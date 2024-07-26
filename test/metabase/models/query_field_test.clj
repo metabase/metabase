@@ -108,16 +108,25 @@
 
 (deftest unknown-test
   (with-test-setup
-    (let [qux-qf {:card_id            card-id
-                  :table              "orders"
-                  :column             "qux"
-                  :table_id           nil
-                  :field_id           nil
-                  :explicit_reference true}]
-      (testing "selecting an unknown column"
+    (testing "selecting an unknown column from an known table"
+      (let [qux-qf {:card_id            card-id
+                    :table              "orders"
+                    :column             "qux"
+                    :table_id           table-id
+                    :field_id           nil
+                    :explicit_reference true}]
         (trigger-parse! card-id "select qux from orders")
-        (is (= #{qux-qf}
-               (query-fields-for-card card-id)))))))
+        (is (= #{qux-qf} (query-fields-for-card card-id)))))
+
+    (testing "selecting an unknown column from an unknown table"
+      (let [qux-qf {:card_id            card-id
+                    :table              "borders"
+                    :column             "qux"
+                    :table_id           nil
+                    :field_id           nil
+                    :explicit_reference true}]
+        (trigger-parse! card-id "select qux from borders")
+        (is (= #{qux-qf} (query-fields-for-card card-id)))))))
 
 (deftest wildcard-test
   (with-test-setup
@@ -144,12 +153,14 @@
   (with-test-setup
     (let [total-qf {:card_id          card-id
                     :table            "orders"
-                    :field            "total"
+                    :column           "total"
+                    :table_id         table-id
                     :field_id         total-id
                     :explicit_reference true}
           tax-qf   {:card_id          card-id
                     :table            "orders"
-                    :field            "tax"
+                    :column           "tax"
+                    :table_id         table-id
                     :field_id         tax-id
                     :explicit_reference true}]
       (testing "mix of select table.* and named columns"
