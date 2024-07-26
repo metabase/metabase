@@ -1466,6 +1466,9 @@
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
 
+(defn- keyword-except-column-key [key]
+  (if (str/starts-with? key "[") key (keyword key)))
+
 (defn- column->column-key [{:keys [name]}]
   (json/generate-string [:name name]))
 
@@ -1506,7 +1509,7 @@
 
 (defn- update-legacy-column-keys-in-card-viz-settings [update-viz-settings]
   (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
-                      (let [parsed-viz-settings    (json/parse-string visualization_settings keyword)
+                      (let [parsed-viz-settings    (json/parse-string visualization_settings keyword-except-column-key)
                             parsed-result-metadata (json/parse-string result_metadata keyword)
                             updated-viz-settings   (update-viz-settings parsed-viz-settings parsed-result-metadata)]
                         (when (not= parsed-viz-settings updated-viz-settings)
@@ -1523,7 +1526,7 @@
 
 (defn- update-legacy-column-keys-in-dashboard-card-viz-settings [update-viz-settings]
   (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
-                      (let [parsed-viz-settings    (json/parse-string visualization_settings keyword)
+                      (let [parsed-viz-settings    (json/parse-string visualization_settings keyword-except-column-key)
                             parsed-result-metadata (json/parse-string result_metadata keyword)
                             updated-viz-settings   (update-viz-settings parsed-viz-settings parsed-result-metadata)]
                         (when (not= parsed-viz-settings updated-viz-settings)
@@ -1541,7 +1544,7 @@
 
 (defn- update-legacy-column-keys-in-card-revision-viz-settings [update-viz-settings]
   (let [update-one! (fn [{:keys [id object result_metadata]}]
-                      (let [parsed-object          (json/parse-string object keyword)
+                      (let [parsed-object          (json/parse-string object keyword-except-column-key)
                             parsed-viz-settings    (:visualization_settings parsed-object)
                             parsed-result-metadata (json/parse-string result_metadata keyword)
                             updated-viz-settings   (update-viz-settings parsed-viz-settings parsed-result-metadata)
