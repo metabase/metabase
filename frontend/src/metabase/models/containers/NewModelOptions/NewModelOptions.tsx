@@ -5,6 +5,7 @@ import _ from "underscore";
 
 import { useListDatabasesQuery } from "metabase/api";
 import { Grid } from "metabase/components/Grid";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -14,7 +15,6 @@ import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesE
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import {
   EducationalButton,
@@ -51,7 +51,14 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
       {() => (
         <OptionsRoot data-testid="new-model-options">
           {hasNoDataAccess ? (
-            <div className={cx(CS.fullHeight, CS.flex, CS.alignCenter, CS.justifyCenter)}>
+            <div
+              className={cx(
+                CS.fullHeight,
+                CS.flex,
+                CS.alignCenter,
+                CS.justifyCenter,
+              )}
+            >
               <NoDatabasesEmptyState />
             </div>
           ) : (

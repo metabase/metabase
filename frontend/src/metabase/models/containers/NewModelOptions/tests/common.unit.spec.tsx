@@ -1,6 +1,8 @@
 import { screen, waitForElementToBeRemoved } from "@testing-library/react";
-import { createMockDatabase } from "metabase-types/api/mocks";
+
 import { setupDatabasesEndpoints } from "__support__/server-mocks";
+import { createMockDatabase } from "metabase-types/api/mocks";
+
 import { setup } from "./setup";
 
 describe("NewModelOptions (OSS)", () => {
@@ -9,14 +11,18 @@ describe("NewModelOptions (OSS)", () => {
     setup({ databases: [] });
 
     expect(screen.getByTestId("loading-wrapper")).toBeInTheDocument();
-    await waitForElementToBeRemoved(() => screen.queryByTestId("loading-wrapper"));
+    await waitForElementToBeRemoved(() =>
+      screen.queryByTestId("loading-wrapper"),
+    );
   });
 
   it("should render no data access notice when instance have no database access", async () => {
     setupDatabasesEndpoints([]);
     setup({ databases: [] });
 
-    await waitForElementToBeRemoved(() => screen.queryByTestId("loading-wrapper"));
+    await waitForElementToBeRemoved(() =>
+      screen.queryByTestId("loading-wrapper"),
+    );
     expect(
       screen.getByText("Metabase is no fun without any data"),
     ).toBeInTheDocument();
@@ -28,10 +34,10 @@ describe("NewModelOptions (OSS)", () => {
       setupDatabasesEndpoints([database]);
       setup({ databases: [database] });
 
-      await waitForElementToBeRemoved(() => screen.queryByTestId("loading-wrapper"));
-      expect(
-        screen.getByText("Use the notebook editor"),
-      ).toBeInTheDocument();
+      await waitForElementToBeRemoved(() =>
+        screen.queryByTestId("loading-wrapper"),
+      );
+      expect(screen.getByText("Use the notebook editor")).toBeInTheDocument();
       expect(screen.getByText("Use a native query")).toBeInTheDocument();
     });
 
@@ -41,7 +47,9 @@ describe("NewModelOptions (OSS)", () => {
         setupDatabasesEndpoints([database]);
         setup({ databases: [database], showMetabaseLinks: false });
 
-        await waitForElementToBeRemoved(() => screen.queryByTestId("loading-wrapper"));
+        await waitForElementToBeRemoved(() =>
+          screen.queryByTestId("loading-wrapper"),
+        );
         expect(screen.getByText("What's a model?")).toBeInTheDocument();
       });
 
@@ -50,7 +58,9 @@ describe("NewModelOptions (OSS)", () => {
         setupDatabasesEndpoints([database]);
         setup({ databases: [database], showMetabaseLinks: true });
 
-        await waitForElementToBeRemoved(() => screen.queryByTestId("loading-wrapper"));
+        await waitForElementToBeRemoved(() =>
+          screen.queryByTestId("loading-wrapper"),
+        );
         expect(screen.getByText("What's a model?")).toBeInTheDocument();
       });
     });
