@@ -8443,7 +8443,7 @@ databaseChangeLog:
       id: v51.2024-07-25T10:00:00
       validCheckSum: ANY
       author: ranquild
-      comment: Remove field refs from revision.object.visualization_settings.column_settings
+      comment: Remove field refs from revision.object.visualization_settings.column_settings for cards
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInCardRevisionVizSettings"
