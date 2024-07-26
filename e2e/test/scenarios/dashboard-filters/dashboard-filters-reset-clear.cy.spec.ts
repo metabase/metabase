@@ -69,7 +69,7 @@ const ORDERS_QUESTION: StructuredQuestionDetails = {
   },
 };
 
-describe("scenarios > dashboard > filters > clear & reset buttons", () => {
+describe("scenarios > dashboard > filters > reset & clear", () => {
   // TODO: test chevron icon alignment in parameter sidebar
   // TODO: current value empty assertions
 
