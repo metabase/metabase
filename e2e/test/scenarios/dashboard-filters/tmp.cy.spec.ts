@@ -109,6 +109,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(noDefaultNonRequired, "clear");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+    checkButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
@@ -122,6 +123,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "Year");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -132,6 +134,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "Year");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
@@ -145,6 +148,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "Year");
+    checkButtonVisible(defaultRequired, "none");
   });
 
   it("time parameters", () => {
@@ -192,6 +196,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     filter(noDefaultNonRequired).should("have.text", "January 1, 2024");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+    checkButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
@@ -205,6 +210,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "January 1, 2024");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -216,6 +222,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "January 1, 2024");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
@@ -230,6 +237,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "January 1, 2024");
+    checkButtonVisible(defaultRequired, "none");
   });
 
   it("location parameters - single value", () => {
@@ -276,6 +284,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     filter(noDefaultNonRequired).should("have.text", "Bassett");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+    checkButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
@@ -289,6 +298,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "Bassett");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -300,6 +310,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "Bassett");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
@@ -314,6 +325,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "Bassett");
+    checkButtonVisible(defaultRequired, "none");
   });
 
   it("location parameters - multiple values", () => {
@@ -357,6 +369,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     filter(noDefaultNonRequired).should("have.text", "2 selections");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+    checkButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
@@ -370,6 +383,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "2 selections");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -381,6 +395,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "2 selections");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
@@ -395,6 +410,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "2 selections");
+    checkButtonVisible(defaultRequired, "none");
   });
 
   it("id parameters - single value", () => {
@@ -441,6 +457,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     filter(noDefaultNonRequired).should("have.text", "1");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+    checkButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
@@ -454,6 +471,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "1");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -465,6 +483,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "1");
+    checkButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
@@ -479,6 +498,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "1");
+    checkButtonVisible(defaultRequired, "none");
   });
 
   function filter(label: string) {
