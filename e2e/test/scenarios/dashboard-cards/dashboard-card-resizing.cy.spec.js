@@ -301,77 +301,77 @@ describe("scenarios > dashboard card resizing", () => {
       });
     },
   );
+});
 
-  describe("issue 31701", () => {
-    const entityCard = () => getDashboardCard(0);
-    const customCard = () => getDashboardCard(1);
+describe("issue 31701", () => {
+  const entityCard = () => getDashboardCard(0);
+  const customCard = () => getDashboardCard(1);
 
-    const editEntityLinkContainer = () =>
-      cy.findByTestId("entity-edit-display-link");
-    const editCustomLinkContainer = () =>
-      cy.findByTestId("custom-edit-text-link");
+  const editEntityLinkContainer = () =>
+    cy.findByTestId("entity-edit-display-link");
+  const editCustomLinkContainer = () =>
+    cy.findByTestId("custom-edit-text-link");
 
-    const viewEntityLinkContainer = () =>
-      cy.findByTestId("entity-view-display-link");
-    const viewCustomLinkContainer = () =>
-      cy.findByTestId("custom-view-text-link");
+  const viewEntityLinkContainer = () =>
+    cy.findByTestId("entity-view-display-link");
+  const viewCustomLinkContainer = () =>
+    cy.findByTestId("custom-view-text-link");
 
-    beforeEach(() => {
-      restore();
-      cy.signInAsAdmin();
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
 
-      createQuestion({
-        name: TEST_QUESTION_NAME,
-        query: {
-          "source-table": ORDERS_ID,
-        },
-      });
-
-      createDashboard({
-        name: TEST_DASHBOARD_NAME,
-      }).then(({ body: { id: dashId } }) => {
-        visitDashboard(dashId);
-      });
-
-      editDashboard();
-
-      cy.log("Add first link card (connected to an entity");
-      cy.findByLabelText("Add link card").click();
-      getDashboardCard(0).as("entityCard").click().type(TEST_QUESTION_NAME);
-      popover()
-        .findAllByTestId("search-result-item-name")
-        .first()
-        .trigger("click");
-
-      cy.log("Add second link card (text only)");
-      cy.findByLabelText("Add link card").click();
-      getDashboardCard(1)
-        .as("customCard")
-        .click()
-        .type(TEST_QUESTION_NAME)
-        .realPress("Tab");
+    createQuestion({
+      name: TEST_QUESTION_NAME,
+      query: {
+        "source-table": ORDERS_ID,
+      },
     });
 
-    it("should prevent link dashboard card overflows (metabase#31701)", () => {
-      cy.log("when editing dashboard");
-      viewports.forEach(([width, height]) => {
-        cy.log(`Testing on resolution ${width} x ${height}`);
-        cy.viewport(width, height);
+    createDashboard({
+      name: TEST_DASHBOARD_NAME,
+    }).then(({ body: { id: dashId } }) => {
+      visitDashboard(dashId);
+    });
 
-        assertLinkCardOverflow(editEntityLinkContainer(), entityCard());
-        assertLinkCardOverflow(editCustomLinkContainer(), customCard());
-      });
+    editDashboard();
 
-      saveDashboard();
+    cy.log("Add first link card (connected to an entity");
+    cy.findByLabelText("Add link card").click();
+    getDashboardCard(0).as("entityCard").click().type(TEST_QUESTION_NAME);
+    popover()
+      .findAllByTestId("search-result-item-name")
+      .first()
+      .trigger("click");
 
-      cy.log("when viewing a saved dashboard");
-      viewports.forEach(([width, height]) => {
-        cy.log(`Testing on resolution ${width} x ${height}`);
-        cy.viewport(width, height);
+    cy.log("Add second link card (text only)");
+    cy.findByLabelText("Add link card").click();
+    getDashboardCard(1)
+      .as("customCard")
+      .click()
+      .type(TEST_QUESTION_NAME)
+      .realPress("Tab");
+  });
 
-        assertLinkCardOverflow(viewEntityLinkContainer(), entityCard());
-        assertLinkCardOverflow(viewCustomLinkContainer(), customCard());
-      });
+  it("should prevent link dashboard card overflows (metabase#31701)", () => {
+    cy.log("when editing dashboard");
+    viewports.forEach(([width, height]) => {
+      cy.log(`Testing on resolution ${width} x ${height}`);
+      cy.viewport(width, height);
+
+      assertLinkCardOverflow(editEntityLinkContainer(), entityCard());
+      assertLinkCardOverflow(editCustomLinkContainer(), customCard());
+    });
+
+    saveDashboard();
+
+    cy.log("when viewing a saved dashboard");
+    viewports.forEach(([width, height]) => {
+      cy.log(`Testing on resolution ${width} x ${height}`);
+      cy.viewport(width, height);
+
+      assertLinkCardOverflow(viewEntityLinkContainer(), entityCard());
+      assertLinkCardOverflow(viewCustomLinkContainer(), customCard());
     });
   });
 });
