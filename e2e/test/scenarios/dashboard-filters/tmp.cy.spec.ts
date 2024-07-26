@@ -100,30 +100,30 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     const noDefaultNonRequired = "no default value, non-required";
 
     cy.log("no default value, non-required, no current value");
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     cy.log("no default value, non-required, has current value");
     filter(noDefaultNonRequired).click();
     popover().findByText("Month").click();
     filter(noDefaultNonRequired).should("have.text", "Month");
-    checkButtonVisible(noDefaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "clear");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
     cy.log("has default value, non-required, value same as default");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
     filter(defaultNonRequired).should("have.text", "Year");
     clearButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", defaultNonRequired);
 
     cy.log("has default value, non-required, no current value");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "Year");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -131,24 +131,24 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     filter(defaultNonRequired).click();
     popover().findByText("Month").click();
     filter(defaultNonRequired).should("have.text", "Month");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "Year");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
     cy.log("has default value, required, value same as default");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
 
     cy.log("has default value, required, current value different than default");
     filter(defaultRequired).click();
     popover().findByText("Month").click();
     filter(defaultRequired).should("have.text", "Month");
-    checkButtonVisible(defaultRequired, "reset");
+    checkOnlyOneButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "Year");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
   });
 
   it("time parameters", () => {
@@ -186,31 +186,31 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     const noDefaultNonRequired = "no default value, non-required";
 
     cy.log("no default value, non-required, no current value");
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     cy.log("no default value, non-required, has current value");
     filter(noDefaultNonRequired).click();
     popover().findByRole("textbox").clear().type("01/01/2024").blur();
     popover().button("Add filter").click();
-    checkButtonVisible(noDefaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "clear");
     filter(noDefaultNonRequired).should("have.text", "January 1, 2024");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
     cy.log("has default value, non-required, value same as default");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
     filter(defaultNonRequired).should("have.text", "January 1, 2024");
     clearButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", defaultNonRequired);
 
     cy.log("has default value, non-required, no current value");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "January 1, 2024");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -219,25 +219,25 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     popover().findByRole("textbox").clear().type("01/01/2020").blur();
     popover().button("Update filter").click();
     filter(defaultNonRequired).should("have.text", "January 1, 2020");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "January 1, 2024");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
     cy.log("has default value, required, value same as default");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
 
     cy.log("has default value, required, current value different than default");
     filter(defaultRequired).click();
     popover().findByRole("textbox").clear().type("01/01/2020").blur();
     popover().button("Update filter").click();
     filter(defaultRequired).should("have.text", "January 1, 2020");
-    checkButtonVisible(defaultRequired, "reset");
+    checkOnlyOneButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "January 1, 2024");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
   });
 
   it("location parameters - single value", () => {
@@ -274,31 +274,31 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     const noDefaultNonRequired = "no default value, non-required";
 
     cy.log("no default value, non-required, no current value");
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     cy.log("no default value, non-required, has current value");
     filter(noDefaultNonRequired).click();
     popover().findByRole("searchbox").clear().type("Bassett").blur();
     popover().button("Add filter").click();
-    checkButtonVisible(noDefaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "clear");
     filter(noDefaultNonRequired).should("have.text", "Bassett");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
     cy.log("has default value, non-required, value same as default");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
     filter(defaultNonRequired).should("have.text", "Bassett");
     clearButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", defaultNonRequired);
 
     cy.log("has default value, non-required, no current value");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "Bassett");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -307,25 +307,25 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     popover().findByRole("searchbox").focus().type("{backspace}Thomson").blur();
     popover().button("Update filter").click();
     filter(defaultNonRequired).should("have.text", "Thomson");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "Bassett");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
     cy.log("has default value, required, value same as default");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
 
     cy.log("has default value, required, current value different than default");
     filter(defaultRequired).click();
     popover().findByRole("searchbox").focus().type("{backspace}Thomson").blur();
     popover().button("Update filter").click();
     filter(defaultRequired).should("have.text", "Thomson");
-    checkButtonVisible(defaultRequired, "reset");
+    checkOnlyOneButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "Bassett");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
   });
 
   it("location parameters - multiple values", () => {
@@ -359,31 +359,31 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     const noDefaultNonRequired = "no default value, non-required";
 
     cy.log("no default value, non-required, no current value");
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     cy.log("no default value, non-required, has current value");
     filter(noDefaultNonRequired).click();
     popover().findByRole("searchbox").clear().type("Bassett,Thomson").blur();
     popover().button("Add filter").click();
-    checkButtonVisible(noDefaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "clear");
     filter(noDefaultNonRequired).should("have.text", "2 selections");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
     cy.log("has default value, non-required, value same as default");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
     filter(defaultNonRequired).should("have.text", "2 selections");
     clearButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", defaultNonRequired);
 
     cy.log("has default value, non-required, no current value");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "2 selections");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -392,25 +392,25 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     popover().findByRole("searchbox").focus().type("Washington").blur();
     popover().button("Update filter").click();
     filter(defaultNonRequired).should("have.text", "3 selections");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "2 selections");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
     cy.log("has default value, required, value same as default");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
 
     cy.log("has default value, required, current value different than default");
     filter(defaultRequired).click();
     popover().findByRole("searchbox").focus().type("Washington").blur();
     popover().button("Update filter").click();
     filter(defaultRequired).should("have.text", "3 selections");
-    checkButtonVisible(defaultRequired, "reset");
+    checkOnlyOneButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "2 selections");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
   });
 
   it("id parameters - single value", () => {
@@ -447,31 +447,31 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     const noDefaultNonRequired = "no default value, non-required";
 
     cy.log("no default value, non-required, no current value");
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     cy.log("no default value, non-required, has current value");
     filter(noDefaultNonRequired).click();
     popover().findByRole("searchbox").clear().type("1").blur();
     popover().button("Add filter").click();
-    checkButtonVisible(noDefaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "clear");
     filter(noDefaultNonRequired).should("have.text", "1");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
     cy.log("has default value, non-required, value same as default");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
     filter(defaultNonRequired).should("have.text", "1");
     clearButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", defaultNonRequired);
 
     cy.log("has default value, non-required, no current value");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "1");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -480,25 +480,25 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     popover().findByRole("searchbox").focus().type("{backspace}2").blur();
     popover().button("Update filter").click();
     filter(defaultNonRequired).should("have.text", "2");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "1");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
     cy.log("has default value, required, value same as default");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
 
     cy.log("has default value, required, current value different than default");
     filter(defaultRequired).click();
     popover().findByRole("searchbox").focus().type("{backspace}2").blur();
     popover().button("Update filter").click();
     filter(defaultRequired).should("have.text", "2");
-    checkButtonVisible(defaultRequired, "reset");
+    checkOnlyOneButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "1");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
   });
 
   it("id parameters - multiple values", () => {
@@ -531,28 +531,28 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     const noDefaultNonRequired = "no default value, non-required";
 
     cy.log("no default value, non-required, no current value");
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     cy.log("no default value, non-required, has current value");
     filter(noDefaultNonRequired).click();
     popover().findByRole("searchbox").clear().type("1,2").blur();
     popover().button("Add filter").click();
-    checkButtonVisible(noDefaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "clear");
     filter(noDefaultNonRequired).should("have.text", "2 selections");
     clearButton(noDefaultNonRequired).click();
     filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
-    checkButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
 
     const defaultNonRequired = "default value, non-required";
 
     cy.log("has default value, non-required, value same as default");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
     filter(defaultNonRequired).should("have.text", "2 selections");
     clearButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", defaultNonRequired);
 
     cy.log("has default value, non-required, no current value");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "2 selections");
 
@@ -563,25 +563,25 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     popover().findByRole("searchbox").focus().type("3").blur();
     popover().button("Update filter").click();
     filter(defaultNonRequired).should("have.text", "3 selections");
-    checkButtonVisible(defaultNonRequired, "reset");
+    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
     resetButton(defaultNonRequired).click();
     filter(defaultNonRequired).should("have.text", "2 selections");
-    checkButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
 
     const defaultRequired = "default value, required";
 
     cy.log("has default value, required, value same as default");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
 
     cy.log("has default value, required, current value different than default");
     filter(defaultRequired).click();
     popover().findByRole("searchbox").focus().type("3").blur();
     popover().button("Update filter").click();
     filter(defaultRequired).should("have.text", "3 selections");
-    checkButtonVisible(defaultRequired, "reset");
+    checkOnlyOneButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "2 selections");
-    checkButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(defaultRequired, "none");
   });
 
   function filter(label: string) {
@@ -636,7 +636,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     });
   }
 
-  function checkButtonVisible(
+  function checkOnlyOneButtonVisible(
     label: string,
     /**
      * Use 'none' when no button should be visible.
