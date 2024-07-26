@@ -15,7 +15,7 @@ type Props = {
 const COMPACT_BUTTON_PADDING = 4;
 
 /**
- * Account for compact button's padding, so that the size of this component's root element
+ * Account for compact button's padding, so that the placement of this component's root element
  * is the same regardless of whether the button is rendered or not.
  */
 const BUTTON_MARGIN = -COMPACT_BUTTON_PADDING;
