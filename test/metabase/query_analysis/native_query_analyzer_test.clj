@@ -47,11 +47,6 @@
 (defn- field-refs [sql]
   (:fields (refs sql)))
 
-(defn- missing-reference [table column]
-  {:table              (name table)
-   :column             (name column)
-   :explicit-reference true})
-
 (defn- table-reference [table]
   (let [reference (nqa/table-reference (mt/id) table)]
     ;; sanity-check that this is the right reference
@@ -70,6 +65,14 @@
     (assert (= (name column) (u/lower-case-en (:column reference))))
     ;; tag it
     (assoc reference :explicit-reference true)))
+
+(defn- missing-reference [table column]
+  (merge
+   {:table              (name table)
+    :column             (name column)
+    :explicit-reference true}
+   ;; the table might be be resolved...
+   (nqa/table-reference (mt/id) table)))
 
 (deftest ^:parallel field-matching-simple-test
   (testing "simple query matches"
