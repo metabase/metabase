@@ -85,14 +85,17 @@
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
+(def incomplete-analysis-kv-args
+  "kv-args for a toucan query to select or update Fields that have the latest fingerprint, but have not yet *completed*
+   analysis."
+  {:fingerprint_version i/*latest-fingerprint-version*
+   :last_analyzed       nil})
+
 (mu/defn ^:private fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
-  (seq (t2/select :model/Field
-         :table_id            (u/the-id table)
-         :fingerprint_version i/*latest-fingerprint-version*
-         :last_analyzed       nil)))
+  (seq (apply t2/select :model/Field :table_id (u/the-id table) (reduce concat [] incomplete-analysis-kv-args))))
 
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do
@@ -117,27 +120,29 @@
 
 (mu/defn classify-tables-for-db!
   "Classify all tables found in a given database"
-  [_database tables log-progress-fn]
-  (transduce
-   (map (fn [table]
-          (let [result (classify-table! table)]
-            (log-progress-fn "classify-tables" table)
-            {:tables-classified (if result
-                                  1
-                                  0)
-             :total-tables      1})))
-   (partial merge-with +)
-   {:tables-classified 0, :total-tables 0}
-   tables))
+  [database log-progress-fn]
+  (let [tables (sync-util/db->reducible-sync-tables database)]
+    (transduce
+     (map (fn [table]
+            (let [result (classify-table! table)]
+              (log-progress-fn "classify-tables" table)
+              {:tables-classified (if result
+                                    1
+                                    0)
+               :total-tables      1})))
+     (partial merge-with +)
+     {:tables-classified 0, :total-tables 0}
+     tables)))
 
 (mu/defn classify-fields-for-db!
   "Classify all fields found in a given database"
-  [_database tables log-progress-fn]
-  (transduce
-   (map (fn [table]
-          (let [result (classify-fields! table)]
-            (log-progress-fn "classify-fields" table)
-            result)))
-   (partial merge-with +)
-   {:fields-classified 0, :fields-failed 0}
-   tables))
+  [database log-progress-fn]
+  (let [tables (sync-util/db->reducible-sync-tables database)]
+    (transduce
+     (map (fn [table]
+            (let [result (classify-fields! table)]
+              (log-progress-fn "classify-fields" table)
+              result)))
+     (partial merge-with +)
+     {:fields-classified 0, :fields-failed 0}
+     tables)))

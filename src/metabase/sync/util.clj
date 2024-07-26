@@ -343,6 +343,11 @@
                                           (when (seq schema-names) [:in :schema schema-names])
                                           (when (seq table-names) [:in :name table-names])]})))
 
+(defn sync-tables-count
+  "Returns the count of all syncable tables for `dataabase-or-id`."
+  [database-or-id]
+  (t2/count :model/Table :db_id (u/the-id database-or-id) {:where sync-tables-clause}))
+
 (defn db->refingerprint-reducible-sync-tables
   "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`, in the order
    they should be refingerprinted (by earliest last_analyzed timestamp)."

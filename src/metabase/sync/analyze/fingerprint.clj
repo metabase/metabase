@@ -211,31 +211,31 @@
 (mu/defn ^:private fingerprint-fields-for-db!*
   "Invokes `fingerprint-fields!` on every table in `database`"
   ([database        :- i/DatabaseInstance
-    tables
     log-progress-fn :- LogProgressFn]
-   (fingerprint-fields-for-db!* database tables log-progress-fn (constantly true)))
+   (fingerprint-fields-for-db!* database log-progress-fn (constantly true)))
 
   ([database        :- i/DatabaseInstance
-    tables
     log-progress-fn :- LogProgressFn
     continue?       :- [:=> [:cat ::FingerprintStats] :any]]
    (qp.store/with-metadata-provider (u/the-id database)
-     (reduce (fn [acc table]
-               (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-               (let [new-acc (merge-with + acc (fingerprint-fields! table))]
-                 (if (continue? new-acc)
-                   new-acc
-                   (reduced new-acc))))
-             (empty-stats-map 0)
-             tables))))
+     (let [tables (if *refingerprint?*
+                    (sync-util/db->refingerprint-reducible-sync-tables database)
+                    (sync-util/db->reducible-sync-tables database))]
+       (reduce (fn [acc table]
+                 (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
+                 (let [new-acc (merge-with + acc (fingerprint-fields! table))]
+                   (if (continue? new-acc)
+                     new-acc
+                     (reduced new-acc))))
+               (empty-stats-map 0)
+               tables)))))
 
 (mu/defn fingerprint-fields-for-db!
   "Invokes [[fingerprint-fields!]] on every table in `database`"
   [database        :- i/DatabaseInstance
-   tables
    log-progress-fn :- LogProgressFn]
   (if (driver.u/supports? (:engine database) :fingerprint database)
-    (fingerprint-fields-for-db!* database tables log-progress-fn)
+    (fingerprint-fields-for-db!* database log-progress-fn)
     (empty-stats-map 0)))
 
 (def ^:private max-refingerprint-field-count
@@ -246,11 +246,9 @@
 (mu/defn refingerprint-fields-for-db!
   "Invokes [[fingeprint-fields!]] on every table in `database` up to some limit."
   [database        :- i/DatabaseInstance
-   tables
    log-progress-fn :- LogProgressFn]
   (binding [*refingerprint?* true]
     (fingerprint-fields-for-db!* database
-                                 tables
                                  log-progress-fn
                                  (fn [stats-acc]
                                    (< (:fingerprints-attempted stats-acc) max-refingerprint-field-count)))))
