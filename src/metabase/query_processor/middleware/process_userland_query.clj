@@ -64,21 +64,21 @@
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info field-usages]
-  (qp.util/with-execute-async
-    ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
-    ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
-    ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
-    ;;
-    ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
-    ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
-    ;;    attempt to use closed DB connections
-    (fn []
-      (let [execution-info (-> execution-info
-                               add-running-time
-                               sdk/assoc-analytics)]
+  (let [execution-info' (sdk/include-analytics execution-info)
+        ;; `sdk/assoc-analytics` reads values from dynamic vars, so we need to set them here, on the same thread:
+        ]
+    (qp.util/with-execute-async
+      ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
+      ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
+      ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
+      ;;
+      ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
+      ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
+      ;;    attempt to use closed DB connections
+      (fn []
         (log/trace "Saving QueryExecution info")
         (try
-          (save-execution-metadata!* execution-info field-usages)
+          (save-execution-metadata!* (add-running-time execution-info') field-usages)
           (catch Throwable e
             (log/error e "Error saving query execution info")))))))
 
