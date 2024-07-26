@@ -16,11 +16,13 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models :refer [Field]]
+   [metabase.models.setting :as setting]
    [metabase.models.table :as table]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -423,7 +425,7 @@
   "Parses given json (a string or a reader) into a map of paths to types, i.e. `{[\"bob\"} String}`.
 
   Uses Jackson Streaming API to skip allocating data structures, eschews allocating values when possible.
-  Respects *nested-field-column-max-row-length*."
+  Respects *nested-field-columns-max-row-length*."
   [v path]
   (if-not (json-object? v)
     {}
@@ -576,10 +578,13 @@
                                         (false? (:json_unfolding existing-field))))]
         (remove should-not-unfold? json-fields)))))
 
-(def ^:dynamic *nested-field-columns-max-row-length*
-  "Max total string length from the JSON fields in a single row before we avoid parsing it.
-  Marked as dynamic because we mutate it for tests."
-  50000)
+(setting/defsetting nested-field-columns-value-length-limit
+  (deferred-tru (str "Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set "
+                     "too high it could lead to slow syncs or out of memory errors."))
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    50000)
 
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
@@ -594,7 +599,7 @@
                                    [field]
                                    [[:case
                                      [:<
-                                      [:inline *nested-field-columns-max-row-length*]
+                                      [:inline (nested-field-columns-value-length-limit)]
                                       (driver.sql/json-field-length driver field)]
                                      nil
                                      :else

@@ -422,8 +422,8 @@
   (testing "Long JSON values should be omitted from the sample for describe-table (#45163)"
     (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
       (when-not (mysql/mariadb? (mt/db))
-        (binding [sql-jdbc.describe-table/*nested-field-columns-max-row-length*
-                  (dec (count (json/generate-string {:b (apply str (repeat 10 "y"))})))]
+        (mt/with-temporary-setting-values [sql-jdbc.describe-table/nested-field-columns-value-length-limit
+                                           (dec (count (json/generate-string {:b (apply str (repeat 10 "y"))})))]
           (mt/dataset long-json
             (sync/sync-database! (mt/db) {:scan :schema})
             (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
