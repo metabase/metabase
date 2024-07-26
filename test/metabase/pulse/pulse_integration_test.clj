@@ -472,21 +472,17 @@
                                                      [:field (mt/id :orders :total) {:base-type :type/Float}]]},
                           :limit        10}
             viz-settings {:table.cell_column "TAX",
-                          :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :id))
+                          :column_settings   {"[\"name\",\"ID\"]"
                                               {:column_title "THE_ID"}
-                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
-                                                      (mt/id :orders :tax))
+                                              "[\"name\",\"TAX\"]"
                                               {:column_title "ORDER TAX"}
-                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
-                                                      (mt/id :orders :total))
+                                              "[\"name\",\"TOTAL\"]"
                                               {:column_title "Total Amount"},
-                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Float\"}]]"
-                                                      (mt/id :orders :discount))
+                                              "[\"name\",\"DISCOUNT\"]"
                                               {:column_title "Discount Applied"}
-                                              (format "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
-                                                      (mt/id :orders :quantity))
+                                              "[\"name\",\"QUANTITY\"]"
                                               {:column_title "Amount Ordered"}
-                                              "[\"ref\",[\"expression\",\"Tax Rate\"]]"
+                                              "[\"name\",\"Tax Rate\"]"
                                               {:column_title "Effective Tax Rate"}}}]
         (mt/with-temp [Card {base-card-name :name
                              base-card-id   :id} {:name                   "RENAMED"
@@ -527,13 +523,9 @@
                                                                                           (format "card__%s" meta-model-card-id)}}
                                                       :visualization_settings {:table.pivot_column "DISCOUNT",
                                                                                :table.cell_column  "TAX",
-                                                                               :column_settings    {(format
-                                                                                                      "[\"ref\",[\"field\",%s,{\"base-type\":\"type/Integer\"}]]"
-                                                                                                      (mt/id :orders :quantity))
+                                                                               :column_settings    {"[\"name\",\"QUANTITY\"]"
                                                                                                     {:column_title "Count"}
-                                                                                                    (format
-                                                                                                      "[\"ref\",[\"field\",%s,{\"base-type\":\"type/BigInteger\"}]]"
-                                                                                                      (mt/id :orders :id))
+                                                                                                    "[\"name\",\"ID\"]"
                                                                                                     {:column_title "IDENTIFIER"}}}}
                        Dashboard {dash-id :id} {:name "The Dashboard"}
                        DashboardCard {base-dash-card-id :id} {:dashboard_id dash-id

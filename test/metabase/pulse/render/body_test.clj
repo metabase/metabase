@@ -128,8 +128,8 @@
 (deftest prefers-col-visualization-settings-for-header
   (testing "Users can give columns custom names. Use those if they exist."
     (let [card    {:visualization_settings
-                   {:column_settings {"[\"ref\",[\"field\",321,null]]" {:column_title "Custom Last Login"}
-                                      "[\"name\",\"name\"]"            {:column_title "Custom Name"}}}}
+                   {:column_settings {"[\"name\",\"last_login\"]" {:column_title "Custom Last Login"}
+                                      "[\"name\",\"name\"]"       {:column_title "Custom Name"}}}}
           cols    [{:name            "last_login"
                     :display_name    "Last Login"
                     :base_type       :type/DateTime
@@ -872,14 +872,14 @@
                                                                 :query    {:source-table (mt/id :orders)}}
                                                 :visualization_settings
                                                 {:table.cell_column "SUBTOTAL"
-                                                 :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
+                                                 :column_settings   {"[\"name\",\"SUBTOTAL\"]"
                                                                      {:column_title "SUB CASH MONEY"}}}}
                      :model/Dashboard {dashboard-id :id} {}
                      :model/DashboardCard {dashcard-id :id}  {:dashboard_id dashboard-id
                                                               :card_id      card-id
                                                               :visualization_settings
                                                               {:table.cell_column "TOTAL"
-                                                               :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
+                                                               :column_settings   {"[\"name\",\"TOTAL\"]"
                                                                                    {:column_title "CASH MONEY"}}}}]
     (mt/with-current-user (mt/user->id :rasta)
       (let [card-doc        (render.tu/render-card-as-hickory card-id)
