@@ -522,25 +522,24 @@
 
 (mu/defn- effective-ancestors*
   "Given a collection, return the effective ancestors of that collection."
-  [collection :- CollectionWithLocationOrRoot]
-  (if-not (collection.root/is-root-collection? collection)
+  [collection :- [:maybe CollectionWithLocationOrRoot]]
+  (if (or (nil? collection)
+          (collection.root/is-root-collection? collection))
+    []
     (some->> (effective-location-path collection)
              location-path->ids
              (map (collection-id->collection))
              (map #(select-keys % [:name :id :personal_owner_id :type]))
              (map #(t2/instance :model/Collection %))
              (cons (root-collection-with-ui-details (:namespace collection)))
-             (filter mi/can-read?))
-    []))
+             (filter mi/can-read?))))
 
 (mi/define-batched-hydration-method effective-ancestors
   :effective_ancestors
   "Efficiently hydrate the `:effective_ancestors` of collections."
   [collections]
   (let [annotate (fn [collection]
-                   (cond-> collection
-                     (some? collection)
-                     (assoc :effective_ancestors (effective-ancestors* collection))))]
+                   (assoc collection :effective_ancestors (effective-ancestors* collection)))]
     (map annotate collections)))
 
 (mu/defn- parent-id* :- [:maybe ms/PositiveInt]
