@@ -43,7 +43,12 @@ export const getAuthConfiguration = (
 ) =>
   match<[SDKConfig, string], string | void>([config, window.location.hostname])
     .with(
-      [{ jwtProviderUri: P.select(P.not(P.nullish)) }, P._],
+      [
+        {
+          jwtProviderUri: P.select(P.not(P.nullish).and(P.string.minLength(1))),
+        },
+        P._,
+      ],
       jwtProviderUri => setupJwtAuth(jwtProviderUri, dispatch),
     )
     .with([{ apiKey: P.select(P.not(P.nullish)) }, "localhost"], apiKey => {

@@ -41,8 +41,11 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           updateQuestion={(question: Question) =>
             dispatch(updateQuestion(question))
           }
-          runQuestionQuery={() => dispatch(runQuestionQuery())}
-          setQueryBuilderMode={onApply}
+          runQuestionQuery={() => {
+            dispatch(runQuestionQuery());
+            onApply();
+          }}
+          setQueryBuilderMode={() => {}}
           hasVisualizeButton={true}
         />
       </ScrollArea>

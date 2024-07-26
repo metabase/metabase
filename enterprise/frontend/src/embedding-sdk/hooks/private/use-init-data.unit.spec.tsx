@@ -128,7 +128,7 @@ describe("useInitData hook", () => {
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
-        "Invalid JWT URI provided.",
+        "No JWT URI or API key provided.",
       );
     });
   });
