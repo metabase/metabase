@@ -541,7 +541,7 @@
 (deftest scale-test
   (testing "scale is applied to data prior to export"
     (is (= [2.0]
-           (second (xlsx-export [{::name "Col"}]
+           (second (xlsx-export [{:name "Col"}]
                                 {::mb.viz/column-settings {{::mb.viz/column-name "Col"} {::mb.viz/scale 2}}}
                                 [[1.0]]))))))
 
