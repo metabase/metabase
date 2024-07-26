@@ -163,9 +163,14 @@
   (let [dashboard-id (u/the-id dashboard)]
     (mw.session/with-current-user pulse-creator-id
       (let [parts (if (dashboard/has-tabs? dashboard)
-                    (let [tabs-with-cards (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)]
-                      (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
-                                        (concat [(tab->part tab)] (dashcards->part cards pulse dashboard))))))
+                    (let [tabs            (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
+                          tabs-with-cards (filter #(seq (:cards %)) tabs)]
+                      (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards
+                                            :when                   (seq cards)]
+                                        (concat
+                                         (when (< 1 (count tabs-with-cards))
+                                           [(tab->part tab)])
+                                         (dashcards->part cards pulse dashboard))))))
                     (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard))]
         (if skip_if_empty
           ;; Remove cards that have no results when empty results aren't wanted

@@ -805,6 +805,52 @@
               {:text "Card 2 tab-2", :type :text}]
              (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
 
+(deftest execute-dashboard-with-empty-tabs-test
+  (testing "Dashboard with one tab."
+    (t2.with-temp/with-temp
+      [Dashboard           {dashboard-id :id
+                            :as          dashboard}   {:name "Dashboard"}
+       :model/DashboardTab {}                {:name         "The second tab"
+                                              :position     1
+                                              :dashboard_id dashboard-id}
+       :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
+                                              :position     0
+                                              :dashboard_id dashboard-id}
+       DashboardCard       _                 {:dashboard_id           dashboard-id
+                                              :dashboard_tab_id       tab-id-1
+                                              :row                    2
+                                              :visualization_settings {:text "Card 2 tab-1"}}
+       DashboardCard       _                 {:dashboard_id           dashboard-id
+                                              :dashboard_tab_id       tab-id-1
+                                              :row                    1
+                                              :visualization_settings {:text "Card 1 tab-1"}}]
+      (testing "Tab title is omitted (#45123)"
+        (is (= [{:text "Card 1 tab-1", :type :text}
+                {:text "Card 2 tab-1", :type :text}]
+               (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard))))))
+  (testing "Dashboard with multiple tabs"
+    (t2.with-temp/with-temp
+      [Dashboard           {dashboard-id :id
+                            :as          dashboard}   {:name "Dashboard"}
+       :model/DashboardTab {}                {:name         "The second tab"
+                                              :position     1
+                                              :dashboard_id dashboard-id}
+       :model/DashboardTab {tab-id-1 :id}    {:name         "The first tab"
+                                              :position     0
+                                              :dashboard_id dashboard-id}
+       DashboardCard       _                 {:dashboard_id           dashboard-id
+                                              :dashboard_tab_id       tab-id-1
+                                              :row                    2
+                                              :visualization_settings {:text "Card 2 tab-1"}}
+       DashboardCard       _                 {:dashboard_id           dashboard-id
+                                              :dashboard_tab_id       tab-id-1
+                                              :row                    1
+                                              :visualization_settings {:text "Card 1 tab-1"}}]
+      (testing "Tab title is omitted when only 1 tab contains cards."
+        (is (= [{:text "Card 1 tab-1", :type :text}
+                {:text "Card 2 tab-1", :type :text}]
+               (@#'metabase.pulse/execute-dashboard {:creator_id (mt/user->id :rasta)} dashboard)))))))
+
 (deftest render-dashboard-with-tabs-test
   (tests {:pulse     {:skip_if_empty false}
           :dashboard pulse.test-util/test-dashboard}
