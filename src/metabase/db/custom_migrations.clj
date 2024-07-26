@@ -1466,13 +1466,24 @@
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
 
-(defn- keyword-except-column-key [key]
+(defn- keyword-except-column-key
+  "Converts an object key to a keyword if it's not a column key. Both new and old column keys are arrays serialized
+  to JSON and therefore they start with '['. Column keys are kept as string for comparison."
+  [key]
   (if (str/starts-with? key "[") key (keyword key)))
 
-(defn- column->column-key [{:keys [name]}]
+(defn- column->column-key
+  "Computes a modern viz setting column key for a column. The modern format is [\"name\", `name`]."
+  [{:keys [name]}]
   (json/generate-string [:name name]))
 
-(defn- column->legacy-column-key [{name :name field-ref :field_ref :as column}]
+(defn- column->legacy-column-key
+  "Computes a legacy viz setting column key for a column.
+  If the `field_ref` has a field name and not a field id, or if the field ref is for an aggregation column, returns a
+  column key of the modern format [\"name\", `name`].
+  In other cases returns a legacy column key of the format [\"ref\", `field-ref`] where :binning and :temporal-unit
+  options are removed from the `field-ref`."
+  [{name :name field-ref :field_ref :as column}]
   (let [field-ref (or field-ref [:field name nil])
         [ref-type field-id-or-name ref-options] field-ref
         field-ref (if (and (#{:field :expression :aggregation} ref-type) ref-options)
@@ -1483,31 +1494,39 @@
       (column->column-key column)
       (json/generate-string [:ref field-ref]))))
 
-(defn- infer-viz-settings-columns [viz-settings result-metadata]
-  (concat
-   result-metadata
-   (when-let [columns (:table.columns viz-settings)]
-     (map (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}) columns))))
+(defn- infer-columns-from-viz-settings
+  "Computes partial result metadata based on the viz settings if :table.columns is set. The setting is kept in sync with
+   query results, and can be used in cases where up-to-date result metadata is not available, like in revisions."
+  [viz-settings]
+  (when-let [columns (:table.columns viz-settings)]
+     (map (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}) columns)))
 
-(defn- migrate-legacy-column-keys-in-viz-settings [viz-settings result-metadata]
-  (let [columns     (infer-viz-settings-columns viz-settings result-metadata)
-        key->column (m/index-by column->legacy-column-key columns)]
+(defn- migrate-legacy-column-keys-in-viz-settings
+  "Migrates legacy :column_settings keys that have serialized field refs to name-based column keys. Unmatched keys are
+  retained."
+  [viz-settings columns]
+  (let [key->column (m/index-by column->legacy-column-key columns)]
     (m/update-existing viz-settings :column_settings update-keys
                        (fn [key]
                          (if-let [column (get key->column key)]
                            (column->column-key column)
                            key)))))
 
-(defn- rollback-legacy-column-keys-in-viz-settings [viz-settings result-metadata]
-  (let [columns     (infer-viz-settings-columns viz-settings result-metadata)
-        key->column (m/index-by column->column-key columns)]
+(defn- rollback-legacy-column-keys-in-viz-settings
+  "Rollbacks changes to :column_settings keys and brings field ref-based column keys back. Unmatched keys are retained."
+  [viz-settings columns]
+  (let [key->column (m/index-by column->column-key columns)]
     (m/update-existing viz-settings :column_settings update-keys
                        (fn [key]
                          (if-let [column (get key->column key)]
                            (column->legacy-column-key column)
                            key)))))
 
-(defn- update-legacy-column-keys-in-card-viz-settings [update-viz-settings]
+(defn- update-legacy-column-keys-in-card-viz-settings
+  "Updates :visualization_settings of each card that contains :column_settings by calling `update-viz-settings`
+  function. Can be used to both migrate and rollback the viz settings changes. :result_metadata of each card is used to
+  find the deduplicated column name by the field reference and compute the new column key."
+  [update-viz-settings]
   (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
                       (let [parsed-viz-settings    (json/parse-string visualization_settings keyword-except-column-key)
                             parsed-result-metadata (json/parse-string result_metadata keyword)
@@ -1524,7 +1543,12 @@
   (update-legacy-column-keys-in-card-viz-settings migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-card-viz-settings rollback-legacy-column-keys-in-viz-settings))
 
-(defn- update-legacy-column-keys-in-dashboard-card-viz-settings [update-viz-settings]
+(defn- update-legacy-column-keys-in-dashboard-card-viz-settings
+  "Updates :visualization_settings of each dashboard card that contains :column_settings by calling
+  `update-viz-settings` function. Can be used to both migrate and rollback the viz settings changes. :result_metadata of
+  each referenced card is used to find the deduplicated column name by the field reference and compute the new column
+  key."
+  [update-viz-settings]
   (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
                       (let [parsed-viz-settings    (json/parse-string visualization_settings keyword-except-column-key)
                             parsed-result-metadata (json/parse-string result_metadata keyword)
@@ -1542,12 +1566,18 @@
   (update-legacy-column-keys-in-dashboard-card-viz-settings migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-dashboard-card-viz-settings rollback-legacy-column-keys-in-viz-settings))
 
-(defn- update-legacy-column-keys-in-card-revision-viz-settings [update-viz-settings]
+(defn- update-legacy-column-keys-in-card-revision-viz-settings
+  "Updates :visualization_settings of each revision of a card that contains :column_settings by calling
+  `update-viz-settings` function. Can be used to both migrate and rollback the viz settings changes. As :result_metadata
+  is not saved for each revision, we try to infer it from the `:visualization_settings` and fallback to the most recent
+  :result_metadata of the corresponding card."
+  [update-viz-settings]
   (let [update-one! (fn [{:keys [id object result_metadata]}]
                       (let [parsed-object          (json/parse-string object keyword-except-column-key)
                             parsed-viz-settings    (:visualization_settings parsed-object)
-                            parsed-result-metadata (json/parse-string result_metadata keyword)
-                            updated-viz-settings   (update-viz-settings parsed-viz-settings parsed-result-metadata)
+                            columns                (or (infer-columns-from-viz-settings parsed-viz-settings)
+                                                     (json/parse-string result_metadata keyword))
+                            updated-viz-settings   (update-viz-settings parsed-viz-settings columns)
                             updated-object         (assoc parsed-object :visualization_settings updated-viz-settings)]
                         (when (not= parsed-object updated-object)
                               (t2/query-one {:update :revision
