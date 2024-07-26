@@ -191,7 +191,7 @@
                          "settings"        true
                          "field_values"    false
                          "duration_ms"     pos?
-                         "count"           4
+                         "count"           3
                          "source"          "cli"
                          "secrets"         false
                          "success"         true
@@ -207,7 +207,7 @@
                          "duration_ms"   pos?
                          "source"        "cli"
                          "models"        "Card,Collection,Setting"
-                         "count"         4
+                         "count"         3
                          "success"       true
                          "error_message" nil}
                         (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))

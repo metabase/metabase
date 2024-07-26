@@ -158,7 +158,7 @@
     (update field :dimensions (partial map remove-dimension-nonpublic-columns))))
 
 
-(mu/defn ^:private param-field-ids->fields
+(mu/defn- param-field-ids->fields
   "Get the Fields (as a map of Field ID -> Field) that should be returned for hydrated `:param_fields` for a Card or
   Dashboard. These only contain the minimal amount of information necessary needed to power public or embedded
   parameter widgets."
@@ -263,7 +263,7 @@
 ;;; |                                                 CARD-SPECIFIC                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private card->template-tag-field-clauses :- [:set mbql.s/field]
+(mu/defn- card->template-tag-field-clauses :- [:set mbql.s/field]
   "Return a set of `:field` clauses referenced in template tag parameters in `card`."
   [card]
   (set (for [[_ {dimension :dimension}] (get-in card [:dataset_query :native :template-tags])

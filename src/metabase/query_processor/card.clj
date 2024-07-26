@@ -144,7 +144,7 @@
      [:template-tag tag-name]
      (name tag-name))))
 
-(mu/defn ^:private validate-card-parameters
+(mu/defn- validate-card-parameters
   "Unless [[*allow-arbitrary-mbql-parameters*]] is truthy, check to make all supplied `parameters` actually match up
   with template tags in the query for Card with `card-id`."
   [card-id    :- ::lib.schema.id/card

@@ -3,6 +3,7 @@
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [metabase.auth-provider :as auth-provider]
    [metabase.config :as config]
    [metabase.core :as mbc]
    [metabase.db :as mdb]
@@ -229,6 +230,39 @@
   (let [args   ["-tcp" "-tcpPort", (str port), "-tcpAllowOthers" "-tcpDaemon"]
         server (Server/createTcpServer (into-array args))]
     (doto server (.start))))
+
+(deftest test-auth-provider-connection
+  (mt/test-drivers #{:postgres}
+    (testing "Azure Managed Identity connections can be created and expired passwords get renewed"
+      (let [db-details (:details (mt/db))
+            oauth-db-details (-> db-details
+                                 (dissoc :password)
+                                 (assoc :use-auth-provider true
+                                        :auth-provider :azure-managed-identity
+                                        :azure-managed-identity-client-id "client ID"))
+            ;; we return an expired token which forces a renewal when a second connection is requested
+            ;; (the first time it is used without checking for expiry)
+            expires-in (atom "0")
+            connection-creations (atom 0)]
+        (binding [auth-provider/*fetch-as-json* (fn [url _headers]
+                                                  (is (str/includes? url "client ID"))
+                                                  (swap! connection-creations inc)
+                                                  {:access_token (:password db-details)
+                                                   :expires_in @expires-in})]
+          (t2.with-temp/with-temp [Database oauth-db {:engine (tx/driver), :details oauth-db-details}]
+            (mt/with-db oauth-db
+              (try
+                ;; since Metabase is running and using the pool of this DB, the sync might fail
+                ;; if the connection pool is shut down during the sync
+                (sync/sync-database! (mt/db))
+                (catch Exception _))
+              ;; after "fixing" the expiry, we should get a connection from a pool that doesn't get shut down
+              (reset! expires-in "10000")
+              (sync/sync-database! (mt/db))
+              (is (= [["Polo Lounge"]]
+                     (mt/rows (mt/run-mbql-query venues {:filter [:= $id 60] :fields [$name]}))))
+              ;; we must have created more than one connection
+              (is (> @connection-creations 1)))))))))
 
 (deftest test-ssh-tunnel-connection
   ;; TODO: Formerly this test ran against "all JDBC drivers except this big list":

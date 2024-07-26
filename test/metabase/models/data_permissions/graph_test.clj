@@ -1,7 +1,6 @@
 (ns metabase.models.data-permissions.graph-test
   (:require
    [clojure.test :refer :all]
-   [clojure.walk :as walk]
    [metabase.audit :as audit]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.data-permissions.graph :as data-perms.graph]
@@ -11,7 +10,7 @@
    [toucan2.core :as db]))
 
 (deftest update-db-level-view-data-permissions!-test
-  (mt/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                    :model/Database         {database-id-1 :id}   {}
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
@@ -21,7 +20,7 @@
       (testing "data permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
-                                       (data-perms.graph/update-data-perms-graph!* api-graph)
+                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                        (data-perms/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
@@ -55,7 +54,7 @@
              :perms/download-results :no}}})))))
 
 (deftest update-db-level-create-queries-permissions!-test
-  (mt/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                    :model/Database         {database-id-1 :id}   {}
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
@@ -65,7 +64,7 @@
                                      (do
                                        ;; Clear default perms for the group
                                        (db/delete! :model/DataPermissions :group_id group-id-1)
-                                       (data-perms.graph/update-data-perms-graph!* api-graph)
+                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                        (data-perms/data-permissions-graph :group-id group-id-1)))
           {group-id-1
            {database-id-1
@@ -121,7 +120,7 @@
             {:perms/create-queries {"PUBLIC" {table-id-1 :no}}}}})))))
 
 (deftest update-db-level-data-access-permissions!-test
-  (mt/with-premium-features #{:advanced-permissions}
+  (mt/with-premium-features #{:advanced-permissions :sandboxes}
     (mt/with-temp [:model/PermissionsGroup {group-id-1 :id}      {}
                    :model/Database         {database-id-1 :id}   {}
                    :model/Table            {table-id-1 :id}      {:db_id database-id-1
@@ -135,7 +134,7 @@
       (testing "data-access permissions can be updated via API-style graph"
         (are [api-graph db-graph] (= db-graph
                                      (do
-                                       (data-perms.graph/update-data-perms-graph!* api-graph)
+                                       (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                        (data-perms/data-permissions-graph :group-id group-id-1)))
           ;; Setting granular data access permissions
           {group-id-1
@@ -204,7 +203,7 @@
     (testing "download permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph!* api-graph)
+                                     (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular download permissions
         {group-id-1
@@ -269,7 +268,7 @@
     (testing "data model editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph!* api-graph)
+                                     (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Setting granular data model editing permissions
         {group-id-1
@@ -328,7 +327,7 @@
     (testing "database details editing permissions can be updated via API-style graph"
       (are [api-graph db-graph] (= db-graph
                                    (do
-                                     (data-perms.graph/update-data-perms-graph!* api-graph)
+                                     (data-perms.graph/update-data-perms-graph! {:groups api-graph})
                                      (data-perms/data-permissions-graph :group-id group-id-1)))
         ;; Granting permission to edit database details
         {group-id-1
@@ -352,11 +351,6 @@
 (deftest ellide?-test
   (is (not (#'data-perms.graph/ellide? :perms/view-data :unrestricted)))
   (is (#'data-perms.graph/ellide? :perms/view-data :blocked)))
-
-(defn replace-empty-map-with-nil [graph]
-  (walk/postwalk
-   (fn [x] (if (= x {}) nil x))
-   graph))
 
 (deftest perms-are-renamed-test
   (testing "Perm keys and values are correctly renamed, and permissions are ellided as necessary"
@@ -414,13 +408,6 @@
                                                                                2 :legacy-no-self-service}
                                                                      "OTHER" :legacy-no-self-service}})))
 
-(defn constrain-graph
-  "Filters out all non `group-id`X`db-id` permissions"
-  [group-id db-id graph]
-  (-> graph
-      (assoc :groups {group-id (get-in graph [:groups group-id])})
-      (assoc-in [:groups group-id] {db-id (get-in graph [:groups group-id db-id])})))
-
 (defn- test-query-graph [group]
   (get-in (data-perms.graph/api-graph) [:groups (u/the-id group) (mt/id) :create-queries "PUBLIC"]))
 
@@ -450,14 +437,14 @@
 
 (deftest update-graph-validate-db-perms-test
   (testing "Check that validation of native query perms doesn't fail if only one of them changes"
-    (mt/with-additional-premium-features #{:advanced-permissions}
+    (mt/with-additional-premium-features #{:advanced-permissions :sandboxes}
       (mt/with-temp [:model/Database {db-id :id}]
         (mt/with-no-data-perms-for-all-users!
           (let [ks [:groups (u/the-id (perms-group/all-users)) db-id]]
             (letfn [(perms []
                       (get-in (data-perms.graph/api-graph) ks))
                     (set-perms! [new-perms]
-                      (data-perms.graph/update-data-perms-graph! (assoc-in (data-perms.graph/api-graph) ks new-perms))
+                      (data-perms.graph/update-data-perms-graph! (assoc-in {} ks new-perms))
                       (perms))]
               (testing "Should initially have no perms"
                 (is (= nil
@@ -489,7 +476,7 @@
 
 (deftest no-op-partial-graph-updates
   (testing "Partial permission graphs with no changes to the existing graph do not error when run repeatedly (#25221)"
-    (mt/with-additional-premium-features #{:advanced-permissions}
+    (mt/with-additional-premium-features #{:advanced-permissions :sandboxes}
       (mt/with-temp [:model/PermissionsGroup group]
         ;; Bind *current-user* so that permission revisions are written, which was the source of the original error
         (mt/with-current-user (mt/user->id :rasta)

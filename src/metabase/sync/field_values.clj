@@ -13,7 +13,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private clear-field-values-for-field!
+(mu/defn- clear-field-values-for-field!
   [field :- i/FieldInstance]
   (when (t2/exists? FieldValues :field_id (u/the-id field))
     (log/debug (format "Based on cardinality and/or type information, %s should no longer have field values.\n"
@@ -22,7 +22,7 @@
     (field-values/clear-field-values-for-field! field)
     ::field-values/fv-deleted))
 
-(mu/defn ^:private update-field-values-for-field!
+(mu/defn- update-field-values-for-field!
   [field :- i/FieldInstance]
   (log/debug (u/format-color 'green "Looking into updating FieldValues for %s" (sync-util/name-for-logging field)))
   (let [field-values (field-values/get-latest-full-field-values (u/the-id field))]
@@ -60,7 +60,7 @@
           {:errors 0, :created 0, :updated 0, :deleted 0}
           (table->fields-to-scan table)))
 
-(mu/defn ^:private update-field-values-for-database!
+(mu/defn- update-field-values-for-database!
   [_database :- i/DatabaseInstance
    tables    :- [:maybe [:sequential i/TableInstance]]]
   (apply merge-with + (map update-field-values-for-table! tables)))
@@ -94,7 +94,7 @@
        (map delete-expired-advanced-field-values-for-field!)
        (reduce +)))
 
-(mu/defn ^:private delete-expired-advanced-field-values-for-database!
+(mu/defn- delete-expired-advanced-field-values-for-database!
   [_database :- i/DatabaseInstance
    tables :- [:maybe [:sequential i/TableInstance]]]
   {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)

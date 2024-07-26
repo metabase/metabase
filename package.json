@@ -266,7 +266,7 @@
     "open-cli": "^8.0.0",
     "patch-package": "^8.0.0",
     "pg": "^8.8.0",
-    "postcss": "8.4.19",
+    "postcss": "^8.4.19",
     "postcss-discard-comments": "^7.0.1",
     "postcss-import": "15.1.0",
     "postcss-loader": "7.0.2",

@@ -64,7 +64,7 @@
 ;;; |                                      Adding :cols info for native queries                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private check-driver-native-columns
+(mu/defn- check-driver-native-columns
   "Double-check that the *driver* returned the correct number of `columns` for native query results."
   [cols :- [:maybe [:sequential [:map-of :any :any]]] rows]
   (when (seq rows)
@@ -105,7 +105,7 @@
 ;;; |                                       Adding :cols info for MBQL queries                                       |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private join-with-alias :- [:maybe mbql.s/Join]
+(mu/defn- join-with-alias :- [:maybe mbql.s/Join]
   [{:keys [joins source-query]} :- :map
    join-alias                   :- ::lib.schema.common/non-blank-string]
   (or (some
@@ -233,7 +233,7 @@
     :expression_name expression-name
     :field_ref       (fe-friendly-expression-ref clause)}))
 
-(mu/defn ^:private col-info-for-field-clause*
+(mu/defn- col-info-for-field-clause*
   [{:keys [source-metadata], :as inner-query} [_ id-or-name opts :as clause] :- mbql.s/field]
   (let [stage-is-from-source-card? (:qp/stage-had-source-card inner-query)
         join                       (when (:join-alias opts)
@@ -314,7 +314,7 @@
            (not join-is-at-current-level?))
       (update :field_ref mbql.u/update-field-options dissoc :join-alias))))
 
-(mu/defn ^:private col-info-for-field-clause :- [:map
+(mu/defn- col-info-for-field-clause :- [:map
                                                  [:field_ref mbql.s/Field]]
   "Return results column metadata for a `:field` or `:expression` clause, in the format that gets returned by QP results"
   [inner-query :- :map
@@ -345,7 +345,7 @@
                         {:inner-query inner-query, :type qp.error-type/qp}
                         e))))))
 
-(mu/defn ^:private col-info-for-aggregation-clause
+(mu/defn- col-info-for-aggregation-clause
   "Return appropriate column metadata for an `:aggregation` clause."
   ;; `clause` is normally an aggregation clause but this function can call itself recursively; see comments by the
   ;; `match` pattern for field clauses below
@@ -403,13 +403,13 @@
                   {:expected returned-mbql-columns
                    :actual   (:cols results)}))))))
 
-(mu/defn ^:private cols-for-fields
+(mu/defn- cols-for-fields
   [{:keys [fields], :as inner-query} :- :map]
   (for [field fields]
     (assoc (col-info-for-field-clause inner-query field)
            :source :fields)))
 
-(mu/defn ^:private cols-for-ags-and-breakouts
+(mu/defn- cols-for-ags-and-breakouts
   [{aggregations :aggregation, breakouts :breakout, :as inner-query} :- :map]
   (concat
    (for [breakout breakouts]
@@ -428,7 +428,7 @@
    (cols-for-ags-and-breakouts inner-query)
    (cols-for-fields inner-query)))
 
-(mu/defn ^:private merge-source-metadata-col :- [:maybe :map]
+(mu/defn- merge-source-metadata-col :- [:maybe :map]
   [source-metadata-col :- [:maybe :map]
    col                 :- [:maybe :map]]
   (merge
@@ -532,7 +532,7 @@
     (fn [cols]
       (u/empty-or-distinct? (map :name cols)))]])
 
-(mu/defn ^:private deduplicate-cols-names :- ColsWithUniqueNames
+(mu/defn- deduplicate-cols-names :- ColsWithUniqueNames
   [cols :- [:sequential Col]]
   (map (fn [col unique-name]
          (assoc col :name unique-name))
