@@ -15,7 +15,7 @@ import type { LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
-const CREATED_AT_FIELD: LocalFieldReference = [
+const ORDERS_CREATED_AT_FIELD: LocalFieldReference = [
   "field",
   ORDERS.CREATED_AT,
   {
@@ -24,7 +24,15 @@ const CREATED_AT_FIELD: LocalFieldReference = [
   },
 ];
 
-const CITY_FIELD: LocalFieldReference = [
+const PEOPLE_ID_FIELD: LocalFieldReference = [
+  "field",
+  PEOPLE.ID,
+  {
+    "base-type": "type/BigInteger",
+  },
+];
+
+const PEOPLE_CITY_FIELD: LocalFieldReference = [
   "field",
   PEOPLE.CITY,
   {
@@ -37,7 +45,7 @@ const ORDERS_COUNT_OVER_TIME: StructuredQuestionDetails = {
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
-    breakout: [CREATED_AT_FIELD],
+    breakout: [ORDERS_CREATED_AT_FIELD],
   },
 };
 
@@ -58,32 +66,36 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   });
 
   it("temporal unit parameters", () => {
-    createDashboardWithParameters(ORDERS_COUNT_OVER_TIME, CREATED_AT_FIELD, [
-      {
-        name: "no default value, non-required",
-        slug: "no-default-value/non-required",
-        id: "fed1b910",
-        type: "temporal-unit",
-        sectionId: "temporal-unit",
-      },
-      {
-        name: "default value, non-required",
-        slug: "default-value/non-required",
-        id: "75d67d30",
-        type: "temporal-unit",
-        sectionId: "temporal-unit",
-        default: "year",
-      },
-      {
-        name: "default value, required",
-        slug: "default-value/required",
-        id: "60f12ac2",
-        type: "temporal-unit",
-        sectionId: "temporal-unit",
-        default: "year",
-        required: true,
-      },
-    ]);
+    createDashboardWithParameters(
+      ORDERS_COUNT_OVER_TIME,
+      ORDERS_CREATED_AT_FIELD,
+      [
+        {
+          name: "no default value, non-required",
+          slug: "no-default-value/non-required",
+          id: "fed1b910",
+          type: "temporal-unit",
+          sectionId: "temporal-unit",
+        },
+        {
+          name: "default value, non-required",
+          slug: "default-value/non-required",
+          id: "75d67d30",
+          type: "temporal-unit",
+          sectionId: "temporal-unit",
+          default: "year",
+        },
+        {
+          name: "default value, required",
+          slug: "default-value/required",
+          id: "60f12ac2",
+          type: "temporal-unit",
+          sectionId: "temporal-unit",
+          default: "year",
+          required: true,
+        },
+      ],
+    );
 
     const noDefaultNonRequired = "no default value, non-required";
 
@@ -136,32 +148,36 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   });
 
   it("time parameters", () => {
-    createDashboardWithParameters(ORDERS_COUNT_OVER_TIME, CREATED_AT_FIELD, [
-      {
-        name: "no default value, non-required",
-        slug: "no-default-value/non-required",
-        id: "fed1b910",
-        type: "date/single",
-        sectionId: "date",
-      },
-      {
-        name: "default value, non-required",
-        slug: "default-value/non-required",
-        id: "75d67d30",
-        type: "date/single",
-        sectionId: "date",
-        default: "2024-01-01",
-      },
-      {
-        name: "default value, required",
-        slug: "default-value/required",
-        id: "60f12ac2",
-        type: "date/single",
-        sectionId: "date",
-        default: "2024-01-01",
-        required: true,
-      },
-    ]);
+    createDashboardWithParameters(
+      ORDERS_COUNT_OVER_TIME,
+      ORDERS_CREATED_AT_FIELD,
+      [
+        {
+          name: "no default value, non-required",
+          slug: "no-default-value/non-required",
+          id: "fed1b910",
+          type: "date/single",
+          sectionId: "date",
+        },
+        {
+          name: "default value, non-required",
+          slug: "default-value/non-required",
+          id: "75d67d30",
+          type: "date/single",
+          sectionId: "date",
+          default: "2024-01-01",
+        },
+        {
+          name: "default value, required",
+          slug: "default-value/required",
+          id: "60f12ac2",
+          type: "date/single",
+          sectionId: "date",
+          default: "2024-01-01",
+          required: true,
+        },
+      ],
+    );
 
     const noDefaultNonRequired = "no default value, non-required";
 
@@ -217,7 +233,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   });
 
   it("location parameters - single value", () => {
-    createDashboardWithParameters(PEOPLE_QUESTION, CITY_FIELD, [
+    createDashboardWithParameters(PEOPLE_QUESTION, PEOPLE_CITY_FIELD, [
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
@@ -233,7 +249,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
         isMultiSelect: false,
         type: "string/=",
         sectionId: "location",
-        default: "Bassett",
+        default: ["Bassett"],
       },
       {
         name: "default value, required",
@@ -243,7 +259,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
         type: "string/=",
         sectionId: "location",
         required: true,
-        default: "Bassett",
+        default: ["Bassett"],
       },
     ]);
 
@@ -301,7 +317,7 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
   });
 
   it("location parameters - multiple values", () => {
-    createDashboardWithParameters(PEOPLE_QUESTION, CITY_FIELD, [
+    createDashboardWithParameters(PEOPLE_QUESTION, PEOPLE_CITY_FIELD, [
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
@@ -379,6 +395,90 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultRequired, "reset");
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "2 selections");
+  });
+
+  it("id parameters - single value", () => {
+    createDashboardWithParameters(PEOPLE_QUESTION, PEOPLE_ID_FIELD, [
+      {
+        name: "no default value, non-required",
+        slug: "no-default-value/non-required",
+        id: "fed1b910",
+        isMultiSelect: false,
+        type: "id",
+        sectionId: "id",
+      },
+      {
+        name: "default value, non-required",
+        slug: "default-value/non-required",
+        id: "75d67d30",
+        isMultiSelect: false,
+        type: "id",
+        sectionId: "id",
+        default: ["1"],
+      },
+      {
+        name: "default value, required",
+        slug: "default-value/required",
+        id: "60f12ac2",
+        isMultiSelect: false,
+        type: "id",
+        sectionId: "id",
+        required: true,
+        default: ["1"],
+      },
+    ]);
+
+    const noDefaultNonRequired = "no default value, non-required";
+
+    cy.log("no default value, non-required, no current value");
+    checkButtonVisible(noDefaultNonRequired, "chevron");
+
+    cy.log("no default value, non-required, has current value");
+    filter(noDefaultNonRequired).click();
+    popover().findByRole("searchbox").clear().type("1").blur();
+    popover().button("Add filter").click();
+    checkButtonVisible(noDefaultNonRequired, "clear");
+    filter(noDefaultNonRequired).should("have.text", "1");
+    clearButton(noDefaultNonRequired).click();
+    filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+
+    const defaultNonRequired = "default value, non-required";
+
+    cy.log("has default value, non-required, value same as default");
+    checkButtonVisible(defaultNonRequired, "clear");
+    filter(defaultNonRequired).should("have.text", "1");
+    clearButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", defaultNonRequired);
+
+    cy.log("has default value, non-required, no current value");
+    checkButtonVisible(defaultNonRequired, "reset");
+    resetButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", "1");
+
+    cy.log(
+      "has default value, non-required, current value different than default",
+    );
+    filter(defaultNonRequired).click();
+    popover().findByRole("searchbox").focus().type("{backspace}2").blur();
+    popover().button("Update filter").click();
+    filter(defaultNonRequired).should("have.text", "2");
+    checkButtonVisible(defaultNonRequired, "reset");
+    resetButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", "1");
+
+    const defaultRequired = "default value, required";
+
+    cy.log("has default value, required, value same as default");
+    checkButtonVisible(defaultRequired, "none");
+
+    cy.log("has default value, required, current value different than default");
+    filter(defaultRequired).click();
+    popover().findByRole("searchbox").focus().type("{backspace}2").blur();
+    popover().button("Update filter").click();
+    filter(defaultRequired).should("have.text", "2");
+    checkButtonVisible(defaultRequired, "reset");
+    resetButton(defaultRequired).click();
+    filter(defaultRequired).should("have.text", "1");
   });
 
   function filter(label: string) {
