@@ -8422,7 +8422,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v51.2024-07-23T10:00:00
+      id: v51.2024-07-24T10:00:00
       validCheckSum: ANY
       author: ranquild
       comment: Remove field refs from report_card.visualization_settings.column_settings
@@ -8431,7 +8431,7 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInCardVizSettings"
 
   - changeSet:
-      id: v51.2024-07-24T10:00:00
+      id: v51.2024-07-24T11:00:00
       validCheckSum: ANY
       author: ranquild
       comment: Remove field refs from report_dashboardcard.visualization_settings.column_settings
@@ -8440,13 +8440,22 @@ databaseChangeLog:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
   - changeSet:
-      id: v51.2024-07-25T10:00:00
+      id: v51.2024-07-24T12:00:00
       validCheckSum: ANY
       author: ranquild
       comment: Remove field refs from revision.object.visualization_settings.column_settings for cards
       changes:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInCardRevisionVizSettings"
+
+  - changeSet:
+      id: v51.2024-07-24T13:00:00
+      validCheckSum: ANY
+      author: ranquild
+      comment: Remove field refs from revision.object.visualization_settings.column_settings for dashboards
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardRevisionVizSettings"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

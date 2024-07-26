@@ -1537,7 +1537,8 @@
                                              :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query {:select [:id :visualization_settings :result_metadata]
                                            :from   [:report_card]
-                                           :where  [:like :visualization_settings "%column_settings%"]}))))
+                                           :where  [:and [:not= :result_metadata nil]
+                                                         [:like :visualization_settings "%column_settings%"]]}))))
 
 (define-reversible-migration MigrateLegacyColumnKeysInCardVizSettings
   (update-legacy-column-keys-in-card-viz-settings migrate-legacy-column-keys-in-viz-settings)
@@ -1560,11 +1561,24 @@
     (run! update-one! (t2/reducible-query {:select [:dc.id :dc.visualization_settings :c.result_metadata]
                                            :from   [[:report_card :c]]
                                            :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
-                                           :where  [:like :c.visualization_settings "%column_settings%"]}))))
+                                           :where  [:and [:not= :c.result_metadata nil]
+                                                         [:like :c.visualization_settings "%column_settings%"]]}))))
 
 (define-reversible-migration MigrateLegacyColumnKeysInDashboardCardVizSettings
   (update-legacy-column-keys-in-dashboard-card-viz-settings migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-dashboard-card-viz-settings rollback-legacy-column-keys-in-viz-settings))
+
+(defn- update-revision-viz-settings
+  "Updates :visualization_settings of the revision object by calling `update-viz-settings` function. Can be used to
+  both migrate and rollback the viz settings changes. As :result_metadata is not saved for each revision, we try to
+  infer it from the `:visualization_settings` and fallback to the most recent :result_metadata of the corresponding
+  card."
+  [object result-metadata update-viz-settings]
+  (m/update-existing object :visualization_settings
+                     (fn [viz-settings]
+                       (let [columns (or (infer-columns-from-viz-settings viz-settings)
+                                         result-metadata)]
+                         (update-viz-settings viz-settings columns)))))
 
 (defn- update-legacy-column-keys-in-card-revision-viz-settings
   "Updates :visualization_settings of each revision of a card that contains :column_settings by calling
@@ -1573,23 +1587,45 @@
   :result_metadata of the corresponding card."
   [update-viz-settings]
   (let [update-one! (fn [{:keys [id object result_metadata]}]
-                      (let [parsed-object        (json/parse-string object keyword-except-column-key)
-                            viz-settings         (:visualization_settings parsed-object)
-                            columns              (or (infer-columns-from-viz-settings viz-settings)
-                                                     (json/parse-string result_metadata keyword))
-                            updated-viz-settings (update-viz-settings viz-settings columns)
-                            updated-object       (assoc parsed-object :visualization_settings updated-viz-settings)]
+                      (let [parsed-object          (json/parse-string object keyword-except-column-key)
+                            parsed-result-metadata (json/parse-string result_metadata keyword)
+                            updated-object         (update-revision-viz-settings parsed-object parsed-result-metadata update-viz-settings)]
                         (when (not= parsed-object updated-object)
                               (t2/query-one {:update :revision
                                              :set    {:object (json/generate-string updated-object)}
                                              :where  [:= :id id]}))))]
     (run! update-one! (t2/reducible-query {:select [:r.id :r.object :c.result_metadata]
-                                           :from   [[::report_card :c]]
+                                           :from   [[:report_card :c]]
                                            :join   [[:revision :r] [:= :r.model_id :c.id]]
-                                           :where  [:and [:= :r.model "Card"]
+                                           :where  [:and [:not= :c.result_metadata nil]
+                                                         [:= :r.model "Card"]
                                                          [:like :r.object "%visualization_settings%"]
                                                          [:like :r.object "%column_settings%"]]}))))
 
 (define-reversible-migration MigrateLegacyColumnKeysInCardRevisionVizSettings
   (update-legacy-column-keys-in-card-revision-viz-settings migrate-legacy-column-keys-in-viz-settings)
   (update-legacy-column-keys-in-card-revision-viz-settings rollback-legacy-column-keys-in-viz-settings))
+
+(defn- update-legacy-column-keys-in-dashboard-revision-viz-settings
+  "Updates :visualization_settings of each revision of a dashboard card that contains :column_settings by calling
+  `update-viz-settings` function. Can be used to both migrate and rollback the viz settings changes. As :result_metadata
+  is not saved for each revision, we try to infer it from the `:visualization_settings`. We cannot fallback to the most
+  recent :result_metadata of the corresponding card here for performance reasons."
+  [update-viz-settings]
+  (let [update-one! (fn [{:keys [id object]}]
+                      (let [parsed-object  (json/parse-string object keyword-except-column-key)
+                            updated-object (m/update-existing parsed-object :cards
+                                                              #(update-revision-viz-settings % [] update-viz-settings))]
+                            (when (not= parsed-object updated-object)
+                              (t2/query-one {:update :revision
+                                             :set    {:object (json/generate-string updated-object)}
+                                             :where  [:= :id id]}))))]
+    (run! update-one! (t2/reducible-query {:select [:id :object]
+                                           :from   [[:revision]]
+                                           :where  [:and [:= :model "Dashboard"]
+                                                         [:like :object "%visualization_settings%"]
+                                                         [:like :object "%column_settings%"]]}))))
+
+(define-reversible-migration MigrateLegacyColumnKeysInDashboardRevisionVizSettings
+  (update-legacy-column-keys-in-dashboard-revision-viz-settings migrate-legacy-column-keys-in-viz-settings)
+  (update-legacy-column-keys-in-dashboard-revision-viz-settings rollback-legacy-column-keys-in-viz-settings))
