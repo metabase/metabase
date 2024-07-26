@@ -77,8 +77,8 @@
   Models and metrics need their definitions walked as well as their own, card-level metadata."
   [cards]
   (let [queries (into (vec (keep :dataset_query cards)) ; All the queries on all the cards
-                      ;; Plus the card-level metadata of each model and metric.
-                      (comp (filter (comp #{:metric :model} :type))
+                      ;; Plus the card-level metadata of each model.
+                      (comp (filter (comp #{:model} :type))
                             (map (fn [card] {:query {:source-table (str "card__" (u/the-id card))}})))
                       cards)]
     (batch-fetch-query-metadata queries)))
