@@ -6,9 +6,9 @@
    [metabase.shared.models.visualization-settings :as mb.viz]))
 
 (defn format [value viz]
-  (str ((formatter/number-formatter {:id 1}
+  (str ((formatter/number-formatter {:name "name"}
                                  {::mb.viz/column-settings
-                                  {{::mb.viz/field-id 1} viz}})
+                                  {{::mb.viz/column-name "name"} viz}})
         value)))
 
 (deftest number-formatting-test
@@ -102,9 +102,9 @@
       (letfn [(fmt-with-type
                 ([type value] (fmt-with-type type value nil))
                 ([type value decimals]
-                 (let [fmt-fn (formatter/number-formatter {:id 1 :effective_type type}
+                 (let [fmt-fn (formatter/number-formatter {:name "name" :effective_type type}
                                                           {::mb.viz/column-settings
-                                                           {{::mb.viz/field-id 1}
+                                                           {{::mb.viz/column-name "name"}
                                                             (merge
                                                               {:effective_type type}
                                                               (when decimals {::mb.viz/decimals decimals}))}})]
@@ -121,9 +121,9 @@
       (letfn [(fmt-with-type
                 ([type value] (fmt-with-type type value nil))
                 ([type value decimals]
-                 (let [fmt-fn (formatter/number-formatter {:id 1 :semantic_type type}
+                 (let [fmt-fn (formatter/number-formatter {:name "name" :semantic_type type}
                                                           {::mb.viz/column-settings
-                                                           {{::mb.viz/field-id 1}
+                                                           {{::mb.viz/column-name "name"}
                                                             (merge
                                                               {:effective_type type}
                                                               (when decimals {::mb.viz/decimals decimals}))}})]
