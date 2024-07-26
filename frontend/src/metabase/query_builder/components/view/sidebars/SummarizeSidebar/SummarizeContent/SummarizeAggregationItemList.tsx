@@ -25,7 +25,12 @@ export const SummarizeAggregationItemList = ({
   onRemoveAggregation,
   ...containerProps
 }: SummarizeAggregationItemListProps) => (
-  <Group spacing="sm" align="flex-start" {...containerProps}>
+  <Group
+    data-testid="summarize-aggregation-item-list"
+    spacing="sm"
+    align="flex-start"
+    {...containerProps}
+  >
     {aggregations.map((aggregation, aggregationIndex) => (
       <AggregationItem
         key={aggregationIndex}

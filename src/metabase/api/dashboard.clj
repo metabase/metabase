@@ -911,7 +911,7 @@
   (with-dashboard-load-id dashboard-load-id
     (data-perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [dashboard (get-dashboard id)]
-        (api.query-metadata/dashboard-metadata dashboard)))))
+        (api.query-metadata/batch-fetch-dashboard-metadata [dashboard])))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
