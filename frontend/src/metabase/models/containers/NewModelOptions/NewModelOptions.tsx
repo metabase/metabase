@@ -15,6 +15,7 @@ import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesE
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
 import {
   EducationalButton,
@@ -29,7 +30,7 @@ interface NewModelOptionsProps {
 }
 
 const NewModelOptions = ({ location }: NewModelOptionsProps) => {
-  const { data } = useListDatabasesQuery();
+  const { data, isLoading } = useListDatabasesQuery();
   const databases = data?.data ?? [];
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
@@ -44,73 +45,70 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
-  if (!hasDataAccess && !hasNativeWrite) {
-    return (
-      <div
-        className={cx(CS.fullHeight, CS.flex, CS.alignCenter, CS.justifyCenter)}
-      >
-        <NoDatabasesEmptyState />
-      </div>
-    );
-  }
-
-  // Determine how many items will be shown based on permissions etc so we can make sure the layout adapts
-  const itemsCount = (hasDataAccess ? 1 : 0) + (hasNativeWrite ? 1 : 0);
+  const hasNoDataAccess = !isLoading && !hasDataAccess && !hasNativeWrite;
 
   return (
-    <OptionsRoot data-testid="new-model-options">
-      <Grid>
-        {hasDataAccess && (
-          <OptionsGridItem itemsCount={itemsCount}>
-            <NewModelOption
-              image="app/img/notebook_mode_illustration"
-              title={t`Use the notebook editor`}
-              description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
-              width={180}
-              to={Urls.newQuestion({
-                mode: "query",
-                creationType: "custom_question",
-                cardType: "model",
-                collectionId,
-              })}
-            />
-          </OptionsGridItem>
-        )}
-        {hasNativeWrite && (
-          <OptionsGridItem itemsCount={itemsCount}>
-            <NewModelOption
-              image="app/img/sql_illustration"
-              title={t`Use a native query`}
-              description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
-              to={Urls.newQuestion({
-                mode: "query",
-                type: "native",
-                creationType: "native_question",
-                cardType: "model",
-                collectionId,
-                databaseId: lastUsedDatabaseId || undefined,
-              })}
-              width={180}
-            />
-          </OptionsGridItem>
-        )}
-      </Grid>
+    <LoadingAndErrorWrapper loading={isLoading} data-testid="loading-wrapper">
+      {() => (
+        <OptionsRoot data-testid="new-model-options">
+          {hasNoDataAccess ? (
+            <div className={cx(CS.fullHeight, CS.flex, CS.alignCenter, CS.justifyCenter)}>
+              <NoDatabasesEmptyState />
+            </div>
+          ) : (
+            <>
+              <Grid>
+                {hasDataAccess && (
+                  <OptionsGridItem itemsCount={hasNativeWrite ? 2 : 1}>
+                    <NewModelOption
+                      image="app/img/notebook_mode_illustration"
+                      title={t`Use the notebook editor`}
+                      description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
+                      width={180}
+                      to={Urls.newQuestion({
+                        mode: "query",
+                        creationType: "custom_question",
+                        cardType: "model",
+                        collectionId,
+                      })}
+                    />
+                  </OptionsGridItem>
+                )}
+                {hasNativeWrite && (
+                  <OptionsGridItem itemsCount={hasDataAccess ? 2 : 1}>
+                    <NewModelOption
+                      image="app/img/sql_illustration"
+                      title={t`Use a native query`}
+                      description={t`You can always fall back to a SQL or native query, which is a bit more manual.`}
+                      to={Urls.newQuestion({
+                        mode: "query",
+                        type: "native",
+                        creationType: "native_question",
+                        cardType: "model",
+                        collectionId,
+                        databaseId: lastUsedDatabaseId || undefined,
+                      })}
+                      width={180}
+                    />
+                  </OptionsGridItem>
+                )}
+              </Grid>
 
-      {showMetabaseLinks && (
-        <EducationalButton
-          target="_blank"
-          href={EDUCATIONAL_LINK}
-          className={CS.mt4}
-        >
-          {t`What's a model?`}
-        </EducationalButton>
+              {showMetabaseLinks && (
+                <EducationalButton
+                  target="_blank"
+                  href={EDUCATIONAL_LINK}
+                  className={CS.mt4}
+                >
+                  {t`What's a model?`}
+                </EducationalButton>
+              )}
+            </>
+          )}
+        </OptionsRoot>
       )}
-    </OptionsRoot>
+    </LoadingAndErrorWrapper>
   );
 };
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-)(NewModelOptions);
+
+export default NewModelOptions;
