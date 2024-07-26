@@ -34,9 +34,11 @@
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-channel-recipient :as pulse-channel-recipient]
+   [metabase.models.query-analysis :as query-analysis]
    [metabase.models.query-cache :as query-cache]
    [metabase.models.query-execution :as query-execution]
    [metabase.models.query-field :as query-field]
+   [metabase.models.query-table :as query-table]
    [metabase.models.revision :as revision]
    [metabase.models.secret :as secret]
    [metabase.models.segment :as segment]
@@ -90,7 +92,9 @@
          pulse/keep-me
          query-cache/keep-me
          query-execution/keep-me
+         query-analysis/keep-me
          query-field/keep-me
+         query-table/keep-me
          revision/keep-me
          secret/keep-me
          segment/keep-me
