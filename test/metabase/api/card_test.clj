@@ -296,6 +296,47 @@
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
 
+(deftest embedding-sdk-info-saves-view-log
+  (testing "GET /api/card with embedding headers set"
+    (mt/with-temp [:model/Database {database-id :id} {}
+                   :model/Card card-1 {:name "Card 1" :database_id database-id}]
+      (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card-1))
+                            {:request-options {:headers {"x-metabase-client" "client-A"
+                                                         "x-metabase-client-version" "1"}}})
+      (is (= {:embedding_client "client-A", :embedding_version "1"}
+             (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1)))))))
+
+(defn do-poll-until [^Long timeout-ms thunk]
+  (let [result-prom (promise)
+        _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
+        _runner (future (loop [thunk-return (try (thunk) (catch Exception e e))]
+                         (if thunk-return
+                           (deliver result-prom (thunk))
+                           (recur (try (thunk) (catch Exception e e))))))
+        result @result-prom]
+    (if (= result ::timeout) (throw (Exception. (str "Timeout after " timeout-ms "ms")))
+        result)))
+
+(defmacro poll-until [timeout-ms & body]
+  `(do-poll-until ~timeout-ms (fn [] ~@body)))
+
+(deftest embedding-sdk-info-saves-query-execution
+  (testing "GET /api/card with embedding headers set"
+    (mt/with-temp [:model/Card card-1 {:name "Card 1"
+                                       ;; This query is just to make sure the card actually runs a query, otherwise
+                                       ;; there won't be a QueryExecution record to check!
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "select (TIMESTAMP '2023-01-01 12:34:56') as T"}}}]
+      (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card-1))
+                            {:request-options {:headers {"x-metabase-client" "client-B"
+                                                         "x-metabase-client-version" "2"}}})
+      (is (=? {:embedding_client "client-B", :embedding_version "2"}
+              ;; The query metadata is handled asynchronously, so we need to poll until it's available:
+              (poll-until 100
+                          (t2/select-one [:model/QueryExecution :embedding_client :embedding_version]
+                                         :card_id (u/the-id card-1))))))))
+
 (deftest filter-by-bookmarked-test
   (testing "Filter by `bookmarked`"
     (mt/with-temp [:model/Card         card-1 {:name "Card 1"}

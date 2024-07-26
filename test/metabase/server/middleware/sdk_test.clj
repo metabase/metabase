@@ -47,10 +47,10 @@
               :embedding_version "1"} (sdk/include-analytics @m)))
       (swap! m sdk/include-analytics)
       ;; unset the vars:
-      (binding [sdk/*client* nil
-                sdk/*version* nil]
+      (binding [sdk/*client* nil sdk/*version* nil]
         (is (= {:embedding_client "client-A"
-                :embedding_version "1"} @m))
+                :embedding_version "1"}
+               @m))
         (is (= {:embedding_client "client-A"
                 :embedding_version "1"}
                (sdk/include-analytics @m)))))))

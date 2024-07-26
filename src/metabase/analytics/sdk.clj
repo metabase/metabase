@@ -2,7 +2,7 @@
   "Middleware, vars, and a reporting helper for tracking analytics information about the Metabase embedding client.
 
   Here is how we collect analytics information about the embedding client:
-  The X-Metabase-Client and X-Metabase-Version headers are sent, and if present bound to *metabase-client* and *metabase-client-version* respectively.
+  The X-Metabase-Client and X-Metabase-Client-Version headers are sent, and if present bound to *metabase-client* and *metabase-client-version* respectively.
 
   When we execute a query, or record a view log, we include the *client* and *version* as embedding_client and embedding_version in the view_log or query_execution record.
 
