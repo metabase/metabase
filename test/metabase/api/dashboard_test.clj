@@ -19,6 +19,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.models
     :refer [Action
             Card
@@ -4712,19 +4713,19 @@
 
 (deftest ^:synchronized dashboard-table-prefetch-test
   (t2.with-temp/with-temp
-    [:model/Dashboard     d  {:name "D"}
-     :model/Card          c1 {:name "C1"
-                              :dataset_query {:database (mt/id)
-                                              :type     :query
-                                              :query    {:source-table (mt/id :products)}}}
-     :model/Card          c2 {:name "C2"
-                              :dataset_query {:database (mt/id)
-                                              :type     :query
-                                              :query    {:source-table (mt/id :orders)}}}
-     :model/DashboardCard _  {:dashboard_id       (:id d)
-                              :card_id            (:id c1)}
-     :model/DashboardCard _  {:dashboard_id       (:id d)
-                              :card_id            (:id c2)}]
+    [:model/Dashboard     d   {:name "D"}
+     :model/Card          c1  {:name "C1"
+                               :dataset_query {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (mt/id :products)}}}
+     :model/Card          c2  {:name "C2"
+                               :dataset_query {:database (mt/id)
+                                               :type     :query
+                                               :query    {:source-table (mt/id :orders)}}}
+     :model/DashboardCard dc1 {:dashboard_id       (:id d)
+                               :card_id            (:id c1)}
+     :model/DashboardCard dc2 {:dashboard_id       (:id d)
+                               :card_id            (:id c2)}]
     (let [original-select-fn   @#'t2/select
           uncached-calls-count (atom 0)
           cached-calls-count   (atom 0)]
@@ -4751,4 +4752,36 @@
         (is (<= @cached-calls-count @uncached-calls-count)))
       ;; If we need more for _some reason_, this test should be updated accordingly.
       (testing "At most 1 db call should be executed for :metadata/tables"
-        (is (<= @cached-calls-count 1))))))
+        (is (<= @cached-calls-count 1)))
+
+      (testing "dashboard card /query calls reuse metadata providers"
+        (let [original-metadata-table @#'lib.metadata.protocols/table
+              providers               (atom [])
+              load-id                 (str (random-uuid))]
+          (with-redefs [lib.metadata.protocols/table (fn [mp table-id]
+                                                       (swap! providers conj mp)
+                                                       (original-metadata-table mp table-id))]
+            (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query"
+                                                       (:id d) (:id dc1) (:id c1))
+                                  {"dashboard_load_id" load-id})
+            (mt/user-http-request :rasta :post (format "dashboard/%d/dashcard/%s/card/%s/query"
+                                                       (:id d) (:id dc2) (:id c2))
+                                  {"dashboard_load_id" load-id}))
+          (let [[p & tail :as seen] @providers]
+            (is (>= (count seen) 2))
+            (is (every? #(identical? p %) tail))))))))
+
+(deftest querying-a-dashboard-dashcard-updates-last-viewed-at
+  (mt/test-helpers-set-global-values!
+    (mt/dataset test-data
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
+                     :model/Card {card-id :id} {:dataset_query (mt/native-query
+                                                                 {:query "SELECT COUNT(*) FROM \"ORDERS\""
+                                                                  :template-tags {}})}
+                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
+                                                             :dashboard_id dashboard-id}]
+        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
+          (mt/with-temporary-setting-values [synchronous-batch-updates true]
+            (mt/user-http-request :crowberto :post 202
+                                  (format "dashboard/%s/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)))
+          (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))
