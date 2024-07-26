@@ -342,7 +342,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/slack");
+      cy.visit("/admin/settings/notifications/slack");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Metabase on Slack");
