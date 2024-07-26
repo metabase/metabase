@@ -270,26 +270,17 @@ describe("scenarios > dashboard card resizing", { tags: "@flaky" }, () => {
           dashcards: cardIds.map((cardId, index) => ({
             id: index,
             card_id: cardId,
-            row: index * 2,
+            row: index * 10,
             col: 0,
-            size_x: 2,
-            size_y: 2,
+            size_x: 18,
+            size_y: 10,
           })),
         });
         visitDashboard(dashId);
         editDashboard();
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
-          const dashcards = body.dashcards;
-          dashcards.forEach(({ card }, index) => {
-            resizeDashboardCard({
-              card: getDashboardCard(index),
-              x: getDefaultSize(card.display).width * 100,
-              y: getDefaultSize(card.display).height * 100,
-            });
-          });
-
-          dashcards.forEach(({ card }, index) => {
+          body.dashcards.forEach(({ card }, index) => {
             resizeDashboardCard({
               card: getDashboardCard(index),
               x: -getDefaultSize(card.display).width * 200,
