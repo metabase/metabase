@@ -54,7 +54,11 @@ export const currentUser = createReducer<User | null>(null, builder => {
     })
     .addCase(Dashboards.actionTypes.UPDATE, (state, { payload }) => {
       const { dashboard } = payload;
-      if (state?.custom_homepage?.dashboard_id && dashboard.archived) {
+      if (
+        state != null &&
+        state.custom_homepage?.dashboard_id === dashboard.id &&
+        dashboard.archived
+      ) {
         state.custom_homepage = null;
       }
     });
