@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
-
-import { alpha, color, lighten } from "metabase/lib/colors";
+import { alpha, color } from "metabase/lib/colors";
 
 interface ToasterContainerProps {
   show: boolean;
