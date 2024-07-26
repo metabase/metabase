@@ -115,7 +115,7 @@
         },
         "graph.dimensions": ["TOTAL"],
         "column_settings": {
-          "[\"ref\",[\"field\",15,{\"base-type\":\"type/Float\"}]]": {
+          "[\"name\",\"TOTAL\"]": {
             "prefix": "2323________11111232323",
             "suffix": "232323___________2222232323"
           },

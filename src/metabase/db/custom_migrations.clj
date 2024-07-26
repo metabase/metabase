@@ -1499,7 +1499,7 @@
    with query results, and can be used in cases where up-to-date result metadata is not available, like in revisions."
   [viz-settings]
   (when-let [columns (:table.columns viz-settings)]
-     (map (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}) columns)))
+     (mapv (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}) columns)))
 
 (defn- migrate-legacy-column-keys-in-viz-settings
   "Migrates legacy `:column_settings` keys that have serialized field refs to name-based column keys. Unmatched keys are
