@@ -45,7 +45,6 @@ import {
 
 import AlertModalsS from "./AlertModals.module.css";
 import { AlertModalFooter, DangerZone } from "./AlertModals.styled";
-import { listChannels } from "metabase/api/channel";
 
 const getScheduleFromChannel = channel =>
   _.pick(
@@ -189,12 +188,7 @@ export const CreateAlertModalContent = connect(
     hasConfiguredAnyChannel: hasConfiguredAnyChannelSelector(state),
     hasConfiguredEmailChannel: hasConfiguredEmailChannelSelector(state),
   }),
-  {
-    createAlert,
-    fetchPulseFormInput,
-    apiUpdateQuestion,
-    updateUrl,
-  },
+  { createAlert, fetchPulseFormInput, apiUpdateQuestion, updateUrl },
 )(CreateAlertModalContentInner);
 
 export class AlertEducationalScreen extends Component {
@@ -621,7 +615,6 @@ export function AlertEditSchedule({
 class AlertEditChannelsInner extends Component {
   componentDidMount() {
     this.props.fetchPulseFormInput();
-    this.props.fetchNotificationChannels();
   }
 
   // Technically pulse definition is equal to alert definition
@@ -639,7 +632,7 @@ class AlertEditChannelsInner extends Component {
   };
 
   render() {
-    const { alert, user, users, formInput, notificationChannels } = this.props;
+    const { alert, user, users, formInput } = this.props;
     return (
       <div className={cx(CS.mt4, CS.pt2)}>
         <h3
@@ -651,7 +644,6 @@ class AlertEditChannelsInner extends Component {
             pulseId={alert.id}
             pulseIsValid={true}
             formInput={formInput}
-            notificationChannels={notificationChannels}
             user={user}
             users={users}
             setPulse={this.onSetPulse}
@@ -673,11 +665,9 @@ export const AlertEditChannels = _.compose(
     (state, props) => ({
       user: getUser(state),
       formInput: getPulseFormInput(state),
-      notificationChannels: listChannels.select()(state)?.data,
     }),
     {
       fetchPulseFormInput,
-      fetchNotificationChannels: listChannels.initiate,
     },
   ),
 )(AlertEditChannelsInner);
