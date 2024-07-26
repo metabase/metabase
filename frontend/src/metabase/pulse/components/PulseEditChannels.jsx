@@ -21,7 +21,6 @@ import RecipientPicker from "./RecipientPicker";
 export const CHANNEL_ICONS = {
   email: "mail",
   slack: "slack",
-  webhook: "webhook",
 };
 
 const CHANNEL_NOUN_PLURAL = {
@@ -287,7 +286,7 @@ export default class PulseEditChannels extends Component {
   }
 
   render() {
-    const { formInput, notificationChannels } = this.props;
+    const { formInput } = this.props;
 
     // Default to show the default channels until full formInput is loaded
     const channels = formInput.channels || {
@@ -298,12 +297,6 @@ export default class PulseEditChannels extends Component {
       <ul className={cx(CS.bordered, CS.rounded, CS.bgWhite)}>
         {Object.values(channels).map(channelSpec =>
           this.renderChannelSection(channelSpec),
-        )}
-        {notificationChannels.map(notification =>
-          this.renderChannelSection({
-            name: notification.name,
-            type: "webhook",
-          }),
         )}
       </ul>
     );
