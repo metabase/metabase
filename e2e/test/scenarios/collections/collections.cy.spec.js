@@ -708,7 +708,6 @@ describe("scenarios > collection defaults", () => {
 
           entityPickerModal().within(() => {
             cy.log("should disable all moving collections");
-            cy.findByRole("tab", { name: /Collections/ }).click();
             findPickerItem("First collection").should("have.attr", "disabled");
             findPickerItem("Another collection").should(
               "have.attr",
