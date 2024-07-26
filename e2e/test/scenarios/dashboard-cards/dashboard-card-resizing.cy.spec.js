@@ -10,6 +10,8 @@ import {
   restore,
   saveDashboard,
   visitDashboard,
+  createQuestion,
+  createDashboard,
 } from "e2e/support/helpers";
 import { GRID_WIDTH } from "metabase/lib/dashboard_grid";
 
@@ -207,9 +209,9 @@ describe("scenarios > dashboard card resizing", { tags: "@flaky" }, () => {
     { requestTimeout: 15000 },
     () => {
       TEST_QUESTIONS.forEach(question => {
-        cy.createQuestion(question);
+        createQuestion(question);
       });
-      cy.createDashboard().then(({ body: { id: dashId } }) => {
+      createDashboard().then(({ body: { id: dashId } }) => {
         visitDashboard(dashId);
 
         cy.findByTestId("dashboard-header").within(() => {
@@ -259,11 +261,11 @@ describe("scenarios > dashboard card resizing", { tags: "@flaky" }, () => {
     () => {
       const cardIds = [];
       TEST_QUESTIONS.forEach(question => {
-        cy.createQuestion(question).then(({ body: { id } }) => {
+        createQuestion(question).then(({ body: { id } }) => {
           cardIds.push(id);
         });
       });
-      cy.createDashboard().then(({ body: { id: dashId } }) => {
+      createDashboard().then(({ body: { id: dashId } }) => {
         cy.request("PUT", `/api/dashboard/${dashId}`, {
           dashcards: cardIds.map((cardId, index) => ({
             id: index,
@@ -349,14 +351,14 @@ describe("scenarios > dashboard card resizing", { tags: "@flaky" }, () => {
 });
 
 const createLinkDashboard = () => {
-  cy.createQuestion({
+  createQuestion({
     name: TEST_QUESTION_NAME,
     query: {
       "source-table": ORDERS_ID,
     },
   });
 
-  cy.createDashboard({
+  createDashboard({
     name: TEST_DASHBOARD_NAME,
   }).then(({ body: { id: dashId } }) => {
     visitDashboard(dashId);
