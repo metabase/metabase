@@ -226,15 +226,16 @@
    timezone-id :- [:maybe :string]
    card
    _dashcard
-   {:keys [rows viz-settings format-rows?] :as data}]
-  (let [[ordered-cols ordered-rows] (order-data data viz-settings)
-        data                        (-> data
+   {:keys [rows viz-settings format-rows?] :as unordered-data}]
+  (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
+        data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
         table-body                  [:div
                                      (table/render-table
-                                      (color/make-color-selector data viz-settings)
-                                      (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+                                      (color/make-color-selector unordered-data viz-settings)
+                                      {:cols-for-color-lookup (mapv :name ordered-cols)
+                                       :col-names             (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data))
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
