@@ -41,7 +41,7 @@ export const getAuthConfiguration = (
   dispatch: Dispatch,
   appName: string,
 ) =>
-  match<[SDKConfig, string], string | void>([config, window.location.host])
+  match<[SDKConfig, string], string | void>([config, window.location.hostname])
     .with(
       [{ jwtProviderUri: P.select(P.not(P.nullish)) }, P._],
       jwtProviderUri => setupJwtAuth(jwtProviderUri, dispatch),
