@@ -53,14 +53,16 @@
 
 (defn- viz-settings-for-col
   "Get the column-settings map for the given column from the viz-settings."
-  [{column-name :name} viz-settings]
-  (let [all-cols-settings (-> viz-settings
+  [{column-name :name :keys [field_ref]} viz-settings]
+  (let [[_ field-id-or-name] field_ref
+        all-cols-settings (-> viz-settings
                               ::mb.viz/column-settings
                               ;; update the keys so that they will have only the :field-id or :column-name
                               ;; and not have any metadata. Since we don't know the metadata, we can never
                               ;; match a key with metadata, even if we do have the correct name or id
                               (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))]
-    (all-cols-settings {::mb.viz/column-name column-name})))
+    (or (all-cols-settings {::mb.viz/column-name column-name})
+        (all-cols-settings {::mb.viz/field-id field-id-or-name}))))
 
 (defn- determine-time-format
   "Given viz-settings with a time-style and possible time-enabled (precision) entry, create the format string.
