@@ -1615,7 +1615,7 @@
   (let [update-one! (fn [{:keys [id object]}]
                       (let [parsed-object  (json/parse-string object keyword-except-column-key)
                             updated-object (m/update-existing parsed-object :cards
-                                                              #(update-revision-viz-settings % [] update-viz-settings))]
+                                                              (fn [cards] (mapv #(update-revision-viz-settings % [] update-viz-settings) cards)))]
                             (when (not= parsed-object updated-object)
                               (t2/query-one {:update :revision
                                              :set    {:object (json/generate-string updated-object)}
