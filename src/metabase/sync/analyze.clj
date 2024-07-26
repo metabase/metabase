@@ -116,7 +116,7 @@
   `:last_analyzed` value for each affected Field."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
-    (let [tables (sync-util/db->sync-tables database)]
+    (let [tables (sync-util/db->reducible-sync-tables database)]
       (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (count tables)))]
         (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps tables (maybe-log-progress emoji-progress-bar)))
           (update-fields-last-analyzed-for-db! database tables))))))
@@ -126,7 +126,7 @@
   [[fingerprint/max-refingerprint-field-count]]."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
-    (let [tables (sync-util/db->sync-tables database)
+    (let [tables (sync-util/db->refingerprint-reducible-sync-tables database)
           log-fn (fn [step table]
                    (log/info (u/format-color 'blue "%s Analyzed %s" step (sync-util/name-for-logging table))))]
       (sync-util/run-sync-operation "refingerprint database"

@@ -117,27 +117,27 @@
 
 (mu/defn classify-tables-for-db!
   "Classify all tables found in a given database"
-  [_database :- i/DatabaseInstance
-   tables    :- [:maybe [:sequential i/TableInstance]]
-   log-progress-fn]
-  {:total-tables      (count tables)
-   :tables-classified (sync-util/sum-numbers (fn [table]
-                                               (let [result (classify-table! table)]
-                                                 (log-progress-fn "classify-tables" table)
-                                                 (if result
-                                                   1
-                                                   0)))
-                                             tables)})
+  [_database tables log-progress-fn]
+  (transduce
+   (map (fn [table]
+          (let [result (classify-table! table)]
+            (log-progress-fn "classify-tables" table)
+            {:tables-classified (if result
+                                  1
+                                  0)
+             :total-tables      1})))
+   (partial merge-with +)
+   {:tables-classified 0, :total-tables 0}
+   tables))
 
 (mu/defn classify-fields-for-db!
   "Classify all fields found in a given database"
-  [_database :- i/DatabaseInstance
-   tables    :- [:maybe [:sequential i/TableInstance]]
-   log-progress-fn]
-  (apply merge-with +
-         {:fields-classified 0, :fields-failed 0}
-         (map (fn [table]
-                (let [result (classify-fields! table)]
-                  (log-progress-fn "classify-fields" table)
-                  result))
-              tables)))
+  [_database tables log-progress-fn]
+  (transduce
+   (map (fn [table]
+          (let [result (classify-fields! table)]
+            (log-progress-fn "classify-fields" table)
+            result)))
+   (partial merge-with +)
+   {:fields-classified 0, :fields-failed 0}
+   tables))

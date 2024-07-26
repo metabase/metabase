@@ -62,8 +62,8 @@
 
 (mu/defn ^:private update-field-values-for-database!
   [_database :- i/DatabaseInstance
-   tables    :- [:maybe [:sequential i/TableInstance]]]
-  (apply merge-with + (map update-field-values-for-table! tables)))
+   tables]
+  (transduce (map update-field-values-for-table!) (partial merge-with +) tables))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors"
@@ -96,7 +96,7 @@
 
 (mu/defn ^:private delete-expired-advanced-field-values-for-database!
   [_database :- i/DatabaseInstance
-   tables :- [:maybe [:sequential i/TableInstance]]]
+   tables]
   {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
                              (map (fn [result]
                                     (if (instance? Throwable result)
@@ -121,5 +121,5 @@
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
                                                                  (sync-util/name-for-logging database))
-    (let [tables (sync-util/db->sync-tables database)]
+    (let [tables (sync-util/db->reducible-sync-tables database)]
      (sync-util/run-sync-operation "field values scanning" database (make-sync-field-values-steps tables)))))

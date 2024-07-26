@@ -211,12 +211,12 @@
 (mu/defn ^:private fingerprint-fields-for-db!*
   "Invokes `fingerprint-fields!` on every table in `database`"
   ([database        :- i/DatabaseInstance
-    tables          :- [:maybe [:sequential i/TableInstance]]
+    tables
     log-progress-fn :- LogProgressFn]
    (fingerprint-fields-for-db!* database tables log-progress-fn (constantly true)))
 
   ([database        :- i/DatabaseInstance
-    tables          :- [:maybe [:sequential i/TableInstance]]
+    tables
     log-progress-fn :- LogProgressFn
     continue?       :- [:=> [:cat ::FingerprintStats] :any]]
    (qp.store/with-metadata-provider (u/the-id database)
@@ -232,7 +232,7 @@
 (mu/defn fingerprint-fields-for-db!
   "Invokes [[fingerprint-fields!]] on every table in `database`"
   [database        :- i/DatabaseInstance
-   tables          :- [:maybe [:sequential i/TableInstance]]
+   tables
    log-progress-fn :- LogProgressFn]
   (if (driver.u/supports? (:engine database) :fingerprint database)
     (fingerprint-fields-for-db!* database tables log-progress-fn)
@@ -246,13 +246,11 @@
 (mu/defn refingerprint-fields-for-db!
   "Invokes [[fingeprint-fields!]] on every table in `database` up to some limit."
   [database        :- i/DatabaseInstance
-   tables          :- [:maybe [:sequential i/TableInstance]]
+   tables
    log-progress-fn :- LogProgressFn]
   (binding [*refingerprint?* true]
     (fingerprint-fields-for-db!* database
-                                 ;; our rudimentary refingerprint strategy is to shuffle the tables and fingerprint
-                                 ;; until we are over some threshold of fields
-                                 (shuffle tables)
+                                 tables
                                  log-progress-fn
                                  (fn [stats-acc]
                                    (< (:fingerprints-attempted stats-acc) max-refingerprint-field-count)))))
