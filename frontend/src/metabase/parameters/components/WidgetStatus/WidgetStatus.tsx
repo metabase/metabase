@@ -3,19 +3,14 @@ import { t } from "ttag";
 
 import { Button, Flex, Icon, rem, Tooltip } from "metabase/ui";
 
-type Props =
-  | {
-      className?: string;
-      highlighted: boolean;
-      status: "clear" | "reset";
-      onClick: () => void;
-    }
-  | {
-      className?: string;
-      highlighted?: never;
-      status: "empty" | "none";
-      onClick?: never;
-    };
+import type { Status } from "./types";
+
+type Props = {
+  className?: string;
+  highlighted?: boolean;
+  status: Status;
+  onClick?: () => void;
+};
 
 const COMPACT_BUTTON_PADDING = 4;
 
