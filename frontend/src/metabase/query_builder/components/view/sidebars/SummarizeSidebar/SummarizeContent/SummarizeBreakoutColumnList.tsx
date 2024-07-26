@@ -27,7 +27,12 @@ export const SummarizeBreakoutColumnList = ({
   onReplaceBreakouts,
   ...containerProps
 }: SummarizeBreakoutColumnListProps) => (
-  <Stack h="100%" spacing="0" {...containerProps}>
+  <Stack
+    data-testid="summarize-breakout-column-list"
+    h="100%"
+    spacing="0"
+    {...containerProps}
+  >
     <SectionTitle>{t`Group by`}</SectionTitle>
     <BreakoutColumnList
       query={query}
