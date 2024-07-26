@@ -4605,8 +4605,7 @@
                                  {:id (mt/id :checkins)}
                                  {:id (mt/id :reviews)}
                                  {:id (mt/id :products)
-                                  :fields sequential?
-                                  :dimension_options map?}
+                                  :fields sequential?}
                                  {:id (mt/id :venues)}])
            :cards [{:id link-card}]
            :databases [{:id (mt/id) :engine string?}]
