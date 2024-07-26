@@ -177,17 +177,52 @@
                          [:= :t.db_id db-id]
                          (into [:or] (map table-query tables))]}))))
 
+(defn- explicit-search-values
+  "Enumerate all the values we should try when matching analyzed columns to tables and fields"
+  [tables columns]
+  (mapcat (fn [{:keys [schema table column]}]
+            (if table
+              [schema table column]
+              (map (fn [{:keys [schema table]}]
+                     [schema table column])
+                   tables)))
+          columns))
+
 (defn- explicit-field-refs-for-query
-  "Given the results of query analysis, return references to the corresponding fields and model outputs."
+  "Given the results of query analysis, return references to the corresponding fields and model outputs.
+  Omit those for which we cannot find any table."
   [{column-maps :columns table-maps :tables} db-id]
   (let [columns (map :component column-maps)
         tables  (map :component table-maps)]
     (consolidate-columns
      columns
-     #p (t2/select :model/QueryField #p (assoc field-and-table-fragment
-                                         :where [:and
-                                                 [:= :t.db_id db-id]
-                                                 (into [:or] (map (partial column-query tables) columns))])))))
+     (t2/select :model/QueryField
+                {:select    [:t.id [:t.id :table-id]
+                               :t.name [:t.name :table-name]
+                               :f.id [:f.id :field-id]
+                               :f.name [:f.name :field-name]]
+                   :from      [[:values (vec (explicit-search-values tables columns))]
+                                [:input [:schema :table :column]]]
+                   :join      [[:tables :t] [:and
+                                             [:= :t.db_id db-id]
+                                             [:or
+                                              [:= :input.schema :t.schema]
+                                              [:= :input.schema nil]]
+                                             [:or
+                                              [:= :input.table :t.name]
+                                              [:and
+                                               [:= :input.table nil]]
+                                              (into [:or] (map table-query tables))]]]
+                   :left-join [[:fields :f] [:and
+                                             [:= :f.table_id :t.id]
+                                             [:= :f.name :input.column]]]
+                   :where     [:and
+                               [:or
+                                [:is-not :input.table_name nil]
+                                [:is :input.column_name nil]]
+                               [:or
+                                [:is :input.column_name nil]
+                                [:is-not :t.id nil]]]}))))
 
 (defn- wildcard-tables
   "Given a parsed query, return the list of tables we are selecting from using a wildcard."
@@ -207,22 +242,15 @@
   "Similar to explicit-field-ids-for-query, but for wildcard selects"
   [parsed-query db-id]
   (when-let [tables (wildcard-tables parsed-query)]
-    (t2/select :model/QueryField (merge field-and-table-fragment
-                                        {:where [:and
-                                                 [:= :t.db_id db-id]
-                                                 [:= :f.active true]
-                                                 (into [:or] (map table-query tables))]}))))
+    (set
+     (t2/select :model/QueryField (merge field-and-table-fragment
+                                         {:where [:and
+                                                  [:= :t.db_id db-id]
+                                                  [:= :f.active true]
+                                                  (into [:or] (map table-query tables))]})))))
 
 (defn- mark-reference [refs explicit?]
   (map #(assoc % :explicit-reference explicit?) refs))
-
-(defn- deduce-or-fetch-table-refs [parsed-query db-id field-refs]
-  (let [tables    (map :component (:tables parsed-query))
-        implicit? (into #{} (map (juxt :schema :table)) field-refs)]
-    (if (every? implicit? (map (juxt :schema :table) tables))
-      (distinct (map #(dissoc % :field-id :column) field-refs))
-      ;; if any tables are references without referencing any of their columns, we might as well fetch every table
-      (table-refs-for-query parsed-query db-id))))
 
 (defn- references-for-sql
   "Returns a `{:explicit #{...} :implicit #{...}}` map with field IDs that (may) be referenced in the given card's
@@ -236,12 +264,13 @@
         macaw-opts    (nqa.impl/macaw-options driver)
         sql-string    (:query (nqa.sub/replace-tags query))
         parsed-query  (macaw/query->components (macaw/parsed-query sql-string macaw-opts) macaw-opts)
+        table-refs    (table-refs-for-query parsed-query db-id)
         explicit-refs (explicit-field-refs-for-query parsed-query db-id)
-        implicit-refs (set/difference (set (implicit-references-for-query parsed-query db-id))
-                                      (set explicit-refs))
+        implicit-refs (-> (implicit-references-for-query parsed-query db-id)
+                          (set/difference explicit-refs))
         field-refs    (concat (mark-reference explicit-refs true)
                               (mark-reference implicit-refs false))
-        table-refs    (deduce-or-fetch-table-refs parsed-query db-id field-refs)]
+        ]
     {:tables table-refs
      :fields field-refs}))
 
