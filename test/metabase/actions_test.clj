@@ -27,7 +27,7 @@
      (binding [*current-user-permissions-set* (delay #{"/"})]
        ~@body)))
 
-(mu/defn ^:private format-field-name :- :string
+(mu/defn- format-field-name :- :string
   "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
   [field-name]
   (mt/format-name (name field-name)))

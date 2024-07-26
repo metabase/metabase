@@ -72,7 +72,7 @@
                           :user_id  user-id
                           :group_id (u/the-id (perms-group/admin)))))))))
 
-(mu/defn ^:private group-has-full-access?
+(mu/defn- group-has-full-access?
   "Does a group have permissions for `object` and *all* of its children?"
   [group-id :- ms/PositiveInt
    db-id    :- ms/PositiveInt]

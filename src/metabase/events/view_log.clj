@@ -10,6 +10,7 @@
    [metabase.util :as u]
    [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
@@ -57,9 +58,9 @@
   [model model-id]
   (grouper/submit! @increase-view-count-queue {:model model :id model-id}))
 
-(defn- record-views!
+(mu/defn ^:private record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."
-  [view-or-views]
+  [view-or-views :- [:or :map [:sequential :map]]]
   (span/with-span!
     {:name "record-view!"}
     (when (premium-features/log-enabled?)

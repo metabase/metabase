@@ -44,7 +44,7 @@
    [:condition    mbql.s/=]
    [:fk-field-id  ::lib.schema.id/field]])
 
-(mu/defn ^:private fk-ids->join-infos :- [:maybe [:sequential JoinInfo]]
+(mu/defn- fk-ids->join-infos :- [:maybe [:sequential JoinInfo]]
   "Given `fk-field-ids`, return a sequence of maps containing IDs and and other info needed to generate corresponding
   `joined-field` and `:joins` clauses."
   [fk-field-ids]
@@ -100,7 +100,7 @@
        [:field id-or-name (not-empty (dissoc opts :base-type :effective-type))]))
    fields))
 
-(mu/defn ^:private construct-fk-field-id->join-alias :- [:map-of
+(mu/defn- construct-fk-field-id->join-alias :- [:map-of
                                                          ::lib.schema.id/field
                                                          ::lib.schema.common/non-blank-string]
   [form]
