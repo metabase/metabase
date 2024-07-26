@@ -138,7 +138,9 @@
     (assoc driver.common/default-port-details :placeholder 5432)
     driver.common/default-dbname-details
     driver.common/default-user-details
-    driver.common/default-password-details
+    driver.common/auth-provider-options
+    (assoc driver.common/default-password-details
+           :visible-if {"use-auth-provider" false})
     driver.common/cloud-ip-address-info
     {:name "schema-filters"
      :type :schema-filters
