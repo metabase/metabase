@@ -54,7 +54,7 @@
   "Replaces [[metabase.driver/describe-fields]] for drivers that haven't implemented it. Uses [[driver/describe-table]]
   instead. Also includes nested field column metadata."
   [_driver database & {:keys [schema-names table-names]}]
-  (let [tables (sync-util/db->reducible-sync-tables database :schema-names schema-names :table-names table-names)]
+  (let [tables (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names)]
     (eduction
      (mapcat (fn [table]
                (for [x (table-fields-metadata database table)]
@@ -82,7 +82,7 @@
   "Replaces [[metabase.driver/describe-fks]] for drivers that haven't implemented it. Uses [[driver/describe-table-fks]]
   which is deprecated."
   [driver database & {:keys [schema-names table-names]}]
-  (let [tables (sync-util/db->reducible-sync-tables database :schema-names schema-names :table-names table-names)]
+  (let [tables (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names)]
     (eduction
      (mapcat (fn [table]
                #_{:clj-kondo/ignore [:deprecated-var]}

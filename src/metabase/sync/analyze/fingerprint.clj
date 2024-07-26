@@ -26,7 +26,10 @@
   metadata-queries/keep-me-for-default-table-row-sample)
 
 (def incomplete-analysis-kvs
-  "key-value pairs to select or update Fields that have the latest fingerprint, but have not yet *completed* analysis."
+  "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
+   *completed* analysis. All Fields who get new fingerprints should get marked as having the latest fingerprint
+   version, but we'll clear their values for `last_analyzed`. This way we know these fields haven't 'completed'
+   analysis for the latest fingerprints."
   {:fingerprint_version i/*latest-fingerprint-version*
    :last_analyzed       nil})
 
@@ -34,12 +37,7 @@
   [field       :- i/FieldInstance
    fingerprint :- [:maybe analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
-  ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
-  ;; latest fingerprints.
-  (t2/update! Field (u/the-id field)
-              (merge {:fingerprint fingerprint}
-                     incomplete-analysis-kvs)))
+  (t2/update! Field (u/the-id field) (merge {:fingerprint fingerprint} incomplete-analysis-kvs)))
 
 (mr/def ::FingerprintStats
   [:map
@@ -223,8 +221,8 @@
     continue?       :- [:=> [:cat ::FingerprintStats] :any]]
    (qp.store/with-metadata-provider (u/the-id database)
      (let [tables (if *refingerprint?*
-                    (sync-util/db->refingerprint-reducible-sync-tables database)
-                    (sync-util/db->reducible-sync-tables database))]
+                    (sync-util/refingerprint-reducible-sync-tables database)
+                    (sync-util/reducible-sync-tables database))]
        (reduce (fn [acc table]
                  (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
                  (let [new-acc (merge-with + acc (fingerprint-fields! table))]

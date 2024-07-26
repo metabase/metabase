@@ -54,5 +54,5 @@
     (transduce (map #(maybe-sync-indexes-for-table! database %))
                (partial merge-with +)
                empty-stats
-               (sync-util/db->reducible-sync-tables database))
+               (sync-util/reducible-sync-tables database))
     empty-stats))

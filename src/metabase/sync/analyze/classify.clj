@@ -117,29 +117,29 @@
 
 (mu/defn classify-tables-for-db!
   "Classify all tables found in a given database"
-  [database log-progress-fn]
-  (let [tables (sync-util/db->reducible-sync-tables database)]
-    (transduce
-     (map (fn [table]
-            (let [result (classify-table! table)]
-              (log-progress-fn "classify-tables" table)
-              {:tables-classified (if result
-                                    1
-                                    0)
-               :total-tables      1})))
-     (partial merge-with +)
-     {:tables-classified 0, :total-tables 0}
-     tables)))
+  [database :- i/DatabaseInstance
+   log-progress-fn]
+  (let [tables (sync-util/reducible-sync-tables database)]
+    (transduce (map (fn [table]
+                      (let [result (classify-table! table)]
+                        (log-progress-fn "classify-tables" table)
+                        {:tables-classified (if result
+                                              1
+                                              0)
+                         :total-tables      1})))
+               (partial merge-with +)
+               {:tables-classified 0, :total-tables 0}
+               tables)))
 
 (mu/defn classify-fields-for-db!
   "Classify all fields found in a given database"
-  [database log-progress-fn]
-  (let [tables (sync-util/db->reducible-sync-tables database)]
-    (transduce
-     (map (fn [table]
-            (let [result (classify-fields! table)]
-              (log-progress-fn "classify-fields" table)
-              result)))
-     (partial merge-with +)
-     {:fields-classified 0, :fields-failed 0}
-     tables)))
+  [database :- i/DatabaseInstance
+   log-progress-fn]
+  (let [tables (sync-util/reducible-sync-tables database)]
+    (transduce (map (fn [table]
+                      (let [result (classify-fields! table)]
+                        (log-progress-fn "classify-fields" table)
+                        result)))
+               (partial merge-with +)
+               {:fields-classified 0, :fields-failed 0}
+               tables)))

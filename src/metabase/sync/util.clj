@@ -333,7 +333,7 @@
   (into [:and] (for [[k v] sync-tables-kv-args]
                  [:= k v])))
 
-(defn db->reducible-sync-tables
+(defn reducible-sync-tables
   "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`."
   [database-or-id & {:keys [schema-names table-names]}]
   (eduction (map t2.realize/realize)
@@ -344,13 +344,13 @@
                                           (when (seq table-names) [:in :name table-names])]})))
 
 (defn sync-tables-count
-  "Returns the count of all syncable tables for `dataabase-or-id`."
+  "The count of all tables that should be synced for `database-or-id`."
   [database-or-id]
   (t2/count :model/Table :db_id (u/the-id database-or-id) {:where sync-tables-clause}))
 
-(defn db->refingerprint-reducible-sync-tables
-  "Returns a reducible of all the Tables that should go through the sync processes for `database-or-id`, in the order
-   they should be refingerprinted (by earliest last_analyzed timestamp)."
+(defn refingerprint-reducible-sync-tables
+  "A reducible collection of all the Tables that should go through the sync processes for `database-or-id`, in the
+   order they should be refingerprinted (by earliest last_analyzed timestamp)."
   [database-or-id]
   (eduction (map t2.realize/realize)
             (t2/reducible-select :model/Table
@@ -364,7 +364,7 @@
                                   :where     [:and sync-tables-clause [:= :t.db_id (u/the-id database-or-id)]]
                                   :order-by  [[:sub.earliest_last_analyzed :asc]]})))
 
-(defn db->sync-schemas
+(defn sync-schemas
   "Returns all the Schemas that have their metadata sync'd for `database-or-id`.
   Assumes the database supports schemas."
   [database-or-id]
