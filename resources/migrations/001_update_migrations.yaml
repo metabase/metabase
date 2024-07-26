@@ -8566,6 +8566,25 @@ databaseChangeLog:
             columnName: field_id
             remarks: This value is null if the field does not exist, or is created within a model
 
+  - changeSet:
+      id: v51.2024-07-26T11:56:27
+      author: crisptrutski
+      comment: Add `table_id` column to query fields
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_field
+              columnName: table_id
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: table_id
+                  type: int
+                  constraints:
+                    nullable: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

@@ -30,11 +30,11 @@
 
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
-  {:select [[:f.id :field-id] [:f.name :column]
-            [:t.id :table-id] [:t.name :table]]
-   :from   [[:metabase_field :f]]
+  {:select    [[:f.id :field-id] [:f.name :column]
+               [:t.id :table-id] [:t.name :table]]
    ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
-   :join   [[:metabase_table :t] [:= :table_id :t.id]]})
+   :from      [[:metabase_table :t]]
+   :left-join [[:metabase_field :f] [:= :f.table_id :t.id]]})
 
 ;; NOTE: be careful when adding square braces, as the rules for nesting them are different.
 (def ^:private quotes "\"`")
@@ -89,13 +89,13 @@
   "Generates the query for a column, incorporating its concrete table information (if known) or matching it against
   the provided list of all possible tables."
   [tables column]
-  (if (:table column)
-    [:and
-     (field-query :f.name (:column column))
-     (table-query column)]
-    [:and
-     (field-query :f.name (:column column))
-     (into [:or] (map table-query tables))]))
+  [:and
+   [:or
+    [:= :f.id nil]
+    (field-query :f.name (:column column))]
+   (if (:table column)
+     (table-query column)
+     (into [:or] (map table-query tables)))])
 
 (defn table-reference
   "Used by tests"
@@ -184,7 +184,7 @@
         tables  (map :component table-maps)]
     (consolidate-columns
      columns
-     (t2/select :model/QueryField (assoc field-and-table-fragment
+     #p (t2/select :model/QueryField #p (assoc field-and-table-fragment
                                          :where [:and
                                                  [:= :t.db_id db-id]
                                                  (into [:or] (map (partial column-query tables) columns))])))))

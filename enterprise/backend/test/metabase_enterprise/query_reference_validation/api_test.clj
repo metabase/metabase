@@ -25,15 +25,13 @@
                                                               :table_id table-1}
                             :model/Field      {field-2 :id}  {:active   false
                                                               :name     "FB"
-                                                              :table_id table-1}
-                            :model/Field      {field-3 :id}  {:active   false
-                                                              :name     "FC"
                                                               :table_id table-2}
                             ;; QFs not to include:
                             ;; - Field is still active
                             :model/QueryField {}             {:card_id  card-1
                                                               :table    "ORDERS"
                                                               :column   "tax"
+                                                              :table_id (mt/id :orders)
                                                               :field_id (mt/id :orders :tax)}
                             ;; - Implicit reference
                             :model/QueryField {}             {:card_id            card-2
@@ -45,19 +43,23 @@
                             :model/QueryField {qf-1 :id}     {:card_id  card-1
                                                               :table    "T1"
                                                               :column   "FA"
+                                                              :table_id table-1
                                                               :field_id field-1}
                             :model/QueryField {qf-1b :id}    {:card_id  card-1
                                                               :table    "T1"
                                                               :column   "FAB"
+                                                              :table_id table-1
                                                               :field_id nil}
                             :model/QueryField {qf-2 :id}     {:card_id  card-2
-                                                              :table    "T1"
+                                                              :table    "T2"
                                                               :column   "FB"
+                                                              :table_id table-2
                                                               :field_id field-2}
                             :model/QueryField {qf-3 :id}     {:card_id  card-3
-                                                              :table    "T2"
+                                                              :table    "T3"
                                                               :column   "FC"
-                                                              :field_id field-3}]
+                                                              :table_id  nil
+                                                              :field_id nil}]
      (mt/with-premium-features #{:query-reference-validation}
        (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-1b qf-2 qf-3])))))
 
@@ -189,10 +191,10 @@
                            {:type "unknown-field",  :table "T1", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
-                  :errors [{:type "inactive-field", :table "T1", :field "FB"}]}
+                  :errors [{:type "inactive-table", :table "T2", :field "FB"}]}
                  {:id     card-3
                   :name   "C"
-                  :errors [{:type "inactive-table", :table "T2", :field "FC"}]}]}
+                  :errors [{:type "unknown-table",  :table "T3", :field "FC"}]}]}
                (strip-unrelated (get!))
                [{:id   card-4
                  :name "D"}])))))
@@ -210,7 +212,7 @@
                            {:type "unknown-field",  :table "T1", :field "FAB"}]}
                  {:id     card-2
                   :name   "B"
-                  :errors [{:type "inactive-field", :table "T1", :field "FB"}]}]}
+                  :errors [{:type "inactive-table", :table "T2", :field "FB"}]}]}
                (strip-unrelated (get! {:limit 2}))
                [{:id   card-3
                  :name "C"}
@@ -222,7 +224,7 @@
                 :data
                 [{:id     card-3
                   :name   "C"
-                  :errors [{:type "inactive-table", :table "T2", :field "FC"}]}]}
+                  :errors [{:type "unknown-table", :table "T3", :field "FC"}]}]}
                (strip-unrelated (get! {:limit 1 :offset 2}))
                [{:id   card-1
                  :name "A"}
