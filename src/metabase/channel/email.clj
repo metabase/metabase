@@ -55,8 +55,11 @@
                                  :bcc?         (email/bcc-enabled?)}))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
-  [_channel-type {:keys [card pulse payload channel]} recipients]
-  (let [condition-kwd             (messages/pulse->alert-condition-kwd pulse)
+  [_channel-type {:keys [payload context]} recipients]
+  (let [{:keys [card
+                pulse
+                trigger]}         context
+        condition-kwd             (messages/pulse->alert-condition-kwd pulse)
         email-subject             (case condition-kwd
                                     :meets (trs "Alert: {0} has reached its goal" (:name card))
                                     :below (trs "Alert: {0} has gone below its goal" (:name card))
@@ -68,14 +71,14 @@
         email-to-users            (when (> (count user-emails) 0)
                                     (construct-pulse-email
                                      email-subject user-emails
-                                     (messages/render-alert-email timezone pulse channel
+                                     (messages/render-alert-email timezone pulse trigger
                                                                   [payload]
                                                                   goal
                                                                   nil)))
         email-to-nonusers         (for [non-user-email non-user-emails]
                                     (construct-pulse-email
                                      email-subject [non-user-email]
-                                     (messages/render-alert-email timezone pulse channel
+                                     (messages/render-alert-email timezone pulse trigger
                                                                   [payload]
                                                                   goal
                                                                   non-user-email)))]
@@ -86,8 +89,10 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
-  [_channel-details {:keys [dashboard payload pulse]} recipients]
-  (let [{:keys [user-emails
+  [_channel-details {:keys [payload context]} recipients]
+  (let [{dashsub   :pulse
+         dashboard :dashboard}       context
+        {:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (some->> payload (some :card) channel.shared/defaulted-timezone)
         email-subject             (:name dashboard)
@@ -95,10 +100,10 @@
                                     (construct-pulse-email
                                      email-subject
                                      user-emails
-                                     (messages/render-pulse-email timezone pulse dashboard payload nil)))
+                                     (messages/render-pulse-email timezone dashsub dashboard payload nil)))
         email-to-nonusers         (for [non-user-email non-user-emails]
                                     (construct-pulse-email
                                      email-subject
                                      [non-user-email]
-                                     (messages/render-pulse-email timezone pulse dashboard payload non-user-email)))]
+                                     (messages/render-pulse-email timezone dashsub dashboard payload non-user-email)))]
     (filter some? (conj email-to-nonusers email-to-users))))
