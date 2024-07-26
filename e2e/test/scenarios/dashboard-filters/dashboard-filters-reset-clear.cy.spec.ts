@@ -72,8 +72,6 @@ const ORDERS_QUESTION: StructuredQuestionDetails = {
 };
 
 describe("scenarios > dashboard > filters > reset & clear", () => {
-  // TODO: current value empty assertions
-
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
