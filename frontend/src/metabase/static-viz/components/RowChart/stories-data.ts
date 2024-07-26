@@ -179,7 +179,7 @@ export const METRIC_COLUMN_WITH_SCALING: StaticRowChartProps = {
   settings: {
     "graph.dimensions": ["CREATED_AT", "CATEGORY"],
     column_settings: {
-      '["ref",["field",12,null]]': {
+      '["name","CREATED_AT"]': {
         date_style: "MMMM D, YYYY",
         date_abbreviate: true,
       },
