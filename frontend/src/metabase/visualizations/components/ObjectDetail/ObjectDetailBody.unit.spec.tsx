@@ -53,9 +53,11 @@ describe("ObjectDetailBody", () => {
     fireEvent.click(cellElement);
 
     expect(handleClick).toHaveBeenCalledTimes(1);
-    expect(handleClick).toHaveBeenCalledWith(expect.objectContaining({
-      target: expect.any(HTMLElement),
-    }));
+    expect(handleClick).toHaveBeenCalledWith(
+      expect.objectContaining({
+        target: expect.any(HTMLElement),
+      }),
+    );
   });
 
   it("does not call handleClick for 'View more' / 'View less' clicks", () => {

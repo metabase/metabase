@@ -308,7 +308,9 @@ export function ObjectDetailView({
       }
 
       if (onVisualizationClick && visualizationIsClickable) {
-        const clickedElement = (event.target as HTMLElement).closest(".cellData");
+        const clickedElement = (event.target as HTMLElement).closest(
+          ".cellData",
+        );
         const clicked = {
           element: clickedElement || event.target,
           event,
