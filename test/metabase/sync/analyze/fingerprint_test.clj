@@ -318,10 +318,9 @@
     (testing "refingerprints up to a limit"
       (with-redefs [sync.fingerprint/save-fingerprint! (constantly nil)
                     sync.fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
-        (let [table (t2/select-one Table :id (mt/id :checkins))
-              results (sync.fingerprint/refingerprint-fields-for-db! (mt/db)
-                                                                (repeat (* @#'sync.fingerprint/max-refingerprint-field-count 2) table)
-                                                                (constantly nil))
+        (let [results (sync.fingerprint/refingerprint-fields-for-db!
+                       (mt/db)
+                       (constantly nil))
               attempted (:fingerprints-attempted results)]
           ;; it can exceed the max field count as our resolution is after each table check it.
           (is (<= @#'sync.fingerprint/max-refingerprint-field-count attempted))
