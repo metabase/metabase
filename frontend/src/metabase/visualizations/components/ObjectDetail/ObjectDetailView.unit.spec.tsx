@@ -491,6 +491,34 @@ describe("ObjectDetailView", () => {
       "Are you sure you want to delete this row?",
     );
   });
+
+  it("should prevent drill popover on View more/View less clicks", async () => {
+    const onVisualizationClick = jest.fn();
+    const visualizationIsClickable = jest.fn(() => true);
+
+    setup({
+      question: mockDataset,
+      onVisualizationClick,
+      visualizationIsClickable,
+    });
+
+    const viewMoreLink = await screen.findByText("View more");
+    await userEvent.click(viewMoreLink);
+
+    expect(onVisualizationClick).not.toHaveBeenCalled();
+
+    const viewLessLink = await screen.findByText("View less");
+    await userEvent.click(viewLessLink);
+
+    expect(onVisualizationClick).not.toHaveBeenCalled();
+
+    // Test that other clicks still trigger onVisualizationClick
+    const cellElement = screen.getByText(testDataset.rows[0][2].toString());
+    await userEvent.click(cellElement);
+
+    expect(onVisualizationClick).toHaveBeenCalledTimes(1);
+    expect(visualizationIsClickable).toHaveBeenCalledTimes(1);
+  });
 });
 
 async function findActionInActionMenu({ name }: Pick<WritebackAction, "name">) {

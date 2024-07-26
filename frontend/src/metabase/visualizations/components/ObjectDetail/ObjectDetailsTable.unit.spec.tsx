@@ -178,4 +178,29 @@ describe("ObjectDetailsTable", () => {
       expect(screen.getByText(/i am not json/i)).toBeInTheDocument();
     });
   });
+
+  it("should render View more/View less links without handling clicks", () => {
+    const onVisualizationClick = jest.fn();
+    const visualizationIsClickable = jest.fn(() => true);
+
+    render(
+      <DetailsTable
+        data={testDataset as any}
+        zoomedRow={testDataset.rows[1]}
+        onVisualizationClick={onVisualizationClick}
+        visualizationIsClickable={visualizationIsClickable}
+        settings={{
+          column: () => null,
+        }}
+      />,
+    );
+
+    const viewMoreLink = screen.getByText("View more");
+    expect(viewMoreLink).toBeInTheDocument();
+
+    const viewLessLink = screen.getByText("View less");
+    expect(viewLessLink).toBeInTheDocument();
+
+    // No need to test click behavior here, as it's handled by the parent component
+  });
 });

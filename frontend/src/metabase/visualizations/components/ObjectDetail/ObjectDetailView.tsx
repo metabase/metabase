@@ -295,6 +295,30 @@ export function ObjectDetailView({
     closeObjectDetail();
   }, [closeObjectDetail, handleActionSuccess]);
 
+  const handleClick = useCallback(
+    (event: React.MouseEvent<HTMLElement>) => {
+      const target = event.target as HTMLElement;
+      if (
+        target.tagName === "SPAN" &&
+        (target.textContent === "View more" || target.textContent === "View less")
+      ) {
+        event.stopPropagation();
+        return;
+      }
+
+      if (onVisualizationClick && visualizationIsClickable) {
+        const clicked = {
+          element: event.target.closest(".cellData") ? "cell" : "header",
+          event,
+        };
+        if (visualizationIsClickable(clicked)) {
+          onVisualizationClick(clicked);
+        }
+      }
+    },
+    [onVisualizationClick, visualizationIsClickable]
+  );
+
   if (!data) {
     return null;
   }
@@ -356,6 +380,7 @@ export function ObjectDetailView({
               tableForeignKeys={tableForeignKeys}
               tableForeignKeyReferences={tableForeignKeyReferences}
               followForeignKey={onFollowForeignKey}
+              handleClick={handleClick}
             />
           </ObjectDetailWrapperDiv>
         )}

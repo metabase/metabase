@@ -19,6 +19,7 @@ export interface ObjectDetailBodyProps {
     [key: number]: { status: number; value: number };
   };
   followForeignKey?: (fk: ForeignKey) => void;
+  handleClick: (event: React.MouseEvent<HTMLElement>) => void;
 }
 
 export function ObjectDetailBody({
@@ -32,6 +33,7 @@ export function ObjectDetailBody({
   tableForeignKeys,
   tableForeignKeyReferences,
   followForeignKey,
+  handleClick,
 }: ObjectDetailBodyProps): JSX.Element {
   const showRelationships =
     hasRelationships &&
@@ -41,13 +43,15 @@ export function ObjectDetailBody({
 
   return (
     <ObjectDetailBodyWrapper>
-      <DetailsTable
-        data={data}
-        zoomedRow={zoomedRow}
-        settings={settings}
-        onVisualizationClick={onVisualizationClick}
-        visualizationIsClickable={visualizationIsClickable}
-      />
+      <div onClick={handleClick}>
+        <DetailsTable
+          data={data}
+          zoomedRow={zoomedRow}
+          settings={settings}
+          onVisualizationClick={onVisualizationClick}
+          visualizationIsClickable={visualizationIsClickable}
+        />
+      </div>
       {showRelationships && (
         <Relationships
           objectName={objectName}
