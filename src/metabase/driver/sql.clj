@@ -73,7 +73,7 @@
 (defmethod json-field-length :default
   [_driver _native-form]
   ;; we rely on this to tell if the method is implemented for this driver or not
-  :nyi)
+  ::nyi)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Connection Impersonation                                          |

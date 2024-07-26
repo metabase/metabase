@@ -595,7 +595,7 @@
   (let [pks-expr         (mapv vector pk-identifiers)
         table-expr       [table-identifier]
         json-field-exprs (mapv (fn [field]
-                                 (if (= (driver.sql/json-field-length driver field) :nyi)
+                                 (if (= (driver.sql/json-field-length driver field) ::driver.sql/nyi)
                                    [field]
                                    [[:case
                                      [:<
