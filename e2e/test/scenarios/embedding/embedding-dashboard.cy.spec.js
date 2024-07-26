@@ -542,7 +542,11 @@ describe("scenarios > embedding > dashboard parameters", () => {
         params: {},
       };
 
-      visitEmbeddedPage(payload);
+      visitEmbeddedPage(payload, {
+        onBeforeLoad: window => {
+          window.Cypress = undefined;
+        },
+      });
 
       cy.wait("@getEmbeddedDashboard").then(({ request }) => {
         expect(request?.headers?.["x-metabase-client"]).to.equal(
