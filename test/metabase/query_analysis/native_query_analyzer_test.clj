@@ -125,3 +125,19 @@
     (is (= {:tables [(table-reference :venues)]
             :fields []}
            (refs "select count(*) from venues")))))
+
+(deftest fill-missing-table-ids-hack-test
+  (testing "Where applicable, we insert the appropriate schemas and table-ids"
+    (is (=
+         [{:schema 4    :table "t1" :table-id 6 :column "a"}
+          {:schema 1    :table "t2" :table-id 3 :column "b"}
+          {:schema 8    :table "t2" :table-id 9 :column "b"}
+          {:schema 7    :table "t2"             :column "c"}]
+         (#'nqa/fill-missing-table-ids-hack
+          ;; tables
+          [{:schema 1   :table "t2" :table-id 3}
+           {:schema 8   :table "t2" :table-id 9}]
+          ;; columns
+          [{:schema 4   :table "t1" :table-id 6 :column "a"}
+           {:schema nil :table "t2"             :column "b"}
+           {:schema 7   :table "t2"             :column "c"}])))))

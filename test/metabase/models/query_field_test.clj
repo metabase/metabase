@@ -83,17 +83,17 @@
         (is (= #{total-qf not-tax}
                (query-fields-for-card card-id))))
 
-      #_(testing "Adding new columns to the query also adds the QueryFields"
+      (testing "Adding new columns to the query also adds the QueryFields"
         (trigger-parse! card-id "SELECT tax, total FROM orders")
         (is (= #{tax-qf total-qf}
                (query-fields-for-card card-id))))
 
-      #_(testing "Removing columns from the query removes the QueryFields"
+      (testing "Removing columns from the query removes the QueryFields"
         (trigger-parse! card-id "SELECT tax, not_total FROM orders")
         (is (= #{tax-qf not-total-qf}
                (query-fields-for-card card-id))))
 
-      #_(testing "Columns referenced via field filters are still found"
+      (testing "Columns referenced via field filters are still found"
         (trigger-parse! card-id
                         (mt/native-query {:query         "SELECT tax FROM orders WHERE {{adequate_total}}"
                                           :template-tags {"adequate_total"
