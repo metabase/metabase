@@ -68,16 +68,19 @@
                            field_unknown
                            table_inactive
                            field_inactive]}]
-                [card_id {:type  (cond
-                                   ;; TODO swap around naming?
-                                   table_unknown  :unknown-table
-                                   field_unknown  :unknown-field
-                                   table_inactive :inactive-table
-                                   field_inactive :inactive-field
-                                   ;; This shouldn't be reachable
-                                   :else          :unknown-error)
-                          :table table
-                          :field field}]))
+                [card_id (merge
+                          {:type  (cond
+                                    ;; TODO swap around naming?
+                                    table_unknown  :unknown-table
+                                    table_inactive :inactive-table
+                                    field_unknown  :unknown-field
+                                    field_inactive :inactive-field
+                                    ;; This shouldn't be reachable
+                                    :else          :unknown-error)
+                           :table table}
+                          (when (not (or table_unknown table_inactive))
+                            {:field field}))]))
+         distinct
          (reduce (fn [acc [id error]]
                    (update acc id u/conjv error))
                  {}))))
