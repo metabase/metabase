@@ -22,6 +22,7 @@
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.interface :as mi]
    [metabase.query-processor.store :as qp.store]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
@@ -85,17 +86,13 @@
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
-(def incomplete-analysis-kv-args
-  "kv-args for a toucan query to select or update Fields that have the latest fingerprint, but have not yet *completed*
-   analysis."
-  {:fingerprint_version i/*latest-fingerprint-version*
-   :last_analyzed       nil})
-
 (mu/defn ^:private fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]
-  (seq (apply t2/select :model/Field :table_id (u/the-id table) (reduce concat [] incomplete-analysis-kv-args))))
+  (seq (apply t2/select :model/Field
+              :table_id (u/the-id table)
+              (reduce concat [] sync.fingerprint/incomplete-analysis-kvs))))
 
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do

@@ -59,13 +59,12 @@
 (defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
   [database]
-  ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
   (t2/update! :model/Field
               (merge {:id [:in {:select [:mf.id]
                                 :from   [[:metabase_field :mf]]
                                 :join   [[:metabase_table :mt] [:= :mf.table_id :mt.id]]
                                 :where  [:= :mt.db_id (:id database)]}]}
-                     classify/incomplete-analysis-kv-args)
+                     sync.fingerprint/incomplete-analysis-kvs)
               {:last_analyzed :%now}))
 
 (mu/defn analyze-table!

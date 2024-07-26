@@ -25,6 +25,11 @@
 (comment
   metadata-queries/keep-me-for-default-table-row-sample)
 
+(def incomplete-analysis-kvs
+  "key-value pairs to select or update Fields that have the latest fingerprint, but have not yet *completed* analysis."
+  {:fingerprint_version i/*latest-fingerprint-version*
+   :last_analyzed       nil})
+
 (mu/defn ^:private save-fingerprint!
   [field       :- i/FieldInstance
    fingerprint :- [:maybe analyze/Fingerprint]]
@@ -33,9 +38,8 @@
   ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
   ;; latest fingerprints.
   (t2/update! Field (u/the-id field)
-              {:fingerprint         fingerprint
-               :fingerprint_version i/*latest-fingerprint-version*
-               :last_analyzed       nil}))
+              (merge {:fingerprint fingerprint}
+                     incomplete-analysis-kvs)))
 
 (mr/def ::FingerprintStats
   [:map
