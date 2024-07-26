@@ -178,7 +178,7 @@
                          (into [:or] (map table-query tables))]}))))
 
 (defn- fill-missing-table-ids
-  "See if we can qualify the schema and table-id for any field refs which couldn't resolve their field"
+  "See if we can qualify the schema and table-id for any explicit field refs which couldn't resolve their field"
   [table-refs field-refs]
   ;; Note, at this point we have given up on any pretense of respecting case sensitivity
   (let [t->ids  (group-by (comp u/lower-case-en :table) table-refs)
