@@ -60,9 +60,7 @@ export const EditWebhookModal = ({
       name: channel.name,
       description: channel.description,
       "auth-method": channel.details["auth-method"],
-      "auth-info": Object.keys(channel.details["auth-info"] || {}).some(Boolean)
-        ? channel.details["auth-info"]
-        : { "": "" },
+      "auth-info": channel.details["auth-info"] || { "": "" },
     }),
     [channel],
   );

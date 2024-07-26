@@ -63,7 +63,5 @@ export const {
   useCreateChannelMutation,
   useDeleteChannelMutation,
   useTestChannelMutation,
-  endpoints: {
-    listChannels
-  }
+  endpoints: { listChannels },
 } = channelApi;
