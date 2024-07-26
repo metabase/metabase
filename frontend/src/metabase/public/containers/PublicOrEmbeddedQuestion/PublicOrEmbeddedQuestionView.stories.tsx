@@ -8,7 +8,7 @@ import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { explicitSizeRefreshModeContext } from "metabase/components/ExplicitSize/context";
+import { waitTimeContext } from "metabase/context/wait-time";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
 import {
@@ -48,9 +48,9 @@ function ReduxDecorator(Story: Story) {
 
 function FasterExplicitSizeUpdateDecorator(Story: Story) {
   return (
-    <explicitSizeRefreshModeContext.Provider value="none">
+    <waitTimeContext.Provider value={0}>
       <Story />
-    </explicitSizeRefreshModeContext.Provider>
+    </waitTimeContext.Provider>
   );
 }
 
