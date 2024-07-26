@@ -8582,6 +8582,7 @@ databaseChangeLog:
               - column:
                   name: table_id
                   type: int
+                  remarks: track the table directly, in case the field does not exist
                   constraints:
                     nullable: true
 
