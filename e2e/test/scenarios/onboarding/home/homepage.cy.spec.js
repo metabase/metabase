@@ -24,6 +24,7 @@ import {
   entityPickerModal,
   dashboardGrid,
   visitQuestion,
+  createDashboard,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -515,6 +516,22 @@ describe("scenarios > home > custom homepage", () => {
         "equal",
         `/dashboard/${ORDERS_DASHBOARD_ID}`,
       );
+    });
+
+    it("should not load the homepage dashboard when visiting another dashboard directly (metabase#43800)", () => {
+      cy.intercept("GET", "/api/dashboard/*").as("getDashboard");
+      cy.intercept("GET", "/api/dashboard/*/query_metadata*").as(
+        "getDashboardMetadata",
+      );
+
+      const dashboardName = "Test Dashboard";
+      createDashboard({ name: dashboardName }).then(({ body: dashboard }) =>
+        visitDashboard(dashboard.id),
+      );
+
+      dashboardHeader().findByText(dashboardName).should("be.visible");
+      cy.get("@getDashboard.all").should("have.length", 1);
+      cy.get("@getDashboardMetadata.all").should("have.length", 1);
     });
   });
 });
