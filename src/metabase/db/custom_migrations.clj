@@ -1576,7 +1576,7 @@
                       (let [parsed-object          (json/parse-string object keyword-except-column-key)
                             parsed-viz-settings    (:visualization_settings parsed-object)
                             columns                (or (infer-columns-from-viz-settings parsed-viz-settings)
-                                                     (json/parse-string result_metadata keyword))
+                                                       (json/parse-string result_metadata keyword))
                             updated-viz-settings   (update-viz-settings parsed-viz-settings columns)
                             updated-object         (assoc parsed-object :visualization_settings updated-viz-settings)]
                         (when (not= parsed-object updated-object)
