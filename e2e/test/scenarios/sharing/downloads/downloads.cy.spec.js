@@ -5,31 +5,31 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  downloadAndAssert,
-  startNewQuestion,
-  visualize,
-  visitDashboard,
-  popover,
-  assertSheetRowsCount,
-  filterWidget,
-  saveDashboard,
-  getDashboardCardMenu,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
   addOrUpdateDashboardCard,
+  assertSheetRowsCount,
   createQuestion,
-  queryBuilderMain,
+  describeWithSnowplow,
+  downloadAndAssert,
   editDashboard,
-  setFilter,
+  enableTracking,
   entityPickerModal,
   entityPickerModalTab,
-  showDashboardCardActions,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  filterWidget,
   getDashboardCard,
+  getDashboardCardMenu,
   multiAutocompleteInput,
+  popover,
+  queryBuilderMain,
+  resetSnowplow,
+  restore,
+  saveDashboard,
+  setFilter,
+  showDashboardCardActions,
+  startNewQuestion,
+  visitDashboard,
+  visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -65,21 +65,30 @@ describe("scenarios > question > download", () => {
     cy.signInAsAdmin();
   });
 
-  testCases.forEach(fileType => {
-    it(`downloads ${fileType} file`, () => {
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
-        cy.findByText("Orders, Count").click();
-      });
+  describeWithSnowplow("[with snowplow events]", () => {
+    testCases.forEach(fileType => {
+      it(`downloads ${fileType} file`, () => {
+        startNewQuestion();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Saved questions").click();
+          cy.findByText("Orders, Count").click();
+        });
 
-      visualize();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("18,760");
+        visualize();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("18,760");
 
-      downloadAndAssert({ fileType }, sheet => {
-        expect(sheet["A1"].v).to.eq("Count");
-        expect(sheet["A2"].v).to.eq(18760);
+        downloadAndAssert({ fileType }, sheet => {
+          expect(sheet["A1"].v).to.eq("Count");
+          expect(sheet["A2"].v).to.eq(18760);
+        });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "ad-hoc-question",
+          accessed_via: "internal",
+          export_type: fileType,
+        });
       });
     });
   });
@@ -326,7 +335,7 @@ describe("scenarios > dashboard > download pdf", () => {
   });
 });
 
-describeWithSnowplow("scenarios > dashboard > download pdf", () => {
+describeWithSnowplow("[snowplow] scenarios > dashboard > download pdf", () => {
   beforeEach(() => {
     restore();
     resetSnowplow();
