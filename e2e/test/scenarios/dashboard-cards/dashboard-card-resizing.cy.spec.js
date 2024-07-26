@@ -198,16 +198,16 @@ const viewports = [
   [1440, 800],
 ];
 
-describe("scenarios > dashboard card resizing", () => {
-  beforeEach(() => {
-    restore();
-    cy.signInAsAdmin();
-  });
+describe(
+  "scenarios > dashboard card resizing",
+  { requestTimeout: 15000 },
+  () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
 
-  it(
-    "should display all visualization cards with their default sizes",
-    { requestTimeout: 15000 },
-    () => {
+    it("should display all visualization cards with their default sizes", () => {
       TEST_QUESTIONS.forEach(question => {
         createQuestion(question);
       });
@@ -252,13 +252,9 @@ describe("scenarios > dashboard card resizing", () => {
           });
         });
       });
-    },
-  );
+    });
 
-  it(
-    "should not allow cards to be resized smaller than min height",
-    { requestTimeout: 15000 },
-    () => {
+    it("should not allow cards to be resized smaller than min height", () => {
       const cardIds = [];
       TEST_QUESTIONS.forEach(question => {
         createQuestion(question).then(({ body: { id } }) => {
@@ -299,9 +295,9 @@ describe("scenarios > dashboard card resizing", () => {
           });
         });
       });
-    },
-  );
-});
+    });
+  },
+);
 
 describe("issue 31701", () => {
   const entityCard = () => getDashboardCard(0);
