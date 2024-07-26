@@ -198,7 +198,7 @@ const viewports = [
   [1440, 800],
 ];
 
-describe("scenarios > dashboard card resizing", { tags: "@flaky" }, () => {
+describe("scenarios > dashboard card resizing", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
