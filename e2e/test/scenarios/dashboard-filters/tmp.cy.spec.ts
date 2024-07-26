@@ -216,6 +216,90 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     filter(defaultRequired).should("have.text", "January 1, 2024");
   });
 
+  it("location parameters - single value", () => {
+    createDashboardWithParameters(PEOPLE_QUESTION, CITY_FIELD, [
+      {
+        name: "no default value, non-required",
+        slug: "no-default-value/non-required",
+        id: "fed1b910",
+        isMultiSelect: false,
+        type: "string/=",
+        sectionId: "location",
+      },
+      {
+        name: "default value, non-required",
+        slug: "default-value/non-required",
+        id: "75d67d30",
+        isMultiSelect: false,
+        type: "string/=",
+        sectionId: "location",
+        default: "Bassett",
+      },
+      {
+        name: "default value, required",
+        slug: "default-value/required",
+        id: "60f12ac2",
+        isMultiSelect: false,
+        type: "string/=",
+        sectionId: "location",
+        required: true,
+        default: "Bassett",
+      },
+    ]);
+
+    const noDefaultNonRequired = "no default value, non-required";
+
+    cy.log("no default value, non-required, no current value");
+    checkButtonVisible(noDefaultNonRequired, "chevron");
+
+    cy.log("no default value, non-required, has current value");
+    filter(noDefaultNonRequired).click();
+    popover().findByRole("searchbox").clear().type("Bassett").blur();
+    popover().button("Add filter").click();
+    checkButtonVisible(noDefaultNonRequired, "clear");
+    filter(noDefaultNonRequired).should("have.text", "Bassett");
+    clearButton(noDefaultNonRequired).click();
+    filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+
+    const defaultNonRequired = "default value, non-required";
+
+    cy.log("has default value, non-required, value same as default");
+    checkButtonVisible(defaultNonRequired, "clear");
+    filter(defaultNonRequired).should("have.text", "Bassett");
+    clearButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", defaultNonRequired);
+
+    cy.log("has default value, non-required, no current value");
+    checkButtonVisible(defaultNonRequired, "reset");
+    resetButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", "Bassett");
+
+    cy.log(
+      "has default value, non-required, current value different than default",
+    );
+    filter(defaultNonRequired).click();
+    popover().findByRole("searchbox").focus().type("{backspace}Thomson").blur();
+    popover().button("Update filter").click();
+    filter(defaultNonRequired).should("have.text", "Thomson");
+    checkButtonVisible(defaultNonRequired, "reset");
+    resetButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", "Bassett");
+
+    const defaultRequired = "default value, required";
+
+    cy.log("has default value, required, value same as default");
+    checkButtonVisible(defaultRequired, "none");
+
+    cy.log("has default value, required, current value different than default");
+    filter(defaultRequired).click();
+    popover().findByRole("searchbox").focus().type("{backspace}Thomson").blur();
+    popover().button("Update filter").click();
+    filter(defaultRequired).should("have.text", "Thomson");
+    checkButtonVisible(defaultRequired, "reset");
+    resetButton(defaultRequired).click();
+    filter(defaultRequired).should("have.text", "Bassett");
+  });
+
   it("location parameters - multiple values", () => {
     createDashboardWithParameters(PEOPLE_QUESTION, CITY_FIELD, [
       {
