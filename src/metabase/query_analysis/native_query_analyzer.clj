@@ -177,7 +177,7 @@
                          [:= :t.db_id db-id]
                          (into [:or] (map table-query tables))]}))))
 
-(defn- fill-missing-table-ids
+(defn- fill-missing-table-ids-hack
   "See if we can qualify the schema and table-id for any explicit field refs which couldn't resolve their field"
   [table-refs field-refs]
   ;; Note, at this point we have given up on any pretense of respecting case sensitivity
@@ -197,18 +197,12 @@
                           [ref]))))
           field-refs)))
 
-(fill-missing-table-ids
- [{:schema 1 :table 2 :table-id 3}]
- [{:schema 4 :table 5 :table-id 6}
-  {:schema nil :table 2}
-  {:schema 7 :table 2}])
-
 (defn- explicit-field-refs-for-query
   "Given the results of query analysis, return references to the corresponding fields and model outputs."
   [{column-maps :columns table-maps :tables} db-id table-refs]
   (let [columns (map :component column-maps)
         tables  (map :component table-maps)]
-    (fill-missing-table-ids
+    (fill-missing-table-ids-hack
      table-refs
      (consolidate-columns
       columns
