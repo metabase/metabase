@@ -298,13 +298,14 @@
 
 (deftest embedding-sdk-info-saves-view-log
   (testing "GET /api/card with embedding headers set"
-    (mt/with-temp [:model/Database {database-id :id} {}
-                   :model/Card card-1 {:name "Card 1" :database_id database-id}]
-      (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card-1))
-                            {:request-options {:headers {"x-metabase-client" "client-A"
-                                                         "x-metabase-client-version" "1"}}})
-      (is (= {:embedding_client "client-A", :embedding_version "1"}
-             (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1)))))))
+    (mt/test-helpers-set-global-values!
+     (mt/with-temp [:model/Database {database-id :id} {}
+                    :model/Card card-1 {:name "Card 1" :database_id database-id}]
+       (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card-1))
+                             {:request-options {:headers {"x-metabase-client" "client-A"
+                                                          "x-metabase-client-version" "1"}}})
+       (is (= {:embedding_client "client-A", :embedding_version "1"}
+              (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1))))))))
 
 (defn do-poll-until [^Long timeout-ms thunk]
   (let [result-prom (promise)

@@ -41,16 +41,16 @@
 
 (deftest include-analytics-is-idempotent
   (let [m (atom {})]
-    (binding [sdk/*client* "client-A"
-              sdk/*version* "1"]
-      (is (= {:embedding_client "client-A"
-              :embedding_version "1"} (sdk/include-analytics @m)))
+    (binding [sdk/*client* "client-C"
+              sdk/*version* "1.33.7"]
+      (is (= {:embedding_client "client-C"
+              :embedding_version "1.33.7"} (sdk/include-analytics @m)))
       (swap! m sdk/include-analytics)
       ;; unset the vars:
       (binding [sdk/*client* nil sdk/*version* nil]
-        (is (= {:embedding_client "client-A"
-                :embedding_version "1"}
+        (is (= {:embedding_client "client-C"
+                :embedding_version "1.33.7"}
                @m))
-        (is (= {:embedding_client "client-A"
-                :embedding_version "1"}
+        (is (= {:embedding_client "client-C"
+                :embedding_version "1.33.7"}
                (sdk/include-analytics @m)))))))
