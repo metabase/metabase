@@ -12,20 +12,20 @@ export const regularQuestion = {
   },
   visualization_settings: {
     column_settings: {
-      [`["ref",["field",${ORDERS.CREATED_AT},null]]`]: {
+      ['["name","CREATED_AT"]']: {
         date_abbreviate: true,
         date_style: "dddd, MMMM D, YYYY",
         time_enabled: "seconds",
         time_style: "HH:mm",
       },
-      [`["ref",["field",${ORDERS.TOTAL},null]]`]: {
+      ['["name","TOTAL"]']: {
         column_title: "Billed",
         number_style: "currency",
         currency_in_header: false,
         currency: "EUR",
         currency_style: "symbol",
       },
-      [`["ref",["field",${ORDERS.TAX},null]]`]: { show_mini_bar: true },
+      ['["name","TAX"]']: { show_mini_bar: true },
     },
   },
 };

@@ -4,7 +4,7 @@ export const MULTIPLE_SERIES: StaticRowChartProps = {
   settings: {
     "graph.dimensions": ["CREATED_AT", "CATEGORY"],
     column_settings: {
-      '["ref",["field",12,null]]': {
+      '["name","CREATED_AT"]': {
         date_style: "MMMM D, YYYY",
         date_abbreviate: true,
       },

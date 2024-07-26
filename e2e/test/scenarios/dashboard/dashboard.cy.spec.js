@@ -860,7 +860,7 @@ describe("scenarios > dashboard", () => {
           name: "15368D",
           collection_id: personal_collection_id,
         }).then(({ body: { id: NEW_DASHBOARD_ID } }) => {
-          const COLUMN_REF = `["ref",["field-id",${ORDERS.ID}]]`;
+          const COLUMN_KEY = '["name","ID"]';
           // Add click behavior to the existing "Orders in a dashboard" dashboard
           cy.request("PUT", `/api/dashboard/${ORDERS_DASHBOARD_ID}`, {
             dashcards: [
@@ -874,7 +874,7 @@ describe("scenarios > dashboard", () => {
                 series: [],
                 visualization_settings: {
                   column_settings: {
-                    [COLUMN_REF]: {
+                    [COLUMN_KEY]: {
                       click_behavior: {
                         type: "link",
                         linkType: "dashboard",

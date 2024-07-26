@@ -178,13 +178,13 @@ describe("issue 18382", () => {
     display: "table",
     visualization_settings: {
       column_settings: {
-        [`["ref",["field",${REVIEWS.ID},null]]`]: {
+        ['["name","ID"]']: {
           column_title: "MOD:ID",
         },
-        [`["ref",["field",${REVIEWS.REVIEWER},null]]`]: {
+        ['["name","REVIEWER"]']: {
           column_title: "MOD:Reviewer",
         },
-        [`["ref",["field",${PRODUCTS.TITLE},null]]`]: {
+        ['["name","TITLE"]']: {
           column_title: "MOD:Title",
         },
       },
@@ -293,7 +293,7 @@ describe("issue 18573", () => {
     },
     visualization_settings: {
       column_settings: {
-        [`["ref",["field",${ORDERS.PRODUCT_ID},null]]`]: {
+        ['["name","PRODUCT_ID"]']: {
           column_title: "Foo",
         },
       },

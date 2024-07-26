@@ -740,7 +740,7 @@ describe("scenarios > dashboard > dashboard drill", () => {
             // Add click through behavior to that question
             visualization_settings: {
               column_settings: {
-                [`["ref",["field-id",${PRODUCTS.CATEGORY}]]`]: {
+                ['["name","CATEGORY"]']: {
                   click_behavior: {
                     type: "link",
                     linkType: "url",

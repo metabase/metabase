@@ -1,15 +1,13 @@
-import { assocIn } from "icepick";
 import { t } from "ttag";
 
 import { isVirtualDashCard } from "metabase/dashboard/utils";
 import { getVisualizationRaw } from "metabase/visualizations";
 import { trackCardSetToHideWhenNoResults } from "metabase/visualizations/lib/settings/analytics";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
 
 import {
   getComputedSettings,
-  getSettingsWidgets,
   getPersistableDefaultSettings,
+  getSettingsWidgets,
 } from "../settings";
 
 const COMMON_SETTINGS = {
@@ -60,32 +58,8 @@ function getSettingDefintionsForSeries(series) {
   return definitions;
 }
 
-function normalizeColumnSettings(columnSettings) {
-  const newColumnSettings = {};
-  for (const oldColumnKey of Object.keys(columnSettings)) {
-    const [refOrName, fieldRef] = JSON.parse(oldColumnKey);
-    // if the key is a reference, normalize the mbql syntax
-    const newColumnKey =
-      refOrName === "ref"
-        ? JSON.stringify(["ref", normalize(fieldRef)])
-        : oldColumnKey;
-    newColumnSettings[newColumnKey] = columnSettings[oldColumnKey];
-  }
-  return newColumnSettings;
-}
-
 export function getStoredSettingsForSeries(series) {
-  let storedSettings =
-    (series && series[0] && series[0].card.visualization_settings) || {};
-  if (storedSettings.column_settings) {
-    // normalize any settings stored under old style keys: [ref, [fk->, 1, 2]]
-    storedSettings = assocIn(
-      storedSettings,
-      ["column_settings"],
-      normalizeColumnSettings(storedSettings.column_settings),
-    );
-  }
-  return storedSettings;
+  return (series && series[0] && series[0].card.visualization_settings) || {};
 }
 
 export function getComputedSettingsForSeries(series) {
