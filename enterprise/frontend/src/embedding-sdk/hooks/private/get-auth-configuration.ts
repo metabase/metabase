@@ -45,17 +45,17 @@ export const getAuthConfiguration = (
     .with(
       [
         {
-          jwtProviderUri: P.select(P.not(P.nullish).and(P.string.minLength(1))),
+          jwtProviderUri: P.select(P.nonNullable.and(P.string.minLength(1))),
         },
         P._,
       ],
       jwtProviderUri => setupJwtAuth(jwtProviderUri, dispatch),
     )
-    .with([{ apiKey: P.select(P.not(P.nullish)) }, "localhost"], apiKey => {
+    .with([{ apiKey: P.select(P.nonNullable) }, "localhost"], apiKey => {
       presentApiKeyUsageWarning(appName);
       setupLocalApiKey(dispatch, apiKey);
     })
-    .with([{ apiKey: P.select(P.not(P.nullish)) }, P.not("localhost")], () =>
+    .with([{ apiKey: P.select(P.nonNullable) }, P.not("localhost")], () =>
       getErrorMessage("PROD_API_KEY"),
     )
     .otherwise(() => getErrorMessage("NO_AUTH_PROVIDED"));
