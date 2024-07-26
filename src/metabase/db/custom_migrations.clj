@@ -1480,27 +1480,28 @@
       (column->column-key column)
       (json/generate-string [:ref field-ref]))))
 
-(defn- viz-settings->columns [viz-settings]
-  (if-let [columns (:table.columns viz-settings)]
-    (into []
-          (map (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}))
-          columns)
-    []))
+(defn- infer-viz-settings-columns [viz-settings result-metadata]
+  (concat
+   result-metadata
+   (when-let [columns (:table.columns viz-settings)]
+     (map (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}) columns))))
 
-(defn- migrate-legacy-column-keys-in-viz-settings [viz-settings columns]
-  (let [key->column (m/index-by column->legacy-column-key columns)]
+(defn- migrate-legacy-column-keys-in-viz-settings [viz-settings result-metadata]
+  (let [columns     (infer-viz-settings-columns viz-settings result-metadata)
+        key->column (m/index-by column->legacy-column-key columns)]
     (m/update-existing viz-settings :column_settings update-keys
                        (fn [key]
-                         (if-let [column (get key->column (str key))]
-                           (keyword (column->column-key column))
+                         (if-let [column (get key->column key)]
+                           (column->column-key column)
                            key)))))
 
-(defn- rollback-legacy-column-keys-in-viz-settings [viz-settings columns]
-  (let [key->column (m/index-by column->column-key columns)]
+(defn- rollback-legacy-column-keys-in-viz-settings [viz-settings result-metadata]
+  (let [columns     (infer-viz-settings-columns viz-settings result-metadata)
+        key->column (m/index-by column->column-key columns)]
     (m/update-existing viz-settings :column_settings update-keys
                        (fn [key]
-                         (if-let [column (get key->column (str key))]
-                           (keyword (column->legacy-column-key column))
+                         (if-let [column (get key->column key)]
+                           (column->legacy-column-key column)
                            key)))))
 
 (defn- update-legacy-column-keys-in-card-viz-settings [update-viz-settings]
@@ -1539,21 +1540,22 @@
   (update-legacy-column-keys-in-dashboard-card-viz-settings rollback-legacy-column-keys-in-viz-settings))
 
 (defn- update-legacy-column-keys-in-card-revision-viz-settings [update-viz-settings]
-  (let [update-one! (fn [{:keys [id object]}]
+  (let [update-one! (fn [{:keys [id object result_metadata]}]
                       (let [parsed-object          (json/parse-string object keyword)
                             parsed-viz-settings    (:visualization_settings parsed-object)
-                            columns                (viz-settings->columns parsed-viz-settings)
-                            updated-viz-settings   (update-viz-settings parsed-viz-settings columns)
+                            parsed-result-metadata (json/parse-string result_metadata keyword)
+                            updated-viz-settings   (update-viz-settings parsed-viz-settings parsed-result-metadata)
                             updated-object         (assoc parsed-object :visualization_settings updated-viz-settings)]
                         (when (not= parsed-object updated-object)
                               (t2/query-one {:update :revision
                                              :set    {:object (json/generate-string updated-object)}
                                              :where  [:= :id id]}))))]
-    (run! update-one! (t2/reducible-query {:select [:id :object]
-                                           :from   [[:revision]]
-                                           :where  [:and [:= :model "Card"]
-                                                         [:like :object "%visualization_settings%"]
-                                                         [:like :object "%column_settings%"]]}))))
+    (run! update-one! (t2/reducible-query {:select [:r.id :r.object :c.result_metadata]
+                                           :from   [[::report_card :c]]
+                                           :join   [[:revision :r] [:= :r.model_id :c.id]]
+                                           :where  [:and [:= :r.model "Card"]
+                                                         [:like :r.object "%visualization_settings%"]
+                                                         [:like :r.object "%column_settings%"]]}))))
 
 (define-reversible-migration MigrateLegacyColumnKeysInCardRevisionVizSettings
   (update-legacy-column-keys-in-card-revision-viz-settings migrate-legacy-column-keys-in-viz-settings)
