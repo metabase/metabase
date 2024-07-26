@@ -31,7 +31,7 @@
   (let [defaults {:timestamp :%now}]
     (->> log-entry
          (merge defaults)
-         sdk/assoc-analytics)))
+         sdk/include-analytics)))
 
 (t2/deftransforms :model/ViewLog
   {:metadata mi/transform-json
