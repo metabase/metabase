@@ -239,7 +239,7 @@
   but in cases we need to send email after a card is archived, we need to be able to hydrate archived card as well."
   false)
 
-(mu/defn ^:private cards* :- [:sequential HybridPulseCard]
+(mu/defn- cards* :- [:sequential HybridPulseCard]
   [pulse-ids]
   (t2/select
    :model/Card
@@ -274,14 +274,14 @@
       (t2/hydrate :creator :cards [:channels :recipients])
       (m/dissoc-in [:details :emails])))
 
-(mu/defn ^:private hydrate-notifications :- [:sequential (ms/InstanceOf Pulse)]
+(mu/defn- hydrate-notifications :- [:sequential (ms/InstanceOf Pulse)]
   "Batched-hydrate multiple Pulses or Alerts."
   [notifications :- [:sequential (ms/InstanceOf Pulse)]]
   (as-> notifications <>
     (t2/hydrate <> :creator :cards [:channels :recipients])
     (map #(m/dissoc-in % [:details :emails]) <>)))
 
-(mu/defn ^:private notification->pulse :- (ms/InstanceOf Pulse)
+(mu/defn- notification->pulse :- (ms/InstanceOf Pulse)
   "Take a generic `Notification`, and put it in the standard Pulse format the frontend expects. This really just
   consists of removing associated `Alert` columns."
   [notification :- (ms/InstanceOf Pulse)]
@@ -305,7 +305,7 @@
   (some-> (apply t2/select-one Pulse :id (u/the-id notification-or-id), additional-conditions)
           hydrate-notification))
 
-(mu/defn ^:private notification->alert :- (ms/InstanceOf Pulse)
+(mu/defn- notification->alert :- (ms/InstanceOf Pulse)
   "Take a generic `Notification` and put it in the standard `Alert` format the frontend expects. This really just
   consists of collapsing `:cards` into a `:card` key with whatever the first Card is."
   [notification :- (ms/InstanceOf Pulse)]
@@ -505,7 +505,7 @@
       (doseq [[channel-type] pulse-channel/channel-types]
         (handle-channel channel-type)))))
 
-(mu/defn ^:private create-notification-and-add-cards-and-channels!
+(mu/defn- create-notification-and-add-cards-and-channels!
   "Create a new Pulse/Alert with the properties specified in `notification`; add the `card-refs` to the Notification and
   add the Notification to `channels`. Returns the `id` of the newly created Notification."
   [notification card-refs :- [:maybe [:sequential CardRef]] channels]
@@ -546,18 +546,18 @@
     ;; return the full Pulse (and record our create event)
     (retrieve-alert id)))
 
-(mu/defn ^:private notification-or-id->existing-card-refs :- [:sequential CardRef]
+(mu/defn- notification-or-id->existing-card-refs :- [:sequential CardRef]
   [notification-or-id]
   (t2/select [PulseCard [:card_id :id] :include_csv :include_xls :dashboard_card_id]
     :pulse_id (u/the-id notification-or-id)
     {:order-by [[:position :asc]]}))
 
-(mu/defn ^:private card-refs-have-changed? :- :boolean
+(mu/defn- card-refs-have-changed? :- :boolean
   [notification-or-id new-card-refs :- [:sequential CardRef]]
   (not= (notification-or-id->existing-card-refs notification-or-id)
         new-card-refs))
 
-(mu/defn ^:private update-notification-cards-if-changed! [notification-or-id new-card-refs]
+(mu/defn- update-notification-cards-if-changed! [notification-or-id new-card-refs]
   (when (card-refs-have-changed? notification-or-id new-card-refs)
     (update-notification-cards! notification-or-id new-card-refs)))
 

@@ -45,7 +45,7 @@
    i/FieldInstance
    i/TableInstance])
 
-(mu/defn ^:private save-model-updates!
+(mu/defn- save-model-updates!
   "Save the updates in `updated-model` (can be either a `Field` or `Table`)."
   [original-model :- FieldOrTableInstance
    updated-model  :- FieldOrTableInstance]
@@ -65,7 +65,7 @@
                   values-to-set)
       true)))
 
-(mu/defn ^:private classify!
+(mu/defn- classify!
   "Run various classifiers on `field` and its `fingerprint`, and save any detected changes."
   ([field :- i/FieldInstance]
    (classify! field (or (:fingerprint field)
@@ -85,7 +85,7 @@
 ;;; |                                        CLASSIFYING ALL FIELDS IN A TABLE                                         |
 ;;; +------------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn- fields-to-classify :- [:maybe [:sequential i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should attempt to determine semantic type. This
   should include Fields that have the latest fingerprint, but have not yet *completed* analysis."
   [table :- i/TableInstance]

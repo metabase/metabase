@@ -21,7 +21,7 @@
 (def ^:private FieldIDOrName->Filters
   [:map-of [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string] [:sequential mbql.s/Filter]])
 
-(mu/defn ^:private filter->field-map :- FieldIDOrName->Filters
+(mu/defn- filter->field-map :- FieldIDOrName->Filters
   "Find any comparison or `:between` filter and return a map of referenced Field ID or Name -> all the clauses the reference
   it."
   [filter-clause :- [:maybe mbql.s/Filter]]
@@ -32,7 +32,7 @@
          field-id-or-name (lib.util.match/match subclause [:field field-id-or-name _] field-id-or-name)]
      {field-id-or-name [subclause]})))
 
-(mu/defn ^:private extract-bounds :- [:map [:min-value number?] [:max-value number?]]
+(mu/defn- extract-bounds :- [:map [:min-value number?] [:max-value number?]]
   "Given query criteria, find a min/max value for the binning strategy using the greatest user specified min value and
   the smallest user specified max value. When a user specified min or max is not found, use the global min/max for the
   given field."
@@ -63,7 +63,7 @@
   [:map
    [:name :string]])
 
-(mu/defn ^:private matching-metadata-from-source-metadata :- ::lib.schema.metadata/column
+(mu/defn- matching-metadata-from-source-metadata :- ::lib.schema.metadata/column
   [field-name      :- ::lib.schema.common/non-blank-string
    source-metadata :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
   (do
@@ -82,7 +82,7 @@
                             (pr-str field-name))
                        {:field field-name, :resolved-metadata mlv2-metadatas}))))))
 
-(mu/defn ^:private matching-metadata :- ::lib.schema.metadata/column
+(mu/defn- matching-metadata :- ::lib.schema.metadata/column
   [field-id-or-name :- [:or ::lib.schema.id/field ::lib.schema.common/non-blank-string]
    source-metadata  :- [:maybe [:sequential PossiblyLegacyColumnMetadata]]]
   (if (integer? field-id-or-name)
@@ -91,7 +91,7 @@
     ;; for field literals, we require `source-metadata` from the source query
     (matching-metadata-from-source-metadata field-id-or-name source-metadata)))
 
-(mu/defn ^:private update-binned-field :- mbql.s/field
+(mu/defn- update-binned-field :- mbql.s/field
   "Given a `binning-strategy` clause, resolve the binning strategy (either provided or found if default is specified)
   and calculate the number of bins and bin width for this field. `field-id->filters` contains related criteria that
   could narrow the domain for the field. This info is saved as part of each `binning-strategy` clause."

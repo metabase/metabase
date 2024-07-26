@@ -3,10 +3,7 @@
    [clojure.test :refer [deftest is testing]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.queue :as queue])
-  (:import
-   (java.util Set)
-   (metabase.util.queue DeduplicatingArrayTransferQueue)))
+   [metabase.util.queue :as queue]))
 
 (set! *warn-on-reflection* true)
 
@@ -49,31 +46,27 @@
            :dropped   @dropped
            :skipped   @skipped})))))
 
-(deftest deduplicating-bounded-blocking-queue-test
-  (doseq [dedupe? [true false]]
-    (let [realtime-event-count 500
-          backfill-event-count 1000
-          capacity             (- realtime-event-count 100)
-          ;; Enqueue background events from oldest to newest
-          backfill-events      (range backfill-event-count)
-          ;; Enqueue realtime events from newest to oldest
-          realtime-events      (take realtime-event-count (reverse backfill-events))
-          queue                (queue/bounded-transfer-queue capacity :sleep-ms 10 :block-ms 10 :dedupe? dedupe?)
+(deftest bounded-transfer-queue-test
+  (let [realtime-event-count 500
+        backfill-event-count 1000
+        capacity             (- realtime-event-count 100)
+        ;; Enqueue background events from oldest to newest
+        backfill-events      (range backfill-event-count)
+        ;; Enqueue realtime events from newest to oldest
+        realtime-events      (take realtime-event-count (reverse backfill-events))
+        queue                (queue/bounded-transfer-queue capacity :sleep-ms 10 :block-ms 10)
 
-          {:keys [processed sent dropped skipped] :as _result}
-          (simulate-queue! queue
-                           :backfill-events backfill-events
-                           :realtime-events realtime-events)]
+        {:keys [processed sent dropped skipped] :as _result}
+        (simulate-queue! queue
+                         :backfill-events backfill-events
+                         :realtime-events realtime-events)]
 
       (testing "We processed all the events that were enqueued"
         (is (= (+ (count backfill-events) sent)
                (count processed))))
 
-      (if dedupe?
-        (testing "Some items are deduplicated"
-          (is (pos? skipped)))
-        (testing "No items are skipped"
-          (is (zero? skipped))))
+      (testing "No items are skipped"
+          (is (zero? skipped)))
 
       (testing "Some items are dropped"
         (is (pos? dropped)))
@@ -82,8 +75,4 @@
         (is (= (set (concat backfill-events realtime-events)) (set processed))))
 
       (testing "The realtime events are processed in order"
-        (mt/ordered-subset? realtime-events processed))
-
-      (when dedupe?
-        (testing "No phantom items are left in the set"
-          (is (zero? (.size ^Set (.-queued-set ^DeduplicatingArrayTransferQueue queue)))))))))
+        (mt/ordered-subset? realtime-events processed))))

@@ -713,7 +713,7 @@
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
 
-(mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
+(mu/defn- coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]
@@ -913,7 +913,7 @@
       res
       limit-res)))
 
-(mu/defn ^:private collection-children
+(mu/defn- collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
@@ -933,7 +933,7 @@
        :offset mw.offset-paging/*offset*
        :models valid-models})))
 
-(mu/defn ^:private collection-detail
+(mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
@@ -1147,8 +1147,10 @@
            (collection/perms-for-moving collection-before-update new-parent)))
 
         ;; We can't move a collection to the Trash
-        (api/check-400
-         (not (collection/is-trash? new-parent)))
+        (api/check
+         (not (collection/is-trash? new-parent))
+         [400 "You cannot modify the Trash Collection."])
+
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 

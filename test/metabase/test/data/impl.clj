@@ -128,14 +128,14 @@
 ;;;     [nil "NAME"]        78
 ;;;     [nil "ID"]          69}
 
-(mu/defn ^:private build-table-lookup-map
+(mu/defn- build-table-lookup-map
   [database-id :- ::lib.schema.id/database]
   (t2/select-fn->pk (juxt (constantly database-id) :name)
                     [:model/Table :id :name]
                     :db_id  database-id
                     :active true))
 
-(mu/defn ^:private build-field-lookup-map
+(mu/defn- build-field-lookup-map
   [table-id :- ::lib.schema.id/table]
   (t2/select-fn->pk (juxt :parent_id :name)
                     [:model/Field :id :name :parent_id]

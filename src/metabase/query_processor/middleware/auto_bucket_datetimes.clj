@@ -32,7 +32,7 @@
 ;;
 ;; TODO - What we could do tho is fetch all the stuff we need for the Store and then save these Fields in the store,
 ;; which would save a bit of time when we do resolve them
-(mu/defn ^:private unbucketed-fields->field-id->type-info :- [:maybe ::column-id-or-name->type-info]
+(mu/defn- unbucketed-fields->field-id->type-info :- [:maybe ::column-id-or-name->type-info]
   "Fetch a map of Field ID -> type information for the Fields referred to by the `unbucketed-fields`. Return an empty map
   for empty `unbucketed-fields`."
   [metadata-providerable unbucketed-fields :- [:maybe [:sequential :mbql.clause/field]]]
@@ -65,7 +65,7 @@
   (or (yyyy-MM-dd-date-string? v)
       (mbql.u/is-clause? :relative-datetime v)))
 
-(mu/defn ^:private filter-clause?
+(mu/defn- filter-clause?
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
    x]
@@ -77,7 +77,7 @@
                                 nil))]
          (isa? expr-type :type/Boolean))))
 
-(mu/defn ^:private simple-filter-clause?
+(mu/defn- simple-filter-clause?
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
    x]
@@ -92,7 +92,7 @@
     #(= (namespace %) "do-not-bucket-reason")]])
 
 ;;; This returns a keyword corresponding to why we're not autobucketing for debugging/testing purposes
-(mu/defn ^:private should-not-be-autobucketed? :- [:maybe ::do-not-bucket-reason]
+(mu/defn- should-not-be-autobucketed? :- [:maybe ::do-not-bucket-reason]
   "Is `x` a clause (or a clause that contains a clause) that we should definitely not autobucket?"
   [query      :- ::lib.schema/query
    stage-path :- ::lib.walk/stage-path
@@ -133,14 +133,14 @@
            ((some-fn :temporal-unit :binning) opts)))
     :do-not-bucket-reason/field-with-bucketing-or-binning))
 
-(mu/defn ^:private date-or-datetime-clause?
+(mu/defn- date-or-datetime-clause?
   [{base-type :base-type, effective-type :effective-type} :- ::column-type-info]
   (some (fn [field-type]
           (some #(isa? field-type %)
                 [:type/Date :type/DateTime]))
         [base-type effective-type]))
 
-(mu/defn ^:private wrap-unbucketed-clauses :- ::lib.schema/stage
+(mu/defn- wrap-unbucketed-clauses :- ::lib.schema/stage
   "Add `:temporal-unit` to `:field`s and `:expression`s in breakouts and filters if appropriate; for fields, look
   at corresponing type information in `field-id->type-info` to see if we should do so. For expressions examine the clause
   options."
@@ -176,7 +176,7 @@
         (rewrite-clause :breakout)
         (rewrite-clause :filters))))
 
-(mu/defn ^:private auto-bucket-datetimes-this-stage :- ::lib.schema/stage
+(mu/defn- auto-bucket-datetimes-this-stage :- ::lib.schema/stage
   [query                                             :- ::lib.schema/query
    stage-path                                        :- ::lib.walk/stage-path
    {breakouts :breakout, :keys [filters], :as stage} :- ::lib.schema/stage]

@@ -1,6 +1,3 @@
-import cx from "classnames";
-
-import CS from "metabase/css/core/index.css";
 import { Group, type GroupProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -29,9 +26,9 @@ export const SummarizeAggregationItemList = ({
   ...containerProps
 }: SummarizeAggregationItemListProps) => (
   <Group
+    data-testid="summarize-aggregation-item-list"
     spacing="sm"
     align="flex-start"
-    className={cx(CS.overflowYScroll)}
     {...containerProps}
   >
     {aggregations.map((aggregation, aggregationIndex) => (
