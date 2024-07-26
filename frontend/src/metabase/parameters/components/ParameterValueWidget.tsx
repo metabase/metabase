@@ -84,6 +84,7 @@ export const ParameterValueWidget = ({
     ) {
       return (
         <WidgetStatus
+          className={S.widgetStatus}
           highlighted={fieldHasValueOrFocus}
           status="reset"
           onClick={() => setParameterValueToDefault?.(parameter.id)}
@@ -94,6 +95,7 @@ export const ParameterValueWidget = ({
     if (value != null) {
       return (
         <WidgetStatus
+          className={S.widgetStatus}
           highlighted={fieldHasValueOrFocus}
           status="clear"
           onClick={() => {
@@ -105,7 +107,7 @@ export const ParameterValueWidget = ({
     }
 
     if (!hasNoPopover(parameter)) {
-      return <WidgetStatus status="empty" />;
+      return <WidgetStatus className={S.widgetStatus} status="empty" />;
     }
   };
 
@@ -119,6 +121,7 @@ export const ParameterValueWidget = ({
     ) {
       return (
         <WidgetStatus
+          className={S.widgetStatus}
           highlighted={fieldHasValueOrFocus}
           status="reset"
           onClick={() => setParameterValueToDefault?.(parameter.id)}
@@ -139,7 +142,7 @@ export const ParameterValueWidget = ({
 
     if (!icon) {
       // This is required to keep input width constant
-      return <WidgetStatus status="none" />;
+      return <WidgetStatus className={S.widgetStatus} status="none" />;
     }
 
     return icon;

@@ -3,10 +3,10 @@ import { t } from "ttag";
 
 import { Button, Flex, Icon, rem, Tooltip } from "metabase/ui";
 
-import S from "./WidgetStatus.module.css";
 import type { Status } from "./types";
 
 type Props = {
+  className?: string;
   highlighted?: boolean;
   status: Status;
   onClick?: () => void;
@@ -20,7 +20,12 @@ const COMPACT_BUTTON_PADDING = 4;
  */
 const BUTTON_MARGIN = -COMPACT_BUTTON_PADDING;
 
-export const WidgetStatus = ({ highlighted, status, onClick }: Props) => {
+export const WidgetStatus = ({
+  className,
+  highlighted,
+  status,
+  onClick,
+}: Props) => {
   const handleClick = (event: MouseEvent) => {
     if (onClick) {
       event.stopPropagation();
@@ -31,7 +36,7 @@ export const WidgetStatus = ({ highlighted, status, onClick }: Props) => {
   return (
     <Flex
       align="center"
-      className={S.root}
+      className={className}
       h={0} // trick to prevent this element from affecting parent's height
       ml="auto"
     >
