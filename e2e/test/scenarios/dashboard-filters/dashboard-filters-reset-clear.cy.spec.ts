@@ -1,5 +1,3 @@
-// TODO: merge this file into another file
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestionAndDashboard,
