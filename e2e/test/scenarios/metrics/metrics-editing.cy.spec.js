@@ -103,7 +103,7 @@ describe("scenarios > metrics > editing", () => {
       verifyScalarValue("18,760");
 
       cy.log(
-        "newly created metric should be visible in recents (metabase#442223)",
+        "newly created metric should be visible in recents (metabase#44223)",
       );
       appBar()
         .findByText(/search/i)
