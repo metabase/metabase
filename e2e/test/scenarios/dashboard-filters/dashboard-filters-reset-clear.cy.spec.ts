@@ -1,6 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   createQuestionAndDashboard,
+  dashboardParameterSidebar,
+  editDashboard,
   popover,
   restore,
   updateDashboardCards,
@@ -70,7 +72,6 @@ const ORDERS_QUESTION: StructuredQuestionDetails = {
 };
 
 describe("scenarios > dashboard > filters > reset & clear", () => {
-  // TODO: test chevron icon alignment in parameter sidebar
   // TODO: current value empty assertions
 
   beforeEach(() => {
@@ -945,6 +946,36 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     resetButton(defaultRequired).click();
     filter(defaultRequired).should("have.text", "2 selections");
     checkOnlyOneButtonVisible(defaultRequired, "none");
+  });
+
+  it("chevron icons are aligned in temporal unit parameter sidebar", () => {
+    createDashboardWithParameters(
+      ORDERS_COUNT_OVER_TIME,
+      ORDERS_CREATED_AT_FIELD,
+      [
+        {
+          name: "Unit of Time",
+          slug: "unit-of-time",
+          id: "fed1b910",
+          type: "temporal-unit",
+          sectionId: "temporal-unit",
+        },
+      ],
+    );
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Unit of Time")
+      .click();
+
+    dashboardParameterSidebar()
+      .findAllByLabelText("chevrondown icon")
+      .then(([$chevron1, $chevron2]) => {
+        const rect1 = $chevron1.getBoundingClientRect();
+        const rect2 = $chevron2.getBoundingClientRect();
+
+        expect(rect1.left).to.eq(rect2.left);
+        expect(rect1.right).to.eq(rect2.right);
+      });
   });
 
   function filter(label: string) {
