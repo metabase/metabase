@@ -520,6 +520,20 @@
 ;;; |                          Nested Collections: Ancestors, Childrens, Child Collections                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mu/defn- ancestors* :- [:maybe [:sequential (ms/InstanceOf Collection)]]
+  [{:keys [location]}]
+  (when-let [ancestor-ids (seq (location-path->ids location))]
+    (t2/select [Collection :name :id :personal_owner_id]
+      :id [:in ancestor-ids]
+      {:order-by [:location]})))
+
+(mi/define-simple-hydration-method ancestors
+  :ancestors
+  "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
+  highest-level (e.g. most distant) ancestor."
+  [collection]
+  (ancestors* collection))
+
 (mu/defn- effective-ancestors*
   "Given a collection, return the effective ancestors of that collection."
   [collection :- [:maybe CollectionWithLocationOrRoot]]
