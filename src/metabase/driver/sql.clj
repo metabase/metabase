@@ -77,6 +77,17 @@
     (merge {:params nil
             :query  (unprepare/unprepare driver (cons sql params))})))
 
+(defmulti json-field-length
+  "Return a HoneySQL expression that calculates the number of characters in a JSON field for a given driver.
+  `json-field-identifier` is the Identifier ([[metabase.util.honey-sql-2/Identifier]]) for a JSON field."
+  {:added "0.49.22", :arglists '([driver json-field-identifier])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod json-field-length :default
+  [_driver _native-form]
+  ;; we rely on this to tell if the method is implemented for this driver or not
+  ::nyi)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Connection Impersonation                                          |
