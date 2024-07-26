@@ -43,28 +43,39 @@
   "Given a seq of cards, return a map of card-id => reference errors"
   [cards]
   (when (seq cards)
-    (->> (t2/select :model/QueryField
-                    {:select    [:qf.card_id
-                                 [:qf.column :field]
-                                 [:qf.table :table]
-                                 [[:= :f.id nil] :field_unknown]
-                                 [[:coalesce :t.active false] :table_active]]
-                     :from      [[(t2/table-name :model/QueryField) :qf]]
-                     :left-join [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
-                                 [(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
-                     :where     [:and
-                                 [:= :qf.explicit_reference true]
-                                 [:or
-                                  [:= :f.id nil]
-                                  [:= :f.active false]]
-                                 [:in :card_id (map :id cards)]]
-                     :order-by  [:qf.card_id :field :table]})
+    (->> (t2/query {:select    [:qf.card_id
+                                [:qf.column :field]
+                                [:qf.table :table]
+                                [[:= :t.id nil] :table_unknown]
+                                [[:= :f.id nil] :field_unknown]
+                                [[:not [:coalesce :t.active true]] :table_inactive]
+                                [[:not [:coalesce :f.active true]] :field_inactive]]
+                    :from      [[(t2/table-name :model/QueryField) :qf]]
+                    :left-join [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
+                                [(t2/table-name :model/Table) :t] [:= :t.id :qf.table_id]]
+                    :where     [:and
+                                [:= :qf.explicit_reference true]
+                                [:or
+                                 [:= :t.id nil]
+                                 [:= :f.id nil]
+                                 [:= :t.active false]
+                                 [:= :f.active false]]
+                                [:in :card_id (map :id cards)]]
+                    :order-by  [:qf.card_id :table :field]})
          (map coerce-booleans)
-         (map (fn [{:keys [card_id table field field_unknown table_active]}]
+         (map (fn [{:keys [card_id table field
+                           table_unknown
+                           field_unknown
+                           table_inactive
+                           field_inactive]}]
                 [card_id {:type  (cond
-                                   field_unknown :unknown-field
-                                   table_active  :inactive-field
-                                   :else         :inactive-table)
+                                   ;; TODO swap around naming?
+                                   table_unknown  :unknown-table
+                                   field_unknown  :unknown-field
+                                   table_inactive :inactive-table
+                                   field_inactive :inactive-field
+                                   ;; This shouldn't be reachable
+                                   :else          :unknown-error)
                           :table table
                           :field field}]))
          (reduce (fn [acc [id error]]
