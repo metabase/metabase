@@ -39,7 +39,7 @@ export const WidgetStatus = ({ highlighted, status, onClick }: Props) => {
         <Tooltip label={t`Clear`}>
           <Button
             aria-label={t`Clear`}
-            color={highlighted ? undefined : "text-medium"}
+            color={highlighted ? undefined : "text-secondary"}
             compact
             leftIcon={<Icon name="close" />}
             m={rem(BUTTON_MARGIN)}
@@ -54,7 +54,7 @@ export const WidgetStatus = ({ highlighted, status, onClick }: Props) => {
         <Tooltip label={t`Reset filter to default state`}>
           <Button
             aria-label={t`Reset filter to default state`}
-            color={highlighted ? undefined : "text-medium"}
+            color={highlighted ? undefined : "text-secondary"}
             compact
             leftIcon={<Icon name="revert" />}
             m={rem(BUTTON_MARGIN)}
