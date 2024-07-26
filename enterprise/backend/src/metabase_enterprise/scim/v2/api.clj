@@ -8,6 +8,7 @@
    [metabase.api.common :as api :refer [defendpoint]]
    [metabase.models.user :as user]
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -35,7 +36,7 @@
    [:emails [:sequential
              [:map
               [:value ms/NonBlankString]
-              [:type {:optional true} [:enum "work" "home" "other"]]
+              [:type {:optional true} ms/NonBlankString]
               [:primary {:optional true} boolean?]]]]
    [:locale {:optional true} [:maybe ms/NonBlankString]]
    [:active {:optional true} boolean?]])
@@ -144,6 +145,9 @@
   {start-index  [:maybe ms/IntGreaterThanOrEqualToZero]
    c            [:maybe ms/IntGreaterThanOrEqualToZero]
    filter-param [:maybe ms/NonBlankString]}
+  (log/errorf "start-index: %s" start-index)
+  (log/errorf "c: %s" c)
+  (log/errorf "filter-param: %s" filter-param)
   (let [limit          (or c default-pagination-limit)
         offset         (or start-index default-pagination-offset)
         filter-param   (when filter-param (codec/url-decode filter-param))
