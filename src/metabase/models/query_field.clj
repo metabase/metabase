@@ -49,7 +49,7 @@
                                   [:= :f.id nil]
                                   [:= :f.active false]]
                                  [:in :card_id (map :id cards)]]
-                     :order-by  [:qf.card_id :t.name :f.name]})
+                     :order-by  [:qf.card_id :qf.field :qf.table]})
          (map (fn [{:keys [card_id table field field_unknown table_active]}]
                 [card_id {:type  (cond
                                    field_unknown :unknown-field
