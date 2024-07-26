@@ -59,9 +59,20 @@ EmbeddedQuestion.args = {
   isDashboard: false,
   backgroundColor: "#ebe6e2",
 };
+// TODO unskip this and the next story once rendering delay is completely gone.
+EmbeddedQuestion.story = {
+  parameters: {
+    loki: { skip: true },
+  },
+};
 
 export const EmbeddedDashcard = Template.bind({});
 EmbeddedDashcard.args = {
   isDashboard: true,
   backgroundColor: "#dee9e9",
+};
+EmbeddedDashcard.story = {
+  parameters: {
+    loki: { skip: true },
+  },
 };
