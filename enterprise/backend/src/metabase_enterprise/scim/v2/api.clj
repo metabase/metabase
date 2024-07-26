@@ -20,7 +20,7 @@
 (def ^:private error-schema-uri "urn:ietf:params:scim:api:messages:2.0:Error")
 
 (def ^:private default-pagination-limit 100)
-(def ^:private default-pagination-offset 0)
+(def ^:private default-pagination-offset 1)
 
 (def SCIMUser
   "Malli schema for a SCIM user. This represents both users returned by the service provider (Metabase)
@@ -142,14 +142,14 @@
 (defendpoint GET "/Users"
   "Fetch a list of users."
   [:as {{start-index :startIndex c :count filter-param :filter} :params}]
-  {start-index  [:maybe ms/IntGreaterThanOrEqualToZero]
-   c            [:maybe ms/IntGreaterThanOrEqualToZero]
+  {start-index  [:maybe ms/PositiveInt]
+   c            [:maybe ms/PositiveInt]
    filter-param [:maybe ms/NonBlankString]}
   (log/errorf "start-index: %s" start-index)
   (log/errorf "c: %s" c)
   (log/errorf "filter-param: %s" filter-param)
   (let [limit          (or c default-pagination-limit)
-        offset         (or start-index default-pagination-offset)
+        offset         (if start-index (dec start-index) default-pagination-offset)
         filter-param   (when filter-param (codec/url-decode filter-param))
         where-clause   [:and [:= :type "personal"]
                              (when filter-param (user-filter-clause filter-param))]
@@ -263,11 +263,11 @@
 (defendpoint GET "/Groups"
   "Fetch a list of groups."
   [:as {{start-index :startIndex c :count filter-param :filter} :params}]
-  {start-index  [:maybe ms/IntGreaterThanOrEqualToZero]
-   c            [:maybe ms/IntGreaterThanOrEqualToZero]
+  {start-index  [:maybe ms/PositiveInt]
+   c            [:maybe ms/PositiveInt]
    filter-param [:maybe ms/NonBlankString]}
   (let [limit          (or c default-pagination-limit)
-        offset         (or start-index default-pagination-offset)
+        offset         (if start-index (dec start-index) default-pagination-offset)
         filter-param   (when filter-param (codec/url-decode filter-param))
         filter-clause  (if filter-param
                          (group-filter-clause filter-param)

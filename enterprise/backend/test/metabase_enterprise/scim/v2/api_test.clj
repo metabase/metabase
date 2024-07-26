@@ -78,7 +78,8 @@
                (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))))))
 
     (testing "404 is returned when fetching a non-existant user"
-      (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
+      (is (= ""
+           (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))))
 
 (deftest list-users-test
   (with-scim-setup!
@@ -97,6 +98,14 @@
     (testing "Fetch user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"rasta@metabase.com\"")))]
+        (def response response)
+        (is (malli= scim-api/SCIMUserList response))
+        (is (= 1 (get response :totalResults)))
+        (is (= 1 (count (get response :Resources))))))
+
+    (testing "Fetch deactivated user by email"
+      (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
+                                                   (codec/url-encode "userName eq \"trashbird@metabase.com\"")))]
         (is (malli= scim-api/SCIMUserList response))
         (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
