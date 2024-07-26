@@ -6,7 +6,7 @@
    [metabase.util.i18n :refer [tru]])
   (:import
    (java.text NumberFormat ParsePosition)
-   (java.time LocalDate)
+   (java.time LocalDate OffsetDateTime)
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder ResolverStyle)
    (java.util Locale)))
 
@@ -105,6 +105,24 @@
           (throw (IllegalArgumentException.
                   (tru "''{0}'' is not a recognizable datetime" s))))))))
 
+(def auxillary-offset-datetime-formatter
+  (-> (DateTimeFormatterBuilder.)
+    (.parseCaseInsensitive)
+    (.append DateTimeFormatter/ISO_LOCAL_DATE_TIME)
+    (.optionalStart)
+    (.appendPattern "ss")
+    (.optionalEnd)
+    (.optionalStart)
+    (.appendPattern ".SSS")
+    (.optionalEnd)
+    (.optionalStart)
+    (.appendZoneOrOffsetId)
+    (.optionalEnd)
+    (.optionalStart)
+    (.appendOffset "+HHMM", "Z")
+    (.optionalEnd)
+    (.toFormatter)))
+
 (defn parse-offset-datetime
   "Parses a string representing an offset datetime into an OffsetDateTime.
 
@@ -119,13 +137,17 @@
       - +HH or -HH
       - +HH:mm or -HH:mm
       - +HH:mm:ss or -HH:mm:ss
+      - +HHmm (see auxillary-offset-datetime-formatter)
 
   Parsing is case-insensitive."
   [s]
   (try
     (-> s (str/replace \space \T) t/offset-date-time)
     (catch Exception _
-      (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable zoned datetime" s))))))
+      (try
+        (OffsetDateTime/parse s auxillary-offset-datetime-formatter)
+        (catch Exception _
+          (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable zoned datetime" s))))))))
 
 (defn- remove-currency-signs
   "Remove any recognized currency signs from the string (c.f. [[currency-regex]])."
