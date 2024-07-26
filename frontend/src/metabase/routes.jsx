@@ -29,7 +29,7 @@ import { trackPageView } from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
 import DatabaseMetabotApp from "metabase/metabot/containers/DatabaseMetabotApp";
 import ModelMetabotApp from "metabase/metabot/containers/ModelMetabotApp";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import { NewModelOptions } from "metabase/models/containers/NewModelOptions";
 import { getRoutes as getModelRoutes } from "metabase/models/routes";
 import { PLUGIN_LANDING_PAGE } from "metabase/plugins";
 import QueryBuilder from "metabase/query_builder/containers/QueryBuilder";

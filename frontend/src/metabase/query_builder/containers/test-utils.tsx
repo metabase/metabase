@@ -33,7 +33,7 @@ import NewItemMenu from "metabase/containers/NewItemMenu";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { serializeCardForUrl } from "metabase/lib/card";
 import { checkNotNull } from "metabase/lib/types";
-import NewModelOptions from "metabase/models/containers/NewModelOptions";
+import { NewModelOptions } from "metabase/models/containers/NewModelOptions";
 import type { Card, Dataset, UnsavedCard } from "metabase-types/api";
 import {
   createMockCard,

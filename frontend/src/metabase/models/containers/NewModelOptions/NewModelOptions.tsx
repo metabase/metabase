@@ -6,7 +6,6 @@ import _ from "underscore";
 import { useListDatabasesQuery } from "metabase/api";
 import { Grid } from "metabase/components/Grid";
 import CS from "metabase/css/core/index.css";
-import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
@@ -111,4 +110,4 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 };
 
-export default NewModelOptions;
+export { NewModelOptions };

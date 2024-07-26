@@ -8,7 +8,7 @@ import type { Database, TokenFeatures } from "metabase-types/api";
 import { createMockTokenFeatures } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
 
-import NewModelOptions from "../NewModelOptions";
+import { NewModelOptions } from "../NewModelOptions";
 
 export interface SetupOpts {
   databases: Database[];
