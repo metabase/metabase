@@ -51,14 +51,14 @@
 ;; newly re-fingerprinted Fields, because we'll know to skip the ones from last time since their value of
 ;; `last_analyzed` is not `nil`.
 
-(mu/defn ^:private update-fields-last-analyzed!
+(mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
   (t2/update! :model/Field :table_id (:id table) {:last_analyzed :%now}))
 
-(defn- update-fields-last-analyzed-for-db!
+(mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
-  [database]
+  [database :- i/DatabaseInstance]
   (t2/update! :model/Field
               (merge {:id [:in {:select [:mf.id]
                                 :from   [[:metabase_field :mf]]

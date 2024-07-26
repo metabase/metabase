@@ -33,7 +33,7 @@
   {:fingerprint_version i/*latest-fingerprint-version*
    :last_analyzed       nil})
 
-(mu/defn ^:private save-fingerprint!
+(mu/defn- save-fingerprint!
   [field       :- i/FieldInstance
    fingerprint :- [:maybe analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
@@ -60,7 +60,7 @@
   issues when syncing."
   1234)
 
-(mu/defn ^:private fingerprint-table!
+(mu/defn- fingerprint-table!
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
@@ -106,7 +106,7 @@
 ;;        (fingerprint_version < 2 AND
 ;;         base_type IN ("type/Text", "type/SerializedJSON")))
 
-(mu/defn ^:private base-types->descendants :- [:maybe [:set ms/FieldTypeKeywordOrString]]
+(mu/defn- base-types->descendants :- [:maybe [:set ms/FieldTypeKeywordOrString]]
   "Given a set of `base-types` return an expanded set that includes those base types as well as all of their
   descendants. These types are converted to strings so HoneySQL doesn't confuse them for columns."
   [base-types :- [:set ms/FieldType]]
@@ -135,7 +135,7 @@
 ;;
 ;; This way we can also completely omit adding clauses for versions that have been "eclipsed" by others.
 ;; This would keep the SQL query from growing boundlessly as new fingerprint versions are added
-(mu/defn ^:private versions-clauses :- [:maybe [:sequential :any]]
+(mu/defn- versions-clauses :- [:maybe [:sequential :any]]
   []
   ;; keep track of all the base types (including descendants) for each version, starting from most recent
   (let [versions+base-types (reverse (sort-by first (seq i/*fingerprint-version->types-that-should-be-re-fingerprinted*)))
@@ -170,7 +170,7 @@
   are analyzed and have fingerprints."
   false)
 
-(mu/defn ^:private honeysql-for-fields-that-need-fingerprint-updating :- [:map
+(mu/defn- honeysql-for-fields-that-need-fingerprint-updating :- [:map
                                                                           [:where :any]]
   "Return appropriate WHERE clause for all the Fields whose Fingerprint needs to be re-calculated."
   ([]
@@ -185,7 +185,7 @@
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn- fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
@@ -210,7 +210,7 @@
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :any])
 
-(mu/defn ^:private fingerprint-fields-for-db!*
+(mu/defn- fingerprint-fields-for-db!*
   "Invokes `fingerprint-fields!` on every table in `database`"
   ([database        :- i/DatabaseInstance
     log-progress-fn :- LogProgressFn]

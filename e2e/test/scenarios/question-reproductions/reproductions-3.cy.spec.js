@@ -2049,3 +2049,40 @@ describe.skip("issue 45359", () => {
       });
   });
 });
+
+describe("issue 45452", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("should only have one scrollbar for the summarize sidebar (metabase#45452)", () => {
+    openOrdersTable();
+    summarize();
+
+    cy.findByTestId("summarize-aggregation-item-list").then($el => {
+      const element = $el[0];
+      expectNoScrollbarContainer(element);
+    });
+
+    cy.findByTestId("summarize-breakout-column-list").then($el => {
+      const element = $el[0];
+      expectNoScrollbarContainer(element);
+    });
+
+    // the sidebar is the only element with a scrollbar
+    cy.findByTestId("sidebar-content").then($el => {
+      const element = $el[0];
+      expect(element.scrollHeight > element.clientHeight).to.be.true;
+      expect(element.offsetWidth > element.clientWidth).to.be.true;
+    });
+  });
+});
+
+function expectNoScrollbarContainer(element) {
+  const hasScrollbarContainer =
+    element.scrollHeight <= element.clientHeight &&
+    element.offsetWidth > element.clientWidth;
+
+  expect(hasScrollbarContainer).to.be.false;
+}

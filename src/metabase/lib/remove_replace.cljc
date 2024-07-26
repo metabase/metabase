@@ -358,7 +358,7 @@
                   (dissoc &match :effective-type))]
     (not (lib.equality/= a-conds b-conds))))
 
-(mu/defn ^:private replace-expression-removing-erroneous-parts :- :metabase.lib.schema/query
+(mu/defn- replace-expression-removing-erroneous-parts :- :metabase.lib.schema/query
   [unmodified-query :- :metabase.lib.schema/query
    stage-number     :- :int
    target           :- :metabase.lib.schema.expression/expression
