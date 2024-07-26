@@ -101,7 +101,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         {
           name: "default value, required",
           slug: "default-value/required",
-          id: "60f12ac2",
+          id: "60f12ac0",
           type: "temporal-unit",
           sectionId: "temporal-unit",
           default: "year",
@@ -172,14 +172,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         {
           name: "no default value, non-required",
           slug: "no-default-value/non-required",
-          id: "fed1b910",
+          id: "fed1b911",
           type: "date/single",
           sectionId: "date",
         },
         {
           name: "default value, non-required",
           slug: "default-value/non-required",
-          id: "75d67d30",
+          id: "75d67d31",
           type: "date/single",
           sectionId: "date",
           default: "2024-01-01",
@@ -187,7 +187,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         {
           name: "default value, required",
           slug: "default-value/required",
-          id: "60f12ac2",
+          id: "60f12ac1",
           type: "date/single",
           sectionId: "date",
           default: "2024-01-01",
@@ -258,7 +258,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
-        id: "fed1b910",
+        id: "fed1b912",
         isMultiSelect: false,
         type: "string/=",
         sectionId: "location",
@@ -266,7 +266,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, non-required",
         slug: "default-value/non-required",
-        id: "75d67d30",
+        id: "75d67d32",
         isMultiSelect: false,
         type: "string/=",
         sectionId: "location",
@@ -346,14 +346,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
-        id: "fed1b910",
+        id: "fed1b913",
         type: "string/=",
         sectionId: "location",
       },
       {
         name: "default value, non-required",
         slug: "default-value/non-required",
-        id: "75d67d30",
+        id: "75d67d33",
         type: "string/=",
         sectionId: "location",
         default: ["Bassett", "Thomson"],
@@ -361,7 +361,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, required",
         slug: "default-value/required",
-        id: "60f12ac2",
+        id: "60f12ac3",
         type: "string/=",
         sectionId: "location",
         required: true,
@@ -431,7 +431,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
-        id: "fed1b910",
+        id: "fed1b914",
         isMultiSelect: false,
         type: "id",
         sectionId: "id",
@@ -439,7 +439,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, non-required",
         slug: "default-value/non-required",
-        id: "75d67d30",
+        id: "75d67d34",
         isMultiSelect: false,
         type: "id",
         sectionId: "id",
@@ -448,7 +448,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, required",
         slug: "default-value/required",
-        id: "60f12ac2",
+        id: "60f12ac4",
         isMultiSelect: false,
         type: "id",
         sectionId: "id",
@@ -519,14 +519,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
-        id: "fed1b910",
+        id: "fed1b915",
         type: "id",
         sectionId: "id",
       },
       {
         name: "default value, non-required",
         slug: "default-value/non-required",
-        id: "75d67d30",
+        id: "75d67d35",
         type: "id",
         sectionId: "id",
         default: ["1", "2"],
@@ -534,7 +534,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, required",
         slug: "default-value/required",
-        id: "60f12ac2",
+        id: "60f12ac5",
         type: "id",
         sectionId: "id",
         required: true,
@@ -602,14 +602,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
-        id: "fed1b910",
+        id: "fed1b916",
         type: "number/>=",
         sectionId: "number",
       },
       {
         name: "default value, non-required",
         slug: "default-value/non-required",
-        id: "75d67d30",
+        id: "75d67d36",
         type: "number/>=",
         sectionId: "number",
         default: [1],
@@ -617,7 +617,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, required",
         slug: "default-value/required",
-        id: "60f12ac2",
+        id: "60f12ac6",
         type: "number/>=",
         sectionId: "number",
         required: true,
@@ -687,14 +687,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
-        id: "fed1b910",
+        id: "fed1b917",
         type: "number/between",
         sectionId: "number",
       },
       {
         name: "default value, non-required",
         slug: "default-value/non-required",
-        id: "75d67d30",
+        id: "75d67d37",
         type: "number/between",
         sectionId: "number",
         default: [1, 2],
@@ -702,7 +702,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, required",
         slug: "default-value/required",
-        id: "60f12ac2",
+        id: "60f12ac7",
         type: "number/between",
         sectionId: "number",
         required: true,
@@ -775,7 +775,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
-        id: "fed1b910",
+        id: "fed1b918",
         isMultiSelect: false,
         type: "string/=",
         sectionId: "string",
@@ -783,7 +783,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, non-required",
         slug: "default-value/non-required",
-        id: "75d67d30",
+        id: "75d67d38",
         isMultiSelect: false,
         type: "string/=",
         sectionId: "string",
@@ -792,7 +792,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, required",
         slug: "default-value/required",
-        id: "60f12ac2",
+        id: "60f12ac8",
         isMultiSelect: false,
         type: "string/=",
         sectionId: "string",
@@ -866,14 +866,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "no default value, non-required",
         slug: "no-default-value/non-required",
-        id: "fed1b910",
+        id: "fed1b919",
         type: "string/=",
         sectionId: "string",
       },
       {
         name: "default value, non-required",
         slug: "default-value/non-required",
-        id: "75d67d30",
+        id: "75d67d39",
         type: "string/=",
         sectionId: "string",
         default: ["Gizmo", "Gadget"],
@@ -881,7 +881,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       {
         name: "default value, required",
         slug: "default-value/required",
-        id: "60f12ac2",
+        id: "60f12ac9",
         type: "string/=",
         sectionId: "string",
         required: true,
