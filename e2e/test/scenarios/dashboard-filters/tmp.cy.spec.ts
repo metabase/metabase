@@ -501,6 +501,89 @@ describe("scenarios > dashboard > filters > clear & reset buttons", () => {
     checkButtonVisible(defaultRequired, "none");
   });
 
+  it("id parameters - multiple values", () => {
+    createDashboardWithParameters(PEOPLE_QUESTION, PEOPLE_ID_FIELD, [
+      {
+        name: "no default value, non-required",
+        slug: "no-default-value/non-required",
+        id: "fed1b910",
+        type: "id",
+        sectionId: "id",
+      },
+      {
+        name: "default value, non-required",
+        slug: "default-value/non-required",
+        id: "75d67d30",
+        type: "id",
+        sectionId: "id",
+        default: ["1", "2"],
+      },
+      {
+        name: "default value, required",
+        slug: "default-value/required",
+        id: "60f12ac2",
+        type: "id",
+        sectionId: "id",
+        required: true,
+        default: ["1", "2"],
+      },
+    ]);
+    const noDefaultNonRequired = "no default value, non-required";
+
+    cy.log("no default value, non-required, no current value");
+    checkButtonVisible(noDefaultNonRequired, "chevron");
+
+    cy.log("no default value, non-required, has current value");
+    filter(noDefaultNonRequired).click();
+    popover().findByRole("searchbox").clear().type("1,2").blur();
+    popover().button("Add filter").click();
+    checkButtonVisible(noDefaultNonRequired, "clear");
+    filter(noDefaultNonRequired).should("have.text", "2 selections");
+    clearButton(noDefaultNonRequired).click();
+    filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
+    checkButtonVisible(noDefaultNonRequired, "chevron");
+
+    const defaultNonRequired = "default value, non-required";
+
+    cy.log("has default value, non-required, value same as default");
+    checkButtonVisible(defaultNonRequired, "clear");
+    filter(defaultNonRequired).should("have.text", "2 selections");
+    clearButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", defaultNonRequired);
+
+    cy.log("has default value, non-required, no current value");
+    checkButtonVisible(defaultNonRequired, "reset");
+    resetButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", "2 selections");
+
+    cy.log(
+      "has default value, non-required, current value different than default",
+    );
+    filter(defaultNonRequired).click();
+    popover().findByRole("searchbox").focus().type("3").blur();
+    popover().button("Update filter").click();
+    filter(defaultNonRequired).should("have.text", "3 selections");
+    checkButtonVisible(defaultNonRequired, "reset");
+    resetButton(defaultNonRequired).click();
+    filter(defaultNonRequired).should("have.text", "2 selections");
+    checkButtonVisible(defaultNonRequired, "clear");
+
+    const defaultRequired = "default value, required";
+
+    cy.log("has default value, required, value same as default");
+    checkButtonVisible(defaultRequired, "none");
+
+    cy.log("has default value, required, current value different than default");
+    filter(defaultRequired).click();
+    popover().findByRole("searchbox").focus().type("3").blur();
+    popover().button("Update filter").click();
+    filter(defaultRequired).should("have.text", "3 selections");
+    checkButtonVisible(defaultRequired, "reset");
+    resetButton(defaultRequired).click();
+    filter(defaultRequired).should("have.text", "2 selections");
+    checkButtonVisible(defaultRequired, "none");
+  });
+
   function filter(label: string) {
     return cy.findByLabelText(label);
   }
