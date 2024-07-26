@@ -46,7 +46,7 @@ export type LoginStatus =
 
 export type SdkDispatch = ThunkDispatch<SdkStoreState, void, AnyAction>;
 
-export type SdkErrorComponentProps = { message: string | ReactNode };
+export type SdkErrorComponentProps = { message: ReactNode };
 export type SdkErrorComponent = ({
   message,
 }: SdkErrorComponentProps) => JSX.Element;

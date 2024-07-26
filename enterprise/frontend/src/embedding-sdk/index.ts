@@ -24,4 +24,3 @@ export type {
   MetabaseColors,
   MetabaseComponentTheme,
 } from "./types/theme";
-export { presentApiKeyUsageWarning } from "embedding-sdk/lib/user-warnings/api-keys-prod-usage";
