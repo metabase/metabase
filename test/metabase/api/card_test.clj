@@ -296,7 +296,21 @@
                (set (map :name (mt/user-http-request :rasta :get 200 "card", :f :archived))))
             "The set of Card returned with f=archived should be equal to the set of archived cards")))))
 
-(defn do-poll-until [^Long timeout-ms thunk]
+(deftest embedding-sdk-info-saves-view-log
+  (testing "GET /api/card with embedding headers set"
+    (let [;; any strings will work here (must be shorter than 254 chars), but these are semi-relaistic:
+          client-string (mt/random-name)
+          version-string (str "1." (rand-int 1000) "." (rand-int 1000))]
+      (mt/with-temp [:model/Database {database-id :id} {}
+                     :model/Card card-1 {:name "Card 1" :database_id database-id}]
+        (mt/with-premium-features #{:audit-app}
+          (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card-1))
+                                {:request-options {:headers {"x-metabase-client" client-string
+                                                             "x-metabase-client-version" version-string}}}))
+        (is (= {:embedding_client client-string, :embedding_version version-string}
+               (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1))))))))
+
+(defn- do-poll-until [^Long timeout-ms thunk]
   (let [result-prom (promise)
         _timeouter (future (Thread/sleep timeout-ms) (deliver result-prom ::timeout))
         _runner (future (loop []
@@ -304,22 +318,16 @@
                             (deliver result-prom thunk-return)
                             (recur))))
         result @result-prom]
-    (cond (= result ::timeout) (throw (Exception. (str "Timeout after " timeout-ms "ms")))
-          (= clojure.lang.ExceptionInfo (type result)) (throw result)
+    (cond (= result ::timeout) (throw (ex-info (str "Timeout after " timeout-ms "ms")
+                                               {:timeout-ms timeout-ms}))
+          (instance? Throwable result) (throw result)
           :else result)))
 
-(defmacro poll-until [timeout-ms & body]
+(defmacro ^:private poll-until
+  "A macro that continues to call the given body until it returns a truthy value or the timeout is reached.
+  Returns the truthy body, or re-throws any exception raised in body. Hence, this cannot be used to return nil, false, or a Throwable."
+  [timeout-ms & body]
   `(do-poll-until ~timeout-ms (fn [] ~@body)))
-
-(deftest embedding-sdk-info-saves-view-log
-  (testing "GET /api/card with embedding headers set"
-    (mt/with-temp [:model/Database {database-id :id} {}
-                   :model/Card card-1 {:name "Card 1" :database_id database-id}]
-      (mt/user-http-request :crowberto :get 200 (str "card/" (u/the-id card-1))
-                            {:request-options {:headers {"x-metabase-client" "client-A"
-                                                         "x-metabase-client-version" "1"}}})
-      (is (= {:embedding_client "client-A", :embedding_version "1"}
-             (poll-until 100 (t2/select-one [:model/ViewLog :embedding_client :embedding_version] :model "card" :model_id (u/the-id card-1))))))))
 
 (deftest embedding-sdk-info-saves-query-execution
   (testing "GET /api/card with embedding headers set"
