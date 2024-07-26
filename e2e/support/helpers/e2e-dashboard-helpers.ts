@@ -1,13 +1,95 @@
+import type {
+  CardId,
+  CreateDashboardRequest,
+  Dashboard,
+  DashboardCard,
+  DashboardId,
+  DashCardId,
+  WritebackActionId,
+} from "metabase-types/api";
+
 import { visitDashboard } from "./e2e-misc-helpers";
 import { menu, popover, sidebar } from "./e2e-ui-elements-helpers";
 
+interface DashboardDetails extends Omit<CreateDashboardRequest, "name"> {
+  name?: string;
+  auto_apply_filters?: Dashboard["auto_apply_filters"];
+  enable_embedding?: Dashboard["enable_embedding"];
+  embedding_params?: Dashboard["embedding_params"];
+  dashcards?: Partial<DashboardCard>[];
+}
+
+interface Options {
+  /**
+   * Whether to wrap a dashboard id, to make it available outside of this scope.
+   * Defaults to false.
+   */
+  wrapId?: boolean;
+  /**
+   * Alias a dashboard id in order to use it later with `cy.get("@" + alias).
+   * Defaults to "dashboardId".
+   */
+  idAlias?: string;
+}
+
+export const createDashboard = (
+  dashboardDetails: DashboardDetails = {},
+  options: Options = {},
+): Cypress.Chainable<Cypress.Response<Dashboard>> => {
+  const {
+    name = "Test Dashboard",
+    auto_apply_filters,
+    enable_embedding,
+    embedding_params,
+    dashcards,
+    ...restDashboardDetails
+  } = dashboardDetails;
+  const { wrapId = false, idAlias = "dashboardId" } = options;
+
+  cy.log(`Create a dashboard: ${name}`);
+
+  // For all the possible keys, refer to `src/metabase/api/dashboard.clj`
+  return cy
+    .request("POST", "/api/dashboard", { name, ...restDashboardDetails })
+    .then(({ body }) => {
+      if (wrapId) {
+        cy.wrap(body.id).as(idAlias);
+      }
+      if (
+        enable_embedding != null ||
+        auto_apply_filters != null ||
+        Array.isArray(dashcards)
+      ) {
+        cy.request("PUT", `/api/dashboard/${body.id}`, {
+          auto_apply_filters,
+          enable_embedding,
+          embedding_params,
+          dashcards,
+        });
+      }
+    });
+};
+
+export const archiveDashboard = (id: DashboardId) => {
+  cy.log(`Archiving a dashboard with id: ${id}`);
+
+  return cy.request("PUT", `/api/dashboard/${id}`, {
+    archived: true,
+  });
+};
+
 // Metabase utility functions for commonly-used patterns
-export function selectDashboardFilter(selection, filterName) {
+export function selectDashboardFilter(
+  selection: Cypress.Chainable<JQuery<HTMLElement>>,
+  filterName: string,
+) {
   selection.contains("Select…").click();
   popover().contains(filterName).click({ force: true });
 }
 
-export function disconnectDashboardFilter(selection) {
+export function disconnectDashboardFilter(
+  selection: Cypress.Chainable<JQuery<HTMLElement>>,
+) {
   selection.findByLabelText("Disconnect").click();
 }
 
@@ -19,12 +101,8 @@ export function getDashboardCard(index = 0) {
   return getDashboardCards().eq(index);
 }
 
-export function ensureDashboardCardHasText(text, index = 0) {
+export function ensureDashboardCardHasText(text: string, index = 0) {
   cy.findAllByTestId("dashcard").eq(index).should("contain", text);
-}
-
-function getDashboardApiUrl(dashId) {
-  return `/api/dashboard/${dashId}`;
 }
 
 const DEFAULT_CARD = {
@@ -37,9 +115,17 @@ const DEFAULT_CARD = {
   parameter_mappings: [],
 };
 
-export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
+export function addOrUpdateDashboardCard({
+  card_id,
+  dashboard_id,
+  card,
+}: {
+  card_id: CardId;
+  dashboard_id: DashboardId;
+  card: Partial<DashboardCard>;
+}) {
   return cy
-    .request("PUT", getDashboardApiUrl(dashboard_id), {
+    .request("PUT", `/api/dashboard/${dashboard_id}`, {
       dashcards: [
         {
           ...DEFAULT_CARD,
@@ -58,9 +144,15 @@ export function addOrUpdateDashboardCard({ card_id, dashboard_id, card }) {
  * Replaces all the cards on a dashboard with the array given in the `cards` parameter.
  * Can be used to remove cards (exclude from array), or add/update them.
  */
-export function updateDashboardCards({ dashboard_id, cards }) {
+export function updateDashboardCards({
+  dashboard_id,
+  cards,
+}: {
+  dashboard_id: DashboardId;
+  cards: Partial<DashboardCard>[];
+}) {
   let id = -1;
-  return cy.request("PUT", getDashboardApiUrl(dashboard_id), {
+  return cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
     dashcards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
   });
 }
@@ -76,13 +168,11 @@ export function showDashboardCardActions(index = 0) {
 /**
  * Given a dashcard HTML element, will return the element for the action icon
  * with the given label text (e.g. "Click behavior", "Replace", "Duplicate", etc)
- *
- * @param {Cypress.Chainable<JQuery<HTMLElement>>} dashcardElement
- * @param {string} labelText
- *
- * @returns {Cypress.Chainable<JQuery<HTMLElement>>}
  */
-export function findDashCardAction(dashcardElement, labelText) {
+export function findDashCardAction(
+  dashcardElement: Cypress.Chainable<JQuery<HTMLElement>>,
+  labelText: string,
+) {
   return dashcardElement
     .realHover({ scrollBehavior: "bottom" })
     .findByLabelText(labelText);
@@ -129,13 +219,13 @@ export function saveDashboard({
   cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
-export function checkFilterLabelAndValue(label, value) {
+export function checkFilterLabelAndValue(label: string, value: string) {
   cy.get("fieldset").find("legend").invoke("text").should("eq", label);
 
   cy.get("fieldset").contains(value);
 }
 
-export function setFilter(type, subType, name) {
+export function setFilter(type: string, subType: string, name: string) {
   cy.icon("filter").click();
 
   cy.findByText("What do you want to filter?");
@@ -167,17 +257,26 @@ export function createEmptyTextBox() {
   popover().findByText("Text").click();
 }
 
-export function addTextBox(string, options = {}) {
+export function addTextBox(
+  string: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
   cy.findByLabelText("Edit dashboard").click();
   addTextBoxWhileEditing(string, options);
 }
 
-export function addLinkWhileEditing(string, options = {}) {
+export function addLinkWhileEditing(
+  string: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
   cy.findByLabelText("Add link card").click();
   cy.findByPlaceholderText("https://example.com").type(string, options);
 }
 
-export function addTextBoxWhileEditing(string, options = {}) {
+export function addTextBoxWhileEditing(
+  string: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Text").click();
   cy.findByPlaceholderText(
@@ -191,12 +290,18 @@ export function createEmptyHeading() {
   popover().findByText("Heading").click();
 }
 
-export function addHeading(string, options = {}) {
+export function addHeading(
+  string: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
   cy.findByLabelText("Edit dashboard").click();
   addHeadingWhileEditing(string, options);
 }
 
-export function addHeadingWhileEditing(string, options = {}) {
+export function addHeadingWhileEditing(
+  string: string,
+  options: Partial<Cypress.TypeOptions> = {},
+) {
   cy.findByLabelText("Add a heading or text box").click();
   popover().findByText("Heading").click();
   cy.findByPlaceholderText("Heading").type(string, options);
@@ -210,30 +315,42 @@ export function createNewTab() {
   cy.findByLabelText("Create new tab").click();
 }
 
-export function deleteTab(tabName) {
+export function deleteTab(tabName: string) {
   cy.findByRole("tab", { name: tabName }).findByRole("button").click();
   popover().within(() => {
     cy.findByText("Delete").click();
   });
 }
 
-export function duplicateTab(tabName) {
+export function duplicateTab(tabName: string) {
   cy.findByRole("tab", { name: tabName }).findByRole("button").click();
   popover().within(() => {
     cy.findByText("Duplicate").click();
   });
 }
 
-export function goToTab(tabName) {
+export function goToTab(tabName: string) {
   cy.findByRole("tab", { name: tabName }).click();
 }
 
-export function moveDashCardToTab({ dashcardIndex = 0, tabName }) {
+export function moveDashCardToTab({
+  dashcardIndex = 0,
+  tabName,
+}: {
+  dashcardIndex?: number;
+  tabName: string;
+}) {
   getDashboardCard(dashcardIndex).realHover().icon("move_card").realHover();
   menu().findByText(tabName).click();
 }
 
-export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
+export function visitDashboardAndCreateTab({
+  dashboardId,
+  save = true,
+}: {
+  dashboardId: DashboardId;
+  save?: boolean;
+}) {
   visitDashboard(dashboardId);
   editDashboard();
   createNewTab();
@@ -242,7 +359,15 @@ export function visitDashboardAndCreateTab({ dashboardId, save = true }) {
   }
 }
 
-export function resizeDashboardCard({ card, x, y }) {
+export function resizeDashboardCard({
+  card,
+  x,
+  y,
+}: {
+  card: Cypress.Chainable<JQuery<HTMLElement>>;
+  x: number;
+  y: number;
+}) {
   card.within(() => {
     const resizeHandle = cy.get(".react-resizable-handle");
     resizeHandle
@@ -398,6 +523,13 @@ export function getActionCardDetails({
   label = "Action card",
   action_id,
   parameter_mappings,
+}: {
+  id?: DashCardId;
+  col?: number;
+  row?: number;
+  label?: string;
+  action_id?: WritebackActionId;
+  parameter_mappings?: DashboardCard["parameter_mappings"];
 } = {}) {
   return {
     id,
@@ -475,7 +607,7 @@ export function createDashboardWithTabs({
   dashcards = [],
   tabs,
   ...dashboardDetails
-}) {
+}: DashboardDetails) {
   return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
     cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
       ...dashboard,

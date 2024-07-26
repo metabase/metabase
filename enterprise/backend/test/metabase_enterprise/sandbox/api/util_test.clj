@@ -3,9 +3,29 @@
    [clojure.test :refer :all]
    [metabase-enterprise.sandbox.api.util :as mt.api.u]
    [metabase-enterprise.test :as met]
+   [metabase.models.data-permissions :as data-perms]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
+
+(deftest sandbox-caching-test
+  (testing "`sandboxed-user?` and `enforced-sandboxes-for-tables` use the cache"
+    (t2.with-temp/with-temp [:model/User user {}]
+      (met/with-gtaps-for-user! (u/the-id user) {:gtaps {:venues {}}}
+        ;; retrieve the cache now (and realize its values) so it doesn't get included in call count
+        (doall @data-perms/*sandboxes-for-user*)
+
+        ;; make the cache wrong
+        (t2/delete! :model/GroupTableAccessPolicy :group_id (:id &group))
+
+        ;; subsequent calls should still use the cache, and not hit the DB at all
+        (t2/with-call-count [call-count]
+          (is (mt.api.u/sandboxed-user?))
+          (is (zero? (call-count)))
+
+          (is (= 1 (count (mt.api.u/enforced-sandboxes-for-tables [(mt/id :venues)]))))
+          (is (zero? (call-count))))))))
 
 (deftest enforce-sandbox?-test
   (testing "If a user is in a single group with a sandbox, the sandbox should be enforced"

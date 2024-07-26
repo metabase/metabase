@@ -47,7 +47,7 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(mu/defn ^:private run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
+(mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
    & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc

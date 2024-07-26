@@ -207,7 +207,11 @@
                           (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
       true  :metric   (-> lib.tu/venues-query
                           (lib/aggregate (lib/count))
-                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query)))))))
+                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query))))
+      false  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/append-stage)
+                          (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel can-save-test
   (mu/disable-enforcement
@@ -225,7 +229,11 @@
                           (lib/aggregate (lib/sum (meta/field-metadata :venues :id))))
       true  :metric   (-> lib.tu/venues-query
                           (lib/aggregate (lib/count))
-                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query)))))))
+                          (lib/breakout (first (lib/breakoutable-columns lib.tu/venues-query))))
+      false  :metric   (-> lib.tu/venues-query
+                          (lib/aggregate (lib/count))
+                          (lib/append-stage)
+                          (lib/aggregate (lib/count))))))
 
 (deftest ^:parallel can-preview-test
   (mu/disable-enforcement

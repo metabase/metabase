@@ -117,7 +117,7 @@
     ;; default
     default-operators))
 
-(mu/defn ^:private filter-operator-long-display-name :- ::lib.schema.common/non-blank-string
+(mu/defn- filter-operator-long-display-name :- ::lib.schema.common/non-blank-string
   [tag                  :- :keyword
    display-name-variant :- :keyword]
   (case tag
@@ -161,7 +161,7 @@
     :inside           (case display-name-variant
                         :default (i18n/tru "Inside"))))
 
-(mu/defn ^:private filter-operator-display-name :- ::lib.schema.common/non-blank-string
+(mu/defn- filter-operator-display-name :- ::lib.schema.common/non-blank-string
   [tag                  :- :keyword
    display-name-variant :- :keyword]
   (case tag

@@ -47,7 +47,7 @@
                               :type/TimeWithTZ     "TIMETZ"}]
   (defmethod sql.tx/field-base-type->sql-type [:vertica base-type] [_ _] sql-type))
 
-(mu/defn ^:private db-name :- :string
+(mu/defn- db-name :- :string
   []
   (tx/db-test-env-var-or-throw :vertica :db "VMart"))
 
@@ -148,7 +148,7 @@
               "1,Pouros\\, Nitzsche and Mayer"]
              (str/split-lines (slurp temp-filename)))))))
 
-(mu/defn ^:private load-rows-from-csv!
+(mu/defn- load-rows-from-csv!
   "Load rows from a CSV file into a Table."
   [driver                                   :- :keyword
    conn                                     :- (lib.schema.common/instance-of-class java.sql.Connection)
