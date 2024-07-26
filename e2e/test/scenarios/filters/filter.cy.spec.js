@@ -758,7 +758,7 @@ describe("scenarios > question > filter", () => {
     filterField("Category").findByText("Gizmo").click();
 
     cy.findByTestId("apply-filters").click();
-    cy.findByLabelText("notebook icon").click();
+    openNotebook();
 
     // filter
     getNotebookStep("filter").should("contain", "Category is Gizmo");

@@ -1390,7 +1390,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       .and("contain", "Sum of Total");
 
     // Close the notebook editor
-    cy.findByTestId("qb-header-action-panel").icon("notebook").click();
+    openNotebook();
     cy.findByTestId("pivot-table")
       .should("contain", "User → Source")
       .and("contain", "Sum of Subtotal")
