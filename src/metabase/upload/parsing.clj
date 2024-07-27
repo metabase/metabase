@@ -105,7 +105,7 @@
           (throw (IllegalArgumentException.
                   (tru "''{0}'' is not a recognizable datetime" s))))))))
 
-(def auxillary-offset-datetime-formatter
+(def ^:private auxillary-offset-datetime-formatter
   (-> (DateTimeFormatterBuilder.)
     (.parseCaseInsensitive)
     (.append DateTimeFormatter/ISO_LOCAL_DATE_TIME)
