@@ -100,7 +100,8 @@
   (mt/with-temporary-setting-values [custom-formatting nil]
     (testing "Written Date Formatting"
       (let [fmt (fn [col-viz]
-                  (datetime/format-temporal-str "UTC" now {:field_ref      [:column_name "created_at"]
+                  (datetime/format-temporal-str "UTC" now {:name           "created_at"
+                                                           :field_ref      [:column_name "created_at"]
                                                            :effective_type :type/Date}
                                                 {::mb.viz/column-settings
                                                  {{::mb.viz/column-name "created_at"} col-viz}}))]
@@ -118,7 +119,8 @@
                                (when date-style {::mb.viz/date-style date-style})))))))))
     (testing "Numerical Date Formatting"
       (let [fmt (fn [col-viz]
-                  (datetime/format-temporal-str "UTC" now {:field_ref      [:column_name "created_at"]
+                  (datetime/format-temporal-str "UTC" now {:name           "created_at"
+                                                           :field_ref      [:column_name "created_at"]
                                                            :effective_type :type/Date}
                                                 {::mb.viz/column-settings
                                                  {{::mb.viz/column-name "created_at"} col-viz}}))]
@@ -252,7 +254,8 @@
     ;; What we probably do want is 'yyyy' which calculates what day of the year the date is and then returns the year.
     (let [dates (fn [year] [(format "%s-01-01" year) (format "%s-12-31" year)])
           fmt (fn [s]
-                (datetime/format-temporal-str "UTC" s {:field_ref      [:column_name "created_at"]
+                (datetime/format-temporal-str "UTC" s {:name           "created_at"
+                                                       :field_ref      [:column_name "created_at"]
                                                        :effective_type :type/Date}
                                               {::mb.viz/column-settings
                                                {{::mb.viz/column-name "created_at"} {::mb.viz/date-style "YYYY-MM-dd"}}}))]
