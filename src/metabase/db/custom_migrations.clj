@@ -1475,7 +1475,8 @@
 (defn- column->column-key
   "Computes a modern viz setting column key for a `column`. The modern format is [\"name\",`name`]."
   [{:keys [name]}]
-  (json/generate-string [:name name]))
+  (when name
+    (json/generate-string [:name name])))
 
 (defn- column->legacy-column-key
   "Computes a legacy viz setting column key for a `column`.
@@ -1484,14 +1485,16 @@
   In other cases returns a legacy column key of the format [\"ref\",`field_ref`] where `:binning` and `:temporal-unit`
   options are removed from the `field_ref`."
   [{name :name field-ref :field_ref :as column}]
-  (let [field-ref (or field-ref [:field name nil])
+  (let [field-ref (or field-ref (when name [:field name nil]))
         [ref-type field-id-or-name ref-options] field-ref
         field-ref (if (and (#{:field :expression :aggregation} ref-type) ref-options)
                     [ref-type field-id-or-name (dissoc ref-options :binning :temporal-unit)]
                     field-ref)]
-    (if (or (and (= ref-type :field) (string? field-id-or-name))
-            (= ref-type :aggregation))
+    (cond
+      (or (and (= ref-type :field) (string? field-id-or-name)) (= ref-type :aggregation))
       (column->column-key column)
+
+      field-ref
       (json/generate-string [:ref field-ref]))))
 
 (defn- infer-columns-from-viz-settings
@@ -1501,38 +1504,38 @@
   (when-let [columns (:table.columns viz-settings)]
      (mapv (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}) columns)))
 
+(defn- update-legacy-column-keys-in-viz-settings
+  "Updates `:column_settings` keys. Unmatched keys are retained."
+  [viz-settings columns old-key-fn new-key-fn]
+  (let [key->column (m/index-by old-key-fn columns)]
+    (m/update-existing viz-settings :column_settings update-keys
+                       (fn [key]
+                         (if-let [column (get key->column key)]
+                           (or (new-key-fn column) key)
+                           key)))))
+
 (defn- migrate-legacy-column-keys-in-viz-settings
   "Migrates legacy `:column_settings` keys that have serialized field refs to name-based column keys. Unmatched keys are
   retained."
   [viz-settings columns]
-  (let [key->column (m/index-by column->legacy-column-key columns)]
-    (m/update-existing viz-settings :column_settings update-keys
-                       (fn [key]
-                         (if-let [column (get key->column key)]
-                           (column->column-key column)
-                           key)))))
+  (update-legacy-column-keys-in-viz-settings viz-settings columns column->legacy-column-key column->column-key))
 
 (defn- rollback-legacy-column-keys-in-viz-settings
   "Rollbacks changes to `:column_settings` keys and brings field ref-based column keys back. Unmatched keys are
   retained."
   [viz-settings columns]
-  (let [key->column (m/index-by column->column-key columns)]
-    (m/update-existing viz-settings :column_settings update-keys
-                       (fn [key]
-                         (if-let [column (get key->column key)]
-                           (column->legacy-column-key column)
-                           key)))))
+  (update-legacy-column-keys-in-viz-settings viz-settings columns column->column-key column->legacy-column-key))
 
 (defn- update-legacy-column-keys-in-card-viz-settings
   "Updates `:visualization_settings` of each card that contains `:column_settings` by calling `update-viz-settings`
   function. Can be used to both migrate and rollback the viz settings changes. `:result_metadata` of each card is used
   to find the deduplicated column name by the field reference and compute the new column key."
-  [update-viz-settings]
-  (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
-                      (let [parsed-viz-settings    (json/parse-string visualization_settings keyword-except-column-key)
-                            parsed-result-metadata (json/parse-string result_metadata keyword)
-                            updated-viz-settings   (update-viz-settings parsed-viz-settings parsed-result-metadata)]
-                        (when (not= parsed-viz-settings updated-viz-settings)
+  [update-viz-settings-fn]
+  (let [update-one! (fn [{id :id viz-settings :visualization_settings result-metadata :result_metadata}]
+                      (let [viz-settings         (json/parse-string viz-settings keyword-except-column-key)
+                            result-metadata      (json/parse-string result-metadata keyword)
+                            updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
+                        (when (not= viz-settings updated-viz-settings)
                               (t2/query-one {:update :report_card
                                              :set    {:visualization_settings (json/generate-string updated-viz-settings)}
                                              :where  [:= :id id]}))))]
@@ -1550,12 +1553,12 @@
   `update-viz-settings` function. Can be used to both migrate and rollback the viz settings changes. `:result_metadata`
   of each referenced card is used to find the deduplicated column name by the field reference and compute the new column
   key."
-  [update-viz-settings]
-  (let [update-one! (fn [{:keys [id visualization_settings result_metadata]}]
-                      (let [parsed-viz-settings    (json/parse-string visualization_settings keyword-except-column-key)
-                            parsed-result-metadata (json/parse-string result_metadata keyword)
-                            updated-viz-settings   (update-viz-settings parsed-viz-settings parsed-result-metadata)]
-                        (when (not= parsed-viz-settings updated-viz-settings)
+  [update-viz-settings-fn]
+  (let [update-one! (fn [{id :id viz-settings :visualization_settings result-metadata :result_metadata}]
+                      (let [viz-settings         (json/parse-string viz-settings keyword-except-column-key)
+                            result-metadata      (json/parse-string result-metadata keyword)
+                            updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
+                        (when (not= viz-settings updated-viz-settings)
                               (t2/query-one {:update :report_dashboardcard
                                              :set    {:visualization_settings (json/generate-string updated-viz-settings)}
                                              :where  [:= :id id]}))))]
@@ -1574,24 +1577,24 @@
   both migrate and rollback the viz settings changes. As `:result_metadata` is not saved for each revision, we try to
   infer it from the `:visualization_settings` and fallback to the most recent :result_metadata of the corresponding
   card."
-  [object result-metadata update-viz-settings]
+  [object result-metadata update-viz-settings-fn]
   (m/update-existing object :visualization_settings
                      (fn [viz-settings]
                        (let [columns (or (infer-columns-from-viz-settings viz-settings)
                                          result-metadata)]
-                         (update-viz-settings viz-settings columns)))))
+                         (update-viz-settings-fn viz-settings columns)))))
 
 (defn- update-legacy-column-keys-in-card-revision-viz-settings
   "Updates `:visualization_settings` of each revision of a card that contains `:column_settings` by calling
   `update-viz-settings` function. Can be used to both migrate and rollback the viz settings changes. As
   `:result_metadata` is not saved for each revision, we try to infer it from the `:visualization_settings` and fallback
    to the most recent `:result_metadata` of the corresponding card."
-  [update-viz-settings]
-  (let [update-one! (fn [{:keys [id object result_metadata]}]
-                      (let [parsed-object          (json/parse-string object keyword-except-column-key)
-                            parsed-result-metadata (json/parse-string result_metadata keyword)
-                            updated-object         (update-revision-viz-settings parsed-object parsed-result-metadata update-viz-settings)]
-                        (when (not= parsed-object updated-object)
+  [update-viz-settings-fn]
+  (let [update-one! (fn [{:keys [id object] result-metadata :result_metadata}]
+                      (let [object          (json/parse-string object keyword-except-column-key)
+                            result-metadata (json/parse-string result-metadata keyword)
+                            updated-object  (update-revision-viz-settings object result-metadata update-viz-settings-fn)]
+                        (when (not= object updated-object)
                               (t2/query-one {:update :revision
                                              :set    {:object (json/generate-string updated-object)}
                                              :where  [:= :id id]}))))]
@@ -1612,12 +1615,12 @@
   `update-viz-settings` function. Can be used to both migrate and rollback the viz settings changes. As
   `:result_metadata` is not saved for each revision, we try to infer it from the `:visualization_settings`. We cannot
   fallback to the most recent `:result_metadata` of the corresponding card here for performance reasons."
-  [update-viz-settings]
+  [update-viz-settings-fn]
   (let [update-one! (fn [{:keys [id object]}]
-                      (let [parsed-object  (json/parse-string object keyword-except-column-key)
-                            updated-object (m/update-existing parsed-object :cards
-                                                              (fn [cards] (mapv #(update-revision-viz-settings % [] update-viz-settings) cards)))]
-                            (when (not= parsed-object updated-object)
+                      (let [object  (json/parse-string object keyword-except-column-key)
+                            updated-object (m/update-existing object :cards
+                                                              (fn [cards] (mapv #(update-revision-viz-settings % [] update-viz-settings-fn) cards)))]
+                            (when (not= object updated-object)
                               (t2/query-one {:update :revision
                                              :set    {:object (json/generate-string updated-object)}
                                              :where  [:= :id id]}))))]

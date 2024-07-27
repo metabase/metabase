@@ -244,30 +244,30 @@
   (testing "Migrations v47.00-028: update visualization_settings.column_settings legacy field refs"
     (impl/test-migrations ["v47.00-028"] [migrate!]
       (let [result_metadata
-            [{:name "C1"   :field_ref [:field 1 nil]}
-             {:name "C1_2" :field_ref [:field 1 {:join-alias "Self-joined Table"}]}
-             {:name "C2"   :field_ref [:field 2 {:source-field 3}]}
-             {:name "C3"   :field_ref [:field 3 {:temporal-unit "default"}]}
-             {:name "C4"   :field_ref [:field 4 {:join-alias "Self-joined Table"
-                                                 :binning {:strategy "default"}}]}
-             {:name "C5"   :field_ref [:field "C5" {:base-type :type/Text}]}
-             {:name "C6"   :field_ref [:name "C6"]}]
+            [{:field_ref [:field 1 nil]}
+             {:field_ref [:field 1 {:join-alias "Self-joined Table"}]}
+             {:field_ref [:field 2 {:source-field 3}]}
+             {:field_ref [:field 3 {:temporal-unit "default"}]}
+             {:field_ref [:field 4 {:join-alias "Self-joined Table"
+                                    :binning {:strategy "default"}}]}
+             {:field_ref [:field "column_name" {:base-type :type/Text}]}
+             {:field_ref [:name "column_name"]}]
             visualization-settings
-            {"column_settings" (-> {["ref" ["field" 1 nil]]                          {"column_title" "1"}
-                                    ["ref" ["field" 2 {"source-field" 3}]]           {"column_title" "2"}
-                                    ["ref" ["field" 3 nil]]                          {"column_title" "3"}
-                                    ["ref" ["field" 4 nil]]                          {"column_title" "4"}
-                                    ["ref" ["field" "C5" {"base-type" "type/Text"}]] {"column_title" "5"}
-                                    ["ref" ["name", "C6"]]                           {"column_title" "6"}}
+            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
+                                    ["ref" ["field" 4 nil]]                                   {"column_title" "4"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
+                                    ["name" "column_name"]                                    {"column_title" "6"}}
                                    (update-keys json/generate-string))}
             expected
-            {"column_settings" (-> {["name" "C1"]                                          {"column_title" "1"}
-                                    ["name" "C1_2"]                                        {"column_title" "1"}
-                                    ["name" "C2"]                                          {"column_title" "2"}
-                                    ["ref" ["field" 3 nil]]                                {"column_title" "3"}
-                                    ["ref" ["field" 4 {"join-alias" "Self-joined Table"}]] {"column_title" "4"}
-                                    ["name" "C5"]                                          {"column_title" "5"}
-                                    ["name" "C6"]                                          {"column_title" "6"}}
+            {"column_settings" (-> {["ref" ["field" 1 nil]]                                   {"column_title" "1"}
+                                    ["ref" ["field" 1 {"join-alias" "Self-joined Table"}]]    {"column_title" "1"}
+                                    ["ref" ["field" 2 {"source-field" 3}]]                    {"column_title" "2"}
+                                    ["ref" ["field" 3 nil]]                                   {"column_title" "3"}
+                                    ["ref" ["field" 4 {"join-alias" "Self-joined Table"}]]    {"column_title" "4"}
+                                    ["ref" ["field" "column_name" {"base-type" "type/Text"}]] {"column_title" "5"}
+                                    ["name" "column_name"]                                    {"column_title" "6"}}
                                    (update-keys json/generate-string))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
