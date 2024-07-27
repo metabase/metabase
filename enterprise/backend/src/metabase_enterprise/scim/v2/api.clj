@@ -5,10 +5,11 @@
   `v2` in the API path represents the fact that we implement SCIM 2.0."
   (:require
    [compojure.core :refer [GET POST]]
+   [metabase-enterprise.scim.api :as scim]
    [metabase.api.common :as api :refer [defendpoint]]
+   [metabase.models.interface :as mi]
    [metabase.models.user :as user]
    [metabase.util :as u]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
@@ -20,7 +21,7 @@
 (def ^:private error-schema-uri "urn:ietf:params:scim:api:messages:2.0:Error")
 
 (def ^:private default-pagination-limit 100)
-(def ^:private default-pagination-offset 1)
+(def ^:private default-pagination-offset 0)
 
 (def SCIMUser
   "Malli schema for a SCIM user. This represents both users returned by the service provider (Metabase)
@@ -38,6 +39,12 @@
               [:value ms/NonBlankString]
               [:type {:optional true} ms/NonBlankString]
               [:primary {:optional true} boolean?]]]]
+   [:groups
+    {:optional true}
+    [:sequential [:map
+                  [:value ms/NonBlankString]
+                  [:$ref ms/NonBlankString]
+                  [:display ms/NonBlankString]]]]
    [:locale {:optional true} [:maybe ms/NonBlankString]]
    [:active {:optional true} boolean?]])
 
@@ -69,8 +76,7 @@
     {:optional true}
     [:sequential [:map
                   [:value ms/NonBlankString]
-                  [:ref ms/NonBlankString]
-                  [:type [:enum "User"]]]]]])
+                  [:$ref ms/NonBlankString]]]]])
 
 (def SCIMGroupList
   "Malli schema for a list of SCIM groups"
@@ -98,6 +104,21 @@
   "Required columns when fetching users for SCIM."
   [:id :first_name :last_name :email :locale :is_active :entity_id])
 
+(mi/define-batched-hydration-method add-scim-user-group-memberships
+  :scim_user_group_memberships
+  "Add to each `user` a list of Group Memberships Info with each item is a map with 2 keys [:name :entity_id]."
+  [users]
+  (when (seq users)
+    (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
+                                                             {:from [[:permissions_group_membership :pgm]]
+                                                              :join [[:permissions_group :pg] [:= :pg.id :group_id]]
+                                                              :where [:in :user_id (map u/the-id users)]}))
+          membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
+      (for [user users]
+        (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
+                                                 (map membership->group)
+                                                 (sort-by :entity_id)))))))
+
 (mu/defn ^:private mb-user->scim :- SCIMUser
   "Given a Metabase user, returns a SCIM user."
   [user]
@@ -107,6 +128,12 @@
    :name     {:givenName  (:first_name user)
               :familyName (:last_name user)}
    :emails   [{:value (:email user)}]
+   :groups   (map
+              (fn [membership]
+                {:value   (:entity_id membership)
+                 :$ref    (str (scim/scim-base-url) "/Groups/" (:entity_id membership))
+                 :display (:name membership)})
+              (:user_group_memberships user))
    :locale   (:locale user)
    :active   (:is_active user)
    :meta     {:resourceType "User"}})
@@ -145,27 +172,25 @@
   {start-index  [:maybe ms/PositiveInt]
    c            [:maybe ms/PositiveInt]
    filter-param [:maybe ms/NonBlankString]}
-  (log/errorf "start-index: %s" start-index)
-  (log/errorf "c: %s" c)
-  (log/errorf "filter-param: %s" filter-param)
   (let [limit          (or c default-pagination-limit)
+        ;; SCIM start-index is 1-indexed, so we need to decrement it here
         offset         (if start-index (dec start-index) default-pagination-offset)
         filter-param   (when filter-param (codec/url-decode filter-param))
         where-clause   [:and [:= :type "personal"]
-                             (when filter-param (user-filter-clause filter-param))]
+                             (when filter-param (user-filter-clause (codec/url-decode filter-param)))]
         users          (t2/select (cons :model/User user-cols)
                                   {:where    where-clause
                                    :limit    limit
                                    :offset   offset
                                    :order-by [[:id :asc]]})
-        results-count  (count users)
+        hydrated-users (t2/hydrate users :scim_user_group_memberships)
+        results-count  (count hydrated-users)
         items-per-page (if (< results-count limit) results-count limit)
         result         {:schemas      [list-schema-uri]
                         :totalResults (t2/count :model/User {:where where-clause})
-                        :startIndex   offset
+                        :startIndex   (inc offset)
                         :itemsPerPage items-per-page
-                        :Resources    (map mb-user->scim users)}]
-    (log/errorf "result: %s" result)
+                        :Resources    (map mb-user->scim hydrated-users)}]
     result))
 
 (defendpoint GET "/Users/:id"
@@ -173,6 +198,7 @@
   [id]
   {id ms/NonBlankString}
   (-> (get-user-by-entity-id id)
+      (t2/hydrate :scim_user_group_memberships)
       mb-user->scim))
 
 (defendpoint POST "/Users"
@@ -267,6 +293,7 @@
    c            [:maybe ms/PositiveInt]
    filter-param [:maybe ms/NonBlankString]}
   (let [limit          (or c default-pagination-limit)
+        ;; SCIM start-index is 1-indexed, so we need to decrement it here
         offset         (if start-index (dec start-index) default-pagination-offset)
         filter-param   (when filter-param (codec/url-decode filter-param))
         filter-clause  (if filter-param
@@ -281,7 +308,7 @@
         items-per-page (if (< results-count limit) results-count limit)]
     {:schemas      [list-schema-uri]
      :totalResults (t2/count :model/PermissionsGroup {:where filter-clause})
-     :startIndex   offset
+     :startIndex   (inc offset)
      :itemsPerPage items-per-page
      :Resources    (map mb-group->scim groups)}))
 

@@ -66,20 +66,22 @@
 (deftest fetch-user-test
   (with-scim-setup!
     (testing "A single user can be fetched in the SCIM format by entity ID"
-      (let [entity-id (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))]
-        (is (= {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
-                :id       (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
-                :userName "rasta@metabase.com"
-                :name     {:givenName "Rasta" :familyName "Toucan"}
-                :emails   [{:value "rasta@metabase.com"}]
-                :active   true
-                :locale   nil
-                :meta     {:resourceType "User"}}
-               (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))))))
+      (let [entity-id (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
+            response  (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))]
+        (is (malli= scim-api/SCIMUser response))
+        (is (=?
+             {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
+              :id       (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
+              :userName "rasta@metabase.com"
+              :name     {:givenName "Rasta" :familyName "Toucan"}
+              :emails   [{:value "rasta@metabase.com"}]
+              :active   true
+              :locale   nil
+              :meta     {:resourceType "User"}}
+             response))))
 
     (testing "404 is returned when fetching a non-existant user"
-      (is (= ""
-           (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))))
+       (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
 
 (deftest list-users-test
   (with-scim-setup!
@@ -98,7 +100,6 @@
     (testing "Fetch user by email"
       (let [response (scim-client :get 200 (format "ee/scim/v2/Users?filter=%s"
                                                    (codec/url-encode "userName eq \"rasta@metabase.com\"")))]
-        (def response response)
         (is (malli= scim-api/SCIMUserList response))
         (is (= 1 (get response :totalResults)))
         (is (= 1 (count (get response :Resources))))))
@@ -224,7 +225,6 @@
                                           :path "locale"
                                           :value "fr_FR"}]}
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
-            (def response response)
             (is (malli= scim-api/SCIMUser response))
             (is (= "UpdatedTest" (get-in response [:name :givenName])))
             (is (= "fr_FR" (:locale response)))))
@@ -235,7 +235,6 @@
                                           :path "name.familyName"
                                           :value "UnsupportedOperation"}]}
                 response   (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
-            (def response response)
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
             (is (= "Unsupported operation: add" (get response :detail)))))
 
