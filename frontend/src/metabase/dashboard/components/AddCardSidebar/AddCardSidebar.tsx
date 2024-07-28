@@ -1,15 +1,14 @@
-import PropTypes from "prop-types";
-
 import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import type { CardId } from "metabase-types/api";
 
 import { QuestionPicker } from "../QuestionPicker";
 
-AddCardSidebar.propTypes = {
-  onSelect: PropTypes.func.isRequired,
-  initialCollection: PropTypes.number,
-};
+interface AddCardSidebarProps {
+  onSelect: (cardId: CardId) => void;
+  onClose: () => void;
+}
 
-export function AddCardSidebar(props) {
+export function AddCardSidebar(props: AddCardSidebarProps) {
   return (
     <Sidebar data-testid="add-card-sidebar">
       <QuestionPicker {...props} />

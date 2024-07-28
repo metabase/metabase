@@ -1,4 +1,3 @@
-import PropTypes from "prop-types";
 import { useCallback } from "react";
 import _ from "underscore";
 
@@ -13,41 +12,84 @@ import { useSelector } from "metabase/lib/redux";
 import { ParameterSidebar } from "metabase/parameters/components/ParameterSidebar";
 import { hasMapping } from "metabase/parameters/utils/dashboards";
 import SharingSidebar from "metabase/sharing/components/SharingSidebar";
+import type {
+  CardId,
+  Dashboard as IDashboard,
+  DashboardCard,
+  DashboardId,
+  DashboardTabId,
+  DashCardId,
+  DashCardVisualizationSettings,
+  ParameterId,
+  TemporalUnit,
+  ValuesQueryType,
+  ValuesSourceConfig,
+  ValuesSourceType,
+  VisualizationSettings,
+} from "metabase-types/api";
+import type { SelectedTabId, State } from "metabase-types/store";
 
 import { ActionSidebarConnected } from "./ActionSidebar";
 import { AddCardSidebar } from "./AddCardSidebar";
 import { ClickBehaviorSidebar } from "./ClickBehaviorSidebar/ClickBehaviorSidebar";
 import { DashboardInfoSidebar } from "./DashboardInfoSidebar";
 
-DashboardSidebars.propTypes = {
-  dashboard: PropTypes.object,
-  showAddParameterPopover: PropTypes.func.isRequired,
-  removeParameter: PropTypes.func.isRequired,
-  addCardToDashboard: PropTypes.func.isRequired,
-  clickBehaviorSidebarDashcard: PropTypes.object, // only defined when click-behavior sidebar is open
-  onReplaceAllDashCardVisualizationSettings: PropTypes.func.isRequired,
-  onUpdateDashCardVisualizationSettings: PropTypes.func.isRequired,
-  onUpdateDashCardColumnSettings: PropTypes.func.isRequired,
-  setParameterName: PropTypes.func.isRequired,
-  setParameterType: PropTypes.func.isRequired,
-  setParameterDefaultValue: PropTypes.func.isRequired,
-  setParameterIsMultiSelect: PropTypes.func.isRequired,
-  setParameterQueryType: PropTypes.func.isRequired,
-  setParameterSourceType: PropTypes.func.isRequired,
-  setParameterSourceConfig: PropTypes.func.isRequired,
-  setParameterFilteringParameters: PropTypes.func.isRequired,
-  setParameterRequired: PropTypes.func.isRequired,
-  setParameterTemporalUnits: PropTypes.func.isRequired,
-  isFullscreen: PropTypes.bool.isRequired,
-  onCancel: PropTypes.func.isRequired,
-  params: PropTypes.object,
-  sidebar: PropTypes.shape({
-    name: PropTypes.string,
-    props: PropTypes.object,
-  }).isRequired,
-  closeSidebar: PropTypes.func.isRequired,
-  selectedTabId: PropTypes.number,
-};
+interface DashboardSidebarsProps {
+  dashboard: IDashboard;
+  showAddParameterPopover: () => void;
+  removeParameter: (id: ParameterId) => void;
+  addCardToDashboard: (opts: {
+    dashId: DashboardId;
+    cardId: CardId;
+    tabId: DashboardTabId | null;
+  }) => void;
+  clickBehaviorSidebarDashcard: DashboardCard | null;
+  onReplaceAllDashCardVisualizationSettings: (
+    id: DashCardId,
+    settings: DashCardVisualizationSettings | null | undefined,
+  ) => void;
+  onUpdateDashCardVisualizationSettings: (
+    id: DashCardId,
+    settings: DashCardVisualizationSettings | null | undefined,
+  ) => void;
+  onUpdateDashCardColumnSettings: (
+    id: DashCardId,
+    columnKey: string,
+    settings?: Record<string, unknown> | null,
+  ) => void;
+  setParameterName: (id: ParameterId, name: string) => void;
+  setParameterType: (
+    parameterId: ParameterId,
+    nextType: string,
+    nextSectionId: string,
+  ) => void;
+  setParameterDefaultValue: (id: ParameterId, value: unknown) => void;
+  setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
+  setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
+  setParameterSourceType: (
+    id: ParameterId,
+    sourceType: ValuesSourceType,
+  ) => void;
+  setParameterSourceConfig: (
+    id: ParameterId,
+    config: ValuesSourceConfig,
+  ) => void;
+  setParameterFilteringParameters: (
+    parameterId: ParameterId,
+    filteringParameters: ParameterId[],
+  ) => void;
+  setParameterRequired: (id: ParameterId, value: boolean) => void;
+  setParameterTemporalUnits: (
+    parameterId: ParameterId,
+    temporalUnits: TemporalUnit[],
+  ) => void;
+  isFullscreen: boolean;
+
+  onCancel: () => void;
+  sidebar: State["dashboard"]["sidebar"];
+  closeSidebar: () => void;
+  selectedTabId: SelectedTabId;
+}
 
 export function DashboardSidebars({
   dashboard,
@@ -70,16 +112,15 @@ export function DashboardSidebars({
   setParameterTemporalUnits,
   isFullscreen,
   onCancel,
-  params,
   sidebar,
   closeSidebar,
   selectedTabId,
-}) {
+}: DashboardSidebarsProps) {
   const parameters = useSelector(getParameters);
   const editingParameter = useSelector(getEditingParameter);
 
   const handleAddCard = useCallback(
-    cardId => {
+    (cardId: CardId) => {
       addCardToDashboard({
         dashId: dashboard.id,
         cardId: cardId,
@@ -100,22 +141,30 @@ export function DashboardSidebars({
     case SIDEBAR_NAME.addQuestion:
       return <AddCardSidebar onSelect={handleAddCard} onClose={closeSidebar} />;
     case SIDEBAR_NAME.action: {
-      const onUpdateVisualizationSettings = settings =>
-        onUpdateDashCardVisualizationSettings(
-          sidebar.props.dashcardId,
-          settings,
-        );
+      if (!sidebar.props.dashcardId) {
+        return null;
+      }
+
+      const dashcardId = sidebar.props.dashcardId;
+
+      const onUpdateVisualizationSettings = (
+        settings: Partial<VisualizationSettings>,
+      ) => onUpdateDashCardVisualizationSettings(dashcardId, settings);
 
       return (
         <ActionSidebarConnected
           dashboard={dashboard}
-          dashcardId={sidebar.props.dashcardId}
+          dashcardId={dashcardId}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
           onClose={closeSidebar}
         />
       );
     }
-    case SIDEBAR_NAME.clickBehavior:
+    case SIDEBAR_NAME.clickBehavior: {
+      if (!clickBehaviorSidebarDashcard) {
+        return null;
+      }
+
       return (
         <ClickBehaviorSidebar
           dashboard={dashboard}
@@ -131,6 +180,8 @@ export function DashboardSidebars({
           }
         />
       );
+    }
+
     case SIDEBAR_NAME.editParameter: {
       const { id: editingParameterId } = editingParameter || {};
       const [[parameter], otherParameters] = _.partition(
@@ -159,13 +210,7 @@ export function DashboardSidebars({
       );
     }
     case SIDEBAR_NAME.sharing:
-      return (
-        <SharingSidebar
-          dashboard={dashboard}
-          params={params}
-          onCancel={onCancel}
-        />
-      );
+      return <SharingSidebar dashboard={dashboard} onCancel={onCancel} />;
     case SIDEBAR_NAME.info:
       return (
         <DashboardInfoSidebar

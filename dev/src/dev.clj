@@ -317,9 +317,10 @@
     x))
 
 (methodical/defmethod t2.hydrate/hydrate-with-strategy :around ::t2.hydrate/multimethod-simple
-  "Throws an error if do simple hydrations that make DB call on a sequence."
+  "Throws an error if simple hydrations make DB calls (which is an easy way to accidentally introduce an N+1 bug)."
   [model strategy k instances]
-  (if config/is-prod?
+  (if (or config/is-prod?
+          (< (count instances) 2))
     (next-method model strategy k instances)
     (do
       ;; prevent things like dereferencing metabase.api.common/*current-user-permissions-set* from triggering the check

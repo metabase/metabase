@@ -113,6 +113,12 @@ title: Driver interface changelog
 -  The`:parameterized-sql` driver feature has been added to distinguish drivers that don't support parametrized SQL in
    tests. Currently, this is disabled only for `:sparksql`.
 
+## Metabase 0.50.17
+
+- Added method `metabase.driver/incorporate-auth-provider-details` for driver specific behavior required to
+  incorporate response of an auth-provider into the DB details.  In most cases this means setting the :password
+  and/or :username based on the auth-provider and its response.
+
 ## Metabase 0.50.16
 
 - `:type/fingerprinting-unsupported` has been added in the `metabase.types` namespace. Similar to
@@ -202,6 +208,13 @@ title: Driver interface changelog
 
 - New feature `:uuid-type` has been added to indicate that this database is able to distinguish and filter against UUIDs.
   Only a few database support native UUID types. The default is `false`.
+
+## Metabase 0.49.22
+
+- A new optional method `metabase.driver.sql/json-field-length` has been added. It should be implemented for all
+  drivers that derive from `:sql` and support the `:nested-field-columns` feature. If implemented, Metabase will skip
+  querying large JSON values during the "sync-fields" step that could otherwise slow down the inference of nested
+  field columns and cause Metabase to run out of heap space.
 
 ## Metabase 0.49.9
 
