@@ -278,11 +278,11 @@
 (defmethod lib.metadata.calculation/display-name-method :relative-time-interval
   [query stage-number [_tag _opts column value bucket offset-value offset-bucket] style]
   (if (neg? offset-value)
-    (i18n/tru "{0} is in {1}, starting {2} ago"
+    (i18n/tru "{0} is in the {1}, starting {2} ago"
               (lib.metadata.calculation/display-name query stage-number column style)
               (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
               (inflections/pluralize (abs offset-value) (name offset-bucket)))
-    (i18n/tru "{0} is in {1}, starting {2} from now"
+    (i18n/tru "{0} is in the {1}, starting {2} from now"
               (lib.metadata.calculation/display-name query stage-number column style)
               (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
               (inflections/pluralize (abs offset-value) (name offset-bucket)))))
