@@ -240,13 +240,20 @@
   (lib.util.match/replace
    m
    [:relative-time-interval col value bucket offset-value offset-bucket]
-   ;; TODO: Ramifications of setting temporal unit to :default? Seems to be the right thing.
-   ;; TODO: Simplify.
-   (let [no-bucket-col    (update col 2 dissoc :temporal-unit)
-         shifted-col-expr [:+ no-bucket-col [:interval (- offset-value) offset-bucket]]]
+   (let [col-default-bucket (cond-> col (and (vector? col) (= 3 (count col)))
+                              (update 2 assoc :temporal-unit :default))
+         offset      [:interval offset-value offset-bucket]
+         lower-bound (if (neg? value)
+                       [:relative-datetime value bucket]
+                       [:relative-datetime 0 bucket])
+         upper-bound (if (neg? value)
+                       [:relative-datetime 0 bucket]
+                       [:relative-datetime value bucket])
+         lower-with-offset [:+ lower-bound offset]
+         upper-with-offset [:+ upper-bound offset]]
      [:and
-      [:>= shifted-col-expr [:relative-datetime value bucket]]
-      [:<  shifted-col-expr [:+ [:relative-datetime value bucket] [:interval 1 bucket]]]])))
+      [:>= col-default-bucket lower-with-offset]
+      [:<  col-default-bucket upper-with-offset]])))
 
 (defn desugar-does-not-contain
   "Rewrite `:does-not-contain` filter clauses as simpler `[:not [:contains ...]]` clauses.
