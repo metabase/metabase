@@ -314,6 +314,7 @@
 (lib.common/defop ends-with [whole part])
 (lib.common/defop contains [whole part])
 (lib.common/defop does-not-contain [whole part])
+(lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
 (lib.common/defop time-interval [x amount unit])
 (lib.common/defop segment [segment-id])
 
