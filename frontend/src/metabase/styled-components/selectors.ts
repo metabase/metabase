@@ -17,13 +17,6 @@ export const getFont = createSelector(
   },
 );
 
-export const getFontFiles = createSelector(
-  [getSettings, getEmbedOptions],
-  (settings, embedOptions) => {
-    if (embedOptions.font) {
-      return [];
-    } else {
-      return settings["application-font-files"];
-    }
-  },
-);
+export const getFontFiles = createSelector([getSettings], settings => {
+  return settings["application-font-files"];
+});

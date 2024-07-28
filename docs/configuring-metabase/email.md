@@ -128,4 +128,4 @@ People who are sandboxed won't see suggestions.
 - [Dashboard subscriptions](../dashboards/subscriptions.md)
 - [Notification permissions](../permissions/notifications.md)
 - [Setting up Slack](./slack.md)
-- [Auditing Metabase](../usage-and-performance-tools/audit.md)
+- [Usage Analytics](../usage-and-performance-tools/usage-analytics.md)

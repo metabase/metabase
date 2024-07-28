@@ -62,7 +62,7 @@
 
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
-    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for *current-user-id*)]
+    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for-tables table-ids)]
        (when (seq enforced-sandboxes)
          (assert-one-gtap-per-table enforced-sandboxes)
          enforced-sandboxes))))
@@ -78,7 +78,7 @@
 ;;; |                                                Applying a GTAP                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private target-field->base-type :- [:maybe ::lib.schema.common/base-type]
+(mu/defn- target-field->base-type :- [:maybe ::lib.schema.common/base-type]
   "If the `:target` of a parameter contains a `:field` clause, return the base type corresponding to the Field it
   references. Otherwise returns `nil`."
   [[_ target-field-clause]]
@@ -115,7 +115,7 @@
   (mapv (partial attr-remapping->parameter (:login_attributes @*current-user*))
         attribute-remappings))
 
-(mu/defn ^:private preprocess-source-query :- mbql.s/SourceQuery
+(mu/defn- preprocess-source-query :- mbql.s/SourceQuery
   [source-query :- mbql.s/SourceQuery]
   (try
     (let [query        {:database (u/the-id (lib.metadata/database (qp.store/metadata-provider)))
@@ -139,7 +139,7 @@
 (defn- table-gtap->source [{table-id :table_id, :as gtap}]
   {:source-query {:source-table table-id, :parameters (gtap->parameters gtap)}})
 
-(mu/defn ^:private mbql-query-metadata :- [:+ :map]
+(mu/defn- mbql-query-metadata :- [:+ :map]
   [inner-query]
   (binding [*current-user-id* nil]
     ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols)
@@ -156,7 +156,7 @@
      (mbql-query-metadata {:source-table table-id}))
    :ttl/threshold (u/minutes->ms 1)))
 
-(mu/defn ^:private reconcile-metadata :- [:+ :map]
+(mu/defn- reconcile-metadata :- [:+ :map]
   "Combine the metadata in `source-query-metadata` with the `table-metadata` from the Table being sandboxed."
   [source-query-metadata :- [:+ :map] table-metadata]
   (let [col-name->table-metadata (m/index-by :name table-metadata)]
@@ -168,7 +168,7 @@
          (gtap/check-column-types-match col table-col)
          table-col)))))
 
-(mu/defn ^:private native-query-metadata :- [:+ :map]
+(mu/defn- native-query-metadata :- [:+ :map]
   [source-query :- [:map [:source-query :any]]]
   (let [result (binding [*current-user-id* nil]
                  ((requiring-resolve 'metabase.query-processor/process-query)
@@ -181,7 +181,7 @@
                         {:source-query source-query
                          :result       result})))))
 
-(mu/defn ^:private source-query-form-ensure-metadata :- [:and [:map-of :keyword :any]
+(mu/defn- source-query-form-ensure-metadata :- [:and [:map-of :keyword :any]
                                                          [:map
                                                           [:source-query :any]
                                                           [:source-metadata [:+ :map]]]]
@@ -218,7 +218,7 @@
     (assoc source-query :source-metadata metadata)))
 
 
-(mu/defn ^:private gtap->source :- [:map
+(mu/defn- gtap->source :- [:map
                                     [:source-query :any]
                                     [:source-metadata {:optional true} [:sequential mbql.s/SourceQueryMetadata]]]
   "Get the source query associated with a `gtap`."
@@ -243,7 +243,7 @@
    (remove nil?)
    set))
 
-(mu/defn ^:private sandbox->required-perms
+(mu/defn- sandbox->required-perms
   "Calculate the permissions needed to run the query associated with a sandbox, which are implitly granted to the
   current user during the normal QP perms check.
 
@@ -256,10 +256,12 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-                     (query-perms/required-perms (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+                     (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
                                                  :throw-exceptions? true))
-    {:perms/view-data :unrestricted
-     :perms/create-queries (zipmap (sandbox->table-ids sandbox) (repeat :query-builder))}))
+
+    (let [table-ids (sandbox->table-ids sandbox)]
+      {:perms/view-data (zipmap table-ids (repeat :unrestricted))
+       :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
 
 (defn- merge-perms
   "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.

@@ -2,7 +2,7 @@
 /*eslint no-use-before-define: "error"*/
 
 import { createSelector } from "@reduxjs/toolkit";
-import d3 from "d3";
+import * as d3 from "d3";
 import { getIn, merge, updateIn } from "icepick";
 import _ from "underscore";
 
@@ -17,7 +17,7 @@ import {
 import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
 
 import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
+import { cleanIndexFlags } from "metabase/entities/model-indexes/actions";
 import Timelines from "metabase/entities/timelines";
 
 import { getAlerts } from "metabase/alert/selectors";
@@ -29,10 +29,14 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { getMode as getQuestionMode } from "metabase/visualizations/click-actions/lib/modes";
 import {
+  computeTimeseriesDataInverval,
+  minTimeseriesUnit,
+} from "metabase/visualizations/echarts/cartesian/utils/timeseries";
+import {
   getXValues,
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
-
+import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
@@ -42,7 +46,9 @@ import {
 import Question from "metabase-lib/v1/Question";
 import { getIsPKFromTablePredicate } from "metabase-lib/v1/types/utils/isa";
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
+import { isNotNull } from "metabase/lib/types";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
+import { createRawSeries, getWritableColumnProperties } from "./utils";
 
 export const getUiControls = state => state.qb.uiControls;
 export const getQueryStatus = state => state.qb.queryStatus;
@@ -105,8 +111,40 @@ export const getIsBookmarked = (state, props) =>
       bookmark.type === "card" && bookmark.item_id === state.qb.card?.id,
   );
 
+export const getQueryBuilderMode = createSelector(
+  [getUiControls],
+  uiControls => uiControls.queryBuilderMode,
+);
+
+const getCardResultMetadata = createSelector(
+  [getCard],
+  card => card?.result_metadata,
+);
+
+const getModelMetadataDiff = createSelector(
+  [getCardResultMetadata, getMetadataDiff, getQueryBuilderMode],
+  (resultMetadata, metadataDiff, queryBuilderMode) => {
+    if (!resultMetadata || queryBuilderMode !== "dataset") {
+      return metadataDiff;
+    }
+
+    return {
+      ...metadataDiff,
+      ...Object.fromEntries(
+        resultMetadata.map(column => [
+          column.name,
+          {
+            ...getWritableColumnProperties(column),
+            ...metadataDiff[column.name],
+          },
+        ]),
+      ),
+    };
+  },
+);
+
 export const getQueryResults = createSelector(
-  [getRawQueryResults, getMetadataDiff],
+  [getRawQueryResults, getModelMetadataDiff],
   (queryResults, metadataDiff) => {
     if (!Array.isArray(queryResults) || !queryResults.length) {
       return null;
@@ -119,7 +157,7 @@ export const getQueryResults = createSelector(
     const { cols, results_metadata } = result.data;
 
     function applyMetadataDiff(column) {
-      const columnDiff = metadataDiff[column.field_ref];
+      const columnDiff = metadataDiff[column.name];
       return columnDiff ? merge(column, columnDiff) : column;
     }
 
@@ -302,11 +340,6 @@ const getNextRunParameterValues = createSelector([getParameters], parameters =>
 export const getNextRunParameters = createSelector(
   [getParameters],
   parameters => normalizeParameters(parameters),
-);
-
-export const getQueryBuilderMode = createSelector(
-  [getUiControls],
-  uiControls => uiControls.queryBuilderMode,
 );
 
 export const getPreviousQueryBuilderMode = createSelector(
@@ -682,30 +715,12 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
 export const getRawSeries = createSelector(
   [getQuestion, getQueryResults, getLastRunDatasetQuery, getIsShowingRawTable],
   (question, results, lastRunDatasetQuery, isShowingRawTable) => {
-    let display = question && question.display();
-    let settings = question && question.settings();
-
-    if (isShowingRawTable) {
-      display = "table";
-      settings = { "table.pivot": false };
-    }
-
-    // we want to provide the visualization with a card containing the latest
-    // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
-    // BUT the last executed "dataset_query" (to ensure data matches the query)
-    return (
-      results && [
-        {
-          card: {
-            ...question.card(),
-            display: display,
-            visualization_settings: settings,
-            dataset_query: lastRunDatasetQuery,
-          },
-          data: results[0] && results[0].data,
-        },
-      ]
-    );
+    return createRawSeries({
+      question,
+      queryResult: results?.[0],
+      datasetQuery: lastRunDatasetQuery,
+      showRawTable: isShowingRawTable,
+    });
   },
 );
 
@@ -758,10 +773,6 @@ const getNativeEditorSelectedRange = createSelector(
   uiControls => uiControls && uiControls.nativeEditorSelectedRange,
 );
 
-function isEventWithinDomain(event, xDomain) {
-  return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
-}
-
 export const getIsTimeseries = createSelector(
   [getVisualizationSettings],
   settings => settings && isTimeseries(settings),
@@ -773,9 +784,44 @@ export const getTimeseriesXValues = createSelector(
     isTimeseries && series && settings && getXValues({ series, settings }),
 );
 
+const getTimeseriesDataInterval = createSelector(
+  [
+    getTransformedSeries,
+    getVisualizationSettings,
+    getIsTimeseries,
+    getTimeseriesXValues,
+  ],
+  (series, settings, isTimeseries, xValues) => {
+    if (!isTimeseries || !xValues) {
+      return null;
+    }
+    const columns = series[0]?.data?.cols ?? [];
+    const dimensions = settings?.["graph.dimensions"] ?? [];
+    const dimensionColumns = dimensions.map(dimension =>
+      columns.find(column => column.name === dimension),
+    );
+    const columnUnits = dimensionColumns
+      .map(column =>
+        isAbsoluteDateTimeUnit(column?.unit) ? column.unit : null,
+      )
+      .filter(isNotNull);
+    return computeTimeseriesDataInverval(
+      xValues,
+      minTimeseriesUnit(columnUnits),
+    );
+  },
+);
+
 export const getTimeseriesXDomain = createSelector(
   [getIsTimeseries, getTimeseriesXValues],
-  (isTimeseries, xValues) => xValues && isTimeseries && d3.extent(xValues),
+  (isTimeseries, xValues) => {
+    return (
+      isTimeseries &&
+      Array.isArray(xValues) &&
+      xValues.length > 0 &&
+      d3.extent(xValues)
+    );
+  },
 );
 
 export const getFetchedTimelines = createSelector([getEntities], entities => {
@@ -799,14 +845,40 @@ export const getTransformedTimelines = createSelector(
   },
 );
 
+function isEventWithinDomain(event, xDomain) {
+  return event.timestamp.isBetween(xDomain[0], xDomain[1], undefined, "[]");
+}
+
+function getXDomainForTimelines(xDomain, dataInterval) {
+  // When looking at, let's say, count of orders over years, last year value is Jan 1, 2024
+  // If we filter timeline events up until Jan 1, 2024, we won't see any events from 2024,
+  // so we need to extend xDomain by dataInterval.count * dataInterval.unit to include them
+  if (xDomain && isAbsoluteDateTimeUnit(dataInterval?.unit)) {
+    let maxValue = xDomain[1]
+      .clone()
+      .add(dataInterval.count, dataInterval.unit);
+
+    if (dataInterval.unit !== "hour" && dataInterval.unit !== "minute") {
+      maxValue = maxValue.subtract(1, "day");
+    }
+
+    return [xDomain[0], maxValue];
+  }
+
+  return xDomain;
+}
+
 export const getFilteredTimelines = createSelector(
-  [getTransformedTimelines, getTimeseriesXDomain],
-  (timelines, xDomain) => {
+  [getTransformedTimelines, getTimeseriesXDomain, getTimeseriesDataInterval],
+  (timelines, xDomain, dataInterval) => {
+    const timelineXDomain = getXDomainForTimelines(xDomain, dataInterval);
     return timelines
       .map(timeline =>
         updateIn(timeline, ["events"], events =>
           xDomain
-            ? events.filter(event => isEventWithinDomain(event, xDomain))
+            ? events.filter(event =>
+                isEventWithinDomain(event, timelineXDomain),
+              )
             : events,
         ),
       )
@@ -1036,9 +1108,7 @@ export const getSubmittableQuestion = (state, question) => {
   const isResultDirty = getIsResultDirty(state);
 
   if (question.type() === "model" && resultsMetadata) {
-    resultsMetadata.columns = ModelIndexes.actions.cleanIndexFlags(
-      resultsMetadata.columns,
-    );
+    resultsMetadata.columns = cleanIndexFlags(resultsMetadata.columns);
   }
 
   let submittableQuestion = question;

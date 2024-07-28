@@ -1,6 +1,7 @@
 import _ from "underscore";
 
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
+import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type { ParameterWithTarget } from "metabase-lib/v1/parameters/types";
@@ -13,6 +14,7 @@ import type {
   QuestionDashboardCard,
   VirtualCard,
 } from "metabase-types/api";
+import type { StoreDashboard } from "metabase-types/store";
 
 /**
  * All navigation URLs from dashboards to cards (e.x. clicking a title, drill through)
@@ -29,7 +31,7 @@ export const getNewCardUrl = ({
   objectId,
 }: {
   metadata: Metadata;
-  dashboard: Dashboard;
+  dashboard: Dashboard | StoreDashboard;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   nextCard: Card | VirtualCard;
   previousCard: Card | VirtualCard;
@@ -39,7 +41,8 @@ export const getNewCardUrl = ({
   const cardAfterClick = getCardAfterVisualizationClick(nextCard, previousCard);
 
   const previousQuestion = new Question(previousCard, metadata);
-  const nextQuestion = previousQuestion.canRunAdhocQuery()
+  const { isEditable } = Lib.queryDisplayInfo(previousQuestion.query());
+  const nextQuestion = isEditable
     ? new Question(cardAfterClick, metadata)
         .setDisplay(cardAfterClick.display || previousCard.display)
         .setSettings(dashcard.card.visualization_settings)

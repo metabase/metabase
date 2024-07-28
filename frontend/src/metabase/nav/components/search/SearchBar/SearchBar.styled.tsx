@@ -28,7 +28,6 @@ export const SearchInputContainer = styled.div<{
   flex: 1 1 auto;
   align-items: center;
   position: relative;
-
   ${({ isActive }) => {
     if (isActive) {
       return css`
@@ -37,17 +36,13 @@ export const SearchInputContainer = styled.div<{
     }
     return css`
       background-color: var(--mb-color-bg-white);
-
       &:hover {
         background-color: var(--mb-color-bg-light);
       }
     `;
   }}
-
   border: 1px solid var(--mb-color-border);
-
   overflow: hidden;
-
   transition: background 150ms, width 0.2s;
 
   @media (prefers-reduced-motion) {
@@ -57,7 +52,6 @@ export const SearchInputContainer = styled.div<{
   ${breakpointMaxSmall} {
     justify-content: center;
     margin-left: auto;
-
     width: 2rem;
     height: 2rem;
     border-radius: 99px;
@@ -85,7 +79,6 @@ export const SearchInput = styled.input<{
   color: var(--mb-color-text-dark);
   font-weight: 700;
   font-size: 0.875rem;
-
   flex-basis: 0;
   flex-grow: 1;
 
@@ -142,12 +135,9 @@ export const CloseSearchButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-
   width: 3rem;
   height: 100%;
-
   color: var(--mb-color-text-light);
-
   cursor: pointer;
 
   &:hover {
@@ -159,7 +149,6 @@ export const SearchResultsFloatingContainer = styled.div`
   position: absolute;
   left: 0;
   right: 0;
-
   color: var(--mb-color-text-dark);
 
   ${breakpointMaxSmall} {

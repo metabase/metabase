@@ -1,5 +1,4 @@
 import dayjs from "dayjs";
-import relativeTime from "dayjs/plugin/relativeTime";
 import type { MouseEventHandler } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
@@ -12,8 +11,6 @@ import { getUser } from "metabase/selectors/user";
 import type { TooltipProps } from "metabase/ui";
 import { Tooltip } from "metabase/ui";
 import type { User } from "metabase-types/api";
-
-dayjs.extend(relativeTime);
 
 export type ItemWithLastEditInfo = {
   "last-edit-info": Edit;

@@ -37,6 +37,8 @@ import type {
 } from "metabase-types/api";
 import { isImplicitActionClickBehavior } from "metabase-types/guards";
 
+import { parseParameterValue } from "./parameter-parsing";
+
 interface Target {
   id: Parameter["id"];
   name: Parameter["name"] | null | undefined;
@@ -291,6 +293,7 @@ function baseTypeFilterForParameterType(parameterType: string) {
     id: [TYPE.Integer, TYPE.UUID],
     category: [TYPE.Text, TYPE.Integer],
     location: [TYPE.Text],
+    "temporal-unit": [TYPE.Text, TYPE.TextLike],
   }[typePrefix];
   if (allowedTypes === undefined) {
     // default to showing everything
@@ -372,6 +375,12 @@ export function formatSourceForTarget(
   },
 ) {
   const datum = data[source.type][source.id.toLowerCase()] || {};
+  const parameter = getParameter(target, { extraData, clickBehavior });
+
+  if (parameter?.type === "temporal-unit") {
+    return parseParameterValue(datum.value, parameter);
+  }
+
   if (
     "column" in datum &&
     datum.column &&
@@ -382,7 +391,6 @@ export function formatSourceForTarget(
 
     if (target.type === "parameter") {
       // we should serialize differently based on the target parameter type
-      const parameter = getParameter(target, { extraData, clickBehavior });
       if (parameter) {
         return formatDateForParameterType(
           datum.value,

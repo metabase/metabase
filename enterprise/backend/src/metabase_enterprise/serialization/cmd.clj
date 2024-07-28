@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [load])
   (:require
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
@@ -27,6 +26,7 @@
    [metabase.models.user :refer [User]]
    [metabase.plugins :as plugins]
    [metabase.public-settings.premium-features :as premium-features]
+   [metabase.setup :as setup]
    [metabase.util :as u]
    [metabase.util.i18n :refer [deferred-trs trs]]
    [metabase.util.log :as log]
@@ -88,10 +88,14 @@
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
-   & {:keys [token-check?]
-      :or   {token-check? true}}]
+   & {:keys [token-check?
+             require-initialized-db?]
+      :or   {token-check? true
+             require-initialized-db? true}}]
   (plugins/load-plugins!)
   (mdb/setup-db! :create-sample-content? false)
+  (when (and require-initialized-db? (not (setup/has-user-setup)))
+    (throw (ex-info "You cannot `import` into an empty database. Please set up Metabase normally, then retry." {})))
   (when token-check?
     (check-premium-token!))
   ; TODO This should be restored, but there's no manifest or other meta file written by v2 dumps.
@@ -232,25 +236,20 @@
     (.mkdirs f)
     (when-not (.canWrite f)
       (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
-  (let [start                (System/nanoTime)
-        ;; we _ALWAYS_ export the Trash. Its descendants are empty, so we won't export anything extra as a result, but
-        ;; we will export items that are currently in the Trash, assuming they were trashed *from* a place we're
-        ;; exporting.
-        collection-ids+trash (set/union collection-ids
-                                        #{(collection/trash-collection-id)})
-        err                  (atom nil)
-        report               (try
-                               (serdes/with-cache
-                                 (-> (cond-> opts
-                                       (seq collection-ids)
-                                       (assoc :targets
-                                              (v2.extract/make-targets-of-type
-                                               "Collection"
-                                               collection-ids+trash)))
-                                     v2.extract/extract
-                                     (v2.storage/store! path)))
-                               (catch Exception e
-                                 (reset! err e)))]
+  (let [start  (System/nanoTime)
+        err    (atom nil)
+        report (try
+                 (serdes/with-cache
+                   (-> (cond-> opts
+                         (seq collection-ids)
+                         (assoc :targets
+                                (v2.extract/make-targets-of-type
+                                 "Collection"
+                                 collection-ids)))
+                       v2.extract/extract
+                       (v2.storage/store! path)))
+                 (catch Exception e
+                   (reset! err e)))]
     (snowplow/track-event! ::snowplow/serialization nil
                            {:direction       "export"
                             :source          "cli"

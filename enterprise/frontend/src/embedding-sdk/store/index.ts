@@ -4,8 +4,7 @@ import type {
   Store,
   ThunkDispatch,
 } from "@reduxjs/toolkit";
-import type { TypedUseSelectorHook } from "react-redux";
-import { useSelector, useDispatch } from "react-redux";
+import { useDispatch } from "react-redux";
 
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { mainReducers } from "metabase/reducers-main";
@@ -22,11 +21,15 @@ export const store = getStore(sdkReducers, null, {
   embed: {
     isEmbeddingSdk: true,
   },
+  app: {
+    isDndAvailable: false,
+  },
 }) as unknown as Store<SdkStoreState, AnyAction>;
 
-export const useSdkSelector: TypedUseSelectorHook<SdkStoreState> = useSelector;
 export const useSdkDispatch: () => ThunkDispatch<
   SdkStoreState,
   void,
   AnyAction
 > = useDispatch;
+
+export { useSdkSelector } from "./use-sdk-selector";

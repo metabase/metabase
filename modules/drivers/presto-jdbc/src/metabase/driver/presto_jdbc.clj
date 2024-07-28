@@ -15,13 +15,10 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.execute.legacy-impl :as sql-jdbc.legacy]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-database
-    :as sql-jdbc.describe-database]
-   [metabase.driver.sql.parameters.substitution
-    :as sql.params.substitution]
+   [metabase.driver.sql-jdbc.sync.describe-database :as sql-jdbc.describe-database]
+   [metabase.driver.sql.parameters.substitution :as sql.params.substitution]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.models.secret :as secret]
    [metabase.query-processor.store :as qp.store]
@@ -33,7 +30,7 @@
   (:import
    (com.facebook.presto.jdbc PrestoConnection)
    (com.mchange.v2.c3p0 C3P0ProxyConnection)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Time Types)
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (java.time.format DateTimeFormatter)
    (java.time.temporal ChronoField Temporal)))
@@ -47,7 +44,6 @@
                               :binning                         true
                               :expression-aggregations         true
                               :expressions                     true
-                              :foreign-keys                    true
                               :native-parameters               true
                               :now                             true
                               :set-timezone                    true
@@ -111,7 +107,7 @@
   (str "SHOW TABLES FROM " (sql.u/quote-name driver :schema catalog schema)))
 
 (defn- describe-table-sql
-  "The DESCRIBE  statement that will list information about the given `table`, in the given `catalog` and schema`."
+  "The DESCRIBE statement that will list information about the given `table`, in the given `catalog` and schema`."
   {:added "0.39.0"}
   [driver catalog schema table]
   (str "DESCRIBE " (sql.u/quote-name driver :table catalog schema table)))
@@ -169,32 +165,31 @@
 
 (sql/register-fn! ::mod #'format-mod)
 
-(def ^:dynamic ^:private *param-splice-style*
-  "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
-  `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
-  be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
-  strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
+(def ^:dynamic ^:private *inline-param-style*
+  "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a
+  best-effort attempt to escape strings and generate SQL that is nice to look at, but should not be considered safe
+  against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes strings so SQL
+  injection is impossible; this isn't nice to look at, so use this for actually running a query."
   :friendly)
 
-(defmethod unprepare/unprepare-value [:presto-jdbc String]
+(defmethod sql.qp/inline-value [:presto-jdbc String]
   [_ ^String s]
-  (case *param-splice-style*
+  (case *inline-param-style*
     :friendly (str \' (sql.u/escape-sql s :ansi) \')
     :paranoid (format "from_utf8(from_hex('%s'))" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; See https://prestodb.io/docs/current/functions/datetime.html
 
-;; This is only needed for test purposes, because some of the sample data still uses legacy types
-(defmethod unprepare/unprepare-value [:presto-jdbc Time]
-  [driver t]
-  (unprepare/unprepare-value driver (t/local-time t)))
+(defmethod sql.qp/inline-value [:presto-jdbc OffsetTime]
+  [_driver t]
+  (format "time '%s %s'" (t/local-time t) (t/zone-offset t)))
 
-(defmethod unprepare/unprepare-value [:presto-jdbc OffsetDateTime]
-  [_ t]
+(defmethod sql.qp/inline-value [:presto-jdbc OffsetDateTime]
+  [_driver t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t)))
 
-(defmethod unprepare/unprepare-value [:presto-jdbc ZonedDateTime]
-  [_ t]
+(defmethod sql.qp/inline-value [:presto-jdbc ZonedDateTime]
+  [_driver t]
   (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t)))
 
 ;;; `:sql-driver` methods
@@ -299,21 +294,17 @@
   (sql.qp/->honeysql driver [:sum-where 1.00M pred]))
 
 (defmethod sql.qp/->honeysql [:presto-jdbc :time]
-  [_ [_ t]]
+  [_driver [_ t]]
   ;; make time in UTC to avoid any interpretation by Presto in the connection (i.e. report) time zone
-  (h2x/cast "time with time zone" (u.date/format-sql (t/offset-time (t/local-time t) 0))))
+  [:inline (t/offset-time (t/local-time t) 0)])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc ZonedDateTime]
-  [_ ^ZonedDateTime t]
-  ;; use the Presto cast to `timestamp with time zone` operation to interpret in the correct TZ, regardless of
-  ;; connection zone
-  (h2x/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
+  [_driver ^ZonedDateTime t]
+  [:inline t])
 
 (defmethod sql.qp/->honeysql [:presto-jdbc OffsetDateTime]
-  [_ ^OffsetDateTime t]
-  ;; use the Presto cast to `timestamp with time zone` operation to interpret in the correct TZ, regardless of
-  ;; connection zone
-  (h2x/cast timestamp-with-time-zone-db-type (u.date/format-sql t)))
+  [_driver ^OffsetDateTime t]
+  [:inline t])
 
 (defn- in-report-zone
   "Returns a HoneySQL form to interpret the `expr` (a temporal value) in the current report time zone, via Presto's
@@ -749,7 +740,8 @@
   ;; I could find to do it
   ;; reported as https://github.com/dm3/clojure.java-time/issues/74
   (let [millis-of-day (.get t ChronoField/MILLI_OF_DAY)]
-    (.setTime ps i (Time. millis-of-day))))
+    ;; TODO -- why the HECK are we using `java.sql.Time` here!!!!!
+    (.setTime ps i (java.sql.Time. millis-of-day))))
 
 (defmethod sql-jdbc.execute/set-parameter [:presto-jdbc OffsetTime]
   [_ ^PreparedStatement ps ^Integer i t]
@@ -766,7 +758,7 @@
 (defn- sql-time->local-time
   "Converts the given instance of `java.sql.Time` into a `java.time.LocalTime`, including milliseconds. Needed for
   similar reasons as `set-time-param` above."
-  ^LocalTime [^Time sql-time]
+  ^LocalTime [^java.sql.Time sql-time]
   ;; Java 11 adds a simpler `ofInstant` method, but since we need to run on JDK 8, we can't use it
   ;; https://docs.oracle.com/en/java/javase/11/docs/api/java.base/java/time/LocalTime.html#ofInstant(java.time.Instant,java.time.ZoneId)
   (let [^LocalTime lt (t/local-time sql-time)
@@ -826,3 +818,11 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (prefer-method driver/database-supports? [:presto-jdbc :set-timezone] [:sql-jdbc :set-timezone])
+
+(defmethod driver/escape-alias :presto-jdbc
+  [_driver s]
+  ((get-method driver/escape-alias :sql-jdbc)
+   :presto-jdbc
+   ;; Source of the pattern:
+   ;; https://github.com/prestodb/presto/blob/b73ab7df31e4d969c44fd953e5cb8e36a18eb55b/presto-parser/src/main/java/com/facebook/presto/sql/tree/Identifier.java#L26
+   (str/replace s #"(^[^a-zA-Z_])|([^a-zA-Z0-9_:@])" "_")))

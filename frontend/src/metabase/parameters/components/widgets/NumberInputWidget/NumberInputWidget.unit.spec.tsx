@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, getByText, getByRole } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockParameter } from "metabase-types/api/mocks";
@@ -170,18 +170,23 @@ describe("NumberInputWidget", () => {
   });
 
   describe("arity of n", () => {
-    it("should render a token field input", () => {
+    it("should render a multi autocomplete input", () => {
+      const value = [1, 2, 3, 4];
       render(
         <NumberInputWidget
           arity="n"
-          value={[1, 2, 3, 4]}
+          value={value}
           setValue={mockSetValue}
           parameter={mockParameter}
         />,
       );
 
-      const values = screen.getAllByRole("list")[0];
-      expect(values).toHaveTextContent("1234");
+      const combobox = screen.getByRole("combobox");
+
+      for (const item of value) {
+        const value = getValue(combobox, item);
+        expect(value).toBeInTheDocument();
+      }
     });
 
     it("should correctly parse number inputs", async () => {
@@ -194,15 +199,17 @@ describe("NumberInputWidget", () => {
         />,
       );
 
-      const input = screen.getByRole("textbox");
-      await userEvent.type(input, "foo{enter}123abc{enter}456{enter}");
+      const combobox = screen.getByRole("combobox");
+      const input = getInput(combobox);
+      await userEvent.type(input, "foo,123abc,456,", {
+        pointerEventsCheck: 0,
+      });
 
-      const values = screen.getAllByRole("list")[0];
-      expect(values).toHaveTextContent("123456");
+      expect(getValue(combobox, 456)).toBeInTheDocument();
 
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith([123, 456]);
+      expect(mockSetValue).toHaveBeenCalledWith([456]);
     });
 
     it("should be unsettable", async () => {
@@ -215,8 +222,11 @@ describe("NumberInputWidget", () => {
         />,
       );
 
-      const input = screen.getByRole("textbox");
-      await userEvent.type(input, "{backspace}{backspace}");
+      const combobox = screen.getByRole("combobox");
+      const input = getInput(combobox);
+      await userEvent.type(input, "{backspace}{backspace}", {
+        pointerEventsCheck: 0,
+      });
 
       const button = screen.getByRole("button", { name: "Update filter" });
 
@@ -225,3 +235,15 @@ describe("NumberInputWidget", () => {
     });
   });
 });
+
+function getValue(parent: HTMLElement, value: number) {
+  /* eslint-disable-next-line testing-library/prefer-screen-queries */
+  return getByText(parent, value.toString());
+}
+
+function getInput(parent: HTMLElement) {
+  /* eslint-disable-next-line testing-library/prefer-screen-queries */
+  const input = getByRole(parent, "searchbox");
+  expect(input).toBeInTheDocument();
+  return input;
+}

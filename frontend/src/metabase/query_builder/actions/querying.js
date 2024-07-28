@@ -5,19 +5,20 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
+import { syncVizSettingsWithSeries } from "metabase/querying";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
-import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
 import {
+  getCard,
+  getFirstQueryResult,
   getIsResultDirty,
   getIsRunning,
   getOriginalQuestion,
   getOriginalQuestionWithParameterValues,
-  getQueryBuilderMode,
   getQueryResults,
   getQuestion,
   getTimeoutId,
@@ -94,7 +95,6 @@ export const runQuestionQuery = ({
   shouldUpdateUrl = true,
   ignoreCache = false,
   overrideWithQuestion = null,
-  prevQueryResults = undefined,
 } = {}) => {
   return async (dispatch, getState) => {
     dispatch(loadStartUIControls());
@@ -104,9 +104,13 @@ export const runQuestionQuery = ({
       : getQuestion(getState());
     const originalQuestion = getOriginalQuestion(getState());
 
-    const cardIsDirty = originalQuestion
+    const isCardDirty = originalQuestion
       ? question.isDirtyComparedToWithoutParameters(originalQuestion) ||
         question.id() == null
+      : true;
+
+    const isQueryDirty = originalQuestion
+      ? question.isQueryDirtyComparedTo(originalQuestion)
       : true;
 
     if (shouldUpdateUrl) {
@@ -115,7 +119,7 @@ export const runQuestionQuery = ({
         isAdHocModelQuestion(question, originalQuestion);
 
       dispatch(
-        updateUrl(question, { dirty: !isAdHocModelOrMetric && cardIsDirty }),
+        updateUrl(question, { dirty: !isAdHocModelOrMetric && isCardDirty }),
       );
     }
 
@@ -127,7 +131,7 @@ export const runQuestionQuery = ({
     apiRunQuestionQuery(question, {
       cancelDeferred: cancelQueryDeferred,
       ignoreCache: ignoreCache,
-      isDirty: cardIsDirty,
+      isDirty: isQueryDirty,
     })
       .then(queryResults => {
         queryTimer(duration =>
@@ -138,11 +142,7 @@ export const runQuestionQuery = ({
             duration,
           ),
         );
-        return dispatch(
-          queryCompleted(question, queryResults, {
-            prevQueryResults: prevQueryResults ?? getQueryResults(getState()),
-          }),
-        );
+        return dispatch(queryCompleted(question, queryResults));
       })
       .catch(error => dispatch(queryErrored(startTime, error)));
 
@@ -177,23 +177,33 @@ export const CLEAR_QUERY_RESULT = "metabase/query_builder/CLEAR_QUERY_RESULT";
 export const clearQueryResult = createAction(CLEAR_QUERY_RESULT);
 
 export const QUERY_COMPLETED = "metabase/qb/QUERY_COMPLETED";
-export const queryCompleted = (
-  question,
-  queryResults,
-  { prevQueryResults } = {},
-) => {
+export const queryCompleted = (question, queryResults) => {
   return async (dispatch, getState) => {
-    const [{ data }] = queryResults;
-    const [{ data: prevData }] = prevQueryResults ?? [{}];
+    const [{ data, error }] = queryResults;
+    const prevCard = getCard(getState());
+    const { data: prevData, error: prevError } =
+      getFirstQueryResult(getState()) ?? {};
+
     const originalQuestion = getOriginalQuestionWithParameterValues(getState());
     const { isEditable } = Lib.queryDisplayInfo(question.query());
     const isDirty = isEditable && question.isDirtyComparedTo(originalQuestion);
 
     if (isDirty) {
-      question = question.syncColumnsAndSettings(
-        queryResults[0],
-        prevQueryResults?.[0],
-      );
+      const series = [{ card: question.card(), data, error }];
+      const previousSeries =
+        prevCard && (prevData || prevError)
+          ? [{ card: prevCard, data: prevData, error: prevError }]
+          : null;
+      if (series && previousSeries) {
+        question = question.setSettings(
+          syncVizSettingsWithSeries(
+            question.settings(),
+            question.query(),
+            series,
+            previousSeries,
+          ),
+        );
+      }
 
       question = question.maybeResetDisplay(
         data,
@@ -204,52 +214,16 @@ export const queryCompleted = (
 
     const card = question.card();
 
-    const isEditingModel = getQueryBuilderMode(getState()) === "dataset";
-    const isEditingSavedModel = isEditingModel && !!originalQuestion;
-    const modelMetadata = isEditingSavedModel
-      ? preserveModelMetadata(queryResults, originalQuestion)
-      : undefined;
-
     dispatch({
       type: QUERY_COMPLETED,
       payload: {
         card,
         queryResults,
-        modelMetadata,
       },
     });
     dispatch(loadCompleteUIControls());
   };
 };
-
-function preserveModelMetadata(queryResults, originalModel) {
-  const [{ data }] = queryResults;
-  const queryMetadata = data?.results_metadata?.columns || [];
-  const modelMetadata = originalModel.getResultMetadata();
-
-  const mergedMetadata = mergeQueryMetadataWithModelMetadata(
-    queryMetadata,
-    modelMetadata,
-  );
-
-  return {
-    columns: mergedMetadata,
-  };
-}
-
-function mergeQueryMetadataWithModelMetadata(queryMetadata, modelMetadata) {
-  return queryMetadata.map((queryCol, index) => {
-    const modelCol = modelMetadata.find(modelCol => {
-      return isSameField(modelCol.field_ref, queryCol.field_ref);
-    });
-
-    if (modelCol) {
-      return modelCol;
-    }
-
-    return queryCol;
-  });
-}
 
 export const QUERY_ERRORED = "metabase/qb/QUERY_ERRORED";
 export const queryErrored = createThunkAction(

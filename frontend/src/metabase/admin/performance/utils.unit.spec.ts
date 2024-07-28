@@ -1,7 +1,13 @@
-import type { ScheduleSettings } from "metabase-types/api";
+import type {
+  AdaptiveStrategy,
+  ScheduleSettings,
+  InheritStrategy,
+} from "metabase-types/api";
 
 import {
   cronToScheduleSettings,
+  getShortStrategyLabel,
+  hourTo24HourFormat,
   hourToTwelveHourFormat,
   scheduleSettingsToCron,
 } from "./utils";
@@ -224,5 +230,79 @@ describe("hourToTwelveHourFormat", () => {
     expect(hourToTwelveHourFormat(11)).toBe(11);
     expect(hourToTwelveHourFormat(10)).toBe(10);
     expect(hourToTwelveHourFormat(1)).toBe(1);
+  });
+});
+
+describe("hourTo24HourFormat", () => {
+  // Test AM cases
+  it("converts 12 AM to 0", () => {
+    expect(hourTo24HourFormat(12, 0)).toBe(0);
+  });
+
+  it("converts 1 AM to 1", () => {
+    expect(hourTo24HourFormat(1, 0)).toBe(1);
+  });
+
+  it("converts 11 AM to 11", () => {
+    expect(hourTo24HourFormat(11, 0)).toBe(11);
+  });
+
+  // Test PM cases
+  it("converts 12 PM to 12", () => {
+    expect(hourTo24HourFormat(12, 1)).toBe(12);
+  });
+
+  it("converts 1 PM to 13", () => {
+    expect(hourTo24HourFormat(1, 1)).toBe(13);
+  });
+
+  it("converts 11 PM to 23", () => {
+    expect(hourTo24HourFormat(11, 1)).toBe(23);
+  });
+
+  // Edge cases
+  it("converts 0 AM to 0", () => {
+    expect(hourTo24HourFormat(0, 0)).toBe(0);
+  });
+
+  it("converts 0 PM to 12", () => {
+    expect(hourTo24HourFormat(0, 1)).toBe(12);
+  });
+
+  it("converts NaN PM to NaN", () => {
+    expect(hourTo24HourFormat(NaN, 1)).toBeNaN();
+  });
+
+  it("converts 11 NaN to 11 (that is, fall back to AM if the AM/PM is NaN)", () => {
+    expect(hourTo24HourFormat(11, NaN)).toBe(11);
+  });
+
+  it("converts NaN NaN to NaN", () => {
+    expect(hourTo24HourFormat(NaN, NaN)).toBeNaN();
+  });
+});
+
+describe("getShortStrategyLabel", () => {
+  it("should return null if no strategy is provided", () => {
+    const result = getShortStrategyLabel();
+    expect(result).toBeNull();
+  });
+
+  it("can abbreviate an 'Adaptive' strategy", () => {
+    const strategy: AdaptiveStrategy = {
+      type: "ttl",
+      multiplier: 2,
+      min_duration_ms: 1000,
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Adaptive");
+  });
+
+  it("can abbreviate a 'Use default' aka inherit strategy", () => {
+    const strategy: InheritStrategy = {
+      type: "inherit",
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Use default");
   });
 });

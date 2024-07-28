@@ -4,18 +4,18 @@ import { Route } from "react-router";
 
 import {
   setupCollectionByIdEndpoint,
+  setupCollectionItemsEndpoint,
   setupCollectionsEndpoints,
   setupMostRecentlyViewedDashboard,
-  setupSearchEndpoints,
-  setupCollectionItemsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
-  renderWithProviders,
-  screen,
-  waitFor,
   mockGetBoundingClientRect,
   mockScrollBy,
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { ROOT_COLLECTION as ROOT } from "metabase/entities/collections";
@@ -63,6 +63,7 @@ const COLLECTION = createMockCollection({
   can_write: true,
   is_personal: false,
   location: "/",
+  effective_location: "/",
 });
 
 const SUBCOLLECTION = createMockCollection({
@@ -71,6 +72,7 @@ const SUBCOLLECTION = createMockCollection({
   can_write: true,
   is_personal: false,
   location: `/${COLLECTION.id}/`,
+  effective_location: `/${COLLECTION.id}/`,
 });
 
 const PERSONAL_COLLECTION = createMockCollection({
@@ -80,6 +82,7 @@ const PERSONAL_COLLECTION = createMockCollection({
   can_write: true,
   is_personal: true,
   location: "/",
+  effective_location: "/",
 });
 
 const PERSONAL_SUBCOLLECTION = createMockCollection({
@@ -88,6 +91,7 @@ const PERSONAL_SUBCOLLECTION = createMockCollection({
   can_write: true,
   is_personal: true,
   location: `/${PERSONAL_COLLECTION.id}/`,
+  effective_location: `/${PERSONAL_COLLECTION.id}/`,
 });
 
 const ROOT_COLLECTION = createMockCollection({
@@ -275,13 +279,15 @@ const setup = async ({
 
   fetchMock.get(`path:/api/user/recipients`, { data: [] });
 
+  const onChangeLocation = jest.fn();
+
   renderWithProviders(
     <Route
       path="/"
       component={() => (
         <AddToDashSelectDashModal
           card={card}
-          onChangeLocation={() => undefined}
+          onChangeLocation={onChangeLocation}
           onClose={() => undefined}
         />
       )}
@@ -295,14 +301,14 @@ const setup = async ({
   );
 
   if (waitForContent) {
-    await waitFor(() => {
-      expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
-    });
+    await waitForLoaderToBeRemoved();
   }
+
+  return { onChangeLocation };
 };
 
 describe("AddToDashSelectDashModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
@@ -374,8 +380,6 @@ describe("AddToDashSelectDashModal", () => {
           collection => collection.id === DASHBOARD.collection_id,
         ),
       );
-
-      console.log("dashboardCollection", dashboardCollection);
 
       await screen.findByText(/add this model to a dashboard/i);
 
@@ -586,10 +590,8 @@ describe("AddToDashSelectDashModal", () => {
   });
 
   describe('"Create a new dashboard" option', () => {
-    beforeEach(async () => {
-      await setup();
-    });
     it('should render "Create a new dashboard" option', async () => {
+      await setup();
       expect(
         await screen.findByRole("button", {
           name: /Create a new dashboard/,
@@ -598,6 +600,12 @@ describe("AddToDashSelectDashModal", () => {
     });
 
     it("should show the create dashboard dialog", async () => {
+      // Second part of test requires a value to be "selected"
+      const { onChangeLocation } = await setup({
+        dashboard: DASHBOARD_AT_ROOT,
+        mostRecentlyViewedDashboard: DASHBOARD_AT_ROOT,
+      });
+
       await userEvent.click(
         await screen.findByRole("button", {
           name: /Create a new dashboard/,
@@ -610,11 +618,18 @@ describe("AddToDashSelectDashModal", () => {
       expect(
         await screen.findByTestId("create-dashboard-on-the-go"),
       ).toBeInTheDocument();
+
+      // Pressing enter when the create dialog is open should not trigger handleConfirm (metabase#45360);
+      await userEvent.keyboard("{enter}");
+
+      expect(onChangeLocation).not.toHaveBeenCalled();
     });
   });
 });
 
-function assertPath(collections: Collection[]) {
+async function assertPath(collections: Collection[]) {
+  await waitForLoaderToBeRemoved();
+
   return Promise.all(
     collections.map(async collection => {
       return expect(await findPickerItem(collection.name)).toBeInTheDocument();

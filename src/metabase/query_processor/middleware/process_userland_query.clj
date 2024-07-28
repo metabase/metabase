@@ -7,16 +7,12 @@
   event -- see [[metabase.events.view-log]]."
   (:require
    [java-time.api :as t]
+   [metabase.analytics.sdk :as sdk]
    [metabase.events :as events]
-   [metabase.lib.core :as lib]
-   [metabase.models.field-usage :as field-usage]
    [metabase.models.query :as query]
-   [metabase.models.query-execution
-    :as query-execution
-    :refer [QueryExecution]]
    [metabase.query-processor.schema :as qp.schema]
-   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.util :as qp.util]
+   [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
@@ -34,6 +30,19 @@
 ;;; |                                              Save Query Execution                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private field-usage-interval-seconds 20)
+
+(defonce ^:private
+  field-usages-queue
+  (delay (grouper/start!
+          (fn [field-usages]
+            (try
+              (t2/insert! :model/FieldUsage field-usages)
+              (catch Throwable e
+                (log/error e "Error saving field usages"))))
+          :capacity 500
+          :interval (* field-usage-interval-seconds 1000))))
+
 ;; TODO - I'm not sure whether this should happen async as is currently the case, or should happen synchronously e.g.
 ;; in the completing arity of the rf
 ;;
@@ -46,26 +55,30 @@
     (query/save-query-and-update-average-execution-time! query query-hash running-time))
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
-    (let [qe-id (t2/insert-returning-pk! QueryExecution (dissoc query-execution :json_query))]
+    (let [qe-id (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))]
       (when (seq field-usages)
-        (t2/insert! :model/FieldUsage (map #(assoc % :query_execution_id qe-id) field-usages))))))
+        (let [queue @field-usages-queue]
+          (doseq [field-usage field-usages]
+            (grouper/submit! queue (assoc field-usage :query_execution_id qe-id))))))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
   [execution-info field-usages]
-  (qp.util/with-execute-async
-    ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
-    ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
-    ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
-    ;;
-    ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
-    ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
-    ;;    attempt to use closed DB connections
-    (fn []
-      (let [execution-info (add-running-time execution-info)]
+  (let [execution-info' (sdk/include-analytics execution-info)
+        ;; `sdk/assoc-analytics` reads values from dynamic vars, so we need to set them here, on the same thread:
+        ]
+    (qp.util/with-execute-async
+      ;; 1. Asynchronously save QueryExecution, update query average execution time etc. using the Agent/pooledExecutor
+      ;;    pool, which is a fixed pool of size `nthreads + 2`. This way we don't spin up a ton of threads doing unimportant
+      ;;    background query execution saving (as `future` would do, which uses an unbounded thread pool by default)
+      ;;
+      ;; 2. This is on purpose! By *not* using `bound-fn` or `future`, any dynamic variables in play when the task is
+      ;;    submitted, such as `db/*connection*`, won't be in play when the task is actually executed. That way we won't
+      ;;    attempt to use closed DB connections
+      (fn []
         (log/trace "Saving QueryExecution info")
         (try
-          (save-execution-metadata!* execution-info field-usages)
+          (save-execution-metadata!* (add-running-time execution-info') field-usages)
           (catch Throwable e
             (log/error e "Error saving query execution info")))))))
 
@@ -94,7 +107,7 @@
        add-running-time
        (dissoc :error :hash :executor_id :action_id :is_sandboxed :card_id :dashboard_id :pulse_id :result_rows :native))
    (dissoc result :cache/details)
-   {:cached                 (boolean (:cached cache))
+   {:cached                 (when (:cached cache) (:updated_at cache))
     :status                 :completed
     :average_execution_time (when (:cached cache)
                               (query/average-execution-time-ms query-hash))}))
@@ -170,14 +183,15 @@
       (let [query          (assoc-in query [:info :query-hash] (qp.util/query-hash query))
             execution-info (query-execution-info query)]
         (letfn [(rff* [metadata]
-                  (let [preprocessed-query (:preprocessed_query metadata)
+                  (let [#_preprocessed-query #_(:preprocessed_query metadata)
                         ;; we only need the preprocessed query to find field usages, so make sure we don't return it
                         result             (rff (dissoc metadata :preprocessed_query))
                         ;; skip internal queries as it use honeysql, not mbql
-                        field-usages       (when-not (qp.util/internal-query? query)
-                                             (field-usage/pmbql->field-usages
-                                              (lib/query (qp.store/metadata-provider) preprocessed-query)))]
-                    (add-and-save-execution-metadata-xform! execution-info field-usages result)))]
+                        ;; temporarily disabled because it impacts query performance
+                        #_field-usages       #_(when-not (qp.util/internal-query? query)
+                                                (field-usage/pmbql->field-usages
+                                                 (lib/query (qp.store/metadata-provider) preprocessed-query)))]
+                    (add-and-save-execution-metadata-xform! execution-info #_field-usages nil result)))]
           (try
             (qp query rff*)
             (catch Throwable e

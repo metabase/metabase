@@ -4,6 +4,8 @@ title: Regexextract
 
 # Regexextract
 
+> ⚠️ `regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
+
 `regexextract` uses [regular expressions (regex)](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions) to get a specific part of your text.
 
 `regexextract` is ideal for text that has little to no structure, like URLs or freeform survey responses. If you're working with strings in predictable formats like SKU numbers, IDs, or other types of codes, check out the simpler [substring](../expressions/substring.md) expression instead.
@@ -51,9 +53,9 @@ Now, you can use **Campaign Name** in places where you need clean labels, such a
 
 ## Limitations
 
-Regex can be a dark art. You have been warned.
+`regexextract` is unavailable for MongoDB, SQLite, and SQL Server. For Druid, `regexextract` is only available for the Druid-JDBC driver.
 
-`regexextract` is not supported on H2 (including the Metabase Sample Database), SQL Server, and SQLite.
+Regex can be a dark art. You have been warned.
 
 ## Related functions
 

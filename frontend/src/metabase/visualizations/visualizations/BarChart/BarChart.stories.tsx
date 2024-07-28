@@ -47,7 +47,10 @@ export const Default: Story = () => (
 
 // Example of how themes can be applied in the SDK.
 export const EmbeddingHugeFont: Story = () => {
-  const theme: MetabaseTheme = { fontSize: "20px" };
+  const theme: MetabaseTheme = {
+    fontSize: "20px",
+    components: { cartesian: { padding: "0.5rem 1rem" } },
+  };
 
   return (
     <SdkVisualizationWrapper theme={theme}>

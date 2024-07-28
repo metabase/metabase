@@ -1,7 +1,7 @@
 (ns metabase-enterprise.sandbox.models.group-table-access-policy
-  "Model definition for Group Table Access Policy, aka GTAP. A GTAP is useed to control access to a certain Table for a
-  certain PermissionsGroup. Whenever a member of that group attempts to query the Table in question, a Saved Question
-  specified by the GTAP is instead used as the source of the query.
+  "Model definition for sandboxes, aka Group Table Access Policies (old name). A sandbox is used to control access to a
+  certain Table for a certain PermissionsGroup. Whenever a member of that group attempts to query the Table in question,
+  a Saved Question specified by the GTAP is instead used as the source of the query.
 
   See documentation in [[metabase.models.permissions]] for more information about the Metabase permissions system."
   (:require
@@ -34,7 +34,7 @@
 
 (doto :model/GroupTableAccessPolicy
   (derive :metabase/model)
-  ;;; only admins can work with GTAPs
+  ;;; only admins can work with sandboxes
   (derive ::mi/read-policy.superuser)
   (derive ::mi/write-policy.superuser))
 
@@ -120,13 +120,14 @@
 (defenterprise add-sandboxes-to-permissions-graph
   "Augments a provided permissions graph with active sandboxing policies."
   :feature :sandboxes
-  [graph & {:keys [group-id db-id audit?]}]
+  [graph & {:keys [group-ids group-id db-id audit?]}]
   (let [sandboxes (t2/select :model/GroupTableAccessPolicy
                              {:select [:s.group_id :s.table_id :t.db_id :t.schema]
                               :from [[:sandboxes :s]]
                               :join [[:metabase_table :t] [:= :s.table_id :t.id]]
                               :where [:and
                                       (when group-id [:= :s.group_id group-id])
+                                      (when group-ids [:in :s.group_id group-ids])
                                       (when db-id [:= :t.db_id db-id])
                                       (when-not audit? [:not [:= :t.db_id audit/audit-db-id]])]})]
     ;; Incorporate each sandbox policy into the permissions graph.
@@ -136,12 +137,11 @@
             sandboxes)))
 
 (mu/defn check-columns-match-table
-  "Make sure the result metadata data columns for the Card associated with a GTAP match up with the columns in the Table
-  that's getting GTAPped. It's ok to remove columns, but you cannot add new columns. The base types of the Card
-  columns can derive from the respective base types of the columns in the Table itself, but you cannot return an
-  entirely different type."
+  "Make sure the result metadata data columns for the Card associated with a sandbox match up with the columns in the Table
+  that's getting sandboxed The base types of the Card columns can derive from the respective base types of the columns in
+  the Table itself, but you cannot return an entirely different type. Extra columns in the sandboxing Card are ignored."
   ([{card-id :card_id, table-id :table_id}]
-   ;; not all GTAPs have Cards
+   ;; not all sandboxes have Cards
    (when card-id
      ;; not all Cards have saved result metadata
      (when-let [result-metadata (t2/select-one-fn :result_metadata Card :id card-id)]
@@ -157,7 +157,7 @@
 
 (defenterprise pre-update-check-sandbox-constraints
   "If a Card is updated, and its result metadata changes, check that these changes do not violate the constraints placed
-  on GTAPs (the Card cannot add fields or change types vs. the original Table)."
+  on sandboxes (the Card cannot add fields or change types vs. the original Table)."
   :feature :sandboxes
   [{new-result-metadata :result_metadata, card-id :id}]
   (when new-result-metadata
@@ -197,7 +197,7 @@
   [{:keys [table_id group_id], :as gtap}]
   (let [db-id (database/table-id->database-id table_id)]
     ;; Remove native query access to the DB when saving a sandbox
-    (when (= (data-perms/table-permission-for-group group_id :perms/create-queries db-id table_id) :query-builder-and-native)
+    (when (= (data-perms/table-permission-for-groups #{group_id} :perms/create-queries db-id table_id) :query-builder-and-native)
       (data-perms/set-database-permission! group_id db-id :perms/create-queries :query-builder)))
   (u/prog1 gtap
     (check-columns-match-table gtap)))
@@ -208,7 +208,7 @@
     (let [original (t2/original updates)
           updated  (merge original updates)]
       (when-not (= (:table_id original) (:table_id updated))
-        (throw (ex-info (tru "You cannot change the Table ID of a GTAP once it has been created.")
+        (throw (ex-info (tru "You cannot change the table ID of a sandbox once it has been created.")
                         {:id          id
                          :status-code 400})))
       (when (:card_id updates)

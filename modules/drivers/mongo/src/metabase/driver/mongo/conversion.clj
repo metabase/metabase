@@ -37,7 +37,11 @@
 
   org.bson.types.Decimal128
   (from-document [^org.bson.types.Decimal128 input _opts]
-    (.bigDecimalValue input))
+    ;; As per https://mongodb.github.io/mongo-java-driver/5.1/apidocs/bson/org/bson/types/Decimal128.html#bigDecimalValue()
+    ;; org.bson.types.Decimal128/POSITIVE_ZERO is convertible to big decimal.
+    (if (.equals input org.bson.types.Decimal128/NEGATIVE_ZERO)
+      0M
+      (.bigDecimalValue input)))
 
   java.util.List
   (from-document [^java.util.List input opts]

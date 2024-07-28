@@ -1,0 +1,265 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 0,
+      "collection_position": null,
+      "table_id": null,
+      "result_metadata": [
+        {
+          "display_name": "CURRENT_DATE",
+          "field_ref": [
+            "field",
+            "CURRENT_DATE",
+            {
+              "base-type": "type/Date"
+            }
+          ],
+          "name": "CURRENT_DATE",
+          "base_type": "type/Date",
+          "effective_type": "type/Date",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2024-06-14T01:18:55Z",
+                "latest": "2024-06-16T01:18:55Z"
+              }
+            }
+          }
+        },
+        {
+          "display_name": "VALUE",
+          "field_ref": [
+            "field",
+            "VALUE",
+            {
+              "base-type": "type/Decimal"
+            }
+          ],
+          "name": "VALUE",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 5,
+                "q1": 6.25,
+                "q3": 17.5,
+                "max": 20,
+                "sd": 7.637626158259733,
+                "avg": 11.666666666666666
+              }
+            }
+          }
+        }
+      ],
+      "creator": {
+        "email": "aleksandr@metabase.com",
+        "first_name": "Aleksandr",
+        "last_login": "2024-06-14T01:08:07.309972Z",
+        "is_qbnewb": true,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Lesnenko",
+        "date_joined": "2024-06-14T00:54:52.277777Z",
+        "common_name": "Aleksandr Lesnenko"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "native",
+      "name": "oracle-repro",
+      "last_query_start": null,
+      "dashboard_count": 0,
+      "last_used_at": null,
+      "type": "question",
+      "average_query_time": null,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-06-14T01:21:31.634213Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "SELECT CURRENT_DATE, 10 AS VALUE FROM DUAL\nUNION ALL\nSELECT CURRENT_DATE+1, 20 AS VALUE FROM DUAL\nUNION ALL\nSELECT CURRENT_DATE+2, 5 AS VALUE FROM DUAL"
+        }
+      },
+      "id": 27,
+      "parameter_mappings": [],
+      "display": "line",
+      "entity_id": "uNceD8IzYwC7Brg7LxIbc",
+      "collection_preview": true,
+      "last-edit-info": {
+        "timestamp": "2024-06-14T01:21:32.940Z",
+        "id": 1,
+        "first_name": "Aleksandr",
+        "last_name": "Lesnenko",
+        "email": "aleksandr@metabase.com"
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["CURRENT_DATE"],
+        "graph.metrics": ["VALUE"]
+      },
+      "collection": null,
+      "metabase_version": "v0.50.3 (855535b)",
+      "parameters": [],
+      "created_at": "2024-06-14T01:21:31.634213Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null
+    },
+    "data": {
+      "rows": [
+        ["2024-06-14T01:18:55Z", 10],
+        ["2024-06-15T01:18:55Z", 20],
+        ["2024-06-16T01:18:55Z", 5]
+      ],
+      "cols": [
+        {
+          "display_name": "CURRENT_DATE",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "CURRENT_DATE",
+            {
+              "base-type": "type/Date"
+            }
+          ],
+          "name": "CURRENT_DATE",
+          "base_type": "type/Date",
+          "effective_type": "type/Date"
+        },
+        {
+          "display_name": "VALUE",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "VALUE",
+            {
+              "base-type": "type/Decimal"
+            }
+          ],
+          "name": "VALUE",
+          "base_type": "type/Decimal",
+          "effective_type": "type/Decimal"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "SELECT CURRENT_DATE, 10 AS VALUE FROM DUAL\nUNION ALL\nSELECT CURRENT_DATE+1, 20 AS VALUE FROM DUAL\nUNION ALL\nSELECT CURRENT_DATE+2, 5 AS VALUE FROM DUAL"
+      },
+      "format-rows?": true,
+      "results_timezone": "+01:15",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "CURRENT_DATE",
+            "field_ref": [
+              "field",
+              "CURRENT_DATE",
+              {
+                "base-type": "type/Date"
+              }
+            ],
+            "name": "CURRENT_DATE",
+            "base_type": "type/Date",
+            "effective_type": "type/Date",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2024-06-14T01:18:55Z",
+                  "latest": "2024-06-16T01:18:55Z"
+                }
+              }
+            }
+          },
+          {
+            "display_name": "VALUE",
+            "field_ref": [
+              "field",
+              "VALUE",
+              {
+                "base-type": "type/Decimal"
+              }
+            ],
+            "name": "VALUE",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 5,
+                  "q1": 6.25,
+                  "q3": 17.5,
+                  "max": 20,
+                  "sd": 7.637626158259733,
+                  "avg": 11.666666666666666
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 20,
+          "unit": "day",
+          "offset": 49734.30367476851,
+          "last-change": -0.75,
+          "col": "VALUE",
+          "slope": -2.5,
+          "last-value": 5,
+          "best-fit": ["+", 49734.30367476851, ["*", -2.5, "x"]]
+        }
+      ]
+    },
+    "cached": false,
+    "database_id": 2,
+    "started_at": "2024-06-14T01:18:55.312056Z",
+    "json_query": {
+      "database": 2,
+      "type": "native",
+      "native": {
+        "query": "SELECT CURRENT_DATE, 10 AS VALUE FROM DUAL\nUNION ALL\nSELECT CURRENT_DATE+1, 20 AS VALUE FROM DUAL\nUNION ALL\nSELECT CURRENT_DATE+2, 5 AS VALUE FROM DUAL",
+        "template-tags": {}
+      },
+      "middleware": {
+        "js-int-to-string?": true,
+        "userland-query?": true,
+        "add-default-userland-constraints?": true
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "ad-hoc",
+    "row_count": 3,
+    "running_time": 345
+  }
+]

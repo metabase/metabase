@@ -411,27 +411,114 @@
                                   (merge {:db pk-db :user pk-user} to-merge))]
                   (is (can-connect? details)))))))))))
 
-(deftest can-connect-pk-no-options-test
+(deftest ^:synchronized pk-auth-custom-role-e2e-test
   (mt/test-driver
    :snowflake
-   (testing "Can connect with base64 encoded `:private-key-value` and no `:private-key-options` set (#41852)"
-     (let [pk-key (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
-           pk-user (tx/db-test-env-var :snowflake :pk-user)
-           pk-db "SNOWFLAKE_SAMPLE_DATA"
-           details (-> (:details (mt/db))
-                       (dissoc :password)
-                       (assoc :dbname pk-db
-                              :private-key-value (u/encode-base64 pk-key)
-                              :user pk-user))]
-       (testing "Can connect with base64 encoded `:private-key-value` and no `:private-key-options` set (#41852)"
-         (is (driver/can-connect? :snowflake details)))
-       ;; Following is required when private key and role are used together. See
-       ;; the [[metabase.driver.snowflake/maybe-add-role-to-spec-url]] for the details.
-       (testing "Role is added to connection url, if url is present (#43600)"
-         (let [details-with-role (assoc details :role "SOME_ROLE")
-               conn-str (:connection-uri (sql-jdbc.conn/connection-details->spec :snowflake details-with-role))
-               parsed-params (driver.snowflake/connection-str->parameters conn-str)]
-           (is (= "SOME_ROLE" (get parsed-params "ROLE")))))))))
+   (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
+         warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
+         ;; User with default role PULIC. To access the db custom role has to be used.
+         user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-custom-user)
+         private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+         db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
+         database          {:name    "Snowflake RSA test DB custom"
+                            :engine  :snowflake
+                            ;; Details as collected from `api handler POST / database` are used.
+                            :details {:role                nil
+                                      :warehouse           warehouse
+                                      :db                  db
+                                      :password            nil
+                                      :private-key-options "uploaded"
+                                      :advanced-options    false
+                                      :schema-filters-type "all"
+                                      :account             account
+                                      :private-key-value   (str "data:application/octet-stream;base64,"
+                                                                (u/encode-base64 private-key-value))
+                                      :tunnel-enabled      false
+                                      :user                user}}]
+     ;; TODO: We should make those message returned when role is incorrect more descriptive!
+     (testing "Database can not be accessed with `nil` default role"
+       (is (= "Looks like the Database name is incorrect."
+              (:message (mt/user-http-request :crowberto :post 400 "database"
+                                              database)))))
+     (testing "Database can not be accessed with PUBLIC role (default)"
+       (is (= "Looks like the Database name is incorrect."
+              (:message (mt/user-http-request :crowberto :post 400 "database"
+                                              (assoc-in database [:details :role] "PUBLIC"))))))
+     (testing "Database can be created using specified role"
+       ;; Map containing :details is expected to be database, hence considering request successful.
+       (is (contains? (mt/user-http-request :crowberto :post 200 "database"
+                                            (assoc-in database [:details :role]
+                                                      (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-role)))
+                      :details))
+        ;; As the request is asynchronous, wait for sync to complete.
+       (Thread/sleep 7000))
+     (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB custom")
+           [table :as tables] (t2/select :model/Table :db_id (:id db))
+           fields             (t2/select :model/Field :table_id (:id table))]
+       (testing "Created database is correctly synced"
+         (testing "Application database contains one database, one table and one new field"
+           (is (= 1 (count dbs)))
+           (is (= 1 (count tables)))
+           (is (= 2 (count fields)))))
+       (testing "Querying the database returns expected results"
+         (is (= [[1 "John Toucan Smith"]]
+                (mt/rows (qp/process-query {:database (:id db)
+                                            :type :query
+                                            :query {:source-table (:id table)}})))))
+       ;; Cleanup
+       (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
+       (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
+       (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
+
+(deftest ^:synchronized pk-auth-default-role-e2e-test
+  (mt/test-driver
+   :snowflake
+   (let [account           (tx/db-test-env-var-or-throw :snowflake :account)
+         warehouse         (tx/db-test-env-var-or-throw :snowflake :warehouse)
+         ;; User with default role PULIC. To access the db custom role has to be used.
+         user              (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-default-user)
+         private-key-value (format-env-key (tx/db-test-env-var-or-throw :snowflake :pk-private-key))
+         db                (tx/db-test-env-var-or-throw :snowflake :rsa-role-test-db)
+         database          {:name    "Snowflake RSA test DB default"
+                            :engine  :snowflake
+                            ;; Details as collected from `api handler POST / database` are used.
+                            :details {:role                nil
+                                      :warehouse           warehouse
+                                      :db                  db
+                                      :password            nil
+                                      :private-key-options "uploaded"
+                                      :advanced-options    false
+                                      :schema-filters-type "all"
+                                      :account             account
+                                      :private-key-value   (str "data:application/octet-stream;base64,"
+                                                                (u/encode-base64 private-key-value))
+                                      :tunnel-enabled      false
+                                      :user                user}}]
+     (testing "Database can be created using _default_ `nil` role"
+       ;; Map containing :details is expected to be database, hence considering request successful.
+       (is (contains? (mt/user-http-request :crowberto :post 200 "database" database)
+                      :details))
+        ;; As the request is asynchronous, wait for sync to complete.
+       (Thread/sleep 7000))
+     (let [[db :as dbs]       (t2/select :model/Database :name "Snowflake RSA test DB default")
+           [table :as tables] (t2/select :model/Table :db_id (:id db))
+           fields             (t2/select :model/Field :table_id (:id table))]
+       (testing "Created database is correctly synced"
+         (testing "Application database contains one database, one table and one new field"
+           (is (= 1 (count dbs)))
+           (is (= 1 (count tables)))
+           (is (= 2 (count fields)))))
+       (testing "Querying the database returns expected results"
+         (is (= [[1 "John Toucan Smith"]]
+                (mt/rows (qp/process-query {:database (:id db)
+                                            :type :query
+                                            :query {:source-table (:id table)}})))))
+       ;; Cleanup
+       (u/ignore-exceptions (t2/delete! :model/Database (:id db)))
+       (u/ignore-exceptions (t2/delete! :model/Table (:id table)))
+       (u/ignore-exceptions (t2/delete! :model/Field :id [:in (map :id fields)]))
+       (u/ignore-exceptions (t2/delete! :model/FieldValues :field_id [:in (map :id fields)]))))))
 
 (deftest ^:parallel replacement-snippet-date-param-test
   (mt/test-driver :snowflake
@@ -659,18 +746,24 @@
 (deftest ^:parallel connection-str->parameters-test
   (testing "Returns nil for invalid connection string"
     (are [conn-str] (= nil (driver.snowflake/connection-str->parameters conn-str))
-      nil "" "asdf" "snowflake:jdbc://x"))
+      nil "" "asdf" "snowflake:jdbc://x")))
+
+(deftest ^:parallel connection-str->parameters-test-2
   (testing "Returns `\"ACCOUNT\"` for valid strings of no parameters"
     (are [conn-str] (= {"ACCOUNT" "x"} (driver.snowflake/connection-str->parameters conn-str))
       "jdbc:snowflake://x.snowflakecomputing.com"
       "jdbc:snowflake://x.snowflakecomputing.com/"
-      "jdbc:snowflake://x.snowflakecomputing.com/?"))
+      "jdbc:snowflake://x.snowflakecomputing.com/?")))
+
+(deftest ^:parallel connection-str->parameters-test-3
   (testing "Returns decoded parameters"
     (let [role "!@#$%^&*()"]
       (is (= {"ACCOUNT" "x"
               "ROLE" role}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
-                                                               "?role=" (codec/url-encode role)))))))
+                                                               "?role=" (codec/url-encode role))))))))
+
+(deftest ^:parallel connection-str->parameters-test-4
   (testing "Returns multiple url parameters"
     (let [role "!@#$%^&*()"]
       (is (= {"ACCOUNT" "x"
@@ -678,7 +771,9 @@
               "FOO" "bar"}
              (driver.snowflake/connection-str->parameters (str "jdbc:snowflake://x.snowflakecomputing.com/"
                                                                "?role=" (codec/url-encode role)
-                                                               "&foo=bar"))))))
+                                                               "&foo=bar")))))))
+
+(deftest ^:parallel connection-str->parameters-test-5
   (testing (str "Returns nothing for role suffixed keys "
                 "(https://github.com/metabase/metabase/pull/43602#discussion_r1628043704)")
     (let [role "!@#$%^&*()"
@@ -686,3 +781,28 @@
                                                                    "?asdfrole=" (codec/url-encode role)))]
       (is (not (contains? params "ROLE")))
       (is (contains? params "ASDFROLE")))))
+
+(deftest ^:parallel filter-on-variant-column-test
+  (testing "We should still let you do various filter types on VARIANT (anything) columns (#45206)"
+    (mt/test-driver :snowflake
+      (let [variant-base-type (sql-jdbc.sync/database-type->base-type :snowflake :VARIANT)
+            metadata-provider (lib.tu/merged-mock-metadata-provider
+                               (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               {:fields [{:id             (mt/id :venues :name)
+                                          :base-type      variant-base-type
+                                          :effective-type variant-base-type
+                                          :database-type  "VARIANT"}]})
+            venues            (lib.metadata/table metadata-provider (mt/id :venues))
+            venues-name       (lib.metadata/field metadata-provider (mt/id :venues :name))
+            venues-id         (lib.metadata/field metadata-provider (mt/id :venues :id))
+            query             (lib/query metadata-provider venues)]
+        (is (= variant-base-type
+               (lib/type-of query venues-name)
+               (lib/type-of query (lib/ref venues-name))))
+        (let [query (-> query
+                        (lib/expression "expr" (lib/regex-match-first venues-name "(Red)"))
+                        (lib/order-by venues-id :asc)
+                        (lib/limit 1))]
+          (mt/with-native-query-testing-context query
+            (is (= [[1 "Red Medicine" 4 10.0646 -165.374 3 "Red"]]
+                   (mt/rows (qp/process-query query))))))))))

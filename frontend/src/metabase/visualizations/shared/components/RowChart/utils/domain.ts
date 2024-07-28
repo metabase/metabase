@@ -1,4 +1,4 @@
-import { extent } from "d3-array";
+import { extent } from "d3";
 
 import { isNotNull } from "metabase/lib/types";
 import type {

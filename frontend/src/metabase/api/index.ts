@@ -13,6 +13,8 @@ export * from "./database";
 export * from "./dataset";
 export * from "./field";
 export * from "./login-history";
+export * from "./model-index";
+export * from "./parameters";
 export * from "./permission";
 export * from "./persist";
 export * from "./revision";

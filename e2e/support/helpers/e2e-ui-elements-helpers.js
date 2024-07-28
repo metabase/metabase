@@ -139,7 +139,7 @@ export function setFilterWidgetValue(
 ) {
   filterWidget().eq(0).click();
   popover().within(() => {
-    cy.icon("close").click();
+    removeMultiAutocompleteValue(0);
     if (value) {
       cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
     }
@@ -169,6 +169,10 @@ export const collectionTable = () => {
 
 export const queryBuilderHeader = () => {
   return cy.findByTestId("qb-header");
+};
+
+export const queryBuilderFooter = () => {
+  return cy.findByTestId("view-footer");
 };
 
 export const closeQuestionActions = () => {
@@ -248,15 +252,20 @@ export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
 }
 
+export function tableInteractive() {
+  return cy.findByTestId("TableInteractive-root");
+}
+
 export function tableHeaderClick(headerString) {
-  cy.findByTestId("TableInteractive-root").within(() => {
+  tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mousedown");
   });
 
-  cy.findByTestId("TableInteractive-root").within(() => {
+  tableInteractive().within(() => {
     cy.findByTextEnsureVisible(headerString).trigger("mouseup");
   });
 }
+
 /**
  * selects the global new button
  * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
@@ -269,4 +278,25 @@ export function newButton(menuItem) {
   }
 
   return cy.findByTestId("app-bar").button("New");
+}
+
+export function multiSelectInput(filter = ":eq(0)") {
+  return cy.findByRole("combobox").filter(filter).get("input").last();
+}
+
+export function multiAutocompleteInput(filter = ":eq(0)") {
+  return cy.findAllByRole("combobox").filter(filter).get("input").last();
+}
+
+export function multiAutocompleteValue(index, filter = ":eq(0)") {
+  return cy
+    .findAllByRole("combobox")
+    .filter(filter)
+    .get(`[value][index=${index}]`);
+}
+
+export function removeMultiAutocompleteValue(index, filter) {
+  return multiAutocompleteValue(index, filter)
+    .findByRole("button", { hidden: true })
+    .click();
 }

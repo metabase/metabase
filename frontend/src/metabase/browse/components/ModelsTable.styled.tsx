@@ -2,17 +2,23 @@ import styled from "@emotion/styled";
 
 import {
   ItemLink,
-  TableColumn,
   hideResponsively,
+  TableColumn,
 } from "metabase/components/ItemsTable/BaseItemsTable.styled";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { breakpoints } from "metabase/ui/theme";
 
-export const ModelTableRow = styled.tr`
-  cursor: pointer;
-  :outline {
-    outline: 2px solid var(--mb-color-brand);
+export const ModelTableRow = styled.tr<{ skeleton?: boolean }>`
+  :focus {
+    outline: 2px solid var(--mb-color-focus);
   }
+  ${props =>
+    props.skeleton
+      ? `
+    :hover { background-color: unset ! important; }
+    td { cursor: unset ! important; }
+    `
+      : `cursor: pointer;`}
 `;
 
 export const ModelNameLink = styled(ItemLink)`
@@ -29,9 +35,11 @@ export const ModelCell = styled.td<ResponsiveProps>`
 
 export const ModelNameColumn = styled(TableColumn)`
   width: 356px;
+
   @container ${props => props.containerName} (max-width: ${breakpoints.md}) {
     width: 280px;
   }
+
   @container ${props => props.containerName} (max-width: ${breakpoints.sm}) {
     width: 200px;
   }

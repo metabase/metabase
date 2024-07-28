@@ -9,6 +9,7 @@ interface ParameterFieldSetProps {
 }
 
 export const ParameterFieldSet = styled(FieldSet)<ParameterFieldSetProps>`
+  background: var(--mb-color-embed-filter-bg-color);
   display: flex;
   align-items: center;
   transition: opacity 500ms linear;

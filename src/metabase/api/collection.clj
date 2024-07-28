@@ -20,6 +20,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.interface :as mi]
@@ -267,13 +268,14 @@
    [:pinned-state {:optional true} [:maybe (into [:enum] (map keyword) valid-pinned-state-values)]]
    ;; when specified, only return results of this type.
    [:models       {:optional true} [:maybe [:set (into [:enum] (map keyword) valid-model-param-values)]]]
-   [:sort-info    {:optional true} [:maybe [:tuple
-                                            (into [:enum {:error/message "sort-columns"}]
-                                                  (map normalize-sort-choice)
-                                                  valid-sort-columns)
-                                            (into [:enum {:error/message "sort-direction"}]
-                                                  (map normalize-sort-choice)
-                                                  valid-sort-directions)]]]])
+   [:sort-info    {:optional true} [:maybe [:map
+                                            [:sort-column (into [:enum {:error/message "sort-columns"}]
+                                                                (map normalize-sort-choice)
+                                                                valid-sort-columns)]
+                                            [:sort-direction (into [:enum {:error/message "sort-direction"}]
+                                                                   (map normalize-sort-choice)
+                                                                   valid-sort-directions)]
+                                            [:official-collections-first? {:optional true} :boolean]]]]])
 
 (defmulti ^:private collection-children-query
   "Query that will fetch the 'children' of a `collection`, for different types of objects. Possible options are listed
@@ -423,7 +425,7 @@
                        :order-by [[:id :desc]]
                        :limit    1}
                       :moderated_status]]
-                    (= :model card-type)
+                    (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
@@ -711,7 +713,7 @@
                   :collection_preview :dataset_query :table_id :query_type :is_upload)
           update-personal-collection))))
 
-(mu/defn ^:private coalesce-edit-info :- last-edit/MaybeAnnotated
+(mu/defn- coalesce-edit-info :- last-edit/MaybeAnnotated
   "Hoist all of the last edit information into a map under the key :last-edit-info. Considers this information present
   if `:last_edit_user` is not nil."
   [row]
@@ -753,8 +755,9 @@
                           (post-process-collection-children (keyword model) collection rows)))
                    cat
                    (map coalesce-edit-info)))
-       (map #(api/present-in-trash-if-archived-directly % (collection/trash-collection-id)))
        (map remove-unwanted-keys)
+       ;; the collection these are presented "in" is the ID of the collection we're getting `/items` on.
+       (map #(assoc % :collection_id (:id collection)))
        (sort-by (comp ::index meta))))
 
 (defn- select-name
@@ -814,19 +817,25 @@
         (for [model [:card :metric :dataset :dashboard :snippet :pulse :collection :timeline]]
           (:select (collection-children-query model {:id 1 :location "/"} nil)))))
 
+(defn- official-collections-first-sort-clause [{:keys [official-collections-first?]}]
+  (when official-collections-first?
+    [[[:case [:= :authority_level "official"] 0 :else 1]] :asc]))
+
+(def ^:private normal-collections-first-sort-clause
+  [[[:case
+     [:= :collection_type nil] 0
+     [:= :collection_type collection/trash-collection-type] 1
+     :else 2]]
+   :asc])
 
 (defn children-sort-clause
   "Given the client side sort-info, return sort clause to effect this. `db-type` is necessary due to complications from
   treatment of nulls in the different app db types."
   [sort-info db-type]
-  ;; always put "Metabase Analytics" last
-  (into [[[[:case [:= :authority_level "official"] 0 :else 1]] :asc]
-         [[[:case
-            [:= :collection_type nil] 0
-            [:= :collection_type collection/trash-collection-type] 1
-            :else 2]] :asc]]
-        (case sort-info
-          nil                     [[:%lower.name :asc]]
+  (->> (into [(official-collections-first-sort-clause sort-info)
+              normal-collections-first-sort-clause]
+        (case ((juxt :sort-column :sort-direction) sort-info)
+          [nil nil]               [[:%lower.name :asc]]
           [:name :asc]            [[:%lower.name :asc]]
           [:name :desc]           [[:%lower.name :desc]]
           [:last-edited-at :asc]  [(if (= db-type :mysql)
@@ -834,13 +843,12 @@
                                      [:last_edit_timestamp :nulls-last])
                                    [:last_edit_timestamp :asc]
                                    [:%lower.name :asc]]
-          [:last-edited-at :desc] (remove nil?
-                                          [(case db-type
-                                             :mysql    [:%isnull.last_edit_timestamp]
-                                             :postgres [:last_edit_timestamp :desc-nulls-last]
-                                             :h2       nil)
-                                           [:last_edit_timestamp :desc]
-                                           [:%lower.name :asc]])
+          [:last-edited-at :desc] [(case db-type
+                                     :mysql    [:%isnull.last_edit_timestamp]
+                                     :postgres [:last_edit_timestamp :desc-nulls-last]
+                                     :h2       nil)
+                                   [:last_edit_timestamp :desc]
+                                   [:%lower.name :asc]]
           [:last-edited-by :asc]  [(if (= db-type :mysql)
                                      [:%isnull.last_edit_last_name]
                                      [:last_edit_last_name :nulls-last])
@@ -850,20 +858,21 @@
                                      [:last_edit_first_name :nulls-last])
                                    [:last_edit_first_name :asc]
                                    [:%lower.name :asc]]
-          [:last-edited-by :desc] (remove nil?
-                                          [(case db-type
-                                             :mysql    [:%isnull.last_edit_last_name]
-                                             :postgres [:last_edit_last_name :desc-nulls-last]
-                                             :h2       nil)
-                                           [:last_edit_last_name :desc]
-                                           (case db-type
-                                             :mysql    [:%isnull.last_edit_first_name]
-                                             :postgres [:last_edit_last_name :desc-nulls-last]
-                                             :h2       nil)
-                                           [:last_edit_first_name :desc]
-                                           [:%lower.name :asc]])
+          [:last-edited-by :desc] [(case db-type
+                                     :mysql    [:%isnull.last_edit_last_name]
+                                     :postgres [:last_edit_last_name :desc-nulls-last]
+                                     :h2       nil)
+                                   [:last_edit_last_name :desc]
+                                   (case db-type
+                                     :mysql    [:%isnull.last_edit_first_name]
+                                     :postgres [:last_edit_last_name :desc-nulls-last]
+                                     :h2       nil)
+                                   [:last_edit_first_name :desc]
+                                   [:%lower.name :asc]]
           [:model :asc]           [[:model_ranking :asc]  [:%lower.name :asc]]
-          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]])))
+          [:model :desc]          [[:model_ranking :desc] [:%lower.name :asc]]))
+       (remove nil?)
+       (into [])))
 
 (defn- collection-children*
   [collection models {:keys [sort-info] :as options}]
@@ -904,7 +913,7 @@
       res
       limit-res)))
 
-(mu/defn ^:private collection-children
+(mu/defn- collection-children
   "Fetch a sequence of 'child' objects belonging to a Collection, filtered using `options`."
   [{collection-namespace :namespace, :as collection} :- collection/CollectionWithLocationAndIDOrRoot
    {:keys [models], :as options}                     :- CollectionChildrenOptions]
@@ -924,7 +933,7 @@
        :offset mw.offset-paging/*offset*
        :models valid-models})))
 
-(mu/defn ^:private collection-detail
+(mu/defn- collection-detail
   "Add a standard set of details to `collection`, including things like `effective_location`.
   Works for either a normal Collection or the Root Collection."
   [collection :- collection/CollectionWithLocationAndIDOrRoot]
@@ -975,21 +984,27 @@
   *  `pinned_state` - when `is_pinned`, return pinned objects only.
                    when `is_not_pinned`, return non pinned objects only.
                    when `all`, return everything. By default returns everything"
-  [id models archived pinned_state sort_column sort_direction]
-  {id             ms/PositiveInt
-   models         [:maybe Models]
-   archived       [:maybe ms/BooleanValue]
-   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
-   sort_column    [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
+  [id models archived pinned_state sort_column sort_direction official_collections_first]
+  {id                         ms/PositiveInt
+   models                     [:maybe Models]
+   archived                   [:maybe ms/BooleanValue]
+   pinned_state               [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column                [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction             [:maybe (into [:enum] valid-sort-directions)]
+   official_collections_first [:maybe ms/MaybeBooleanValue]}
   (let [model-kwds (set (map keyword (u/one-or-many models)))
         collection (api/read-check Collection id)]
     (u/prog1 (collection-children collection
                                   {:models       model-kwds
                                    :archived?    (or archived (:archived collection) (collection/is-trash? collection))
                                    :pinned-state (keyword pinned_state)
-                                   :sort-info    [(or (some-> sort_column normalize-sort-choice) :name)
-                                                  (or (some-> sort_direction normalize-sort-choice) :asc)]})
+                                   :sort-info    {:sort-column (or (some-> sort_column normalize-sort-choice) :name)
+                                                  :sort-direction (or (some-> sort_direction normalize-sort-choice) :asc)
+                                                  ;; default to sorting official collections first, except for the trash.
+                                                  :official-collections-first? (if (and (nil? official_collections_first)
+                                                                                        (not (collection/is-trash? collection)))
+                                                                                 true
+                                                                                 (boolean official_collections_first))}})
       (events/publish-event! :event/collection-read {:object collection :user-id api/*current-user-id*}))))
 
 
@@ -1032,13 +1047,14 @@
 
   By default, this will show the 'normal' Collections namespace; to view a different Collections namespace, such as
   `snippets`, you can pass the `?namespace=` parameter."
-  [models archived namespace pinned_state sort_column sort_direction]
-  {models         [:maybe Models]
-   archived       [:maybe ms/BooleanValue]
-   namespace      [:maybe ms/NonBlankString]
-   pinned_state   [:maybe (into [:enum] valid-pinned-state-values)]
-   sort_column    [:maybe (into [:enum] valid-sort-columns)]
-   sort_direction [:maybe (into [:enum] valid-sort-directions)]}
+  [models archived namespace pinned_state sort_column sort_direction official_collections_first]
+  {models                     [:maybe Models]
+   archived                   [:maybe ms/BooleanValue]
+   namespace                  [:maybe ms/NonBlankString]
+   pinned_state               [:maybe (into [:enum] valid-pinned-state-values)]
+   sort_column                [:maybe (into [:enum] valid-sort-columns)]
+   sort_direction             [:maybe (into [:enum] valid-sort-directions)]
+   official_collections_first [:maybe ms/MaybeBooleanValue]}
   ;; Return collection contents, including Collections that have an effective location of being in the Root
   ;; Collection for the Current User.
   (let [root-collection (assoc collection/root-collection :namespace namespace)
@@ -1049,8 +1065,11 @@
      {:archived?      (boolean archived)
       :models         model-kwds
       :pinned-state   (keyword pinned_state)
-      :sort-info      [(or (some-> sort_column normalize-sort-choice) :name)
-                       (or (some-> sort_direction normalize-sort-choice) :asc)]})))
+      :sort-info      {:sort-column (or (some-> sort_column normalize-sort-choice) :name)
+                       :sort-direction (or (some-> sort_direction normalize-sort-choice) :asc)
+                       ;; default to sorting official collections first, but provide the option not to
+                       :official-collections-first? (or (nil? official_collections_first)
+                                                        (boolean official_collections_first))}})))
 
 
 ;;; ----------------------------------------- Creating/Editing a Collection ------------------------------------------
@@ -1059,6 +1078,9 @@
   "Check that you're allowed to write Collection with `collection-id`; if `collection-id` is `nil`, check that you have
   Root Collection perms."
   [collection-id collection-namespace]
+  (when (collection/is-trash? collection-id)
+    (throw (ex-info (tru "You cannot modify the Trash Collection.")
+                    {:status-code 400})))
   (api/write-check (if collection-id
                      (t2/select-one Collection :id collection-id)
                      (cond-> collection/root-collection
@@ -1125,8 +1147,10 @@
            (collection/perms-for-moving collection-before-update new-parent)))
 
         ;; We can't move a collection to the Trash
-        (api/check-400
-         (not (collection/is-trash? new-parent)))
+        (api/check
+         (not (collection/is-trash? new-parent))
+         [400 "You cannot modify the Trash Collection."])
+
         ;; ok, we're good to move!
         (collection/move-collection! collection-before-update new-location)))))
 
@@ -1225,16 +1249,29 @@
   ;; TODO: should use a coercer for this?
   (graph-decoder permission-graph))
 
+(defn- update-graph!
+  "Handles updating the graph for a given namespace."
+  [namespace graph skip_graph]
+  (graph/update-graph! namespace graph)
+  (if skip_graph
+    {:revision (c-perm-revision/latest-id)}
+    (graph/graph namespace)))
+
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
-  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
-  [:as {{:keys [namespace], :as body} :body}]
-  {body      :map
-   namespace [:maybe ms/NonBlankString]}
+  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
+
+  If the `skip_graph` query parameter is true, it will only return the current revision"
+  [:as {{:keys [namespace revision groups skip_graph]} :body}]
+  {namespace [:maybe ms/NonBlankString]
+   revision  ms/Int
+   groups :map
+   skip_graph [:maybe ms/BooleanValue]}
   (api/check-superuser)
-  (->> (dissoc body :namespace)
-       decode-graph
-       (graph/update-graph! namespace))
-  (graph/graph namespace))
+  (update-graph!
+   namespace
+   (decode-graph {:revision revision :groups groups})
+   skip_graph))
+
 
 (api/define-routes)

@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import d3 from "d3";
+import * as d3 from "d3";
 import { createRef, Component } from "react";
 import { t } from "ttag";
 import _ from "underscore";
@@ -421,13 +421,13 @@ export default class PieChart extends Component {
       MIN_LABEL_FONT_SIZE,
     );
 
-    /** @type {d3.layout.Pie<typeof slices[number]>} */
-    const pie = d3.layout
+    const pie = d3
       .pie()
       .sort(null)
       .padAngle(PAD_ANGLE)
       .value(d => d.value);
-    const arc = d3.svg
+
+    const arc = d3
       .arc()
       .outerRadius(outerRadius)
       .innerRadius(outerRadius * INNER_RADIUS_RATIO);

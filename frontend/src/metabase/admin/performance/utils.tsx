@@ -1,28 +1,34 @@
-import _, { memoize } from "underscore";
+import { match } from "ts-pattern";
+import { c, t } from "ttag";
+import { memoize } from "underscore";
 import type { SchemaObjectDescription } from "yup/lib/schema";
 
 import {
   Cron,
-  optionNameTranslations,
-  weekdays,
+  getScheduleStrings,
 } from "metabase/components/Schedule/constants";
 import { isNullOrUndefined } from "metabase/lib/types";
 import { PLUGIN_CACHING } from "metabase/plugins";
 import type {
+  AdaptiveStrategy,
+  CacheConfig,
+  CacheStrategy,
+  CacheStrategyType,
   CacheableModel,
-  Config,
   ScheduleDayType,
   ScheduleFrameType,
   ScheduleSettings,
   ScheduleType,
-  Strategy,
-  StrategyType,
 } from "metabase-types/api";
 
 import { defaultMinDurationMs, rootId } from "./constants/simple";
-import type { StrategyLabel } from "./types";
+import type { StrategyData, StrategyLabel } from "./types";
+
+const AM = 0;
+const PM = 1;
 
 const dayToCron = (day: ScheduleSettings["schedule_day"]) => {
+  const { weekdays } = getScheduleStrings();
   const index = weekdays.findIndex(o => o.value === day);
   if (index === -1) {
     throw new Error(`Invalid day: ${day}`);
@@ -88,6 +94,8 @@ export const cronToScheduleSettings_unmemoized = (
     return defaultSchedule;
   }
 
+  const { weekdays } = getScheduleStrings();
+
   // The Quartz cron library used in the backend distinguishes between 'no specific value' and 'all values',
   // but for simplicity we can treat them as the same here
   cron = cron.replace(
@@ -119,12 +127,24 @@ export const cronToScheduleSettings_unmemoized = (
     if (weekday === Cron.AllValues) {
       schedule_frame = frameFromCron(dayOfMonth);
     } else {
-      // Split on transition from number to non-number
-      const weekdayParts = weekday.split(/(?<=\d)(?=\D)/);
-      const day = parseInt(weekdayParts[0]);
+      const dayStr = weekday.match(/^\d+/)?.[0];
+      if (!dayStr) {
+        throw new Error(
+          t`The cron expression contains an invalid weekday: ${weekday}`,
+        );
+      }
+      const day = parseInt(dayStr);
       schedule_day = weekdays[day - 1]?.value as ScheduleDayType;
       if (dayOfMonth === Cron.AllValues) {
-        const frameInCronFormat = weekdayParts[1].replace(/^#/, "");
+        // Match the part after the '#' in a string like '6#1' or the letter in '6L'
+        const frameInCronFormat = weekday
+          .match(/^\d+(\D.*)$/)?.[1]
+          .replace(/^#/, "");
+        if (!frameInCronFormat) {
+          throw new Error(
+            t`The cron expression contains an invalid weekday: ${weekday}`,
+          );
+        }
         schedule_frame = frameFromCron(frameInCronFormat);
       } else {
         schedule_frame = frameFromCron(dayOfMonth);
@@ -153,9 +173,17 @@ const defaultSchedule: ScheduleSettings = {
 };
 export const defaultCron = scheduleSettingsToCron(defaultSchedule);
 
+const isValidAmPm = (amPm: number) => amPm === AM || amPm === PM;
+
 export const hourToTwelveHourFormat = (hour: number) => hour % 12 || 12;
-export const hourTo24HourFormat = (hour: number, amPm: number) =>
-  hour + amPm * 12;
+
+export const hourTo24HourFormat = (hour: number, amPm: number): number => {
+  if (!isValidAmPm(amPm)) {
+    amPm = AM;
+  }
+  const hour24 = amPm === PM ? (hour % 12) + 12 : hour % 12;
+  return hour24 === 24 ? 0 : hour24;
+};
 
 type ErrorWithMessage = { data: { message: string } };
 export const isErrorWithMessage = (error: unknown): error is ErrorWithMessage =>
@@ -181,14 +209,15 @@ export const resolveSmoothly = async (
 
 export const getFrequencyFromCron = (cron: string) => {
   const scheduleType = cronToScheduleSettings(cron)?.schedule_type;
+  const { scheduleOptionNames } = getScheduleStrings();
   return isNullOrUndefined(scheduleType)
     ? ""
-    : optionNameTranslations[scheduleType];
+    : scheduleOptionNames[scheduleType];
 };
 
 export const isValidStrategyName = (
   strategy: string,
-): strategy is StrategyType => {
+): strategy is CacheStrategyType => {
   const { strategies } = PLUGIN_CACHING;
   const validStrategyNames = new Set(Object.keys(strategies));
   return validStrategyNames.has(strategy);
@@ -198,7 +227,7 @@ export const getLabelString = (label: StrategyLabel, model?: CacheableModel) =>
   typeof label === "string" ? label : label(model);
 
 export const getShortStrategyLabel = (
-  strategy?: Strategy,
+  strategy?: CacheStrategy,
   model?: CacheableModel,
 ) => {
   const { strategies } = PLUGIN_CACHING;
@@ -207,29 +236,52 @@ export const getShortStrategyLabel = (
   }
   const type = strategies[strategy.type];
   const mainLabel = getLabelString(type.shortLabel ?? type.label, model);
-  if (strategy.type === "schedule") {
-    const frequency = getFrequencyFromCron(strategy.schedule);
-    return `${mainLabel}: ${frequency}`;
+  /** Part of the label shown after the colon */
+  const subLabel = match(strategy)
+    .with({ type: "schedule" }, strategy =>
+      getFrequencyFromCron(strategy.schedule),
+    )
+    .with(
+      { type: "duration" },
+      strategy =>
+        c(
+          "{0} is a number. Indicates a number of hours (the length of a cache)",
+        ).t`${strategy.duration}h`,
+    )
+    .otherwise(() => null);
+  if (subLabel) {
+    return c(
+      "{0} is the primary label for a cache invalidation strategy. {1} is a further description.",
+    ).t`${mainLabel}: ${subLabel}`;
   } else {
     return mainLabel;
   }
 };
 
-export const getFieldsForStrategyType = (strategyType: StrategyType) => {
+export const getStrategyValidationSchema = (strategyData: StrategyData) => {
+  if (typeof strategyData.validationSchema === "function") {
+    return strategyData.validationSchema();
+  } else {
+    return strategyData.validationSchema;
+  }
+};
+
+export const getFieldsForStrategyType = (strategyType: CacheStrategyType) => {
   const { strategies } = PLUGIN_CACHING;
-  const strategy = strategies[strategyType];
-  const validationSchemaDescription =
-    strategy.validateWith.describe() as SchemaObjectDescription;
+  const strategyData = strategies[strategyType];
+  const validationSchemaDescription = getStrategyValidationSchema(
+    strategyData,
+  ).describe() as SchemaObjectDescription;
   const fieldRecord = validationSchemaDescription.fields;
   const fields = Object.keys(fieldRecord);
   return fields;
 };
 
 export const translateConfig = (
-  config: Config,
+  config: CacheConfig,
   direction: "fromAPI" | "toAPI",
-): Config => {
-  const translated: Config = { ...config };
+): CacheConfig => {
+  const translated: CacheConfig = { ...config };
 
   // If strategy type is unsupported, use a fallback
   if (!isValidStrategyName(translated.strategy.type)) {
@@ -239,9 +291,7 @@ export const translateConfig = (
 
   if (translated.strategy.type === "ttl") {
     if (direction === "fromAPI") {
-      translated.strategy.min_duration_seconds = Math.ceil(
-        translated.strategy.min_duration_ms / 1000,
-      );
+      translated.strategy = populateMinDurationSeconds(translated.strategy);
     } else {
       translated.strategy.min_duration_ms =
         translated.strategy.min_duration_seconds === undefined
@@ -253,7 +303,15 @@ export const translateConfig = (
   return translated;
 };
 
-export const translateConfigFromAPI = (config: Config): Config =>
+export const populateMinDurationSeconds = (strategy: AdaptiveStrategy) => ({
+  ...strategy,
+  min_duration_seconds: Math.ceil(strategy.min_duration_ms / 1000),
+});
+
+/** Translate a config from the API into a format the frontend can use */
+export const translateConfigFromAPI = (config: CacheConfig): CacheConfig =>
   translateConfig(config, "fromAPI");
-export const translateConfigToAPI = (config: Config): Config =>
+
+/** Translate a config from the frontend's format into the API's preferred format */
+export const translateConfigToAPI = (config: CacheConfig): CacheConfig =>
   translateConfig(config, "toAPI");

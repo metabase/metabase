@@ -221,7 +221,7 @@ const setupModal = async ({
 };
 
 describe("QuestionPicker", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
@@ -279,7 +279,7 @@ describe("QuestionPicker", () => {
 });
 
 describe("QuestionPickerModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
@@ -424,7 +424,6 @@ describe("QuestionPickerModal", () => {
       "true",
     );
 
-    await screen.findByText(/loading/i);
     await screen.findByText(/Didn't find anything/i);
   });
 
@@ -448,7 +447,6 @@ describe("QuestionPickerModal", () => {
       "true",
     );
 
-    await screen.findByText(/loading/i);
     await screen.findByText(/Didn't find anything/i);
 
     await userEvent.clear(searchInput);

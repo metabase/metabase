@@ -130,7 +130,7 @@ describe("scenarios > dashboard > filters > date", () => {
     saveDashboard();
 
     // Updates the filter value
-    filterWidget().click();
+    filterWidget().should("contain.text", "November 2023").click();
     popover().findByText("December").click();
     filterWidget().findByText("December 2023");
     ensureDashboardCardHasText("76.83");
@@ -156,8 +156,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();
     // click on Days (the default value), which should open the resolution dropdown
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("days").click();
+    cy.findByDisplayValue("days").click();
     // Hours should appear in the selection box (don't click it)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("hours");

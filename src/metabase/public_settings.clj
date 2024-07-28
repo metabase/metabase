@@ -2,6 +2,7 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
+   [environ.core :as env]
    [java-time.api :as t]
    [metabase.api.common :as api]
    [metabase.config :as config]
@@ -257,14 +258,18 @@
   (deferred-tru "Allow using a saved question or Model as the source for other queries?")
   :type       :boolean
   :default    true
+  :setter     :none
   :visibility :authenticated
   :export?    true
+  :getter     (fn enable-nested-queries-getter []
+                ;; only false if explicitly set `false` by the environment
+                (not= "false" (u/lower-case-en (env/env :mb-enable-nested-queries))))
   :audit      :getter)
 
 (defsetting enable-query-caching
-  (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
+  (deferred-tru "Allow caching results of queries that take a long time to run.")
   :type       :boolean
-  :default    false
+  :default    true
   :visibility :authenticated
   :audit      :getter)
 
@@ -922,6 +927,13 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting sql-parsing-enabled
   (deferred-tru "SQL Parsing is disabled")
+  :visibility :internal
+  :export?    false
+  :default    true
+  :type       :boolean)
+
+(defsetting query-analysis-enabled
+  (deferred-tru "Whether or not we analyze any queries at all")
   :visibility :internal
   :export?    false
   :default    true

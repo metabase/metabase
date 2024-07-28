@@ -6,13 +6,13 @@ redirect_from:
 
 # Activating your Metabase commercial license
 
-The [paid Pro and Enterprise editions](https://www.metabase.com/pricing) of Metabase are distinct from the free [Open Source edition](../installation-and-operation/running-the-metabase-jar-file.md).
+The [paid Pro and Enterprise editions](https://www.metabase.com/pricing) of Metabase are distinct from the free [Open Source edition](../installation-and-operation/running-the-metabase-jar-file.md) and the [Starter version of Metabase Cloud](https://www.metabase.com/cloud/).
 
-To use your paid features you’ll need to first get a license. And if you want to self-host, you'll need a different JAR or Docker image that you can use to activate the advanced features with your license token.
+To use your Pro/Enterprise features, you’ll need to first get a license. And if you want to self-host, you'll need a different JAR or Docker image that you can use to activate the advanced features with your license token.
 
 ## If you're running on Metabase Cloud
 
-If you've signed up for or upgraded to a premium plan on Metabase Cloud, all of this will be taken care of for you.
+If you've signed up for or upgraded to a Pro or Enterprise plan on Metabase Cloud, all of this will be taken care of for you.
 
 ## Where to get a license
 
@@ -31,7 +31,7 @@ Run Metabase as you would normally, then go to **Settings** > **Admin settings**
 
 ## **Validating your token**
 
-To validate your token and maintain access to paid features, your Metabase needs to be able to access the Internet, specifically:
+To validate your token and maintain access to Pro/Enterprise features, your Metabase needs to be able to access the Internet, specifically:
 
 ```
 https://token-check.metabase.com/api/[token-id]/v2/status
@@ -39,7 +39,7 @@ https://token-check.metabase.com/api/[token-id]/v2/status
 
 (substituting `[token-id]` with your token ID).
 
-If your Metabase can't validate the token, it'll disable the paid features, but will continue to work normally as if you were running the Open Source edition.
+If your Metabase can't validate the token, it'll disable the Pro/Enterprise features, but will continue to work normally as if you were running the Open Source edition.
 
 ## Routing outbound Metabase traffic through a proxy
 

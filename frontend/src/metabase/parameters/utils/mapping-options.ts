@@ -153,8 +153,7 @@ export function getParameterMappingOptions(
   }
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
-  const isQuestion = question.type() === "question";
-  if (!isNative || !isQuestion) {
+  if (!isNative) {
     const { query, stageIndex, columns } = getParameterColumns(
       question,
       parameter ?? undefined,

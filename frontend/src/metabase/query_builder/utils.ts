@@ -1,11 +1,12 @@
 import type { Location } from "history";
 import querystring from "querystring";
+import _ from "underscore";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, Field, Series } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 interface GetPathNameFromQueryBuilderModeOptions {
@@ -143,3 +144,52 @@ export const isNavigationAllowed = ({
 
   return true;
 };
+
+export const createRawSeries = (options: {
+  question: Question;
+  queryResult: any;
+  datasetQuery?: any;
+  showRawTable?: boolean;
+}): Series => {
+  const { question, queryResult, datasetQuery, showRawTable = false } = options;
+
+  let display = question && question.display();
+  let settings = question && question.settings();
+
+  if (showRawTable) {
+    display = "table";
+    settings = { "table.pivot": false };
+  }
+
+  // we want to provide the visualization with a card containing the latest
+  // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
+  // BUT the last executed "dataset_query" (to ensure data matches the query)
+  return (
+    queryResult && [
+      {
+        card: {
+          ...question.card(),
+          display: display,
+          visualization_settings: settings,
+
+          ...(datasetQuery && { dataset_query: datasetQuery }),
+        },
+        data: queryResult && queryResult.data,
+      },
+    ]
+  );
+};
+
+const WRITABLE_COLUMN_PROPERTIES = [
+  "id",
+  "display_name",
+  "description",
+  "semantic_type",
+  "fk_target_field_id",
+  "visibility_type",
+  "settings",
+];
+
+export function getWritableColumnProperties(column: Field) {
+  return _.pick(column, WRITABLE_COLUMN_PROPERTIES);
+}

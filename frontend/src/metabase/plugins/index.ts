@@ -32,6 +32,7 @@ import type { GroupProps, IconName, IconProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
+  Database as DatabaseType,
   Bookmark,
   CacheableDashboard,
   CacheableModel,
@@ -117,7 +118,7 @@ export const PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_POST_ACTION = {
 export const PLUGIN_DATA_PERMISSIONS: {
   permissionsPayloadExtraSelectors: ((
     state: State,
-  ) => Record<string, unknown>)[];
+  ) => [Record<string, undefined | { group_id: string }[]>, string[]])[];
   hasChanges: ((state: State) => boolean)[];
   shouldRestrictNativeQueryPermissions: (
     permissions: GroupsPermissions,
@@ -353,10 +354,7 @@ export type SidebarCacheFormProps = {
 } & GroupProps;
 
 export const PLUGIN_CACHING = {
-  cacheTTLFormField: null as any,
-  dashboardCacheTTLFormField: null,
-  questionCacheTTLFormField: null,
-  getQuestionsImplicitCacheTTL: (_question?: any) => null as number | null,
+  isGranularCachingEnabled: () => false,
   StrategyFormLauncherPanel: PluginPlaceholder as any,
   GranularControlsExplanation: PluginPlaceholder as any,
   DashboardStrategySidebar: PluginPlaceholder as any,
@@ -365,12 +363,10 @@ export const PLUGIN_CACHING = {
   SidebarCacheForm: PluginPlaceholder as ComponentType<SidebarCacheFormProps>,
   InvalidateNowButton:
     PluginPlaceholder as ComponentType<InvalidateNowButtonProps>,
-  isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
+  /** Metadata describing the different kinds of strategies */
   strategies: strategies,
-  ModelPersistenceTab: PluginPlaceholder as any,
-  ModelPersistenceConfiguration: PluginPlaceholder as any,
 };
 
 export const PLUGIN_REDUCERS: {
@@ -447,6 +443,7 @@ export const PLUGIN_MODEL_PERSISTENCE = {
 
 export const PLUGIN_EMBEDDING = {
   isEnabled: () => false,
+  isInteractiveEmbeddingEnabled: (_state: State) => false,
 };
 
 export const PLUGIN_CONTENT_VERIFICATION = {
@@ -473,10 +470,24 @@ export const PLUGIN_QUERY_BUILDER_HEADER = {
   extraButtons: (_question: Question) => [],
 };
 
+export const PLUGIN_AUDIT = {
+  isAuditDb: (_db: DatabaseType) => false,
+};
+
 export const PLUGIN_UPLOAD_MANAGEMENT = {
   UploadManagementTable: PluginPlaceholder,
 };
 
 export const PLUGIN_IS_EE_BUILD = {
   isEEBuild: () => false,
+};
+
+export const PLUGIN_RESOURCE_DOWNLOADS = {
+  /**
+   * Returns if 'download results' on cards and pdf exports are enabled in public and embedded contexts.
+   */
+  areDownloadsEnabled: (_args: {
+    hide_download_button?: boolean | null;
+    downloads?: boolean | null;
+  }) => true,
 };

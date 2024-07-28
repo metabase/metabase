@@ -37,9 +37,9 @@ export const LegendItemDot = styled.div`
 `;
 
 export const LegendItemTitle = styled.div`
-  color: var(--mb-color-text-dark);
+  color: var(--mb-color-text-primary);
   font-weight: bold;
-  font-size: 12px;
+  font-size: 0.85em;
   margin-left: 4px;
   overflow: hidden;
 `;

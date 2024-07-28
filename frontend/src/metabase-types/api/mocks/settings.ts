@@ -99,6 +99,7 @@ export const createMockTokenStatus = (
 export const createMockTokenFeatures = (
   opts?: Partial<TokenFeatures>,
 ): TokenFeatures => ({
+  attached_dwh: false,
   advanced_permissions: false,
   audit_app: false,
   cache_granular_controls: false,
@@ -165,7 +166,6 @@ export const createMockSettings = (
   "enable-embedding": false,
   "enable-enhancements?": false,
   "enable-nested-queries": true,
-  "enable-query-caching": undefined,
   "expand-browse-in-nav": true,
   "expand-bookmarks-in-nav": true,
   "query-caching-ttl-ratio": 10,
@@ -218,6 +218,8 @@ export const createMockSettings = (
   "show-homepage-xrays": false,
   "show-metabase-links": true,
   "show-metabot": true,
+  "show-updated-permission-modal": false,
+  "show-updated-permission-banner": false,
   "site-locale": "en",
   "site-url": "http://localhost:3000",
   "site-uuid": "1234",

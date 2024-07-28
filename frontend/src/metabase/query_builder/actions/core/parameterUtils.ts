@@ -1,9 +1,9 @@
 import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
-import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-values";
 import { setErrorPage } from "metabase/redux/app";
 import { DashboardApi } from "metabase/services";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
+import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   cardIsEquivalent,
   cardParametersAreEquivalent,

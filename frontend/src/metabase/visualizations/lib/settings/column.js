@@ -28,7 +28,6 @@ import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
-  getColumnSettingKey,
 } from "metabase-lib/v1/queries/utils/dataset";
 import { nestedSettings } from "./nested";
 
@@ -520,9 +519,7 @@ export const getTitleForColumn = (column, series, settings) => {
   }
 };
 
-export const buildTableColumnSettings = ({
-  getIsColumnVisible = col => col.visibility_type !== "details-only",
-} = {}) => ({
+export const tableColumnSettings = {
   // NOTE: table column settings may be identified by fieldRef (possible not normalized) or column name:
   //   { name: "COLUMN_NAME", enabled: true }
   //   { fieldRef: ["field", 2, {"source-field": 1}], enabled: true }
@@ -533,43 +530,23 @@ export const buildTableColumnSettings = ({
     getHidden: (series, vizSettings) => vizSettings["table.pivot"],
     getValue: ([{ data }], vizSettings) => {
       const { cols } = data;
+      const settings = vizSettings["table.columns"] ?? [];
+      const columnIndexes = findColumnIndexesForColumnSettings(cols, settings);
+      const settingIndexes = findColumnSettingIndexesForColumns(cols, settings);
 
-      function isValid(columnSettings) {
-        const columnIndexes = findColumnIndexesForColumnSettings(
-          cols,
-          columnSettings.filter(({ enabled }) => enabled),
-        );
-        return columnIndexes.every(columnIndex => columnIndex >= 0);
-      }
-
-      function getValue(columnSettings) {
-        const settingIndexes = findColumnSettingIndexesForColumns(
-          cols,
-          columnSettings,
-        );
-
-        return [
-          ...columnSettings.map(setting => ({
-            ...setting,
-            key: getColumnSettingKey(setting),
+      return [
+        // retain settings with matching columns only
+        ...settings.filter(
+          (_, settingIndex) => columnIndexes[settingIndex] >= 0,
+        ),
+        // add columns that do not have matching settings to the end
+        ...cols
+          .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
+          .map(column => ({
+            name: column.name,
+            enabled: true,
           })),
-          ...cols
-            .filter((_, columnIndex) => settingIndexes[columnIndex] < 0)
-            .map(column => ({
-              name: column.name,
-              key: getColumnKey(column),
-              enabled: getIsColumnVisible(column),
-              fieldRef: column.field_ref,
-            })),
-        ];
-      }
-
-      const columnSettings = vizSettings["table.columns"];
-      if (!columnSettings || !isValid(columnSettings)) {
-        return getValue([]);
-      } else {
-        return getValue(columnSettings);
-      }
+      ];
     },
     getProps: (series, settings) => {
       const [
@@ -584,4 +561,4 @@ export const buildTableColumnSettings = ({
       };
     },
   },
-});
+};

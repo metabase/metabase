@@ -26,6 +26,23 @@
   (is (= #{"type/ImageURL" "type/AvatarURL"}
          (#'sync.fingerprint/base-types->descendants #{:type/ImageURL :type/AvatarURL}))))
 
+(def ^:private skip-fingerprint-base-types
+  (into #{"type/*"
+          "type/Structured"
+          "type/SerializedJSON"
+          "type/JSON"
+          "type/Dictionary"
+          "type/Array"
+          "type/Collection"
+          "type/XML"
+          "type/fingerprint-unsupported"}
+        (comp (mapcat descendants)
+              (map u/qualified-name))
+        [:type/Collection
+         :type/Structured
+         :type/Large
+         :type/fingerprint-unsupported]))
+
 (deftest ^:parallel honeysql-for-fields-that-need-fingerprint-updating-test
   (testing (str "Make sure we generate the correct HoneySQL WHERE clause based on whatever is in "
                 "`*fingerprint-version->types-that-should-be-re-fingerprinted*`")
@@ -36,8 +53,7 @@
               [:not (mdb.query/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not= :base_type "type/*"]
-             [:not (mdb.query/isa :base_type :type/Structured)]
+             [:not-in :base_type skip-fingerprint-base-types]
              [:or
               [:and
                [:< :fingerprint_version 1]
@@ -53,8 +69,7 @@
             [:not (mdb.query/isa :semantic_type :type/PK)]
             [:= :semantic_type nil]]
            [:not-in :visibility_type ["retired" "sensitive"]]
-           [:not= :base_type "type/*"]
-           [:not (mdb.query/isa :base_type :type/Structured)]
+           [:not-in :base_type skip-fingerprint-base-types]
            [:or
             [:and
              [:< :fingerprint_version 2]
@@ -76,8 +91,7 @@
               [:not (mdb.query/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not= :base_type "type/*"]
-             [:not (mdb.query/isa :base_type :type/Structured)]
+             [:not-in :base_type skip-fingerprint-base-types]
              [:or
               [:and
                [:< :fingerprint_version 2]
@@ -100,8 +114,7 @@
               [:not (mdb.query/isa :semantic_type :type/PK)]
               [:= :semantic_type nil]]
              [:not-in :visibility_type ["retired" "sensitive"]]
-             [:not= :base_type "type/*"]
-             [:not (mdb.query/isa :base_type :type/Structured)]
+             [:not-in :base_type skip-fingerprint-base-types]
              [:or
               [:and
                [:< :fingerprint_version 4]
@@ -129,8 +142,7 @@
                      [:not (mdb.query/isa :semantic_type :type/PK)]
                      [:= :semantic_type nil]]
                     [:not-in :visibility_type ["retired" "sensitive"]]
-                    [:not= :base_type "type/*"]
-                    [:not (mdb.query/isa :base_type :type/Structured)]]}
+                    [:not-in :base_type skip-fingerprint-base-types]]}
            (binding [sync.fingerprint/*refingerprint?* true]
              (#'sync.fingerprint/honeysql-for-fields-that-need-fingerprint-updating))))))
 

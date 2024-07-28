@@ -29,6 +29,7 @@ import {
   entityPickerModalTab,
   showDashboardCardActions,
   getDashboardCard,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -158,7 +159,7 @@ describe("scenarios > question > download", () => {
 
       filterWidget().contains("ID").click();
 
-      popover().find("input").type("1");
+      popover().within(() => multiAutocompleteInput().type("1"));
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Add filter").click();

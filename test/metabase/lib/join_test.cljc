@@ -67,6 +67,18 @@
              :lib/options {:lib/uuid string?}
              :fields      :all}
             (lib/join-clause (meta/table-metadata :orders)))))
+  (testing "Should allow specifying the join strategy when creating a join clause"
+    (is (= [:left-join :right-join :inner-join]
+           (let [query lib.tu/query-with-join
+                 product-table (meta/table-metadata :products)
+                 products-id (meta/id :products :id)
+                 orders-product-id (meta/id :orders :product-id)
+                 join-conditions [(lib/= orders-product-id products-id)]
+                 join-strategies (lib/available-join-strategies query)]
+             (into [] (comp
+                       (map #(lib/join-clause product-table join-conditions %))
+                       (map :strategy))
+                   join-strategies)))))
   (testing "source-card"
     (let [query {:lib/type :mbql/query
                  :lib/metadata lib.tu/metadata-provider-with-mock-cards

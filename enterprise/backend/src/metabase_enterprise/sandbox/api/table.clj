@@ -14,7 +14,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private find-gtap-question :- [:maybe (ms/InstanceOf Card)]
+(mu/defn- find-gtap-question :- [:maybe (ms/InstanceOf Card)]
   "Find the associated GTAP question (if there is one) for the given `table-or-table-id` and
   `user-or-user-id`. Returns nil if no question was found."
   [table-or-table-id user-or-user-id]
@@ -28,15 +28,12 @@
                            [:= :pgm.user_id (u/the-id user-or-user-id)]]}))
 
 (mu/defn only-sandboxed-perms? :- :boolean
-  "Returns true if the user has sandboxed permissions. If a sandbox policy exists, it overrides existing permission on
+  "Returns true if the user has sandboxed permissions for the given table. If a sandbox policy exists, it overrides existing permission on
   the table."
   [table :- (ms/InstanceOf Table)]
-  (contains? (->> (sandbox.api.util/enforced-sandboxes-for api/*current-user-id*)
-                  (map :table_id)
-                  set)
-             (u/the-id table)))
+  (boolean (seq (sandbox.api.util/enforced-sandboxes-for-tables #{(:id table)}))))
 
-(mu/defn ^:private query->fields-ids :- [:maybe [:sequential :int]]
+(mu/defn- query->fields-ids :- [:maybe [:sequential :int]]
   [{{{:keys [fields]} :query} :dataset_query} :- [:maybe :map]]
   (lib.util.match/match fields [:field (id :guard integer?) _] id))
 
@@ -51,7 +48,7 @@
 (defenterprise fetch-table-query-metadata
   "Returns the query metadata used to power the Query Builder for the given table `id`. `include-sensitive-fields?`,
   `include-hidden-fields?` and `include-editable-data-model?` can be either booleans or boolean strings."
-  :feature :none
+  :feature :sandboxes
   [id opts]
   (let [table            (api/check-404 (t2/select-one Table :id id))
         sandboxed-perms? (only-sandboxed-perms? table)
@@ -69,7 +66,7 @@
 
 (defenterprise batch-fetch-table-query-metadatas
   "Returns the query metadata used to power the Query Builder for the tables specified by`ids`."
-  :feature :none
+  :feature :sandboxes
   [ids]
   (for [table (api.table/batch-fetch-query-metadatas* ids)]
     (let [sandboxed-perms? (only-sandboxed-perms? table)]

@@ -1,77 +1,60 @@
-import type { Query } from "history";
-import { pick } from "underscore";
+import _ from "underscore";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
-  DEFAULT_EMBED_DISPLAY_OPTIONS,
-  useDashboardFullscreen,
-  useDashboardRefreshPeriod,
-  useEmbedTheme,
-  useRefreshDashboard,
-} from "metabase/dashboard/hooks";
+  type SdkDashboardDisplayProps,
+  useSdkDashboardParams,
+} from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import CS from "metabase/css/core/index.css";
+import { useEmbedTheme } from "metabase/dashboard/hooks";
 import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import type { EmbedDisplayParams } from "metabase/dashboard/types";
-import { isNotNull } from "metabase/lib/types";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { Box } from "metabase/ui";
-import type { DashboardId } from "metabase-types/api";
 
-type StaticDashboardProps = {
-  dashboardId: DashboardId;
-  initialParameterValues?: Query;
-  withTitle?: boolean;
-  withDownloads?: boolean;
-  hiddenParameters?: string[];
-};
+export type StaticDashboardProps = SdkDashboardDisplayProps &
+  PublicOrEmbeddedDashboardEventHandlersProps;
 
-const _StaticDashboard = ({
+export const StaticDashboardInner = ({
   dashboardId,
-  initialParameterValues: parameterQueryParams = {},
-  withTitle: titled = true,
+  initialParameterValues = {},
+  withTitle = true,
+  withCardTitle = true,
   withDownloads = true,
   hiddenParameters = [],
+  onLoad,
+  onLoadWithoutCards,
 }: StaticDashboardProps) => {
-  // temporary name until we change `hideDownloadButton` to `downloads`
-  const hideDownloadButton = !withDownloads;
-
-  const options: EmbedDisplayParams = {
-    ...DEFAULT_EMBED_DISPLAY_OPTIONS,
-    ...pick(
-      {
-        titled,
-        hideDownloadButton,
-        hideParameters: hiddenParameters.join(",") ?? null,
-      },
-      isNotNull,
-    ),
-  };
-
-  const { refreshDashboard } = useRefreshDashboard({
+  const {
+    displayOptions,
+    ref,
+    isFullscreen,
+    onFullscreenChange,
+    refreshPeriod,
+    onRefreshPeriodChange,
+    setRefreshElapsedHook,
+  } = useSdkDashboardParams({
     dashboardId,
-    parameterQueryParams,
+    initialParameterValues,
+    withTitle,
+    withDownloads,
+    hiddenParameters,
   });
-  const { isFullscreen, onFullscreenChange, ref } = useDashboardFullscreen();
-  const { onRefreshPeriodChange, refreshPeriod, setRefreshElapsedHook } =
-    useDashboardRefreshPeriod({
-      onRefresh: refreshDashboard,
-    });
 
-  const { hasNightModeToggle, isNightMode, onNightModeChange, theme } =
-    useEmbedTheme();
+  const { theme } = useEmbedTheme();
 
   const { font } = useEmbedFont();
 
   return (
-    <Box w="100%" ref={ref} style={{ overflow: "auto" }}>
+    <Box w="100%" ref={ref} className={CS.overflowAuto}>
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
-        parameterQueryParams={parameterQueryParams}
-        hasNightModeToggle={hasNightModeToggle}
-        hideDownloadButton={options.hideDownloadButton}
-        hideParameters={options.hideParameters}
-        isNightMode={isNightMode}
-        onNightModeChange={onNightModeChange}
-        titled={options.titled}
+        parameterQueryParams={initialParameterValues}
+        hideParameters={displayOptions.hideParameters}
+        background={displayOptions.background}
+        titled={displayOptions.titled}
+        cardTitled={withCardTitle}
         theme={theme}
         isFullscreen={isFullscreen}
         onFullscreenChange={onFullscreenChange}
@@ -79,12 +62,18 @@ const _StaticDashboard = ({
         onRefreshPeriodChange={onRefreshPeriodChange}
         setRefreshElapsedHook={setRefreshElapsedHook}
         font={font}
-        bordered={options.bordered}
+        bordered={displayOptions.bordered}
+        onLoad={onLoad}
+        onLoadWithoutCards={onLoadWithoutCards}
+        downloadsEnabled={withDownloads}
+        isNightMode={false}
+        onNightModeChange={_.noop}
+        hasNightModeToggle={false}
       />
     </Box>
   );
 };
 
-const StaticDashboard = withPublicComponentWrapper(_StaticDashboard);
+const StaticDashboard = withPublicComponentWrapper(StaticDashboardInner);
 
 export { EmbedDisplayParams, StaticDashboard };

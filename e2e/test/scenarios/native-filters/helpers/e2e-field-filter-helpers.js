@@ -36,7 +36,7 @@ export function clearWidgetValue() {
 }
 
 export function setWidgetStringFilter(value) {
-  popover().find("input").first().type(`${value}{enter}`);
+  popover().find("input").not("[type=hidden]").first().type(`${value}{enter}`);
 }
 
 /**
@@ -205,7 +205,7 @@ export function pickDefaultValue(searchTerm, result) {
   // is to make sure the string is "visible" before acting on it.
   // This seems to help with the flakiness.
   //
-  cy.findByTestId(`${result}-filter-value`).should("be.visible").click();
+  cy.findByLabelText(result).should("be.visible").click();
 
   cy.button("Add filter").click();
 }

@@ -17,18 +17,15 @@ export const ExpressionFieldWrapper = styled.div`
 export const FieldLabel = styled.label`
   display: flex;
   margin-bottom: 0.5rem;
-
   font-weight: 700;
   font-size: 0.83em;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-
   color: var(--mb-color-text-light);
 `;
 
 export const Footer = styled.div`
   padding: 0.5rem 1.5rem 1.5rem;
-
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -41,7 +38,6 @@ export const RemoveLink = styled(Button)`
 
 export const ActionButtonsWrapper = styled.div`
   margin-left: auto;
-
   display: flex;
   gap: 1rem;
 `;

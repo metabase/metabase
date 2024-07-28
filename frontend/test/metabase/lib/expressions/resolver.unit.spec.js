@@ -371,7 +371,7 @@ describe("metabase-lib/v1/expressions/resolve", () => {
       databases: [
         createSampleDatabase({
           id: 1,
-          features: ["foreign-keys"],
+          features: ["left-join"],
         }),
       ],
     }).database(1);

@@ -9,6 +9,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -295,9 +296,7 @@
 
 (def FieldValuesList
   "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
-  [:or
-   [:sequential RemappedFieldValue]
-   [:sequential NonRemappedFieldValue]])
+  [:sequential [:or RemappedFieldValue NonRemappedFieldValue]])
 
 (def FieldValuesResult
   "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."
@@ -335,7 +334,9 @@
      [:slug {:optional true} :string]
      [:name {:optional true} :string]
      [:default {:optional true} :any]
-     [:sectionId {:optional true} NonBlankString]]
+     [:sectionId {:optional true} NonBlankString]
+     [:temporal_units {:optional true}
+      [:sequential ::lib.schema.temporal-bucketing/unit]]]
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping

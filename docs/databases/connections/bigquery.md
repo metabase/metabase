@@ -73,7 +73,7 @@ foo,bar,baz
 To sync datasets based on a string match, use the `*` wildcard:
 
 - To sync bar and baz, select **Only these...** and enter the string `b*`.
-- To sync foo only, select **All except...**  and enter the string `b*`.
+- To sync foo only, select **All except...** and enter the string `b*`.
 
 Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
 
@@ -83,7 +83,7 @@ We suggest you leave this off unless you're doing manual [timezone](../../config
 
 ### Include User ID and query hash in queries
 
-This can be useful for [auditing](../../usage-and-performance-tools/audit.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
+This can be useful for [auditing](../../usage-and-performance-tools/usage-analytics.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
 
 ### Re-run queries for simple explorations
 

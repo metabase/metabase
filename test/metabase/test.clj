@@ -139,6 +139,7 @@
   regex-email-bodies
   reset-inbox!
   summarize-multipart-email
+  summarize-multipart-single-email
   with-expected-messages
   with-fake-inbox]
 
@@ -161,7 +162,8 @@
   application-database-metadata-provider]
 
  [mw.session
-  with-current-user]
+  with-current-user
+  as-admin]
 
  [perms.test-util
   with-restored-data-perms!
@@ -195,7 +197,6 @@
   rows
   rows+column-names
   with-database-timezone-id
-  with-mock-fks-for-drivers-without-fk-constraints
   with-report-timezone-id!
   with-results-timezone-id]
 
@@ -229,6 +230,7 @@
 
  [tu
   boolean-ids-and-timestamps
+  call-with-map-params
   call-with-paused-query
   discard-setting-changes
   doall-recursive
@@ -237,6 +239,7 @@
   latest-audit-log-entry
   let-url
   obj->json->obj
+  ordered-subset?
   postwalk-pred
   round-all-decimals
   scheduler-current-tasks
@@ -247,7 +250,7 @@
   with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
-  with-discard-model-updates
+  with-discard-model-updates!
   with-env-keys-renamed-by
   with-locale
   with-model-cleanup
@@ -255,6 +258,7 @@
   with-non-admin-groups-no-root-collection-perms
   with-non-admin-groups-no-collection-perms
   with-all-users-data-perms-graph!
+  with-anaphora
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
@@ -309,6 +313,7 @@
   get-dataset-definition
   has-test-extensions?
   metabase-instance
+  native-query-with-card-template-tag
   sorts-nil-first?
   supports-time-type?
   supports-timestamptz-type?]

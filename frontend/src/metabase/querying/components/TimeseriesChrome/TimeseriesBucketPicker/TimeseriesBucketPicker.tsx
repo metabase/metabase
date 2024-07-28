@@ -1,11 +1,11 @@
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Button, Menu, Icon, Text } from "metabase/ui";
+import { Button, Icon, Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { TemporalUnit } from "metabase-types/api";
 
-import type { BucketItem } from "./types";
-import { getAvailableItems, getSelectedItem } from "./utils";
+import { TemporalUnitPicker } from "../../TemporalUnitPicker";
 
 interface TimeseriesBucketPickerProps {
   query: Lib.Query;
@@ -14,97 +14,97 @@ interface TimeseriesBucketPickerProps {
   onChange: (newColumn: Lib.ColumnMetadata) => void;
 }
 
-const INITIALLY_VISIBLE_ITEMS_COUNT = 7;
-
 export function TimeseriesBucketPicker({
   query,
   stageIndex,
   column,
   onChange,
 }: TimeseriesBucketPickerProps) {
-  const selectedItem = useMemo(
-    () => getSelectedItem(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
+  const [isOpened, setIsOpened] = useState(false);
 
-  const availableItems = useMemo(
-    () => getAvailableItems(query, stageIndex, column),
-    [query, stageIndex, column],
-  );
+  const columnBucketInfo = useMemo(() => {
+    const bucket = Lib.temporalBucket(column);
+    return bucket ? Lib.displayInfo(query, stageIndex, bucket) : undefined;
+  }, [query, stageIndex, column]);
 
-  const [isOpen, setIsOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(
-    isInitiallyExpanded(availableItems, selectedItem),
-  );
-
-  const handleOpen = useCallback(() => {
-    setIsOpen(true);
-  }, [setIsOpen]);
-
-  const handleClose = useCallback(() => {
-    setIsOpen(false);
-    setIsExpanded(false);
-  }, [setIsOpen]);
-
-  const handleChange = (bucket: Lib.Bucket | null) => {
-    onChange(Lib.withTemporalBucket(column, bucket));
-    setIsOpen(false);
-    setIsExpanded(false);
+  const handleChange = (newColumn: Lib.ColumnMetadata) => {
+    onChange(newColumn);
+    setIsOpened(false);
   };
 
-  const handleExpand = useCallback((evt: React.MouseEvent) => {
-    evt.stopPropagation();
-    evt.preventDefault();
-    setIsExpanded(true);
-  }, []);
-
-  const canExpand = availableItems.length > INITIALLY_VISIBLE_ITEMS_COUNT;
-  const hasMoreButton = canExpand && !isExpanded;
-  const visibleItems = hasMoreButton
-    ? availableItems.slice(0, INITIALLY_VISIBLE_ITEMS_COUNT)
-    : availableItems;
-
   return (
-    <Menu
-      closeOnItemClick={false}
-      opened={isOpen}
-      onOpen={handleOpen}
-      onClose={handleClose}
-    >
-      <Menu.Target>
+    <Popover opened={isOpened} onChange={setIsOpened}>
+      <Popover.Target>
         <Button
           rightIcon={<Icon name="chevrondown" />}
           data-testid="timeseries-bucket-button"
+          onClick={() => setIsOpened(!isOpened)}
         >
-          {selectedItem.name}
+          {columnBucketInfo ? columnBucketInfo.displayName : t`Unbinned`}
         </Button>
-      </Menu.Target>
-      <Menu.Dropdown>
-        {visibleItems.map((option, index) => (
-          <Menu.Item key={index} onClick={() => handleChange(option.bucket)}>
-            {option.name}
-          </Menu.Item>
-        ))}
-
-        {hasMoreButton && (
-          <Menu.Item onClick={handleExpand}>
-            <Text color="brand">{t`More…`}</Text>
-          </Menu.Item>
-        )}
-      </Menu.Dropdown>
-    </Menu>
+      </Popover.Target>
+      <Popover.Dropdown>
+        <TimeseriesBucketDropdown
+          query={query}
+          stageIndex={stageIndex}
+          column={column}
+          columnBucketInfo={columnBucketInfo}
+          onChange={handleChange}
+        />
+      </Popover.Dropdown>
+    </Popover>
   );
 }
 
-function isInitiallyExpanded(items: BucketItem[], selectedItem: BucketItem) {
-  const canExpand = items.length > INITIALLY_VISIBLE_ITEMS_COUNT;
-  if (!canExpand || !selectedItem) {
-    return false;
-  }
+interface TimeseriesBucketDropdownProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  columnBucketInfo: Lib.BucketDisplayInfo | undefined;
+  onChange: (newColumn: Lib.ColumnMetadata) => void;
+}
 
-  const selectedIndex = items.findIndex(
-    item => item.name === selectedItem.name,
+function TimeseriesBucketDropdown({
+  query,
+  stageIndex,
+  column,
+  columnBucketInfo,
+  onChange,
+}: TimeseriesBucketDropdownProps) {
+  const availableBuckets = Lib.availableTemporalBuckets(
+    query,
+    stageIndex,
+    column,
   );
 
-  return selectedIndex >= INITIALLY_VISIBLE_ITEMS_COUNT;
+  const availableItems = availableBuckets.map(bucket => {
+    const bucketInfo = Lib.displayInfo(query, stageIndex, bucket);
+    return {
+      bucket,
+      value: bucketInfo.shortName,
+      label: bucketInfo.displayName,
+    };
+  });
+
+  const handleChange = (newValue: TemporalUnit) => {
+    const newItem = availableItems.find(item => item.value === newValue);
+    const newBucket = newItem?.bucket ?? null;
+    const newColumn = Lib.withTemporalBucket(column, newBucket);
+    onChange(newColumn);
+  };
+
+  const handleRemove = () => {
+    const newColumn = Lib.withTemporalBucket(column, null);
+    onChange(newColumn);
+  };
+
+  return (
+    <TemporalUnitPicker
+      value={columnBucketInfo?.shortName}
+      availableItems={availableItems}
+      canRemove
+      onChange={handleChange}
+      onRemove={handleRemove}
+    />
+  );
 }

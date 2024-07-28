@@ -448,7 +448,7 @@ Currently, you can only import exported artifacts into a Metabase instance that 
 Most options are defined when exporting data from a Metabase. To view a list of import flags, run:
 
 ```
-java -jar metabase help import
+java -jar metabase.jar help import
 ```
 
 Which prints out:
@@ -468,6 +468,8 @@ There are two endpoints:
 
 - `POST /api/ee/serialization/export`
 - `POST /api/ee/serialization/import`
+
+> We use `POST`, not `GET`, for the `/export` endpoint. The export operation does not modify your Metabase, but it's long and intensive, so we use `POST` to prevent accidental exports.
 
 For now, these endpoints are synchronous. If the serialization process takes too long, the request can time out. In this case, we suggest using the CLI commands.
 
@@ -612,6 +614,8 @@ curl \
 ```
 
 substituting `YOUR_API_KEY` with your API key and `your-metabase-url` with the URL of your Metabase instance.
+
+> We use `POST`, not `GET`, for the `/export` endpoint.
 
 This command will download the files as a GZIP-compressed Tar file named `metabase_data.tgz`.
 

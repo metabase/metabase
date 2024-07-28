@@ -103,7 +103,7 @@
   [database :- i/DatabaseInstance & {:as args}]
   (log-if-error "fk-metadata"
     (let [driver (driver.u/database->driver database)]
-      (when (driver.u/supports? driver :foreign-keys database)
+      (when (driver.u/supports? driver :metadata/key-constraints database)
         (let [describe-fks-fn (if (driver.u/supports? driver :describe-fks database)
                                 driver/describe-fks
                                 ;; In version 52 we'll remove [[driver/describe-table-fks]]

@@ -3,7 +3,6 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, forwardRef, Component } from "react";
 import { findDOMNode } from "react-dom";
-import { createRoot } from "react-dom/client";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -20,6 +19,7 @@ import CS from "metabase/css/core/index.css";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
+import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
 import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
   getRowIndexToPKMap,
@@ -246,8 +246,9 @@ class TableInteractive extends Component {
       column => column.source === "aggregation",
     );
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
+    const isModelEditor = this.props.queryBuilderMode === "dataset";
     const newShowDetailState =
-      !(isPivoted || hasAggregation || isNotebookPreview) &&
+      !(isPivoted || hasAggregation || isNotebookPreview || isModelEditor) &&
       !this.props.isEmbeddingSdk;
 
     if (newShowDetailState !== this.state.showDetailShortcut) {
@@ -330,9 +331,7 @@ class TableInteractive extends Component {
       data: { cols, rows },
     } = this.props;
 
-    this._root = createRoot(this._div);
-
-    this._root.render(
+    const content = (
       <EmotionCacheProvider>
         <div style={{ display: "flex" }} ref={this.onMeasureHeaderRender}>
           {cols.map((column, columnIndex) => (
@@ -355,8 +354,10 @@ class TableInteractive extends Component {
             </div>
           ))}
         </div>
-      </EmotionCacheProvider>,
+      </EmotionCacheProvider>
     );
+
+    this._root = renderRoot(content, this._div);
   }
 
   onMeasureHeaderRender = div => {
@@ -390,7 +391,7 @@ class TableInteractive extends Component {
 
     // Doing this on next tick makes sure it actually gets removed on initial measure
     setTimeout(() => {
-      this._root.unmount();
+      unmountRoot(this._root, this._div);
     }, 0);
 
     delete this.columnNeedsResize;
@@ -903,7 +904,7 @@ class TableInteractive extends Component {
           }
         >
           <QueryColumnInfoPopover
-            placement="bottom-start"
+            position="bottom-start"
             query={query}
             stageIndex={-1}
             column={query && Lib.fromLegacyColumn(query, stageIndex, column)}

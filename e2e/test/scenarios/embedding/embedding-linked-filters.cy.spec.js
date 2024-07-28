@@ -7,6 +7,8 @@ import {
   chartPathWithFillColor,
   echartsContainer,
   testPairedTooltipValues,
+  multiAutocompleteInput,
+  removeMultiAutocompleteValue,
 } from "e2e/support/helpers";
 
 import {
@@ -74,7 +76,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.button("Add filter").click();
       });
 
-      cy.location("search").should("eq", "?state=AK&city=");
+      cy.location("search").should("eq", "?city=&state=AK");
 
       echartsContainer()
         .get("text")
@@ -90,17 +92,16 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
+      searchMultiAutocompleteFilter();
+
       popover()
-        .last()
+        .filter(":contains('Add filter')")
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
-      cy.location("search").should("eq", "?state=AK&city=Anchorage");
+      cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
@@ -147,7 +148,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       cy.button("Apply").should("be.visible").click();
       cy.button("Apply").should("not.exist");
 
-      cy.location("search").should("eq", "?state=AK&city=");
+      cy.location("search").should("eq", "?city=&state=AK");
 
       echartsContainer()
         .get("text")
@@ -163,20 +164,19 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
+      searchMultiAutocompleteFilter();
+
       popover()
-        .last()
+        .filter(":contains('Add filter')")
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
       cy.button("Apply").should("be.visible").click();
       cy.button("Apply").should("not.exist");
 
-      cy.location("search").should("eq", "?state=AK&city=Anchorage");
+      cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
@@ -209,17 +209,16 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       openFilterOptions("City");
 
+      searchMultiAutocompleteFilter();
+
       popover()
-        .last()
+        .filter(":contains('Add filter')")
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
-      cy.location("search").should("eq", "?state=AK&city=Anchorage");
+      cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
@@ -251,17 +250,16 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       filterWidget().should("have.length", 1).and("contain", "City").click();
 
+      searchMultiAutocompleteFilter();
+
       popover()
-        .last()
+        .filter(":contains('Add filter')")
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
-      cy.location("search").should("eq", "?state=AK&city=Anchorage");
+      cy.location("search").should("eq", "?city=Anchorage&state=AK");
 
       chartPathWithFillColor("#509EE3").should("have.length", 1).realHover();
 
@@ -290,13 +288,12 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
 
       filterWidget().should("have.length", 1).and("contain", "City").click();
 
+      searchMultiAutocompleteFilter();
+
       popover()
-        .last()
+        .filter(":contains('Add filter')")
         .within(() => {
-          cy.findByPlaceholderText("Search by City").type("An");
-          cy.findByText("Kiana");
-          cy.findByText("Anacoco").should("not.exist");
-          cy.findByText("Anchorage").click();
+          multiAutocompleteInput().blur();
           cy.button("Add filter").click();
         });
 
@@ -335,7 +332,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
       });
 
       // ID filter already comes with the default value
-      cy.location("search").should("eq", "?id_filter=1&category=");
+      cy.location("search").should("eq", "?category=&id_filter=1");
 
       // But it should still be editable, and that's why we see two filter widgets
       filterWidget().should("have.length", 2).contains("Category").click();
@@ -345,11 +342,10 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("Doohickey").should("not.exist");
         cy.findByText("Gadget").should("not.exist");
         cy.findByText("Widget").should("not.exist");
-
         cy.button("Add filter").click();
       });
 
-      cy.location("search").should("eq", "?id_filter=1&category=Gizmo");
+      cy.location("search").should("eq", "?category=Gizmo&id_filter=1");
 
       cy.findByTestId("table-row")
         .should("have.length", 1)
@@ -379,7 +375,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
           cy.button("Add filter").click();
         });
 
-        cy.location("search").should("eq", "?id_filter=4&category=Doohickey");
+        cy.location("search").should("eq", "?category=Doohickey&id_filter=4");
 
         cy.findByTestId("table-row")
           .should("have.length", 1)
@@ -388,7 +384,7 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.log("Make sure we can set multiple values");
         cy.window().then(
           win =>
-            (win.location.search = "?id_filter=4&id_filter=29&category=Widget"),
+            (win.location.search = "?category=Widget&id_filter=4&id_filter=29"),
         );
 
         filterWidget()
@@ -412,7 +408,8 @@ describe("scenarios > embedding > dashboard > linked filters (metabase#13639, me
         cy.findByText("2 selections").click();
 
         // Remove one of the previously set filter values
-        popover().findByText("29").closest("li").find(".Icon-close").click();
+        popover().within(() => removeMultiAutocompleteValue(1));
+
         cy.button("Update filter").click();
 
         cy.findByTestId("table-row")
@@ -503,6 +500,18 @@ function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
   echartsContainer().get("text").contains(xLabel);
 
   echartsContainer().get("text").contains(yLabel);
+}
+
+function searchMultiAutocompleteFilter() {
+  cy.findByTestId("parameter-value-dropdown").within(() => {
+    multiAutocompleteInput().type("An");
+  });
+
+  cy.findByTestId("select-dropdown").within(() => {
+    cy.findByText("Kiana");
+    cy.findByText("Anacoco").should("not.exist");
+    cy.findByText("Anchorage").click();
+  });
 }
 
 function removeValueForFilter(label) {

@@ -47,7 +47,7 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(mu/defn ^:private run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
+(mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
    & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc
@@ -161,7 +161,7 @@
   "Get all of the required query metadata for an ad-hoc query."
   [:as {{:keys [database] :as query} :body}]
   {database ms/PositiveInt}
-  (api.query-metadata/adhoc-query-metadata query))
+  (api.query-metadata/batch-fetch-query-metadata [query]))
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
@@ -172,7 +172,7 @@
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
           prettify (partial driver/prettify-native-form driver)
-          compiled (qp.compile/compile-and-splice-parameters query)]
+          compiled (qp.compile/compile-with-inline-parameters query)]
       (cond-> compiled
         (not (false? pretty)) (update :query prettify)))))
 

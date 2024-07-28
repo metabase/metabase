@@ -3,6 +3,7 @@ import { t } from "ttag";
 import { SAVED_QUESTIONS_VIRTUAL_DB_ID } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 import DatabaseAuthCodeDescription from "./components/DatabaseAuthCodeDescription";
+import DatabaseAuthProviderSectionField from "./components/DatabaseAuthProviderSectionField";
 import DatabaseCacheScheduleField from "./components/DatabaseCacheScheduleField";
 import DatabaseClientIdDescription from "./components/DatabaseClientIdDescription";
 import DatabaseConnectionSectionField from "./components/DatabaseConnectionSectionField";
@@ -106,6 +107,9 @@ export const FIELD_OVERRIDES: Record<string, EngineFieldOverride> = {
   },
   "use-hostname": {
     type: DatabaseHostnameSectionField,
+  },
+  "use-auth-provider": {
+    type: DatabaseAuthProviderSectionField,
   },
   "let-user-control-scheduling": {
     type: DatabaseScheduleToggleField,

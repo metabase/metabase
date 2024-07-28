@@ -36,7 +36,7 @@ Once you select your data, Metabase will take you to the query builder. Say you 
 
 ![Metabase query builder](../images/notebook-editor.png)
 
-This is the query builder's notebook editor. It has three default steps.
+This is the query builder's editor. It has three default steps.
 
 - [Picking data](#picking-data)
 - [Filtering](#filtering)
@@ -70,26 +70,29 @@ If you want to edit your filter, just click the little purple filter at the top 
 
 ## Filter types
 
-Broadly speaking, there are three types of columns, each with their own set of filtering options:
+Depending on the data type of the column, Metabase will present different filtering options.
 
 - **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
-- **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
+- **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, whether it contains, starts with, or ends with a substring, or whether the row is empty or not.
 - **Date columns** give you a lot of options to filter by specific date ranges, relative date ranges, and more.
+- **Structured data columns**, typically JSON or XML, can only be filtered by "Is empty" or "Not empty". Some databases, however, support [JSON unfolding](../../data-modeling/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
 
 ## Filter multiple columns
 
-When viewing a table or chart, clicking on the **Filter** will bring up the filter modal:
+When viewing a table or chart, clicking on the **Filter** will bring up the filter modal.
 
 ![Bulk filter modal](../images/bulk-filter-modal.png)
 
-Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
+Here you can add multiple filters to your question in one go (which can save you a lot of loading time). Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal.
+
+When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the editor, and vice versa.
 
 ### Filtering by date
 
 One important thing to understand when filtering on a date column is the difference between specific and relative dates:
 
 - **Specific dates** are things like November 1, 2010, or June 3 – July 12, 2017; they always refer to the same date(s).
-- **Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these options refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you, for example, how many people visited your website in the last 7 days. You can also click on the **...** to specify a **Starting from** option, which lets you offset the relative date range. For example, you could set the range as the "Previous 7 days, starting from 2 days ago".
+- **Relative dates** are things like "the previous 30 days," or "the current week;" as time passes, the dates these options refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you, for example, how many people visited your website in the last 7 days. You can also click on the **...** to specify a **Starting from** option, which lets you offset the relative date range. For example, you could set the range as the "Previous 7 days, starting from 2 days ago".
 
 ### Filtering by a segment
 

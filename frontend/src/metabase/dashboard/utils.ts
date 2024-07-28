@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import type { Location } from "history";
 import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -9,11 +9,6 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
-import {
-  isDateParameter,
-  isNumberParameter,
-  isStringParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
@@ -27,7 +22,6 @@ import type {
   Database,
   Dataset,
   EmbedDataset,
-  Parameter,
   QuestionDashboardCard,
   VirtualCard,
   VirtualCardDisplay,
@@ -136,22 +130,6 @@ export function showVirtualDashCardInfoText(
   } else {
     return true;
   }
-}
-
-export function getNativeDashCardEmptyMappingText(parameter: Parameter) {
-  if (isDateParameter(parameter)) {
-    return t`A date variable in this card can only be connected to a time type with the single date option.`;
-  }
-
-  if (isNumberParameter(parameter)) {
-    return t`A number variable in this card can only be connected to a number filter with Equal to operator.`;
-  }
-
-  if (isStringParameter(parameter)) {
-    return t`A text variable in this card can only be connected to a text filter with Is operator.`;
-  }
-
-  return t`Add a variable to this question to connect it to a dashboard filter.`;
 }
 
 export function getAllDashboardCards(dashboard: Dashboard) {
@@ -368,3 +346,25 @@ export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
 export const isDashboardCacheable = (
   dashboard: Dashboard,
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
+
+export function parseTabSlug(location: Location) {
+  const slug = location.query?.tab;
+  if (typeof slug === "string" && slug.length > 0) {
+    const id = parseInt(slug, 10);
+    return Number.isSafeInteger(id) ? id : null;
+  }
+  return null;
+}
+
+export function createTabSlug({
+  id,
+  name,
+}: {
+  id: SelectedTabId;
+  name: string | undefined;
+}) {
+  if (id === null || id < 0 || !name) {
+    return "";
+  }
+  return [id, ...name.toLowerCase().split(" ")].join("-");
+}

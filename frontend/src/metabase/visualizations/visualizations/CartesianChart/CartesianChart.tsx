@@ -26,14 +26,14 @@ function _CartesianChart(props: VisualizationProps) {
     rawSeries,
     settings: originalSettings,
     card,
-    href,
+    getHref,
     gridSize,
-    width,
+    width: outerWidth,
+    height: outerHeight,
     showTitle,
     headerIcon,
     actionButtons,
     isQueryBuilder,
-    isEmbeddingSdk,
     isFullscreen,
     hovered,
     onChangeCardAndRun,
@@ -90,19 +90,18 @@ function _CartesianChart(props: VisualizationProps) {
   const canSelectTitle = !!onChangeCardAndRun;
 
   return (
-    <CartesianChartRoot
-      isQueryBuilder={isQueryBuilder}
-      isEmbeddingSdk={isEmbeddingSdk}
-    >
+    <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
       {hasTitle && (
         <LegendCaption
           title={title}
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
-          href={canSelectTitle ? href : undefined}
-          onSelectTitle={canSelectTitle ? onOpenQuestion : undefined}
-          width={width}
+          getHref={canSelectTitle ? getHref : undefined}
+          onSelectTitle={
+            canSelectTitle ? () => onOpenQuestion(card.id) : undefined
+          }
+          width={outerWidth}
         />
       )}
       <CartesianChartLegendLayout
@@ -117,6 +116,8 @@ function _CartesianChart(props: VisualizationProps) {
         canRemoveSeries={canRemoveSeries}
         onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
+        width={outerWidth}
+        height={outerHeight}
       >
         {/**@ts-expect-error emotion does not properly provide prop types due */}
         <CartesianChartRenderer

@@ -6,7 +6,7 @@ import * as Lib from "metabase-lib";
 import { JoinConditionColumnPicker } from "../JoinConditionColumnPicker";
 import { JoinConditionOperatorPicker } from "../JoinConditionOperatorPicker";
 import { JoinConditionRemoveButton } from "../JoinConditionRemoveButton";
-import { maybeSyncTemporalBucket } from "../utils";
+import { updateTemporalBucketing } from "../utils";
 
 import { JoinConditionRoot } from "./JoinCondition.styled";
 
@@ -53,9 +53,7 @@ export function JoinCondition({
   const syncTemporalBucket = (
     condition: Lib.JoinCondition,
     newColumn: Lib.ColumnMetadata,
-    oldColumn: Lib.ColumnMetadata,
-  ) =>
-    maybeSyncTemporalBucket(query, stageIndex, condition, newColumn, oldColumn);
+  ) => updateTemporalBucketing(query, stageIndex, condition, [newColumn]);
 
   const handleOperatorChange = (newOperator: Lib.JoinConditionOperator) => {
     const newCondition = createCondition(newOperator, lhsColumn, rhsColumn);
@@ -64,12 +62,12 @@ export function JoinCondition({
 
   const handleLhsColumnChange = (newLhsColumn: Lib.ColumnMetadata) => {
     const newCondition = createCondition(operator, newLhsColumn, rhsColumn);
-    onChange(syncTemporalBucket(newCondition, newLhsColumn, rhsColumn));
+    onChange(syncTemporalBucket(newCondition, newLhsColumn));
   };
 
   const handleRhsColumnChange = (newRhsColumn: Lib.ColumnMetadata) => {
     const newCondition = createCondition(operator, lhsColumn, newRhsColumn);
-    onChange(syncTemporalBucket(newCondition, newRhsColumn, lhsColumn));
+    onChange(syncTemporalBucket(newCondition, newRhsColumn));
   };
 
   return (

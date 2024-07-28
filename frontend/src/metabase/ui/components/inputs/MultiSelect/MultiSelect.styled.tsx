@@ -21,6 +21,11 @@ const VALUE_SIZES = {
   md: rem(28),
 };
 
+const RIGHT_SECTION_SIZES = {
+  default: rem(40),
+  unstyled: rem(28),
+};
+
 export const getMultiSelectOverrides =
   (): MantineThemeOverride["components"] => ({
     MultiSelect: {
@@ -33,11 +38,12 @@ export const getMultiSelectOverrides =
         clearButtonProps: {
           color: "text-dark",
         },
+        "data-testid": "multi-select",
       },
       styles: (
         theme,
         { invalid }: MultiSelectStylesParams,
-        { size = "md" },
+        { size = "md", variant = "default" },
       ) => ({
         ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
@@ -46,12 +52,27 @@ export const getMultiSelectOverrides =
           minHeight: getSize({ size, sizes: SIZES }),
           marginLeft: 0,
           gap: theme.spacing.xs,
-          padding: theme.spacing.xs,
+          paddingTop: theme.spacing.xs,
+          paddingLeft: theme.spacing.xs,
+          paddingBottom: theme.spacing.xs,
+          paddingRight:
+            variant === "unstyled"
+              ? RIGHT_SECTION_SIZES.unstyled
+              : RIGHT_SECTION_SIZES.default,
           alignItems: "center",
+          "[data-with-icon=true] &": {
+            paddingLeft: 0,
+          },
         },
         input: {
           padding: 0,
           boxSizing: "border-box",
+          "&[data-with-icon]": {
+            paddingLeft: theme.spacing.lg,
+          },
+        },
+        icon: {
+          width: theme.spacing.lg,
         },
         value: {
           margin: 0,
@@ -67,6 +88,9 @@ export const getMultiSelectOverrides =
           },
           "&::-webkit-search-cancel-button": {
             display: "none",
+          },
+          "[data-with-icon=true] &:first-child": {
+            marginLeft: 0,
           },
         },
         defaultValue: {

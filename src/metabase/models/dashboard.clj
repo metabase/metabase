@@ -1,10 +1,10 @@
 (ns metabase.models.dashboard
   (:require
-   [clojure.core.async :as a]
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
+   [metabase.api.common :as api]
    [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
@@ -12,9 +12,7 @@
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.dashboard-card
-    :as dashboard-card
-    :refer [DashboardCard]]
+   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
@@ -27,7 +25,7 @@
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
    [metabase.util.honey-sql-2 :as h2x]
@@ -41,8 +39,8 @@
    [toucan2.realize :as t2.realize]))
 
 (def Dashboard
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-   We'll keep this till we replace all the Dashboard symbol in our codebase."
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model
+  name. We'll keep this till we replace all the Dashboard symbol in our codebase."
   :model/Dashboard)
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
@@ -100,11 +98,12 @@
   [dashboard]
   (let [changes (t2/changes dashboard)]
     (u/prog1 (maybe-populate-initially-published-at dashboard)
-     (params/assert-valid-parameters dashboard)
-     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-     (collection/check-collection-namespace Dashboard (:collection_id dashboard))
-     (when (:archived changes)
-       (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
+      (params/assert-valid-parameters dashboard)
+      (when (:parameters changes)
+        (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
+      (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+      (when (:archived changes)
+        (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -144,6 +143,9 @@
         (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
             (t2/update! :model/Pulse {:dashboard_id dashboard-id}
+                        ;; TODO we probably don't need this anymore
+                        ;; pulse.name is no longer used for generating title.
+                        ;; pulse.collection_id is a thing for the old "Pulse" feature, but it was removed
                         {:name (:name dashboard)
                          :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
@@ -241,7 +243,8 @@
    ;;   lower-numbered positions appearing before higher numbered ones.
    ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
    :public_uuid :made_public_by_id
-   :position :initially_published_at :view_count])
+   :position :initially_published_at :view_count
+   :last_viewed_at])
 
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])
@@ -290,9 +293,9 @@
    (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
 (defmethod revision/revert-to-revision! :model/Dashboard
-  [_model dashboard-id _user-id serialized-dashboard]
+  [model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (t2/update! :model/Dashboard dashboard-id (dissoc serialized-dashboard :cards :tabs))
+  ((get-method revision/revert-to-revision! :default) model dashboard-id user-id (dissoc serialized-dashboard :cards :tabs))
   ;; Now update the tabs and cards as needed
   (let [serialized-dashcards      (:cards serialized-dashboard)
         current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
@@ -383,9 +386,10 @@
         (->> (filter identity)))))
 
 (defn has-tabs?
-  "Check if a dashboard has tabs."
+  "Check if a dashboard has more than 1 tab.
+  We don't need to render the tab title if only 1 exists (issue #45123)."
   [dashboard-or-id]
-  (t2/exists? :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id)))
+  (< 1 (t2/count :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -461,12 +465,11 @@
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
 
 
-;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
-;; Issue: https://github.com/metabase/metabase/issues/39413
-(defn- result-metadata-for-query
+(defn- legacy-result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
-  (a/<!! (qp.async/result-metadata-for-query-async query)))
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (qp.metadata/legacy-result-metadata query api/*current-user-id*))
 
 (defn- save-card!
   [card]
@@ -482,7 +485,7 @@
                        (-> card
                            (update :result_metadata #(or % (-> card
                                                                :dataset_query
-                                                               result-metadata-for-query)))
+                                                               legacy-result-metadata-for-query)))
                             ;; Xrays populate this in their transient cards
                            (dissoc :id :can_run_adhoc_query))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
@@ -541,7 +544,7 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
-(mu/defn ^:private dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union
@@ -623,7 +626,8 @@
         (update :collection_id     serdes/*export-fk* Collection)
         (update :creator_id        serdes/*export-user*)
         (update :made_public_by_id serdes/*export-user*)
-        (dissoc :view_count))))
+        (dissoc :view_count
+                :last_viewed_at))))
 
 (defmethod serdes/load-xform "Dashboard"
   [dash]

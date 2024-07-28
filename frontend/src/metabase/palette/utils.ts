@@ -35,6 +35,21 @@ export const processSection = (
   }
 };
 
+const actionIsStringOrDisabled = (action: string | PaletteActionImpl) =>
+  typeof action === "string" || action.disabled;
+
+export const navigateActionIndex = (
+  actions: (string | PaletteActionImpl)[],
+  index: number,
+  diff: number,
+): number => {
+  if (actions.every(action => typeof action === "string" || action.disabled)) {
+    return index;
+  } else {
+    return findClosestActionIndex(actions, index, diff);
+  }
+};
+
 export const findClosestActionIndex = (
   actions: (string | PaletteActionImpl)[],
   index: number,
@@ -44,7 +59,7 @@ export const findClosestActionIndex = (
     return findClosestActionIndex(actions, -1, 1);
   } else if (index + diff > actions.length - 1) {
     return findClosestActionIndex(actions, actions.length, -1);
-  } else if (typeof actions[index + diff] === "string") {
+  } else if (actionIsStringOrDisabled(actions[index + diff])) {
     if (diff < 0) {
       return findClosestActionIndex(actions, index, diff - 1);
     } else {

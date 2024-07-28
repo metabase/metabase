@@ -40,13 +40,17 @@
 (def ^:private ^{:arglists '([])} jwt-attribute-lastname  (comp keyword sso-settings/jwt-attribute-lastname))
 (def ^:private ^{:arglists '([])} jwt-attribute-groups    (comp keyword sso-settings/jwt-attribute-groups))
 
+(def ^:private registered-claims
+  "Registered claims in the JWT standard which we should not interpret as login attributes"
+  [:iss :iat :sub :aud :exp :nbf :jti])
+
 (defn- jwt-data->login-attributes [jwt-data]
-  (dissoc jwt-data
-          (jwt-attribute-email)
-          (jwt-attribute-firstname)
-          (jwt-attribute-lastname)
-          :iat
-          :max_age))
+  (apply dissoc
+         jwt-data
+         (jwt-attribute-email)
+         (jwt-attribute-firstname)
+         (jwt-attribute-lastname)
+         registered-claims))
 
 ;; JWTs use seconds since Epoch, not milliseconds since Epoch for the `iat` and `max_age` time. 3 minutes is the time
 ;; used by Zendesk for their JWT SSO, so it seemed like a good place for us to start

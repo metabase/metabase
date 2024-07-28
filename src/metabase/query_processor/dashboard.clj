@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -115,7 +116,7 @@
                    target)))
    dashboard-param-id->param))
 
-(mu/defn ^:private resolve-params-for-query :- [:maybe [:sequential :map]]
+(mu/defn- resolve-params-for-query :- [:maybe [:sequential :map]]
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."
@@ -146,7 +147,7 @@
                                                request-param-id->param))]
     (when-let [user-id api/*current-user-id*]
       (doseq [{:keys [id value]} request-params]
-        (user-parameter-value/upsert! user-id id value)))
+        (user-parameter-value/upsert! user-id dashboard-id id value)))
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
                 (u/pprint-to-str (update-vals dashboard-param-id->param
                                               (fn [param]
@@ -163,7 +164,7 @@
 (defn process-query-for-dashcard
   "Like [[metabase.query-processor.card/process-query-for-card]], but runs the query for a `DashboardCard` with
   `parameters` and `constraints`. By default, returns a `metabase.async.streaming_response.StreamingResponse` (see
-  [[metabase.async.streaming-response]]), but this may vary if you pass in a different `:run` function. Will throw an
+  [[metabase.async.streaming-response]]), but this may vary if you pass in a different `:make-run` function. Will throw an
   Exception if preconditions such as proper permissions are not met *before* returning the `StreamingResponse`.
 
   See [[metabase.query-processor.card/process-query-for-card]] for more information about the various parameters."
@@ -175,6 +176,7 @@
                     :attributes {:dashboard/id dashboard-id
                                  :dashcard/id  dashcard-id
                                  :card/id      card-id}}
+    (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id api/*current-user-id*})
     ;; make sure we can read this Dashboard. Card will get read-checked later on inside
     ;; [[qp.card/process-query-for-card]]
     (api/read-check Dashboard dashboard-id)

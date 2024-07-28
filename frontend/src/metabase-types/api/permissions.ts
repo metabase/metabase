@@ -18,7 +18,7 @@ export type PermissionsGraph = {
 };
 
 export type GroupsPermissions = {
-  [key: GroupId]: GroupPermissions;
+  [key: GroupId | string]: GroupPermissions;
 };
 
 export type GroupPermissions = {
@@ -102,7 +102,7 @@ export type CollectionPermissionsGraph = {
 };
 
 export type CollectionPermissions = {
-  [key: GroupId]: Partial<Record<CollectionId, CollectionPermission>>;
+  [key: GroupId | string]: Partial<Record<CollectionId, CollectionPermission>>;
 };
 
 export type CollectionPermission = "write" | "read" | "none";

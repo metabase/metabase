@@ -76,7 +76,7 @@
     [:sequential SingleValue]
     :map]])
 
-(mu/defn ^:private tag-targets
+(mu/defn- tag-targets
   "Given a template tag, returns a set of `target` structures that can be used to target the tag.
   Potential targets look something like:
 
@@ -95,7 +95,7 @@
     #{[target-type [:template-tag (:name tag)]]
       [target-type [:template-tag {:id (:id tag)}]]}))
 
-(mu/defn ^:private tag-params
+(mu/defn- tag-params
   "Return params from the provided `params` list targeting the provided `tag`."
   [tag    :- mbql.s/TemplateTag
    params :- [:maybe [:sequential mbql.s/Parameter]]]
@@ -111,11 +111,11 @@
                 param-display-name)
            {:type qp.error-type/missing-required-parameter}))
 
-(mu/defn ^:private field-filter->field-id :- ::lib.schema.id/field
+(mu/defn- field-filter->field-id :- ::lib.schema.id/field
   [field-filter]
   (second field-filter))
 
-(mu/defn ^:private field-filter-value
+(mu/defn- field-filter-value
   "Get parameter value(s) for a Field filter. Returns map if there is a normal single value, or a vector of maps for
   multiple values."
   [tag    :- mbql.s/TemplateTag
@@ -233,7 +233,7 @@
 
 ;;; Non-FieldFilter Params (e.g. WHERE x = {{x}})
 
-(mu/defn ^:private param-value-for-raw-value-tag
+(mu/defn- param-value-for-raw-value-tag
   "Get the value that should be used for a raw value (i.e., non-Field filter) template tag from `params`."
   [tag    :- mbql.s/TemplateTag
    params :- [:maybe [:sequential mbql.s/Parameter]]]
@@ -276,13 +276,13 @@
 
 ;;; Parsing Values
 
-(mu/defn ^:private parse-number :- number?
+(mu/defn- parse-number :- number?
   "Parse a string like `1` or `2.0` into a valid number. Done mostly to keep people from passing in
    things that aren't numbers, like SQL identifiers."
   [s :- :string]
   (.parse (NumberFormat/getInstance) ^String s))
 
-(mu/defn ^:private value->number :- [:or number? [:sequential {:min 1} number?]]
+(mu/defn- value->number :- [:or number? [:sequential {:min 1} number?]]
   "Parse a 'numeric' param value. Normally this returns an integer or floating-point number, but as a somewhat
   undocumented feature it also accepts comma-separated lists of numbers. This was a side-effect of the old parameter
   code that unquestioningly substituted any parameter passed in as a number directly into the SQL. This has long been
@@ -301,7 +301,7 @@
     (string? value)
     (u/many-or-one (mapv parse-number (str/split value #",")))))
 
-(mu/defn ^:private parse-value-for-field-type :- :any
+(mu/defn- parse-value-for-field-type :- :any
   "Do special parsing for value for a (presumably textual) FieldFilter (`:type` = `:dimension`) param (i.e., attempt
   to parse it as appropriate based on the base type and semantic type of the Field associated with it). These are
   special cases for handling types that do not have an associated parameter type (such as `date` or `number`), such as
@@ -317,7 +317,7 @@
     :else
     value))
 
-(mu/defn ^:private update-filter-for-field-type :- ParsedParamValue
+(mu/defn- update-filter-for-field-type :- ParsedParamValue
   "Update a Field Filter with a textual, or sequence of textual, values. The base type and semantic type of the field
   are used to determine what 'semantic' type interpretation is required (e.g. for UUID fields)."
   [{field :field, {value :value} :value, :as field-filter} :- FieldFilter]
@@ -335,7 +335,7 @@
     (cond-> field-filter
       new-value (assoc-in [:value :value] new-value))))
 
-(mu/defn ^:private parse-value-for-type :- ParsedParamValue
+(mu/defn- parse-value-for-type :- ParsedParamValue
   "Parse a `value` based on the type chosen for the param, such as `text` or `number`. (Depending on the type of param
   created, `value` here might be a raw value or a map including information about the Field it references as well as a
   value.) For numbers, dates, and the like, this will parse the string appropriately; for `text` parameters, this will
@@ -368,7 +368,7 @@
     :else
     value))
 
-(mu/defn ^:private value-for-tag :- ParsedParamValue
+(mu/defn- value-for-tag :- ParsedParamValue
   "Given a map `tag` (a value in the `:template-tags` dictionary) return the corresponding value from the `params`
    sequence. The `value` is something that can be compiled to SQL via `->replacement-snippet-info`."
   [tag    :- mbql.s/TemplateTag
@@ -404,3 +404,13 @@
                        :tags   tags
                        :params params}
                       e)))))
+
+(mu/defn referenced-card-ids :- [:set ::lib.schema.id/card]
+  "Return a set of all Card IDs referenced in the parameters in `params-map`. This should be added to the (inner) query
+  under the `:metabase.models.query.permissions/referenced-card-ids` key when doing parameter expansion."
+  [params-map :- [:map-of ::lib.schema.common/non-blank-string ParsedParamValue]]
+  (into #{}
+        (keep (fn [param]
+                (when (params/ReferencedCardQuery? param)
+                  (:card-id param))))
+        (vals params-map)))

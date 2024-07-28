@@ -143,6 +143,7 @@ export type DayOfWeekId =
   | "saturday";
 
 export const tokenFeatures = [
+  "attached_dwh",
   "advanced_permissions",
   "audit_app",
   "cache_granular_controls",
@@ -205,7 +206,6 @@ interface InstanceSettings {
   "email-smtp-password": string | null;
   "enable-embedding": boolean;
   "enable-nested-queries": boolean;
-  "enable-query-caching"?: boolean;
   "enable-public-sharing": boolean;
   "enable-xrays": boolean;
   "example-dashboard-id": number | null;
@@ -329,6 +329,8 @@ export type UserSettings = {
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
+  "show-updated-permission-modal": boolean;
+  "show-updated-permission-banner": boolean;
 };
 
 export type Settings = InstanceSettings &

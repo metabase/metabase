@@ -54,6 +54,7 @@
                               :connection-impersonation-requires-role true
                               :convert-timezone                       true
                               :datetime-diff                          true
+                              :identifiers-with-spaces                true
                               :now                                    true}]
   (defmethod driver/database-supports? [:snowflake feature] [_driver _feature _db] supported?))
 
@@ -98,7 +99,7 @@
   Snowflake driver expects a java.security.PrivateKey instance."
   [{:keys [user password account private-key-path]
     :as   details}]
-  (let [base-details (apply dissoc details (vals (secret/get-sub-props "private-key")))]
+  (let [base-details (apply dissoc details (vals (secret/->sub-props "private-key")))]
     (cond
       password
       details
@@ -145,9 +146,6 @@
            (not (contains? (connection-str->parameters (:connection-uri spec)) "ROLE")))
     (let [role-opts-str (sql-jdbc.common/additional-opts->string :url {:role (codec/url-encode (:role details))})]
       (-> spec
-          ;; It is advised to use either connection property or url parameter, not both. Eg. in the following link.
-          ;; https://docs.oracle.com/javase/8/docs/api/java/sql/DriverManager.html#getConnection-java.lang.String-java.util.Properties-
-          (dissoc :role)
           (update :connection-uri sql-jdbc.common/conn-str-with-additional-opts :url role-opts-str)))
     spec))
 
@@ -197,7 +195,7 @@
         (maybe-add-role-to-spec-url details))))
 
 (defmethod sql-jdbc.sync/database-type->base-type :snowflake
-  [_ base-type]
+  [_driver base-type]
   ({:NUMBER                     :type/Number
     :DECIMAL                    :type/Decimal
     :NUMERIC                    :type/Number
@@ -233,7 +231,8 @@
     :TIMESTAMPNTZ               :type/DateTime
     ;; timestamp with time zone normalized to UTC, similar to Postgres
     :TIMESTAMPTZ                :type/DateTimeWithLocalTZ
-    :VARIANT                    :type/*
+    ;; `VARIANT` is allowed to be any type. See https://docs.snowflake.com/en/sql-reference/data-types-semistructured
+    :VARIANT                    :type/SnowflakeVariant
     ;; Maybe also type *
     :OBJECT                     :type/Dictionary
     :ARRAY                      :type/*} base-type))

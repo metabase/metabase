@@ -12,6 +12,7 @@
    [metabase.pulse.render.style :as style]
    [metabase.pulse.render.table :as table]
    [metabase.query-processor.streaming :as qp.streaming]
+   [metabase.query-processor.streaming.common :as common]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.types :as types]
    [metabase.util :as u]
@@ -65,7 +66,7 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(mu/defn ^:private format-cell
+(mu/defn- format-cell
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
     (types/temporal-field? col)
@@ -128,7 +129,7 @@
        100)
     (- max-value min-value))))
 
-(mu/defn ^:private query-results->row-seq
+(mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
   [timezone-id :- [:maybe :string]
    remapping-lookup
@@ -152,7 +153,7 @@
                                                 [fmt-fn maybe-remapped-row-cell])]]
               (fmt-fn row-cell))})))
 
-(mu/defn ^:private prep-for-html-rendering
+(mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
   ([timezone-id :- [:maybe :string]
@@ -225,15 +226,16 @@
    timezone-id :- [:maybe :string]
    card
    _dashcard
-   {:keys [rows viz-settings] :as data}]
-  (let [[ordered-cols ordered-rows] (order-data data viz-settings)
-        data                        (-> data
+   {:keys [rows viz-settings format-rows?] :as unordered-data}]
+  (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
+        data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
         table-body                  [:div
                                      (table/render-table
-                                      (color/make-color-selector data viz-settings)
-                                      (mapv :name ordered-cols)
+                                      (color/make-color-selector unordered-data viz-settings)
+                                      {:cols-for-color-lookup (mapv :name ordered-cols)
+                                       :col-names             (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data))
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments

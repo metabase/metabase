@@ -373,39 +373,6 @@
            conjunction
            (last coll)))))))
 
-(mu/defn ^:private string-byte-count :- [:int {:min 0}]
-  "Number of bytes in a string using UTF-8 encoding."
-  [s :- :string]
-  #?(:clj (count (.getBytes (str s) "UTF-8"))
-     :cljs (.. (js/TextEncoder.) (encode s) -length)))
-
-#?(:clj
-   (mu/defn ^:private string-character-at :- [:string {:min 0, :max 1}]
-     [s :- :string
-      i :-[:int {:min 0}]]
-     (str (.charAt ^String s i))))
-
-(mu/defn ^:private truncate-string-to-byte-count :- :string
-  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of
-  *characters*)."
-  [s                :- :string
-   max-length-bytes :- [:int {:min 1}]]
-  #?(:clj
-     (loop [i 0, cumulative-byte-count 0]
-       (cond
-         (= cumulative-byte-count max-length-bytes) (subs s 0 i)
-         (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
-         (>= i (count s))                           s
-         :else                                      (recur (inc i)
-                                                           (long (+
-                                                                  cumulative-byte-count
-                                                                  (string-byte-count (string-character-at s i)))))))
-
-     :cljs
-     (let [buf (js/Uint8Array. max-length-bytes)
-           result (.encodeInto (js/TextEncoder.) s buf)] ;; JS obj {read: chars_converted, write: bytes_written}
-       (subs s 0 (.-read result)))))
-
 (def ^:private truncate-alias-max-length-bytes
   "Length to truncate column and table identifiers to. See [[metabase.driver.impl/default-alias-max-length-bytes]] for
   reasoning."
@@ -416,7 +383,7 @@
   ;; 8 bytes for the CRC32 plus one for the underscore
   9)
 
-(mu/defn ^:private crc32-checksum :- [:string {:min 8, :max 8}]
+(mu/defn- crc32-checksum :- [:string {:min 8, :max 8}]
   "Return a 4-byte CRC-32 checksum of string `s`, encoded as an 8-character hex string."
   [s :- :string]
   (let [s #?(:clj (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
@@ -444,10 +411,10 @@
 
   ([s         :- ::lib.schema.common/non-blank-string
     max-bytes :- [:int {:min 0}]]
-   (if (<= (string-byte-count s) max-bytes)
+   (if (<= (u/string-byte-count s) max-bytes)
      s
      (let [checksum  (crc32-checksum s)
-           truncated (truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
+           truncated (u/truncate-string-to-byte-count s (- max-bytes truncated-alias-hash-suffix-length))]
        (str truncated \_ checksum)))))
 
 (mu/defn legacy-string-table-id->card-id :- [:maybe ::lib.schema.id/card]
@@ -479,7 +446,7 @@
   [query :- :map]
   (= (first-stage-type query) :mbql.stage/native))
 
-(mu/defn ^:private escape-and-truncate :- :string
+(mu/defn- escape-and-truncate :- :string
   [database :- [:maybe ::lib.schema.metadata/database]
    s        :- :string]
   (->> s
@@ -487,7 +454,7 @@
        ;; truncate alias to 60 characters (actually 51 characters plus a hash).
        truncate-alias))
 
-(mu/defn ^:private unique-alias :- :string
+(mu/defn- unique-alias :- :string
   [database :- [:maybe ::lib.schema.metadata/database]
    original :- :string
    suffix   :- :string]
@@ -660,3 +627,12 @@
    (into #{}
          (comp cat (filter some?))
          (lib.util.match/match coll [:field opts (id :guard int?)] [id (:source-field opts)]))))
+
+(defn collect-source-tables
+  "Return sequence of source tables from `query`."
+  [query]
+  (let [from-joins (mapcat collect-source-tables (:joins query))]
+    (if-let [source-query (:source-query query)]
+      (concat (collect-source-tables source-query) from-joins)
+      (cond->> from-joins
+        (:source-table query) (cons (:source-table query))))))

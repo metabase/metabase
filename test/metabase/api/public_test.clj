@@ -713,6 +713,20 @@
                    (mt/rows
                     (mt/user-http-request :rasta :get 202 (dashcard-url dash card dashcard)))))))))))
 
+(deftest execute-public-dashcard-updates-last-viewed-at
+  (testing "GET /api/public/dashboard/:uuid/card/:card-id"
+    (testing "Dashboard's last_viewed_at should be updated when a public DashCard is viewed"
+      (mt/with-temporary-setting-values [enable-public-sharing true]
+        (mt/test-helpers-set-global-values!
+          (t2.with-temp/with-temp [Collection {collection-id :id}]
+            (perms/revoke-collection-permissions! (perms-group/all-users) collection-id)
+            (with-temp-public-dashboard-and-card [dash {card-id :id, :as card} dashcard]
+              (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard (:id dash))]
+                (t2/update! Card card-id {:collection_id collection-id})
+                (mt/with-temporary-setting-values [synchronous-batch-updates true]
+                  (mt/user-http-request :rasta :get 202 (dashcard-url dash card dashcard)))
+                (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id (:id dash))))))))))))
+
 (deftest execute-public-dashcard-params-validation-test
   (testing "GET /api/public/dashboard/:uuid/card/:card-id"
     (testing "Make sure params are validated"
@@ -1480,6 +1494,39 @@
                              :get 200
                              (param-values-url :card field-filter-uuid
                                                (:field-values param-keys) "bar")))))))))))
+
+(deftest dashboard-field-params-field-names-test
+  (mt/with-temporary-setting-values [enable-public-sharing true]
+    (mt/with-temp
+      [:model/Dashboard     dash      {:parameters [{:name "Category Name"
+                                                     :slug "category_name"
+                                                     :id   "_CATEGORY_NAME_"
+                                                     :type "category"}]
+                                       :public_uuid (str (random-uuid))}
+       :model/Card          card      {:name "Card attached to dashcard"
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :query
+                                                       :query    {:source-table (mt/id :categories)}}
+                                       :type :model}
+       :model/DashboardCard _         {:dashboard_id       (:id dash)
+                                       :card_id            (:id card)
+                                       :parameter_mappings [{:parameter_id "_CATEGORY_NAME_"
+                                                             :target       [:dimension (mt/$ids *categories.name)]}]}]
+      (is (=? {:param_fields {(mt/id :categories :name)
+                              {:semantic_type "type/Name",
+                               :table_id (mt/id :categories)
+                               :name "NAME",
+                               :has_field_values "list",
+                               :fk_target_field_id nil,
+                               :dimensions (),
+                               :id (mt/id :categories :name)
+                               :target nil,
+                               :display_name "Name",
+                               :name_field nil,
+                               :base_type "type/Text"}}}
+              (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))))
+      (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
+              (client/client :get 200 (format "public/dashboard/%s/params/%s/values" (:public_uuid dash) "_CATEGORY_NAME_")))))))
 
 (deftest param-values-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"

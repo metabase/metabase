@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
+import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
 import Revision from "metabase/entities/revisions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -34,7 +34,6 @@ import {
   isBasedOnExistingQuestion,
   getParameters,
   getSubmittableQuestion,
-  getQueryResults,
 } from "../../selectors";
 import { updateUrl } from "../navigation";
 import { zoomInRow } from "../object-detail";
@@ -112,10 +111,7 @@ export const reloadCard = createThunkAction(RELOAD_CARD, () => {
  *     - `navigateToNewCardInsideQB` is being called (see below)
  */
 export const SET_CARD_AND_RUN = "metabase/qb/SET_CARD_AND_RUN";
-export const setCardAndRun = (
-  nextCard,
-  { shouldUpdateUrl = true, prevQueryResults } = {},
-) => {
+export const setCardAndRun = (nextCard, { shouldUpdateUrl = true } = {}) => {
   return async (dispatch, getState) => {
     // clone
     const card = copy(nextCard);
@@ -131,12 +127,7 @@ export const setCardAndRun = (
 
     // Update the card and originalCard before running the actual query
     dispatch({ type: SET_CARD_AND_RUN, payload: { card, originalCard } });
-    dispatch(
-      runQuestionQuery({
-        shouldUpdateUrl,
-        prevQueryResults,
-      }),
-    );
+    dispatch(runQuestionQuery({ shouldUpdateUrl }));
 
     // Load table & database metadata for the current question
     dispatch(loadMetadataForCard(card));
@@ -175,16 +166,13 @@ export const navigateToNewCardInsideQB = createThunkAction(
           dispatch(openUrl(url));
         } else {
           dispatch(onCloseSidebars());
-          const prevQueryResults = getQueryResults(getState());
           if (!cardQueryIsEquivalent(previousCard, nextCard)) {
             // clear the query result so we don't try to display the new visualization before running the new query
             dispatch(clearQueryResult());
           }
           // When the dataset query changes, we should change the type,
           // to start building a new ad-hoc question based on a dataset
-          dispatch(
-            setCardAndRun({ ...card, type: "question" }, { prevQueryResults }),
-          );
+          dispatch(setCardAndRun({ ...card, type: "question" }));
         }
         if (objectId !== undefined) {
           dispatch(zoomInRow({ objectId }));
@@ -233,15 +221,15 @@ export const apiCreateQuestion = question => {
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
-
     dispatch({ type: API_CREATE_QUESTION, payload: card });
+
+    await dispatch(loadMetadataForCard(card));
 
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
-    const metadataOptions = { reload: isModel || isMetric };
-    await dispatch(loadMetadataForCard(card, metadataOptions));
-
-    return createdQuestion;
+    if (isModel || isMetric) {
+      dispatch(runQuestionQuery());
+    }
   };
 };
 
@@ -253,7 +241,6 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
-    const isMetric = question.type() === "metric";
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
@@ -292,11 +279,10 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     if (isModel) {
       // this needs to happen after the question update completes in case we have changed the type
       // of the primary key field in the same update
-      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+      await dispatch(updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: isModel || isMetric };
-    await dispatch(loadMetadataForCard(question.card(), metadataOptions));
+    await dispatch(loadMetadataForCard(question.card()));
 
     if (rerunQuery) {
       dispatch(runQuestionQuery());

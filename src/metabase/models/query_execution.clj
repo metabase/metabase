@@ -4,6 +4,7 @@
   (:require
    [malli.core :as mc]
    [malli.error :as me]
+   [metabase.analytics.sdk :as sdk]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.models.interface :as mi]
    [metabase.util :as u]
@@ -34,7 +35,7 @@
 
 (t2/define-before-insert :model/QueryExecution
   [{context :context, :as query-execution}]
-  (u/prog1 query-execution
+  (u/prog1 (sdk/include-analytics query-execution)
     (validate-context context)))
 
 (t2/define-after-select :model/QueryExecution

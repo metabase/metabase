@@ -5,6 +5,7 @@ import * as Lib from "metabase-lib";
 import type { TimeValue } from "./types";
 import {
   getAvailableOptions,
+  getDefaultOperator,
   getDefaultValues,
   getFilterClause,
   getOptionByOperator,
@@ -33,9 +34,11 @@ export function useTimeFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(filterParts?.operator ?? "<");
+  const [operator, setOperator] = useState(
+    filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
+  );
   const [values, setValues] = useState(() =>
-    getDefaultValues(operator, filterParts?.values ?? []),
+    getDefaultValues(operator, filterParts ? filterParts.values : []),
   );
   const { valueCount } = getOptionByOperator(operator);
   const isValid = isValidFilter(operator, column, values);

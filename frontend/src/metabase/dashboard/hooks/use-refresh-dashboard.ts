@@ -1,3 +1,4 @@
+import type { Query } from "history";
 import { useCallback } from "react";
 
 import {
@@ -23,7 +24,7 @@ export const useRefreshDashboard = ({
       await dispatch(
         fetchDashboard({
           dashId: dashboardId,
-          queryParams: parameterQueryParams,
+          queryParams: parameterQueryParams as Query,
           options: { preserveParameters: true },
         }),
       );

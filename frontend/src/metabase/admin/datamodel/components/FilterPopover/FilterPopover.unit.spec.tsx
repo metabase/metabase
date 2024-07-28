@@ -77,7 +77,7 @@ describe("FilterPopover", () => {
       it("should have an operator selector", () => {
         setup({ filter: NUMERIC_FILTER });
         expect(screen.getByText("Equal to")).toBeInTheDocument();
-        expect(screen.getByText("1,234")).toBeInTheDocument();
+        expect(screen.getByText("1234")).toBeInTheDocument();
       });
     });
     describe("filter options", () => {
