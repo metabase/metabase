@@ -1054,7 +1054,7 @@
 
 (deftest ^:parallel relative-time-interval-test
   (mt/test-drivers
-   (mt/normal-drivers-except #{:athena})
+   (disj (mt/normal-drivers-with-feature :date-arithmetics) :athena)
    ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
    (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
      (mt/dataset
@@ -1433,7 +1433,7 @@
 (deftest filter-by-expression-relative-time-interval-test
   (testing "Datetime expressions can filter to a date range"
     (mt/test-drivers
-     (mt/normal-drivers-except #{:athena})
+     (disj (mt/normal-drivers-with-feature :date-arithmetics) :athena)
      (mt/dataset
       checkins:1-per-day
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
