@@ -8730,23 +8730,8 @@ databaseChangeLog:
                     referencedTableName: query_analysis
                     referencedColumnNames: id
                     foreignKeyName: fk_query_field_analysis_id
-                    deleteCascade: false
-
-  - changeSet:
-      id: v51.2024-07-29T10:05:13
-      author: crisptrutski
-      comment: Make sure that Query Fields are deleted along with their parents and siblings
-      remark: we need to enable delete cascade in a separate migration to satisfy the linter
-      precondition:
-      rollback: # none, field will be dropped anyway
-      changes:
-        - modifyForeignKeyConstraint:
-            baseTableName: query_field
-            baseColumnNames: analysis_id
-            constraintName: fk_query_field_analysis_id
-            referencedTableName: query_analysis
-            referencedColumnNames: id
-            onDeleteCascade: true
+                    deleteCascade: true
+                    deleteCascadeForce: true # its safe as we have truncated the table
 
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
