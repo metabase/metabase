@@ -31,6 +31,7 @@ const DEFAULT_OPTIONS = {
 
 export class Api extends EventEmitter {
   basename = "";
+  apiKey = "";
   sessionToken;
 
   onBeforeRequest;
@@ -101,6 +102,10 @@ export class Api extends EventEmitter {
 
         if (options.formData && options.fetch) {
           delete headers["Content-Type"];
+        }
+
+        if (this.apiKey) {
+          headers["X-Api-Key"] = this.apiKey;
         }
 
         if (this.sessionToken) {
