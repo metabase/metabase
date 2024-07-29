@@ -79,6 +79,7 @@
          group-errors)))
 
 (defn- table-reference-errors
+  "Given a seq of cards, return a map of card-id => reference errors"
   [cards]
   (when (seq cards)
     (->> (t2/query {:select    [:qt.card_id
@@ -107,7 +108,7 @@
          group-errors)))
 
 (defn reference-errors
-  "blah"
+  "Given a seq of cards, return a map of card-id => reference errors"
   [cards]
   (merge-with concat
     (field-reference-errors cards)
