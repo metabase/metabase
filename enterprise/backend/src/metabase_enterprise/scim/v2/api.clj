@@ -44,7 +44,7 @@
     {:optional true}
     [:sequential [:map
                   [:value ms/NonBlankString]
-                  [:$ref ms/NonBlankString]
+                  [:$ref {:optional true} ms/NonBlankString]
                   [:display ms/NonBlankString]]]]
    [:locale {:optional true} [:maybe ms/NonBlankString]]
    [:active {:optional true} boolean?]])
@@ -77,7 +77,7 @@
     {:optional true}
     [:sequential [:map
                   [:value ms/NonBlankString]
-                  [:$ref ms/NonBlankString]]]]])
+                  [:$ref {:optional true} ms/NonBlankString]]]]])
 
 (def SCIMGroupList
   "Malli schema for a list of SCIM groups"
@@ -359,5 +359,43 @@
   (-> (get-group-by-entity-id id)
       (t2/hydrate :scim_group_members)
       mb-group->scim))
+
+(defn- update-group-membership
+  "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`. Clears
+  any existing members. May not be run on the Administrators or All Users groups."
+  [group-id user-entity-ids]
+  (let [user-ids (t2/select-fn-set :id :model/User {:where [:in :entity_id user-entity-ids]})]
+    (when-let [memberships (map
+                            (fn [user-id] {:group_id group-id :user_id user-id})
+                            user-ids)]
+      (t2/delete! :model/PermissionsGroupMembership :group_id group-id)
+      (t2/insert! :model/PermissionsGroupMembership memberships))))
+
+(defendpoint POST "/Groups"
+  "Create a single group, and populates it if necessary."
+  [:as {scim-group :body}]
+  {scim-group SCIMGroup}
+  (let [group-name (:displayName scim-group)
+        entity-ids (map :value (:members scim-group))]
+    (t2/with-transaction [_conn]
+      (let [new-group (first (t2/insert-returning-instances! :model/PermissionsGroup {:name group-name}))]
+        (update-group-membership (:id new-group) entity-ids)
+        (-> new-group
+          (t2/hydrate :scim_group_members)
+          mb-group->scim)))))
+
+(defendpoint PUT "/Groups/:id"
+  "Update a group."
+  [:as {scim-group :body {id :id} :params}]
+  {scim-group SCIMGroup}
+  (let [group-name (:displayName scim-group)
+        entity-ids (map :value (:members scim-group))]
+    (t2/with-transaction [_conn]
+      (let [group (get-group-by-entity-id id)]
+        (t2/update! :model/PermissionsGroup (u/the-id group) {:name group-name})
+        (update-group-membership (u/the-id group) entity-ids)
+        (-> (get-group-by-entity-id id)
+            (t2/hydrate :scim_group_members)
+            mb-group->scim)))))
 
 (api/define-routes)

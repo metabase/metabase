@@ -133,16 +133,18 @@
       ;; Generate random user details via with-temp then delete the user so that we can recreate it with SCIM
       (mt/with-temp [:model/User user {}]
         (t2/delete! :model/User :id (:id user))
-        (let [new-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
-                        :userName (:email user)
-                        :name {:givenName (:first_name user) :familyName (:last_name user)}
-                        :emails [{:value (:email user)}]
-                        :active true}
-              response (scim-client :post 201 "ee/scim/v2/Users" new-user)]
-          (is (malli= scim-api/SCIMUser response))
-          (is (=? (select-keys user [:email :first_name :last_name :is_active])
-                  (t2/select-one [:model/User :email :first_name :last_name :is_active]
-                                 :entity_id (:id response)))))))
+        (try
+          (let [new-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                          :userName (:email user)
+                          :name {:givenName (:first_name user) :familyName (:last_name user)}
+                          :emails [{:value (:email user)}]
+                          :active true}
+                response (scim-client :post 201 "ee/scim/v2/Users" new-user)]
+            (is (malli= scim-api/SCIMUser response))
+            (is (=? (select-keys user [:email :first_name :last_name :is_active])
+                    (t2/select-one [:model/User :email :first_name :last_name :is_active]
+                                   :entity_id (:id response)))))
+          (finally (t2/delete! :model/User :email (:email user))))))
 
     (testing "Error when creating a user with an existing email"
       (let [existing-user {:schemas ["urn:ietf:params:scim:schemas:core:2.0:User"]
@@ -304,3 +306,18 @@
 
     (testing "404 is returned when fetching a non-existant user"
        (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))))
+
+(deftest create-group-test
+  (with-scim-setup!
+    (testing "A single group with members can be created via SCIM APIs"
+      (let [group-name (format "Test SCIM group %s" (random-uuid))
+            new-group  {:schemas ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                        :displayName group-name
+                        :members [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))}]}]
+        (try
+          (let [response (scim-client :post 200 (format "ee/scim/v2/Groups") new-group)]
+            (is (malli= scim-api/SCIMGroup response))
+            (let [mb-group (t2/select-one :model/PermissionsGroup :entity_id (:id response))]
+              (is (= group-name (:name mb-group)))
+              (t2/exists? :model/PermissionsGroupMembership :user_id (mt/user->id :rasta) :group_id (:id mb-group))))
+          (finally (t2/delete! :model/PermissionsGroup :name group-name)))))))
