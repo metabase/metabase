@@ -1061,6 +1061,22 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     resetButton(DEFAULT_REQUIRED).click();
     filter(DEFAULT_REQUIRED).should("have.text", "2 selections");
     checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
+
+    checkParameterSidebarDefaultValue({
+      defaultValueFormatted: "2 selections",
+      otherValue: "Doohickey,Widget,",
+      otherValueFormatted: "2 selections",
+      setDefaultRequiredValue: value => {
+        filter("Default value (required)").click();
+        popover().findByRole("combobox").type(value);
+        popover().button("Update filter").click();
+      },
+      setDefaultValue: value => {
+        filter("Default value").click();
+        popover().findByRole("combobox").type(value);
+        popover().button("Add filter").click();
+      },
+    });
   });
 
   it("chevron icons are aligned in temporal unit parameter sidebar", () => {
