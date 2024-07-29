@@ -851,7 +851,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     filter(DEFAULT_REQUIRED).should("have.text", "2 selections");
     checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
 
-    checkParameterSidebarDefaultValue<[string, string]>({
+    checkParameterSidebarDefaultValue({
       defaultValueFormatted: "2 selections",
       otherValue: ["3", "4"],
       otherValueFormatted: "2 selections",
@@ -959,6 +959,22 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     resetButton(DEFAULT_REQUIRED).click();
     filter(DEFAULT_REQUIRED).should("have.text", "Gizmo");
     checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
+
+    checkParameterSidebarDefaultValue({
+      defaultValueFormatted: "Gizmo",
+      otherValue: "Gadget",
+      otherValueFormatted: "Gadget",
+      setDefaultRequiredValue: value => {
+        filter("Default value (required)").click();
+        popover().findByRole("combobox").type(value);
+        popover().button("Update filter").click();
+      },
+      setDefaultValue: value => {
+        filter("Default value").click();
+        popover().findByRole("combobox").type(value);
+        popover().button("Add filter").click();
+      },
+    });
   });
 
   it("text parameters - multiple values", () => {
