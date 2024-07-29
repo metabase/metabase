@@ -39,6 +39,8 @@ const shouldUseEslint =
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 const disableSourceMaps = process.env.DISABLE_SOURCE_MAPS === "true";
 
+console.log("disableSourceMaps", { disableSourceMaps }, disableSourceMaps);
+
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
