@@ -40,16 +40,14 @@
   (assert-channel-type instance)
   instance)
 
-(defn- update-pulse-channel-active
-  [{:keys [id type active]}]
-  (t2/update! :model/PulseChannel
-              :channel_id id
-              :channel_type (name type)
-              {:enabled active}))
+(defn- delete-pulse-channels [channel-id channel-type]
+  (t2/delete! :model/PulseChannel
+              :channel_id channel-id
+              :channel_type (-> channel-type keyword name)))
 
 (t2/define-before-update :model/Channel
   [instance]
   (assert-channel-type instance)
-  (when (contains? (t2/changes instance) :active)
-    (update-pulse-channel-active instance))
+  (when (false? (:active (t2/changes instance)))
+    (delete-pulse-channels (:id instance) (:type instance)))
   instance)

@@ -36,15 +36,11 @@
                                          :channel_type "metabase-test"
                                          :enabled true}]
 
-    (testing "deactivate channel will deactivate pulse channels"
+    (testing "deactivate channel will delete pulse channels"
       (t2/update! :model/Channel id {:active false})
-      (is (not (t2/select-one-fn :enabled :model/PulseChannel pc-id))))
-
-    (testing "re-activate channel will re-activate pulse channels"
-      (t2/update! :model/Channel id {:active true})
-      (is (t2/select-one-fn :enabled :model/PulseChannel pc-id)))
+      (is (not (t2/exists? :model/PulseChannel pc-id))))
 
     (testing "do not try to update pulse-channel if active doesn't change"
       (mt/with-dynamic-redefs
-        [models.channel/update-pulse-channel-active (fn [_] (throw (ex-info "Should not be called" {})))]
+        [models.channel/delete-pulse-channels (fn [_] (throw (ex-info "Should not be called" {})))]
         (is (pos? (t2/update! :model/Channel id {:name "New name"})))))))
