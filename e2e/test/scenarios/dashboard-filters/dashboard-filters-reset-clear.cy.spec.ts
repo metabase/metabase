@@ -165,64 +165,18 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     filter(DEFAULT_REQUIRED).should("have.text", "Year");
     checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
 
-    cy.log("parameter sidebar");
-    editDashboard();
-
-    cy.log(NO_DEFAULT_NON_REQUIRED);
-    editFilter(NO_DEFAULT_NON_REQUIRED);
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value", "chevron");
-      filter("Default value").click();
-    });
-
-    popover().findByText("Year").click();
-
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "Year");
-      checkOnlyOneButtonVisible("Default value", "clear");
-
-      clearButton("Default value").click();
-      filter("Default value").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value", "chevron");
-    });
-
-    cy.log(DEFAULT_NON_REQUIRED);
-    editFilter(DEFAULT_NON_REQUIRED);
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "Year");
-      checkOnlyOneButtonVisible("Default value", "clear");
-
-      clearButton("Default value").click();
-      filter("Default value").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value", "chevron");
-      filter("Default value").click();
-    });
-
-    popover().findByText("Year").click();
-
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "Year");
-      checkOnlyOneButtonVisible("Default value", "clear");
-    });
-
-    cy.log(DEFAULT_REQUIRED);
-    editFilter(DEFAULT_REQUIRED);
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "Year");
-      checkOnlyOneButtonVisible("Default value", "clear");
-
-      clearButton("Default value").click();
-      filter("Default value (required)").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value (required)", "chevron");
-      filter("Default value (required)").click();
-    });
-
-    popover().findByText("Year").click();
-
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "Year");
-      checkOnlyOneButtonVisible("Default value", "clear");
+    checkParameterSidebarDefaultValue({
+      defaultValueFormatted: "Year",
+      otherValue: "Month",
+      otherValueFormatted: "Month",
+      setDefaultRequiredValue: value => {
+        filter("Default value (required)").click();
+        popover().findByText(value).click();
+      },
+      setDefaultValue: value => {
+        filter("Default value").click();
+        popover().findByText(value).click();
+      },
     });
   });
 
@@ -305,61 +259,16 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     filter(DEFAULT_REQUIRED).should("have.text", "January 1, 2024");
     checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
 
-    cy.log("parameter sidebar");
-    editDashboard();
-
-    cy.log(NO_DEFAULT_NON_REQUIRED);
-    editFilter(NO_DEFAULT_NON_REQUIRED);
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value", "chevron");
-    });
-
-    addDateFilter("Default value", "01/01/2020");
-
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "January 1, 2020");
-      checkOnlyOneButtonVisible("Default value", "clear");
-
-      clearButton("Default value").click();
-      filter("Default value").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value", "chevron");
-    });
-
-    cy.log(DEFAULT_NON_REQUIRED);
-    editFilter(DEFAULT_NON_REQUIRED);
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "January 1, 2024");
-      checkOnlyOneButtonVisible("Default value", "clear");
-
-      clearButton("Default value").click();
-      filter("Default value").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value", "chevron");
-    });
-
-    addDateFilter("Default value", "01/01/2020");
-
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "January 1, 2020");
-      checkOnlyOneButtonVisible("Default value", "clear");
-    });
-
-    cy.log(DEFAULT_REQUIRED);
-    editFilter(DEFAULT_REQUIRED);
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "January 1, 2024");
-      checkOnlyOneButtonVisible("Default value", "clear");
-
-      clearButton("Default value").click();
-      filter("Default value (required)").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value (required)", "chevron");
-    });
-
-    updateDateFilter("Default value (required)", "01/01/2020");
-
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", "January 1, 2020");
-      checkOnlyOneButtonVisible("Default value", "clear");
+    checkParameterSidebarDefaultValue({
+      defaultValueFormatted: "January 1, 2024",
+      otherValue: "01/01/2020",
+      otherValueFormatted: "January 1, 2020",
+      setDefaultRequiredValue: value => {
+        updateDateFilter("Default value (required)", value);
+      },
+      setDefaultValue: value => {
+        addDateFilter("Default value", value);
+      },
     });
   });
 
@@ -1172,5 +1081,76 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     chevronIcon(label).should(
       button === "chevron" ? "be.visible" : "not.exist",
     );
+  }
+
+  function checkParameterSidebarDefaultValue({
+    defaultValueFormatted,
+    otherValue,
+    otherValueFormatted,
+    setDefaultRequiredValue,
+    setDefaultValue,
+  }: {
+    defaultValueFormatted: string;
+    otherValue: string;
+    otherValueFormatted: string;
+    setDefaultValue: (value: string) => void;
+    setDefaultRequiredValue: (value: string) => void;
+  }) {
+    cy.log("parameter sidebar");
+    editDashboard();
+
+    cy.log(NO_DEFAULT_NON_REQUIRED);
+    editFilter(NO_DEFAULT_NON_REQUIRED);
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", "No default");
+      checkOnlyOneButtonVisible("Default value", "chevron");
+    });
+
+    setDefaultValue(otherValue);
+
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", otherValueFormatted);
+      checkOnlyOneButtonVisible("Default value", "clear");
+
+      clearButton("Default value").click();
+      filter("Default value").should("have.text", "No default");
+      checkOnlyOneButtonVisible("Default value", "chevron");
+    });
+
+    cy.log(DEFAULT_NON_REQUIRED);
+    editFilter(DEFAULT_NON_REQUIRED);
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", defaultValueFormatted);
+      checkOnlyOneButtonVisible("Default value", "clear");
+
+      clearButton("Default value").click();
+      filter("Default value").should("have.text", "No default");
+      checkOnlyOneButtonVisible("Default value", "chevron");
+    });
+
+    setDefaultValue(otherValue);
+
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", otherValueFormatted);
+      checkOnlyOneButtonVisible("Default value", "clear");
+    });
+
+    cy.log(DEFAULT_REQUIRED);
+    editFilter(DEFAULT_REQUIRED);
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", defaultValueFormatted);
+      checkOnlyOneButtonVisible("Default value", "clear");
+
+      clearButton("Default value").click();
+      filter("Default value (required)").should("have.text", "No default");
+      checkOnlyOneButtonVisible("Default value (required)", "chevron");
+    });
+
+    setDefaultRequiredValue(otherValue);
+
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", otherValueFormatted);
+      checkOnlyOneButtonVisible("Default value", "clear");
+    });
   }
 });
