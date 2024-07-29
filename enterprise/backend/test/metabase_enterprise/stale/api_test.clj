@@ -16,10 +16,10 @@
     (stale.test/with-stale-items [:model/Card _ {}
                                   :model/Dashboard _ {}]
       (is (str/starts-with? (mt/user-http-request :crowberto :get 402 "collection/root/stale")
-                            "Stale is a paid feature")))))
+                            "Collection Cleanup is a paid feature")))))
 
 (deftest can-fetch-stale-candidates
-  (mt/with-premium-features #{:stale}
+  (mt/with-premium-features #{:collection-cleanup}
     (with-collection-hierarchy [{:keys [a b c d e]}]
       (stale.test/with-stale-items [:model/Card card {:collection_id (:id a)}
                                     :model/Dashboard dashboard {:collection_id (:id a)}]
@@ -177,7 +177,7 @@
                       (map :collection)))))))))
 
 (deftest stale-items-limits-and-offsets-work-correctly
-  (mt/with-premium-features #{:stale}
+  (mt/with-premium-features #{:collection-cleanup}
     (testing "Limits and offsets work correctly"
       (with-collection-hierarchy [{:keys [a]}]
         (let [get-names-page (fn [limit offset]

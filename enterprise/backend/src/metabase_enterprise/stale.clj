@@ -138,6 +138,6 @@
 (defenterprise find-stale-candidates
   "Finds stale content in the given collection. See `find-stale-candidates* for details and malli schema for the
   argument map.."
-  :feature :stale
+  :feature :collection-cleanup
   [arg-map]
   (find-stale-candidates* arg-map))
