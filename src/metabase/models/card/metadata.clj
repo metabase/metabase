@@ -21,7 +21,7 @@
 (mr/def ::future
   [:fn {:error/message "A future"} future?])
 
-(mu/defn ^:private legacy-result-metadata-future :- ::future
+(mu/defn- legacy-result-metadata-future :- ::future
   [query :- :map]
   (future
     (try
@@ -43,7 +43,7 @@ saved later when it is ready."
    [:map
     [:metadata-future ::future]]])
 
-(mu/defn ^:private maybe-async-model-result-metadata :- ::maybe-async-result-metadata
+(mu/defn- maybe-async-model-result-metadata :- ::maybe-async-result-metadata
   [{:keys [query metadata original-metadata valid-metadata?]} :- [:map
                                                                   [:valid-metadata? :any]]]
   (log/debug (trs "Querying for metadata and blending model metadata"))
@@ -62,7 +62,7 @@ saved later when it is ready."
                               metadata')))}
       {:metadata (qp.util/combine-metadata result metadata')})))
 
-(mu/defn ^:private maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
+(mu/defn- maybe-async-recomputed-metadata :- ::maybe-async-result-metadata
   [query]
   (log/debug (trs "Querying for metadata"))
   (let [futur (legacy-result-metadata-future query)

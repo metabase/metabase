@@ -149,7 +149,7 @@
     (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
       (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
 
-(mu/defn ^:private fetch-token-status* :- TokenStatus
+(mu/defn- fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- TokenStr]
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
@@ -219,7 +219,7 @@
 
 (declare token-valid-now?)
 
-(mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
+(mu/defn- valid-token->features* :- [:set ms/NonBlankString]
   [token :- TokenStr]
   (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message

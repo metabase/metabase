@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
-import type { EmbedNightModeControls } from "metabase/dashboard/types";
+import type { DashboardNightModeControls } from "metabase/dashboard/types";
 
 import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const NightModeToggleButton = ({
   isNightMode,
   onNightModeChange,
-}: Pick<EmbedNightModeControls, "isNightMode" | "onNightModeChange">) => {
+}: Pick<DashboardNightModeControls, "isNightMode" | "onNightModeChange">) => {
   const label = isNightMode ? t`Daytime mode` : t`Nighttime mode`;
   return (
     <DashboardHeaderButton

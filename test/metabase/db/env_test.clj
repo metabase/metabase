@@ -19,14 +19,14 @@
 
   (testing "Raw connection string should support separate username and/or password (#20122)"
     (testing "username and password"
-      (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://metabase" "cam" "1234")
+      (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://metabase" "cam" "1234" nil)
              (#'mdb.env/env->DataSource :postgres {:mb-db-connection-uri "postgres://metabase", :mb-db-user "cam", :mb-db-pass "1234"}))))
     (testing "username only"
-      (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://metabase" "cam" nil)
+      (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://metabase" "cam" nil nil)
              (#'mdb.env/env->DataSource :postgres {:mb-db-connection-uri "postgres://metabase", :mb-db-user "cam"})
              (#'mdb.env/env->DataSource :postgres {:mb-db-connection-uri "postgres://metabase", :mb-db-user "cam", :mb-db-pass ""}))))
     (testing "password only"
-      (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://metabase" nil "1234")
+      (is (= (mdb.data-source/raw-connection-string->DataSource "jdbc:postgresql://metabase" nil "1234" nil)
              (#'mdb.env/env->DataSource :postgres {:mb-db-connection-uri "postgres://metabase", :mb-db-pass "1234"})
              (#'mdb.env/env->DataSource :postgres {:mb-db-connection-uri "postgres://metabase", :mb-db-user  "", :mb-db-pass "1234"}))))))
 

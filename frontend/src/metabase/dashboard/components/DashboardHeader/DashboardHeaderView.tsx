@@ -18,7 +18,7 @@ import {
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedNightModeControls,
+  DashboardNightModeControls,
 } from "metabase/dashboard/types";
 import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
@@ -52,7 +52,7 @@ type DashboardHeaderViewProps = {
   onLastEditInfoClick: () => void;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
-  EmbedNightModeControls;
+  DashboardNightModeControls;
 
 export function DashboardHeaderView({
   editingTitle = "",

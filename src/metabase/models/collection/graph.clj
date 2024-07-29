@@ -9,11 +9,11 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]
+   [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -47,14 +47,14 @@
   (into {} (for [[group-id perms] (group-by :group_id (t2/select Permissions))]
              {group-id (set (map :object perms))})))
 
-(mu/defn ^:private perms-type-for-collection :- CollectionPermissions
+(mu/defn- perms-type-for-collection :- CollectionPermissions
   [permissions-set collection-or-id]
   (cond
     (perms/set-has-full-permissions? permissions-set (perms/collection-readwrite-path collection-or-id)) :write
     (perms/set-has-full-permissions? permissions-set (perms/collection-read-path collection-or-id))      :read
     :else                                                                                                :none))
 
-(mu/defn ^:private group-permissions-graph :- GroupPermissionsGraph
+(mu/defn- group-permissions-graph :- GroupPermissionsGraph
   "Return the permissions graph for a single group having `permissions-set`."
   [collection-namespace permissions-set collection-ids]
   (into
@@ -62,7 +62,7 @@
    (for [collection-id collection-ids]
      {collection-id (perms-type-for-collection permissions-set collection-id)})))
 
-(mu/defn ^:private non-personal-collection-ids :- [:set ms/PositiveInt]
+(mu/defn- non-personal-collection-ids :- [:set ms/PositiveInt]
   "Return a set of IDs of all Collections that are neither Personal Collections nor descendants of Personal
   Collections (i.e., things that you can set Permissions for, and that should go in the graph.)"
   [collection-namespace :- [:maybe ms/KeywordOrString]]
@@ -131,7 +131,7 @@
 
 ;;; -------------------------------------------------- Update Graph --------------------------------------------------
 
-(mu/defn ^:private update-collection-permissions!
+(mu/defn- update-collection-permissions!
   "Update the permissions for group ID with `group-id` on collection with ID
   `collection-id` in the optional `collection-namespace` to `new-collection-perms`."
   [collection-namespace :- [:maybe ms/KeywordOrString]
@@ -148,7 +148,7 @@
       :read  (perms/grant-collection-read-permissions! group-id collection-id)
       :none  nil)))
 
-(mu/defn ^:private update-group-permissions!
+(mu/defn- update-group-permissions!
   [collection-namespace :- [:maybe ms/KeywordOrString]
    group-id             :- ms/PositiveInt
    new-group-perms      :- GroupPermissionsGraph]
@@ -198,7 +198,7 @@
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
                                        [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
-     (data-perms.graph/check-revision-numbers old-graph new-graph)
+     (perms.u/check-revision-numbers old-graph new-graph)
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]
                            (doseq [[group-id changes] changes]
@@ -206,5 +206,5 @@
                              (update-group-permissions! collection-namespace group-id changes))
                            (:id (create-perms-revision! (:revision old-graph))))]
          ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
-         (data-perms.graph/log-permissions-changes diff-old changes)
+         (perms.u/log-permissions-changes diff-old changes)
          (fill-revision-details! revision-id (assoc old-graph :namespace collection-namespace) changes))))))

@@ -83,7 +83,7 @@
                                                    (group-names->ids group-names)
                                                    (all-mapped-group-ids)))))
 
-(mu/defn ^:private fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
+(mu/defn- fetch-or-create-user! :- [:maybe [:map [:id uuid?]]]
   "Returns a Session for the given `email`. Will create the user if needed."
   [{:keys [first-name last-name email group-names user-attributes device-info]}]
   (when-not (sso-settings/saml-enabled)
