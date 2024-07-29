@@ -58,6 +58,30 @@ export function NotebookDataPicker({
     [query, stageIndex, table],
   );
 
+  const pickerInfo = useMemo(
+    () => table && Lib.pickerInfo(query, table),
+    [query, table],
+  );
+
+  const getUrl = () => {
+    if (!pickerInfo || !tableInfo) {
+      return;
+    }
+
+    const { isModel, cardId, tableId, databaseId } = pickerInfo;
+
+    if (pickerInfo.cardId) {
+      const payload = {
+        id: cardId,
+        name: tableInfo.displayName,
+      };
+
+      return isModel ? Urls.model(payload) : Urls.question(payload);
+    } else {
+      return Urls.tableRowsQuery(databaseId, tableId);
+    }
+  };
+
   const handleChange = async (tableId: TableId) => {
     await dispatch(loadMetadataForTable(tableId));
     const metadata = getMetadata(store.getState());
@@ -74,18 +98,12 @@ export function NotebookDataPicker({
     const openInNewTab = (link: string) => window.open(link, "_blank");
 
     if (isCtrlOrMetaClick || isMiddleClick) {
-      if (!tableValue) {
+      const url = getUrl();
+
+      if (!url) {
         return;
       }
 
-      const item = {
-        ...tableValue,
-        database: tableValue.model === "table" && {
-          id: tableValue.db_id,
-        },
-      };
-
-      const url = Urls.modelToUrl(item);
       openInNewTab(url);
     } else {
       setIsOpen(true);
