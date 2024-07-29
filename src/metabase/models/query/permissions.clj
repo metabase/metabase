@@ -80,7 +80,7 @@
   Useful when bulk loading cards from different databases."
   nil)
 
-(mu/defn ^:private card-instance :- [:and
+(mu/defn- card-instance :- [:and
                                      (ms/InstanceOf :model/Card)
                                      [:map [:collection_id [:maybe ms/PositiveInt]]]]
   [card-id :- ::lib.schema.id/card]
@@ -91,7 +91,7 @@
         (t2/select-one [:model/Card :collection_id] :id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
-(mu/defn ^:private source-card-read-perms :- [:set perms.u/PathSchema]
+(mu/defn- source-card-read-perms :- [:set perms.u/PathSchema]
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- ::lib.schema.id/card]

@@ -33,7 +33,6 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (doseq [[feature supported?] {:datetime-diff                 true
-                              :foreign-keys                  true
                               :nested-fields                 false
                               :uuid-type                     true
                               :connection/multiple-databases true

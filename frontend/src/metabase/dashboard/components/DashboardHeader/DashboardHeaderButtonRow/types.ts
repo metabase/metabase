@@ -4,7 +4,7 @@ import type { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHe
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedNightModeControls,
+  DashboardNightModeControls,
 } from "metabase/dashboard/types";
 import type { Collection, Dashboard } from "metabase-types/api";
 
@@ -16,7 +16,7 @@ export type DashboardHeaderButtonRowProps = {
   isAnalyticsDashboard?: boolean;
 } & DashboardRefreshPeriodControls &
   DashboardFullscreenControls &
-  EmbedNightModeControls;
+  DashboardNightModeControls;
 
 export type HeaderButtonProps = {
   isEditing: boolean;

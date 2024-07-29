@@ -29,6 +29,9 @@ import {
   openNotebook,
   resetTestTable,
   resyncDatabase,
+  openPeopleTable,
+  createNativeQuestion,
+  POPOVER_ELEMENT,
 } from "e2e/support/helpers";
 
 const {
@@ -40,6 +43,7 @@ const {
   REVIEWS_ID,
   PEOPLE,
   PEOPLE_ID,
+  INVOICES,
 } = SAMPLE_DATABASE;
 
 describe("issue 9339", () => {
@@ -528,6 +532,33 @@ describe("issue 24994", () => {
 function assertFilterValueIsSelected(value) {
   cy.findByRole("checkbox", { name: value }).should("be.checked");
 }
+
+describe("issue 45410", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should not overflow the last filter value with a chevron icon (metabase#45410)", () => {
+    openPeopleTable({ mode: "notebook" });
+    filter({ mode: "notebook" });
+    popover().within(() => {
+      cy.findByText("Email").click();
+      cy.findByPlaceholderText("Enter some text")
+        .type("abc@example.com,abc2@example.com")
+        .blur();
+      cy.findByText("abc2@example.com")
+        .next("button")
+        .then(([removeButton]) => {
+          cy.get("[data-chevron]").then(([chevronIcon]) => {
+            const removeButtonRect = removeButton.getBoundingClientRect();
+            const chevronIconRect = chevronIcon.getBoundingClientRect();
+            expect(removeButtonRect.right).to.be.lte(chevronIconRect.left);
+          });
+        });
+    });
+  });
+});
 
 describe("issue 25378", () => {
   const questionDetails = {
@@ -1311,6 +1342,60 @@ describe.skip("issue 44435", () => {
     cy.findByTestId("filter-pill").then($pill => {
       const pillWidth = $pill[0].getBoundingClientRect().width;
       cy.window().its("innerWidth").should("be.gt", pillWidth);
+    });
+  });
+});
+
+// This reproduction can possibly be replaced with the unit test for the `ListField` component in the future
+describe("issue 45877", () => {
+  beforeEach(() => {
+    restore("setup");
+    cy.signInAsAdmin();
+  });
+
+  it("should not render selected boolean option twice in a filter dropdown (metabase#45877)", () => {
+    const questionDetails = {
+      name: "45877",
+      native: {
+        query: "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]]",
+        "template-tags": {
+          expected_invoice: {
+            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+            dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
+            name: "expected_invoice",
+            "display-name": "Expected Invoice",
+            type: "dimension",
+            "widget-type": "string/=",
+          },
+        },
+      },
+    };
+
+    createNativeQuestion(questionDetails, { visitQuestion: true });
+    cy.get("fieldset").should("contain", "Expected Invoice").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list").should("exist");
+
+      cy.findAllByLabelText("true")
+        .should("have.length", 1)
+        .and("not.be.checked");
+      cy.findAllByLabelText("false")
+        .should("have.length", 1)
+        .and("not.be.checked")
+        .click();
+
+      cy.button("Add filter").click();
+    });
+
+    // We don't even have to run the query to reproduce this issue
+    // so let's not waste time and resources doing so.
+    cy.get(POPOVER_ELEMENT).should("not.exist");
+    cy.get("fieldset").should("contain", "false").click();
+    popover().within(() => {
+      cy.findAllByLabelText("true").should("have.length", 1);
+      cy.findAllByLabelText("false")
+        .should("have.length", 1)
+        .should("be.checked");
     });
   });
 });

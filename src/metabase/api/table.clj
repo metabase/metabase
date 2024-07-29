@@ -352,16 +352,12 @@
     (let [tables (->> (t2/select Table :id [:in ids])
                       (filter mi/can-read?))
           tables (t2/hydrate tables
-                             :db
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments
-                             :metrics)
-          dbs    (when (seq tables)
-                   (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)]))]
+                             :metrics)]
       (for [table tables]
         (-> table
             (m/dissoc-in [:db :details])
-            (assoc-dimension-options (-> table :db_id dbs))
             format-fields-for-response
             fix-schema
             (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))
@@ -438,10 +434,7 @@
   'virtual' fields as well."
   [{:keys [database_id] :as card} & {:keys [include-fields? databases card-id->metadata-fields]}]
   ;; if collection isn't already hydrated then do so
-  (let [card (cond-> card
-               (not (contains? card :collection))
-               (t2/hydrate :collection))
-        card-type (:type card)
+  (let [card-type (:type card)
         dataset-query (:dataset_query card)]
     (cond-> {:id               (str "card__" (u/the-id card))
              :db_id            (:database_id card)
@@ -508,21 +501,20 @@
   Unreadable cards are silently skipped."
   [ids]
   (when (seq ids)
-    (let [cards (-> (t2/select Card
-                               {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
-                                            :c.description :c.collection_id :c.database_id :c.type
-                                            [:r.status :moderated_status]]
-                                :from      [[:report_card :c]]
-                                :left-join [[{:select   [:moderated_item_id :status]
-                                              :from     [:moderation_review]
-                                              :where    [:and
-                                                         [:= :moderated_item_type "card"]
-                                                         [:= :most_recent true]]
-                                              :order-by [[:id :desc]]
-                                              :limit    1} :r]
-                                            [:= :r.moderated_item_id :c.id]]
-                                :where     [:in :c.id ids]})
-                    (t2/hydrate :collection))
+    (let [cards (t2/select Card
+                           {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
+                                        :c.description :c.collection_id :c.database_id :c.type
+                                        [:r.status :moderated_status]]
+                            :from      [[:report_card :c]]
+                            :left-join [[{:select   [:moderated_item_id :status]
+                                          :from     [:moderation_review]
+                                          :where    [:and
+                                                     [:= :moderated_item_type "card"]
+                                                     [:= :most_recent true]]
+                                          :order-by [[:id :desc]]
+                                          :limit    1} :r]
+                                        [:= :r.moderated_item_id :c.id]]
+                            :where      [:in :c.id ids]})
           dbs (t2/select-pk->fn identity Database :id [:in (into #{} (map :database_id) cards)])
           metadata-field-ids (into #{}
                                    (comp (mapcat :result_metadata)
@@ -617,7 +609,7 @@
    field_order [:sequential ms/PositiveInt]}
   (-> (t2/select-one Table :id id) api/write-check (table/custom-order-fields! field_order)))
 
-(mu/defn ^:private update-csv!
+(mu/defn- update-csv!
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
   [options :- [:map
                [:table-id ms/PositiveInt]

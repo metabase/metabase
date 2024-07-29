@@ -133,12 +133,12 @@
 (mr/def ::temporal
   (lib.schema.common/instance-of-class java.time.temporal.Temporal))
 
-  (mu/defn ^:private temporal-literal-lower-bound :- ::temporal
+  (mu/defn- temporal-literal-lower-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
    t    :- ::temporal]
   (:start (u.date/range t unit)))
 
-(mu/defn ^:private temporal-literal-upper-bound :- ::temporal
+(mu/defn- temporal-literal-upper-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
    t    :- ::temporal]
   (:end (u.date/range t unit)))
@@ -171,7 +171,7 @@
   [_temporal-value-clause _temporal-unit]
   nil)
 
-(mu/defn ^:private target-unit-for-new-bound :- [:maybe (into [:enum] u.date/add-units)]
+(mu/defn- target-unit-for-new-bound :- [:maybe (into [:enum] u.date/add-units)]
   [value-unit :- [:maybe :keyword]
    field-unit :- [:maybe :keyword]]
   (or (when (and value-unit

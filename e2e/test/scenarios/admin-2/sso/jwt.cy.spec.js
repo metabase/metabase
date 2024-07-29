@@ -6,6 +6,7 @@ import {
   popover,
   setTokenFeatures,
 } from "e2e/support/helpers";
+import { setupJwt } from "e2e/support/helpers/e2e-jwt-helpers";
 
 import {
   crudGroupMappingsWidget,
@@ -112,14 +113,6 @@ describeEE("scenarios > admin > settings > SSO > JWT", () => {
 
 const getJwtCard = () => {
   return cy.findByText("JWT").parent().parent();
-};
-
-const setupJwt = () => {
-  cy.request("PUT", "/api/setting", {
-    "jwt-enabled": true,
-    "jwt-identity-provider-uri": "https://example.text",
-    "jwt-shared-secret": "0".repeat(64),
-  });
 };
 
 const enterJwtSettings = () => {

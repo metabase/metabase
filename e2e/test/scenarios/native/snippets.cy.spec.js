@@ -31,26 +31,26 @@ describe("scenarios > question > snippets", () => {
   });
 
   it("should let you create and use a snippet", () => {
+    cy.log("Type a query and highlight some of the text");
     openNativeEditor().type(
-      // Type a query and highlight some of the text
       "select 'stuff'" + "{shift}{leftarrow}".repeat("'stuff'".length),
     );
 
-    // Add a snippet of that text
-    cy.icon("snippet").click();
+    cy.log("Add a snippet of that text");
+    cy.findByTestId("native-query-editor-sidebar").icon("snippet").click();
     cy.findByTestId("sidebar-content").findByText("Create a snippet").click();
 
     modal().within(() => {
       cy.findByLabelText("Give your snippet a name").type("stuff-snippet");
-      cy.findByText("Save").click();
+      cy.button("Save").click();
     });
 
-    // SQL editor should get updated automatically
-    cy.get("@editor").contains("select {{snippet: stuff-snippet}}");
+    cy.log("SQL editor should get updated automatically");
+    cy.get("@editor").should("contain", "select {{snippet: stuff-snippet}}");
 
-    // Run the query and check the value
+    cy.log("Run the query and check the value");
     cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.findByTestId("scalar-value").contains("stuff");
+    cy.findByTestId("scalar-value").should("have.text", "stuff");
   });
 
   it("should let you edit snippet", () => {

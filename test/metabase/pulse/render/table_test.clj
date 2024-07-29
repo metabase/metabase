@@ -82,7 +82,8 @@
             "1.001,5" "rgba(0, 0, 255, 0.75)"
             "1,001.5" "rgba(0, 0, 255, 0.75)"}
            (-> (color/make-color-selector query-results (:visualization_settings render.tu/test-card))
-               (#'table/render-table 0 ["a" "b" "c"] (query-results->header+rows query-results))
+               (#'table/render-table 0 {:col-names             ["a" "b" "c"]
+                                        :cols-for-color-lookup ["a" "b" "c"]} (query-results->header+rows query-results))
                find-table-body
                cell-value->background-color)))))
 
