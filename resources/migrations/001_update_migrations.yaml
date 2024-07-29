@@ -8629,7 +8629,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v50.2024-07-29T09:04:13
+      id: v50.2024-07-29T09:24:13
       author: crisptrutski
       comment: Add the query_table join table
       changes:
