@@ -240,7 +240,7 @@
         implicit-refs (set/difference (set (implicit-references-for-query parsed-query db-id))
                                       (set explicit-refs))
         field-refs    (concat (mark-reference explicit-refs true)
-                             (mark-reference implicit-refs false))
+                              (mark-reference implicit-refs false))
         table-refs    (deduce-or-fetch-table-refs parsed-query db-id field-refs)]
     {:tables table-refs
      :fields field-refs}))
