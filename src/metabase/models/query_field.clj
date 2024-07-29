@@ -13,7 +13,7 @@
   (if (= 0 x) false x))
 
 (defn- coerce-booleans [m]
-  (update-vals coerce-boolean m))
+  (update-vals m coerce-boolean))
 
 (defn cards-with-reference-errors
   "Given some HoneySQL query map with :model/Card bound as :c, restrict this query to only return cards
@@ -77,6 +77,18 @@
                            :table table}
                           (when (not (or table_unknown table_inactive))
                             {:field field}))]))
+         #_(t2/query {:select    [:dt.card_id
+                                [:qt.table :table]
+                                [[:= :t.id nil] :table_unknown]
+                                [[:not [:coalesce :t.active true]] :table_inactive]]
+                    :from      [[(t2/table-name :model/QueryField) :qf]]
+                    :left-join [[(t2/table-name :model/Table) :t] [:= :t.id :qt.table_id]]
+                    :where     [:and
+                                [:or
+                                 [:= :t.id nil]
+                                 [:= :t.active false]]
+                                [:in :card_id (map :id cards)]]
+                    :order-by  [:qt.card_id :table :field]})
          distinct
          (reduce (fn [acc [id error]]
                    (update acc id u/conjv error))
@@ -91,25 +103,4 @@
   [card-id query-field-rows]
   (t2/with-transaction [_conn]
     (t2/delete! :model/QueryField :card_id card-id)
-    (t2/insert! :model/QueryField query-field-rows)
-
-    ;; let's wait and see if we get flakes again.
-    ;; the following diff algorithm broke once we could no longer depend on :field_id being non-null
-
-    #_(let [existing            (t2/select :model/QueryField :card_id card-id)
-          {:keys [to-update
-                  to-create
-                  to-delete]} (u/row-diff existing query-field-rows
-                                          {:id-fn      :field_id
-                                           :to-compare #(dissoc % :id :card_id :field_id)})]
-      (when (seq to-delete)
-        ;; this deletion seems to break transaction (implicit commit or something) on MySQL, and this `diff`
-        ;; algo drops its frequency by a lot - which should help with transactions affecting each other a
-        ;; lot. Parallel tests in `metabase.models.query.permissions-test` were breaking when delete was
-        ;; executed unconditionally on every query change.
-        (t2/delete! :model/QueryField :card_id card-id :field_id [:in (map :field_id to-delete)]))
-      (when (seq to-create)
-        (t2/insert! :model/QueryField to-create))
-      (doseq [item to-update]
-        (t2/update! :model/QueryField {:card_id card-id :field_id (:field_id item)}
-                    (select-keys item [:explicit_reference]))))))
+    (t2/insert! :model/QueryField query-field-rows)))
