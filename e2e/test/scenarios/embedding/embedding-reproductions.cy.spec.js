@@ -14,17 +14,14 @@ import {
   getIframeBody,
   addOrUpdateDashboardCard,
   describeEE,
-  createNativeQuestion,
-  createDashboardWithTabs,
-  withDatabase,
-  resyncDatabase,
   toggleFilterWidgetValues,
   getDashboardCard,
+  createNativeQuestion,
+  queryBuilderMain,
+  withDatabase,
+  visitPublicQuestion,
+  visitPublicDashboard,
 } from "e2e/support/helpers";
-import {
-  createMockDashboardCard,
-  createMockParameter,
-} from "metabase-types/api/mocks";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -504,106 +501,167 @@ describe("issues 20845, 25031", () => {
   });
 });
 
-describe.skip("27643", { tags: "@external" }, () => {
+// TODO:
+// - Add tests for embedding previews in both cases
+// - Add tests for disabled, editable and locked parameters in both cases
+// BONUS: Ideally add tests for email subscriptions with the filter applied
+describe("issue 27643", () => {
   const PG_DB_ID = 2;
-
-  beforeEach(() => {
-    restore("postgres-12");
-    cy.signInAsAdmin();
-    resyncDatabase({
-      dbId: PG_DB_ID,
-    });
-    const TEMPLATE_TAG_NAME = "boolean_param";
-    withDatabase(PG_DB_ID, ({ INVOICES }) => {
-      /** @type {import("e2e/support/helpers").NativeQuestionDetails} */
-      const questionDetails = {
-        name: "Postgres SQL with boolean parameter",
-        database: PG_DB_ID,
-        native: {
-          query: "SELECT * FROM INVOICES [[ where {{ boolean_param }} ]]",
-          "template-tags": {
-            boolean_param: {
-              id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
-              dimension: ["field", INVOICES.EXPECTED_INVOICE, null],
-              name: TEMPLATE_TAG_NAME,
-              "display-name": "Boolean Param",
-              type: "dimension",
-              "widget-type": "string/=",
-            },
+  const TEMPLATE_TAG_NAME = "expected_invoice";
+  const getQuestionDetails = fieldId => {
+    return {
+      name: "27643",
+      database: PG_DB_ID,
+      native: {
+        query:
+          "SELECT * FROM INVOICES [[ where {{ expected_invoice }} ]] limit 1",
+        "template-tags": {
+          [TEMPLATE_TAG_NAME]: {
+            id: "3cfb3686-0d13-48db-ab5b-100481a3a830",
+            dimension: ["field", fieldId, null],
+            name: TEMPLATE_TAG_NAME,
+            "display-name": "Expected Invoice",
+            type: "dimension",
+            "widget-type": "string/=",
           },
         },
-      };
-      createNativeQuestion(questionDetails)
-        .then(({ body: question }) => {
-          const DASHBOARD_FILTER_ID = "2850aeab";
-          const DASHBOARD_PARAMETER = createMockParameter({
-            id: DASHBOARD_FILTER_ID,
-            name: "Text filter for boolean field",
-            slug: "text_filter_for_boolean_field",
-          });
-          const dashboardDetails = {
-            name: "dashboard with card with boolean field filter",
-            enable_embedding: true,
-            embedding_params: {
-              [DASHBOARD_PARAMETER.slug]: "enabled",
-            },
-            dashcards: [
-              createMockDashboardCard({
-                id: -1,
-                size_x: 12,
-                size_y: 8,
-                card_id: question.id,
-                parameter_mappings: [
-                  {
-                    parameter_id: DASHBOARD_FILTER_ID,
-                    card_id: question.id,
-                    target: ["dimension", ["template-tag", TEMPLATE_TAG_NAME]],
-                  },
-                ],
-              }),
-            ],
-            parameters: [DASHBOARD_PARAMETER],
-          };
-          return createDashboardWithTabs(dashboardDetails);
-        })
-        .then(dashboard => {
-          cy.wrap(dashboard.id).as("dashboardId");
-        });
+      },
+      enable_embedding: true,
+      embedding_params: {
+        [TEMPLATE_TAG_NAME]: "enabled",
+      },
+    };
+  };
+
+  beforeEach(() => {
+    // This issue was only reproducible against the Postgres database.
+    restore("postgres-12");
+    cy.signInAsAdmin();
+    withDatabase(PG_DB_ID, ({ INVOICES }) => {
+      cy.wrap(INVOICES.EXPECTED_INVOICE).as(
+        "postgresInvoicesExpectedInvoiceId",
+      );
     });
   });
 
-  it("should allow dashboard filter to map to boolean field filter parameter in static embedding (metabase#27643)", () => {
-    cy.log("Test dashboard");
-    cy.get("@dashboardId").then(dashboardId => {
-      visitDashboard(dashboardId);
+  describe("should allow a dashboard filter to map to a boolean field filter parameter (metabase#27643)", () => {
+    beforeEach(() => {
+      const dashboardParameter = {
+        id: "2850aeab",
+        name: "Text filter for boolean field",
+        slug: "text_filter_for_boolean_field",
+        type: "string/=",
+      };
+
+      const dashboardDetails = {
+        name: "Dashboard with card with boolean field filter",
+        enable_embedding: true,
+        embedding_params: {
+          [dashboardParameter.slug]: "enabled",
+        },
+        parameters: [dashboardParameter],
+      };
+
+      cy.get("@postgresInvoicesExpectedInvoiceId")
+        .then(fieldId => {
+          cy.createNativeQuestionAndDashboard({
+            questionDetails: getQuestionDetails(fieldId),
+            dashboardDetails,
+          });
+        })
+        .then(({ body: dashboardCard }) => {
+          const { card_id, dashboard_id } = dashboardCard;
+
+          cy.wrap(dashboard_id).as("dashboardId");
+          cy.wrap(card_id).as("questionId");
+
+          const mapFilterToCard = {
+            parameter_mappings: [
+              {
+                parameter_id: dashboardParameter.id,
+                card_id,
+                target: ["dimension", ["template-tag", TEMPLATE_TAG_NAME]],
+              },
+            ],
+          };
+
+          cy.editDashboardCard(dashboardCard, mapFilterToCard);
+        });
     });
 
-    toggleFilterWidgetValues(["false"]);
-    getDashboardCard().findByText("Rows 1-6 of 455").should("be.visible");
+    it("in static embedding and in public dashboard scenarios (metabase#27643-1)", () => {
+      cy.log("Test the dashboard");
+      visitDashboard("@dashboardId");
+      getDashboardCard().should("contain", "true");
+      toggleFilterWidgetValues(["false"]);
+      getDashboardCard().should("contain", "false");
 
-    cy.log("Test embedded dashboard");
-    cy.get("@dashboardId").then(dashboardId => {
-      visitEmbeddedPage({
-        resource: { dashboard: dashboardId },
-        params: {},
+      cy.log("Test the embedded dashboard");
+      cy.get("@dashboardId").then(dashboard => {
+        visitEmbeddedPage({
+          resource: { dashboard },
+          params: {},
+        });
+
+        getDashboardCard().should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        getDashboardCard().should("contain", "false");
+      });
+
+      cy.log("Test the public dashboard");
+      cy.get("@dashboardId").then(dashboardId => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
+        visitPublicDashboard(dashboardId);
+
+        getDashboardCard().should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        getDashboardCard().should("contain", "false");
+      });
+    });
+  });
+
+  describe("should allow a native question filter to map to a boolean field filter parameter (metabase#27643)", () => {
+    beforeEach(() => {
+      cy.get("@postgresInvoicesExpectedInvoiceId").then(fieldId => {
+        createNativeQuestion(getQuestionDetails(fieldId), {
+          wrapId: true,
+          idAlias: "questionId",
+        });
       });
     });
 
-    /**
-     * If we set the filter value now, this request won't be cancelled.
-     * And it will override the result from the next request with filter value.
-     *
-     * This seems to only happen in Cypress since it click elements on the screen
-     * a lot faster than human. I tested this manually, and the requests were cancelled properly.
-     */
-    getDashboardCard()
-      .findByText("Rows 1-6 of first 2000")
-      .should("be.visible");
+    it("in static embedding and in public question scenarios (metabase#27643-2)", () => {
+      cy.log("Test the question");
+      visitQuestion("@questionId");
+      cy.findAllByTestId("cell-data").should("contain", "true");
+      toggleFilterWidgetValues(["false"]);
+      queryBuilderMain().button("Get Answer").click();
+      cy.findAllByTestId("cell-data").should("contain", "false");
 
-    toggleFilterWidgetValues(["false"]);
-    getDashboardCard()
-      .findByText("There was a problem displaying this chart.")
-      .should("not.exist");
+      cy.log("Test the embedded question");
+      cy.get("@questionId").then(question => {
+        visitEmbeddedPage({
+          resource: { question },
+          params: {},
+        });
+
+        cy.findAllByTestId("cell-data").should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        cy.findAllByTestId("cell-data").should("contain", "false");
+      });
+
+      cy.log("Test the public question");
+      cy.get("@questionId").then(questionId => {
+        // We were signed out due to the previous visitEmbeddedPage
+        cy.signInAsAdmin();
+        visitPublicQuestion(questionId);
+
+        cy.findAllByTestId("cell-data").should("contain", "true");
+        toggleFilterWidgetValues(["false"]);
+        cy.findAllByTestId("cell-data").should("contain", "false");
+      });
+    });
   });
 });
 

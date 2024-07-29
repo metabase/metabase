@@ -144,10 +144,10 @@
   background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
   display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
   create. If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([color-selector column-names contents]
-   (render-table color-selector 0 column-names contents))
+  ([color-selector column-names-map contents]
+   (render-table color-selector 0 column-names-map contents))
 
-  ([color-selector normalized-zero column-names [header & rows]]
+  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows]]
    [:table {:style       (style/style {:max-width     "100%"
                                        :white-space   :nowrap
                                        :border        (str "1px solid " style/color-border)
@@ -155,5 +155,5 @@
                                        :width         "1%"})
             :cellpadding "0"
             :cellspacing "0"}
-    (render-table-head (vec column-names) header)
-    (render-table-body (partial color/get-background-color color-selector) normalized-zero column-names rows)]))
+    (render-table-head (vec col-names) header)
+    (render-table-body (partial color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows)]))

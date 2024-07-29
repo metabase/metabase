@@ -1,6 +1,7 @@
 (ns metabase.api.testing
   "Endpoints for testing."
   (:require
+   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
    [compojure.core :refer [POST]]
@@ -142,5 +143,16 @@
     (alter-var-root #'java-time.clock/*clock* (constantly clock))
     {:result (if clock :set :reset)
      :time   (t/instant)}))
+
+(api/defendpoint GET "/echo"
+  "Simple echo hander. Fails when you GET {\"fail\": true}."
+  [fail body]
+  {fail ms/BooleanValue
+   body ms/JSONString}
+  (if fail
+    {:status 400
+     :body {:error-code "oops"}}
+    {:status 200
+     :body (json/decode body true)}))
 
 (api/define-routes)

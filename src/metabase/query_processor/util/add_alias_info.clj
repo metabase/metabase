@@ -168,7 +168,7 @@
   (when join-alias
     ((this-level-join-aliases inner-query) join-alias)))
 
-(mu/defn ^:private field-instance :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- field-instance :- [:maybe ::lib.schema.metadata/column]
   [[_ id-or-name :as _field-clause] :- mbql.s/field]
   (when (integer? id-or-name)
     (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
@@ -176,7 +176,7 @@
 (defn- field-table-id [field-clause]
   (:table-id (field-instance field-clause)))
 
-(mu/defn ^:private field-source-table-alias :- [:or
+(mu/defn- field-source-table-alias :- [:or
                                                 ::lib.schema.common/non-blank-string
                                                 ::lib.schema.id/table
                                                 [:= ::source]]

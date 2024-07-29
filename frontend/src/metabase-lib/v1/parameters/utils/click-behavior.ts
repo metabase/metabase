@@ -293,6 +293,7 @@ function baseTypeFilterForParameterType(parameterType: string) {
     id: [TYPE.Integer, TYPE.UUID],
     category: [TYPE.Text, TYPE.Integer],
     location: [TYPE.Text],
+    "temporal-unit": [TYPE.Text, TYPE.TextLike],
   }[typePrefix];
   if (allowedTypes === undefined) {
     // default to showing everything
