@@ -26,6 +26,23 @@
                             :model/Field      {field-2 :id}  {:active   false
                                                               :name     "FB"
                                                               :table_id table-2}
+
+                            ;; QTs not to include:
+                            ;; - Table is still active
+                            :model/QueryTable {}             {:card_id  card-1
+                                                              :table    "ORDERS"
+                                                              :table_id (mt/id :orders)}
+
+                            :model/QueryTable {}              {:card_id card-1
+                                                               :table "T1"
+                                                               :table_id table-1}
+                            :model/QueryTable {}              {:card_id card-2
+                                                               :table "T2"
+                                                               :table_id table-2}
+                            :model/QueryTable {}              {:card_id card-3
+                                                               :table "T3"
+                                                               :table_id nil}
+
                             ;; QFs not to include:
                             ;; - Field is still active
                             :model/QueryField {}             {:card_id  card-1
