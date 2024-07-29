@@ -70,7 +70,7 @@ export function NotebookDataPicker({
 
     const { isModel, cardId, tableId, databaseId } = pickerInfo;
 
-    if (pickerInfo.cardId) {
+    if (cardId) {
       const payload = {
         id: cardId,
         name: tableInfo.displayName,
