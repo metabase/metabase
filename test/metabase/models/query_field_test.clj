@@ -8,7 +8,16 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
-(def ^:private query-field-keys [:card_id :table :column :table_id :field_id :explicit_reference])
+(def ^:private query-table-keys
+  [:card_id :schema :table :table_id])
+
+(def ^:private query-field-keys
+  [:card_id :table :column :table_id :field_id :explicit_reference])
+
+(defn- qt->map [query-table]
+  (-> (select-keys query-table query-table-keys)
+      (update :schema u/lower-case-en)
+      (update :table u/lower-case-en)))
 
 (defn- qf->map [query-field]
   (-> (select-keys query-field query-field-keys)
@@ -18,6 +27,10 @@
 (defn- query-fields-for-card
   [card-id]
   (t2/select-fn-set qf->map :model/QueryField :card_id card-id))
+
+(defn- query-tables-for-card
+  [card-id]
+  (t2/select-fn-set qt->map :model/QueryTable :card_id card-id))
 
 (defn- do-with-test-setup [f]
   (query-analysis/with-immediate-analysis
@@ -173,3 +186,15 @@
           ;; subset since it also includes the PKs/FKs
           (is (set/subset? #{total-qf tax-qf}
                            (t2/select-fn-set qf->map :model/QueryField :card_id card-id :explicit_reference true))))))))
+
+(deftest no-column-test
+  (with-test-setup
+    (let [qt {:card_id  card-id
+              :schema   nil
+              :table    "orders"
+              :table_id table-id}]
+      (testing "simple select count(*)"
+        (trigger-parse! card-id "select count(*) from orders")
+        (is (empty? (query-fields-for-card card-id)))
+        (is (= #{qt}
+               (query-tables-for-card card-id)))))))
