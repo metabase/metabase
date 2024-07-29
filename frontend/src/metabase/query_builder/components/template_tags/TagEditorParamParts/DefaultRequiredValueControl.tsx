@@ -25,12 +25,16 @@ export function DefaultRequiredValueControl({
 
   return (
     <div>
-      <ContainerLabel>
+      <ContainerLabel id={`default-value-label-${tag.id}`}>
         {t`Default filter widget value`}
         {isMissing && <ErrorSpan>({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
-      <Flex gap="xs" direction="column">
+      <Flex
+        aria-labelledby={`default-value-label-${tag.id}`}
+        gap="xs"
+        direction="column"
+      >
         <ParameterValuePicker
           tag={tag}
           parameter={parameter}

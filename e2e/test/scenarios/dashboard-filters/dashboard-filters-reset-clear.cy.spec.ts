@@ -525,7 +525,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "2 selections",
       setValue: (label, value) => {
         filter(label).click();
-
         popover().findByRole("combobox").type(value);
         popover().button("Add filter").click();
       },
@@ -635,7 +634,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     );
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
 
-    cy.log("has default value, non-required, value same as default");
+    cy.log("has default value, non-required, current value same as default");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
     filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
     clearButton(DEFAULT_NON_REQUIRED).click();
