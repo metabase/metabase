@@ -37,7 +37,7 @@ const shouldUseEslint =
   process.env.WEBPACK_BUNDLE !== "production" &&
   process.env.USE_ESLINT === "true";
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
-const disableSourceMaps = !!process.env.DISABLE_SOURCE_MAPS === "true";
+const disableSourceMaps = !!process.env.DISABLE_SOURCE_MAPS;
 
 console.log(
   process.env.DISABLE_SOURCE_MAPS,
