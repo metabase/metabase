@@ -32,8 +32,9 @@
           (u/sh {:dir u/project-root-directory} "yarn")))
       (u/step "Build frontend"
         (u/sh {:dir u/project-root-directory
-               :env {"PATH"       (env/env :path)
-                     "HOME"       (env/env :user-home)
+               :env {"PATH"                (env/env :path)
+                     "HOME"                (env/env :user-home)
+                     "DISABLE_SOURCE_MAPS" (env/env :disable-source-maps)
                      "WEBPACK_BUNDLE"   "production"
                      "MB_EDITION" mb-edition}}
               "yarn" "build-release"))
