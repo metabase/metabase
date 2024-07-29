@@ -8734,7 +8734,7 @@ databaseChangeLog:
       preConditions: # linter made me add this
       changes:
         - createIndex:
-            tableName: query_table.analysis_id
+            tableName: query_table
             indexName: idx_query_table_analysis_id
             columns:
               column:
@@ -8748,7 +8748,7 @@ databaseChangeLog:
       preConditions: # linter made me add this
       changes:
         - createIndex:
-            tableName: query_table.table_id
+            tableName: query_table
             indexName: idx_query_table_table_id
             columns:
               column:

@@ -142,7 +142,10 @@
               query-table-rows (map table->row (:tables references))]
           (t2/insert! :model/QueryField query-field-rows)
           (t2/insert! :model/QueryTable query-table-rows)
-          (t2/delete! :model/QueryAnalysis {:where [:not= :id analysis-id]}))))))
+          (t2/delete! :model/QueryAnalysis
+                      {:where [:and
+                               [:= :card_id card-id]
+                               [:not= :id analysis-id]]}))))))
 
 (defn- replaced-inner-query-for-native-card
   "Substitute new references for certain fields and tables, based upon the given mappings."
