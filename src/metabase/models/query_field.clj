@@ -10,9 +10,10 @@
   (derive :metabase/model))
 
 (defn- coerce-boolean [x]
-  (if (zero? x)
-    false
-    x))
+  (if (= 0 x) false x))
+
+(defn- coerce-booleans [m]
+  (update-vals coerce-boolean m))
 
 (defn cards-with-reference-errors
   "Given some HoneySQL query map with :model/Card bound as :c, restrict this query to only return cards
@@ -55,10 +56,11 @@
                                   [:= :f.active false]]
                                  [:in :card_id (map :id cards)]]
                      :order-by  [:qf.card_id :field :table]})
+         (map coerce-booleans)
          (map (fn [{:keys [card_id table field field_unknown table_active]}]
                 [card_id {:type  (cond
-                                   (coerce-boolean field_unknown) :unknown-field
-                                   (coerce-boolean table_active)  :inactive-field
+                                   field_unknown :unknown-field
+                                   table_active  :inactive-field
                                    :else         :inactive-table)
                           :table table
                           :field field}]))
