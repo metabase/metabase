@@ -85,6 +85,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
+      SKIP_LICENSES: true
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
