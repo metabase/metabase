@@ -13,7 +13,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.signInAsAdmin();
   });
 
-  it("text parameters - single value", () => {
+  it("text parameters", () => {
     createNativeQuestionWithParameters({
       no_default_non_required: {
         name: "no_default_non_required",
@@ -26,13 +26,48 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         "display-name": DEFAULT_NON_REQUIRED,
         id: "75d67d38",
         type: "text",
-        default: "1",
+        default: "a",
       },
       default_required: {
         name: "default_required",
         "display-name": DEFAULT_REQUIRED,
         id: "60f12ac8",
         type: "text",
+        required: true,
+        default: "a",
+      },
+    });
+
+    checkNativeParameters({
+      defaultValueFormatted: "a",
+      otherValue: "{backspace}b",
+      otherValueFormatted: "b",
+      setValue: (label, value) => {
+        filter(label).focus().clear().type(value).blur();
+      },
+    });
+  });
+
+  it("number parameters", () => {
+    createNativeQuestionWithParameters({
+      no_default_non_required: {
+        name: "no_default_non_required",
+        "display-name": NO_DEFAULT_NON_REQUIRED,
+        id: "fed1b918",
+        type: "number",
+      },
+      default_non_required: {
+        name: "default_non_required",
+        "display-name": DEFAULT_NON_REQUIRED,
+        id: "75d67d38",
+        type: "number",
+        default: "1",
+      },
+      default_required: {
+        name: "default_required",
+        "display-name": DEFAULT_REQUIRED,
+        id: "60f12ac8",
+        type: "number",
         required: true,
         default: "1",
       },
@@ -183,6 +218,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
     cy.log(DEFAULT_NON_REQUIRED);
     filterSection("default_non_required").within(() => {
+      filter("Enter a default value…").scrollIntoView();
       filter("Enter a default value…").should(
         "have.value",
         defaultValueFormatted,
@@ -203,6 +239,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
     cy.log(DEFAULT_REQUIRED);
     filterSection("default_required").within(() => {
+      filter("Enter a default value…").scrollIntoView();
       filter("Enter a default value…").should(
         "have.value",
         defaultValueFormatted,
