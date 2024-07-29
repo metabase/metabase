@@ -85,6 +85,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
+      DISABLE_SOURCE_MAPS: ${{ github.ref_name != 'master' && !contains(github.ref_name, 'release-x')}}
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -125,7 +126,6 @@ jobs:
       MB_SNOWPLOW_AVAILABLE: true
       MB_SNOWPLOW_URL: "http://localhost:9090" # Snowplow micro
       TZ: US/Pacific # to make node match the instance tz
-      DISABLE_SOURCE_MAPS: ${{ github.ref_name != 'master' && !contains(github.ref_name, 'release-x')}}
     strategy:
       fail-fast: false
       matrix: ${{ fromJSON(needs.e2e-matrix-builder.outputs.matrix) }}
