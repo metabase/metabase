@@ -8634,6 +8634,20 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v51.2024-07-29T09:23:12
+      author: crisptrutski
+      comment: Index query_analysis.card_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_analysis
+            indexName: idx_query_analysis_card_id
+            columns:
+              column:
+                name: card_id
+
+  - changeSet:
       id: v51.2024-07-29T09:24:13
       author: crisptrutski
       comment: Add the query_table join table
@@ -8699,6 +8713,48 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
+      id: v51.2024-07-29T09:25:13
+      author: crisptrutski
+      comment: Index query_table.card_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table
+            indexName: idx_query_table_card_id
+            columns:
+              column:
+                name: card_id
+
+  - changeSet:
+      id: v51.2024-07-29T09:25:14
+      author: crisptrutski
+      comment: Index query_table
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table.analysis_id
+            indexName: idx_query_table_analysis_id
+            columns:
+              column:
+                name: analysis_id
+
+  - changeSet:
+      id: v51.2024-07-29T09:25:15
+      author: crisptrutski
+      comment: Index query_table
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table.table_id
+            indexName: idx_query_table_table_id
+            columns:
+              column:
+                name: table_id
+
+  - changeSet:
       id: v51.2024-07-29T10:03:27
       author: crisptrutski
       comment: Wipe stale query fields, so we can add new non-nullable columns
@@ -8733,6 +8789,19 @@ databaseChangeLog:
                     deleteCascade: true
                     deleteCascadeForce: true # its safe as we have truncated the table
 
+  - changeSet:
+      id: v51.2024-07-29T11:25:13
+      author: crisptrutski
+      comment: Index query_field.analysis_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table
+            indexName: idx_query_field_analysis_id
+            columns:
+              column:
+                name: analysis_id
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
