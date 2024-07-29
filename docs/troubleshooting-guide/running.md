@@ -48,7 +48,7 @@ A red flag to look out for: the sawtooth pattern. Metabase will quickly consume 
 If you're seeing this, you'll need to [increase the amount of memory allocated to the JVM](#allocating-more-memory-to-the-jvm).
 
 ## Allocating more memory to the JVM
-ii
+
 You can set a JVM option to allocate more memory to the JVM's heap. For example, your Java runtime might use the `-X` flag to do this:
 
 ```sh
