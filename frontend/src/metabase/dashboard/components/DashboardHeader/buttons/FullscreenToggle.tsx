@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const FullscreenToggle = ({
   isFullscreen,
@@ -10,7 +9,7 @@ export const FullscreenToggle = ({
 }: DashboardFullscreenControls) => {
   const label = isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`;
   return (
-    <DashboardHeaderButton
+    <ToolbarButton
       tooltipLabel={label}
       icon={isFullscreen ? "contract" : "expand"}
       onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}

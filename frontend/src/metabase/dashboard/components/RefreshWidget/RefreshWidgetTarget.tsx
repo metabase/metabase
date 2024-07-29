@@ -3,7 +3,7 @@ import { t } from "ttag";
 import { CountdownIcon } from "metabase/components/icons/CountdownIcon";
 import { isNotNull } from "metabase/lib/types";
 
-import { DashboardHeaderButton } from "../DashboardHeader/DashboardHeaderButton";
+import { ToolbarButton } from "../../../components/ToolbarButton/ToolbarButton";
 
 export const RefreshWidgetTarget = ({
   period,
@@ -16,7 +16,7 @@ export const RefreshWidgetTarget = ({
 
   if (!showRemaining) {
     return (
-      <DashboardHeaderButton
+      <ToolbarButton
         tooltipLabel={t`Auto-refresh`}
         icon="clock"
         aria-label={t`Auto Refresh`}
@@ -27,7 +27,7 @@ export const RefreshWidgetTarget = ({
   const remaining = period - elapsed;
 
   return (
-    <DashboardHeaderButton
+    <ToolbarButton
       tooltipLabel={
         t`Refreshing in` +
         " " +
@@ -44,6 +44,6 @@ export const RefreshWidgetTarget = ({
         height={16}
         percent={Math.min(0.95, remaining / period)}
       />
-    </DashboardHeaderButton>
+    </ToolbarButton>
   );
 };

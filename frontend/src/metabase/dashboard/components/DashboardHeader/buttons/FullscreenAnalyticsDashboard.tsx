@@ -1,15 +1,14 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import CS from "metabase/css/core/index.css";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const FullscreenAnalyticsDashboard = ({
   isFullscreen,
   onFullscreenChange,
 }: DashboardFullscreenControls) => (
-  <DashboardHeaderButton
+  <ToolbarButton
     key="expand"
     aria-label={t`Enter Fullscreen`}
     icon="expand"

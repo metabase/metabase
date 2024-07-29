@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import type { ActionIconProps, IconName } from "metabase/ui";
 import { ActionIcon, Icon, Tooltip } from "metabase/ui";
 
-type DashboardHeaderButtonProps = {
+export type ToolbarButtonProps = {
   icon?: IconName;
   "aria-label": string;
   tooltipLabel?: string;
@@ -15,7 +15,7 @@ type DashboardHeaderButtonProps = {
 } & ActionIconProps &
   ButtonHTMLAttributes<HTMLButtonElement>;
 
-export const DashboardHeaderButton = forwardRef(function _DashboardHeaderButton(
+export const ToolbarButton = forwardRef(function ToolbarButton(
   {
     icon = "unknown",
     "aria-label": ariaLabel,
@@ -27,7 +27,7 @@ export const DashboardHeaderButton = forwardRef(function _DashboardHeaderButton(
     children,
     disabled,
     ...actionIconProps
-  }: DashboardHeaderButtonProps,
+  }: ToolbarButtonProps,
   ref: Ref<HTMLButtonElement>,
 ) {
   const handleButtonClick = (e: MouseEvent<HTMLButtonElement>) => {
@@ -39,6 +39,8 @@ export const DashboardHeaderButton = forwardRef(function _DashboardHeaderButton(
 
   const actionButton = (
     <ActionIcon
+      data-testid="toolbar-button"
+      data-is-active={isActive}
       ref={ref}
       display={{
         base: visibleOnSmallScreen ? "flex" : "none",

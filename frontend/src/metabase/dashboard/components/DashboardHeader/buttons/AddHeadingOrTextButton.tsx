@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import {
   addHeadingDashCardToDashboard,
   addMarkdownDashCardToDashboard,
@@ -7,8 +8,6 @@ import {
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Group, Icon, Menu, Text } from "metabase/ui";
-
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const AddHeadingOrTextButton = () => {
   const dispatch = useDispatch();
@@ -54,7 +53,7 @@ export const AddHeadingOrTextButton = () => {
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <DashboardHeaderButton
+        <ToolbarButton
           tooltipLabel={t`Add a heading or text box`}
           w="3rem"
           data-element-id={t`Add a heading or text box`}
@@ -64,7 +63,7 @@ export const AddHeadingOrTextButton = () => {
             <Icon name="string" size={18} />
             <Icon name="chevrondown" size={10} />
           </Group>
-        </DashboardHeaderButton>
+        </ToolbarButton>
       </Menu.Target>
       <Menu.Dropdown miw="auto">
         {TEXT_OPTIONS.map(({ title, action }) => (

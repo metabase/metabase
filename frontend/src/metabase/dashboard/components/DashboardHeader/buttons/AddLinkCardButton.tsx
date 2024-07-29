@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { addLinkDashCardToDashboard } from "metabase/dashboard/actions";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const AddLinkCardButton = () => {
   const dispatch = useDispatch();
@@ -25,7 +24,7 @@ export const AddLinkCardButton = () => {
   const addLinkLabel = t`Add link card`;
 
   return (
-    <DashboardHeaderButton
+    <ToolbarButton
       tooltipLabel={addLinkLabel}
       icon="link"
       aria-label={addLinkLabel}

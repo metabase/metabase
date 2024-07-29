@@ -6,7 +6,7 @@ import { getDashboard, getDashboardId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Box, Popover, Stack, Switch } from "metabase/ui";
 
-import { DashboardHeaderButton } from "../DashboardHeader/DashboardHeaderButton";
+import { ToolbarButton } from "../../../components/ToolbarButton/ToolbarButton";
 
 const EXTRA_BUTTONS_DESCRIPTION = t`Toggle width`;
 
@@ -30,7 +30,7 @@ export function ExtraEditButtonsMenu() {
     <Popover shadow="sm" position="bottom-end" offset={5}>
       <Popover.Target>
         <Box>
-          <DashboardHeaderButton
+          <ToolbarButton
             tooltipLabel={EXTRA_BUTTONS_DESCRIPTION}
             aria-label={EXTRA_BUTTONS_DESCRIPTION}
             icon="ellipsis"

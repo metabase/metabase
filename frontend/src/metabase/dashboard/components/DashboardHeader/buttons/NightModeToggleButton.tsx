@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import type { DashboardNightModeControls } from "metabase/dashboard/types";
-
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const NightModeToggleButton = ({
   isNightMode,
@@ -10,7 +9,7 @@ export const NightModeToggleButton = ({
 }: Pick<DashboardNightModeControls, "isNightMode" | "onNightModeChange">) => {
   const label = isNightMode ? t`Daytime mode` : t`Nighttime mode`;
   return (
-    <DashboardHeaderButton
+    <ToolbarButton
       icon={isNightMode ? "sun" : "moon"}
       onClick={() => onNightModeChange?.(!isNightMode)}
       tooltipLabel={label}

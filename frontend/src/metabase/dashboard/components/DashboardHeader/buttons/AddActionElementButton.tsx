@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { addActionToDashboard } from "metabase/dashboard/actions";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const AddActionElementButton = () => {
   const dispatch = useDispatch();
@@ -25,7 +24,7 @@ export const AddActionElementButton = () => {
   };
 
   return (
-    <DashboardHeaderButton
+    <ToolbarButton
       onClick={onAddAction}
       aria-label={t`Add action`}
       tooltipLabel={t`Add action button`}

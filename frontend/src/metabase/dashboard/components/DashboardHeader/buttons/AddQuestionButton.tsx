@@ -1,11 +1,10 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { toggleSidebar } from "metabase/dashboard/actions";
 import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import { getSidebar } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const AddQuestionButton = () => {
   const dispatch = useDispatch();
@@ -18,7 +17,7 @@ export const AddQuestionButton = () => {
       : t`Add questions`;
 
   return (
-    <DashboardHeaderButton
+    <ToolbarButton
       tooltipLabel={addQuestionButtonHint}
       icon="add"
       isActive={sidebar.name === SIDEBAR_NAME.addQuestion}

@@ -1,12 +1,11 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { setSharing } from "metabase/dashboard/actions";
 import { getIsSharing } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import type { Dashboard, DashboardCard } from "metabase-types/api";
-
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const DashboardSubscriptionButton = () => {
   const dispatch = useDispatch();
@@ -16,7 +15,7 @@ export const DashboardSubscriptionButton = () => {
     dispatch(setSharing(!isSharing));
   };
   return (
-    <DashboardHeaderButton
+    <ToolbarButton
       tooltipLabel={t`Subscriptions`}
       icon="subscription"
       disabled={!isSubscriptionsEnabled}

@@ -2,7 +2,7 @@ import type { MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButton";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 
@@ -35,7 +35,7 @@ export const ResourceEmbedButton = forwardRef(function ResourceEmbedButton(
   };
 
   return (
-    <DashboardHeaderButton
+    <ToolbarButton
       data-disabled={disabled || undefined}
       data-testid="resource-embed-button"
       icon="share"

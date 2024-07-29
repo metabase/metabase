@@ -1,11 +1,10 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { setEditingDashboard } from "metabase/dashboard/actions";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import type { DashboardRefreshPeriodControls } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
 
 export const EditDashboardButton = ({
   onRefreshPeriodChange,
@@ -21,7 +20,7 @@ export const EditDashboardButton = ({
   };
 
   return (
-    <DashboardHeaderButton
+    <ToolbarButton
       tooltipLabel={t`Edit dashboard`}
       visibleOnSmallScreen={false}
       key="edit"

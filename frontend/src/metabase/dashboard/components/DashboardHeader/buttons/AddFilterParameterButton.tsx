@@ -1,5 +1,6 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import {
   addParameter,
   hideAddParameterPopover,
@@ -10,8 +11,6 @@ import { getIsAddParameterPopoverOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { Popover } from "metabase/ui";
 
-import { DashboardHeaderButton } from "../DashboardHeaderButton";
-
 export const AddFilterParameterButton = () => {
   const dispatch = useDispatch();
   const isAddParameterPopoverOpen = useSelector(getIsAddParameterPopoverOpen);
@@ -19,7 +18,7 @@ export const AddFilterParameterButton = () => {
   return (
     <Popover opened={isAddParameterPopoverOpen} position="bottom-end">
       <Popover.Target>
-        <DashboardHeaderButton
+        <ToolbarButton
           icon="filter"
           onClick={() =>
             isAddParameterPopoverOpen
