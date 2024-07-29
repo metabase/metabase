@@ -1143,12 +1143,13 @@
 
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
-  [id param-key :as {constraint-param-key->value :query-params}]
-  {id ms/PositiveInt}
+  [id param-key parameters]
+  {id ms/PositiveInt
+   parameters    [:maybe ms/JSONString]}
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
-      (param-values dashboard param-key constraint-param-key->value))))
+      (param-values dashboard param-key (json/parse-string parameters keyword)))))
 
 (api/defendpoint GET "/:id/params/:param-key/search/:query"
   "Fetch possible values of the parameter whose ID is `:param-key` that contain `:query`. Optionally restrict
@@ -1159,13 +1160,14 @@
      GET /api/dashboard/1/params/abc/search/Cam?def=100
 
   Currently limited to first 1000 results."
-  [id param-key query :as {constraint-param-key->value :query-params}]
+  [id param-key query parameters]
   {id    ms/PositiveInt
-   query ms/NonBlankString}
+   query ms/NonBlankString
+   parameters    [:maybe ms/JSONString]}
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
-      (param-values dashboard param-key constraint-param-key->value query))))
+      (param-values dashboard param-key (json/parse-string parameters keyword) query))))
 
 (api/defendpoint GET "/params/valid-filter-fields"
   "Utility endpoint for powering Dashboard UI. Given some set of `filtered` Field IDs (presumably Fields used in
