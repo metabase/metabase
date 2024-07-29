@@ -57,6 +57,12 @@
   ;; See https://github.com/dbt-labs/dbt-redshift/issues/742 for an implementation for DBT's integration with redshift
   ;; for inspiration, and the JDBC driver itself:
   ;; https://github.com/aws/amazon-redshift-jdbc-driver/blob/master/src/main/java/com/amazon/redshift/jdbc/RedshiftDatabaseMetaData.java#L1794
+  ;;
+  ;; Why we use `svv_redshift_tables` and `svv_external_tables`:
+  ;; We can't use `svv_tables` or `svv_all_tables` because the query would fails if there are external tables. There
+  ;; are no table-level privileges for external tables, so the use of `pg_catalog.has_table_privilege` with an external
+  ;; table causes an exception.
+  ;;
   ;; This is a vector so adding parameters doesn't require a change to describe-database-tables in the future.
   [(str/join
     "\n"
@@ -65,10 +71,9 @@
      "  schema_name as schema,"
      "  table_type as type,"
      "  remarks as description"
-     ;; svv_all_tables would include tables from other databases that the user has access to via redshift datashares,
-     ;; which we don't support yet.
      "from svv_redshift_tables t"
      "where schema_name !~ '^information_schema|catalog_history|pg_|metabase_cache_'"
+     ;; exclude other databases that the current user has access to
      "  and database_name = current_database()"
      "  and pg_catalog.has_schema_privilege(schema_name, 'USAGE')"
      "  and (pg_catalog.has_table_privilege('\"'||schema_name||'\".\"'||table_name||'\"','SELECT')"
