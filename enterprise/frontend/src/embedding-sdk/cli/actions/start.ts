@@ -2,6 +2,7 @@ import fs from "fs/promises";
 
 import { confirm, input } from "@inquirer/prompts";
 
+import { showAnonymousTrackingInfo } from "../utils/anonymous-tracking-info";
 import { createApiKey } from "../utils/create-api-key";
 import {
   checkIsDockerRunning,
@@ -106,6 +107,22 @@ export async function start() {
     }
 
     await showGettingStartedGuide(port, apiKey);
+
+    showAnonymousTrackingInfo();
+
+    const shouldOutputCredentialsToFile = await confirm({
+      message: `
+        Would you like to output the login credentials to a file?
+        The credentials will be stored in METABASE_LOGIN.json in the current directory.
+    `,
+    });
+
+    if (shouldOutputCredentialsToFile) {
+      // output the login credentials to the console
+      const credentials = JSON.stringify({ email, password }, null, 2);
+      console.log(credentials);
+      await fs.writeFile("./METABASE_LOGIN.json", credentials);
+    }
   } catch (error) {
     if (error instanceof Error) {
       if (error.message.includes("force closed the prompt")) {

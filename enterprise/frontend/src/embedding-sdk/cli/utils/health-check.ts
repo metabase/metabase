@@ -4,7 +4,7 @@ import ora from "ora";
 const delay = (duration: number) =>
   new Promise(resolve => setTimeout(resolve, duration));
 
-const HEALTH_CHECK_MAX_ATTEMPTS = 60;
+const HEALTH_CHECK_MAX_ATTEMPTS = 60 * 5;
 const HEALTH_CHECK_WAIT = 1000;
 
 /**
@@ -32,6 +32,8 @@ export async function pollUntilMetabaseInstanceReady(
       const res = await fetch(`${baseUrl}/health`, {
         method: "GET",
       });
+
+      console.log(res);
 
       // Endpoint returns 503 when Metabase is not ready yet.
       // It returns 200 when Metabase is ready.
