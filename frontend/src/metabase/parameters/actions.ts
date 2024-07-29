@@ -86,7 +86,9 @@ export const fetchDashboardParameterValues =
       paramId: parameter.id,
       dashId: dashboardId,
       query,
-      parameters: getFilteringParameterValuesMap(parameter, parameters),
+      parameters: JSON.stringify(
+        getFilteringParameterValuesMap(parameter, parameters),
+      ),
     };
 
     return fetchParameterValuesWithCache(
