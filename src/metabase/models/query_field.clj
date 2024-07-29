@@ -1,6 +1,7 @@
 (ns metabase.models.query-field
   (:require
    [metabase.util :as u]
+   [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
@@ -8,9 +9,6 @@
 
 (doto :model/QueryField
   (derive :metabase/model))
-
-(defn- db-true? [x]
-  (or (true? x) (= "1" x)))
 
 (defn cards-with-reference-errors
   "Given some HoneySQL query map with :model/Card bound as :c, restrict this query to only return cards
@@ -53,10 +51,11 @@
                                   [:= :f.active false]]
                                  [:in :card_id (map :id cards)]]
                      :order-by  [:qf.card_id :field :table]})
-         (map (fn [{:keys [card_id table field field_unknown table_active]}]
+         (map (fn [{:keys [card_id table field field_unknown table_active] :as result}]
+                (log/warn result)
                 [card_id {:type  (cond
-                                   (db-true? field_unknown) :unknown-field
-                                   (db-true? table_active)  :inactive-field
+                                   field_unknown :unknown-field
+                                   table_active  :inactive-field
                                    :else         :inactive-table)
                           :table table
                           :field field}]))
