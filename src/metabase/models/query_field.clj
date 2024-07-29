@@ -39,63 +39,79 @@
                   [:= :f.id nil]
                   [:= :f.active false]]]))))
 
-(defn reference-errors
+(defn- group-errors [errors]
+  (reduce (fn [acc [id error]]
+            (update acc id u/conjv error))
+          {}
+          errors))
+
+(defn field-reference-errors
   "Given a seq of cards, return a map of card-id => reference errors"
   [cards]
   (when (seq cards)
     (->> (t2/query {:select    [:qf.card_id
                                 [:qf.column :field]
                                 [:qf.table :table]
-                                [[:= :t.id nil] :table_unknown]
                                 [[:= :f.id nil] :field_unknown]
-                                [[:not [:coalesce :t.active true]] :table_inactive]
                                 [[:not [:coalesce :f.active true]] :field_inactive]]
                     :from      [[(t2/table-name :model/QueryField) :qf]]
                     :left-join [[(t2/table-name :model/Field) :f] [:= :f.id :qf.field_id]
                                 [(t2/table-name :model/Table) :t] [:= :t.id :qf.table_id]]
                     :where     [:and
                                 [:= :qf.explicit_reference true]
+                                [:= :t.active true]
                                 [:or
-                                 [:= :t.id nil]
                                  [:= :f.id nil]
-                                 [:= :t.active false]
                                  [:= :f.active false]]
                                 [:in :card_id (map :id cards)]]
                     :order-by  [:qf.card_id :table :field]})
          (map coerce-booleans)
          (map (fn [{:keys [card_id table field
-                           table_unknown
                            field_unknown
-                           table_inactive
                            field_inactive]}]
-                [card_id (merge
-                          {:type  (cond
-                                    ;; TODO swap around naming?
-                                    table_unknown  :unknown-table
-                                    table_inactive :inactive-table
-                                    field_unknown  :unknown-field
-                                    field_inactive :inactive-field
-                                    ;; This shouldn't be reachable
-                                    :else          :unknown-error)
-                           :table table}
-                          (when (not (or table_unknown table_inactive))
-                            {:field field}))]))
-         #_(t2/query {:select    [:dt.card_id
+                [card_id {:type  (cond
+                                   field_unknown  :unknown-field
+                                   field_inactive :inactive-field
+                                   ;; This shouldn't be reachable
+                                   :else          :unknown-error)
+                          :table table
+                          :field field}]))
+         group-errors)))
+
+(defn- table-reference-errors
+  [cards]
+  (when (seq cards)
+    (->> (t2/query {:select    [:qt.card_id
                                 [:qt.table :table]
                                 [[:= :t.id nil] :table_unknown]
                                 [[:not [:coalesce :t.active true]] :table_inactive]]
-                    :from      [[(t2/table-name :model/QueryField) :qf]]
+                    :from      [[(t2/table-name :model/QueryTable) :qt]]
                     :left-join [[(t2/table-name :model/Table) :t] [:= :t.id :qt.table_id]]
                     :where     [:and
                                 [:or
                                  [:= :t.id nil]
                                  [:= :t.active false]]
                                 [:in :card_id (map :id cards)]]
-                    :order-by  [:qt.card_id :table :field]})
-         distinct
-         (reduce (fn [acc [id error]]
-                   (update acc id u/conjv error))
-                 {}))))
+                    :order-by  [:qt.card_id :table]})
+         (map coerce-booleans)
+         (map (fn [{:keys [card_id table
+                           table_unknown
+                           table_inactive]}]
+                [card_id {:type  (cond
+                                   table_unknown  :unknown-table
+                                   table_inactive :inactive-table
+                                   ;; This shouldn't be reachable
+                                   :else          :unknown-error)
+                          :table table}]))
+
+         group-errors)))
+
+(defn reference-errors
+  "blah"
+  [cards]
+  (merge-with concat
+    (field-reference-errors cards)
+    (table-reference-errors cards)))
 
 ;;; Updating QueryField from card
 
