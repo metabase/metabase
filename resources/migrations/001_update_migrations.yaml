@@ -8586,8 +8586,51 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+
   - changeSet:
-      id: v50. 2024-07-29T09:04:13
+      id: v50.2024-07-29T09:22:12
+      author: crisptrutski
+      comment: Add the query_analysis table
+      changes:
+        - createTable:
+            tableName: query_analysis
+            remarks: Parent node for query analysis records
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_analysis_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the analysis was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the analysis was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v50.2024-07-29T09:04:13
       author: crisptrutski
       comment: Add the query_table join table
       changes:
@@ -8614,6 +8657,16 @@ databaseChangeLog:
                     foreignKeyName: fk_query_table_card_id
                     deleteCascade: true
               - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_analysis_id
+                    deleteCascade: true
+              - column:
                   name: table_id
                   remarks: referenced field
                   type: int
@@ -8635,6 +8688,25 @@ databaseChangeLog:
                   remarks: name of the table or card being referenced
                   constraints:
                     nullable: false
+
+  - changeSet:
+      id: v50.2024-07-29T10:04:13
+      author: crisptrutski
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_analysis_id
+                    deleteCascade: true
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
