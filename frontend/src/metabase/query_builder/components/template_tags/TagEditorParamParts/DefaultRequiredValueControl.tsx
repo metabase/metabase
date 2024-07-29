@@ -27,7 +27,7 @@ export function DefaultRequiredValueControl({
     <div>
       <ContainerLabel id={`default-value-label-${tag.id}`}>
         {t`Default filter widget value`}
-        {isMissing && <ErrorSpan>({t`required`})</ErrorSpan>}
+        {isMissing && <ErrorSpan> ({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
       <Flex
