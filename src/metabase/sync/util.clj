@@ -301,8 +301,7 @@
   (when (not= (:initial_sync_status table) "complete")
     (t2/update! :model/Table (u/the-id table) {:initial_sync_status "complete"})))
 
-(def sync-tables-kv-args
-  "Columns to select all the Tables that should be synced."
+(def ^:private sync-tables-kv-args
   {:active          true
    :visibility_type nil})
 
