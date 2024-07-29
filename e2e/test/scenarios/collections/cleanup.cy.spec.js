@@ -70,7 +70,7 @@ describe("scenarios > collections > clean up", () => {
     it("should not show to users who do not have write permissions to a collection", () => {
       cy.signIn("readonly");
       visitCollection(FIRST_COLLECTION_ID);
-      collectionActions().should("not.exist");
+      collectionMenu().should("not.exist");
     });
   });
 

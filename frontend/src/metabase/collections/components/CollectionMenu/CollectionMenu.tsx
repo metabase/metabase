@@ -25,11 +25,17 @@ export const CollectionMenu = ({
   isPersonalCollectionChild,
   onUpdateCollection,
 }: CollectionMenuProps): JSX.Element | null => {
-  const query = useListCollectionItemsQuery({
-    id: collection.id,
-    limit: 0, // we don't want any of the items, we just want to know how many there are in the collection
-  });
-  const collectionItemCount = query.data?.total ?? 0;
+  // only get the count of items in the collection if we need it
+  const maybeCollectionItemCount =
+    useListCollectionItemsQuery(
+      {
+        id: collection.id,
+        limit: 0, // we don't want any of the items, we just want to know how many there are in the collection
+      },
+      {
+        skip: !PLUGIN_COLLECTIONS.canCleanUp,
+      },
+    ).data?.total ?? 0;
 
   const items = [];
   const url = Urls.collection(collection);
@@ -37,18 +43,11 @@ export const CollectionMenu = ({
   const isPersonal = isRootPersonalCollection(collection);
   const isInstanceAnalyticsCustom =
     isInstanceAnalyticsCustomCollection(collection);
-  const isEmptyCollection = collectionItemCount === 0;
   const isTrashed = isTrashedCollection(collection);
 
   const canWrite = collection.can_write;
   const canMove =
     !isRoot && !isPersonal && canWrite && !isInstanceAnalyticsCustom;
-  const canCleanUp =
-    PLUGIN_COLLECTIONS.canCleanUp &&
-    !isEmptyCollection &&
-    !isInstanceAnalyticsCustom &&
-    !isTrashed &&
-    canWrite;
 
   if (isAdmin && !isRoot && canWrite) {
     items.push(
@@ -75,13 +74,15 @@ export const CollectionMenu = ({
     });
   }
 
-  if (canCleanUp) {
-    items.push({
-      title: t`Clean things up`,
-      icon: "archive",
-      link: `${url}/cleanup`,
-    });
-  }
+  items.push(
+    ...PLUGIN_COLLECTIONS.getCleanUpMenuItems(
+      maybeCollectionItemCount,
+      url,
+      isInstanceAnalyticsCustom,
+      isTrashed,
+      canWrite,
+    ),
+  );
 
   if (canMove) {
     items.push({
