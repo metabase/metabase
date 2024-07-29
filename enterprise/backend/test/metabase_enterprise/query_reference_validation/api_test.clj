@@ -27,61 +27,76 @@
                                                               :name     "FB"
                                                               :table_id table-2}
 
+                            :model/QueryAnalysis {qa-1 :id}  {:card_id card-1}
+                            :model/QueryAnalysis {qa-2 :id}  {:card_id card-2}
+                            :model/QueryAnalysis {qa-3 :id}  {:card_id card-3}
+
                             ;; QTs not to include:
                             ;; - Table is still active
-                            :model/QueryTable {}             {:card_id  card-1
-                                                              :table    "ORDERS"
-                                                              :table_id (mt/id :orders)}
+                            :model/QueryTable {}             {:card_id     card-1
+                                                              :analysis_id qa-1
+                                                              :table       "ORDERS"
+                                                              :table_id    (mt/id :orders)}
 
-                            :model/QueryTable {}              {:card_id card-1
-                                                               :table "T1"
-                                                               :table_id table-1}
-                            :model/QueryTable {}              {:card_id card-2
-                                                               :table "T2"
-                                                               :table_id table-2}
-                            :model/QueryTable {}              {:card_id card-3
-                                                               :table "T3"
-                                                               :table_id nil}
+                            :model/QueryTable {}              {:card_id     card-1
+                                                               :analysis_id qa-1
+                                                               :table       "T1"
+                                                               :table_id    table-1}
+                            :model/QueryTable {}              {:card_id     card-2
+                                                               :analysis_id qa-2
+                                                               :table       "T2"
+                                                               :table_id    table-2}
+                            :model/QueryTable {}              {:card_id     card-3
+                                                               :analysis_id qa-3
+                                                               :table       "T3"
+                                                               :table_id    nil}
 
                             ;; QFs not to include:
                             ;; - Field is still active
-                            :model/QueryField {}             {:card_id  card-1
-                                                              :table    "ORDERS"
-                                                              :column   "tax"
-                                                              :table_id (mt/id :orders)
-                                                              :field_id (mt/id :orders :tax)}
+                            :model/QueryField {}             {:card_id     card-1
+                                                              :analysis_id qa-3
+                                                              :table       "ORDERS"
+                                                              :column      "tax"
+                                                              :table_id    (mt/id :orders)
+                                                              :field_id    (mt/id :orders :tax)}
                             ;; - Implicit reference
                             :model/QueryField {}             {:card_id            card-2
+                                                              :analysis_id        qa-3
                                                               :table              "T1"
                                                               :column             "FA"
                                                               :field_id           field-1
                                                               :explicit_reference false}
                             ;; QFs to include:
-                            :model/QueryField {}             {:card_id  card-1
-                                                              :table    "T1"
-                                                              :column   "FA"
-                                                              :table_id table-1
-                                                              :field_id field-1}
-                            :model/QueryField {}             {:card_id  card-1
-                                                              :table    "T1"
-                                                              :column   "FAB"
-                                                              :table_id table-1
-                                                              :field_id nil}
-                            :model/QueryField {}             {:card_id  card-2
-                                                              :table    "T2"
-                                                              :column   "FB"
-                                                              :table_id table-2
-                                                              :field_id field-2}
-                            :model/QueryField {}             {:card_id  card-2
-                                                              :table    "T2"
-                                                              :column   "FBB"
-                                                              :table_id table-2
-                                                              :field_id nil}
-                            :model/QueryField {}             {:card_id  card-3
-                                                              :table    "T3"
-                                                              :column   "FC"
-                                                              :table_id  nil
-                                                              :field_id nil}]
+                            :model/QueryField {}             {:card_id     card-1
+                                                              :analysis_id qa-1
+                                                              :table       "T1"
+                                                              :column      "FA"
+                                                              :table_id    table-1
+                                                              :field_id    field-1}
+                            :model/QueryField {}             {:card_id     card-1
+                                                              :analysis_id qa-1
+                                                              :table       "T1"
+                                                              :column      "FAB"
+                                                              :table_id    table-1
+                                                              :field_id    nil}
+                            :model/QueryField {}             {:card_id     card-2
+                                                              :analysis_id qa-2
+                                                              :table       "T2"
+                                                              :column      "FB"
+                                                              :table_id    table-2
+                                                              :field_id    field-2}
+                            :model/QueryField {}             {:card_id     card-2
+                                                              :analysis_id qa-2
+                                                              :table       "T2"
+                                                              :column      "FBB"
+                                                              :table_id    table-2
+                                                              :field_id    nil}
+                            :model/QueryField {}             {:card_id     card-3
+                                                              :analysis_id qa-3
+                                                              :table       "T3"
+                                                              :column      "FC"
+                                                              :table_id    nil
+                                                              :field_id    nil}]
      (mt/with-premium-features #{:query-reference-validation}
        (mt/call-with-map-params f [card-1 card-2 card-3 card-4])))))
 

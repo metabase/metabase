@@ -4,7 +4,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.routes.common :refer [+auth]]
-   [metabase.models.query-field :as query-field]
+   [metabase.models.query-analysis :as query-analysis]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [toucan2.core :as t2]))
 
@@ -41,7 +41,7 @@
                                               :u.first_name :u.last_name :u.email]
                                              sort-dir-kw]]
                               [(into sorting-selects [sort-dir-kw])])
-        card-query          (query-field/cards-with-reference-errors
+        card-query          (query-analysis/cards-with-reference-errors
                              (m/assoc-some
                               ;; TODO this table has a lot of fields... we should whittle down to only the ones we need.
                               {:select    (into [:c.*] sorting-selects)
@@ -53,7 +53,7 @@
                               :limit  limit
                               :offset offset))
         cards               (t2/select :model/Card card-query)
-        id->errors          (query-field/reference-errors cards)
+        id->errors          (query-analysis/reference-errors cards)
         add-errors          (fn [{:keys [id] :as card}]
                               (assoc card :errors (id->errors id)))]
     (map add-errors (t2/hydrate cards :collection :creator))))
@@ -62,7 +62,7 @@
   []
   (:count
    (t2/query-one
-    (query-field/cards-with-reference-errors
+    (query-analysis/cards-with-reference-errors
      {:select [[[:count [:distinct :c.id]] :count]]
       :from   [[(t2/table-name :model/Card) :c]]
       :where  [:= :c.archived false]}))))
