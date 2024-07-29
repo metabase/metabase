@@ -135,10 +135,9 @@
               :formula))))
 
 (defn- timeseries?
-  [{:keys [numbers datetimes others]}]
+  [{:keys [numbers datetimes]}]
   (and (pos? (count numbers))
-       (= (count datetimes) 1)
-       (empty? others)))
+       (= (count datetimes) 1)))
 
 ;; We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities.
 (def ^Long ^:const ^:private ms-in-a-day (* 1000 60 60 24))
