@@ -14,12 +14,12 @@ import { sdkReducers, useSdkSelector } from "embedding-sdk/store";
 import { refreshTokenAsync } from "embedding-sdk/store/reducer";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
 import type { LoginStatusError } from "embedding-sdk/store/types";
-import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import {
   createMockLoginStatusState,
   createMockSdkState,
 } from "embedding-sdk/test/mocks/state";
-import type { SDKConfig } from "embedding-sdk/types";
+import type { SDKConfig, SDKConfigWithJWT } from "embedding-sdk/types";
 import { useDispatch } from "metabase/lib/redux";
 import {
   createMockSettings,
@@ -68,7 +68,7 @@ const setup = ({
 }: {
   isValidConfig?: boolean;
   isValidUser?: boolean;
-} & Partial<SDKConfig>) => {
+} & Partial<SDKConfigWithJWT>) => {
   fetchMock.get("http://TEST_URI/sso/metabase", {
     id: "TEST_JWT_TOKEN",
     exp: 1965805007,
@@ -106,7 +106,7 @@ const setup = ({
   setupSettingsEndpoints([]);
   setupPropertiesEndpoints(settingValuesWithToken);
 
-  const config = createMockConfig({
+  const config = createMockJwtConfig({
     jwtProviderUri: isValidConfig ? "http://TEST_URI/sso/metabase" : "",
     ...configOpts,
   });
@@ -128,7 +128,7 @@ describe("useInitData hook", () => {
 
       expect(screen.getByTestId("test-component")).toHaveAttribute(
         "data-error-message",
-        "Invalid JWT URI provided.",
+        "No JWT URI or API key provided.",
       );
     });
   });
@@ -197,7 +197,7 @@ describe("useInitData hook", () => {
       // We expect the new function to be called when the "Refresh Token" button is clicked
       fetchRequestToken = jest.fn(async () => ({ id: "bar", exp: 10 }));
 
-      const config = createMockConfig({
+      const config = createMockJwtConfig({
         jwtProviderUri: "http://TEST_URI/sso/metabase",
         fetchRequestToken,
       });

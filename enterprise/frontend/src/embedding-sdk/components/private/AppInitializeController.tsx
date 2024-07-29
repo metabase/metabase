@@ -18,9 +18,7 @@ export const AppInitializeController = ({
   config,
   children,
 }: AppInitializeControllerProps) => {
-  useInitData({
-    config,
-  });
+  useInitData({ config });
 
   const isInitialized = useSdkSelector(getIsInitialized);
 
