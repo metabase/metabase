@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.api.channel-test :as api.channel-test]
-   [metabase.models.channel :as models.channel]
    [metabase.test :as mt]
    [metabase.util.encryption :as encryption]
    [metabase.util.encryption-test :as encryption-test]
@@ -35,12 +34,11 @@
                                          :channel_id id
                                          :channel_type "metabase-test"
                                          :enabled true}]
+    (testing "do not try to delete pulse-channel if active doesn't change"
+      (is (pos? (t2/update! :model/Channel id {:name "New name"})))
+      (is (pos? (t2/update! :model/Channel id {:active true})))
+      (is (t2/exists? :model/PulseChannel pc-id)))
 
-    (testing "deactivate channel will delete pulse channels"
-      (t2/update! :model/Channel id {:active false})
-      (is (not (t2/exists? :model/PulseChannel pc-id))))
-
-    (testing "do not try to update pulse-channel if active doesn't change"
-      (mt/with-dynamic-redefs
-        [models.channel/delete-pulse-channels (fn [_] (throw (ex-info "Should not be called" {})))]
-        (is (pos? (t2/update! :model/Channel id {:name "New name"})))))))
+   (testing "deactivate channel will delete pulse channels"
+     (t2/update! :model/Channel id {:active false})
+     (is (not (t2/exists? :model/PulseChannel pc-id))))))

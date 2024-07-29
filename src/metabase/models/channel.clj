@@ -40,12 +40,9 @@
   (assert-channel-type instance)
   instance)
 
-(defn- delete-pulse-channels [channel-id]
-  (t2/delete! :model/PulseChannel :channel_id channel-id))
-
 (t2/define-before-update :model/Channel
   [instance]
   (assert-channel-type instance)
   (when (false? (:active (t2/changes instance)))
-    (delete-pulse-channels (:id instance)))
+    (t2/delete! :model/PulseChannel :channel_id (:id instance)))
   instance)
