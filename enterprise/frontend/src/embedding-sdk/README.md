@@ -1,8 +1,10 @@
-> **NOTE**: This SDK is actively being developed. You can expect some changes to the API. The SDK currently only works with a specific version of Metabase.
+> **NOTE**: This SDK is actively being developed. You can expect some changes to the API. The SDK currently only works
+> with a specific version of Metabase.
 
 # Metabase Embedding SDK for React
 
-The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with greater flexibility than using the current interactive embedding offering based on iframes.
+The Metabase Embedding SDK for React offers a way to integrate Metabase into your application more seamlessly and with
+greater flexibility than using the current interactive embedding offering based on iframes.
 
 <div>
   <a href="https://www.loom.com/share/b6998692937c4ecaab1af097f2123c6f">
@@ -24,11 +26,10 @@ Features currently supported:
 - plugins for custom actions, overriding dashboard card menu items
 - subscribing to events
 
-
 Features not yet supported:
+
 - letting users create new questions from scratch
 - creating and editing dashboards
-
 
 # Changelog
 
@@ -36,9 +37,11 @@ Features not yet supported:
 
 # Prerequisites
 
-- You have an application using React. The SDK is tested to work with React 18. It may work in React 17, but cause some warnings or unexpected behaviors.
+- You have an application using React. The SDK is tested to work with React 18. It may work in React 17, but cause some
+  warnings or unexpected behaviors.
 - You have a Pro or Enterprise [subscription or free trial](https://www.metabase.com/pricing/) of Metabase
-- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only supported versions at this time.
+- You have a running Metabase instance using a compatible version of the enterprise binary. v1.50.x are the only
+  supported versions at this time.
 
 # Getting started
 
@@ -66,20 +69,44 @@ docker run -d -p 3000:3000 --name metabase metabase/metabase-enterprise:v1.50.6
 java -jar metabase.jar
 ```
 
-## Configure Metabase
+## Configuring Metabase
+
+> **Note**: The Metabase Embedding SDK for React only supports JWT authentication in production. API keys are only
+> supported for development and evaluation purposes.
+
+### API Keys
+
+> **Note:** Metabase Embedding SDK only supports API keys for development.
+> This is only supported for evaluation purposes, has limited feature coverage and will only work on localhost.
+
+1. Go to Admin settings > Authentication > API keys
+2. Click `Create API Key` and give the key a name and group
+3. Copy the API key.
+
+You can then use the API key to authenticate with Metabase in your application. Here's an example of how you can
+authenticate with the API key:
+
+``` 
+const metabaseConfig = {
+    ...
+    apiKey: "YOUR_API_KEY"
+    ...
+};
+```
+
+### JWT Authentication
 
 1. Go to Admin settings > Authentication > JWT
-   1. Set JWT Identity Provider URI to your JWT endpoint
-   1. Generate JWT signing key and take note of this value. You will need it later.
+    1. Set JWT Identity Provider URI to your JWT endpoint
+    1. Generate JWT signing key and take note of this value. You will need it later.
 1. Go to Admin settings > Embedding
-   1. Enable embedding if not already enabled
-   1. Inside interactive embedding, set Authorized Origins to your application URL, e.g. `http://localhost:9090`
+    1. Enable embedding if not already enabled
+    1. Inside interactive embedding, set Authorized Origins to your application URL, e.g. `http://localhost:9090`
 
 ## Authenticate users from your back-end
 
-> **Note:** Metabase Embedding SDK for React only supports JWT authentication.
-
-The SDK requires an endpoint in the backend that signs a user into Metabase and returns a token that the SDK will use to make authenticated calls to Metabase.
+The SDK requires an endpoint in the backend that signs a user into Metabase and returns a token that the SDK will use to
+make authenticated calls to Metabase.
 
 The SDK will call this endpoint if it doesn't have a token or to refresh the token when it's about to expire.
 
@@ -240,7 +267,8 @@ export default function App() {
 ```
 
 You can pass parameter values to questions defined with SQL via `parameterValues` prop,
-in the format of `{parameter_name: parameter_value}`. Refer to the [SQL parameters](https://www.metabase.com/docs/v0.50/questions/native-editor/sql-parameters.html)
+in the format of `{parameter_name: parameter_value}`. Refer to
+the [SQL parameters](https://www.metabase.com/docs/v0.50/questions/native-editor/sql-parameters.html)
 documentation for more information.
 
 ```jsx
@@ -324,7 +352,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 These components are available via the `InteractiveQuestion` namespace (i.e. `<InteractiveQuestion.ComponentName />`)
 
 | Component               | Info                                                                                                                         |
-| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
@@ -343,14 +371,20 @@ After the SDK is configured, you can embed your dashboard using the `StaticDashb
 
 #### Parameters
 
-- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
-- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard
+  link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single
+  option, use a `string` value, and use a list of strings for multiple options.
 - **withTitle**: `boolean` – Whether the dashboard should display a title.
 - **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
 - **withDownloads**: `boolean | null` – Whether to hide the download button.
-- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. [More information here](https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters)
-- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
-- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
+- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter
+  filters. [More information here](https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters)
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all
+  visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads,
+  but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
+  loaded.
 
 ```typescript jsx
 import React from "react";
@@ -385,16 +419,25 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
 
 #### Parameters
 
-- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
-- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single option, use a `string` value, and use a list of strings for multiple options.
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard
+  link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single
+  option, use a `string` value, and use a list of strings for multiple options.
 - **withTitle**: `boolean` – Whether the dashboard should display a title.
 - **withCardTitle**: `boolean` – Whether the dashboard cards should display a title.
 - **withDownloads**: `boolean | null` – Whether to hide the download button.
-- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter filters. (More information here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
-- **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question level.
-- **questionPlugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add drill-down menu. [See this](#implementing-custom-actions) for more details
-- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all visible cards and their content.
-- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded.
+- **hiddenParameters**: `string[] | null` – A list of parameters that will not be shown in the set of parameter
+  filters. (More information
+  here)[https://www.metabase.com/docs/latest/questions/sharing/public-links#filter-parameters]
+- **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question
+  level.
+- **questionPlugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
+  drill-down menu. [See this](#implementing-custom-actions) for more details
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all
+  visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads,
+  but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
+  loaded.
 
 ```typescript jsx
 import React from "react";
@@ -429,10 +472,14 @@ With the Collection Browser, you can browse the items in your Metabase instance 
 
 #### Parameters
 
-- **collectionId**: `number` – The numerical ID of the collection. You can find this ID in the URL when accessing a collection in your Metabase instance. For example, the collection ID in `http://localhost:3000/collection/1-my-collection` would be `1`. If no ID is provided, the collection browser will start at the root `Our analytics` collection, which is ID = 0.
+- **collectionId**: `number` – The numerical ID of the collection. You can find this ID in the URL when accessing a
+  collection in your Metabase instance. For example, the collection ID
+  in `http://localhost:3000/collection/1-my-collection` would be `1`. If no ID is provided, the collection browser will
+  start at the root `Our analytics` collection, which is ID = 0.
 - **onClick**: `(item: CollectionItem) => void` - An optional click handler that emits the clicked entity.
 - **pageSize**: `number` – The number of items to display per page. The default is 25.
-- **visibleEntityTypes**: `("question" | "model" | "dashboard" | "collection")[]` – the types of entities that should be visible. If not provided, all entities will be shown.
+- **visibleEntityTypes**: `("question" | "model" | "dashboard" | "collection")[]` – the types of entities that should be
+  visible. If not provided, all entities will be shown.
 
 ```tsx
 import React from "react";
@@ -830,12 +877,15 @@ const plugins: SdkPluginsConfig = {
 
 ### Adding global event handlers
 
-`MetabaseProvider` also supports `eventHandlers` configuration. This way you can add global handlers to react on events that happen in the SDK context.
+`MetabaseProvider` also supports `eventHandlers` configuration. This way you can add global handlers to react on events
+that happen in the SDK context.
 
 Currently, we support:
 
-- `onDashboardLoad?: (dashboard: Dashboard | null) => void;` - triggers when dashboard loads with all visible cards and their content
-- `onDashboardLoadWithoutCards?: (dashboard: Dashboard | null) => void;` - triggers after dashboard loads, but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded
+- `onDashboardLoad?: (dashboard: Dashboard | null) => void;` - triggers when dashboard loads with all visible cards and
+  their content
+- `onDashboardLoadWithoutCards?: (dashboard: Dashboard | null) => void;` - triggers after dashboard loads, but without
+  its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet loaded
 
 ```typescript jsx
 const handleDashboardLoad: SdkDashboardLoadEvent = dashboard => {
@@ -875,7 +925,9 @@ if (auth.status === "success") {
 
 ### Reloading Metabase components
 
-In case you need to reload a Metabase component, for example, your users modify your application data and that data is used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to show the latest data, you can do so by using the `key` prop to force a component to reload.
+In case you need to reload a Metabase component, for example, your users modify your application data and that data is
+used to render a question in Metabase. If you embed this question and want to force Metabase to reload the question to
+show the latest data, you can do so by using the `key` prop to force a component to reload.
 
 ```typescript jsx
 // Inside your application component
@@ -909,7 +961,8 @@ return <InteractiveQuestion key={counter} questionId={yourQuestionId} />;
 
 ### Customizing JWT authentication
 
-You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config` prop:
+You can customize how the SDK fetches the refresh token by specifying the `fetchRefreshToken` function in the `config`
+prop:
 
 ```typescript jsx
 /**
@@ -937,19 +990,24 @@ const config = { fetchRefreshToken };
 # Known limitations
 
 - The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
-  - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components are rendered on the client side.
-  - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component on Remix.
+    - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components
+      are rendered on the client side.
+    - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component
+      on Remix.
 - Embedding multiple instances of interactive dashboards on the same page are not supported.
-  - Please use static dashboards if you need to embed multiple dashboards on the same page.
+    - Please use static dashboards if you need to embed multiple dashboards on the same page.
 
 # Feedback
 
 For issues and feedback, there are two options:
 
-- Chat with the team directly on Slack: If you don't have access, please reach out to us at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
-- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team directly.
+- Chat with the team directly on Slack: If you don't have access, please reach out to us
+  at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com) and we'll get you setup.
+- Email the team at [sdk-feedback@metabase.com](mailto:sdk-feedback@metabase.com). This will reach the development team
+  directly.
 
-For security issues, please follow the instructions for responsible disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
+For security issues, please follow the instructions for responsible
+disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
 
 # Development
 
@@ -969,7 +1027,8 @@ yarn build-embedding-sdk:watch
 
 ## Using the local build
 
-After that you need to add this built SDK package location to your package.json. In this example we assume that your application is located in the same directory as Metabase directory:
+After that you need to add this built SDK package location to your package.json. In this example we assume that your
+application is located in the same directory as Metabase directory:
 
 ```json
 "dependencies": {
