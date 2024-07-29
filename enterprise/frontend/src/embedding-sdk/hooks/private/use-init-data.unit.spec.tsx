@@ -10,8 +10,8 @@ import {
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
+import * as sdkConfigModule from "embedding-sdk/config";
 import { useInitData } from "embedding-sdk/hooks";
-import packageJson from "embedding-sdk/package.template.json";
 import { sdkReducers, useSdkSelector } from "embedding-sdk/store";
 import { refreshTokenAsync } from "embedding-sdk/store/reducer";
 import { getIsLoggedIn, getLoginStatus } from "embedding-sdk/store/selectors";
@@ -143,6 +143,10 @@ describe("useInitData hook", () => {
     });
 
     it("should set a context for all API requests", async () => {
+      jest
+        .spyOn(sdkConfigModule, "getEmbeddingSdkVersion")
+        .mockImplementationOnce(() => "1.2.3");
+
       setup({});
 
       await userEvent.click(screen.getByText("Send test request"));
@@ -157,7 +161,7 @@ describe("useInitData hook", () => {
         "embedding-sdk-react",
       );
       expect(lastCallRequest?.headers.get("X-Metabase-Client-Version")).toEqual(
-        packageJson.version,
+        "1.2.3",
       );
     });
   });

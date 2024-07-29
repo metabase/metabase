@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import _ from "underscore";
 
-import { EMBEDDING_SDK_VERSION } from "embedding-sdk/config";
+import { getEmbeddingSdkVersion } from "embedding-sdk/config";
 import { getAuthConfiguration } from "embedding-sdk/hooks/private/get-auth-configuration";
 import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
 import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
@@ -33,6 +33,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
   useEffect(() => {
     registerVisualizationsOnce();
 
+    const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
     api.requestClient = {
       name: "embedding-sdk-react",
       version: EMBEDDING_SDK_VERSION,
