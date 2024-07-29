@@ -242,13 +242,13 @@
    [:relative-time-interval col value bucket offset-value offset-bucket]
    (let [col-default-bucket (cond-> col (and (vector? col) (= 3 (count col)))
                               (update 2 assoc :temporal-unit :default))
-         offset      [:interval offset-value offset-bucket]
+         offset [:interval offset-value offset-bucket]
          lower-bound (if (neg? value)
                        [:relative-datetime value bucket]
-                       [:relative-datetime 0 bucket])
+                       [:relative-datetime 1 bucket])
          upper-bound (if (neg? value)
                        [:relative-datetime 0 bucket]
-                       [:relative-datetime value bucket])
+                       [:relative-datetime (inc value) bucket])
          lower-with-offset [:+ lower-bound offset]
          upper-with-offset [:+ upper-bound offset]]
      [:and

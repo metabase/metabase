@@ -309,16 +309,16 @@
       (t/testing "expression reference is transformed correctly"
         (let [expr-ref [:expression "cc"]]
           (t/is (= [:and
-                    [:>= expr-ref [:+ [:relative-datetime 0     bucket] exp-offset]]
-                    [:<  expr-ref [:+ [:relative-datetime value bucket] exp-offset]]]
+                    [:>= expr-ref [:+ [:relative-datetime 1           bucket] exp-offset]]
+                    [:<  expr-ref [:+ [:relative-datetime (inc value) bucket] exp-offset]]]
                    (mbql.u/desugar-filter-clause
                     [:relative-time-interval expr-ref value bucket offset-value offset-bucket])))))
       (t/testing "field reference is transformed correctly"
         (let [field-ref [:field 100 nil]
               exp-field-ref (update field-ref 2 assoc :temporal-unit :default)]
           (t/is (= [:and
-                    [:>= exp-field-ref [:+ [:relative-datetime 0     bucket] exp-offset]]
-                    [:<  exp-field-ref [:+ [:relative-datetime value bucket] exp-offset]]]
+                    [:>= exp-field-ref [:+ [:relative-datetime 1           bucket] exp-offset]]
+                    [:<  exp-field-ref [:+ [:relative-datetime (inc value) bucket] exp-offset]]]
                    (mbql.u/desugar-filter-clause
                     [:relative-time-interval exp-field-ref value bucket offset-value offset-bucket]))))))))
 
