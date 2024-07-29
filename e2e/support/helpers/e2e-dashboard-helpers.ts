@@ -1,7 +1,4 @@
 import type {
-  CardId,
-  CreateDashboardRequest,
-  Dashboard,
   DashboardCard,
   DashboardId,
   DashCardId,
@@ -10,73 +7,6 @@ import type {
 
 import { visitDashboard } from "./e2e-misc-helpers";
 import { menu, popover, sidebar } from "./e2e-ui-elements-helpers";
-
-interface DashboardDetails extends Omit<CreateDashboardRequest, "name"> {
-  name?: string;
-  auto_apply_filters?: Dashboard["auto_apply_filters"];
-  enable_embedding?: Dashboard["enable_embedding"];
-  embedding_params?: Dashboard["embedding_params"];
-  dashcards?: Partial<DashboardCard>[];
-}
-
-interface Options {
-  /**
-   * Whether to wrap a dashboard id, to make it available outside of this scope.
-   * Defaults to false.
-   */
-  wrapId?: boolean;
-  /**
-   * Alias a dashboard id in order to use it later with `cy.get("@" + alias).
-   * Defaults to "dashboardId".
-   */
-  idAlias?: string;
-}
-
-export const createDashboard = (
-  dashboardDetails: DashboardDetails = {},
-  options: Options = {},
-): Cypress.Chainable<Cypress.Response<Dashboard>> => {
-  const {
-    name = "Test Dashboard",
-    auto_apply_filters,
-    enable_embedding,
-    embedding_params,
-    dashcards,
-    ...restDashboardDetails
-  } = dashboardDetails;
-  const { wrapId = false, idAlias = "dashboardId" } = options;
-
-  cy.log(`Create a dashboard: ${name}`);
-
-  // For all the possible keys, refer to `src/metabase/api/dashboard.clj`
-  return cy
-    .request("POST", "/api/dashboard", { name, ...restDashboardDetails })
-    .then(({ body }) => {
-      if (wrapId) {
-        cy.wrap(body.id).as(idAlias);
-      }
-      if (
-        enable_embedding != null ||
-        auto_apply_filters != null ||
-        Array.isArray(dashcards)
-      ) {
-        cy.request("PUT", `/api/dashboard/${body.id}`, {
-          auto_apply_filters,
-          enable_embedding,
-          embedding_params,
-          dashcards,
-        });
-      }
-    });
-};
-
-export const archiveDashboard = (id: DashboardId) => {
-  cy.log(`Archiving a dashboard with id: ${id}`);
-
-  return cy.request("PUT", `/api/dashboard/${id}`, {
-    archived: true,
-  });
-};
 
 // Metabase utility functions for commonly-used patterns
 export function selectDashboardFilter(
@@ -103,58 +33,6 @@ export function getDashboardCard(index = 0) {
 
 export function ensureDashboardCardHasText(text: string, index = 0) {
   cy.findAllByTestId("dashcard").eq(index).should("contain", text);
-}
-
-const DEFAULT_CARD = {
-  id: -1,
-  row: 0,
-  col: 0,
-  size_x: 11,
-  size_y: 8,
-  visualization_settings: {},
-  parameter_mappings: [],
-};
-
-export function addOrUpdateDashboardCard({
-  card_id,
-  dashboard_id,
-  card,
-}: {
-  card_id: CardId;
-  dashboard_id: DashboardId;
-  card: Partial<DashboardCard>;
-}) {
-  return cy
-    .request("PUT", `/api/dashboard/${dashboard_id}`, {
-      dashcards: [
-        {
-          ...DEFAULT_CARD,
-          card_id,
-          ...card,
-        },
-      ],
-    })
-    .then(response => ({
-      ...response,
-      body: response.body.dashcards[0],
-    }));
-}
-
-/**
- * Replaces all the cards on a dashboard with the array given in the `cards` parameter.
- * Can be used to remove cards (exclude from array), or add/update them.
- */
-export function updateDashboardCards({
-  dashboard_id,
-  cards,
-}: {
-  dashboard_id: DashboardId;
-  cards: Partial<DashboardCard>[];
-}) {
-  let id = -1;
-  return cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
-    dashcards: cards.map(card => ({ ...DEFAULT_CARD, id: id--, ...card })),
-  });
 }
 
 export function getDashboardCardMenu(index = 0) {
@@ -598,18 +476,4 @@ export function assertDashboardFullWidth() {
     "max-width",
     MAX_WIDTH,
   );
-}
-
-export function createDashboardWithTabs({
-  dashcards,
-  tabs,
-  ...dashboardDetails
-}: DashboardDetails) {
-  return cy.createDashboard(dashboardDetails).then(({ body: dashboard }) => {
-    cy.request("PUT", `/api/dashboard/${dashboard.id}`, {
-      ...dashboard,
-      dashcards,
-      tabs,
-    }).then(({ body: dashboard }) => cy.wrap(dashboard));
-  });
 }
