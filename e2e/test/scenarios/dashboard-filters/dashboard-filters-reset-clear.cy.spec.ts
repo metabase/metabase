@@ -115,7 +115,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       ],
     );
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "Year",
       otherValue: "Month",
       otherValueFormatted: "Month",
@@ -158,7 +158,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       ],
     );
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "January 1, 2024",
       otherValue: "01/01/2020",
       otherValueFormatted: "January 1, 2020",
@@ -202,7 +202,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "Bassett",
       otherValue: "{backspace}Thomson",
       otherValueFormatted: "Thomson",
@@ -247,7 +247,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "2 selections",
       otherValue: "{backspace}{backspace}Washington,",
       otherValueFormatted: "Washington",
@@ -295,7 +295,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "1",
       otherValue: "{backspace}2",
       otherValueFormatted: "2",
@@ -340,7 +340,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "2 selections",
       otherValue: "{backspace}{backspace}3",
       otherValueFormatted: "3",
@@ -385,7 +385,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "1",
       otherValue: "{backspace}2",
       otherValueFormatted: "2",
@@ -430,7 +430,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "2 selections",
       otherValue: ["3", "4"],
       otherValueFormatted: "2 selections",
@@ -474,7 +474,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "Gizmo",
       otherValue: "{backspace}Gadget,",
       otherValueFormatted: "Gadget",
@@ -519,7 +519,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    checkDashboardFilters({
+    checkDashboardParameters({
       defaultValueFormatted: "2 selections",
       otherValue: "{backspace}{backspace}Doohickey,Widget,",
       otherValueFormatted: "2 selections",
@@ -612,7 +612,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     );
   }
 
-  function checkDashboardFilters<T = string>({
+  function checkDashboardParameters<T = string>({
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
