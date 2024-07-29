@@ -124,20 +124,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         popover().findByText(value).click();
       },
     });
-
-    checkParameterSidebarDefaultValue({
-      defaultValueFormatted: "Year",
-      otherValue: "Month",
-      otherValueFormatted: "Month",
-      setDefaultRequiredValue: value => {
-        filter("Default value (required)").click();
-        popover().findByText(value).click();
-      },
-      setDefaultValue: value => {
-        filter("Default value").click();
-        popover().findByText(value).click();
-      },
-    });
   });
 
   it("time parameters", () => {
@@ -181,18 +167,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
       updateValue: (label, value) => {
         updateDateFilter(label, value);
-      },
-    });
-
-    checkParameterSidebarDefaultValue({
-      defaultValueFormatted: "January 1, 2024",
-      otherValue: "01/01/2020",
-      otherValueFormatted: "January 1, 2020",
-      setDefaultRequiredValue: value => {
-        updateDateFilter("Default value (required)", value);
-      },
-      setDefaultValue: value => {
-        addDateFilter("Default value", value);
       },
     });
   });
@@ -1180,20 +1154,28 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     resetButton(DEFAULT_REQUIRED).click();
     filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
     checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
+
+    checkParameterSidebarDefaultValue({
+      defaultValueFormatted,
+      otherValue,
+      otherValueFormatted,
+      setValue,
+      updateValue,
+    });
   }
 
   function checkParameterSidebarDefaultValue<T = string>({
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
-    setDefaultRequiredValue,
-    setDefaultValue,
+    setValue,
+    updateValue,
   }: {
     defaultValueFormatted: string;
     otherValue: T;
     otherValueFormatted: string;
-    setDefaultValue: (value: T) => void;
-    setDefaultRequiredValue: (value: T) => void;
+    setValue: (label: string, value: T) => void;
+    updateValue: (label: string, value: T) => void;
   }) {
     cy.log("parameter sidebar");
     editDashboard();
@@ -1206,7 +1188,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       checkOnlyOneButtonVisible("Default value", "chevron");
     });
 
-    setDefaultValue(otherValue);
+    setValue("Default value", otherValue);
 
     dashboardParameterSidebar().within(() => {
       filter("Default value").should("have.text", otherValueFormatted);
@@ -1228,7 +1210,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       checkOnlyOneButtonVisible("Default value", "chevron");
     });
 
-    setDefaultValue(otherValue);
+    setValue("Default value", otherValue);
 
     dashboardParameterSidebar().within(() => {
       filter("Default value").should("have.text", otherValueFormatted);
@@ -1246,7 +1228,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       checkOnlyOneButtonVisible("Default value (required)", "chevron");
     });
 
-    setDefaultRequiredValue(otherValue);
+    updateValue("Default value (required)", otherValue);
 
     dashboardParameterSidebar().within(() => {
       filter("Default value").should("have.text", otherValueFormatted);
