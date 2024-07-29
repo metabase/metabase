@@ -38,8 +38,8 @@
 (api/defendpoint GET "/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token parameters]
-  {token ms/NonBlankString
-   parameters    [:maybe ms/JSONString]}
+  {token      ms/NonBlankString
+   parameters [:maybe ms/JSONString]}
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/process-query-for-card-with-params
@@ -90,8 +90,8 @@
 (api/defendpoint GET "/pivot/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
   [token parameters]
-  {token ms/NonBlankString
-   parameters    [:maybe ms/JSONString]}
+  {token      ms/NonBlankString
+   parameters [:maybe ms/JSONString]}
   (let [unsigned-token (check-and-unsign token)
         card-id        (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :question])]
     (api.embed.common/process-query-for-card-with-params

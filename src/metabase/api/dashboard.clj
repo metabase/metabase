@@ -1144,8 +1144,8 @@
     ;; fetch values for Dashboard 1 parameter 'abc' that are possible when parameter 'def' is set to 100
     GET /api/dashboard/1/params/abc/values?def=100"
   [id param-key parameters]
-  {id ms/PositiveInt
-   parameters    [:maybe ms/JSONString]}
+  {id         ms/PositiveInt
+   parameters [:maybe ms/JSONString]}
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
@@ -1161,9 +1161,9 @@
 
   Currently limited to first 1000 results."
   [id param-key query parameters]
-  {id    ms/PositiveInt
-   query ms/NonBlankString
-   parameters    [:maybe ms/JSONString]}
+  {id         ms/PositiveInt
+   query      ms/NonBlankString
+   parameters [:maybe ms/JSONString]}
   (let [dashboard (api/read-check :model/Dashboard id)]
     ;; If a user can read the dashboard, then they can lookup filters. This also works with sandboxing.
     (binding [qp.perms/*param-values-query* true]
