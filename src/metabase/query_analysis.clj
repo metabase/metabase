@@ -11,6 +11,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
    [metabase.models.query-field :as query-field]
+   [metabase.models.query-table :as query-table]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
@@ -123,14 +124,21 @@
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
       (let [references       (query-references query query-type)
-            reference->row   (fn [{:keys [table column table-id field-id explicit-reference]}]
+            table->row       (fn [{:keys [schema table table-id]}]
+                               {:card_id  card-id
+                                :schema   schema
+                                :table    table
+                                :table_id table-id})
+            field->row       (fn [{:keys [table column table-id field-id explicit-reference]}]
                                {:card_id            card-id
                                 :table              table
                                 :column             column
                                 :table_id           table-id
                                 :field_id           field-id
                                 :explicit_reference explicit-reference})
-            query-field-rows (map reference->row (:fields references))]
+            query-field-rows (map field->row (:fields references))
+            query-table-rows (map table->row (:tables references))]
+        (query-table/update-query-tables-for-card! card-id query-table-rows)
         (query-field/update-query-fields-for-card! card-id query-field-rows)))))
 
 (defn- replaced-inner-query-for-native-card

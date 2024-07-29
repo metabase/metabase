@@ -8586,6 +8586,56 @@ databaseChangeLog:
                   constraints:
                     nullable: true
 
+  - changeSet:
+      id: v50. 2024-07-29T09:04:13
+      author: crisptrutski
+      comment: Add the query_table join table
+      changes:
+        - createTable:
+            tableName: query_table
+            remarks: Tables used by a card's query
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_card_id
+                    deleteCascade: true
+              - column:
+                  name: table_id
+                  remarks: referenced field
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_table_id
+                    deleteCascade: true
+              - column:
+                  name: schema
+                  type: varchar(254) # matching metabase_table.schema
+                  remarks: name of the schema of the table being referenced
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254) # matching metabase_table.name
+                  remarks: name of the table or card being referenced
+                  constraints:
+                    nullable: false
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
