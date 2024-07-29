@@ -16,22 +16,22 @@
                              Field _ {:table_id            (u/the-id table)
                                       :name                "expected"
                                       :description         "Current fingerprint, not analyzed"
-                                      :fingerprint_version i/latest-fingerprint-version
+                                      :fingerprint_version i/*latest-fingerprint-version*
                                       :last_analyzed       nil}
                              Field _ {:table_id            (u/the-id table)
                                       :name                "not expected 1"
                                       :description         "Current fingerprint, already analzed"
-                                      :fingerprint_version i/latest-fingerprint-version
+                                      :fingerprint_version i/*latest-fingerprint-version*
                                       :last_analyzed       #t "2017-08-09"}
                              Field _ {:table_id            (u/the-id table)
                                       :name                "not expected 2"
                                       :description         "Old fingerprint, not analyzed"
-                                      :fingerprint_version (dec i/latest-fingerprint-version)
+                                      :fingerprint_version (dec i/*latest-fingerprint-version*)
                                       :last_analyzed       nil}
                              Field _ {:table_id            (u/the-id table)
                                       :name                "not expected 3"
                                       :description         "Old fingerprint, already analzed"
-                                      :fingerprint_version (dec i/latest-fingerprint-version)
+                                      :fingerprint_version (dec i/*latest-fingerprint-version*)
                                       :last_analyzed       #t "2017-08-09"}]
       (is (= ["expected"]
              (for [field (#'classify/fields-to-classify table)]
@@ -43,22 +43,22 @@
                              Field _ {:table_id            (u/the-id table)
                                       :name                "expected"
                                       :description         "Current fingerprint, not analyzed"
-                                      :fingerprint_version i/latest-fingerprint-version
+                                      :fingerprint_version i/*latest-fingerprint-version*
                                       :last_analyzed       nil}
                              Field _ {:table_id            (u/the-id table)
                                       :name                "not expected 1"
                                       :description         "Current fingerprint, already analzed"
-                                      :fingerprint_version i/latest-fingerprint-version
+                                      :fingerprint_version i/*latest-fingerprint-version*
                                       :last_analyzed       #t "2017-08-09"}
                              Field _ {:table_id            (u/the-id table)
                                       :name                "not expected 2"
                                       :description         "Old fingerprint, not analyzed"
-                                      :fingerprint_version (dec i/latest-fingerprint-version)
+                                      :fingerprint_version (dec i/*latest-fingerprint-version*)
                                       :last_analyzed       nil}
                              Field _ {:table_id            (u/the-id table)
                                       :name                "not expected 3"
                                       :description         "Old fingerprint, already analzed"
-                                      :fingerprint_version (dec i/latest-fingerprint-version)
+                                      :fingerprint_version (dec i/*latest-fingerprint-version*)
                                       :last_analyzed       #t "2017-08-09"}])))
 
 (deftest classify-fields-for-db!-test
@@ -69,7 +69,7 @@
                                              :name                "Income"
                                              :base_type           :type/Float
                                              :semantic_type       nil
-                                             :fingerprint_version i/latest-fingerprint-version
+                                             :fingerprint_version i/*latest-fingerprint-version*
                                              :fingerprint         {:type   {:type/Number {:min "NaN"
                                                                                           :max "NaN"
                                                                                           :avg "NaN"}}
@@ -87,7 +87,7 @@
                                               :name                "Income"
                                               :base_type           :type/Float
                                               :semantic_type       nil
-                                              :fingerprint_version i/latest-fingerprint-version
+                                              :fingerprint_version i/*latest-fingerprint-version*
                                               :fingerprint         {:type   {:type/Number {:min "-Infinity"
                                                                                            :max "Infinity"
                                                                                            :avg "Infinity"}}

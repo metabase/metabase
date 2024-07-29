@@ -92,7 +92,7 @@
   [table :- i/TableInstance]
   (seq (apply t2/select :model/Field
               :table_id (u/the-id table)
-              (reduce concat [] sync.fingerprint/incomplete-analysis-kvs))))
+              (reduce concat [] (sync.fingerprint/incomplete-analysis-kvs)))))
 
 (mu/defn classify-fields!
   "Run various classifiers on the appropriate `fields` in a `table` that have not been previously analyzed. These do

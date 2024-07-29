@@ -25,19 +25,21 @@
 (comment
   metadata-queries/keep-me-for-default-table-row-sample)
 
-(def incomplete-analysis-kvs
+(defn incomplete-analysis-kvs
   "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
    *completed* analysis. All Fields who get new fingerprints should get marked as having the latest fingerprint
    version, but we'll clear their values for `last_analyzed`. This way we know these fields haven't 'completed'
-   analysis for the latest fingerprints."
-  {:fingerprint_version i/latest-fingerprint-version
+   analysis for the latest fingerprints. This is a function because `*latest-fingerprint-version* may be rebound
+   in tests."
+  []
+  {:fingerprint_version i/*latest-fingerprint-version*
    :last_analyzed       nil})
 
 (mu/defn- save-fingerprint!
   [field       :- i/FieldInstance
    fingerprint :- [:maybe analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  (t2/update! Field (u/the-id field) (merge incomplete-analysis-kvs {:fingerprint fingerprint})))
+  (t2/update! Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
 (mr/def ::FingerprintStats
   [:map

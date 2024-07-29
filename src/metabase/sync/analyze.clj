@@ -56,7 +56,7 @@
   [table :- i/TableInstance]
   (t2/update! :model/Field
               (merge {:table_id (:id table)}
-                     sync.fingerprint/incomplete-analysis-kvs)
+                     (sync.fingerprint/incomplete-analysis-kvs))
               {:last_analyzed :%now}))
 
 (mu/defn- update-fields-last-analyzed-for-db!
@@ -71,7 +71,7 @@
                                                (for [[k v] sync-util/sync-tables-kv-args]
                                                  [:= (keyword (str "mt." (name k))) v]))
                                          [:= :mt.db_id (:id database)]]}]}
-                     sync.fingerprint/incomplete-analysis-kvs)
+                     (sync.fingerprint/incomplete-analysis-kvs))
               {:last_analyzed :%now}))
 
 (mu/defn analyze-table!
