@@ -37,7 +37,7 @@
   [field       :- i/FieldInstance
    fingerprint :- [:maybe analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  (t2/update! Field (u/the-id field) (merge {:fingerprint fingerprint} incomplete-analysis-kvs)))
+  (t2/update! Field (u/the-id field) (merge incomplete-analysis-kvs {:fingerprint fingerprint})))
 
 (mr/def ::FingerprintStats
   [:map
