@@ -8587,7 +8587,7 @@ databaseChangeLog:
                     nullable: true
 
   - changeSet:
-      id: v50.2024-07-29T09:22:12
+      id: v51.2024-07-29T09:22:12
       author: crisptrutski
       comment: Add the query_analysis table
       changes:
@@ -8629,7 +8629,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v50.2024-07-29T09:24:13
+      id: v51.2024-07-29T09:24:13
       author: crisptrutski
       comment: Add the query_table join table
       changes:
@@ -8689,7 +8689,7 @@ databaseChangeLog:
                     nullable: false
 
   - changeSet:
-      id: v50.2024-07-29T10:04:13
+      id: v51.2024-07-29T10:04:13
       author: crisptrutski
       changes:
         - addColumn:
