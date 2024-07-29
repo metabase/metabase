@@ -64,9 +64,9 @@
   [database :- i/DatabaseInstance]
   (t2/update! :model/Field
               (merge (sync.fingerprint/incomplete-analysis-kvs)
-                     {:id [:in {:select [:id]
-                                :from   [(t2/table-name :model/Table)]
-                                :where  [:and sync-util/sync-tables-clause [:= :db_id (:id database)]]}]})
+                     {:table_id [:in {:select [:id]
+                                      :from   [(t2/table-name :model/Table)]
+                                      :where  [:and sync-util/sync-tables-clause [:= :db_id (:id database)]]}]})
               {:last_analyzed :%now}))
 
 (mu/defn analyze-table!
