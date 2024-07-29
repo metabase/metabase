@@ -240,7 +240,7 @@ export const ParameterSettings = ({
           {t`Default value`}
           {parameter.required &&
             parameterHasNoDisplayValue(parameter.default) && (
-              <SettingLabelError>({t`required`})</SettingLabelError>
+              <SettingLabelError> ({t`required`})</SettingLabelError>
             )}
         </SettingLabel>
 
