@@ -57,7 +57,7 @@
     (throw (ex-info (i18n/tru "Can''t order by nil") {})))
   (lib.options/ensure-uuid [:asc (lib.ref/ref x)]))
 
-(mu/defn ^:private with-direction :- ::lib.schema.order-by/order-by
+(mu/defn- with-direction :- ::lib.schema.order-by/order-by
   "Update the direction of an order by clause."
   [clause    :- ::lib.schema.order-by/order-by
    direction :- ::lib.schema.order-by/direction]

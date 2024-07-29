@@ -29,7 +29,7 @@
   [card]
   (h (urls/card-url (:id card))))
 
-(mu/defn ^:private make-title-if-needed :- [:maybe formatter/RenderedPulseCard]
+(mu/defn- make-title-if-needed :- [:maybe formatter/RenderedPulseCard]
   [render-type card dashcard]
   (when *include-title*
     (let [card-name    (or (-> dashcard :visualization_settings :card.title)
@@ -56,7 +56,7 @@
                                  :width 16
                                  :src   (:image-src image-bundle)}])]]]]})))
 
-(mu/defn ^:private make-description-if-needed :- [:maybe formatter/RenderedPulseCard]
+(mu/defn- make-description-if-needed :- [:maybe formatter/RenderedPulseCard]
   [dashcard card]
   (when *include-description*
     (when-let [description (or (get-in dashcard [:visualization_settings :card.description])
@@ -127,7 +127,7 @@
   [card]
   ((some-fn :include_csv :include_xls) card))
 
-(mu/defn ^:private render-pulse-card-body :- formatter/RenderedPulseCard
+(mu/defn- render-pulse-card-body :- formatter/RenderedPulseCard
   [render-type
    timezone-id :- [:maybe :string]
    card
@@ -173,7 +173,7 @@
              :content [:p
                        ;; Provide a horizontal scrollbar for tables that overflow container width.
                        ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
-                       [:div {:style (style/style {:overflow-x :auto})}
+                       [:div
                         [:a {:href        (card-href card)
                              :target      "_blank"
                              :rel         "noopener noreferrer"
@@ -184,7 +184,8 @@
                          title
                          description
                          [:div {:class "pulse-body"
-                                :style (style/style {:display :block
+                                :style (style/style {:overflow-x :auto
+                                                     :display :block
                                                      :margin  :16px})}
                           (if-let [more-results-message (body/attached-results-text render-type card)]
                             (conj more-results-message (list pulse-body))

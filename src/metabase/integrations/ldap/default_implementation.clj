@@ -69,7 +69,7 @@
       (log/debugf "LDAP search results: %s" (u/pprint-to-str search-result))
       (some-> (first search-result) u/lower-case-map-keys))))
 
-(mu/defn ^:private process-group-membership-filter :- ms/NonBlankString
+(mu/defn- process-group-membership-filter :- ms/NonBlankString
   "Replace DN and UID placeholders with values returned by the LDAP server."
   [group-membership-filter :- ms/NonBlankString
    dn                      :- ms/NonBlankString
@@ -79,7 +79,7 @@
         (str/replace "{dn}" (Filter/encodeValue ^String dn))
         (str/replace "{uid}" (Filter/encodeValue ^String uid-string)))))
 
-(mu/defn ^:private user-groups :- [:maybe [:sequential ms/NonBlankString]]
+(mu/defn- user-groups :- [:maybe [:sequential ms/NonBlankString]]
   "Retrieve groups for a supplied DN."
   [ldap-connection         :- (ms/InstanceOfClass LDAPConnectionPool)
    dn                      :- ms/NonBlankString

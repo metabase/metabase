@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
 import { useListModelIndexesQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
@@ -33,6 +32,7 @@ import {
   getVisualizationSettings,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
+import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -187,16 +187,6 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
     : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
-const FIELDS = [
-  "id",
-  "display_name",
-  "description",
-  "semantic_type",
-  "fk_target_field_id",
-  "visibility_type",
-  "settings",
-];
-
 function DatasetEditor(props) {
   const {
     question,
@@ -293,7 +283,8 @@ function DatasetEditor(props) {
   const inheritMappedFieldProperties = useCallback(
     changes => {
       const mappedField = metadata.field?.(changes.id)?.getPlainObject();
-      const inheritedProperties = _.pick(mappedField, ...FIELDS);
+      const inheritedProperties =
+        mappedField && getWritableColumnProperties(mappedField);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
     [metadata],
@@ -368,7 +359,7 @@ function DatasetEditor(props) {
       await updateQuestion(questionWithDisplay, { rerunQuery: false });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(questionWithDisplay, { rerunQuery: false });
+      await onSave(questionWithDisplay, { rerunQuery: true });
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {

@@ -894,3 +894,80 @@
                 :dashcard dashcard-header}
                {:card     (mapcat :content card-header-els)
                 :dashcard (mapcat :content dash-header-els)}))))))))
+
+(deftest table-renders-respect-conditional-formatting
+  (testing "Rendered Tables respect the conditional formatting on a card."
+    (let [ids-to-colour [1 2 3 5 8 13]]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {card-id :id} {:display       :table
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :orders)}}
+                                                  :visualization_settings
+                                                  {:table.column_formatting
+                                                   (into []
+                                                         (map-indexed
+                                                          (fn [idx id-to-colour]
+                                                            {:columns       ["ID"]
+                                                             :type          "single"
+                                                             :operator      "="
+                                                             :value         id-to-colour
+                                                             :color         "#A989C5"
+                                                             :highlight_row false
+                                                             :id            idx})
+                                                          ids-to-colour))}}]
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [card-doc     (render.tu/render-card-as-hickory card-id)
+                  card-row-els (hik.s/select (hik.s/tag :tr) card-doc)]
+              (is (= (mapv str ids-to-colour)
+                     (keep
+                      (fn [{:keys [attrs] :as el}]
+                        (let [style-str (:style attrs)]
+                          (when (str/includes? style-str "background-color")
+                            (-> el :content first))))
+                           (mapcat :content (take 20 card-row-els))))))))))))
+
+(deftest table-renders-conditional-formatting-even-with-hidden-column
+  (testing "Rendered Tables respect the conditional formatting on a card."
+    (let [ids-to-colour [1 2 3 5 8 13]]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {card-id :id} {:display       :table
+                                                  :dataset_query {:database (mt/id)
+                                                                  :type     :query
+                                                                  :query    {:source-table (mt/id :orders)}}
+                                                  :visualization_settings
+                                                  {:table.columns
+                                                   [{:name "ID" :enabled false}
+                                                    {:name "TOTAL" :enabled true}
+                                                    {:name "TAX" :enabled true}
+                                                    {:name "USER_ID" :enabled true}
+                                                    {:name "CREATED_AT" :enabled true}
+                                                    {:name "QUANTITY" :enabled true}
+                                                    {:name "SUBTOTAL" :enabled true}
+                                                    {:name "PRODUCT_ID" :enabled true}
+                                                    {:name "DISCOUNT" :enabled true}]
+                                                   :table.column_formatting
+                                                   (into []
+                                                         (map-indexed
+                                                          (fn [idx id-to-colour]
+                                                            {:columns       ["ID"]
+                                                             :type          "single"
+                                                             :operator      "="
+                                                             :value         id-to-colour
+                                                             :color         "#A989C5"
+                                                             :highlight_row true
+                                                             :id            idx})
+                                                          ids-to-colour))}}]
+          (mt/with-current-user (mt/user->id :rasta)
+            (let [card-doc     (render.tu/render-card-as-hickory card-id)
+                  card-row-els (hik.s/select (hik.s/tag :tr) card-doc)]
+              (is (=  ids-to-colour
+                     (keep
+                      (fn [[id row-els]]
+                        (let [{:keys [attrs]} (first row-els)
+                              style-str       (:style attrs)]
+                          (when (str/includes? style-str "background-color")
+                            id)))
+                      (map vector
+                       (range)
+                       (map :content (take 20 card-row-els)))))))))))))

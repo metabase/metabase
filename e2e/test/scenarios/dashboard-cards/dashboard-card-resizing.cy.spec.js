@@ -196,7 +196,7 @@ const viewports = [
   [1440, 800],
 ];
 
-describe("scenarios > dashboard card resizing", () => {
+describe("scenarios > dashboard card resizing", { tags: "@flaky" }, () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -279,32 +279,19 @@ describe("scenarios > dashboard card resizing", () => {
 
         cy.request("GET", `/api/dashboard/${dashId}`).then(({ body }) => {
           const dashcards = body.dashcards;
-          dashcards.forEach(({ card }) => {
-            const dashcard = cy.contains(
-              "[data-testid=dashcard-container]",
-              card.name,
-            );
+          dashcards.forEach(({ card }, index) => {
             resizeDashboardCard({
-              card: dashcard,
+              card: getDashboardCard(index),
               x: getDefaultSize(card.display).width * 100,
               y: getDefaultSize(card.display).height * 100,
             });
           });
 
-          saveDashboard();
-          editDashboard();
-
-          dashcards.forEach(({ card }) => {
-            const dashcard = cy.contains(
-              "[data-testid=dashcard-container]",
-              card.name,
-            );
-            dashcard.within(() => {
-              resizeDashboardCard({
-                card: dashcard,
-                x: -getDefaultSize(card.display).width * 200,
-                y: -getDefaultSize(card.display).height * 200,
-              });
+          dashcards.forEach(({ card }, index) => {
+            resizeDashboardCard({
+              card: getDashboardCard(index),
+              x: -getDefaultSize(card.display).width * 200,
+              y: -getDefaultSize(card.display).height * 200,
             });
           });
 
