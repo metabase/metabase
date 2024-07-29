@@ -1084,6 +1084,7 @@
                               [id])
                             (mapv (fn root->nil [x] (if (= :root x) nil x)))
                             set)
+
         {:keys [total rows]}
         (find-stale-candidates {:collection-ids collection-ids
                                 :cutoff-date    before-date
@@ -1092,13 +1093,16 @@
                                 :sort-column    sort_column
                                 :sort-direction sort_direction})
 
-        snowplow-payload {:total-stale-items-found total
-                          :cutoff-date             before-date}]
-    (snowplow/track-event! ::snowplow/collection-read-stale api/*current-user-id* snowplow-payload)
+        snowplow-payload {:collection_id           (when-not (= :root id) id)
+                          :total_stale_items_found total
+                          ;; convert before-date to a date-time string before sending it.
+                          :cutoff_date             (format "%sT00:00:00Z" (str before-date))}]
+    (snowplow/track-event! ::snowplow/stale-items-read api/*current-user-id* snowplow-payload)
     {:total  total
      :data   (api/present-items present-model-items rows)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))
+
 
 (api/defendpoint GET "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"
