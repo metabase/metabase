@@ -4,50 +4,45 @@
    [metabase.lib.options :as lib.options]
    [metabase.util.malli.registry :as mr]))
 
-(declare collect-uuids)
+(declare collect-uuids*)
 
-(defn- collect-uuids-in-map [m]
-  (into (if-let [our-uuid (or (:lib/uuid (lib.options/options m))
-                              (:lib/uuid m))]
-          [our-uuid]
-          [])
-        (comp (remove (fn [[k _v]]
-                        (qualified-keyword? k)))
-              (mapcat (fn [[_k v]]
-                        (collect-uuids v))))
-        m))
+(defn- collect-uuids-in-map [m result]
+  (when-let [our-uuid (or (:lib/uuid (lib.options/options m))
+                          (:lib/uuid m))]
+    ;; Keep duplicates in metadata of the result.
+    (if (@result our-uuid)
+      (vswap! result vary-meta update :duplicates (fnil conj #{}) our-uuid)
+      (vswap! result conj our-uuid)))
 
-(defn- collect-uuids-in-sequence [xs]
-  (into [] (mapcat collect-uuids) xs))
+  (reduce-kv (fn [_ k v]
+               (when (not (qualified-keyword? k))
+                 (collect-uuids* v result)))
+             nil m))
+
+(defn- collect-uuids-in-sequence [xs result]
+  (run! #(collect-uuids* % result) xs))
+
+(defn- collect-uuids* [x result]
+  (cond
+    (map? x)        (collect-uuids-in-map x result)
+    (sequential? x) (collect-uuids-in-sequence x result)
+    :else           nil))
 
 (defn collect-uuids
   "Return all the `:lib/uuid`s in a part of an MBQL query (a clause or map) as a sequence. This will be used to ensure
   there are no duplicates."
   [x]
-  (cond
-    (map? x)        (collect-uuids-in-map x)
-    (sequential? x) (collect-uuids-in-sequence x)
-    :else           nil))
+  (let [result (volatile! #{})]
+    (collect-uuids* x result)
+    @result))
 
 (defn- find-duplicate-uuid [x]
-  (transduce
-   identity
-   (fn
-     ([]
-      #{})
-     ([result]
-      (when (string? result)
-        result))
-     ([seen a-uuid]
-      (if (contains? seen a-uuid)
-        (reduced a-uuid)
-        (conj seen a-uuid))))
-   (collect-uuids x)))
+  (:duplicates (meta (collect-uuids x))))
 
 (defn unique-uuids?
   "True if all the `:lib/uuid`s in something are unique."
   [x]
-  (not (find-duplicate-uuid x)))
+  (empty? (find-duplicate-uuid x)))
 
 ;;; Malli schema for to ensure that all `:lib/uuid`s are unique.
 (mr/def ::unique-uuids

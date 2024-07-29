@@ -80,21 +80,34 @@
          :mbql/query true
          false)))
 
-(defn- query-field-ids
+(defn- explicit-references [field-ids]
+  (when (seq field-ids)
+    ;; We add this on in code as `true` in MySQL-based drivers would be returned as 1.
+    (map #(assoc % :explicit-reference true)
+         (t2/select :model/QueryField {:select [[:t.id :table-id] [:t.name :table]
+                                                [:f.id :field-id] [:f.name :column]]
+                                       :from   [[(t2/table-name :model/Field) :f]]
+                                       :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
+                                       :where  [:in :f.id field-ids]}))))
+
+(defn- query-references
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
   so returns `{:explicit #{...int ids}}` map.
 
   Does not track wildcards for queries rendered as tables afterward."
   ([query]
-   (query-field-ids query (lib/normalized-query-type query)))
+   (query-references query (lib/normalized-query-type query)))
   ([query query-type]
    (case query-type
-     :native (try
-               (nqa/field-ids-for-native query)
-               (catch Exception e
-                 (log/error e "Error parsing SQL" query)))
-     :query {:explicit (mbql.u/referenced-field-ids query)}
-     :mbql/query {:explicit (lib.util/referenced-field-ids query)})))
+     :native     (try
+                   (nqa/references-for-native query)
+                   (catch Exception e
+                     (log/error e "Error parsing SQL" query)))
+     ;; For now, all model references are resolved transitively to the ultimate field ids.
+     ;; We may want to change to record model references directly rather than resolving them.
+     ;; This would remove the need to invalidate consuming cards when a given model changes.
+     :query      (explicit-references (mbql.u/referenced-field-ids query))
+     :mbql/query (explicit-references (lib.util/referenced-field-ids query)))))
 
 (defn update-query-analysis-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
@@ -104,14 +117,14 @@
   [{card-id :id, query :dataset_query}]
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
-      (let [{:keys [explicit implicit]} (query-field-ids query)
-            id->row          (fn [explicit? field-id]
-                               {:card_id            card-id
-                                :field_id           field-id
-                                :explicit_reference explicit?})
-            query-field-rows (concat
-                              (map (partial id->row true) explicit)
-                              (map (partial id->row false) implicit))]
+      (let [references       (query-references query query-type)
+            reference->row   (fn [{:keys [field-id explicit-reference]}]
+                               ;; For now we only persist references which resolve to known fields
+                               (when field-id
+                                 {:card_id            card-id
+                                  :field_id           field-id
+                                  :explicit_reference explicit-reference}))
+            query-field-rows (map reference->row references)]
         (query-field/update-query-fields-for-card! card-id query-field-rows)))))
 
 (defn- replaced-inner-query-for-native-card

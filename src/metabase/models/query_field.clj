@@ -44,7 +44,8 @@
                      :where  [:and
                               [:= :qf.explicit_reference true]
                               [:= :f.active false]
-                              [:in :card_id (map :id cards)]]})
+                              [:in :card_id (map :id cards)]]
+                     :order-by [:qf.card_id :t.name :f.name]})
          (map (fn [{:keys [card_id table field table_active]}]
                 [card_id {:type  (if table_active
                                    :inactive-field

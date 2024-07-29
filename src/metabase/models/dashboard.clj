@@ -386,9 +386,10 @@
         (->> (filter identity)))))
 
 (defn has-tabs?
-  "Check if a dashboard has tabs."
+  "Check if a dashboard has more than 1 tab.
+  We don't need to render the tab title if only 1 exists (issue #45123)."
   [dashboard-or-id]
-  (t2/exists? :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id)))
+  (< 1 (t2/count :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
