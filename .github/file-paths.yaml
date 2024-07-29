@@ -35,7 +35,7 @@ frontend_specs: &frontend_specs
   - "frontend/test/**"
   - "frontend/**/tests/**"
   - "frontend/**/*.unit.*"
-  - "jest.config.json"
+  - "jest.config.js"
   - "jest.tz.unit.conf.json"
 
 release_source: &release_sources

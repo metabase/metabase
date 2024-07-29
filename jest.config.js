@@ -37,6 +37,7 @@ const config = {
   modulePathIgnorePatterns: [
     "<rootDir>/target/cljs_release/.*",
     "<rootDir>/resources/frontend_client",
+    "<rootDir>/.*/__mocks__",
   ],
   setupFiles: [
     "<rootDir>/frontend/test/jest-setup.js",
