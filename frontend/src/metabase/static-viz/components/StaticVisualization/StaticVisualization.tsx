@@ -6,6 +6,7 @@ import type { StaticVisualizationProps } from "metabase/visualizations/types";
 import { ComboChart } from "../ComboChart";
 import { FunnelBarChart } from "../FunnelBarChart";
 import { PieChart } from "../PieChart/PieChart";
+import { SankeyChart } from "../SankeyChart";
 import { ScalarChart } from "../ScalarChart";
 import { ScatterPlot } from "../ScatterPlot/ScatterPlot";
 import { SmartScalar } from "../SmartScalar";
@@ -46,6 +47,8 @@ export const StaticVisualization = ({
       return <SmartScalar {...props} />;
     case "pie":
       return <PieChart {...props} />;
+    case "sankey":
+      return <SankeyChart {...props} />;
   }
 
   throw new Error(`Unsupported display type: ${display}`);
