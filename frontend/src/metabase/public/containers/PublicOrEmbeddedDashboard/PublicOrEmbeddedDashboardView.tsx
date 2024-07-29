@@ -16,6 +16,7 @@ import { DashboardGridConnected } from "metabase/dashboard/components/DashboardG
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
+import { getIsEditing } from "metabase/dashboard/selectors";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
@@ -24,6 +25,7 @@ import type {
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
+import { useSelector } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
@@ -94,9 +96,11 @@ export function PublicOrEmbeddedDashboardView({
 } & DashboardRefreshPeriodControls &
   DashboardNightModeControls &
   DashboardFullscreenControls) {
+  const isEditing = useSelector(getIsEditing);
+
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
-      dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
+      dashboardActionKeys={!isEditing ? DASHBOARD_DISPLAY_ACTIONS : null}
       refreshPeriod={refreshPeriod}
       onRefreshPeriodChange={onRefreshPeriodChange}
       onFullscreenChange={onFullscreenChange}

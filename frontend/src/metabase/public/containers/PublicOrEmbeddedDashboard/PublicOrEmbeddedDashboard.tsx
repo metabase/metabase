@@ -7,14 +7,33 @@ import _ from "underscore";
 
 import { getEventHandlers } from "embedding-sdk/store/selectors";
 import {
+  addCardToDashboard,
   cancelFetchDashboardCardData,
+  closeSidebar,
   fetchDashboard,
   fetchDashboardCardData,
   initialize,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  onUpdateDashCardVisualizationSettings,
+  removeParameter,
+  setParameterDefaultValue,
+  setParameterFilteringParameters,
+  setParameterIsMultiSelect,
+  setParameterName,
+  setParameterQueryType,
+  setParameterRequired,
+  setParameterSourceConfig,
+  setParameterSourceType,
+  setParameterTemporalUnits,
+  setParameterType,
   setParameterValue,
   setParameterValueToDefault,
+  setSharing,
+  showAddParameterPopover,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import { DashboardSidebars } from "metabase/dashboard/components/DashboardSidebars";
 import {
   getDashboardComplete,
   getDraftParameterValues,
@@ -25,6 +44,8 @@ import {
   getParameters,
   getSelectedTabId,
   getSlowCards,
+  getClickBehaviorSidebarDashcard,
+  getSidebar,
 } from "metabase/dashboard/selectors";
 import type {
   DashboardDisplayOptionControls,
@@ -53,6 +74,9 @@ const mapStateToProps = (state: State) => {
     isErrorPage: getErrorPage(state),
     isLoading: getIsLoading(state),
     isLoadingWithoutCards: getIsLoadingWithoutCards(state),
+
+    clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
+    sidebar: getSidebar(state),
   };
 };
 
@@ -61,6 +85,25 @@ const mapDispatchToProps = {
   setParameterValueToDefault,
   setParameterValue,
   fetchDashboardCardData,
+
+  showAddParameterPopover,
+  removeParameter,
+  addCardToDashboard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  setParameterName,
+  setParameterType,
+  setParameterDefaultValue,
+  setParameterIsMultiSelect,
+  setParameterQueryType,
+  setParameterSourceType,
+  setParameterSourceConfig,
+  setParameterFilteringParameters,
+  setParameterRequired,
+  setParameterTemporalUnits,
+  setSharing,
+  closeSidebar,
 };
 
 const connector = connect(mapStateToProps, mapDispatchToProps);
@@ -74,6 +117,8 @@ type OwnProps = {
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
+
+  withEdit?: boolean;
 } & PublicOrEmbeddedDashboardEventHandlersProps;
 
 type DisplayProps = Pick<
@@ -168,6 +213,30 @@ const PublicOrEmbeddedDashboardInner = ({
   setParameterValueToDefault,
   setParameterValue,
   fetchDashboardCardData,
+
+  withEdit = false,
+
+  clickBehaviorSidebarDashcard,
+  sidebar,
+
+  showAddParameterPopover,
+  removeParameter,
+  addCardToDashboard,
+  onReplaceAllDashCardVisualizationSettings,
+  onUpdateDashCardVisualizationSettings,
+  onUpdateDashCardColumnSettings,
+  setParameterName,
+  setParameterType,
+  setParameterDefaultValue,
+  setParameterIsMultiSelect,
+  setParameterQueryType,
+  setParameterSourceType,
+  setParameterSourceConfig,
+  setParameterFilteringParameters,
+  setParameterRequired,
+  setParameterTemporalUnits,
+  setSharing,
+  closeSidebar,
 }: PublicOrEmbeddedDashboardProps) => {
   const dispatch = useDispatch();
   const didMountRef = useRef(false);
@@ -265,33 +334,66 @@ const PublicOrEmbeddedDashboardInner = ({
   ]);
 
   return (
-    <PublicOrEmbeddedDashboardView
-      dashboard={dashboard}
-      hasNightModeToggle={hasNightModeToggle}
-      isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
-      onFullscreenChange={onFullscreenChange}
-      onNightModeChange={onNightModeChange}
-      onRefreshPeriodChange={onRefreshPeriodChange}
-      refreshPeriod={refreshPeriod}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      selectedTabId={selectedTabId}
-      parameters={parameters}
-      parameterValues={parameterValues}
-      draftParameterValues={draftParameterValues}
-      setParameterValue={setParameterValue}
-      setParameterValueToDefault={setParameterValueToDefault}
-      dashboardId={dashboardId}
-      background={background}
-      bordered={bordered}
-      titled={titled}
-      theme={theme}
-      hideParameters={hideParameters}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      slowCards={slowCards}
-      cardTitled={cardTitled}
-      downloadsEnabled={downloadsEnabled}
-    />
+    <>
+      <PublicOrEmbeddedDashboardView
+        dashboard={dashboard}
+        hasNightModeToggle={hasNightModeToggle}
+        isFullscreen={isFullscreen}
+        isNightMode={isNightMode}
+        onFullscreenChange={onFullscreenChange}
+        onNightModeChange={onNightModeChange}
+        onRefreshPeriodChange={onRefreshPeriodChange}
+        refreshPeriod={refreshPeriod}
+        setRefreshElapsedHook={setRefreshElapsedHook}
+        selectedTabId={selectedTabId}
+        parameters={parameters}
+        parameterValues={parameterValues}
+        draftParameterValues={draftParameterValues}
+        setParameterValue={setParameterValue}
+        setParameterValueToDefault={setParameterValueToDefault}
+        dashboardId={dashboardId}
+        background={background}
+        bordered={bordered}
+        titled={titled}
+        theme={theme}
+        hideParameters={hideParameters}
+        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+        slowCards={slowCards}
+        cardTitled={cardTitled}
+        downloadsEnabled={downloadsEnabled}
+      />
+      {withEdit && dashboard && (
+        <DashboardSidebars
+          dashboard={dashboard}
+          showAddParameterPopover={showAddParameterPopover}
+          removeParameter={removeParameter}
+          addCardToDashboard={addCardToDashboard}
+          clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
+          onReplaceAllDashCardVisualizationSettings={
+            onReplaceAllDashCardVisualizationSettings
+          }
+          onUpdateDashCardVisualizationSettings={
+            onUpdateDashCardVisualizationSettings
+          }
+          onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
+          setParameterName={setParameterName}
+          setParameterType={setParameterType}
+          setParameterDefaultValue={setParameterDefaultValue}
+          setParameterIsMultiSelect={setParameterIsMultiSelect}
+          setParameterQueryType={setParameterQueryType}
+          setParameterSourceType={setParameterSourceType}
+          setParameterSourceConfig={setParameterSourceConfig}
+          setParameterFilteringParameters={setParameterFilteringParameters}
+          setParameterRequired={setParameterRequired}
+          setParameterTemporalUnits={setParameterTemporalUnits}
+          isFullscreen={isFullscreen}
+          sidebar={sidebar}
+          closeSidebar={closeSidebar}
+          selectedTabId={selectedTabId}
+          onCancel={() => setSharing(false)}
+        />
+      )}
+    </>
   );
 };
 
@@ -302,7 +404,6 @@ function isSuccessfulFetchDashboardResult(
   return !hasError;
 }
 
-// Raw PublicOrEmbeddedDashboard used for SDK embedding
 export const PublicOrEmbeddedDashboard = connector(
   PublicOrEmbeddedDashboardInner,
 );
