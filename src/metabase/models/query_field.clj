@@ -10,7 +10,10 @@
   (derive :metabase/model))
 
 (defn- coerce-boolean [x]
-  (if (= 0 x) false x))
+  (cond
+    (= 0 x) false
+    (= 0M x) false
+    :else x))
 
 (defn- coerce-booleans [m]
   (update-vals m coerce-boolean))
