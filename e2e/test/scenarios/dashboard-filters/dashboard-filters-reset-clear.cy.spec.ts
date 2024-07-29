@@ -568,70 +568,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       });
   });
 
-  function filter(label: string) {
-    return cy.findByLabelText(label);
-  }
-
-  function editFilter(label: string) {
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText(label)
-      .click();
-  }
-
-  function clearIcon(label: string) {
-    return filter(label).icon("close");
-  }
-
-  function resetIcon(label: string) {
-    return filter(label).icon("revert");
-  }
-
-  function clearButton(label: string) {
-    return filter(label).findByLabelText("Clear");
-  }
-
-  function resetButton(label: string) {
-    return filter(label).findByLabelText("Reset filter to default state");
-  }
-
-  function chevronIcon(label: string) {
-    return filter(label).icon("chevrondown");
-  }
-
-  function addDateFilter(label: string, value: string) {
-    filter(label).click();
-    popover().findByRole("textbox").clear().type(value).blur();
-    popover().button("Add filter").click();
-  }
-
-  function updateDateFilter(label: string, value: string) {
-    filter(label).click();
-    popover().findByRole("textbox").clear().type(value).blur();
-    popover().button("Update filter").click();
-  }
-
-  function addRangeFilter(
-    label: string,
-    firstValue: string,
-    secondValue: string,
-  ) {
-    filter(label).click();
-    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
-    popover().button("Add filter").click();
-  }
-
-  function updateRangeFilter(
-    label: string,
-    firstValue: string,
-    secondValue: string,
-  ) {
-    filter(label).click();
-    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
-    popover().button("Update filter").click();
-  }
-
   function createDashboardWithParameters(
     questionDetails: StructuredQuestionDetails,
     targetField: LocalFieldReference,
@@ -815,5 +751,69 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       filter("Default value").should("have.text", otherValueFormatted);
       checkOnlyOneButtonVisible("Default value", "clear");
     });
+  }
+
+  function filter(label: string) {
+    return cy.findByLabelText(label);
+  }
+
+  function editFilter(label: string) {
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText(label)
+      .click();
+  }
+
+  function clearIcon(label: string) {
+    return filter(label).icon("close");
+  }
+
+  function resetIcon(label: string) {
+    return filter(label).icon("revert");
+  }
+
+  function clearButton(label: string) {
+    return filter(label).findByLabelText("Clear");
+  }
+
+  function resetButton(label: string) {
+    return filter(label).findByLabelText("Reset filter to default state");
+  }
+
+  function chevronIcon(label: string) {
+    return filter(label).icon("chevrondown");
+  }
+
+  function addDateFilter(label: string, value: string) {
+    filter(label).click();
+    popover().findByRole("textbox").clear().type(value).blur();
+    popover().button("Add filter").click();
+  }
+
+  function updateDateFilter(label: string, value: string) {
+    filter(label).click();
+    popover().findByRole("textbox").clear().type(value).blur();
+    popover().button("Update filter").click();
+  }
+
+  function addRangeFilter(
+    label: string,
+    firstValue: string,
+    secondValue: string,
+  ) {
+    filter(label).click();
+    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
+    popover().button("Add filter").click();
+  }
+
+  function updateRangeFilter(
+    label: string,
+    firstValue: string,
+    secondValue: string,
+  ) {
+    filter(label).click();
+    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
+    popover().button("Update filter").click();
   }
 });
