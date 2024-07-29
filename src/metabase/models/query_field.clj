@@ -9,6 +9,9 @@
 (doto :model/QueryField
   (derive :metabase/model))
 
+(defn- db-true? [x]
+  (or (true? x) (= "1" x)))
+
 (defn cards-with-reference-errors
   "Given some HoneySQL query map with :model/Card bound as :c, restrict this query to only return cards
   with invalid references."
@@ -52,8 +55,8 @@
                      :order-by  [:qf.card_id :field :table]})
          (map (fn [{:keys [card_id table field field_unknown table_active]}]
                 [card_id {:type  (cond
-                                   field_unknown :unknown-field
-                                   table_active  :inactive-field
+                                   (db-true? field_unknown) :unknown-field
+                                   (db-true? table_active)  :inactive-field
                                    :else         :inactive-table)
                           :table table
                           :field field}]))
