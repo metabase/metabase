@@ -5,5 +5,5 @@
 
 (methodical/defmethod t2/table-name :model/QueryTable [_model] :query_table)
 
-(doto :model/QueryField
+(doto :model/QueryTable
   (derive :metabase/model))
