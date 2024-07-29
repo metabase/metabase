@@ -1,12 +1,7 @@
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import type {
-  Card,
-  DatasetQuery,
-  NativeQuery,
-  StructuredQuery,
-} from "metabase-types/api";
+import type { Card, DatasetQuery, StructuredQuery } from "metabase-types/api";
 
-type QuestionDetails = {
+export type QuestionDetails = {
   dataset_query: DatasetQuery;
   /**
    * Defaults to "test question".
@@ -50,15 +45,7 @@ export type StructuredQuestionDetails = Omit<
   query: StructuredQuery;
 };
 
-export type NativeQuestionDetails = Omit<QuestionDetails, "dataset_query"> & {
-  /**
-   * Defaults to SAMPLE_DB_ID.
-   */
-  database?: DatasetQuery["database"];
-  native: NativeQuery;
-};
-
-type Options = {
+export type Options = {
   /**
    * Whether to visit the question in order to load its metadata.
    * Defaults to false.
@@ -107,38 +94,7 @@ export const createQuestion = (
   );
 };
 
-export const createNativeQuestion = (
-  questionDetails: NativeQuestionDetails,
-  options?: Options,
-): Cypress.Chainable<Cypress.Response<Card>> => {
-  const { database = SAMPLE_DB_ID, name, native } = questionDetails;
-
-  if (!native) {
-    throw new Error('"native" attribute missing in questionDetails');
-  }
-
-  logAction("Create a native question", name);
-
-  return question(
-    {
-      ...questionDetails,
-      dataset_query: { type: "native", native, database },
-    },
-    options,
-  );
-};
-
-export const archiveQuestion = (
-  id: Card["id"],
-): Cypress.Chainable<Cypress.Response<Card>> => {
-  cy.log(`Archiving a question with id: ${id}`);
-
-  return cy.request("PUT", `/api/card/${id}`, {
-    archived: true,
-  });
-};
-
-const question = (
+export const question = (
   {
     name = "test question",
     description,
@@ -161,7 +117,7 @@ const question = (
   }: Options = {},
 ) => {
   return cy
-    .request("POST", "/api/card", {
+    .request<Card>("POST", "/api/card", {
       name,
       description,
       dataset_query,
@@ -209,7 +165,7 @@ const question = (
     });
 };
 
-const logAction = (
+export const logAction = (
   /**
    * A title used to log the Cypress action/request that follows it.
    */
