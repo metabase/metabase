@@ -85,7 +85,7 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
-      DISABLE_SOURCE_MAPS: ${{ github.ref_name != 'master' && !contains(github.ref_name, 'release-x')}}
+      DISABLE_SOURCE_MAPS: "${{ github.ref_name != 'master' && !contains(github.ref_name, 'release-x')}}"
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
