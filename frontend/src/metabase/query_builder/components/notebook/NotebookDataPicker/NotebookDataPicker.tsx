@@ -7,7 +7,7 @@ import {
 } from "metabase/common/components/DataPicker";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-// import * as Urls from "metabase/lib/urls";
+import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
@@ -74,8 +74,19 @@ export function NotebookDataPicker({
     const openInNewTab = (link: string) => window.open(link, "_blank");
 
     if (isCtrlOrMetaClick || isMiddleClick) {
-      tableValue && openInNewTab("foo");
-      // openInNewTab(Urls.model({ id: tableValue.id, name: tableValue.name }));
+      if (!tableValue) {
+        return;
+      }
+
+      const item = {
+        ...tableValue,
+        database: tableValue.model === "table" && {
+          id: tableValue.db_id,
+        },
+      };
+
+      const url = Urls.modelToUrl(item);
+      openInNewTab(url);
     } else {
       setIsOpen(true);
     }
