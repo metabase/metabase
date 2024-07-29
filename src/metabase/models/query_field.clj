@@ -13,7 +13,7 @@
   (if (= 0 x) false x))
 
 (defn- coerce-booleans [m]
-  (update-vals coerce-boolean m))
+  (update-vals m coerce-boolean))
 
 (defn cards-with-reference-errors
   "Given some HoneySQL query map with :model/Card bound as :c, restrict this query to only return cards
