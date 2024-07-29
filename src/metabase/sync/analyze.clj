@@ -54,7 +54,10 @@
 (mu/defn- update-fields-last-analyzed!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
-  (t2/update! :model/Field :table_id (:id table) {:last_analyzed :%now}))
+  (t2/update! :model/Field
+              (merge {:table_id (:id table)}
+                     sync.fingerprint/incomplete-analysis-kvs)
+              {:last_analyzed :%now}))
 
 (mu/defn- update-fields-last-analyzed-for-db!
   "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
@@ -63,7 +66,11 @@
               (merge {:id [:in {:select [:mf.id]
                                 :from   [[:metabase_field :mf]]
                                 :join   [[:metabase_table :mt] [:= :mf.table_id :mt.id]]
-                                :where  [:and :mt.active [:= :mt.db_id (:id database)]]}]}
+                                :where  [:and
+                                         (into [:and]
+                                               (for [[k v] sync-util/sync-tables-kv-args]
+                                                 [:= (keyword (str "mt." (name k))) v]))
+                                         [:= :mt.db_id (:id database)]]}]}
                      sync.fingerprint/incomplete-analysis-kvs)
               {:last_analyzed :%now}))
 
