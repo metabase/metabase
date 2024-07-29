@@ -30,7 +30,7 @@
    *completed* analysis. All Fields who get new fingerprints should get marked as having the latest fingerprint
    version, but we'll clear their values for `last_analyzed`. This way we know these fields haven't 'completed'
    analysis for the latest fingerprints."
-  {:fingerprint_version i/*latest-fingerprint-version*
+  {:fingerprint_version i/latest-fingerprint-version
    :last_analyzed       nil})
 
 (mu/defn- save-fingerprint!

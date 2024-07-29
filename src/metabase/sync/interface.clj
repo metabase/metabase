@@ -182,6 +182,6 @@
    4 #{:type/*}
    5 #{:type/Text}})
 
-(def ^:dynamic ^Long *latest-fingerprint-version*
+(def ^:dynamic ^Long latest-fingerprint-version
   "The newest (highest-numbered) version of our Field fingerprints."
   (apply max (keys *fingerprint-version->types-that-should-be-re-fingerprinted*)))

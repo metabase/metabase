@@ -268,17 +268,17 @@
                                           :fingerprint         nil
                                           :fingerprint_version 1
                                           :last_analyzed       #t "2017-08-09T00:00:00"}]
-      (binding [i/*latest-fingerprint-version* 3]
-        (with-redefs [qp/process-query             (fn [_query rff]
-                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                      fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
-          (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,
-                  :updated-fingerprints 1, :fingerprints-attempted 1}
-                 (#'sync.fingerprint/fingerprint-table! (t2/select-one Table :id (data/id :venues)) [field])))
-          (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
-                  :fingerprint_version 3
-                  :last_analyzed       nil}
-                 (into {} (t2/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field))))))))))
+      (with-redefs [i/latest-fingerprint-version 3
+                    qp/process-query             (fn [_query rff]
+                                                   (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
+                    fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
+        (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,
+                :updated-fingerprints 1, :fingerprints-attempted 1}
+               (#'sync.fingerprint/fingerprint-table! (t2/select-one Table :id (data/id :venues)) [field])))
+        (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
+                :fingerprint_version 3
+                :last_analyzed       nil}
+               (into {} (t2/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field)))))))))
 
 (deftest test-fingerprint-failure
   (testing "if fingerprinting fails, the exception should not propagate"
