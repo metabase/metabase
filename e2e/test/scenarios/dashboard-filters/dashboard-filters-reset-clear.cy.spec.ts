@@ -202,72 +202,19 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("no default value, non-required, has current value");
-    filter(NO_DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("searchbox").clear().type("Bassett").blur();
-    popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "Bassett");
-    clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "Bassett");
-    clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-
-    cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "Bassett");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log(
-      "has default value, non-required, current value different than default",
-    );
-    filter(DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("searchbox").focus().type("{backspace}Thomson").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "Thomson");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "Bassett");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    cy.log("has default value, required, current value different than default");
-    filter(DEFAULT_REQUIRED).click();
-    popover().findByRole("searchbox").focus().type("{backspace}Thomson").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_REQUIRED).should("have.text", "Thomson");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
-    resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", "Bassett");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    checkParameterSidebarDefaultValue({
+    checkDashboardFilters({
       defaultValueFormatted: "Bassett",
-      otherValue: "Thomson",
+      otherValue: "{backspace}Thomson",
       otherValueFormatted: "Thomson",
-      setDefaultRequiredValue: value => {
-        filter("Default value (required)").click();
-        popover().findByRole("searchbox").clear().type(value).blur();
-        popover().button("Update filter").click();
-      },
-      setDefaultValue: value => {
-        filter("Default value").click();
+      setValue: (label, value) => {
+        filter(label).click();
         popover().findByRole("searchbox").clear().type(value).blur();
         popover().button("Add filter").click();
+      },
+      updateValue: (label, value) => {
+        filter(label).click();
+        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().button("Update filter").click();
       },
     });
   });
@@ -300,72 +247,19 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("no default value, non-required, has current value");
-    filter(NO_DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("searchbox").clear().type("Bassett,Thomson").blur();
-    popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-
-    cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log(
-      "has default value, non-required, current value different than default",
-    );
-    filter(DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("searchbox").focus().type("Washington").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "3 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    cy.log("has default value, required, current value different than default");
-    filter(DEFAULT_REQUIRED).click();
-    popover().findByRole("searchbox").focus().type("Washington").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_REQUIRED).should("have.text", "3 selections");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
-    resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    checkParameterSidebarDefaultValue({
+    checkDashboardFilters({
       defaultValueFormatted: "2 selections",
-      otherValue: "Basset,Thomson,Washington",
-      otherValueFormatted: "3 selections",
-      setDefaultRequiredValue: value => {
-        filter("Default value (required)").click();
-        popover().findByRole("searchbox").focus().type(value).blur();
-        popover().button("Update filter").click();
-      },
-      setDefaultValue: value => {
-        filter("Default value").click();
+      otherValue: "{backspace}{backspace}Washington,",
+      otherValueFormatted: "Washington",
+      setValue: (label, value) => {
+        filter(label).click();
         popover().findByRole("searchbox").focus().type(value).blur();
         popover().button("Add filter").click();
+      },
+      updateValue: (label, value) => {
+        filter(label).click();
+        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().button("Update filter").click();
       },
     });
   });
@@ -401,72 +295,19 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("no default value, non-required, has current value");
-    filter(NO_DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("searchbox").clear().type("1").blur();
-    popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "1");
-    clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "1");
-    clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-
-    cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "1");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log(
-      "has default value, non-required, current value different than default",
-    );
-    filter(DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("searchbox").focus().type("{backspace}2").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "1");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    cy.log("has default value, required, current value different than default");
-    filter(DEFAULT_REQUIRED).click();
-    popover().findByRole("searchbox").focus().type("{backspace}2").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_REQUIRED).should("have.text", "2");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
-    resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", "1");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    checkParameterSidebarDefaultValue({
+    checkDashboardFilters({
       defaultValueFormatted: "1",
-      otherValue: "2",
+      otherValue: "{backspace}2",
       otherValueFormatted: "2",
-      setDefaultRequiredValue: value => {
-        filter("Default value (required)").click();
-        popover().findByRole("searchbox").focus().type(value).blur();
-        popover().button("Update filter").click();
-      },
-      setDefaultValue: value => {
-        filter("Default value").click();
+      setValue: (label, value) => {
+        filter(label).click();
         popover().findByRole("searchbox").focus().type(value).blur();
         popover().button("Add filter").click();
+      },
+      updateValue: (label, value) => {
+        filter(label).click();
+        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().button("Update filter").click();
       },
     });
   });
@@ -499,71 +340,19 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("no default value, non-required, has current value");
-    filter(NO_DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("searchbox").clear().type("1,2").blur();
-    popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-
-    cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-
-    cy.log(
-      "has default value, non-required, current value different than default",
-    );
-    filter(DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("searchbox").focus().type("3").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "3 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    cy.log("has default value, required, current value different than default");
-    filter(DEFAULT_REQUIRED).click();
-    popover().findByRole("searchbox").focus().type("3").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_REQUIRED).should("have.text", "3 selections");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
-    resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    checkParameterSidebarDefaultValue({
+    checkDashboardFilters({
       defaultValueFormatted: "2 selections",
-      otherValue: "1,2,3",
-      otherValueFormatted: "3 selections",
-      setDefaultRequiredValue: value => {
-        filter("Default value (required)").click();
-        popover().findByRole("searchbox").focus().type(value).blur();
-        popover().button("Update filter").click();
-      },
-      setDefaultValue: value => {
-        filter("Default value").click();
+      otherValue: "{backspace}{backspace}3",
+      otherValueFormatted: "3",
+      setValue: (label, value) => {
+        filter(label).click();
         popover().findByRole("searchbox").focus().type(value).blur();
         popover().button("Add filter").click();
+      },
+      updateValue: (label, value) => {
+        filter(label).click();
+        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().button("Update filter").click();
       },
     });
   });
@@ -596,72 +385,19 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("no default value, non-required, has current value");
-    filter(NO_DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("textbox").clear().type("1").blur();
-    popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "1");
-    clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "1");
-    clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-
-    cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "1");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log(
-      "has default value, non-required, current value different than default",
-    );
-    filter(DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("textbox").focus().type("{backspace}2").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "1");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    cy.log("has default value, required, current value different than default");
-    filter(DEFAULT_REQUIRED).click();
-    popover().findByRole("textbox").focus().type("{backspace}2").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_REQUIRED).should("have.text", "2");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
-    resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", "1");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    checkParameterSidebarDefaultValue({
+    checkDashboardFilters({
       defaultValueFormatted: "1",
-      otherValue: "2",
+      otherValue: "{backspace}2",
       otherValueFormatted: "2",
-      setDefaultRequiredValue: value => {
-        filter("Default value (required)").click();
-        popover().findByRole("textbox").focus().type(value).blur();
-        popover().button("Update filter").click();
-      },
-      setDefaultValue: value => {
-        filter("Default value").click();
+      setValue: (label, value) => {
+        filter(label).click();
         popover().findByRole("textbox").focus().type(value).blur();
         popover().button("Add filter").click();
+      },
+      updateValue: (label, value) => {
+        filter(label).click();
+        popover().findByRole("textbox").focus().type(value).blur();
+        popover().button("Update filter").click();
       },
     });
   });
@@ -694,77 +430,15 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("no default value, non-required, has current value");
-    filter(NO_DEFAULT_NON_REQUIRED).click();
-    popover().findAllByRole("textbox").first().type("1").blur();
-    popover().findAllByRole("textbox").last().type("2").blur();
-    popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-
-    cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log(
-      "has default value, non-required, current value different than default",
-    );
-    filter(DEFAULT_NON_REQUIRED).click();
-    popover().findAllByRole("textbox").first().type("{backspace}3").blur();
-    popover().findAllByRole("textbox").last().type("{backspace}4").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    cy.log("has default value, required, current value different than default");
-    filter(DEFAULT_REQUIRED).click();
-    popover().findAllByRole("textbox").first().type("{backspace}3").blur();
-    popover().findAllByRole("textbox").last().type("{backspace}4").blur();
-    popover().button("Update filter").click();
-    filter(DEFAULT_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
-    resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    checkParameterSidebarDefaultValue({
+    checkDashboardFilters({
       defaultValueFormatted: "2 selections",
       otherValue: ["3", "4"],
       otherValueFormatted: "2 selections",
-      setDefaultRequiredValue: ([firstValue, secondValue]) => {
-        filter("Default value (required)").click();
-        popover().findAllByRole("textbox").first().type(firstValue).blur();
-        popover().findAllByRole("textbox").last().type(secondValue).blur();
-        popover().button("Update filter").click();
+      setValue: (label, [firstValue, secondValue]) => {
+        addRangeFilter(label, firstValue, secondValue);
       },
-      setDefaultValue: ([firstValue, secondValue]) => {
-        filter("Default value").click();
-        popover().findAllByRole("textbox").first().type(firstValue).blur();
-        popover().findAllByRole("textbox").last().type(secondValue).blur();
-        popover().button("Add filter").click();
+      updateValue: (label, [firstValue, secondValue]) => {
+        updateRangeFilter(label, firstValue, secondValue);
       },
     });
   });
@@ -800,78 +474,19 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-
-    cy.log("no default value, non-required, has current value");
-    filter(NO_DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("combobox").type("Gadget,");
-    popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "Gadget");
-    clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "Gizmo");
-    clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-
-    cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "Gizmo");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log(
-      "has default value, non-required, current value different than default",
-    );
-    filter(DEFAULT_NON_REQUIRED).click();
-    popover().findByText("Gizmo").next("button").click(); // remove value
-    popover().findByRole("combobox").type("Gadget,");
-    popover().button("Update filter").click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "Gadget");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "Gizmo");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    cy.log("has default value, required, current value different than default");
-    filter(DEFAULT_REQUIRED).click();
-    popover().findByText("Gizmo").next("button").click(); // remove value
-    popover().findByRole("combobox").type("Gadget,");
-    popover().button("Update filter").click();
-    filter(DEFAULT_REQUIRED).should("have.text", "Gadget");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
-    resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", "Gizmo");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    checkParameterSidebarDefaultValue({
+    checkDashboardFilters({
       defaultValueFormatted: "Gizmo",
-      otherValue: "Gadget",
+      otherValue: "{backspace}Gadget,",
       otherValueFormatted: "Gadget",
-      setDefaultRequiredValue: value => {
-        filter("Default value (required)").click();
-        popover().findByRole("combobox").type(value);
-        popover().button("Update filter").click();
-      },
-      setDefaultValue: value => {
-        filter("Default value").click();
+      setValue: (label, value) => {
+        filter(label).click();
         popover().findByRole("combobox").type(value);
         popover().button("Add filter").click();
+      },
+      updateValue: (label, value) => {
+        filter(label).click();
+        popover().findByRole("combobox").type(value);
+        popover().button("Update filter").click();
       },
     });
   });
@@ -904,76 +519,20 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-
-    cy.log("no default value, non-required, has current value");
-    filter(NO_DEFAULT_NON_REQUIRED).click();
-    popover().findByRole("combobox").type("Gadget,Gizmo,");
-    popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
-
-    cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-
-    cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log(
-      "has default value, non-required, current value different than default",
-    );
-    filter(DEFAULT_NON_REQUIRED).click();
-    popover().findByText("Gizmo").next("button").click(); // remove value
-    popover().button("Update filter").click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "Gadget");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
-
-    cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    cy.log("has default value, required, current value different than default");
-    filter(DEFAULT_REQUIRED).click();
-    popover().findByText("Gizmo").next("button").click(); // remove value
-    popover().button("Update filter").click();
-    filter(DEFAULT_REQUIRED).should("have.text", "Gadget");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
-    resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", "2 selections");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
-
-    checkParameterSidebarDefaultValue({
+    checkDashboardFilters({
       defaultValueFormatted: "2 selections",
-      otherValue: "Doohickey,Widget,",
+      otherValue: "{backspace}{backspace}Doohickey,Widget,",
       otherValueFormatted: "2 selections",
-      setDefaultRequiredValue: value => {
-        filter("Default value (required)").click();
-        popover().findByRole("combobox").type(value);
-        popover().button("Update filter").click();
-      },
-      setDefaultValue: value => {
-        filter("Default value").click();
+      setValue: (label, value) => {
+        filter(label).click();
+
         popover().findByRole("combobox").type(value);
         popover().button("Add filter").click();
+      },
+      updateValue: (label, value) => {
+        filter(label).click();
+        popover().findByRole("combobox").type(value);
+        popover().button("Update filter").click();
       },
     });
   });
@@ -1051,6 +610,28 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     popover().button("Update filter").click();
   }
 
+  function addRangeFilter(
+    label: string,
+    firstValue: string,
+    secondValue: string,
+  ) {
+    filter(label).click();
+    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
+    popover().button("Add filter").click();
+  }
+
+  function updateRangeFilter(
+    label: string,
+    firstValue: string,
+    secondValue: string,
+  ) {
+    filter(label).click();
+    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
+    popover().button("Update filter").click();
+  }
+
   function createDashboardWithParameters(
     questionDetails: StructuredQuestionDetails,
     targetField: LocalFieldReference,
@@ -1095,7 +676,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     );
   }
 
-  function checkDashboardFilters({
+  function checkDashboardFilters<T = string>({
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
@@ -1103,10 +684,10 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     updateValue = setValue,
   }: {
     defaultValueFormatted: string;
-    otherValue: string;
+    otherValue: T;
     otherValueFormatted: string;
-    setValue: (label: string, value: string) => void;
-    updateValue?: (label: string, value: string) => void;
+    setValue: (label: string, value: T) => void;
+    updateValue?: (label: string, value: T) => void;
   }) {
     cy.log("no default value, non-required, no current value");
     checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
