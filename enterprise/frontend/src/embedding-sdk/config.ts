@@ -1,5 +1,5 @@
 export const DEFAULT_FONT = "Lato";
 export const EMBEDDING_SDK_ROOT_ELEMENT_ID = "metabase-sdk-root";
 
-const injectedSdkVersion = process.env.EMBEDDING_SDK_VERSION;
-export const getEmbeddingSdkVersion = () => injectedSdkVersion ?? "unknown";
+export const getEmbeddingSdkVersion = () =>
+  process.env.EMBEDDING_SDK_VERSION ?? "unknown";

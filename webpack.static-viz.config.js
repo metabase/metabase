@@ -125,9 +125,6 @@ module.exports = env => {
               ),
           }),
       }),
-      new webpack.EnvironmentPlugin({
-        EMBEDDING_SDK_VERSION: "",
-      }),
     ],
   };
 };
