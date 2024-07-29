@@ -275,7 +275,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
   it("location parameters - single value", () => {
     createDashboardWithParameters(PEOPLE_QUESTION, PEOPLE_CITY_FIELD, [
       {
-        name: "no default value, non-required",
+        name: NO_DEFAULT_NON_REQUIRED,
         slug: "no-default-value/non-required",
         id: "fed1b912",
         isMultiSelect: false,
@@ -283,7 +283,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         sectionId: "location",
       },
       {
-        name: "default value, non-required",
+        name: DEFAULT_NON_REQUIRED,
         slug: "default-value/non-required",
         id: "75d67d32",
         isMultiSelect: false,
@@ -292,7 +292,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         default: ["Bassett"],
       },
       {
-        name: "default value, required",
+        name: DEFAULT_REQUIRED,
         slug: "default-value/required",
         id: "60f12ac2",
         isMultiSelect: false,
@@ -303,61 +303,74 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     ]);
 
-    const noDefaultNonRequired = "no default value, non-required";
-
     cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
 
     cy.log("no default value, non-required, has current value");
-    filter(noDefaultNonRequired).click();
+    filter(NO_DEFAULT_NON_REQUIRED).click();
     popover().findByRole("searchbox").clear().type("Bassett").blur();
     popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(noDefaultNonRequired, "clear");
-    filter(noDefaultNonRequired).should("have.text", "Bassett");
-    clearButton(noDefaultNonRequired).click();
-    filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
-    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
-
-    const defaultNonRequired = "default value, non-required";
+    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
+    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "Bassett");
+    clearButton(NO_DEFAULT_NON_REQUIRED).click();
+    filter(NO_DEFAULT_NON_REQUIRED).should(
+      "have.text",
+      NO_DEFAULT_NON_REQUIRED,
+    );
+    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
 
     cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
-    filter(defaultNonRequired).should("have.text", "Bassett");
-    clearButton(defaultNonRequired).click();
-    filter(defaultNonRequired).should("have.text", defaultNonRequired);
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
+    filter(DEFAULT_NON_REQUIRED).should("have.text", "Bassett");
+    clearButton(DEFAULT_NON_REQUIRED).click();
+    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
 
     cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
-    resetButton(defaultNonRequired).click();
-    filter(defaultNonRequired).should("have.text", "Bassett");
-    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
+    resetButton(DEFAULT_NON_REQUIRED).click();
+    filter(DEFAULT_NON_REQUIRED).should("have.text", "Bassett");
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
     );
-    filter(defaultNonRequired).click();
+    filter(DEFAULT_NON_REQUIRED).click();
     popover().findByRole("searchbox").focus().type("{backspace}Thomson").blur();
     popover().button("Update filter").click();
-    filter(defaultNonRequired).should("have.text", "Thomson");
-    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
-    resetButton(defaultNonRequired).click();
-    filter(defaultNonRequired).should("have.text", "Bassett");
-    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
-
-    const defaultRequired = "default value, required";
+    filter(DEFAULT_NON_REQUIRED).should("have.text", "Thomson");
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
+    resetButton(DEFAULT_NON_REQUIRED).click();
+    filter(DEFAULT_NON_REQUIRED).should("have.text", "Bassett");
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
 
     cy.log("has default value, required, current value different than default");
-    filter(defaultRequired).click();
+    filter(DEFAULT_REQUIRED).click();
     popover().findByRole("searchbox").focus().type("{backspace}Thomson").blur();
     popover().button("Update filter").click();
-    filter(defaultRequired).should("have.text", "Thomson");
-    checkOnlyOneButtonVisible(defaultRequired, "reset");
-    resetButton(defaultRequired).click();
-    filter(defaultRequired).should("have.text", "Bassett");
-    checkOnlyOneButtonVisible(defaultRequired, "none");
+    filter(DEFAULT_REQUIRED).should("have.text", "Thomson");
+    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
+    resetButton(DEFAULT_REQUIRED).click();
+    filter(DEFAULT_REQUIRED).should("have.text", "Bassett");
+    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
+
+    checkParameterSidebarDefaultValue({
+      defaultValueFormatted: "Bassett",
+      otherValue: "Thomson",
+      otherValueFormatted: "Thomson",
+      setDefaultRequiredValue: value => {
+        filter("Default value (required)").click();
+        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().button("Update filter").click();
+      },
+      setDefaultValue: value => {
+        filter("Default value").click();
+        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().button("Add filter").click();
+      },
+    });
   });
 
   it("location parameters - multiple values", () => {
