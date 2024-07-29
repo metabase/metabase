@@ -162,6 +162,7 @@
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
+  ;; TODO: for metrics, we can get (some-fn :source_model_id :source_question_id)
   (let [dataset-cards (filter (comp seq :dataset_query) cards)
         source-card-ids (into #{}
                               (keep (comp source-card-id :dataset_query))
@@ -235,6 +236,18 @@
          (into {}))
    :id))
 
+(methodical/defmethod t2/batched-hydrate [:model/Card :metrics]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(group-by :source_card_id
+              (t2/select :model/Card
+                         :source_card_id [:in (map :id cards)],
+                         :archived false,
+                         :type :metric,
+                         {:order-by [[:name :asc]]}))
+   :id))
+
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
 
@@ -265,10 +278,13 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn populate-query-fields
-  "Lift `database_id`, `table_id`, and `query_type` from query definition when inserting/updating a Card."
+  "Lift `database_id`, `table_id`, `query_type`, and `source_card_id` fields
+  from query definition when inserting/updating a Card."
   [{query :dataset_query, :as card}]
   (merge
    card
+   (when-let [source-id (source-card-id query)]
+     {:source_card_id source-id})
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
@@ -515,8 +531,10 @@
 
 (t2/define-after-select :model/Card
   [card]
-  (public-settings/remove-public-uuid-if-public-sharing-is-disabled
-   (dissoc card :dataset_query_metrics_v2_migration_backup)))
+  (-> card
+      (dissoc :dataset_query_metrics_v2_migration_backup)
+      (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (t2/define-before-insert :model/Card
   [card]
