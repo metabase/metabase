@@ -47,8 +47,8 @@ module.exports = {
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
       }),
-      new webpack.DefinePlugin({
-        "window.EMBEDDING_SDK_VERSION": EMBEDDING_SDK_VERSION,
+      new webpack.EnvironmentPlugin({
+        EMBEDDING_SDK_VERSION,
       }),
     ],
     module: {

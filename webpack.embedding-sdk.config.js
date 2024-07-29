@@ -147,8 +147,8 @@ module.exports = env => {
       new webpack.ProvidePlugin({
         process: "process/browser.js",
       }),
-      new webpack.DefinePlugin({
-        "window.EMBEDDING_SDK_VERSION": EMBEDDING_SDK_VERSION,
+      new webpack.EnvironmentPlugin({
+        EMBEDDING_SDK_VERSION,
       }),
       new ForkTsCheckerWebpackPlugin({
         async: isDevMode,
