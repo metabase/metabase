@@ -1,6 +1,9 @@
-(ns metabase.util.memoize
-  "Copied from clojure.core.memoize."
-  (:require [cljs.cache :as cache]))
+(ns metabase.util.memoize.impl.js
+  "CLJS-specific implementation code for [[metabase.util.memoize]].
+
+  Not to be referenced from other code!"
+  (:require
+   [cljs.cache :as cache]))
 
 ;; Similar to clojure.lang.Delay, but will not memoize an exception and will
 ;; instead retry.
@@ -128,3 +131,39 @@
   ([f base key threshold]
    (assert (= key :lru/threshold) (str "wrong parameter key " key))
    (memoizer f (cache/lru-cache-factory {} :threshold threshold) base)))
+
+(defn memo
+  "Used as a more flexible alternative to Clojure's core `memoization`
+   function.  Memoized functions built using `memo` will respond to
+   the core.memo manipulable memoization utilities.  As a nice bonus,
+   you can use `memo` in place of `memoize` without any additional
+   changes, with the added guarantee that the memoized function will
+   only be called once for a given sequence of arguments (`memoize`
+   can call the function multiple times when concurrent calls are
+   made with the same sequence of arguments).
+
+   The default way to use this function is to simply supply a function
+   that will be memoized.  Additionally, you may also supply a map
+   of the form `'{[42] 42, [108] 108}` where keys are a vector
+   mapping expected argument values to arity positions.  The map values
+   are the return values of the memoized function.
+
+   If the supplied function has metadata containing an
+   `:clojure.core.memoize/args-fn` key, the value is assumed to be a
+   function that should be applied to the arguments to produce a
+   subset or transformed sequence of arguments that are used for the
+   key in the cache (the full, original arguments will still be used
+   to call the function). This allows you to memoize functions where
+   one or more arguments are irrelevant for memoization, such as the
+   `clojure.java.jdbc` functions, whose first argument may include
+   a (mutable) JDBC `Connection` object:
+
+     (memo/memo (with-meta jdbc/execute! {::memo/args-fn rest}))
+
+   You can access the memoization cache directly via the `:clojure.core.memoize/cache` key
+   on the memoized function's metadata.  However, it is advised to
+   use the core.memo primitives instead as implementation details may
+   change over time."
+  ([f] (memo f {}))
+  ([f seed]
+   (memoizer f (cache/basic-cache-factory {}) seed)))
