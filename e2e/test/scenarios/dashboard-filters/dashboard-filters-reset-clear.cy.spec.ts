@@ -554,6 +554,22 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     resetButton(DEFAULT_REQUIRED).click();
     filter(DEFAULT_REQUIRED).should("have.text", "1");
     checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
+
+    checkParameterSidebarDefaultValue({
+      defaultValueFormatted: "1",
+      otherValue: "2",
+      otherValueFormatted: "2",
+      setDefaultRequiredValue: value => {
+        filter("Default value (required)").click();
+        popover().findByRole("searchbox").focus().type(value).blur();
+        popover().button("Update filter").click();
+      },
+      setDefaultValue: value => {
+        filter("Default value").click();
+        popover().findByRole("searchbox").focus().type(value).blur();
+        popover().button("Add filter").click();
+      },
+    });
   });
 
   it("id parameters - multiple values", () => {
