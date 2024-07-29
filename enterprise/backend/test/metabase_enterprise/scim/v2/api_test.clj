@@ -315,7 +315,7 @@
                         :displayName group-name
                         :members [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))}]}]
         (try
-          (let [response (scim-client :post 200 (format "ee/scim/v2/Groups") new-group)]
+          (let [response (scim-client :post 201 (format "ee/scim/v2/Groups") new-group)]
             (is (malli= scim-api/SCIMGroup response))
             (let [mb-group (t2/select-one :model/PermissionsGroup :entity_id (:id response))]
               (is (= group-name (:name mb-group)))

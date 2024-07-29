@@ -96,6 +96,13 @@
                    :status      status
                    :status-code status})))
 
+(defn- scim-response
+  "Wraps an object in a response with the correct SCIM content-type. Status defaults to 200 unless otherwise specified."
+  [object & [status]]
+  {:status  (or status 200)
+   :body    object
+   :headers {"Content-Type" "application/scim+json"}})
+
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               User operations                                                  |
@@ -195,7 +202,7 @@
                         :startIndex   (inc offset)
                         :itemsPerPage items-per-page
                         :Resources    (map mb-user->scim hydrated-users)}]
-    result))
+    (scim-response result)))
 
 (defendpoint GET "/Users/:id"
   "Fetch a single user."
@@ -218,8 +225,7 @@
                      (-> (t2/select-one (cons :model/User user-cols)
                                         :email (u/lower-case-en email))
                          mb-user->scim))]
-      {:status 201
-       :body   new-user})))
+      (scim-response new-user 201))))
 
 (defendpoint PUT "/Users/:id"
   "Update a user."
@@ -236,8 +242,7 @@
          (let [user (-> (t2/select-one (cons :model/User user-cols)
                                        :entity_id id)
                         mb-user->scim)]
-           {:status 200
-            :body   user}))
+          (scim-response user)))
        (catch Exception e
          (let [message (format "Error updating user: %s" (ex-message e))]
            (throw (ex-info message
@@ -269,7 +274,8 @@
                     (:Operations patch-ops))]
       (t2/update! :model/User (u/the-id user) updates)
       (-> (get-user-by-entity-id id)
-          mb-user->scim))))
+          mb-user->scim
+          scim-response))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Group operations                                                  |
@@ -345,12 +351,13 @@
                                    :offset   offset
                                    :order-by [[:id :asc]]})
         results-count  (count groups)
-        items-per-page (if (< results-count limit) results-count limit)]
-    {:schemas      [list-schema-uri]
-     :totalResults (t2/count :model/PermissionsGroup {:where filter-clause})
-     :startIndex   (inc offset)
-     :itemsPerPage items-per-page
-     :Resources    (map mb-group->scim groups)}))
+        items-per-page (if (< results-count limit) results-count limit)
+        result         {:schemas      [list-schema-uri]
+                        :totalResults (t2/count :model/PermissionsGroup {:where filter-clause})
+                        :startIndex   (inc offset)
+                        :itemsPerPage items-per-page
+                        :Resources    (map mb-group->scim groups)}]
+    (scim-response result)))
 
 (defendpoint GET "/Groups/:id"
   "Fetch a single group."
@@ -382,7 +389,8 @@
         (update-group-membership (:id new-group) entity-ids)
         (-> new-group
           (t2/hydrate :scim_group_members)
-          mb-group->scim)))))
+          mb-group->scim
+          (scim-response 201))))))
 
 (defendpoint PUT "/Groups/:id"
   "Update a group."
@@ -396,6 +404,6 @@
         (update-group-membership (u/the-id group) entity-ids)
         (-> (get-group-by-entity-id id)
             (t2/hydrate :scim_group_members)
-            mb-group->scim)))))
+            (scim-response mb-group->scim))))))
 
 (api/define-routes)
