@@ -100,6 +100,13 @@ title: Driver interface changelog
 - New feature `:uuid-type` has been added to indicate that this database is able to distinguish and filter against UUIDs.
   Only a few database support native UUID types. The default is `false`.
 
+## Metabase 0.49.22
+
+- A new optional method `metabase.driver.sql/json-field-length` has been added. It should be implemented for all
+  drivers that derive from `:sql` and support the `:nested-field-columns` feature. If implemented, Metabase will skip
+  querying large JSON values during the "sync-fields" step that could otherwise slow down the inference of nested
+  field columns and cause Metabase to run out of heap space.
+
 ## Metabase 0.49.9
 
 - Another driver feature has been added: `upload-with-auto-pk`. It only affects drivers that support `uploads`, and
