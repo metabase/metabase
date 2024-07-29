@@ -441,7 +441,7 @@
                :uploads_table_prefix
                (when include-database-secrets :details)]
    :skip      [(when-not include-database-secrets :details)]
-   :transform {:creator_id [serdes/*export-user* serdes/*import-user*]
+   :transform {:creator_id          (serdes/fk :model/User)
                :initial_sync_status [identity (constantly "complete")]}})
 
 (defmethod serdes/entity-id "Database"

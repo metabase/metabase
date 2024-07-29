@@ -49,11 +49,11 @@
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db
     ;; When serialization spec is defined, it describes every column
-    (doseq [m               (-> (methods serdes/make-spec)
+    (doseq [m     (-> (methods serdes/make-spec)
                       (dissoc :default)
                       keys) #_ serdes.models/exported-models
-            :let            [spec (serdes/make-spec m nil)]
-            :when           spec]
+            :let  [spec (serdes/make-spec m nil)]
+            :when spec]
       (let [t      (t2/table-name (keyword "model" m))
             pk     (first (t2/primary-keys (keyword "model" m)))
             fields (u.conn/app-db-column-types (mdb/app-db) t)
@@ -78,10 +78,9 @@
                     set))))
         (testing "Foreign keys should be declared as such\n"
           (doseq [[fk _] (filter #(:fk (second %)) fields)
-                  :let   [fk (u/lower-case-en fk)
-                          transform (get spec' (keyword fk))]]
+                  :let   [fk        (u/lower-case-en fk)
+                          transform (get spec' (keyword fk))]
+                  :when  (not= transform :skip)]
             (testing (format "%s.%s is foreign key which is handled correctly" m fk)
-              (is (or (= transform :skip)
-                      (= serdes/*export-user* (first transform))
-                      ;; use `(serdes/fk ...)` function
-                      (::serdes/fk (meta transform)))))))))))
+              ;; uses `(serdes/fk ...)` function
+              (is (::serdes/fk (meta transform))))))))))

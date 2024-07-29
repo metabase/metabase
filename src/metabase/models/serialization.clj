@@ -1515,6 +1515,7 @@
 (defn fk "Export Foreign Key" [model & [field-name]]
   (cond
     ;; this `::fk` is used in tests to determine that foreign keys are handled
+    (= model :model/User)  ^::fk [*export-user* *import-user*]
     (= model :model/Table) ^::fk [*export-table-fk* *import-table-fk*]
     (= model :model/Field) ^::fk [*export-field-fk* *import-field-fk*]
     field-name             ^::fk [#(*export-fk-keyed* % model field-name) #(*import-fk-keyed* % model field-name)]

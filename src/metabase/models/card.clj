@@ -856,8 +856,8 @@
     :table_id               (serdes/fk :model/Table)
     :source_card_id         (serdes/fk :model/Card)
     :collection_id          (serdes/fk :model/Collection)
-    :creator_id             [serdes/*export-user* serdes/*import-user*]
-    :made_public_by_id      [serdes/*export-user* serdes/*import-user*]
+    :creator_id             (serdes/fk :model/User)
+    :made_public_by_id      (serdes/fk :model/User)
     :dataset_query          [serdes/export-mbql serdes/import-mbql]
     :parameters             [serdes/export-parameters serdes/import-parameters]
     :parameter_mappings     [serdes/export-parameter-mappings serdes/import-parameter-mappings]

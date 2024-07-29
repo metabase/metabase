@@ -585,13 +585,13 @@
 
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]
   {:copy      [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_position :created_at
-                :description :embedding_params :enable_embedding :entity_id :initially_published_at :name
-                :points_of_interest :position :public_uuid :show_in_getting_started :width]
+               :description :embedding_params :enable_embedding :entity_id :initially_published_at :name
+               :points_of_interest :position :public_uuid :show_in_getting_started :width]
    :skip      [;; those stats are inherently local state
                :view_count :last_viewed_at]
    :transform {:collection_id     (serdes/fk :model/Collection)
-               :creator_id        [serdes/*export-user* serdes/*import-user*]
-               :made_public_by_id [serdes/*export-user* serdes/*import-user*]
+               :creator_id        (serdes/fk :model/User)
+               :made_public_by_id (serdes/fk :model/User)
                :parameters        [serdes/export-parameters serdes/import-parameters]
                :tabs              (serdes/nested :model/DashboardTab :dashboard_id opts)
                :dashcards         (serdes/nested :model/DashboardCard :dashboard_id opts)}})
