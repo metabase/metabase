@@ -1,6 +1,7 @@
 (ns metabase.util.malli.defn
-  (:refer-clojure :exclude [defn])
+  (:refer-clojure :exclude [defn defn-])
   (:require
+   [clojure.core :as core]
    [clojure.string :as str]
    [malli.destructure]
    [metabase.util :as u]
@@ -10,7 +11,7 @@
 (set! *warn-on-reflection* true)
 
 ;;; TODO -- this should generate type hints from the schemas and from the return type as well.
-(defn- deparameterized-arglist [{:keys [args]}]
+(core/defn- deparameterized-arglist [{:keys [args]}]
   (-> (malli.destructure/parse args)
       :arglist
       (with-meta (macros/case
@@ -29,13 +30,13 @@
                      (cond-> args-meta
                        resolved-tag (assoc :tag resolved-tag)))))))
 
-(defn- deparameterized-arglists [{:keys [arities], :as _parsed}]
+(core/defn- deparameterized-arglists [{:keys [arities], :as _parsed}]
   (let [[arities-type arities-value] arities]
     (case arities-type
       :single   (list (deparameterized-arglist arities-value))
       :multiple (map deparameterized-arglist (:arities arities-value)))))
 
-(defn- annotated-docstring
+(core/defn- annotated-docstring
   "Generate a docstring with additional information about inputs and return type using a parsed fn tail (as parsed
   by [[mx/SchematizedParams]])."
   [{original-docstring           :doc
@@ -102,3 +103,10 @@
             :clj  (let [error-context {:fn-name (list 'quote fn-name)}]
                     (mu.fn/instrumented-fn-form error-context parsed))
             :cljs (mu.fn/deparameterized-fn-form parsed))))))
+
+(defmacro defn-
+  "Same as defn, but creates a private def."
+  [fn-name & fn-tail]
+  `(defn
+     ~(with-meta fn-name (assoc (meta fn-name) :private true))
+     ~@fn-tail))

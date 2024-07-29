@@ -25,38 +25,38 @@
       (is (= "2" (format 2 nil))))
     (testing "Currency"
       (testing "defaults to USD and two decimal places and symbol"
-        (is (= "$12,345.54" (fmt {::mb.viz/number-style "currency"
+        (is (= "$12,345.54" (fmt {::mb.viz/number-style       "currency"
                                   ::mb.viz/currency-in-header false}))))
       (testing "Defaults to currency when there is a currency style"
-        (is (= "$12,345.54" (fmt {::mb.viz/currency-style "symbol"
+        (is (= "$12,345.54" (fmt {::mb.viz/currency-style     "symbol"
                                   ::mb.viz/currency-in-header false}))))
       (testing "Defaults to currency when there is a currency"
-        (is (= "$12,345.54" (fmt {::mb.viz/currency "USD"
+        (is (= "$12,345.54" (fmt {::mb.viz/currency           "USD"
                                   ::mb.viz/currency-in-header false}))))
       (testing "respects the number of decimal places when specified"
-        (is (= "$12,345.54320" (fmt {::mb.viz/currency "USD"
-                                     ::mb.viz/decimals 5
+        (is (= "$12,345.54320" (fmt {::mb.viz/currency           "USD"
+                                     ::mb.viz/decimals           5
                                      ::mb.viz/currency-in-header false}))))
       (testing "Other currencies"
-        (is (= "AED12,345.54" (fmt {::mb.viz/currency "AED"
+        (is (= "AED12,345.54" (fmt {::mb.viz/currency           "AED"
                                     ::mb.viz/currency-in-header false})))
         (is (= "12,345.54 Cape Verdean escudos"
-               (fmt {::mb.viz/currency       "CVE"
-                     ::mb.viz/currency-style "name"
+               (fmt {::mb.viz/currency           "CVE"
+                     ::mb.viz/currency-style     "name"
                      ::mb.viz/currency-in-header false})))
         (testing "which have no 'cents' and thus no decimal places"
-          (is (= "Af12,346" (fmt {::mb.viz/currency "AFN"
+          (is (= "Af12,346" (fmt {::mb.viz/currency           "AFN"
                                   ::mb.viz/currency-in-header false})))
-          (is (= "₡12,346" (fmt {::mb.viz/currency "CRC"
+          (is (= "₡12,346" (fmt {::mb.viz/currency           "CRC"
                                  ::mb.viz/currency-in-header false})))
-          (is (= "ZK12,346" (fmt {::mb.viz/currency "ZMK"
+          (is (= "ZK12,346" (fmt {::mb.viz/currency           "ZMK"
                                   ::mb.viz/currency-in-header false})))))
       (testing "Understands name, code, and symbol"
         (doseq [[style expected] [["name" "12,345.54 Czech Republic korunas"]
                                   ["symbol" "Kč12,345.54"]
                                   ["code" "CZK 12,345.54"]]]
-          (is (= expected (fmt {::mb.viz/currency       "CZK"
-                                ::mb.viz/currency-style style
+          (is (= expected (fmt {::mb.viz/currency           "CZK"
+                                ::mb.viz/currency-style     style
                                 ::mb.viz/currency-in-header false}))
               style))))
     (testing "scientific notation"
@@ -82,19 +82,22 @@
                                         ::mb.viz/decimals     2})))
       ;; You need at least 5 digits (not the scale by 100 for percents) to show the low value
       (is (= "0.00001%" (format 0.0000001 {::mb.viz/number-style "percent"
-                                           ::mb.viz/decimals          5}))))
+                                           ::mb.viz/decimals     5}))))
     (testing "Match UI 'natural formatting' behavior for decimal values with no column formatting present"
       ;; basically, for numbers greater than 1, round to 2 decimal places,
       ;; and do not display decimals if they end up as zeroes
       ;; for numbers less than 1, round to 2 significant-figures,
       ;; and show as many decimals as necessary to display these 2 sig-figs
-      (is (= ["2"    "0"]      [(format 2 nil)       (format 0 nil)]))
-      (is (= ["2.1"  "0.1"]    [(format 2.1 nil)     (format 0.1 nil)]))
-      (is (= ["2.01" "0.01"]   [(format 2.01 nil)    (format 0.01 nil)]))
-      (is (= ["2"    "0.001"]  [(format 2.001 nil)   (format 0.001 nil)]))
-      (is (= ["2.01" "0.006"]  [(format 2.006 nil)   (format 0.006 nil)]))
-      (is (= ["2"    "0.0049"] [(format 2.0049 nil)  (format 0.0049 nil)]))
-      (is (= ["2"    "0.005"]  [(format 2.00499 nil) (format 0.00499 nil)])))
+      (is (= ["2"    "0"]       [(format 2 nil)       (format 0 nil)]))
+      (is (= ["2.1"  "0.1"]     [(format 2.1 nil)     (format 0.1 nil)]))
+      (is (= ["0.57" "-0.57"]   [(format 0.57 nil)    (format -0.57 nil)]))
+      (is (= ["2.57" "-2.57"]   [(format 2.57 nil)    (format -2.57 nil)]))
+      (is (= ["-0.22" "-1.34"]  [(format -0.2222 nil) (format -1.345 nil)]))
+      (is (= ["2.01" "0.01"]    [(format 2.01 nil)    (format 0.01 nil)]))
+      (is (= ["2"    "0.001"]   [(format 2.001 nil)   (format 0.001 nil)]))
+      (is (= ["2.01" "0.006"]   [(format 2.006 nil)   (format 0.006 nil)]))
+      (is (= ["2"    "0.0049"]  [(format 2.0049 nil)  (format 0.0049 nil)]))
+      (is (= ["2"    "0.005"]   [(format 2.00499 nil) (format 0.00499 nil)])))
     (testing "Column Settings"
       (letfn [(fmt-with-type
                 ([type value] (fmt-with-type type value nil))

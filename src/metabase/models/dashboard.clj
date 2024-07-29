@@ -98,11 +98,12 @@
   [dashboard]
   (let [changes (t2/changes dashboard)]
     (u/prog1 (maybe-populate-initially-published-at dashboard)
-     (params/assert-valid-parameters dashboard)
-     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-     (collection/check-collection-namespace Dashboard (:collection_id dashboard))
-     (when (:archived changes)
-       (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
+      (params/assert-valid-parameters dashboard)
+      (when (:parameters changes)
+        (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
+      (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+      (when (:archived changes)
+        (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -385,9 +386,10 @@
         (->> (filter identity)))))
 
 (defn has-tabs?
-  "Check if a dashboard has tabs."
+  "Check if a dashboard has more than 1 tab.
+  We don't need to render the tab title if only 1 exists (issue #45123)."
   [dashboard-or-id]
-  (t2/exists? :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id)))
+  (< 1 (t2/count :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
@@ -542,7 +544,7 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
-(mu/defn ^:private dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union

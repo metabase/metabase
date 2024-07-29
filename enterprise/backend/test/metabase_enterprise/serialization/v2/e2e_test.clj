@@ -227,7 +227,7 @@
                                                  (fnil conj []) entity))
                                        {} @extraction))
             ;; +1 for the Trash collection
-            (is (= 111 (-> @entities (get "Collection") count))))
+            (is (= 110 (-> @entities (get "Collection") count))))
 
           (testing "storage"
             (storage/store! (seq @extraction) dump-dir)
@@ -237,7 +237,7 @@
 
             (testing "for Collections"
               ;; +1 for the Trash collection
-              (is (= 111 (count (for [f (file-set (io/file dump-dir))
+              (is (= 110 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
                                                  (let [[a b] (take-last 2 f)]
                                                    (= b (str a ".yaml"))))]

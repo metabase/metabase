@@ -1,7 +1,7 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { positiveInteger } from "metabase/admin/performance/constants/complex";
+import { getPositiveIntegerSchema } from "metabase/admin/performance/constants/complex";
 import type { StrategyData } from "metabase/admin/performance/types";
 import { defaultCron } from "metabase/admin/performance/utils";
 import { CacheDurationUnit } from "metabase-types/api";
@@ -19,7 +19,7 @@ const scheduleStrategyValidationSchema = Yup.object({
 
 const durationStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["duration"]),
-  duration: positiveInteger.default(24),
+  duration: getPositiveIntegerSchema().default(24),
   unit: Yup.string().test(
     "is-duration-unit",
     "${path} is not a valid duration",
@@ -27,15 +27,16 @@ const durationStrategyValidationSchema = Yup.object({
   ),
 });
 
+/** Caching strategies available on EE only */
 export const enterpriseOnlyCachingStrategies: Record<string, StrategyData> = {
   schedule: {
     label: t`Schedule: pick when to regularly invalidate the cache`,
     shortLabel: t`Scheduled`,
-    validateWith: scheduleStrategyValidationSchema,
+    validationSchema: scheduleStrategyValidationSchema,
   },
   duration: {
     label: t`Duration: keep the cache for a number of hours`,
-    validateWith: durationStrategyValidationSchema,
+    validationSchema: durationStrategyValidationSchema,
     shortLabel: t`Duration`,
   },
 };

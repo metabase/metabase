@@ -136,7 +136,9 @@
     (assoc driver.common/default-port-details :placeholder 5432)
     driver.common/default-dbname-details
     driver.common/default-user-details
-    driver.common/default-password-details
+    driver.common/auth-provider-options
+    (assoc driver.common/default-password-details
+           :visible-if {"use-auth-provider" false})
     driver.common/cloud-ip-address-info
     {:name "schema-filters"
      :type :schema-filters
@@ -288,6 +290,10 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod driver.sql/json-field-length :postgres
+  [_ json-field-identifier]
+  [:length [:cast json-field-identifier :text]])
+
 (defn- ->timestamp [honeysql-form]
   (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
 
@@ -351,7 +357,7 @@
                  [:inline 0.0])]
     (make-time hour minute second)))
 
-(mu/defn ^:private date-trunc
+(mu/defn- date-trunc
   [unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
    expr]
   (condp = (h2x/database-type expr)
@@ -406,7 +412,7 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
-(mu/defn ^:private quoted? [database-type :- ::lib.schema.common/non-blank-string]
+(mu/defn- quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
