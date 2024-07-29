@@ -607,7 +607,9 @@
     toucan.models                                                 models}}}
 
  :lint-as
- {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
+ {cljs.cache/defcache                                                                  clojure.core/deftype
+  clojure.core.cache/defcache                                                          clojure.core/deftype
+  clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                              clojure.test/deftest
   clojurewerkz.quartzite.jobs/defjob                                                   clojure.core/defn
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
