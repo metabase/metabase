@@ -327,6 +327,7 @@ const config = (module.exports = {
     new webpack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
+      EMBEDDING_SDK_VERSION: "",
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new webpack.ProvidePlugin({ process: "process/browser.js" }),
