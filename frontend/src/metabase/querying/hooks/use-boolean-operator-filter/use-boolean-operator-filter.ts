@@ -4,6 +4,7 @@ import * as Lib from "metabase-lib";
 
 import {
   getAvailableOptions,
+  getDefaultOperator,
   getDefaultValues,
   getFilterClause,
   getOptionByOperator,
@@ -32,8 +33,12 @@ export function useBooleanOperatorFilter({
     [query, stageIndex, column],
   );
 
-  const [operator, setOperator] = useState(filterParts?.operator ?? "=");
-  const [values, setValues] = useState(() => filterParts?.values ?? []);
+  const [operator, setOperator] = useState(
+    filterParts ? filterParts.operator : getDefaultOperator(availableOptions),
+  );
+  const [values, setValues] = useState(() =>
+    filterParts ? filterParts.values : [],
+  );
   const { valueCount, isAdvanced } = getOptionByOperator(operator);
   const [isExpanded] = useState(isAdvanced);
 

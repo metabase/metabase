@@ -18,13 +18,13 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private metadata-from-preprocessing :- [:maybe [:sequential :map]]
+(mu/defn- metadata-from-preprocessing :- [:maybe [:sequential :map]]
   "For MBQL queries or native queries with result metadata attached to them already we can infer the columns just by
   preprocessing the query/looking at the last stage of the query."
   [query :- :map]
   (not-empty (u/ignore-exceptions (qp.preprocess/query->expected-cols query))))
 
-(mu/defn ^:private query-with-limit-1 :- :map
+(mu/defn- query-with-limit-1 :- :map
   [query :- :map]
   ;; for purposes of calculating the actual Fields & types returned by this query we really only need the first
   ;; row in the results
@@ -38,7 +38,7 @@
     ;; and `query-hash` ourselves so the remark gets added)
     (assoc-in query [:info :query-hash] (qp.util/query-hash query))))
 
-(mu/defn ^:private result-metadata-rff :- ::qp.schema/rff
+(mu/defn- result-metadata-rff :- ::qp.schema/rff
   [metadata]
   (let [cols (:cols metadata)]
     (fn rf
@@ -61,7 +61,7 @@
         (log/error e "Error running query to determine Card result metadata")
         []))))
 
-(mu/defn ^:private metadata-from-driver :- [:sequential :map]
+(mu/defn- metadata-from-driver :- [:sequential :map]
   "Get metadata from the driver's implementation of [[metabase.driver/query-result-metadata]]. For JDBC-based drivers
   this returns metadata without actually running queries; the default implementation will run the query with `LIMIT 1`
   to get results."
@@ -72,7 +72,7 @@
         driver (driver.u/database->driver (:database query))]
     (driver/query-result-metadata driver query)))
 
-(mu/defn ^:private add-extra-column-metadata :- :map
+(mu/defn- add-extra-column-metadata :- :map
   [col            :- :map
    legacy-or-mlv2 :- [:enum ::legacy ::mlv2]]
   (let [display-name-key (case legacy-or-mlv2
@@ -100,7 +100,7 @@
           ensure-display-name
           infer-semantic-type-by-name))))
 
-(mu/defn ^:private result-metadata* :- [:sequential :map]
+(mu/defn- result-metadata* :- [:sequential :map]
   [query current-user-id]
   (or (metadata-from-preprocessing query)
       (metadata-from-driver query current-user-id)))
@@ -127,7 +127,7 @@
           (add-extra-column-metadata ::mlv2)))
     (result-metadata* query current-user-id))))
 
-(mu/defn ^:private ensure-legacy :- [:ref :metabase.analyze.query-results/ResultColumnMetadata]
+(mu/defn- ensure-legacy :- [:ref :metabase.analyze.query-results/ResultColumnMetadata]
   [col :- :map]
   (letfn [(->legacy [col]
             (-> col

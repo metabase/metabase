@@ -19,6 +19,7 @@ import getSelectedItems, {
   isCollectionPath,
   isModelPath,
   isQuestionPath,
+  isMetricPath,
 } from "./getSelectedItems";
 import type {
   MainNavbarOwnProps,
@@ -140,7 +141,8 @@ function maybeGetQuestionId(
   { location, params }: MainNavbarOwnProps,
 ) {
   const { pathname } = location;
-  const canFetchQuestion = isQuestionPath(pathname) || isModelPath(pathname);
+  const canFetchQuestion =
+    isQuestionPath(pathname) || isModelPath(pathname) || isMetricPath(pathname);
   return canFetchQuestion ? Urls.extractEntityId(params.slug) : null;
 }
 

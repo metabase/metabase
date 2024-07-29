@@ -1,7 +1,7 @@
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import type { State } from "metabase-types/store";
 
-export const getLoginStatus = (state: SdkStoreState) => state.sdk.loginStatus;
+export const getLoginStatus = (state: SdkStoreState) => state.sdk?.loginStatus;
 
 export const getIsInitialized = (state: SdkStoreState) =>
   getLoginStatus(state).status !== "uninitialized";

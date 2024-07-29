@@ -29,7 +29,9 @@ export const QuestionInfoSidebar = ({
   const description = question.description();
   const canWrite = question.canWrite() && !question.isArchived();
   const isPersisted = question.isPersisted();
-  const hasCacheSection = PLUGIN_CACHING.hasQuestionCacheSection(question);
+  const hasCacheSection =
+    PLUGIN_CACHING.hasQuestionCacheSection(question) &&
+    PLUGIN_CACHING.isGranularCachingEnabled();
 
   const handleSave = (description: string | null) => {
     if (question.description() !== description) {

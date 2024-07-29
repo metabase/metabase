@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
+import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -150,8 +151,8 @@ const InteractiveDashboardInner = ({
           <PublicOrEmbeddedDashboard
             dashboardId={dashboardId}
             parameterQueryParams={initialParameterValues}
-            hideDownloadButton={displayOptions.hideDownloadButton}
             hideParameters={displayOptions.hideParameters}
+            background={displayOptions.background}
             titled={displayOptions.titled}
             cardTitled={withCardTitle}
             theme={theme}
@@ -167,6 +168,10 @@ const InteractiveDashboardInner = ({
             }
             onLoad={onLoad}
             onLoadWithoutCards={onLoadWithoutCards}
+            downloadsEnabled={withDownloads}
+            isNightMode={false}
+            onNightModeChange={_.noop}
+            hasNightModeToggle={false}
           />
         </InteractiveDashboardProvider>
       )}

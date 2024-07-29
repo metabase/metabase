@@ -1,2 +1,2 @@
-export { SyncedParametersList } from "./SyncedParametersList";
-export { ParametersList } from "./ParametersList";
+export * from "./ParametersList";
+export * from "./types";

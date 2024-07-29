@@ -12,7 +12,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
-import { createMockConfig } from "embedding-sdk/test/mocks/config";
+import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import type { Card } from "metabase-types/api";
 import {
   createMockCard,
@@ -94,7 +94,7 @@ const setup = ({
     {
       mode: "sdk",
       sdkProviderProps: {
-        config: createMockConfig({
+        config: createMockJwtConfig({
           jwtProviderUri: "http://TEST_URI/sso/metabase",
         }),
       },
