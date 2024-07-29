@@ -8,6 +8,7 @@
    [metabase-enterprise.scim.api :as scim]
    [metabase.api.common :as api :refer [defendpoint]]
    [metabase.models.interface :as mi]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
    [metabase.util :as u]
    [metabase.util.malli :as mu]
@@ -87,11 +88,6 @@
    [:itemsPerPage ms/IntGreaterThanOrEqualToZero]
    [:Resources [:sequential SCIMGroup]]])
 
-
-;;; +----------------------------------------------------------------------------------------------------------------+
-;;; |                                               User operations                                                  |
-;;; +----------------------------------------------------------------------------------------------------------------+
-
 (defn- throw-scim-error
   [status message]
   (throw (ex-info message
@@ -100,19 +96,27 @@
                    :status      status
                    :status-code status})))
 
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               User operations                                                  |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
 (def ^:private user-cols
   "Required columns when fetching users for SCIM."
   [:id :first_name :last_name :email :locale :is_active :entity_id])
 
 (mi/define-batched-hydration-method add-scim-user-group-memberships
   :scim_user_group_memberships
-  "Add to each `user` a list of Group Memberships Info with each item is a map with 2 keys [:name :entity_id]."
+  "Add to each `user` a list of :user_group_memberships where each item is a map with 2 keys [:name :entity_id]."
   [users]
   (when (seq users)
     (let [user-id->memberships (group-by :user_id (t2/select [:model/PermissionsGroupMembership :pgm.user_id :pg.name :pg.entity_id]
                                                              {:from [[:permissions_group_membership :pgm]]
                                                               :join [[:permissions_group :pg] [:= :pg.id :group_id]]
-                                                              :where [:in :user_id (map u/the-id users)]}))
+                                                              :where [:and
+                                                                      [:in :user_id (map u/the-id users)]
+                                                                      [:not= :pg.id (:id (perms-group/all-users))]
+                                                                      [:not= :pg.id (:id (perms-group/admin))]]}))
           membership->group    (fn [membership] (select-keys membership [:name :entity_id]))]
       (for [user users]
         (assoc user :user_group_memberships (->> (user-id->memberships (u/the-id user))
@@ -271,12 +275,45 @@
 ;;; |                                              Group operations                                                  |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def ^:private group-cols
+  "Required columns when fetching groups for SCIM."
+  [:name :id :entity_id])
+
+(mi/define-batched-hydration-method add-scim-group-members
+  :scim_group_members
+  "Add to each `group` a list of :members where each item is a map with 2 keys [:email :entity_id]."
+  [groups]
+  (when (seq groups)
+    (let [group-id->members (group-by :group_id (t2/select [:model/PermissionsGroupMembership :pgm.group_id :u.email :u.entity_id]
+                                                           {:from [[:permissions_group_membership :pgm]]
+                                                            :join [[:core_user :u] [:= :u.id :pgm.user_id]]
+                                                            :where [:in :pgm.group_id (map u/the-id groups)]}))
+          group->member     (fn [member] (select-keys member [:email :entity_id]))]
+      (for [group groups]
+        (assoc group :members (->> (group-id->members (u/the-id group))
+                                   (map group->member)
+                                   (sort-by :entity_id)))))))
+
+(mu/defn ^:private get-group-by-entity-id
+  "Fetches a group by entity ID, or throws a 404"
+  [entity-id]
+  (or (t2/select-one (cons :model/PermissionsGroup group-cols)
+                     :entity_id entity-id)
+      (throw-scim-error 404 "Group not found")))
+
 (mu/defn ^:private mb-group->scim :- SCIMGroup
   "Given a Metabase permissions group, returns a SCIM group."
   [group]
   {:schemas     [group-schema-uri]
    :id          (:entity_id group)
-   :displayName (:name group)})
+   :members     (map
+                 (fn [member]
+                   {:value   (:entity_id member)
+                    :$ref    (str (scim/scim-base-url) "/Users/" (:entity_id member))
+                    :display (:email member)})
+                 (:members group))
+   :displayName (:name group)
+   :meta        {:resourceType "Group"}})
 
 (defn- group-filter-clause
   [filter-parameter]
@@ -298,9 +335,12 @@
         filter-param   (when filter-param (codec/url-decode filter-param))
         filter-clause  (if filter-param
                          (group-filter-clause filter-param)
-                         [])
-        groups         (t2/select [:model/PermissionsGroup :name :entity_id]
-                                  {:where    filter-clause
+                         [:= 1 1])
+        groups         (t2/select (cons :model/PermissionsGroup group-cols)
+                                  {:where    [:and
+                                               [:not= :id (:id perms-group/all-users)]
+                                               [:not= :id (:id perms-group/admin)]
+                                               filter-clause]
                                    :limit    limit
                                    :offset   offset
                                    :order-by [[:id :asc]]})
@@ -311,5 +351,13 @@
      :startIndex   (inc offset)
      :itemsPerPage items-per-page
      :Resources    (map mb-group->scim groups)}))
+
+(defendpoint GET "/Groups/:id"
+  "Fetch a single group."
+  [id]
+  {id ms/NonBlankString}
+  (-> (get-group-by-entity-id id)
+      (t2/hydrate :scim_group_members)
+      mb-group->scim))
 
 (api/define-routes)

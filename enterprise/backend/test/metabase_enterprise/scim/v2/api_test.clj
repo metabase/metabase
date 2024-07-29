@@ -65,20 +65,25 @@
 
 (deftest fetch-user-test
   (with-scim-setup!
-    (testing "A single user can be fetched in the SCIM format by entity ID"
-      (let [entity-id (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
-            response  (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))]
-        (is (malli= scim-api/SCIMUser response))
-        (is (=?
-             {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
-              :id       (t2/select-one-fn :entity_id :model/User :id (mt/user->id :rasta))
-              :userName "rasta@metabase.com"
-              :name     {:givenName "Rasta" :familyName "Toucan"}
-              :emails   [{:value "rasta@metabase.com"}]
-              :active   true
-              :locale   nil
-              :meta     {:resourceType "User"}}
-             response))))
+    (testing "A single user can be fetched in the SCIM format by entity ID with its groups"
+      (mt/with-temp [:model/User                       user  {:email "scim-test@metabase.com" :first_name "Test" :last_name "User"}
+                     :model/PermissionsGroup           group {:name "Test Group"}
+                     :model/PermissionsGroupMembership _     {:user_id (:id user) :group_id (:id group)}]
+        (let [entity-id (t2/select-one-fn :entity_id :model/User :id (:id user))
+              response  (scim-client :get 200 (format "ee/scim/v2/Users/%s" entity-id))]
+          (is (malli= scim-api/SCIMUser response))
+          (is (=?
+               {:schemas  ["urn:ietf:params:scim:schemas:core:2.0:User"]
+                :id       (t2/select-one-fn :entity_id :model/User :id (:id user))
+                :userName "scim-test@metabase.com"
+                :name     {:givenName "Test" :familyName "User"}
+                :emails   [{:value "scim-test@metabase.com"}]
+                :active   true
+                :locale   nil
+                :groups   [{:value   (t2/select-one-fn :entity_id :model/PermissionsGroup (:id group))
+                            :display "Test Group"}]
+                :meta     {:resourceType "User"}}
+               response)))))
 
     (testing "404 is returned when fetching a non-existant user"
        (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
@@ -279,3 +284,23 @@
       (testing "Error if unsupported filter operation is provided"
         (scim-client :get 400 (format "ee/scim/v2/Users?filter=%s"
                                       (codec/url-encode "displayName ne \"Group 1\"")))))))
+
+(deftest fetch-group-test
+  (with-scim-setup!
+    (testing "A single group can be fetched in the SCIM format by entity ID with its members"
+      (mt/with-temp [:model/PermissionsGroup           group {:name "Test Group"}
+                     :model/PermissionsGroupMembership _     {:user_id (mt/user->id :rasta) :group_id (:id group)}]
+        (let [entity-id (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+              response  (scim-client :get 200 (format "ee/scim/v2/Groups/%s" entity-id))]
+          (is (malli= scim-api/SCIMGroup response))
+          (is (=?
+               {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                :id          entity-id
+                :displayName "Test Group"
+                :members     [{:value (t2/select-one-fn :entity_id :model/User (mt/user->id :rasta))
+                               :display "rasta@metabase.com"}]
+                :meta        {:resourceType "Group"}}
+               response)))))
+
+    (testing "404 is returned when fetching a non-existant user"
+       (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))))
