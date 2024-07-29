@@ -232,14 +232,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       ORDERS_CREATED_AT_FIELD,
       [
         {
-          name: "no default value, non-required",
+          name: NO_DEFAULT_NON_REQUIRED,
           slug: "no-default-value/non-required",
           id: "fed1b911",
           type: "date/single",
           sectionId: "date",
         },
         {
-          name: "default value, non-required",
+          name: DEFAULT_NON_REQUIRED,
           slug: "default-value/non-required",
           id: "75d67d31",
           type: "date/single",
@@ -247,7 +247,7 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
           default: "2024-01-01",
         },
         {
-          name: "default value, required",
+          name: DEFAULT_REQUIRED,
           slug: "default-value/required",
           id: "60f12ac1",
           type: "date/single",
@@ -258,61 +258,109 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       ],
     );
 
-    const noDefaultNonRequired = "no default value, non-required";
-
     cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
+    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
 
     cy.log("no default value, non-required, has current value");
-    filter(noDefaultNonRequired).click();
-    popover().findByRole("textbox").clear().type("01/01/2024").blur();
-    popover().button("Add filter").click();
-    checkOnlyOneButtonVisible(noDefaultNonRequired, "clear");
-    filter(noDefaultNonRequired).should("have.text", "January 1, 2024");
-    clearButton(noDefaultNonRequired).click();
-    filter(noDefaultNonRequired).should("have.text", noDefaultNonRequired);
-    checkOnlyOneButtonVisible(noDefaultNonRequired, "chevron");
-
-    const defaultNonRequired = "default value, non-required";
+    addDateFilter(NO_DEFAULT_NON_REQUIRED, "01/01/2024");
+    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
+    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", "January 1, 2024");
+    clearButton(NO_DEFAULT_NON_REQUIRED).click();
+    filter(NO_DEFAULT_NON_REQUIRED).should(
+      "have.text",
+      NO_DEFAULT_NON_REQUIRED,
+    );
+    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
 
     cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
-    filter(defaultNonRequired).should("have.text", "January 1, 2024");
-    clearButton(defaultNonRequired).click();
-    filter(defaultNonRequired).should("have.text", defaultNonRequired);
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
+    filter(DEFAULT_NON_REQUIRED).should("have.text", "January 1, 2024");
+    clearButton(DEFAULT_NON_REQUIRED).click();
+    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
 
     cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
-    resetButton(defaultNonRequired).click();
-    filter(defaultNonRequired).should("have.text", "January 1, 2024");
-    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
+    resetButton(DEFAULT_NON_REQUIRED).click();
+    filter(DEFAULT_NON_REQUIRED).should("have.text", "January 1, 2024");
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
     );
-    filter(defaultNonRequired).click();
-    popover().findByRole("textbox").clear().type("01/01/2020").blur();
-    popover().button("Update filter").click();
-    filter(defaultNonRequired).should("have.text", "January 1, 2020");
-    checkOnlyOneButtonVisible(defaultNonRequired, "reset");
-    resetButton(defaultNonRequired).click();
-    filter(defaultNonRequired).should("have.text", "January 1, 2024");
-    checkOnlyOneButtonVisible(defaultNonRequired, "clear");
-
-    const defaultRequired = "default value, required";
+    updateDateFilter(DEFAULT_NON_REQUIRED, "01/01/2020");
+    filter(DEFAULT_NON_REQUIRED).should("have.text", "January 1, 2020");
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
+    resetButton(DEFAULT_NON_REQUIRED).click();
+    filter(DEFAULT_NON_REQUIRED).should("have.text", "January 1, 2024");
+    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(defaultRequired, "none");
+    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
 
     cy.log("has default value, required, current value different than default");
-    filter(defaultRequired).click();
-    popover().findByRole("textbox").clear().type("01/01/2020").blur();
-    popover().button("Update filter").click();
-    filter(defaultRequired).should("have.text", "January 1, 2020");
-    checkOnlyOneButtonVisible(defaultRequired, "reset");
-    resetButton(defaultRequired).click();
-    filter(defaultRequired).should("have.text", "January 1, 2024");
-    checkOnlyOneButtonVisible(defaultRequired, "none");
+    updateDateFilter(DEFAULT_REQUIRED, "01/01/2020");
+    filter(DEFAULT_REQUIRED).should("have.text", "January 1, 2020");
+    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
+    resetButton(DEFAULT_REQUIRED).click();
+    filter(DEFAULT_REQUIRED).should("have.text", "January 1, 2024");
+    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
+
+    cy.log("parameter sidebar");
+    editDashboard();
+
+    cy.log(NO_DEFAULT_NON_REQUIRED);
+    editFilter(NO_DEFAULT_NON_REQUIRED);
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", "No default");
+      checkOnlyOneButtonVisible("Default value", "chevron");
+    });
+
+    addDateFilter("Default value", "01/01/2020");
+
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", "January 1, 2020");
+      checkOnlyOneButtonVisible("Default value", "clear");
+
+      clearButton("Default value").click();
+      filter("Default value").should("have.text", "No default");
+      checkOnlyOneButtonVisible("Default value", "chevron");
+    });
+
+    cy.log(DEFAULT_NON_REQUIRED);
+    editFilter(DEFAULT_NON_REQUIRED);
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", "January 1, 2024");
+      checkOnlyOneButtonVisible("Default value", "clear");
+
+      clearButton("Default value").click();
+      filter("Default value").should("have.text", "No default");
+      checkOnlyOneButtonVisible("Default value", "chevron");
+    });
+
+    addDateFilter("Default value", "01/01/2020");
+
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", "January 1, 2020");
+      checkOnlyOneButtonVisible("Default value", "clear");
+    });
+
+    cy.log(DEFAULT_REQUIRED);
+    editFilter(DEFAULT_REQUIRED);
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", "January 1, 2024");
+      checkOnlyOneButtonVisible("Default value", "clear");
+
+      clearButton("Default value").click();
+      filter("Default value (required)").should("have.text", "No default");
+      checkOnlyOneButtonVisible("Default value (required)", "chevron");
+    });
+
+    updateDateFilter("Default value (required)", "01/01/2020");
+
+    dashboardParameterSidebar().within(() => {
+      filter("Default value").should("have.text", "January 1, 2020");
+      checkOnlyOneButtonVisible("Default value", "clear");
+    });
   });
 
   it("location parameters - single value", () => {
@@ -1068,6 +1116,18 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
   function chevronIcon(label: string) {
     return filter(label).icon("chevrondown");
+  }
+
+  function addDateFilter(label: string, value: string) {
+    filter(label).click();
+    popover().findByRole("textbox").clear().type(value).blur();
+    popover().button("Add filter").click();
+  }
+
+  function updateDateFilter(label: string, value: string) {
+    filter(label).click();
+    popover().findByRole("textbox").clear().type(value).blur();
+    popover().button("Update filter").click();
   }
 
   function createDashboardWithParameters(
