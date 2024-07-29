@@ -11,8 +11,7 @@ import { ADMIN_NAVBAR_HEIGHT } from "../../constants";
 
 export const AdminNavbarRoot = styled.nav`
   padding: 0.5rem 1rem;
-  background: ${() => color("admin-navbar")};
-  color: var(--mb-color-text-white);
+  color: var(--mb-color-text-dark);
   font-size: 0.85rem;
   height: ${ADMIN_NAVBAR_HEIGHT};
   display: flex;
@@ -20,6 +19,7 @@ export const AdminNavbarRoot = styled.nav`
   justify-content: space-between;
   z-index: 4;
   flex-shrink: 0;
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const AdminNavbarItems = styled.ul`
@@ -69,13 +69,11 @@ export const AdminExitLink = styled(Link)`
   font-weight: 700;
   font-size: 13px;
   transition: all 200ms;
-  color: var(--mb-color-text-white);
   white-space: nowrap;
   text-align: center;
   margin-inline-start: auto;
 
   &:hover {
-    color: var(--mb-color-text-white);
     background-color: ${() => darken(color("filter"))};
     border-color: ${() => darken(color("filter"))};
   }

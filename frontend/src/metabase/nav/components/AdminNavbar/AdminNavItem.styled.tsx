@@ -21,8 +21,15 @@ export const AdminNavLink = styled(Link)<AdminNavLinkProps>`
 
   color: ${props =>
     props.isSelected
-      ? "var(--mb-color-text-white)"
-      : "color-mix(in srgb, var(--mb-color-text-white), transparent 37%)"};
+      ? "var(--mb-color-brand)"
+      : "var(--mb-color-text-dark)"};
+
+  border-radius: 0.5rem;
+
+  background-color: ${props =>
+    props.isSelected
+      ? "color-mix(in srgb, var(--mb-color-brand) 20%, white 80%)"
+      : "transparent"};
 `;
 
 export const AdminNavListItem = styled(

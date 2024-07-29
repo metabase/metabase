@@ -45,14 +45,6 @@ export const AdminNavbar = ({
       data-element-id="navbar-root"
       aria-label={t`Navigation bar`}
     >
-      <AdminLogoLink to="/admin">
-        <AdminLogoContainer>
-          <LogoIcon className={cx(CS.textBrand, CS.my2)} dark />
-          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
-          <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
-        </AdminLogoContainer>
-      </AdminLogoLink>
-
       <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
 
       <MobileHide>
@@ -68,10 +60,10 @@ export const AdminNavbar = ({
         </AdminNavbarItems>
 
         {!isPaidPlan && <StoreLink />}
-        <AdminExitLink
+        {/* <AdminExitLink
           to="/"
           data-testid="exit-admin"
-        >{t`Exit admin`}</AdminExitLink>
+        >{t`Exit admin`}</AdminExitLink> */}
       </MobileHide>
     </AdminNavbarRoot>
   );
