@@ -1,6 +1,7 @@
 (ns metabase.api.preview-embed-test
   (:require
    [buddy.sign.jwt :as jwt]
+   [cheshire.core :as json]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [metabase.api.dashboard-test :as api.dashboard-test]
@@ -112,8 +113,8 @@
           (testing "if `:locked` parameter is present in URL params, request should fail"
             (is (= "You can only specify a value for :venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "locked"}
-                                                                                        :params            {:venue_id 100}})
-                                                                  "?venue_id=200"))))))))))
+                                                                                        :params            {:venue_id 100}}))
+                                         :parameters (json/generate-string {:venue_id 200}))))))))))
 
 (deftest query-disabled-params-test
   (testing "GET /api/preview_embed/card/:token/query"
@@ -127,8 +128,8 @@
 
           (testing "If a `:disabled` param is passed in the URL the request should fail"
             (is (= "You're not allowed to specify a value for :venue_id."
-                   (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "disabled"}})
-                                                                  "?venue_id=200"))))))))))
+                   (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "disabled"}}))
+                                         :parameters (json/generate-string {:venue_id 200}))))))))))
 
 (deftest query-enabled-params-test
   (testing "GET /api/preview_embed/card/:token/query"
@@ -138,8 +139,8 @@
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
             (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}
-                                                                                        :params            {:venue_id 100}})
-                                                                  "?venue_id=200")))))
+                                                                                        :params            {:venue_id 100}}))
+                                         :parameters (json/generate-string {:venue_id 200})))))
 
           (testing "If an `:enabled` param is present in the JWT, that's ok"
             #_{:clj-kondo/ignore [:deprecated-var]}
@@ -149,8 +150,8 @@
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
             #_{:clj-kondo/ignore [:deprecated-var]}
             (embed-test/test-query-results
-             (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}})
-                                                            "?venue_id=200")))))))))
+             (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:venue_id "enabled"}}))
+                                   :parameters (json/generate-string {:venue_id 200})))))))))
 (deftest default-value-card-query-test
   (testing "GET /api/preview_embed/card/:token/query with default values for params"
     (embed-test/with-embedding-enabled-and-new-secret-key
@@ -162,12 +163,12 @@
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card)))))
             (testing "check this is the same result as when a default value is provided"
               (is (= [[107]]
-                     (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
-                                                                         "?date=Q1-2014")))))))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}}))
+                                                    :parameters (json/generate-string {:date "Q1-2014"})))))))
           (testing "an empty value should apply if provided as an empty string in the query params"
             (is (= [[1000]]
-                   (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}})
-                                                                       "?date="))))))
+                   (mt/rows (mt/user-http-request :crowberto :get 202 (str (card-query-url card {:_embedding_params {:date "enabled"}}))
+                                                  :parameters (json/generate-string {:date ""}))))))
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "enabled"}
@@ -180,7 +181,8 @@
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card))))))
           (testing "you can't apply an empty param value if the parameter is disabled"
             (is (= "You're not allowed to specify a value for :date."
-                   (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:date "disabled"}}) "?date=")))))))
+                   (mt/user-http-request :crowberto :get 400 (str (card-query-url card {:_embedding_params {:date "disabled"}}))
+                                         :parameters (json/generate-string {:date ""})))))))
       (testing "if the param is locked"
         (t2.with-temp/with-temp
           [Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "locked"})]
@@ -309,8 +311,8 @@
           (testing "If `:locked` parameter is present in URL params, request should fail"
             (is (= "You can only specify a value for :venue_id in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard
-                                                                                {:_embedding_params {:venue_id "locked"}, :params {:venue_id 100}})
-                                                                  "?venue_id=200"))))))))))
+                                                                                {:_embedding_params {:venue_id "locked"}, :params {:venue_id 100}}))
+                                         :parameters (json/generate-string {:venue_id 200}))))))))))
 
 (deftest dashcard-disabled-params-test
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
@@ -324,8 +326,8 @@
 
           (testing "If a `:disabled` param is passed in the URL the request should fail"
             (is (= "You're not allowed to specify a value for :venue_id."
-                   (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:venue_id "disabled"}})
-                                                                  "?venue_id=200"))))))))))
+                   (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:venue_id "disabled"}}))
+                                         :parameters (json/generate-string {:venue_id 200}))))))))))
 
 (deftest dashcard-disabled-params-test-2
   (testing "/api/preview_embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
@@ -335,8 +337,8 @@
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
             (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
                    (mt/user-http-request :crowberto :get 400 (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}
-                                                                                          :params            {:venue_id 100}})
-                                                                  "?venue_id=200")))))
+                                                                                          :params            {:venue_id 100}}))
+                                         :parameters (json/generate-string {:venue_id 200})))))
 
           (testing "If an `:enabled` param is present in the JWT, that's ok"
             (is (=? {:status "completed"
@@ -347,8 +349,8 @@
           (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
             (is (=? {:status "completed"
                      :data   {:rows [[0]]}}
-                    (mt/user-http-request :crowberto :get 202 (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}})
-                                                                   "?venue_id=200"))))))))))
+                    (mt/user-http-request :crowberto :get 202 (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}}))
+                                          :parameters (json/generate-string {:venue_id 200}))))))))))
 
 (deftest dashcard-editable-query-params-test
   (testing (str "Check that editable query params work correctly and keys get coverted from strings to keywords, even "
@@ -368,8 +370,8 @@
                 (mt/user-http-request :crowberto :get 202 (str (dashcard-url dashcard
                                                                  {:_embedding_params {:num_birds     :locked
                                                                                       :2nd_date_seen :enabled}
-                                                                  :params            {:num_birds 2}})
-                                                               "?2nd_date_seen=2018-02-14"))))))))
+                                                                  :params            {:num_birds 2}}))
+                                      :parameters (json/generate-string {:2nd_date_seen "2018-02-14"}))))))))
 
 (deftest editable-params-should-not-be-invalid-test
   (testing "Make sure that editable params do not result in \"Invalid Parameter\" exceptions (#7212)"
@@ -393,8 +395,8 @@
                                                                                    :parameter_id "_NUM_"}]}}]
           (is (= [[50]]
                  (mt/rows (mt/user-http-request :crowberto :get 202
-                                                (str (dashcard-url dashcard {:_embedding_params {:num "enabled"}})
-                                                     "?num=50"))))))))))
+                                                (str (dashcard-url dashcard {:_embedding_params {:num "enabled"}}))
+                                                :parameters (json/generate-string {:num 50}))))))))))
 
 (deftest postgres-convert-parameters-to-numbers-test
   (mt/test-driver :postgres
@@ -415,8 +417,8 @@
                                                                                                     [:field
                                                                                                      (mt/id :venues :id) nil]]}]}}]
             (is (= [[1]]
-                   (mt/rows (mt/user-http-request :crowberto :get (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}})
-                                                                       "?venue_id=1")))))))))))
+                   (mt/rows (mt/user-http-request :crowberto :get (str (dashcard-url dashcard {:_embedding_params {:venue_id "enabled"}}))
+                                                  :parameters (json/generate-string {:venue_id 1})))))))))))
 
 
 ;; pivot tables
@@ -514,8 +516,10 @@
           (testing "Card"
             (let [url (card-query-url card {:_embedding_params {:NAME "enabled"}})]
               (is (= [[1]]
-                     (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer"))
-                     (mt/rows (mt/user-http-request :crowberto :get 202 url :NAME "Hudson Borer" :NAME "x"))))))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 url
+                                                    :parameters (json/generate-string {:NAME "Hudson Borer"})))
+                     (mt/rows (mt/user-http-request :crowberto :get 202 url
+                                                    :parameters (json/generate-string {:NAME ["Hudson Borer" "x"]})))))))
           (testing "Dashcard"
             (mt/with-temp [Dashboard {dashboard-id :id} {:enable_embedding true
                                                          :embedding_params {:name "enabled"}
@@ -533,8 +537,10 @@
                                                                          :target       [:dimension [:template-tag "NAME"]]}]}]
               (let [url (dashcard-url dashcard {:_embedding_params {:name "enabled"}})]
                 (is (= [[1]]
-                       (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer"))
-                       (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer" :name "x"))))))))))))
+                       (mt/rows (mt/user-http-request :crowberto :get 202 url
+                                                      :parameters (json/generate-string {:name "Hudson Borer"})))
+                       (mt/rows (mt/user-http-request :crowberto :get 202 url
+                                                      :parameters (json/generate-string {:name ["Hudson Borer" "x"]})))))))))))))
 
 ;;; ------------------------------------------------ Chain filtering -------------------------------------------------
 
@@ -613,26 +619,30 @@
                                                         :target       [:dimension [:template-tag "ASDF"]]}]
                                                       :card_id      card-id}]
           (testing "for card embeds"
-            (let [false-url (format "%s?ASDF=false" (card-query-url card {:_embedding_params {:ASDF "enabled"}}))
-                  true-url  (format "%s?ASDF=true" (card-query-url card {:_embedding_params {:ASDF "enabled"}}))]
+            (let [false-url (card-query-url card {:_embedding_params {:ASDF "enabled"}})
+                  true-url  (card-query-url card {:_embedding_params {:ASDF "enabled"}})]
               (is (= [[3 "The Dentist" false]]
-                     (-> (mt/user-http-request :crowberto :get 202 false-url)
+                     (-> (mt/user-http-request :crowberto :get 202 false-url
+                                               :parameters (json/generate-string {:ASDF false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
-                     (-> (mt/user-http-request :crowberto :get 202 true-url)
+                     (-> (mt/user-http-request :crowberto :get 202 true-url
+                                               :parameters (json/generate-string {:ASDF true}))
                          :data
                          :rows)))))
           (testing "for dashboard embeds"
-            (let [false-url (format "%s?ASDF=false" (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}}))
-                  true-url  (format "%s?ASDF=true" (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}}))]
+            (let [false-url (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}})
+                  true-url  (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}})]
               (is (= [[3 "The Dentist" false]]
-                     (-> (mt/user-http-request :crowberto :get 202 false-url)
+                     (-> (mt/user-http-request :crowberto :get 202 false-url
+                                               :parameters (json/generate-string {:ASDF false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
-                     (-> (mt/user-http-request :crowberto :get 202 true-url)
+                     (-> (mt/user-http-request :crowberto :get 202 true-url
+                                               :parameters (json/generate-string {:ASDF true}))
                          :data
                          :rows))))))))))

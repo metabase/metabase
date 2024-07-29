@@ -278,7 +278,7 @@
   returned as the API endpoint result."
   [& {:keys [export-format card-id embedding-params token-params query-params qp constraints options]
       :or   {qp qp.card/process-query-for-card-default-qp}}]
-  {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (map? query-params)]}
+  {:pre [(integer? card-id) (u/maybe? map? embedding-params) (map? token-params) (u/maybe? map? query-params)]}
   (let [merged-slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters         (apply-slug->value (resolve-card-parameters card-id) merged-slug->value)]
     (m/mapply api.public/process-query-for-card-with-id
@@ -360,7 +360,7 @@
       :or   {constraints (qp.constraints/default-query-constraints)
              qp          qp.card/process-query-for-card-default-qp}}]
   {:pre [(integer? dashboard-id) (integer? dashcard-id) (integer? card-id) (u/maybe? map? embedding-params)
-         (map? token-params) (map? query-params)]}
+         (map? token-params) (u/maybe? map? query-params)]}
   (let [slug->value (validate-and-merge-params embedding-params token-params (normalize-query-params query-params))
         parameters  (resolve-dashboard-parameters dashboard-id slug->value)]
     (api.public/process-query-for-dashcard
