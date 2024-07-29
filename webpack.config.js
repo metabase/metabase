@@ -215,7 +215,6 @@ const config = (module.exports = {
       ".tsx",
       ".css",
       ".svg",
-      ".json",
     ],
     alias: {
       assets: ASSETS_PATH,
