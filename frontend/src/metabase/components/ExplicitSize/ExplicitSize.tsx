@@ -197,7 +197,11 @@ function ExplicitSize<T extends BaseInnerProps>({
         const element = this._getElement();
         if (element) {
           const { width, height } = element.getBoundingClientRect();
-          if (this.state.width !== width || this.state.height !== height) {
+
+          if (
+            (width && this.state.width !== width) ||
+            (height && this.state.height !== height)
+          ) {
             this.setState({ width, height }, () =>
               this.props?.onUpdateSize?.(),
             );
