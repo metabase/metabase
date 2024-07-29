@@ -26,7 +26,6 @@ export function QuestionNotebookButton({
       onClick={() =>
         setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
       }
-      // leftIcon={<Icon size={14} name="notebook" />}
     >
       {isShowingNotebook ? t`Show Visualization` : t`Show Editor`}
     </Button>
