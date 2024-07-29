@@ -596,20 +596,16 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     });
   }
 
-  function checkOnlyOneButtonVisible(
+  function checkStatusIcon(
     label: string,
     /**
-     * Use 'none' when no button should be visible.
+     * Use 'none' when no icon should be visible.
      */
-    button: "chevron" | "reset" | "clear" | "none",
+    icon: "chevron" | "reset" | "clear" | "none",
   ) {
-    clearIcon(label).should(button === "clear" ? "be.visible" : "not.exist");
-
-    resetIcon(label).should(button === "reset" ? "be.visible" : "not.exist");
-
-    chevronIcon(label).should(
-      button === "chevron" ? "be.visible" : "not.exist",
-    );
+    clearIcon(label).should(icon === "clear" ? "be.visible" : "not.exist");
+    resetIcon(label).should(icon === "reset" ? "be.visible" : "not.exist");
+    chevronIcon(label).should(icon === "chevron" ? "be.visible" : "not.exist");
   }
 
   function checkDashboardParameters<T = string>({
@@ -626,51 +622,51 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     updateValue?: (label: string, value: T) => void;
   }) {
     cy.log("no default value, non-required, no current value");
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
+    checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
 
     cy.log("no default value, non-required, has current value");
     setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
     filter(NO_DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "clear");
+    checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
     clearButton(NO_DEFAULT_NON_REQUIRED).click();
     filter(NO_DEFAULT_NON_REQUIRED).should(
       "have.text",
       NO_DEFAULT_NON_REQUIRED,
     );
-    checkOnlyOneButtonVisible(NO_DEFAULT_NON_REQUIRED, "chevron");
+    checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
 
     cy.log("has default value, non-required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
+    checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
     filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
     clearButton(DEFAULT_NON_REQUIRED).click();
     filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
 
     cy.log("has default value, non-required, no current value");
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
+    checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
     filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
+    checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
     );
     updateValue(DEFAULT_NON_REQUIRED, otherValue);
     filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "reset");
+    checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
     filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
-    checkOnlyOneButtonVisible(DEFAULT_NON_REQUIRED, "clear");
+    checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log("has default value, required, value same as default");
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
+    checkStatusIcon(DEFAULT_REQUIRED, "none");
 
     cy.log("has default value, required, current value different than default");
     updateValue(DEFAULT_REQUIRED, otherValue);
     filter(DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "reset");
+    checkStatusIcon(DEFAULT_REQUIRED, "reset");
     resetButton(DEFAULT_REQUIRED).click();
     filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
-    checkOnlyOneButtonVisible(DEFAULT_REQUIRED, "none");
+    checkStatusIcon(DEFAULT_REQUIRED, "none");
 
     checkParameterSidebarDefaultValue({
       defaultValueFormatted,
@@ -702,54 +698,54 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     dashboardParameterSidebar().within(() => {
       filter("Default value").scrollIntoView();
       filter("Default value").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value", "chevron");
+      checkStatusIcon("Default value", "chevron");
     });
 
     setValue("Default value", otherValue);
 
     dashboardParameterSidebar().within(() => {
       filter("Default value").should("have.text", otherValueFormatted);
-      checkOnlyOneButtonVisible("Default value", "clear");
+      checkStatusIcon("Default value", "clear");
 
       clearButton("Default value").click();
       filter("Default value").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value", "chevron");
+      checkStatusIcon("Default value", "chevron");
     });
 
     cy.log(DEFAULT_NON_REQUIRED);
     editFilter(DEFAULT_NON_REQUIRED);
     dashboardParameterSidebar().within(() => {
       filter("Default value").should("have.text", defaultValueFormatted);
-      checkOnlyOneButtonVisible("Default value", "clear");
+      checkStatusIcon("Default value", "clear");
 
       clearButton("Default value").click();
       filter("Default value").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value", "chevron");
+      checkStatusIcon("Default value", "chevron");
     });
 
     setValue("Default value", otherValue);
 
     dashboardParameterSidebar().within(() => {
       filter("Default value").should("have.text", otherValueFormatted);
-      checkOnlyOneButtonVisible("Default value", "clear");
+      checkStatusIcon("Default value", "clear");
     });
 
     cy.log(DEFAULT_REQUIRED);
     editFilter(DEFAULT_REQUIRED);
     dashboardParameterSidebar().within(() => {
       filter("Default value").should("have.text", defaultValueFormatted);
-      checkOnlyOneButtonVisible("Default value", "clear");
+      checkStatusIcon("Default value", "clear");
 
       clearButton("Default value").click();
       filter("Default value (required)").should("have.text", "No default");
-      checkOnlyOneButtonVisible("Default value (required)", "chevron");
+      checkStatusIcon("Default value (required)", "chevron");
     });
 
     updateValue("Default value (required)", otherValue);
 
     dashboardParameterSidebar().within(() => {
       filter("Default value").should("have.text", otherValueFormatted);
-      checkOnlyOneButtonVisible("Default value", "clear");
+      checkStatusIcon("Default value", "clear");
     });
   }
 
