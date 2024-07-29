@@ -961,23 +961,30 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       ],
     );
     editDashboard();
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText("Unit of Time")
-      .click();
+    editFilter("Unit of Time");
 
     dashboardParameterSidebar()
       .findAllByLabelText("chevrondown icon")
-      .then(([$chevron1, $chevron2]) => {
-        const rect1 = $chevron1.getBoundingClientRect();
-        const rect2 = $chevron2.getBoundingClientRect();
+      .then(([$firstChevron, ...$otherChevrons]) => {
+        const firstRect = $firstChevron.getBoundingClientRect();
 
-        expect(rect1.left).to.eq(rect2.left);
-        expect(rect1.right).to.eq(rect2.right);
+        for (const $chevron of $otherChevrons) {
+          const rect = $chevron.getBoundingClientRect();
+
+          expect(firstRect.left, "left").to.eq(rect.left);
+          expect(firstRect.right, "right").to.eq(rect.right);
+        }
       });
   });
 
   function filter(label: string) {
     return cy.findByLabelText(label);
+  }
+
+  function editFilter(label: string) {
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText(label)
+      .click();
   }
 
   function clearIcon(label: string) {
