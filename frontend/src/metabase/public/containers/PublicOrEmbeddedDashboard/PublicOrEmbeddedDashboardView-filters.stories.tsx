@@ -242,6 +242,20 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
       createMockMetadata({}),
       {},
     ),
+    date_month_year: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date Month and Year",
+          sectionId: "date",
+          slug: "date_month_and_year",
+          type: "date/month-year",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
   };
   return (
     <PublicOrEmbeddedDashboardView
@@ -253,7 +267,12 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
 
 type ArgType = Partial<ComponentProps<typeof PublicOrEmbeddedDashboardView>>;
 
-type ParameterType = "text" | "dropdown" | "search" | "date_all_options";
+type ParameterType =
+  | "text"
+  | "dropdown"
+  | "search"
+  | "date_all_options"
+  | "date_month_year";
 const createDefaultArgs = (
   args: ArgType & { parameterType?: ParameterType } = {},
 ): ArgType & { parameterType: ParameterType } => {
@@ -431,6 +450,8 @@ DarkThemeParameterSearchWithValue.play = async ({ canvasElement }) => {
 };
 
 // Date filters
+
+// All options
 export const LightThemeDateFilterAllOptions = Template.bind({});
 LightThemeDateFilterAllOptions.args = createDefaultArgs({
   parameterType: "date_all_options",
@@ -452,6 +473,32 @@ DarkThemeDateFilterAllOptions.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", {
     name: "Date all options",
+  });
+  await userEvent.click(filter);
+};
+
+// Month and Year
+export const LightThemeDateFilterMonthYear = Template.bind({});
+LightThemeDateFilterMonthYear.args = createDefaultArgs({
+  parameterType: "date_month_year",
+});
+LightThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Month and Year",
+  });
+  await userEvent.click(filter);
+};
+
+export const DarkThemeDateFilterMonthYear = Template.bind({});
+DarkThemeDateFilterMonthYear.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_month_year",
+});
+DarkThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Month and Year",
   });
   await userEvent.click(filter);
 };
