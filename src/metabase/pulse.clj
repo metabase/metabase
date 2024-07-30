@@ -262,6 +262,8 @@
          :email (:email recipient)}
         {:kind :user
          :user recipient}))
+    :http
+    []
     (do
      (log/warnf "Unknown channel type %s" (:channel_type pulse-channel))
      [])))
@@ -271,8 +273,8 @@
   (try
     (let [;; once we upgraded to retry 2.x, we can use (.. retry getMetrics getNumberOfTotalCalls) instead of tracking
           ;; this manually
-          retry-count   (volatile! 0)
-          channel-send! (fn []
+          retry-count (volatile! 0)
+          send!       (fn []
                           (task-history/with-task-history {:task         "channel-send"
                                                            :task_details {:retry-config   (when retry/*retry-config*
                                                                                             {:max-attempts (.. retry/*retry-config* getRetryConfig getMaxAttempts)})
@@ -288,7 +290,7 @@
                                 (when-not (and (= :channel/slack (:type channel))
                                                (contains? (:errors (ex-data e)) :slack-token))
                                   (throw e))))))]
-      ((retry/decorate channel-send!)))
+      ((retry/decorate send!)))
     (catch Throwable e
       (log/error e "Error sending notification!"))))
 

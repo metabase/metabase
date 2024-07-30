@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.channel.http-test :as channel.http-test]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -48,8 +49,8 @@
   invokes
 
     (f pulse)"
-  [{:keys [pulse pulse-card channel card]
-    :or   {channel :email}}
+  [{:keys [pulse pulse-card channel pulse-channel card]
+    :or   {pulse-channel :email}}
    f]
   (mt/with-temp [:model/Pulse        {pulse-id :id, :as pulse} (->> pulse
                                                                 (merge {:name            "Pulse Name"
@@ -59,10 +60,11 @@
                                                :position        0}
                                            pulse-card)
                  ;; channel is currently only used for http
-                 :model/Channel      {chn-id :id} {:type    :channel/http
-                                                   :details {:url         "https://metabase.com/testhttp"
-                                                             :auth-method "none"}}
-                 :model/PulseChannel {pc-id :id} (case channel
+                 :model/Channel      {chn-id :id} (merge {:type    :channel/http
+                                                          :details {:url         "https://metabase.com/testhttp"
+                                                                    :auth-method "none"}}
+                                                         channel)
+                 :model/PulseChannel {pc-id :id} (case pulse-channel
                                                   :email
                                                   {:pulse_id pulse-id
                                                    :channel_type "email"}
@@ -76,7 +78,7 @@
                                                   {:pulse_id     pulse-id
                                                    :channel_type "http"
                                                    :channel_id   chn-id})]
-    (if (= channel :email)
+    (if (= pulse-channel :email)
       (t2.with-temp/with-temp [PulseChannelRecipient _ {:user_id          (pulse.test-util/rasta-id)
                                                         :pulse_channel_id pc-id}]
         (f pulse))
@@ -105,7 +107,7 @@
       :assert {:slack (fn [{:keys [pulse-id]} response]
                         (is (= {:sent pulse-id}
                                response)))}})"
-  [{:keys [card pulse pulse-card display fixture], assertions :assert}]
+  [{:keys [card channel pulse pulse-card display fixture], assertions :assert}]
   {:pre [(map? assertions) ((some-fn :email :slack :http) assertions)]}
   (doseq [channel-type [:email :slack :http]
           :let         [f (get assertions channel-type)]
@@ -116,10 +118,11 @@
                                                          :display (or display :line)}
                                                         card)]
         (with-pulse-for-card [{pulse-id :id}
-                              {:card       card-id
-                               :pulse      pulse
-                               :pulse-card pulse-card
-                               :channel    channel-type}]
+                              {:card          card-id
+                               :pulse         pulse
+                               :channel       channel
+                               :pulse-card    pulse-card
+                               :pulse-channel channel-type}]
           (letfn [(thunk* []
                     (f {:card-id card-id, :pulse-id pulse-id}
                        ((keyword "channel" (name channel-type))
@@ -759,7 +762,8 @@
 (defn ^:private test-retry-configuration
   []
   (assoc (#'retry/retry-configuration)
-         :initial-interval-millis 1))
+         :initial-interval-millis 1
+         :max-attempts 2))
 
 (deftest email-notification-retry-test
   (testing "send email succeeds w/o retry"
@@ -903,6 +907,34 @@
                                                      :channel-id    1
                                                      :retry-attempts 0}}}]
                     (latest-task-history-entry :channel-send 3)))))))))
+
+(deftest send-pulse-http-task-history-capture-test
+  (testing "if a pulse is set to send to multiple channels and one of them fail, the other channels should still receive the message"
+    (channel.http-test/with-server [url [channel.http-test/post-400]]
+      (mt/with-dynamic-redefs
+        [retry/random-exponential-backoff-retry (constantly (retry/random-exponential-backoff-retry "test-retry" (test-retry-configuration)))]
+        (mt/with-temp
+          [:model/Card         {card-id :id}  (pulse.test-util/checkins-query-card {:breakout [!day.date]
+                                                                                    :limit    1})
+           :model/Pulse        {pulse-id :id} {:name "Test Pulse"
+                                               :alert_condition "rows"}
+           :model/PulseCard    _              {:pulse_id pulse-id
+                                               :card_id  card-id}
+           :model/Channel      {channel-id :id} {:type         "channel/http"
+                                                 :details      {:url          (str url (:path channel.http-test/post-400))
+                                                                :auth-method "none"}}
+           :model/PulseChannel _              {:pulse_id     pulse-id
+                                               :channel_type "http"
+                                               :channel_id   channel-id}]
+          (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id))
+          (is (=? [{:task         "channel-send"
+                    :status       :failed
+                    :task_details {:ex-data       {:body   "\"Bad request\""
+                                                   :status 400}
+                                   :original-info {:pulse-id       pulse-id
+                                                   :retry-attempts 1
+                                                   :retry-config   {:max-attempts 2}}}}]
+                  (latest-task-history-entry :channel-send 1))))))))
 
 (deftest alerts-do-not-remove-user-metadata
   (testing "Alerts that exist on a Model shouldn't remove metadata (#35091)."
