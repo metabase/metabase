@@ -5,7 +5,14 @@ import { Flex, Text } from "metabase/ui";
 
 export const CleanupEmptyState = ({ duration }: { duration: string }) => {
   return (
-    <Flex align="center" direction="column" pt="10rem" pb="11rem">
+    <Flex
+      align="center"
+      justify="center"
+      direction="column"
+      style={{ flexGrow: 1 }}
+      pt="2rem"
+      pb="3rem"
+    >
       <CollectionEmptyIcon />
       <Text fw="bold" size="1.25rem" mt="4rem">
         {c("{0} is a duration of time (e.g.: 2 months)")

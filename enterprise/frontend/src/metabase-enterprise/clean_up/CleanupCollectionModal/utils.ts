@@ -4,6 +4,12 @@ import _ from "underscore";
 
 import type { StaleCollectionItem } from "metabase-types/api";
 
+// constant portion of this string is how mantine calculates the height of the modal
+export const getModalHeightCalc = (additionalOffset?: string) => {
+  const offsetStr = additionalOffset ? ` - ${additionalOffset}` : "";
+  return `calc(100dvh - (5dvh * 2)${offsetStr})`;
+};
+
 export const itemKeyFn = (item: StaleCollectionItem) =>
   `${item.id}:${item.model}`;
 

@@ -25,6 +25,7 @@ import {
   getDateFilterLabel,
   getDateFilterValue,
   itemKeyFn,
+  getModalHeightCalc,
 } from "./utils";
 
 interface CleanupCollectionModalProps {
@@ -119,7 +120,7 @@ const _CleanupCollectionModal = ({
       <Modal.Overlay />
       <Modal.Content
         className={CS.modalContent}
-        mih={isLoading ? "25rem" : undefined}
+        mih={isLoading ? `min(25rem, ${getModalHeightCalc("0px")})` : undefined}
       >
         <Modal.Header
           px="2.5rem"
@@ -133,7 +134,7 @@ const _CleanupCollectionModal = ({
         <Modal.Body
           px="2.5rem"
           pb="0"
-          mih={{ md: 646 }}
+          mih={`min(646px, ${getModalHeightCalc("167px")})`}
           className={CS.modalBody}
         >
           <CleanupCollectionModalFilters

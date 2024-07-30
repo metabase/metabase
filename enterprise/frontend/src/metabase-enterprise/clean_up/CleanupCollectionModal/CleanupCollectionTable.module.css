@@ -1,3 +1,7 @@
+.tableContainer {
+  flex-grow: 1;
+}
+
 .table {
   min-width: 700px;
   width: 100%;
