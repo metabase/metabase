@@ -90,6 +90,7 @@ const _CleanupCollectionModal = ({
           ...sortOptions,
         }
       : skipToken,
+    { refetchOnMountOrArgChange: true },
   );
 
   const itemsData = staleItemsData?.data;
@@ -182,6 +183,7 @@ const _CleanupCollectionModal = ({
         <CleanupCollectionBulkActions
           selected={selection.selected}
           clearSelectedItem={selection.clear}
+          resetPagination={pagination.resetPage}
         />
       </Modal.Content>
     </Modal.Root>

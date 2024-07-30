@@ -15,18 +15,22 @@ import CS from "./CleanupCollectionBulkActions.module.css";
 interface CleanupCollectionBulkActionsProps {
   selected: CollectionItem[];
   clearSelectedItem: () => void;
+  resetPagination: () => void;
 }
 
 export const CleanupCollectionBulkActions = ({
   selected,
   clearSelectedItem,
+  resetPagination,
 }: CleanupCollectionBulkActionsProps) => {
   const [undo, setUndo] = useState<Undo | undefined>();
 
   const handleUndo = async (items: CollectionItem[]) => {
     return Promise.all(
       items.map(item => item?.setArchived?.(false, { notify: false })),
-    ).finally(() => setUndo(undefined));
+    )
+      .then(() => resetPagination())
+      .finally(() => setUndo(undefined));
   };
 
   const handleBulkArchive = async () => {
@@ -36,6 +40,8 @@ export const CleanupCollectionBulkActions = ({
 
     Promise.all(actions)
       .then(() => {
+        resetPagination();
+
         const id = Date.now();
         const timeoutId = setTimeout(() => {
           setUndo(undo => (undo?.id === id ? undefined : undo));
