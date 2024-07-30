@@ -600,3 +600,36 @@
                     :subscription-attachment subscription-header}
                    {:alert-attachment        (first alert-result)
                     :subscription-attachment (first subscription-result)}))))))))
+
+(deftest ^:parallel model-viz-settings-downloads-test
+  (testing "A model's visualization settings are respected in downloads."
+    (testing "for csv"
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card card  {:display                :table
+                                          :type                   :model
+                                          :dataset_query          {:database (mt/id)
+                                                                   :type     :query
+                                                                   :query    {:source-table (mt/id :orders)
+                                                                              :limit        10}}
+                                          :visualization_settings {:table.cell_column "SUBTOTAL"}
+                                          :result_metadata        [{:description
+                                                                    "The raw, pre-tax cost of the order."
+                                                                    :semantic_type      :type/Currency
+                                                                    :coercion_strategy  nil
+                                                                    :name               "SUBTOTAL"
+                                                                    :settings           {:currency_style "code"
+                                                                                         :currency       "CAD"
+                                                                                         :scale          0.01}
+                                                                    :fk_target_field_id nil
+                                                                    :field_ref          [:field (mt/id :orders :subtotal) nil]
+                                                                    :effective_type     :type/Float
+                                                                    :id                 (mt/id :orders :subtotal)
+                                                                    :visibility_type    :normal
+                                                                    :display_name       "Subtotal"
+                                                                    :base_type          :type/Float}]}]
+          (let [card-result     (card-download card :csv true)
+                dashcard-result (dashcard-download card :csv true)]
+            (is (= {:card-download     ["Subtotal (CAD)" "0.38"]
+                    :dashcard-download ["Subtotal (CAD)" "0.38"]}
+                   {:card-download     (mapv #(nth % 3) (take 2 card-result))
+                    :dashcard-download (mapv #(nth % 3) (take 2 dashcard-result))}))))))))
