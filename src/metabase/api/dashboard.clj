@@ -291,7 +291,7 @@
 (def ^:private get-dashboard-fn
   (memoize/ttl (fn [dashboard-load-id]
                  (if dashboard-load-id
-                   (memoize get-dashboard*) ; If dashboard-load-id is set, return a memoized get-dashboard*.
+                   (memoize/memo get-dashboard*) ; If dashboard-load-id is set, return a memoized get-dashboard*.
                    get-dashboard*))         ; If unset, just call through to get-dashboard*.
                :ttl/threshold dashboard-load-cache-ttl))
 
@@ -304,8 +304,11 @@
   (if dashboard-load-id
     (binding [*dashboard-load-id*                        dashboard-load-id
               lib.metadata.jvm/*metadata-provider-cache* (dashboard-load-metadata-provider-cache dashboard-load-id)]
+      (log/debugf "Using dashboard_load_id %s" dashboard-load-id)
       (body-fn))
-    (body-fn)))
+    (do
+      (log/debug "No dashboard_load_id provided")
+      (body-fn))))
 
 (defmacro ^:private with-dashboard-load-id [dashboard-load-id & body]
   `(do-with-dashboard-load-id ~dashboard-load-id (^:once fn* [] ~@body)))
@@ -1228,13 +1231,13 @@
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body}          :body
-                                         {dashboard-load-id "dashboard_load_id"} :query-params}]
-  {dashboard-id ms/PositiveInt
-   dashcard-id  ms/PositiveInt
-   card-id      ms/PositiveInt
-   parameters   [:maybe [:sequential ParameterWithID]]}
-  (with-dashboard-load-id dashboard-load-id
+  [dashboard-id dashcard-id card-id :as {{:keys [dashboard_load_id parameters], :as body} :body}]
+  {dashboard-id      ms/PositiveInt
+   dashcard-id       ms/PositiveInt
+   card-id           ms/PositiveInt
+   dashboard_load_id [:maybe ms/NonBlankString]
+   parameters        [:maybe [:sequential ParameterWithID]]}
+  (with-dashboard-load-id dashboard_load_id
     (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
                        (merge
                          body
