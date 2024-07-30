@@ -126,11 +126,10 @@
                                 :emoji true}}
         link-section    {:type "section"
                          :fields [{:type "mrkdwn"
-                                   :text (str "<" (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard)) "|"
-                                              "Sent from " (public-settings/site-name) ">")}]}
-        creator-section {:type   "section"
-                         :fields [{:type "mrkdwn"
-                                   :text (str "Sent by " (-> pulse :creator :common_name))}]}
+                                   :text (format "<%s | *Sent from %s by %s*>"
+                                                 (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard))
+                                                 (public-settings/site-name)
+                                                 (-> pulse :creator :common_name))}]}
         filters         (pulse-params/parameters pulse dashboard)
         filter-fields   (for [filter filters]
                           {:type "mrkdwn"
@@ -138,7 +137,7 @@
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
-    {:blocks (filter some? [header-section link-section filter-section creator-section])}))
+    {:blocks (filter some? [header-section filter-section link-section])}))
 
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
