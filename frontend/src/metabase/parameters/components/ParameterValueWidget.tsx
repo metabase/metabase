@@ -128,6 +128,20 @@ export const ParameterValueWidget = ({
         />
       );
     }
+
+    if (required && !defaultValue && value != null) {
+      return (
+        <WidgetStatus
+          className={S.widgetStatus}
+          highlighted={fieldHasValueOrFocus}
+          status="clear"
+          onClick={() => {
+            setValue(null);
+            close();
+          }}
+        />
+      );
+    }
   };
 
   const getActionIcon = () => {
