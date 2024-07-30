@@ -30,17 +30,15 @@ export function DefaultRequiredValueControl({
         {isMissing && <ErrorSpan> ({t`required`})</ErrorSpan>}
       </ContainerLabel>
 
-      <Flex
-        aria-labelledby={`default-value-label-${tag.id}`}
-        gap="xs"
-        direction="column"
-      >
-        <ParameterValuePicker
-          tag={tag}
-          parameter={parameter}
-          value={tag.default}
-          onValueChange={onChangeDefaultValue}
-        />
+      <Flex gap="xs" direction="column">
+        <div aria-labelledby={`default-value-label-${tag.id}`}>
+          <ParameterValuePicker
+            tag={tag}
+            parameter={parameter}
+            value={tag.default}
+            onValueChange={onChangeDefaultValue}
+          />
+        </div>
 
         <RequiredParamToggle
           uniqueId={tag.id}
