@@ -2,9 +2,18 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createNativeQuestion, popover, restore } from "e2e/support/helpers";
 import type { TemplateTag } from "metabase-types/api";
 
+type SectionId =
+  | "no_default_non_required"
+  | "no_default_required"
+  | "default_non_required"
+  | "default_required";
+
 const { PRODUCTS } = SAMPLE_DATABASE;
 
 const NO_DEFAULT_NON_REQUIRED = "no default value, non-required";
+
+// unlike required dashboard filter, required native filter doesn't need to have a default value
+const NO_DEFAULT_REQUIRED = "no default value, required";
 
 const DEFAULT_NON_REQUIRED = "default value, non-required";
 
@@ -23,6 +32,13 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         "display-name": NO_DEFAULT_NON_REQUIRED,
         id: "fed1b918",
         type: "text",
+      },
+      no_default_required: {
+        name: "no_default_required",
+        "display-name": NO_DEFAULT_REQUIRED,
+        id: "fed1b919",
+        type: "text",
+        required: true,
       },
       default_non_required: {
         name: "default_non_required",
@@ -59,6 +75,13 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         id: "fed1b918",
         type: "number",
       },
+      no_default_required: {
+        name: "no_default_required",
+        "display-name": NO_DEFAULT_REQUIRED,
+        id: "fed1b919",
+        type: "number",
+        required: true,
+      },
       default_non_required: {
         name: "default_non_required",
         "display-name": DEFAULT_NON_REQUIRED,
@@ -93,6 +116,13 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         "display-name": NO_DEFAULT_NON_REQUIRED,
         id: "fed1b918",
         type: "date",
+      },
+      no_default_required: {
+        name: "no_default_required",
+        "display-name": NO_DEFAULT_REQUIRED,
+        id: "fed1b919",
+        type: "date",
+        required: true,
       },
       default_non_required: {
         name: "default_non_required",
@@ -140,6 +170,16 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         dimension: ["field", PRODUCTS.CATEGORY, null],
         "widget-type": "string/contains",
         options: { "case-sensitive": false },
+      },
+      no_default_required: {
+        name: "no_default_required",
+        "display-name": NO_DEFAULT_REQUIRED,
+        id: "fed1b919",
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "widget-type": "string/contains",
+        options: { "case-sensitive": false },
+        required: true,
       },
       default_non_required: {
         name: "default_non_required",
@@ -192,17 +232,13 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
   });
 
   function createNativeQuestionWithParameters(
-    templateTags: Record<
-      // TODO: case 4 - ? empty required
-      "no_default_non_required" | "default_non_required" | "default_required",
-      TemplateTag
-    >,
+    templateTags: Record<SectionId, TemplateTag>,
   ) {
     createNativeQuestion(
       {
         native: {
           query:
-            "select {{no_default_non_required}}, {{default_non_required}}, {{default_required}}",
+            "select {{no_default_non_required}}, {{no_default_required}}, {{default_non_required}}, {{default_required}}",
           "template-tags": templateTags,
         },
       },
@@ -222,7 +258,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     chevronIcon(label).should(icon === "chevron" ? "be.visible" : "not.exist");
   }
 
-  function checkNativeParametersInput<T = string>({
+  function checkNativeParametersInput({
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
@@ -230,10 +266,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     updateValue = setValue,
   }: {
     defaultValueFormatted: string;
-    otherValue: T;
+    otherValue: string;
     otherValueFormatted: string;
-    setValue: (label: string, value: T) => void;
-    updateValue?: (label: string, value: T) => void;
+    setValue: (label: string, value: string) => void;
+    updateValue?: (label: string, value: string) => void;
   }) {
     cy.log("no default value, non-required, no current value");
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "none");
@@ -248,6 +284,14 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     clearButton(NO_DEFAULT_NON_REQUIRED).click();
     filterInput(NO_DEFAULT_NON_REQUIRED).should("have.value", "");
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "none");
+
+    cy.log("no default value, required, no current value");
+    checkStatusIcon(NO_DEFAULT_REQUIRED, "none");
+
+    cy.log("no default value, required, has current value");
+    updateValue(NO_DEFAULT_REQUIRED, otherValue);
+    filterInput(NO_DEFAULT_REQUIRED).should("have.value", otherValueFormatted);
+    checkStatusIcon(NO_DEFAULT_REQUIRED, "clear");
 
     cy.log("has default value, non-required, current value same as default");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
@@ -443,6 +487,26 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
         otherValueFormatted,
       );
       checkStatusIcon("Default filter widget value", "clear");
+    });
+
+    cy.log(NO_DEFAULT_REQUIRED);
+    filterSection("no_default_required").within(() => {
+      filter("Default filter widget value (required)").scrollIntoView();
+      filterInput("Default filter widget value (required)").should(
+        "have.value",
+        "",
+      );
+      checkStatusIcon("Default filter widget value (required)", "none");
+
+      updateValue("Default filter widget value (required)", otherValue);
+      filterInput("Default filter widget value").should(
+        "have.value",
+        otherValueFormatted,
+      );
+      checkStatusIcon("Default filter widget value", "clear");
+
+      clearButton("Default filter widget value").click();
+      checkStatusIcon("Default filter widget value (required)", "none");
     });
   }
 
@@ -650,7 +714,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     return filter(label).findByRole("textbox");
   }
 
-  function filterSection(id: string) {
+  function filterSection(id: SectionId) {
     return cy.findByTestId(`tag-editor-variable-${id}`);
   }
 
