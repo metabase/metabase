@@ -40,10 +40,9 @@ const getIsTruncated = (element: Element): boolean => {
   range.selectNodeContents(element);
   const elementRect = element.getBoundingClientRect();
   const rangeRect = range.getBoundingClientRect();
-
-  return (
-    rangeRect.height > elementRect.height || rangeRect.width > elementRect.width
-  );
+  const tooTall = rangeRect.height - elementRect.height > 0.01;
+  const tooWide = rangeRect.width - elementRect.width > 0.01;
+  return tooTall || tooWide;
 };
 
 export const useAreAnyTruncated = <E extends Element>({
