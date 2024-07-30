@@ -2018,43 +2018,46 @@
       (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
       (is (= "123" (t2/select-one-fn :value :setting :key "query-caching-min-ttl"))))))
 
+(def ^:private result-metadata-for-viz-settings
+  [{:name "C1"    :field_ref [:field 1 nil]}
+   {:name "C2"    :field_ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]}
+   {:name "C3"    :field_ref [:field 3 {:base-type :type/BigInteger :source-field 10}]}
+   {:name "C4"    :field_ref [:expression "Exp"]}
+   {:name "C5"    :field_ref [:field 5 {:base-type :type/DateTime :temporal-unit :month}]}
+   {:name "C6"    :field_ref [:field 6 {:base-type :type/Float :binning {:strategy :num-bins :min-value 0 :max-value 160 :num-bins 8 :bin-width 20}}]}
+   {:name "C7"    :field_ref [:field "C7" {:base-type :type/BigInteger}]}
+   {:name "count" :field_ref [:aggregation 0]}])
+
+(def ^:private viz-settings-with-field-ref-keys
+  {"column_settings" (-> {[:ref [:field 1 nil]]                                                  {"column_title" "1"}
+                          [:ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]] {"column_title" "2"}
+                          [:ref [:field 3 {:base-type :type/BigInteger :source-field 10}]]       {"column_title" "3"}
+                          [:ref [:expression "Exp"]]                                             {"column_title" "4"}
+                          [:ref [:field 5 {:base-type :type/DateTime}]]                          {"column_title" "5"}
+                          [:ref [:field 6 {:base-type :type/Float}]]                             {"column_title" "6"}
+                          [:name "C7"]                                                           {"column_title" "7"}
+                          [:name "count"]                                                        {"column_title" "8"}
+                          ;; unmatched column
+                          [:ref [:field 9 nil]]                                                  {"column_title" "9"}}
+                         (update-keys json/generate-string))})
+
+(def ^:private viz-settings-with-name-keys
+  {"column_settings" (-> {[:name "C1"]          {"column_title" "1"}
+                          [:name "C2"]          {"column_title" "2"}
+                          [:name "C3"]          {"column_title" "3"}
+                          [:name "C4"]          {"column_title" "4"}
+                          [:name "C5"]          {"column_title" "5"}
+                          [:name "C6"]          {"column_title" "6"}
+                          [:name "C7"]          {"column_title" "7"}
+                          [:name "count"]       {"column_title" "8"}
+                          ;; unmatched column
+                          [:ref [:field 9 nil]] {"column_title" "9"}}
+                         (update-keys json/generate-string))})
+
 (deftest update-legacy-column-keys-in-card-viz-settings-test
   (testing "v51.2024-07-24T10:00:00"
     (impl/test-migrations ["v51.2024-07-24T10:00:00"] [migrate!]
-      (let [result_metadata
-            [{:name "C1"    :field_ref [:field 1 nil]}
-             {:name "C2"    :field_ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]}
-             {:name "C3"    :field_ref [:field 3 {:base-type :type/BigInteger :source-field 10}]}
-             {:name "C4"    :field_ref [:expression "Exp"]}
-             {:name "C5"    :field_ref [:field 5 {:base-type :type/DateTime :temporal-unit :month}]}
-             {:name "C6"    :field_ref [:field 6 {:base-type :type/Float :binning {:strategy :num-bins :min-value 0 :max-value 160 :num-bins 8 :bin-width 20}}]}
-             {:name "C7"    :field_ref [:field "C7" {:base-type :type/BigInteger}]}
-             {:name "count" :field_ref [:aggregation 0]}]
-            visualization-settings
-            {"column_settings" (-> {[:ref [:field 1 nil]]                                                  {"column_title" "1"}
-                                    [:ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]] {"column_title" "2"}
-                                    [:ref [:field 3 {:base-type :type/BigInteger :source-field 10}]]       {"column_title" "3"}
-                                    [:ref [:expression "Exp"]]                                             {"column_title" "4"}
-                                    [:ref [:field 5 {:base-type :type/DateTime}]]                          {"column_title" "5"}
-                                    [:ref [:field 6 {:base-type :type/Float}]]                             {"column_title" "6"}
-                                    [:name "C7"]                                                           {"column_title" "7"}
-                                    [:name "count"]                                                        {"column_title" "8"}
-                                    ;; unmatched column
-                                    [:ref [:field 9 nil]]                                                  {"column_title" "9"}}
-                                   (update-keys json/generate-string))}
-            expected
-            {"column_settings" (-> {[:name "C1"]          {"column_title" "1"}
-                                    [:name "C2"]          {"column_title" "2"}
-                                    [:name "C3"]          {"column_title" "3"}
-                                    [:name "C4"]          {"column_title" "4"}
-                                    [:name "C5"]          {"column_title" "5"}
-                                    [:name "C6"]          {"column_title" "6"}
-                                    [:name "C7"]          {"column_title" "7"}
-                                    [:name "count"]       {"column_title" "8"}
-                                    ;; unmatched column
-                                    [:ref [:field 9 nil]] {"column_title" "9"}}
-                                   (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+      (let [user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
@@ -2073,13 +2076,13 @@
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
-                                                   :result_metadata        (json/generate-string result_metadata)
-                                                   :visualization_settings (json/generate-string visualization-settings)
+                                                   :result_metadata        (json/generate-string result-metadata-for-viz-settings)
+                                                   :visualization_settings (json/generate-string viz-settings-with-field-ref-keys)
                                                    :database_id            database-id
                                                    :collection_id          nil})]
         (migrate!)
         (testing "After the migration, column_settings field ref-based keys are converted to name-based keys"
-          (is (= expected
+          (is (= viz-settings-with-name-keys
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_card]
                                     :where  [:= :id card-id]})
@@ -2088,7 +2091,7 @@
         (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
           (migrate! :down 49)
           (testing "After reversing the migration, column_settings field ref-based keys are restored"
-            (is (= visualization-settings
+            (is (= viz-settings-with-field-ref-keys
                    (-> (t2/query-one {:select [:visualization_settings]
                                       :from   [:report_card]
                                       :where  [:= :id card-id]})
@@ -2098,40 +2101,7 @@
 (deftest update-legacy-column-keys-in-dashboard-card-viz-settings-test
   (testing "v51.2024-07-24T11:00:00"
     (impl/test-migrations ["v51.2024-07-24T11:00:00"] [migrate!]
-      (let [result_metadata
-            [{:name "C1"    :field_ref [:field 1 nil]}
-             {:name "C2"    :field_ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]}
-             {:name "C3"    :field_ref [:field 3 {:base-type :type/BigInteger :source-field 10}]}
-             {:name "C4"    :field_ref [:expression "Exp"]}
-             {:name "C5"    :field_ref [:field 5 {:base-type :type/DateTime :temporal-unit :month}]}
-             {:name "C6"    :field_ref [:field 6 {:base-type :type/Float :binning {:strategy :num-bins :min-value 0 :max-value 160 :num-bins 8 :bin-width 20}}]}
-             {:name "C7"    :field_ref [:field "C7" {:base-type :type/BigInteger}]}
-             {:name "count" :field_ref [:aggregation 0]}]
-            visualization-settings
-            {"column_settings" (-> {[:ref [:field 1 nil]]                                                  {"column_title" "1"}
-                                    [:ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]] {"column_title" "2"}
-                                    [:ref [:field 3 {:base-type :type/BigInteger :source-field 10}]]       {"column_title" "3"}
-                                    [:ref [:expression "Exp"]]                                             {"column_title" "4"}
-                                    [:ref [:field 5 {:base-type :type/DateTime}]]                          {"column_title" "5"}
-                                    [:ref [:field 6 {:base-type :type/Float}]]                             {"column_title" "6"}
-                                    [:name "C7"]                                                           {"column_title" "7"}
-                                    [:name "count"]                                                        {"column_title" "8"}
-                                    ;; unmatched column
-                                    [:ref [:field 9 nil]]                                                  {"column_title" "9"}}
-                                   (update-keys json/generate-string))}
-            expected
-            {"column_settings" (-> {[:name "C1"]          {"column_title" "1"}
-                                    [:name "C2"]          {"column_title" "2"}
-                                    [:name "C3"]          {"column_title" "3"}
-                                    [:name "C4"]          {"column_title" "4"}
-                                    [:name "C5"]          {"column_title" "5"}
-                                    [:name "C6"]          {"column_title" "6"}
-                                    [:name "C7"]          {"column_title" "7"}
-                                    [:name "count"]       {"column_title" "8"}
-                                    ;; unmatched column
-                                    [:ref [:field 9 nil]] {"column_title" "9"}}
-                                   (update-keys json/generate-string))}
-            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+      (let [user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
                                                    :last_name   "Hughes"
                                                    :email       "howard@aircraft.com"
@@ -2150,7 +2120,7 @@
                                                    :creator_id             user-id
                                                    :display                "table"
                                                    :dataset_query          "{}"
-                                                   :result_metadata        (json/generate-string result_metadata)
+                                                   :result_metadata        (json/generate-string result-metadata-for-viz-settings)
                                                    :visualization_settings "{}"
                                                    :database_id            database-id
                                                    :collection_id          nil})
@@ -2158,7 +2128,7 @@
                                                                      :creator_id          user-id
                                                                      :parameters          []})
             dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
-                                                                         :visualization_settings (json/generate-string visualization-settings)
+                                                                         :visualization_settings (json/generate-string viz-settings-with-field-ref-keys)
                                                                          :card_id      card-id
                                                                          :size_x       4
                                                                          :size_y       4
@@ -2166,7 +2136,7 @@
                                                                          :row          1})]
         (migrate!)
         (testing "After the migration, column_settings field ref-based keys are converted to name-based keys"
-          (is (= expected
+          (is (= viz-settings-with-name-keys
                  (-> (t2/query-one {:select [:visualization_settings]
                                     :from   [:report_dashboardcard]
                                     :where  [:= :id dashcard-id]})
@@ -2175,7 +2145,7 @@
         (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
           (migrate! :down 49)
           (testing "After reversing the migration, column_settings field ref-based keys are restored"
-            (is (= visualization-settings
+            (is (= viz-settings-with-field-ref-keys
                    (-> (t2/query-one {:select [:visualization_settings]
                                       :from   [:report_dashboardcard]
                                       :where  [:= :id dashcard-id]})
