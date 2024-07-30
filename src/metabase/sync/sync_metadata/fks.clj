@@ -116,7 +116,7 @@
   (u/prog1 (sync-util/with-error-handling (format "Error syncing FKs for %s" (sync-util/name-for-logging database))
              (let [driver       (driver.u/database->driver database)
                    schema-names (when (driver.u/supports? driver :schemas database)
-                                  (sync-util/db->sync-schemas database))
+                                  (sync-util/sync-schemas database))
                    fk-metadata  (fetch-metadata/fk-metadata database :schema-names schema-names)]
                (transduce (map (fn [x]
                                  (let [[updated failed] (try [(mark-fk! database x) 0]

@@ -61,9 +61,9 @@
           (table->fields-to-scan table)))
 
 (mu/defn ^:private update-field-values-for-database!
-  [_database :- i/DatabaseInstance
-   tables    :- [:maybe [:sequential i/TableInstance]]]
-  (apply merge-with + (map update-field-values-for-table! tables)))
+  [database :- i/DatabaseInstance]
+  (let [tables (sync-util/reducible-sync-tables database)]
+    (transduce (map update-field-values-for-table!) (partial merge-with +) tables)))
 
 (defn- update-field-values-summary [{:keys [created updated deleted errors]}]
   (format "Updated %d field value sets, created %d, deleted %d with %d errors"
@@ -95,24 +95,23 @@
        (reduce +)))
 
 (mu/defn ^:private delete-expired-advanced-field-values-for-database!
-  [_database :- i/DatabaseInstance
-   tables :- [:maybe [:sequential i/TableInstance]]]
-  {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
-                             (map (fn [result]
-                                    (if (instance? Throwable result)
-                                      (throw result)
-                                      result))))
-                       +
-                       0
-                       tables)})
+  [database :- i/DatabaseInstance]
+  (let [tables (sync-util/reducible-sync-tables database)]
+    {:deleted (transduce (comp (map delete-expired-advanced-field-values-for-table!)
+                               (map (fn [result]
+                                      (if (instance? Throwable result)
+                                        (throw result)
+                                        result))))
+                         +
+                         0
+                         tables)}))
 
-(defn- make-sync-field-values-steps
-  [tables]
+(def ^:private sync-field-values-steps
   [(sync-util/create-sync-step "delete-expired-advanced-field-values"
-                               #(delete-expired-advanced-field-values-for-database! % tables)
+                               delete-expired-advanced-field-values-for-database!
                                delete-expired-advanced-field-values-summary)
    (sync-util/create-sync-step "update-field-values"
-                               #(update-field-values-for-database! % tables)
+                               update-field-values-for-database!
                                update-field-values-summary)])
 
 (mu/defn update-field-values!
@@ -121,5 +120,4 @@
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :cache-field-values database (format "Cache field values in %s"
                                                                  (sync-util/name-for-logging database))
-    (let [tables (sync-util/db->sync-tables database)]
-     (sync-util/run-sync-operation "field values scanning" database (make-sync-field-values-steps tables)))))
+    (sync-util/run-sync-operation "field values scanning" database sync-field-values-steps)))
