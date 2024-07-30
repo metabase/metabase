@@ -77,7 +77,7 @@
     (let [driver          (driver.u/database->driver database)
           schemas?        (driver.u/supports? driver :schemas database)
           fields-metadata (if schemas?
-                            (fetch-metadata/fields-metadata database :schema-names (sync-util/db->sync-schemas database))
+                            (fetch-metadata/fields-metadata database :schema-names (sync-util/sync-schemas database))
                             (fetch-metadata/fields-metadata database))]
       (transduce (comp
                   (partition-by (juxt :table-name :table-schema))
