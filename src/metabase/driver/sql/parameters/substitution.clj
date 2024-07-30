@@ -21,7 +21,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -119,13 +118,7 @@
   (when (params.dates/date-type? param-type)
     (if-let [exclusion-type (params.dates/exclusion-date-type param-type value)]
       exclusion-type
-      (let [value* (if (params.dates/not-single-date-type? param-type)
-                     (let [param-range (params.dates/date-string->range value)]
-                       (or (:start param-range) (:end param-range))) ;; Before or after filters only have one of these
-                     value)]
-        (if (re-matches shared.ut/local-date-regex value*)
-          :day
-          :minute)))))
+      :default)))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
@@ -253,10 +246,10 @@
      :prepared-statement-args args}))
 
 (mu/defn- field->clause :- mbql.s/field
-  [_driver     :- :keyword
+  [driver     :- :keyword
    field      :- ::lib.schema.metadata/column
-   _param-type :- ::lib.schema.parameter/type
-   _value]
+   param-type :- ::lib.schema.parameter/type
+   value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
   ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
@@ -268,7 +261,7 @@
    {:base-type                (:base-type field)
     ;; Set default :temporal-unit for temporal parameters so we avoid LHS cast that make indexes unusable.
     ;; :temporal-unit was set to nil for non temporal fields and this change does not modify that.
-    :temporal-unit            (when (isa? (:base-type field) :type/Temporal) :default)
+    :temporal-unit            (align-temporal-unit-with-param-type-and-value driver field param-type value)
     ::add/source-table        (:table-id field)
     ;; in case anyone needs to know we're compiling a Field filter.
     ::compiling-field-filter? true}])
@@ -283,9 +276,18 @@
        (honeysql->replacement-snippet-info driver)
        :replacement-snippet))
 
+(defn- field-filter->replacement-snippet-for-datetime-field
+  "TODO: convert to gte lt from between last step"
+  [driver {{:keys [type value]} :value :as _fff}]
+  (let [range (if (params.dates/not-single-date-type? type)
+                (params.dates/range-str->datetime-range value)
+                (params.dates/single-date-str->datetime-range value))]
+    (->> (params/map->DateRange range)
+         (->replacement-snippet-info driver))))
+
 (mu/defn- field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
-  [driver {{param-type :type, value :value, :as params} :value, field :field, :as _field-filter}]
+  [driver {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}]
   (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
   (letfn [(prepend-field [x]
             (update x :replacement-snippet
@@ -309,9 +311,14 @@
              ->honeysql
              (honeysql->replacement-snippet-info driver)))
 
+      (and (params.dates/date-type? param-type)
+           (isa? ((some-fn :effective-type :base-type) field) :type/DateTime))
+      (prepend-field (field-filter->replacement-snippet-for-datetime-field driver field-filter))
+
       ;; convert other date to DateRange record types
       (params.dates/not-single-date-type? param-type) (prepend-field
                                                        (date-range-field-filter->replacement-snippet-info driver value))
+
       ;; convert all other dates to `= <date>`
       (params.dates/date-type? param-type)            (prepend-field
                                                        (field-filter->equals-clause-sql driver (params/map->Date {:s value})))

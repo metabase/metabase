@@ -10,6 +10,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
@@ -467,6 +469,50 @@
          (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
                          {:param date-string
                           :type  qp.error-type/invalid-parameter}))))))
+
+(defn- parse-date-str
+  [date-str]
+  (let [parts (mapv #(Integer/parseInt %)
+                    (str/split date-str #"-|:|T"))]
+     (into parts (repeat (- 6 (count parts)) 0))))
+
+(defn- date-str->qp-aware-offset-dt
+  [date-str]
+  (when (not-empty date-str)
+    (let [[y M d h m s] (parse-date-str date-str)
+        ;; I'm unable to tell whether we timzone-id will be offset or actuall id. Potentially zoned datetime may be
+        ;; created. For that reason last expression of this function ensures OffsetDateTime is always returned.
+          dt (try (t/zoned-date-time y M d h m s 0 (t/zone-id (qp.timezone/results-timezone-id)))
+                  (catch Throwable _
+                    (try (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id)))
+                         (catch Throwable _
+                           (t/offset-date-time y M d h m s 0 (t/zone-id "Z"))))))]
+      (t/offset-date-time dt))))
+
+(defn- date-str->unit-fn
+  [date-str]
+  (when (not-empty date-str)
+    (if (re-matches shared.ut/local-date-regex date-str)
+      t/days
+      t/minutes)))
+
+(mu/defn single-date-str->datetime-range :- DateStringRange
+  "Create range suitable for >= < comparison checking whether datetime is on specific date."
+  [date-str]
+  (let [dt (date-str->qp-aware-offset-dt date-str)]
+    (-> {:start dt
+         :end   (t/+ dt ((date-str->unit-fn date-str) 1))}
+        format-date-range)))
+
+(mu/defn range-str->datetime-range :- DateStringRange
+  "TODO"
+  [date-range-str]
+  (let [range* (date-string->range date-range-str)
+        unit-fn (date-str->unit-fn (some #(when (some? %) %) (vals range*)))]
+    (-> range*
+        (update-vals date-str->qp-aware-offset-dt)
+        (update :end #(when % (t/+ % (unit-fn 1))))
+        format-date-range)))
 
 (mu/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and
