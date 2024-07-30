@@ -1,7 +1,9 @@
+import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import { t } from "ttag";
 import _ from "underscore";
 
 import api, { GET, POST } from "metabase/lib/api";
+import { openSaveDialog } from "metabase/lib/dom";
 import { checkNotNull } from "metabase/lib/types";
 import * as Urls from "metabase/lib/urls";
 import { saveChartImage } from "metabase/visualizations/lib/save-chart-image";
@@ -13,6 +15,7 @@ import type {
   Dataset,
   VisualizationSettings,
 } from "metabase-types/api";
+import type { DownloadsState, State } from "metabase-types/store";
 
 export interface DownloadQueryResultsOpts {
   type: string;
@@ -34,14 +37,16 @@ interface DownloadQueryResultsParams {
   params?: URLSearchParams | string;
 }
 
-export const downloadQueryResults =
-  (opts: DownloadQueryResultsOpts) => async () => {
+export const downloadQueryResults = createAsyncThunk(
+  "metabase/downloads/downloadQueryResults",
+  async (opts: DownloadQueryResultsOpts, { dispatch }) => {
     if (opts.type === Urls.exportFormatPng) {
-      await downloadChart(opts);
+      downloadChart(opts);
     } else {
-      await downloadDataset(opts);
+      dispatch(downloadDataset({ opts, id: Date.now() }));
     }
-  };
+  },
+);
 
 const downloadChart = async ({
   question,
@@ -55,13 +60,18 @@ const downloadChart = async ({
   await saveChartImage(chartSelector, fileName);
 };
 
-const downloadDataset = async (opts: DownloadQueryResultsOpts) => {
-  const params = getDatasetParams(opts);
-  const response = await getDatasetResponse(params);
-  const fileName = getDatasetFileName(response.headers, opts.type);
-  const fileContent = await response.blob();
-  openSaveDialog(fileName, fileContent);
-};
+export const downloadDataset = createAsyncThunk(
+  "metabase/downloads/downloadDataset",
+  async ({ opts, id }: { opts: DownloadQueryResultsOpts; id: number }) => {
+    const params = getDatasetParams(opts);
+    const response = await getDatasetResponse(params);
+    const name = getDatasetFileName(response.headers, opts.type);
+    const fileContent = await response.blob();
+    openSaveDialog(name, fileContent);
+
+    return { id, name };
+  },
+);
 
 const getDatasetParams = ({
   type,
@@ -230,14 +240,49 @@ const getChartFileName = (question: Question) => {
   return `${name}-${date}.png`;
 };
 
-const openSaveDialog = (fileName: string, fileContent: Blob) => {
-  const url = URL.createObjectURL(fileContent);
-  const link = document.createElement("a");
-  link.href = url;
-  link.setAttribute("download", fileName);
-  document.body.appendChild(link);
-  link.click();
+export const getDownloads = (state: State) => state.downloads;
+export const hasActiveDownloads = (state: State) =>
+  state.downloads.some(download => download.status === "in-progress");
 
-  URL.revokeObjectURL(url);
-  link.remove();
-};
+const initialState: DownloadsState = [];
+
+const downloads = createSlice({
+  name: "metabase/downloads",
+  initialState,
+  reducers: {
+    clearAll: () => initialState,
+  },
+  extraReducers: builder => {
+    builder
+      .addCase(downloadDataset.pending, (state, action) => {
+        const title = t`Results for ${
+          action.meta.arg.opts.question.card().name
+        }`;
+        state.push({
+          id: action.meta.arg.id,
+          title,
+          status: "in-progress",
+        });
+      })
+      .addCase(downloadDataset.fulfilled, (state, action) => {
+        const download = state.find(item => item.id === action.meta.arg.id);
+        if (download) {
+          download.status = "complete";
+          download.title = action.payload.name;
+        }
+      })
+      .addCase(downloadDataset.rejected, (state, action) => {
+        const download = state.find(item => item.id === action.meta.arg.id);
+        if (download) {
+          download.status = "error";
+          download.error =
+            action.error.message ?? t`Could not download the file`;
+        }
+      });
+  },
+});
+
+export const {
+  actions: { clearAll },
+} = downloads;
+export const { reducer } = downloads;
