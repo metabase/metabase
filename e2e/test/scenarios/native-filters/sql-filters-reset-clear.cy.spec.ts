@@ -683,6 +683,30 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       checkStatusIcon("Default filter widget value", "chevron");
     });
 
+    cy.log(NO_DEFAULT_REQUIRED);
+    filterSection("no_default_required").within(() => {
+      filter("Default filter widget value (required)").scrollIntoView();
+      filter("Default filter widget value (required)").should(
+        "have.text",
+        "Enter a default value…",
+      );
+      checkStatusIcon("Default filter widget value (required)", "chevron");
+      filter("Default filter widget value (required)").click();
+    });
+
+    setValue(otherValue);
+
+    filterSection("no_default_required").within(() => {
+      filter("Default filter widget value").should(
+        "have.text",
+        otherValueFormatted,
+      );
+      checkStatusIcon("Default filter widget value", "clear");
+
+      clearButton("Default filter widget value").click();
+      checkStatusIcon("Default filter widget value (required)", "chevron");
+    });
+
     cy.log(DEFAULT_NON_REQUIRED);
     filterSection("default_non_required").within(() => {
       filter("Default filter widget value").scrollIntoView();
