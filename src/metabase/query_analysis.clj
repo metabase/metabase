@@ -80,7 +80,7 @@
          :mbql/query true
          false)))
 
-(defn- explicit-references [field-ids]
+(defn- explicit-field-references [field-ids]
   (when (seq field-ids)
     ;; We add this on in code as `true` in MySQL-based drivers would be returned as 1.
     (map #(assoc % :explicit-reference true)
@@ -89,6 +89,11 @@
                                        :from   [[(t2/table-name :model/Field) :f]]
                                        :join   [[(t2/table-name :model/Table) :t] [:= :t.id :f.table_id]]
                                        :where  [:in :f.id field-ids]}))))
+
+(defn- explicit-references [field-ids]
+  (let [field-refs (explicit-field-references field-ids)]
+    {:fields field-refs
+     :tables (distinct (map #(dissoc % :field-id :field) field-refs))}))
 
 (defn- query-references
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
@@ -118,13 +123,13 @@
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
       (let [references       (query-references query query-type)
-            reference->row   (fn [{:keys [field-id explicit-reference]}]
-                               ;; For now we only persist references which resolve to known fields
-                               (when field-id
-                                 {:card_id            card-id
-                                  :field_id           field-id
-                                  :explicit_reference explicit-reference}))
-            query-field-rows (map reference->row references)]
+            reference->row   (fn [{:keys [table column field-id explicit-reference]}]
+                               {:card_id            card-id
+                                :table              table
+                                :column             column
+                                :field_id           field-id
+                                :explicit_reference explicit-reference})
+            query-field-rows (map reference->row (:fields references))]
         (query-field/update-query-fields-for-card! card-id query-field-rows)))))
 
 (defn- replaced-inner-query-for-native-card
