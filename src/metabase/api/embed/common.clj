@@ -125,7 +125,7 @@
   not automatically converted. Thus we must do it ourselves here to make sure things are done as we'd expect.
   Also, any param values that are blank strings should be parsed as nil, representing the absence of a value."
   [query-params]
-  (-> query-params
+  (-> (or query-params {})
       (update-keys keyword)
       (update-vals (fn [v] (if (= v "") nil v)))))
 
