@@ -115,6 +115,7 @@ enum ProductCategory {
   other = "Other",
 }
 
+// We want to first categorize issues by type, then by product category
 const issueMap: Record<IssueType, Partial<Record<ProductCategory, Issue[]>>> = {
   bugFixes: {},
   enhancements: {},
@@ -192,7 +193,7 @@ const getProductCategory = (issue: Issue): ProductCategory => {
     .otherwise(() => ProductCategory.other);
 };
 
-// Format issues for a single category
+// Format issues for a single product category
 const formatCategoryIssues = (category: string, issues: Issue[]): string => {
   return `**${category}**\n\n${issues.map(formatIssue).join("\n")}`;
 };
@@ -209,7 +210,7 @@ const groupIssuesByProductCategory = (issues: Record<string, Issue[]>) => {
 const sortCategories = (categories: ProductCategory[]): ProductCategory[] => {
   return (
     categories
-      // We want to alphabetize the issues by product category, with "Other" as the caboose
+      // We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
       .filter(cat => cat !== ProductCategory.Other)
       .sort((a, b) => a.localeCompare(b))
       .concat(
