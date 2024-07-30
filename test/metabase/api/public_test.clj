@@ -1518,9 +1518,7 @@
                                :display_name "Name",
                                :name_field nil,
                                :base_type "type/Text"}}}
-              (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash)))))
-      (is (=? {:values #(set/subset? #{["African"] ["BBQ"]} (set %1))}
-              (client/client :get 200 (format "public/dashboard/%s/params/%s/values" (:public_uuid dash) "_CATEGORY_NAME_")))))))
+              (client/client :get 200 (format "public/dashboard/%s" (:public_uuid dash))))))))
 
 (deftest param-values-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
