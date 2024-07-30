@@ -1,13 +1,18 @@
 import { PLUGIN_CACHING } from "metabase/plugins";
 import { hasPremiumFeature } from "metabase-enterprise/settings";
 
+import { DashboardAndQuestionCachingTab } from "./components/DashboardAndQuestionCachingTab";
 import { DashboardStrategySidebar } from "./components/DashboardStrategySidebar";
 import { GranularControlsExplanation } from "./components/GranularControlsExplanation";
 import { InvalidateNowButton } from "./components/InvalidateNowButton";
 import { SidebarCacheForm } from "./components/SidebarCacheForm";
 import { SidebarCacheSection } from "./components/SidebarCacheSection";
+import { StrategyEditorForQuestionsAndDashboards } from "./components/StrategyEditorForQuestionsAndDashboards/StrategyEditorForQuestionsAndDashboards";
 import { StrategyFormLauncherPanel } from "./components/StrategyFormLauncherPanel";
-import { enterpriseOnlyCachingStrategies } from "./constants";
+import {
+  enterpriseOnlyCachingStrategies,
+  getEnterprisePerformanceTabMetadata,
+} from "./constants";
 import { hasQuestionCacheSection } from "./utils";
 
 if (hasPremiumFeature("cache_granular_controls")) {
@@ -27,4 +32,9 @@ if (hasPremiumFeature("cache_granular_controls")) {
     ttl: PLUGIN_CACHING.strategies.ttl,
     nocache: PLUGIN_CACHING.strategies.nocache,
   };
+  PLUGIN_CACHING.DashboardAndQuestionCachingTab =
+    DashboardAndQuestionCachingTab;
+  PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards =
+    StrategyEditorForQuestionsAndDashboards;
+  PLUGIN_CACHING.tabMetadata = getEnterprisePerformanceTabMetadata();
 }

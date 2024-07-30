@@ -1,69 +1,64 @@
+import type { PropsWithChildren, ReactNode } from "react";
 import React from "react";
 
-import { color } from "metabase/lib/colors";
 import { Box, Flex, Icon } from "metabase/ui";
 
-type BaseRow = Record<string, unknown> & { id: number | string };
-
-type ColumnItem = {
-  name: string;
-  key: string;
-};
+import type { BaseRow, ColumnItem } from "./types";
+import { useTableSorting } from "./useTableSorting";
 
 export type TableProps<Row extends BaseRow> = {
   columns: ColumnItem[];
   rows: Row[];
-  rowRenderer: (row: Row) => React.ReactNode;
-  tableProps?: React.HTMLAttributes<HTMLTableElement>;
-};
+  rowRenderer: (row: Row) => ReactNode;
+  formatValueForSorting?: (row: Row, columnName: string) => any;
+  defaultSortColumn?: string;
+  defaultSortDirection?: "asc" | "desc";
+  appendToBody?: ReactNode;
+} & React.HTMLAttributes<HTMLTableElement>;
 
 /**
  * A basic reusable table component that supports client-side sorting by a column
  *
- * @param columns     - an array of objects with name and key properties
- * @param rows        - an array of objects with keys that match the column keys
- * @param rowRenderer - a function that takes a row object and returns a <tr> element
- * @param tableProps  - additional props to pass to the <table> element
+ * @param props.columns - An array of objects with name and key properties
+ * @param props.rows - An array of row objects, which at minimum need an id
+ * @param props.rowRenderer - A function that takes a row object and returns a <tr> element
+ * @param props.formatValueForSorting
+ * @param props.defaultSortColumn
+ * @param props.defaultSortDirection
+ * @param props.appendToBody - Optional React node to append to the body of the table
+ * @note All other props are passed to the <table> element
  */
 export function Table<Row extends BaseRow>({
   columns,
   rows,
   rowRenderer,
+  formatValueForSorting = (row: Row, columnName: string) => row[columnName],
+  defaultSortColumn,
+  defaultSortDirection = "asc",
+  appendToBody,
+  children,
   ...tableProps
-}: TableProps<Row>) {
-  const [sortColumn, setSortColumn] = React.useState<string | null>(null);
-  const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">(
-    "asc",
-  );
-
-  const sortedRows = React.useMemo(() => {
-    if (sortColumn) {
-      return [...rows].sort((a, b) => {
-        const aValue = a[sortColumn];
-        const bValue = b[sortColumn];
-        if (
-          aValue === bValue ||
-          !isSortableValue(aValue) ||
-          !isSortableValue(bValue)
-        ) {
-          return 0;
-        }
-        if (sortDirection === "asc") {
-          return aValue < bValue ? -1 : 1;
-        } else {
-          return aValue > bValue ? -1 : 1;
-        }
-      });
-    }
-    return rows;
-  }, [rows, sortColumn, sortDirection]);
+}: PropsWithChildren<TableProps<Row>>) {
+  const {
+    sortedRows,
+    sortColumn,
+    sortDirection,
+    setSortColumn,
+    setSortDirection,
+  } = useTableSorting<Row>({
+    rows,
+    defaultSortColumn,
+    defaultSortDirection,
+    formatValueForSorting,
+  });
 
   return (
     <table {...tableProps}>
+      {children}
       <thead>
         <tr>
           {columns.map(column => (
-            <th key={String(column.key)}>
+            <th key={column.key}>
               <ColumnHeader
                 column={column}
                 sortColumn={sortColumn}
@@ -83,6 +78,7 @@ export function Table<Row extends BaseRow>({
             {rowRenderer(row)}
           </React.Fragment>
         ))}
+        {appendToBody}
       </tbody>
     </table>
   );
@@ -95,28 +91,33 @@ function ColumnHeader({
   onSort,
 }: {
   column: ColumnItem;
-  sortColumn: string | null;
+  sortColumn: string | undefined;
   sortDirection: "asc" | "desc";
   onSort: (column: string, direction: "asc" | "desc") => void;
 }) {
+  column.sortable ??= true;
   return (
     <Flex
       gap="sm"
       align="center"
       style={{ cursor: "pointer" }}
-      onClick={() =>
-        onSort(
-          String(column.key),
-          sortColumn === column.key && sortDirection === "asc" ? "desc" : "asc",
-        )
-      }
+      onClick={() => {
+        if (column.sortable) {
+          onSort(
+            String(column.key),
+            sortColumn === column.key && sortDirection === "asc"
+              ? "desc"
+              : "asc",
+          );
+        }
+      }}
     >
       {column.name}
       {
         column.name && column.key === sortColumn ? (
           <Icon
             name={sortDirection === "desc" ? "chevronup" : "chevrondown"}
-            color={color("text-medium")}
+            color={"var(--mb-color-text-medium)"}
             style={{ flexShrink: 0 }}
             size={8}
           />
@@ -126,8 +127,4 @@ function ColumnHeader({
       }
     </Flex>
   );
-}
-
-function isSortableValue(value: unknown): value is string | number {
-  return typeof value === "string" || typeof value === "number";
 }

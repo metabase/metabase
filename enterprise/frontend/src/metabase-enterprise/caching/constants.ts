@@ -1,10 +1,14 @@
 import { t } from "ttag";
 import * as Yup from "yup";
 
-import { getPositiveIntegerSchema } from "metabase/admin/performance/constants/complex";
+import {
+  getPerformanceTabMetadata,
+  getPositiveIntegerSchema,
+} from "metabase/admin/performance/constants/complex";
 import type { StrategyData } from "metabase/admin/performance/types";
 import { defaultCron } from "metabase/admin/performance/utils";
 import { CacheDurationUnit } from "metabase-types/api";
+import type { AdminPath } from "metabase-types/store";
 
 export const durationUnits = new Set(
   Object.values(CacheDurationUnit).map(String),
@@ -39,4 +43,19 @@ export const enterpriseOnlyCachingStrategies: Record<string, StrategyData> = {
     validationSchema: durationStrategyValidationSchema,
     shortLabel: t`Duration`,
   },
+};
+
+export const getEnterprisePerformanceTabMetadata = () => {
+  const metadata = getPerformanceTabMetadata();
+  // On EE there is an additional tab in between the "Database caching" and
+  // "Model persistence" tabs
+  return [
+    metadata.find(({ key }) => key === "performance-databases"),
+    {
+      name: t`Dashboard and question caching`,
+      path: "/admin/performance/dashboards-and-questions",
+      key: "performance-dashboards-and-questions",
+    },
+    metadata.find(({ key }) => key === "performance-models"),
+  ] as AdminPath[];
 };

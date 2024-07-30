@@ -58,7 +58,7 @@ import {
   createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 
-import { interceptRoutes as interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
+import { interceptPerformanceRoutes } from "../admin/performance/helpers/e2e-performance-helpers";
 import {
   adaptiveRadioButton,
   durationRadioButton,

@@ -22,7 +22,7 @@ import type {
 } from "metabase-types/api";
 
 import { defaultMinDurationMs, rootId } from "./constants/simple";
-import type { StrategyData, StrategyLabel } from "./types";
+import type { PerformanceTabId, StrategyData, StrategyLabel } from "./types";
 
 const AM = 0;
 const PM = 1;
@@ -315,3 +315,7 @@ export const translateConfigFromAPI = (config: CacheConfig): CacheConfig =>
 /** Translate a config from the frontend's format into the API's preferred format */
 export const translateConfigToAPI = (config: CacheConfig): CacheConfig =>
   translateConfig(config, "toAPI");
+
+export const getPerformanceTabName = (tabId: PerformanceTabId) =>
+  PLUGIN_CACHING.tabMetadata.find(({ key }) => key === `performance-${tabId}`)
+    ?.name;

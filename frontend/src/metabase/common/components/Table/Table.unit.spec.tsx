@@ -1,7 +1,7 @@
-import { screen, render } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon } from "__support__/ui";
+import { getIcon, queryIcon, renderWithProviders } from "__support__/ui";
 
 import { Table } from "./Table";
 
@@ -72,7 +72,7 @@ const renderRow = (row: Pokemon) => {
 
 describe("common > components > Table", () => {
   it("should render table headings", () => {
-    render(
+    renderWithProviders(
       <Table
         columns={sampleColumns}
         rows={sampleData}
@@ -86,7 +86,7 @@ describe("common > components > Table", () => {
   });
 
   it("should render table row data", () => {
-    render(
+    renderWithProviders(
       <Table
         columns={sampleColumns}
         rows={sampleData}
@@ -103,7 +103,7 @@ describe("common > components > Table", () => {
   });
 
   it("should sort the table", async () => {
-    render(
+    renderWithProviders(
       <Table
         columns={sampleColumns}
         rows={sampleData}
@@ -126,7 +126,7 @@ describe("common > components > Table", () => {
   });
 
   it("should sort on multiple columns", async () => {
-    render(
+    renderWithProviders(
       <Table
         columns={sampleColumns}
         rows={sampleData}

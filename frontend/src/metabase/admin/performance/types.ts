@@ -21,4 +21,5 @@ export type StrategyData = {
 export enum PerformanceTabId {
   Databases = "databases",
   Models = "models",
+  DashboardsAndQuestions = "dashboards-and-questions",
 }

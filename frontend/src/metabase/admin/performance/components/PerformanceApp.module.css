@@ -1,17 +1,12 @@
-import styled from "@emotion/styled";
-
-import { Tabs } from "metabase/ui";
-
-import { PerformanceTabId } from "../types";
-
-export const TabsList = styled(Tabs.List)`
+.TabsList {
   padding: 0 2.5rem;
   background-color: var(--mb-color-bg-light);
   border-bottom-width: 1px;
   margin-top: 1.5rem;
-`;
+  border-bottom-color: var(--mb-color-border);
+}
 
-export const Tab = styled(Tabs.Tab)`
+.Tab {
   top: 1px;
   margin-bottom: 1px;
   border-bottom-width: 3px !important;
@@ -23,13 +18,30 @@ export const Tab = styled(Tabs.Tab)`
     background-color: inherit;
     border-color: transparent;
   }
-`;
+}
 
-export const TabsPanel = styled(Tabs.Panel)<{ value: string }>`
+.TabsPanel {
   display: flex;
   flex-flow: column nowrap;
   flex: 1;
   justify-content: stretch;
+}
+
+.hideOverflow {
+  overflow: hidden;
+}
+
+.TabBody {
+  flex: 1;
+  background-color: var(--mb-color-bg-light);
+  height: 100%;
+}
+
+.DatabasesTabBody {
   padding: 1rem 2.5rem;
-  ${props => props.value === PerformanceTabId.Databases && `overflow: hidden;`}
-`;
+  overflow: hidden;
+}
+
+.ModelPersistenceConfigurationTabBody {
+  padding: 1rem 2.5rem;
+}

@@ -1,14 +1,8 @@
-import type { MutableRefObject } from "react";
-
 import type {
   RecentCollectionItem,
   RecentItem,
   SearchResult,
 } from "metabase-types/api";
-
-export type RefProp<RefValue> = {
-  ref: MutableRefObject<RefValue> | ((value: RefValue) => void);
-};
 
 /** Model retrieved through the search endpoint */
 export type ModelResult = SearchResult<number, "dataset">;

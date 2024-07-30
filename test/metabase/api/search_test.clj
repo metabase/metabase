@@ -1237,9 +1237,9 @@
         (is (= #{c1 c2}
                (ids (mt/user-http-request :crowberto :get 200 "search" :models "card" :ids c1 :ids c2)))))
       (testing "requires single model type to be supplied"
-        (is (= "Filtering by ids work only when you ask for a single model"
+        (is (= "Filtering by ids works only when you ask for a single model"
                (mt/user-http-request :crowberto :get 400 "search" :models "card" :models "dashboard" :ids c1)))
-        (is (= "Filtering by ids work only when you ask for a single model"
+        (is (= "Filtering by ids works only when you ask for a single model"
                (mt/user-http-request :crowberto :get 400 "search" :ids c1)))))))
 
 (deftest available-models-should-be-independent-of-models-param-test
