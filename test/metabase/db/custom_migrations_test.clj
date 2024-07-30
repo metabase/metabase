@@ -2028,6 +2028,10 @@
    {:name "C7"    :field_ref [:field "C7" {:base-type :type/BigInteger}]}
    {:name "count" :field_ref [:aggregation 0]}])
 
+(def ^:private viz-settings-with-table-columns
+  {"table.columns" (->> result-metadata-for-viz-settings
+                        (mapv (fn [{:keys [name field_ref]}] {:name name :fieldRef field_ref})))})
+
 (def ^:private viz-settings-with-field-ref-keys
   {"column_settings" (-> {[:ref [:field 1 nil]]                                                  {"column_title" "1"}
                           [:ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]] {"column_title" "2"}
@@ -2201,3 +2205,69 @@
                      :object
                      json/parse-string
                      (get "visualization_settings")))))))))
+
+(deftest update-legacy-column-keys-in-dashboard-revision-viz-settings-test
+  (testing "v51.2024-07-24T11:00:00"
+    (impl/test-migrations ["v51.2024-07-24T11:00:00"] [migrate!]
+      (let [initial-viz-settings (merge viz-settings-with-field-ref-keys
+                                        viz-settings-with-table-columns)
+            expected-viz-settings (merge viz-settings-with-name-keys
+                                         viz-settings-with-table-columns)
+            user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :result_metadata        nil
+                                                   :visualization_settings "{}"
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id  (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                         :visualization_settings "{}"
+                                                                         :card_id      card-id
+                                                                         :size_x       4
+                                                                         :size_y       4
+                                                                         :col          1
+                                                                         :row          1})
+            dashboard   {:cards [{:id dashcard-id :visualization_settings initial-viz-settings}]}
+            revision-id (t2/insert-returning-pks!  (t2/table-name :model/Revision)
+                                                   {:model     "Dashboard"
+                                                    :model_id  dashboard-id
+                                                    :user_id   user-id
+                                                    :object    (json/generate-string dashboard)
+                                                    :timestamp :%now})]
+        (migrate!)
+        (testing "After the migration, column_settings field ref-based keys are converted to name-based keys"
+          (is (= expected-viz-settings
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get-in ["cards" 0 "visualization_settings"])))))
+        (migrate! :down 49)
+        (testing "After reversing the migration, column_settings field ref-based keys are restored"
+          (is (= initial-viz-settings
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get-in ["cards" 0 "visualization_settings"])))))))))
