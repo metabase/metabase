@@ -2088,15 +2088,14 @@
                                     :where  [:= :id card-id]})
                      :visualization_settings
                      json/parse-string))))
-        (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
-          (migrate! :down 49)
-          (testing "After reversing the migration, column_settings field ref-based keys are restored"
-            (is (= viz-settings-with-field-ref-keys
-                   (-> (t2/query-one {:select [:visualization_settings]
-                                      :from   [:report_card]
-                                      :where  [:= :id card-id]})
-                       :visualization_settings
-                       json/parse-string)))))))))
+        (migrate! :down 49)
+        (testing "After reversing the migration, column_settings field ref-based keys are restored"
+          (is (= viz-settings-with-field-ref-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     json/parse-string))))))))
 
 (deftest update-legacy-column-keys-in-dashboard-card-viz-settings-test
   (testing "v51.2024-07-24T11:00:00"
@@ -2142,15 +2141,14 @@
                                     :where  [:= :id dashcard-id]})
                      :visualization_settings
                      json/parse-string))))
-        (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
-          (migrate! :down 49)
-          (testing "After reversing the migration, column_settings field ref-based keys are restored"
-            (is (= viz-settings-with-field-ref-keys
-                   (-> (t2/query-one {:select [:visualization_settings]
-                                      :from   [:report_dashboardcard]
-                                      :where  [:= :id dashcard-id]})
-                       :visualization_settings
-                       json/parse-string)))))))))
+        (migrate! :down 49)
+        (testing "After reversing the migration, column_settings field ref-based keys are restored"
+          (is (= viz-settings-with-field-ref-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     json/parse-string))))))))
 
 (deftest update-legacy-column-keys-in-card-revision-viz-settings-test
   (testing "v51.2024-07-24T12:00:00"
@@ -2194,13 +2192,12 @@
                      :object
                      json/parse-string
                      (get "visualization_settings")))))
-        (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
-          (migrate! :down 49)
-          (testing "After reversing the migration, column_settings field ref-based keys are restored"
-            (is (= viz-settings-with-field-ref-keys
-                   (-> (t2/query-one {:select [:object]
-                                      :from   [:revision]
-                                      :where  [:= :id revision-id]})
-                       :object
-                       json/parse-string
-                       (get "visualization_settings"))))))))))
+        (migrate! :down 49)
+        (testing "After reversing the migration, column_settings field ref-based keys are restored"
+          (is (= viz-settings-with-field-ref-keys
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get "visualization_settings")))))))))
