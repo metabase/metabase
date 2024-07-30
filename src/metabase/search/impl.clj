@@ -664,7 +664,8 @@
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
-   [:verified                            {:optional true} [:maybe true?]]])
+   [:verified                            {:optional true} [:maybe true?]]
+   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]])
 
 (mu/defn search-context
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -683,7 +684,8 @@
            model-ancestors?
            table-db-id
            search-native-query
-           verified]}      :- ::search-context.input] :- SearchContext
+           verified
+           ids]}      :- ::search-context.input] :- SearchContext
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -692,7 +694,7 @@
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:archived?          (boolean archived)
-                        :current-user-id current-user-id
+                        :current-user-id    current-user-id
                         :current-user-perms current-user-perms
                         :model-ancestors?   (boolean model-ancestors?)
                         :models             models
@@ -700,11 +702,14 @@
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
-                 (some? last-edited-at)                     (assoc :last-edited-at last-edited-at)
-                 (seq last-edited-by)                       (assoc :last-edited-by last-edited-by)
-                 (some? table-db-id)                        (assoc :table-db-id table-db-id)
-                 (some? limit)                              (assoc :limit-int limit)
-                 (some? offset)                             (assoc :offset-int offset)
-                 (some? search-native-query)                (assoc :search-native-query search-native-query)
-                 (some? verified)                           (assoc :verified verified))]
+                 (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
+                 (seq last-edited-by)                        (assoc :last-edited-by last-edited-by)
+                 (some? table-db-id)                         (assoc :table-db-id table-db-id)
+                 (some? limit)                               (assoc :limit-int limit)
+                 (some? offset)                              (assoc :offset-int offset)
+                 (some? search-native-query)                 (assoc :search-native-query search-native-query)
+                 (some? verified)                            (assoc :verified verified)
+                 (seq ids)                                   (assoc :ids ids))]
+    (when (seq ids)
+      (assert (= (count models) 1) "We can only retrieve by ids when you ask for a single model"))
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
