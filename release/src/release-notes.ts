@@ -104,15 +104,15 @@ enum IssueType {
 // Product area labels take the form of "Category/Subcategory", e.g., "Querying/MBQL"
 // We're only interested in the main product category, e.g., "Querying"
 enum ProductCategory {
-  Administration = "Administration",
-  Database = "Database",
-  Embedding = "Embedding",
-  Operation = "Operation",
-  Organization = "Organization",
-  Querying = "Querying",
-  Reporting = "Reporting",
-  Visualization = "Visualization",
-  Other = "Other",
+  administration = "Administration",
+  database = "Database",
+  embedding = "Embedding",
+  operation = "Operation",
+  organization = "Organization",
+  querying = "Querying",
+  reporting = "Reporting",
+  visualization = "Visualization",
+  other = "Other",
 }
 
 const issueMap: Record<IssueType, Partial<Record<ProductCategory, Issue[]>>> = {
@@ -159,37 +159,37 @@ const getProductCategory = (issue: Issue): ProductCategory => {
   return match(labelName)
     .when(
       label => label.includes("Administration"),
-      () => ProductCategory.Administration,
+      () => ProductCategory.administration,
     )
     .when(
       label => label.includes("Database"),
-      () => ProductCategory.Database,
+      () => ProductCategory.database,
     )
     .when(
       label => label.includes("Embedding"),
-      () => ProductCategory.Embedding,
+      () => ProductCategory.embedding,
     )
     .when(
       label => label.includes("Operation"),
-      () => ProductCategory.Operation,
+      () => ProductCategory.operation,
     )
     .when(
       label => label.includes("Organization"),
-      () => ProductCategory.Organization,
+      () => ProductCategory.organization,
     )
     .when(
       label => label.includes("Querying"),
-      () => ProductCategory.Querying,
+      () => ProductCategory.querying,
     )
     .when(
       label => label.includes("Reporting"),
-      () => ProductCategory.Reporting,
+      () => ProductCategory.reporting,
     )
     .when(
       label => label.includes("Visualization"),
-      () => ProductCategory.Visualization,
+      () => ProductCategory.visualization,
     )
-    .otherwise(() => ProductCategory.Other);
+    .otherwise(() => ProductCategory.other);
 };
 
 // Format issues for a single category
