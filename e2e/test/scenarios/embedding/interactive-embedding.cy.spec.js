@@ -117,7 +117,7 @@ describeEE("scenarios > embedding > full app", () => {
       sideNav().should("not.exist");
     });
 
-    it("should disable home link when top nav is enabeld but side nav is disabled", () => {
+    it("should disable home link when top nav is enabled but side nav is disabled", () => {
       visitDashboardUrl({
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { top_nav: true, side_nav: false },
@@ -224,6 +224,19 @@ describeEE("scenarios > embedding > full app", () => {
       cy.icon("notebook").should("not.exist");
       cy.button("Summarize").should("not.exist");
       cy.button("Filter").should("not.exist");
+    });
+
+    it("should send 'X-Metabase-Client' header for api requests", () => {
+      visitFullAppEmbeddingUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { action_buttons: false },
+      });
+
+      cy.wait("@getCardQuery").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe",
+        );
+      });
     });
 
     describe("question creation", () => {
@@ -557,6 +570,16 @@ describeEE("scenarios > embedding > full app", () => {
         expect(
           interception.request.headers["x-metabase-anti-csrf-token"],
         ).to.equal(CSRF_TOKEN);
+      });
+    });
+
+    it("should send 'X-Metabase-Client' header for api requests", () => {
+      visitFullAppEmbeddingUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
+
+      cy.wait("@getDashboard").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe",
+        );
       });
     });
   });
