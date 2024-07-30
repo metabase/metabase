@@ -29,6 +29,7 @@ import {
   updateEmailSettings,
   clearEmailSettings,
 } from "../../settings";
+import { SetByEnvVarWrapper } from "../SettingsSetting";
 
 const BREADCRUMBS = [[t`Email`, "/admin/settings/email"], [t`SMTP`]];
 
@@ -136,9 +137,13 @@ export const SMTPConnectionForm = ({
     }
   }, [dispatch, isHosted]);
 
+  const allSetByEnvVars = useMemo(() => {
+    return elements.every(element => element.is_env_setting);
+  }, [elements]);
+
   return (
     <Flex justify="space-between">
-      <Stack spacing="sm" maw={400} style={{ paddingInlineStart: "0.5rem" }}>
+      <Stack spacing="sm" maw={600} style={{ paddingInlineStart: "0.5rem" }}>
         {isEmailConfigured && (
           <Breadcrumbs crumbs={BREADCRUMBS} className={cx(CS.mb3)} />
         )}
@@ -150,93 +155,103 @@ export const SMTPConnectionForm = ({
         >
           {({ dirty, isValid, isSubmitting, values }) => (
             <Form>
-              <FormTextInput
-                name="email-smtp-host"
-                label={elementMap["email-smtp-host"]["display_name"]}
-                description={elementMap["email-smtp-host"]["description"]}
-                placeholder={elementMap["email-smtp-host"]["placeholder"]}
-                mb="1.5rem"
-                labelProps={{
-                  tt: "uppercase",
-                  mb: "0.5rem",
-                }}
-                descriptionProps={{
-                  fz: "0.75rem",
-                  mb: "0.5rem",
-                }}
-              />
-              <FormTextInput
-                name="email-smtp-port"
-                label={elementMap["email-smtp-port"]["display_name"]}
-                description={elementMap["email-smtp-port"]["description"]}
-                placeholder={elementMap["email-smtp-port"]["placeholder"]}
-                mb="1.5rem"
-                labelProps={{
-                  tt: "uppercase",
-                  mb: "0.5rem",
-                }}
-                descriptionProps={{
-                  fz: "0.75rem",
-                  mb: "0.5rem",
-                }}
-              />
-              <FormRadioGroup
-                name="email-smtp-security"
-                label={elementMap["email-smtp-security"]["display_name"]}
-                description={elementMap["email-smtp-security"]["description"]}
-                mb="1.5rem"
-                labelProps={{
-                  tt: "uppercase",
-                  fz: "0.875rem",
-                  c: "text-medium",
-                  mb: "0.5rem",
-                }}
-              >
-                <Group>
-                  {Object.entries(
-                    elementMap["email-smtp-security"].options || {},
-                  ).map(([value, setting]) => (
-                    <Radio
-                      value={value}
-                      label={setting.name}
-                      key={value}
-                      styles={{
-                        inner: { display: "none" },
-                        label: {
-                          paddingLeft: 0,
-                          color:
-                            values["email-smtp-security"] === value
-                              ? color("brand")
-                              : color("text-dark"),
-                        },
-                      }}
-                    />
-                  ))}
-                </Group>
-              </FormRadioGroup>
-              <FormTextInput
-                name="email-smtp-username"
-                label={elementMap["email-smtp-username"]["display_name"]}
-                description={elementMap["email-smtp-username"]["description"]}
-                placeholder={elementMap["email-smtp-username"]["placeholder"]}
-                mb="1.5rem"
-                labelProps={{
-                  tt: "uppercase",
-                  mb: "0.5rem",
-                }}
-              />
-              <FormTextInput
-                name="email-smtp-password"
-                type="password"
-                label={elementMap["email-smtp-password"]["display_name"]}
-                description={elementMap["email-smtp-password"]["description"]}
-                placeholder={elementMap["email-smtp-password"]["placeholder"]}
-                mb="1.5rem"
-                labelProps={{
-                  tt: "uppercase",
-                  mb: "0.5rem",
-                }}
-              />
+              <SetByEnvVarWrapper setting={elementMap["email-smtp-host"]}>
+                <FormTextInput
+                  name="email-smtp-host"
+                  label={elementMap["email-smtp-host"]["display_name"]}
+                  description={elementMap["email-smtp-host"]["description"]}
+                  placeholder={elementMap["email-smtp-host"]["placeholder"]}
+                  mb="1.5rem"
+                  labelProps={{
+                    tt: "uppercase",
+                    mb: "0.5rem",
+                  }}
+                  descriptionProps={{
+                    fz: "0.75rem",
+                    mb: "0.5rem",
+                  }}
+                />
+              </SetByEnvVarWrapper>
+              <SetByEnvVarWrapper setting={elementMap["email-smtp-port"]}>
+                <FormTextInput
+                  name="email-smtp-port"
+                  label={elementMap["email-smtp-port"]["display_name"]}
+                  description={elementMap["email-smtp-port"]["description"]}
+                  placeholder={elementMap["email-smtp-port"]["placeholder"]}
+                  mb="1.5rem"
+                  labelProps={{
+                    tt: "uppercase",
+                    mb: "0.5rem",
+                  }}
+                  descriptionProps={{
+                    fz: "0.75rem",
+                    mb: "0.5rem",
+                  }}
+                />
+              </SetByEnvVarWrapper>
+              <SetByEnvVarWrapper setting={elementMap["email-smtp-security"]}>
+                <FormRadioGroup
+                  name="email-smtp-security"
+                  label={elementMap["email-smtp-security"]["display_name"]}
+                  description={elementMap["email-smtp-security"]["description"]}
+                  mb="1.5rem"
+                  labelProps={{
+                    tt: "uppercase",
+                    fz: "0.875rem",
+                    c: "text-medium",
+                    mb: "0.5rem",
+                  }}
+                >
+                  <Group>
+                    {Object.entries(
+                      elementMap["email-smtp-security"].options || {},
+                    ).map(([value, setting]) => (
+                      <Radio
+                        value={value}
+                        label={setting.name}
+                        key={value}
+                        styles={{
+                          inner: { display: "none" },
+                          label: {
+                            paddingLeft: 0,
+                            color:
+                              values["email-smtp-security"] === value
+                                ? color("brand")
+                                : color("text-dark"),
+                          },
+                        }}
+                      />
+                    ))}
+                  </Group>
+                </FormRadioGroup>
+              </SetByEnvVarWrapper>
+              <SetByEnvVarWrapper setting={elementMap["email-smtp-username"]}>
+                <FormTextInput
+                  name="email-smtp-username"
+                  label={elementMap["email-smtp-username"]["display_name"]}
+                  description={elementMap["email-smtp-username"]["description"]}
+                  placeholder={elementMap["email-smtp-username"]["placeholder"]}
+                  mb="1.5rem"
+                  labelProps={{
+                    tt: "uppercase",
+                    mb: "0.5rem",
+                  }}
+                />
+              </SetByEnvVarWrapper>
+              <SetByEnvVarWrapper setting={elementMap["email-smtp-password"]}>
+                <FormTextInput
+                  name="email-smtp-password"
+                  type="password"
+                  label={elementMap["email-smtp-password"]["display_name"]}
+                  description={elementMap["email-smtp-password"]["description"]}
+                  placeholder={elementMap["email-smtp-password"]["placeholder"]}
+                  mb="1.5rem"
+                  labelProps={{
+                    tt: "uppercase",
+                    mb: "0.5rem",
+                  }}
+                />
+              </SetByEnvVarWrapper>
               {testEmailError && (
                 <Text
                   role="alert"
@@ -253,11 +268,12 @@ export const SMTPConnectionForm = ({
                   disabled={!dirty}
                   variant="filled"
                 />
-                {!dirty && isValid && !isSubmitting && (
-                  <Button onClick={handleSendTestEmail}>
-                    {SEND_TEST_BUTTON_STATES[sendingEmail]}
-                  </Button>
-                )}
+                {(!dirty && isValid && !isSubmitting) ||
+                  (allSetByEnvVars && (
+                    <Button onClick={handleSendTestEmail}>
+                      {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                    </Button>
+                  ))}
                 <Button onClick={handleClearEmailSettings}>{t`Clear`}</Button>
               </Flex>
             </Form>
