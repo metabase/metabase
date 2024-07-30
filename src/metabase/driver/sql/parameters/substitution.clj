@@ -253,10 +253,10 @@
      :prepared-statement-args args}))
 
 (mu/defn- field->clause :- mbql.s/field
-  [driver     :- :keyword
+  [_driver     :- :keyword
    field      :- ::lib.schema.metadata/column
-   param-type :- ::lib.schema.parameter/type
-   value]
+   _param-type :- ::lib.schema.parameter/type
+   _value]
   ;; The [[metabase.query-processor.middleware.parameters/substitute-parameters]] QP middleware actually happens before
   ;; the [[metabase.query-processor.middleware.resolve-fields/resolve-fields]] middleware that would normally fetch all
   ;; the Fields we need in a single pass, so this is actually necessary here. I don't think switching the order of the
@@ -266,7 +266,9 @@
   [:field
    (u/the-id field)
    {:base-type                (:base-type field)
-    :temporal-unit            (align-temporal-unit-with-param-type-and-value driver field param-type value)
+    ;; Set default :temporal-unit for temporal parameters so we avoid LHS cast that make indexes unusable.
+    ;; :temporal-unit was set to nil for non temporal fields and this change does not modify that.
+    :temporal-unit            (when (isa? (:base-type field) :type/Temporal) :default)
     ::add/source-table        (:table-id field)
     ;; in case anyone needs to know we're compiling a Field filter.
     ::compiling-field-filter? true}])
