@@ -178,6 +178,7 @@ const _CleanupCollectionModal = ({
             data-testid="cleanup-collection-modal-pagination"
           />
         </Flex>
+
         <CleanupCollectionBulkActions
           selected={selection.selected}
           clearSelectedItem={selection.clear}

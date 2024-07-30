@@ -122,7 +122,7 @@ export interface CollectionItem {
   effective_location?: string;
   getIcon: () => IconProps;
   getUrl: (opts?: Record<string, unknown>) => string;
-  setArchived?: (isArchived: boolean) => void;
+  setArchived?: (isArchived: boolean, opts?: Record<string, unknown>) => void;
   setPinned?: (isPinned: boolean) => void;
   setCollection?: (collection: Pick<Collection, "id">) => void;
   setCollectionPreview?: (isEnabled: boolean) => void;
