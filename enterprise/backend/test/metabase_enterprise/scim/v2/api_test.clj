@@ -4,6 +4,7 @@
    [metabase-enterprise.scim.api :as scim]
    [metabase-enterprise.scim.v2.api :as scim-api]
    [metabase.http-client :as client]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.test :as mt]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
@@ -86,7 +87,7 @@
                response)))))
 
     (testing "404 is returned when fetching a non-existant user"
-       (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
+      (scim-client :get 404 (format "ee/scim/v2/Users/%s" (random-uuid))))))
 
 (deftest list-users-test
   (with-scim-setup!
@@ -319,8 +320,14 @@
                 :meta        {:resourceType "Group"}}
                response)))))
 
-    (testing "404 is returned when fetching a non-existant user"
-       (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))))
+    (testing "404 is returned when fetching a non-existant group"
+      (scim-client :get 404 (format "ee/scim/v2/Groups/%s" (random-uuid))))
+
+    (testing "404 is returned when fetching the Admin or All Users group"
+      (let [entity-ids (t2/select-fn-set :entity_id :model/PermissionsGroup
+                                         {:where [:in :id #{(:id (perms-group/admin)) (:id (perms-group/all-users))}]})]
+        (doseq [entity-id entity-ids]
+          (scim-client :get 404 (format "ee/scim/v2/Groups/%s" entity-id)))))))
 
 (deftest create-group-test
   (with-scim-setup!

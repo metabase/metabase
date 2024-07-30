@@ -194,7 +194,7 @@
         offset         (if start-index (dec start-index) default-pagination-offset)
         filter-param   (when filter-param (codec/url-decode filter-param))
         where-clause   [:and [:= :type "personal"]
-                             (when filter-param (user-filter-clause (codec/url-decode filter-param)))]
+                             (when filter-param (user-filter-clause filter-param))]
         users          (t2/select (cons :model/User user-cols)
                                   {:where    where-clause
                                    :limit    limit
@@ -306,10 +306,15 @@
                                    (sort-by :entity_id)))))))
 
 (mu/defn ^:private get-group-by-entity-id
-  "Fetches a group by entity ID, or throws a 404"
+  "Fetches a group by entity ID, or throws a 404. Cannot fetch the Administrators or All Users groups, as these are
+  static and cannot be managed via SCIM."
   [entity-id]
   (or (t2/select-one (cons :model/PermissionsGroup group-cols)
-                     :entity_id entity-id)
+                     :entity_id entity-id
+                     {:where
+                      [:and
+                       [:not= :id (:id (perms-group/all-users))]
+                       [:not= :id (:id (perms-group/admin))]]})
       (throw-scim-error 404 "Group not found")))
 
 (mu/defn ^:private mb-group->scim :- SCIMGroup
@@ -344,21 +349,19 @@
         ;; SCIM start-index is 1-indexed, so we need to decrement it here
         offset         (if start-index (dec start-index) default-pagination-offset)
         filter-param   (when filter-param (codec/url-decode filter-param))
-        filter-clause  (if filter-param
-                         (group-filter-clause filter-param)
-                         [:= 1 1])
+        where-clause   [:and
+                        [:not= :id (:id perms-group/all-users)]
+                        [:not= :id (:id perms-group/admin)]
+                        (when filter-param (group-filter-clause filter-param))]
         groups         (t2/select (cons :model/PermissionsGroup group-cols)
-                                  {:where    [:and
-                                               [:not= :id (:id perms-group/all-users)]
-                                               [:not= :id (:id perms-group/admin)]
-                                               filter-clause]
+                                  {:where    where-clause
                                    :limit    limit
                                    :offset   offset
                                    :order-by [[:id :asc]]})
         results-count  (count groups)
         items-per-page (if (< results-count limit) results-count limit)
         result         {:schemas      [list-schema-uri]
-                        :totalResults (t2/count :model/PermissionsGroup {:where filter-clause})
+                        :totalResults (t2/count :model/PermissionsGroup {:where where-clause})
                         :startIndex   (inc offset)
                         :itemsPerPage items-per-page
                         :Resources    (map mb-group->scim groups)}]
@@ -374,7 +377,7 @@
 
 (defn- update-group-membership
   "Updates the membership of `group-id` to be the set of users in the collection `user-entity-ids`. Clears
-  any existing members. May not be run on the Administrators or All Users groups."
+  any existing members."
   [group-id user-entity-ids]
   (let [user-ids (t2/select-fn-set :id :model/User {:where [:in :entity_id user-entity-ids]})]
     (when-let [memberships (map
