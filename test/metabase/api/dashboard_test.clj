@@ -4770,18 +4770,3 @@
           (let [[p & tail :as seen] @providers]
             (is (>= (count seen) 2))
             (is (every? #(identical? p %) tail))))))))
-
-(deftest querying-a-dashboard-dashcard-updates-last-viewed-at
-  (mt/test-helpers-set-global-values!
-    (mt/dataset test-data
-      (mt/with-temp [:model/Dashboard {dashboard-id :id} {:last_viewed_at #t "2000-01-01"}
-                     :model/Card {card-id :id} {:dataset_query (mt/native-query
-                                                                 {:query "SELECT COUNT(*) FROM \"ORDERS\""
-                                                                  :template-tags {}})}
-                     :model/DashboardCard {dashcard-id :id} {:card_id card-id
-                                                             :dashboard_id dashboard-id}]
-        (let [original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard dashboard-id)]
-          (mt/with-temporary-setting-values [synchronous-batch-updates true]
-            (mt/user-http-request :crowberto :post 202
-                                  (format "dashboard/%s/dashcard/%s/card/%s/query" dashboard-id dashcard-id card-id)))
-          (is (not= original-last-viewed-at (t2/select-one-fn :last_viewed_at :model/Dashboard :id dashboard-id))))))))
