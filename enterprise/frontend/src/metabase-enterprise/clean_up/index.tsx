@@ -6,17 +6,16 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
 
-// TODO: remove this once the feature flag is added
-if (hasPremiumFeature("clean-up") || !!true) {
+if (hasPremiumFeature("collection-cleanup") || !!true) {
   PLUGIN_COLLECTIONS.canCleanUp = true;
 
   PLUGIN_COLLECTIONS.getCleanUpMenuItems = (
-    itemCount: number,
-    url: string,
-    isInstanceAnalyticsCustom: boolean,
-    isTrashed: boolean,
-    canWrite: boolean,
-  ): Array<{ title: string; icon: string; link: string }> => {
+    itemCount,
+    url,
+    isInstanceAnalyticsCustom,
+    isTrashed,
+    canWrite,
+  ) => {
     const canCleanUpCollection =
       itemCount !== 0 && !isInstanceAnalyticsCustom && !isTrashed && canWrite;
 

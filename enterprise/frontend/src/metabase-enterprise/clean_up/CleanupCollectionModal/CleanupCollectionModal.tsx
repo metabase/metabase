@@ -128,7 +128,7 @@ const _CleanupCollectionModal = ({
           className={CS.modalHeader}
         >
           <Modal.Title fz="20px">{t`Select unused items to move to trash`}</Modal.Title>
-          <Modal.CloseButton />
+          <Modal.CloseButton data-testid="cleanup-collection-modal-close-btn" />
         </Modal.Header>
         <Modal.Body
           px="2.5rem"
