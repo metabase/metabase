@@ -86,7 +86,10 @@ const getDatasetParams = ({
     return {
       method: "GET",
       url: `/api/embed/dashboard/${token}/dashcard/${dashcardId}/card/${cardId}/${type}`,
-      params: Urls.getEncodedUrlSearchParams({ ...params, format_rows }),
+      params: new URLSearchParams({
+        parameters: JSON.stringify(params),
+        format_rows,
+      }),
     };
   }
 
@@ -130,14 +133,14 @@ const getDatasetParams = ({
 
   const isEmbeddedQuestion = token != null;
   if (isEmbeddedQuestion) {
-    // For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
-    // of like ?params=<json-encoded-params-array> like the other endpoints do.
     const params = new URLSearchParams(window.location.search);
-    params.set("format_rows", format_rows);
     return {
       method: "GET",
       url: Urls.embedCard(token, type),
-      params,
+      params: new URLSearchParams({
+        parameters: JSON.stringify(Object.fromEntries(params)),
+        format_rows,
+      }),
     };
   }
 
