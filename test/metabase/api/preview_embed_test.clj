@@ -644,7 +644,7 @@
   (testing "embedding endpoint should not parse string values into numbers (#46240)"
     (embed-test/with-embedding-enabled-and-new-secret-key
       (mt/dataset airports
-        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
                                                            {:database (mt/id)
                                                             :type :query
                                                             :query
