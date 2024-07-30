@@ -8566,6 +8566,23 @@ databaseChangeLog:
             columnName: field_id
             remarks: This value is null if the field does not exist, or is created within a model
 
+
+  - changeSet:
+      id: v51.2024-07-30T10:41:31
+      author: johnswanson
+      comment: Add `collection.is_excluded_from_autocleanup`
+      changes:
+        - addColumn:
+            columns:
+              - column:
+                  name: is_excluded_from_autocleanup
+                  type: ${boolean.type}
+                  defaultValueBoolean: false
+                  remarks: Indicates that this collection is excluded from the autocleanup job
+                  constraints:
+                    nullable: false
+            tableName: collection
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
