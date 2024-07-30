@@ -1466,17 +1466,11 @@
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
 
-(defn- keyword-except-column-key
-  "Converts an object `key` to a keyword if it's not a column key. Both new and old column keys are arrays serialized
-  to JSON and therefore they start with '['. Column keys are kept as strings for comparison."
-  [key]
-  (if (str/starts-with? key "[") key (keyword key)))
-
 (defn- column->column-key
   "Computes a modern viz setting column key for a `column`. The modern format is [\"name\",`name`]."
-  [{:keys [name]}]
+  [{name "name"}]
   (when name
-    (json/generate-string [:name name])))
+    (json/generate-string ["name" name])))
 
 (defn- column->legacy-column-key
   "Computes a legacy viz setting column key for a `column`.
@@ -1484,31 +1478,31 @@
   column key of the modern format [\"name\",`name`].
   In other cases returns a legacy column key of the format [\"ref\",`field_ref`] where `:binning` and `:temporal-unit`
   options are removed from the `field_ref`."
-  [{name :name field-ref :field_ref :as column}]
-  (let [field-ref (or field-ref (when name [:field name nil]))
+  [{name "name" field-ref "field_ref" :as column}]
+  (let [field-ref (or field-ref (when name ["field" name nil]))
         [ref-type field-id-or-name ref-options] field-ref
-        field-ref (if (and (#{:field :expression :aggregation} ref-type) ref-options)
-                    [ref-type field-id-or-name (dissoc ref-options :binning :temporal-unit)]
+        field-ref (if (and (#{"field" "expression" "aggregation"} ref-type) ref-options)
+                    [ref-type field-id-or-name (dissoc ref-options "binning" "temporal-unit")]
                     field-ref)]
     (cond
-      (or (and (= ref-type :field) (string? field-id-or-name)) (= ref-type :aggregation))
+      (or (and (= ref-type "field") (string? field-id-or-name)) (= ref-type "aggregation"))
       (column->column-key column)
 
       field-ref
-      (json/generate-string [:ref field-ref]))))
+      (json/generate-string ["ref" field-ref]))))
 
 (defn- infer-columns-from-viz-settings
   "Computes partial result metadata based on the `viz-settings` if `:table.columns` is set. The setting is kept in sync
    with query results, and can be used in cases where up-to-date result metadata is not available, like in revisions."
   [viz-settings]
-  (when-let [columns (:table.columns viz-settings)]
-     (mapv (fn [{name :name field-ref :fieldRef}] {:name name :field_ref field-ref}) columns)))
+  (when-let [columns (get viz-settings "table.columns")]
+     (mapv (fn [{name "name" field-ref "fieldRef"}] {"name" name "field_ref" field-ref}) columns)))
 
 (defn- update-legacy-column-keys-in-viz-settings
   "Updates `:column_settings` keys. Unmatched keys are retained."
   [viz-settings columns old-key-fn new-key-fn]
   (let [key->column (m/index-by old-key-fn columns)]
-    (m/update-existing viz-settings :column_settings update-keys
+    (m/update-existing viz-settings "column_settings" update-keys
                        (fn [key]
                          (if-let [column (get key->column key)]
                            (or (new-key-fn column) key)
@@ -1532,8 +1526,8 @@
   to find the deduplicated column name by the field reference and compute the new column key."
   [update-viz-settings-fn]
   (let [update-one! (fn [{id :id viz-settings :visualization_settings result-metadata :result_metadata}]
-                      (let [viz-settings         (json/parse-string viz-settings keyword-except-column-key)
-                            result-metadata      (json/parse-string result-metadata keyword)
+                      (let [viz-settings         (json/parse-string viz-settings)
+                            result-metadata      (json/parse-string result-metadata)
                             updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
                         (when (not= viz-settings updated-viz-settings)
                               (t2/query-one {:update :report_card
@@ -1555,8 +1549,8 @@
   key."
   [update-viz-settings-fn]
   (let [update-one! (fn [{id :id viz-settings :visualization_settings result-metadata :result_metadata}]
-                      (let [viz-settings         (json/parse-string viz-settings keyword-except-column-key)
-                            result-metadata      (json/parse-string result-metadata keyword)
+                      (let [viz-settings         (json/parse-string viz-settings)
+                            result-metadata      (json/parse-string result-metadata)
                             updated-viz-settings (update-viz-settings-fn viz-settings result-metadata)]
                         (when (not= viz-settings updated-viz-settings)
                               (t2/query-one {:update :report_dashboardcard
@@ -1578,7 +1572,7 @@
   infer it from the `:visualization_settings` and fallback to the most recent :result_metadata of the corresponding
   card."
   [object result-metadata update-viz-settings-fn]
-  (m/update-existing object :visualization_settings
+  (m/update-existing object "visualization_settings"
                      (fn [viz-settings]
                        (let [columns (or (infer-columns-from-viz-settings viz-settings)
                                          result-metadata)]
@@ -1591,8 +1585,8 @@
    to the most recent `:result_metadata` of the corresponding card."
   [update-viz-settings-fn]
   (let [update-one! (fn [{:keys [id object] result-metadata :result_metadata}]
-                      (let [object          (json/parse-string object keyword-except-column-key)
-                            result-metadata (json/parse-string result-metadata keyword)
+                      (let [object          (json/parse-string object)
+                            result-metadata (json/parse-string result-metadata)
                             updated-object  (update-revision-viz-settings object result-metadata update-viz-settings-fn)]
                         (when (not= object updated-object)
                               (t2/query-one {:update :revision
@@ -1617,7 +1611,7 @@
   fallback to the most recent `:result_metadata` of the corresponding card here for performance reasons."
   [update-viz-settings-fn]
   (let [update-one! (fn [{:keys [id object]}]
-                      (let [object  (json/parse-string object keyword-except-column-key)
+                      (let [object  (json/parse-string object)
                             updated-object (m/update-existing object :cards
                                                               (fn [cards] (mapv #(update-revision-viz-settings % [] update-viz-settings-fn) cards)))]
                             (when (not= object updated-object)
