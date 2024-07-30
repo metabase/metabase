@@ -11,10 +11,13 @@
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.user :as user]
    [metabase.util :as u]
+   [metabase.util.i18n :as i18n]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [ring.util.codec :as codec]
    [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
 
 (def ^:private user-schema-uri "urn:ietf:params:scim:schemas:core:2.0:User")
 (def ^:private group-schema-uri "urn:ietf:params:scim:schemas:core:2.0:Group")
@@ -138,7 +141,9 @@
    :userName (:email user)
    :name     {:givenName  (:first_name user)
               :familyName (:last_name user)}
-   :emails   [{:value (:email user)}]
+   :emails   [{:value (:email user)
+               :type    "work"
+               :primary true}]
    :groups   (map
               (fn [membership]
                 {:value   (:entity_id membership)
@@ -160,7 +165,8 @@
       :email      email
       :is_active  is-active?
       :type       :personal}
-     (when locale {:locale locale}))))
+     (when (and locale (i18n/available-locale? locale))
+       {:locale locale}))))
 
 (mu/defn ^:private get-user-by-entity-id
   "Fetches a user by entity ID, or throws a 404"
@@ -257,19 +263,18 @@
   {patch-ops UserPatch}
   {id ms/NonBlankString}
   (t2/with-transaction [_conn]
-    (let [user (get-user-by-entity-id id)
+    (let [user    (get-user-by-entity-id id)
           updates (reduce
-                    (fn [acc op]
-                      (let [{:keys [op path value]} op]
+                    (fn [acc operation]
+                      (let [{:keys [op path value]} operation]
                         (if (= (u/lower-case-en op) "replace")
                           (case path
-                            "active"          (assoc acc :is_active value)
+                            "active"          (assoc acc :is_active (Boolean/valueOf (u/lower-case-en value)))
                             "userName"        (assoc acc :email value)
                             "name.givenName"  (assoc acc :first_name value)
                             "name.familyName" (assoc acc :last_name value)
-                            "locale"          (assoc acc :locale value)
                             (throw-scim-error 400 (format "Unsupported path: %s" path)))
-                          (throw-scim-error 400 (format "Unsupported operation: %s" op)))))
+                          acc)))
                     {}
                     (:Operations patch-ops))]
       (t2/update! :model/User (u/the-id user) updates)
@@ -384,9 +389,12 @@
   {scim-group SCIMGroup}
   (let [group-name (:displayName scim-group)
         entity-ids (map :value (:members scim-group))]
+    (when (t2/exists? :model/PermissionsGroup :%lower.name (u/lower-case-en group-name))
+      (throw-scim-error 409 "A group with that name already exists"))
     (t2/with-transaction [_conn]
       (let [new-group (first (t2/insert-returning-instances! :model/PermissionsGroup {:name group-name}))]
-        (update-group-membership (:id new-group) entity-ids)
+        (when (seq entity-ids)
+          (update-group-membership (:id new-group) entity-ids))
         (-> new-group
           (t2/hydrate :scim_group_members)
           mb-group->scim
@@ -401,9 +409,11 @@
     (t2/with-transaction [_conn]
       (let [group (get-group-by-entity-id id)]
         (t2/update! :model/PermissionsGroup (u/the-id group) {:name group-name})
-        (update-group-membership (u/the-id group) entity-ids)
+        (when (seq entity-ids)
+         (update-group-membership (u/the-id group) entity-ids))
         (-> (get-group-by-entity-id id)
             (t2/hydrate :scim_group_members)
-            (scim-response mb-group->scim))))))
+            mb-group->scim
+            scim-response)))))
 
 (api/define-routes)

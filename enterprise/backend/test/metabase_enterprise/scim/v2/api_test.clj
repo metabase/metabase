@@ -214,6 +214,16 @@
             (is (malli= scim-api/SCIMUser response))
             (is (= false (:active response)))))
 
+        (testing "Reactivate an existing user"
+          (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
+                            :Operations [{:op "Replace"
+                                          :path "active"
+                                          ;; Works with Boolean value as string
+                                          :value "True"}]}
+                response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
+            (is (malli= scim-api/SCIMUser response))
+            (is (= true (:active response)))))
+
         (testing "Update family name of an existing user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
@@ -227,23 +237,28 @@
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
                             :Operations [{:op "Replace"
                                           :path "name.givenName"
-                                          :value "UpdatedTest"}
+                                          :value "UpdatedFirstName"}
                                          {:op "Replace"
-                                          :path "locale"
-                                          :value "fr_FR"}]}
+                                          :path "name.familyName"
+                                          :value "UpdatedLastName"}
+                                         ;; Unsupported operations are ignored
+                                         {:op "Add"
+                                          :path "name.active"
+                                          :value "False"}]}
                 response   (scim-client :patch 200 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (malli= scim-api/SCIMUser response))
-            (is (= "UpdatedTest" (get-in response [:name :givenName])))
-            (is (= "fr_FR" (:locale response)))))
+            (is (= "UpdatedFirstName" (get-in response [:name :givenName])))
+            (is (= "UpdatedLastName" (get-in response [:name :familyName])))
+            (is (= true (response :active)))))
 
-        (testing "Error when using unsupported operation"
+        (testing "Error when using unsupported path"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
-                            :Operations [{:op "add"
-                                          :path "name.familyName"
-                                          :value "UnsupportedOperation"}]}
+                            :Operations [{:op "replace"
+                                          :path "name.displayName"
+                                          :value "unsupported"}]}
                 response   (scim-client :patch 400 (format "ee/scim/v2/Users/%s" entity-id) patch-body)]
             (is (= ["urn:ietf:params:scim:api:messages:2.0:Error"] (get response :schemas)))
-            (is (= "Unsupported operation: add" (get response :detail)))))
+            (is (= "Unsupported path: name.displayName" (get response :detail)))))
 
         (testing "Error when trying to update a non-existent user"
           (let [patch-body {:schemas ["urn:ietf:params:scim:api:messages:2.0:PatchOp"]
@@ -321,3 +336,22 @@
               (is (= group-name (:name mb-group)))
               (t2/exists? :model/PermissionsGroupMembership :user_id (mt/user->id :rasta) :group_id (:id mb-group))))
           (finally (t2/delete! :model/PermissionsGroup :name group-name)))))))
+
+(deftest update-group-test
+  (with-scim-setup!
+    (testing "An existing group can have its name and members updated"
+      (mt/with-temp [:model/PermissionsGroup group {:name (format "Test SCIM group %s" (random-uuid))}
+                     :model/PermissionsGroupMembership _ {:user_id (mt/user->id :rasta) :group_id (:id group)}]
+        (let [entity-id      (t2/select-one-fn :entity_id :model/PermissionsGroup :id (:id group))
+              new-group-name (format "Updated SCIM group %s" (random-uuid))
+              new-members    [{:value (t2/select-one-fn :entity_id :model/User :id (mt/user->id :crowberto))}]
+              group-update   {:schemas     ["urn:ietf:params:scim:schemas:core:2.0:Group"]
+                              :id          entity-id
+                              :displayName new-group-name
+                              :members     new-members}]
+          (scim-client :put 200 (format "ee/scim/v2/Groups/%s" entity-id) group-update)
+          (let [group (-> (t2/select-one :model/PermissionsGroup :id (:id group))
+                          (t2/hydrate :members))]
+            (is (= new-group-name (:name group)))
+            (is (= 1 (count (:members group))))
+            (is (= (mt/user->id :crowberto) (-> group :members first :user_id)))))))))
