@@ -49,7 +49,7 @@
 (defn- build-licenses!
   [edition]
   {:pre [(#{:oss :ee} edition)]}
-  (when-not (env/env :skip-licenses)
+  (when-not (= (env/env :skip-licenses) "true")
     (u/step "Generate backend license information from jar files"
       (let [basis                     (b/create-basis {:project (u/filename u/project-root-directory "deps.edn")})
             output-filename           (u/filename u/project-root-directory
