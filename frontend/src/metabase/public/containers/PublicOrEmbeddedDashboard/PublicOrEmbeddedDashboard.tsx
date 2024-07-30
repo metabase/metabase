@@ -3,11 +3,14 @@ import { useEffect, useRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
 import { usePrevious, useUnmount } from "react-use";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { getEventHandlers } from "embedding-sdk/store/selectors";
+import EditBar from "metabase/components/EditBar";
 import {
   addCardToDashboard,
+  cancelEditingDashboard,
   cancelFetchDashboardCardData,
   closeSidebar,
   fetchDashboard,
@@ -33,6 +36,10 @@ import {
   showAddParameterPopover,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import {
+  CancelEditButton,
+  SaveEditButton,
+} from "metabase/dashboard/components/DashboardHeader/buttons";
 import { DashboardSidebars } from "metabase/dashboard/components/DashboardSidebars";
 import {
   getDashboardComplete,
@@ -46,6 +53,7 @@ import {
   getSlowCards,
   getClickBehaviorSidebarDashcard,
   getSidebar,
+  getIsEditing,
 } from "metabase/dashboard/selectors";
 import type {
   DashboardDisplayOptionControls,
@@ -57,6 +65,7 @@ import { useDispatch, useSelector, type DispatchFn } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
 import { getErrorPage } from "metabase/selectors/app";
+import { Flex } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -252,6 +261,30 @@ const PublicOrEmbeddedDashboardInner = ({
 
   const shouldFetchCardData = dashboard?.tabs?.length === 0;
 
+  const isEditing = useSelector(getIsEditing);
+
+  const onRequestCancel = () => {
+    // if (isDirty && isEditing) {
+    //   setShowCancelWarning(true);
+    // } else {
+    onCancel();
+    // }
+  };
+
+  const onCancel = () => {
+    if (dashboard) {
+      dispatch(
+        fetchDashboard({
+          dashId: dashboard.id,
+          queryParams: parameterQueryParams,
+          options: { preserveParameters: true },
+        }),
+      );
+
+      dispatch(cancelEditingDashboard());
+    }
+  };
+
   useUnmount(() => {
     cancelFetchDashboardCardData();
   });
@@ -335,64 +368,83 @@ const PublicOrEmbeddedDashboardInner = ({
 
   return (
     <>
-      <PublicOrEmbeddedDashboardView
-        dashboard={dashboard}
-        hasNightModeToggle={hasNightModeToggle}
-        isFullscreen={isFullscreen}
-        isNightMode={isNightMode}
-        onFullscreenChange={onFullscreenChange}
-        onNightModeChange={onNightModeChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        refreshPeriod={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        selectedTabId={selectedTabId}
-        parameters={parameters}
-        parameterValues={parameterValues}
-        draftParameterValues={draftParameterValues}
-        setParameterValue={setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
-        dashboardId={dashboardId}
-        background={background}
-        bordered={bordered}
-        titled={titled}
-        theme={theme}
-        hideParameters={hideParameters}
-        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-        slowCards={slowCards}
-        cardTitled={cardTitled}
-        downloadsEnabled={downloadsEnabled}
-      />
-      {withEdit && dashboard && (
-        <DashboardSidebars
-          dashboard={dashboard}
-          showAddParameterPopover={showAddParameterPopover}
-          removeParameter={removeParameter}
-          addCardToDashboard={addCardToDashboard}
-          clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
-          onReplaceAllDashCardVisualizationSettings={
-            onReplaceAllDashCardVisualizationSettings
-          }
-          onUpdateDashCardVisualizationSettings={
-            onUpdateDashCardVisualizationSettings
-          }
-          onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
-          setParameterName={setParameterName}
-          setParameterType={setParameterType}
-          setParameterDefaultValue={setParameterDefaultValue}
-          setParameterIsMultiSelect={setParameterIsMultiSelect}
-          setParameterQueryType={setParameterQueryType}
-          setParameterSourceType={setParameterSourceType}
-          setParameterSourceConfig={setParameterSourceConfig}
-          setParameterFilteringParameters={setParameterFilteringParameters}
-          setParameterRequired={setParameterRequired}
-          setParameterTemporalUnits={setParameterTemporalUnits}
-          isFullscreen={isFullscreen}
-          sidebar={sidebar}
-          closeSidebar={closeSidebar}
-          selectedTabId={selectedTabId}
-          onCancel={() => setSharing(false)}
+      {isEditing && (
+        <EditBar
+          title={t`You're editing this dashboard.`}
+          buttons={[
+            <CancelEditButton
+              key="cancel-edit-button"
+              onClick={() => onRequestCancel()}
+            />,
+            <SaveEditButton
+              key="save-edit-button"
+              onDoneEditing={() => {
+                onRefreshPeriodChange(null);
+              }}
+            />,
+          ]}
         />
       )}
+      <Flex w="100%" h="100%" direction="row" justify="stretch" align="stretch">
+        <PublicOrEmbeddedDashboardView
+          dashboard={dashboard}
+          hasNightModeToggle={hasNightModeToggle}
+          isFullscreen={isFullscreen}
+          isNightMode={isNightMode}
+          onFullscreenChange={onFullscreenChange}
+          onNightModeChange={onNightModeChange}
+          onRefreshPeriodChange={onRefreshPeriodChange}
+          refreshPeriod={refreshPeriod}
+          setRefreshElapsedHook={setRefreshElapsedHook}
+          selectedTabId={selectedTabId}
+          parameters={parameters}
+          parameterValues={parameterValues}
+          draftParameterValues={draftParameterValues}
+          setParameterValue={setParameterValue}
+          setParameterValueToDefault={setParameterValueToDefault}
+          dashboardId={dashboardId}
+          background={background}
+          bordered={bordered}
+          titled={titled}
+          theme={theme}
+          hideParameters={hideParameters}
+          navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+          slowCards={slowCards}
+          cardTitled={cardTitled}
+          downloadsEnabled={downloadsEnabled}
+        />
+        {withEdit && dashboard && (
+          <DashboardSidebars
+            dashboard={dashboard}
+            showAddParameterPopover={showAddParameterPopover}
+            removeParameter={removeParameter}
+            addCardToDashboard={addCardToDashboard}
+            clickBehaviorSidebarDashcard={clickBehaviorSidebarDashcard}
+            onReplaceAllDashCardVisualizationSettings={
+              onReplaceAllDashCardVisualizationSettings
+            }
+            onUpdateDashCardVisualizationSettings={
+              onUpdateDashCardVisualizationSettings
+            }
+            onUpdateDashCardColumnSettings={onUpdateDashCardColumnSettings}
+            setParameterName={setParameterName}
+            setParameterType={setParameterType}
+            setParameterDefaultValue={setParameterDefaultValue}
+            setParameterIsMultiSelect={setParameterIsMultiSelect}
+            setParameterQueryType={setParameterQueryType}
+            setParameterSourceType={setParameterSourceType}
+            setParameterSourceConfig={setParameterSourceConfig}
+            setParameterFilteringParameters={setParameterFilteringParameters}
+            setParameterRequired={setParameterRequired}
+            setParameterTemporalUnits={setParameterTemporalUnits}
+            isFullscreen={isFullscreen}
+            sidebar={sidebar}
+            closeSidebar={closeSidebar}
+            selectedTabId={selectedTabId}
+            onCancel={() => setSharing(false)}
+          />
+        )}
+      </Flex>
     </>
   );
 };

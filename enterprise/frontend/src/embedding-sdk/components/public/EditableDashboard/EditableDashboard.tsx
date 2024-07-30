@@ -14,7 +14,7 @@ import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useDispatch } from "metabase/lib/redux";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
-import { Group } from "metabase/ui";
+import { Box } from "metabase/ui";
 
 // TODO: Show regular InteractiveDashboard on edit end
 // TODO: Plugins and load events
@@ -70,7 +70,7 @@ const EditableDashboardInner = ({
   }, [dashboardId, dispatch, previousDashboardId]);
 
   return (
-    <Group w="100%" h="100%" ref={ref} className={className}>
+    <Box w="100%" h="100%" ref={ref} className={className}>
       <PublicOrEmbeddedDashboard
         dashboardId={dashboardId}
         parameterQueryParams={initialParameterValues}
@@ -94,7 +94,7 @@ const EditableDashboardInner = ({
         hasNightModeToggle={false}
         withEdit
       />
-    </Group>
+    </Box>
   );
 };
 
