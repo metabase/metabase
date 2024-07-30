@@ -11,3 +11,4 @@ export * from "./requests";
 export * from "./settings";
 export * from "./setup";
 export * from "./state";
+export * from "./downloads";
