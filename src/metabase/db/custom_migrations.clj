@@ -1560,7 +1560,7 @@
                                            :from   [[:report_card :c]]
                                            :join   [[:report_dashboardcard :dc] [:= :dc.card_id :c.id]]
                                            :where  [:and [:not= :c.result_metadata nil]
-                                                         [:like :c.visualization_settings "%column_settings%"]]}))))
+                                                         [:like :dc.visualization_settings "%column_settings%"]]}))))
 
 (define-reversible-migration MigrateLegacyColumnKeysInDashboardCardVizSettings
   (update-legacy-column-keys-in-dashboard-card-viz-settings migrate-legacy-column-keys-in-viz-settings)
