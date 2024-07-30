@@ -8804,7 +8804,7 @@ databaseChangeLog:
       preConditions: # linter made me add this
       changes:
         - createIndex:
-            tableName: query_table
+            tableName: query_field
             indexName: idx_query_field_analysis_id
             columns:
               column:
