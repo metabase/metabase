@@ -640,47 +640,32 @@
                          :data
                          :rows))))))))))
 
-(deftest numeric-parameter-values-test
-  (testing "embedding endpoint supports numeric parameter values (#46240)"
+(deftest string-parameter-values-test
+  (testing "embedding endpoint should not parse string values into numbers (#46240)"
     (embed-test/with-embedding-enabled-and-new-secret-key
-      (mt/dataset places-cam-likes
+      (mt/dataset airports
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
                                                            {:database (mt/id)
-                                                            :type     :native
-                                                            :native
-                                                            {:template-tags
-                                                             {"ID"
-                                                              {:widget-type  :number/=
-                                                               :name         "ID"
-                                                               :type         :dimension
-                                                               :id           "ID"
-                                                               :dimension    [:field (mt/id :places :id) nil]
-                                                               :display-name "ID"
-                                                               :options      nil}}
-                                                             :query "SELECT * FROM PLACES WHERE {{ID}}"}}}
+                                                            :type :query
+                                                            :query
+                                                            {:source-table (mt/id :airport)
+                                                             :fields       [[:field (mt/id :airport :name) nil]]}}}
                        :model/Dashboard {dashboard-id :id} {:parameters
-                                                            [{:name      "ID"
-                                                              :slug      "ID"
+                                                            [{:name      "NAME"
+                                                              :slug      "NAME"
                                                               :id        "ccb91bc"
-                                                              :type      :number/=
+                                                              :type      :string/contains
                                                               :sectionId "number"}]}
                        :model/DashboardCard dashcard {:dashboard_id dashboard-id
                                                       :parameter_mappings
                                                       [{:parameter_id "ccb91bc"
                                                         :card_id      card-id
-                                                        :target       [:dimension [:template-tag "ID"]]}]
+                                                        :target       [:dimension [:field (mt/id :airport :name) nil]]}]
                                                       :card_id      card-id}]
-          (testing "for card embeds"
-            (let [url (card-query-url card {:_embedding_params {:ID "enabled"}})]
-              (is (= [[3 "The Dentist" false]]
-                     (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:ID 3}))
-                         :data
-                         :rows)))))
           (testing "for dashboard embeds"
-            (let [url (dashcard-url dashcard {:_embedding_params {:ID "enabled"}})]
-              (is (= [[1 "Tempest" true]]
+            (let [url (dashcard-url dashcard {:_embedding_params {:NAME "enabled"}})]
+              (is (= [["Cheongju International Airport/Cheongju Air Base (K-59/G-513)"]]
                      (-> (mt/user-http-request :crowberto :get 202 url
-                                               :parameters (json/generate-string {:ID 1}))
+                                               :parameters (json/generate-string {:NAME "513"}))
                          :data
                          :rows))))))))))
