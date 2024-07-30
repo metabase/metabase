@@ -588,20 +588,20 @@
                                                             :type     :native
                                                             :native
                                                             {:template-tags
-                                                             {"ASDF"
+                                                             {"LIKED"
                                                               {:widget-type  :string/=
                                                                :default      [true]
-                                                               :name         "ASDF"
+                                                               :name         "LIKED"
                                                                :type         :dimension
-                                                               :id           "ASDF"
+                                                               :id           "LIKED"
                                                                :dimension    [:field (mt/id :places :liked) nil]
-                                                               :display-name "Asdf"
+                                                               :display-name "Liked"
                                                                :options      nil
                                                                :required     true}}
-                                                             :query "SELECT * FROM PLACES WHERE {{ASDF}}"}}}
+                                                             :query "SELECT * FROM PLACES WHERE {{LIKED}}"}}}
                        :model/Dashboard {dashboard-id :id} {:parameters
-                                                            [{:name      "ASDF"
-                                                              :slug      "ASDF"
+                                                            [{:name      "LIKED"
+                                                              :slug      "LIKED"
                                                               :id        "ccb91bc"
                                                               :type      :string/=
                                                               :sectionId "string"
@@ -611,33 +611,33 @@
                                                       :parameter_mappings
                                                       [{:parameter_id "ccb91bc"
                                                         :card_id      card-id
-                                                        :target       [:dimension [:template-tag "ASDF"]]}]
+                                                        :target       [:dimension [:template-tag "LIKED"]]}]
                                                       :card_id      card-id}]
           (testing "for card embeds"
-            (let [false-url (card-query-url card {:_embedding_params {:ASDF "enabled"}})
-                  true-url  (card-query-url card {:_embedding_params {:ASDF "enabled"}})]
+            (let [false-url (card-query-url card {:_embedding_params {:LIKED "enabled"}})
+                  true-url  (card-query-url card {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
                      (-> (mt/user-http-request :crowberto :get 202 false-url
-                                               :parameters (json/generate-string {:ASDF false}))
+                                               :parameters (json/generate-string {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
                      (-> (mt/user-http-request :crowberto :get 202 true-url
-                                               :parameters (json/generate-string {:ASDF true}))
+                                               :parameters (json/generate-string {:LIKED true}))
                          :data
                          :rows)))))
           (testing "for dashboard embeds"
-            (let [false-url (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}})
-                  true-url  (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}})]
+            (let [false-url (dashcard-url dashcard {:_embedding_params {:LIKED "enabled"}})
+                  true-url  (dashcard-url dashcard {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
                      (-> (mt/user-http-request :crowberto :get 202 false-url
-                                               :parameters (json/generate-string {:ASDF false}))
+                                               :parameters (json/generate-string {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
                      (-> (mt/user-http-request :crowberto :get 202 true-url
-                                               :parameters (json/generate-string {:ASDF true}))
+                                               :parameters (json/generate-string {:LIKED true}))
                          :data
                          :rows))))))))))

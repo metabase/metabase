@@ -131,7 +131,7 @@
   (or (try
         (when-let [parameters (:parameters query-params)]
           (json/parse-string parameters keyword))
-        (catch Throwable e
+        (catch Throwable _
           nil))
       query-params))
 
