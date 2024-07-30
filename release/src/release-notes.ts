@@ -1,8 +1,13 @@
 import { match } from "ts-pattern";
 
 import { nonUserFacingLabels, hiddenLabels } from "./constants";
-import type { Issue } from "./types";
-import { isEnterpriseVersion } from "./version-helpers";
+import { getMilestoneIssues, isLatestRelease, hasBeenReleased } from "./github";
+import type { Issue, ReleaseProps } from "./types";
+import {
+  isEnterpriseVersion,
+  isRCVersion,
+  isValidVersionString,
+} from "./version-helpers";
 
 const releaseTemplate = `## Upgrading
 
@@ -254,3 +259,67 @@ export const generateReleaseNotes = ({
     .replace("{{version}}", version)
     .replace("{{checksum}}", checksum.split(" ")[0]);
 };
+
+export async function publishRelease({
+  version,
+  checksum,
+  owner,
+  repo,
+  github,
+}: ReleaseProps & { checksum: string }) {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+
+  const issues = await getMilestoneIssues({ version, github, owner, repo });
+
+  const isLatest: "true" | "false" =
+    !isEnterpriseVersion(version) &&
+    (await isLatestRelease({ version, github, owner, repo }))
+      ? "true"
+      : "false";
+
+  const payload = {
+    owner,
+    repo,
+    tag_name: version,
+    name: getReleaseTitle(version),
+    body: generateReleaseNotes({ version, checksum, issues }),
+    draft: true,
+    prerelease: isRCVersion(version),
+    make_latest: isLatest,
+  };
+
+  return github.rest.repos.createRelease(payload);
+}
+
+export async function getChangelog({
+  version,
+  owner,
+  repo,
+  github,
+}: ReleaseProps) {
+  if (!isValidVersionString(version)) {
+    throw new Error(`Invalid version string: ${version}`);
+  }
+  const isAlreadyReleased = await hasBeenReleased({
+    github,
+    owner,
+    repo,
+    version,
+  });
+
+  const issues = await getMilestoneIssues({
+    version,
+    github,
+    owner,
+    repo,
+    milestoneStatus: isAlreadyReleased ? "closed" : "open",
+  });
+
+  return generateReleaseNotes({
+    version,
+    checksum: "checksum-placeholder",
+    issues,
+  });
+}
