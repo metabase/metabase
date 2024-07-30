@@ -47,7 +47,10 @@
 (defn- do-phase! [phase database]
   (let [f      (phase->fn phase)
         result (f database)]
-    (when-not (instance? Throwable result)
+    (if (instance? Throwable result)
+      ;; do nothing if we're configured to just move on.
+      (when-not (sync-util/*log-exceptions-and-continue?*)
+        (throw result))
       (assoc result :name (name phase)))))
 
 (mu/defn sync-database! :- SyncDatabaseResults
