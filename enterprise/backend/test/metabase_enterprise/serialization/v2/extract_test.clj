@@ -591,7 +591,11 @@
        :model/DashboardCardSeries _ {:card_id c3-id, :dashboardcard_id dc1-id, :position 1}
        :model/DashboardCardSeries _ {:card_id c2-id, :dashboardcard_id dc1-id, :position 0}]
       (testing "Inlined dashcards include their series' card entity IDs"
-        (let [ser (serdes/extract-one "Dashboard" {} (t2/select-one Dashboard :id dash-id))]
+        (let [ser (serdes/extract-all "Dashboard" {:where [:= :id dash-id]})
+              #_(serdes/extract-one "Dashboard" {} (t2/select-one Dashboard :id dash-id))
+              #_ (dev.toucan2-monitor/with-queries [q]
+                    (metabase.util/prog1 (serdes/extract-one "Dashboard" {} (t2/select-one Dashboard :id dash-id))
+                      #p (q)))]
           (is (=? {:entity_id dash-eid
                    :dashcards [{:entity_id dc1-eid
                                 :series (mt/exactly=? [{:card_id c2-eid} {:card_id c3-eid}])}

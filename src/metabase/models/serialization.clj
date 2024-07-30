@@ -408,18 +408,20 @@
 (defn extract-query-collections
   "Helper for the common (but not default) [[extract-query]] case of fetching everything that isn't in a personal
   collection."
-  [model {:keys [collection-set]}]
+  [model {:keys [collection-set where]}]
   (if collection-set
     ;; If collection-set is defined, select everything in those collections, or with nil :collection_id.
     (t2/reducible-select model {:where [:or
                                         [:in :collection_id collection-set]
                                         (when (contains? collection-set nil)
-                                          [:= :collection_id nil])]})
+                                          [:= :collection_id nil])
+                                        (when where
+                                          where)]})
     ;; If collection-set is nil, just select everything.
-    (t2/reducible-select model)))
+    (t2/reducible-select model {:where (or where true)})))
 
-(defmethod extract-query :default [model-name _]
-  (t2/reducible-select (symbol model-name)))
+(defmethod extract-query :default [model-name {:keys [where]}]
+  (t2/reducible-select (symbol model-name) {:where (or where true)}))
 
 (defn extract-one-basics
   "A helper for writing [[extract-one]] implementations. It takes care of the basics:
@@ -1528,16 +1530,16 @@
         sorter     (:sort-by opts :created_at)
         key-field  (:key-field opts :entity_id)]
     {::nested     true
-     :target      model
+     :model       model
      :backward-fk backward-fk
      :export      (fn [data]
                     ;; if this looks weird, see :series hydration for DashboardCard, it supplies Cards while we need
                     ;; to serialize DashboardCardSeries instances
-                    (let [entities (if (t2/instance-of? model (first data))
-                                     data
-                                     (t2/select model backward-fk (:id *current*)))]
-                      (->> (sort-by sorter entities)
-                           (mapv #(extract-one model-name opts %)))))
+                    (when-not (every? #(t2/instance-of? model %) data)
+                      (assert false
+                              (format "Nested data is expected to be a %s, not %s" model (t2/model (first data)))))
+                    (->> (sort-by sorter data)
+                         (mapv #(extract-one model-name opts %))))
      :import      (fn [lst]
                     (let [parent-id (:id *current*)
                           loaded    (for [[idx ingested] (map-indexed vector lst)
