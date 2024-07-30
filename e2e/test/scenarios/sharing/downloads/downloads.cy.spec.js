@@ -65,7 +65,7 @@ describe("scenarios > question > download", () => {
     cy.signInAsAdmin();
   });
 
-  describeWithSnowplow("[with snowplow events]", () => {
+  describeWithSnowplow("[snowplow]", () => {
     testCases.forEach(fileType => {
       it(`downloads ${fileType} file`, () => {
         startNewQuestion();
