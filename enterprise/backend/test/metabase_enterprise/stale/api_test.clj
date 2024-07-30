@@ -205,15 +205,26 @@
 (deftest snowplow-events-are-emitted
   (mt/with-premium-features #{:collection-cleanup}
     (with-collection-hierarchy [{:keys [a]}]
-      (snowplow-test/with-fake-snowplow-collector
-        (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
-                              :before_date "1988-01-21")
-        (is (= {:data {"collection_id" (:id a)
-                       "event" "stale_items_read"
-                       "total_stale_items_found" 0
-                       "cutoff_date" "1988-01-21T00:00:00Z"}
-                :user-id (str (mt/user->id :crowberto))}
-               (last (snowplow-test/pop-event-data-and-user-id!))))))))
+      (testing "on GET /api/collection/:id/stale"
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                                :before_date "1988-01-21")
+          (is (= {:data {"collection_id" (:id a)
+                         "event" "stale_items_read"
+                         "total_stale_items_found" 0
+                         "cutoff_date" "1988-01-21T00:00:00Z"}
+                  :user-id (str (mt/user->id :crowberto))}
+                 (last (snowplow-test/pop-event-data-and-user-id!))))))
+      (testing "on POST /api/collection/:id/stale/trash"
+        (snowplow-test/with-fake-snowplow-collector
+          (mt/user-http-request :crowberto :post 200 (str "collection/root/stale/trash")
+                                :before_date "1988-01-21")
+          (is (= {:data {"event" "stale_items_archived"
+                         "total_stale_items_found" 0
+                         "cutoff_date" "1988-01-21T00:00:00Z"
+                         "collection_id" nil}
+                  :user-id (str (mt/user->id :crowberto))}
+                 (last (snowplow-test/pop-event-data-and-user-id!)))))))))
 
 (deftest stale-items-can-be-archived
   (mt/with-premium-features #{:collection-cleanup}

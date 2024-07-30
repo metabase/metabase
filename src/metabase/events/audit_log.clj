@@ -224,3 +224,14 @@
 (methodical/defmethod events/publish-event! ::cache-config-changed-event
   [topic event]
   (audit-log/record-event! topic event))
+
+(derive ::stale-items-archived ::event)
+(derive :event/stale-items-archived ::stale-items-archived)
+
+(methodical/defmethod events/publish-event! ::stale-items-archived
+  [topic {:keys [object user-id cutoff-date total]}]
+  (audit-log/record-event! topic {:details  {:total-stale-items-found total
+                                             :cutoff-date cutoff-date}
+                                  :user-id  user-id
+                                  :model    :model/Collection
+                                  :model-id (u/id object)}))

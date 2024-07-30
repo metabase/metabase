@@ -5,6 +5,7 @@
   the test code for the feature."
   (:require
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [metabase.events :as events]
    [metabase.events.audit-log :as events.audit-log]
    [metabase.lib.schema.id :as lib.schema.id]
@@ -527,3 +528,20 @@
                 :topic    :password-reset-successful
                 :model    "User"}
                (mt/latest-audit-log-entry :password-reset-successful (mt/user->id :rasta))))))))
+
+(deftest archive-stale-items-test
+  (testing :event/stale-items-archived
+    (mt/with-temp [:model/Collection collection {}]
+      (mt/with-current-user (mt/user->id :rasta)
+        (let [user (assoc (mt/fetch-user :rasta) :token "hash")]
+          (events/publish-event! :event/stale-items-archived {:object collection
+                                                              :user-id (:id user)
+                                                              :cutoff-date (t/local-date 0 1 1)
+                                                              :total 100})
+          (is (= {:model_id (:id collection)
+                  :user_id  (mt/user->id :rasta)
+                  :details  {:total-stale-items-found 100
+                             :cutoff-date "0000-01-01"}
+                  :topic    :stale-items-archived
+                  :model    "Collection"}
+                 (mt/latest-audit-log-entry :stale-items-archived))))))))

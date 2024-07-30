@@ -12,7 +12,6 @@
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
-   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -1093,13 +1092,11 @@
                                 :limit          mw.offset-paging/*limit*
                                 :offset         mw.offset-paging/*offset*
                                 :sort-column    sort_column
-                                :sort-direction sort_direction})
-
-        snowplow-payload {:collection_id           (when-not (= :root id) id)
-                          :total_stale_items_found total
-                          ;; convert before-date to a date-time string before sending it.
-                          :cutoff_date             (format "%sT00:00:00Z" (str before-date))}]
-    (snowplow/track-event! ::snowplow/stale-items-read api/*current-user-id* snowplow-payload)
+                                :sort-direction sort_direction})]
+    (events/publish-event! :event/stale-items-read {:object collection
+                                                    :user-id api/*current-user-id*
+                                                    :cutoff-date before-date
+                                                    :total total})
     {:total  total
      :data   (api/present-items present-model-items rows)
      :limit  mw.offset-paging/*limit*
@@ -1131,15 +1128,17 @@
                                                      :limit          nil
                                                      :offset         nil
                                                      :sort-column    :name
-                                                     :sort-direction :asc})
-        snowplow-payload     {:total-stale-items-found total
-                              :cutoff-date             before-date}]
+                                                     :sort-direction :asc})]
     (doseq [[model rows] (group-by :model rows)
             rows-batch   (partition-all 3000 rows)]
       (t2/update! model
                   {:id [:in (map :id rows-batch)]}
                   {:archived true}))
-    (snowplow/track-event! ::snowplow/collection-trash-stale-content api/*current-user-id* snowplow-payload)
+    (events/publish-event! :event/stale-items-archived
+                           {:object collection
+                            :user-id api/*current-user-id*
+                            :cutoff-date before-date
+                            :total total})
     {:total total}))
 
 (api/defendpoint GET "/trash"
