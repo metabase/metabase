@@ -75,7 +75,6 @@ jobs:
   deploy_pr:
     needs: [ build ]
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'External') == false
     name: PR Review ENV
     permissions:
       id-token: write
@@ -159,7 +158,6 @@ jobs:
   preview_links:
     runs-on: ubuntu-latest
     needs: [ deploy_pr ]
-    if: contains(github.event.pull_request.labels.*.name, 'External') == false
     steps:
       - uses: marocchino/sticky-pull-request-comment@v2
         with:
