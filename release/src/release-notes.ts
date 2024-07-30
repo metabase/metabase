@@ -242,11 +242,11 @@ export const generateReleaseNotes = ({
     )
     .replace(
       "{{already-fixed}}",
-      groupIssuesByProductCategory(issuesByType.alreadyFixedIssues),
+      groupIssuesByProductCategory(issuesByType.alreadyFixedIssues) ?? "",
     )
     .replace(
       "{{under-the-hood}}",
-      groupIssuesByProductCategory(issuesByType.underTheHoodIssues),
+      groupIssuesByProductCategory(issuesByType.underTheHoodIssues) ?? "",
     )
     .replace("{{docker-tag}}", getDockerTag(version))
     .replace("{{download-url}}", getDownloadUrl(version))
