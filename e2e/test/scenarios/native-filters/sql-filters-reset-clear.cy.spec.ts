@@ -453,77 +453,80 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
     cy.log(NO_DEFAULT_NON_REQUIRED);
     filterSection("no_default_non_required").within(() => {
-      filter("Select a default value…").scrollIntoView();
-      filter("Select a default value…").should("have.value", "");
-      checkStatusIcon("Select a default value…", "chevron");
-      filter("Select a default value…").click();
+      filter("Default filter widget value").scrollIntoView();
+      filterInput("Default filter widget value").should("have.value", "");
+      checkStatusIcon("Default filter widget value", "chevron");
+      filter("Default filter widget value").click();
     });
 
     popover().findByRole("textbox").clear().type(otherValue).blur();
     popover().button("Add filter").click();
 
     filterSection("no_default_non_required").within(() => {
-      filter("Select a default value…").should(
+      filterInput("Default filter widget value").should(
         "have.value",
         otherValueFormatted,
       );
-      checkStatusIcon("Select a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
 
-      clearIcon("Select a default value…").click();
-      filter("Select a default value…").should("have.value", "");
-      checkStatusIcon("Select a default value…", "chevron");
+      clearIcon("Default filter widget value").click();
+      filterInput("Default filter widget value").should("have.value", "");
+      checkStatusIcon("Default filter widget value", "chevron");
     });
 
     cy.log(DEFAULT_NON_REQUIRED);
     filterSection("default_non_required").within(() => {
-      filter("Select a default value…").scrollIntoView();
-      filter("Select a default value…").should(
+      filter("Default filter widget value").scrollIntoView();
+      filterInput("Default filter widget value").should(
         "have.value",
         defaultValueFormatted,
       );
-      checkStatusIcon("Select a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
 
-      clearIcon("Select a default value…").click();
-      filter("Select a default value…").should("have.value", "");
-      checkStatusIcon("Select a default value…", "chevron");
-      filter("Select a default value…").click();
+      clearIcon("Default filter widget value").click();
+      filterInput("Default filter widget value").should("have.value", "");
+      checkStatusIcon("Default filter widget value", "chevron");
+      filter("Default filter widget value").click();
     });
 
     popover().findByRole("textbox").clear().type(otherValue).blur();
     popover().button("Add filter").click();
 
     filterSection("default_non_required").within(() => {
-      filter("Select a default value…").should(
+      filterInput("Default filter widget value").should(
         "have.value",
         otherValueFormatted,
       );
-      checkStatusIcon("Select a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
     });
 
     cy.log(DEFAULT_REQUIRED);
     filterSection("default_required").within(() => {
-      filter("Select a default value…").scrollIntoView();
-      filter("Select a default value…").should(
+      filter("Default filter widget value").scrollIntoView();
+      filterInput("Default filter widget value").should(
         "have.value",
         defaultValueFormatted,
       );
-      checkStatusIcon("Select a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
 
-      clearIcon("Select a default value…").click();
-      filter("Select a default value…").should("have.value", "");
-      checkStatusIcon("Select a default value…", "chevron");
-      filter("Select a default value…").click();
+      clearIcon("Default filter widget value").click();
+      filterInput("Default filter widget value (required)").should(
+        "have.value",
+        "",
+      );
+      checkStatusIcon("Default filter widget value (required)", "chevron");
+      filter("Default filter widget value (required)").click();
     });
 
     popover().findByRole("textbox").clear().type(otherValue).blur();
     popover().button("Add filter").click();
 
     filterSection("default_required").within(() => {
-      filter("Select a default value…").should(
+      filterInput("Default filter widget value").should(
         "have.value",
         otherValueFormatted,
       );
-      checkStatusIcon("Select a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
     });
   }
 
@@ -638,6 +641,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     // return cy.get(
     //   `[placeholder="${labelOrPlaceholder}"],[aria-label="${labelOrPlaceholder}"]`,
     // );
+  }
+
+  function filterInput(labelOrPlaceholder: string) {
+    return filter(labelOrPlaceholder).findByRole("textbox");
   }
 
   function filterSection(id: string) {
