@@ -1,5 +1,8 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { createNativeQuestion, popover, restore } from "e2e/support/helpers";
 import type { TemplateTag } from "metabase-types/api";
+
+const { PRODUCTS } = SAMPLE_DATABASE;
 
 const NO_DEFAULT_NON_REQUIRED = "no default value, non-required";
 
@@ -42,8 +45,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "a",
       otherValue: "{backspace}b",
       otherValueFormatted: "b",
-      setValue: (label, value) => {
-        filter(label).focus().clear().type(value).blur();
+      setValue: (labelOrPlaceholder, value) => {
+        filter(labelOrPlaceholder).focus().clear().type(value).blur();
       },
     });
   });
@@ -77,8 +80,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "1",
       otherValue: "{backspace}2",
       otherValueFormatted: "2",
-      setValue: (label, value) => {
-        filter(label).focus().clear().type(value).blur();
+      setValue: (labelOrPlaceholder, value) => {
+        filter(labelOrPlaceholder).focus().clear().type(value).blur();
       },
     });
   });
@@ -112,11 +115,78 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "January 1, 2024",
       otherValue: "01/01/2020",
       otherValueFormatted: "January 1, 2020",
-      setValue: (label, value) => {
-        addDateFilter(label, value);
+      setValue: value => {
+        addDateFilter(value);
       },
-      updateValue: (label, value) => {
-        updateDateFilter(label, value);
+      updateValue: value => {
+        updateDateFilter(value);
+      },
+    });
+
+    checkParameterSidebarDefaultValueDate({
+      defaultValueFormatted: "January 1, 2024",
+      otherValue: "01/01/2020",
+      otherValueFormatted: "January 1, 2020",
+    });
+  });
+
+  it("field parameters", () => {
+    createNativeQuestionWithParameters({
+      no_default_non_required: {
+        name: "no_default_non_required",
+        "display-name": NO_DEFAULT_NON_REQUIRED,
+        id: "fed1b918",
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "widget-type": "string/contains",
+        options: { "case-sensitive": false },
+      },
+      default_non_required: {
+        name: "default_non_required",
+        "display-name": DEFAULT_NON_REQUIRED,
+        id: "75d67d38",
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "widget-type": "string/contains",
+        options: { "case-sensitive": false },
+        // @ts-expect-error - TODO: https://github.com/metabase/metabase/issues/46263
+        default: ["Gizmo"],
+      },
+      default_required: {
+        name: "default_required",
+        "display-name": DEFAULT_REQUIRED,
+        id: "60f12ac8",
+        type: "dimension",
+        dimension: ["field", PRODUCTS.CATEGORY, null],
+        "widget-type": "string/contains",
+        options: { "case-sensitive": false },
+        required: true,
+        // @ts-expect-error - TODO: https://github.com/metabase/metabase/issues/46263
+        default: ["Gizmo"],
+      },
+    });
+
+    checkNativeParametersDropdown({
+      defaultValueFormatted: "Gizmo",
+      otherValue: "{backspace}Gadget",
+      otherValueFormatted: "Gadget",
+      setValue: value => {
+        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().button("Add filter").click();
+      },
+      updateValue: value => {
+        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().button("Update filter").click();
+      },
+    });
+
+    checkParameterSidebarDefaultValueDropdown({
+      defaultValueFormatted: "Gizmo",
+      otherValue: "{backspace}Gadget",
+      otherValueFormatted: "Gadget",
+      setValue: value => {
+        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().button("Add filter").click();
       },
     });
   });
@@ -141,15 +211,21 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
   }
 
   function checkStatusIcon(
-    label: string,
+    labelOrPlaceholder: string,
     /**
      * Use 'none' when no icon should be visible.
      */
     icon: "chevron" | "reset" | "clear" | "none",
   ) {
-    clearIcon(label).should(icon === "clear" ? "be.visible" : "not.exist");
-    resetIcon(label).should(icon === "reset" ? "be.visible" : "not.exist");
-    chevronIcon(label).should(icon === "chevron" ? "be.visible" : "not.exist");
+    clearIcon(labelOrPlaceholder).should(
+      icon === "clear" ? "be.visible" : "not.exist",
+    );
+    resetIcon(labelOrPlaceholder).should(
+      icon === "reset" ? "be.visible" : "not.exist",
+    );
+    chevronIcon(labelOrPlaceholder).should(
+      icon === "chevron" ? "be.visible" : "not.exist",
+    );
   }
 
   function checkNativeParametersInput<T = string>({
@@ -162,8 +238,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     defaultValueFormatted: string;
     otherValue: T;
     otherValueFormatted: string;
-    setValue: (label: string, value: T) => void;
-    updateValue?: (label: string, value: T) => void;
+    setValue: (labelOrPlaceholder: string, value: T) => void;
+    updateValue?: (labelOrPlaceholder: string, value: T) => void;
   }) {
     cy.log("no default value, non-required, no current value");
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "none");
@@ -228,14 +304,15 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     defaultValueFormatted: string;
     otherValue: string;
     otherValueFormatted: string;
-    setValue: (label: string, value: string) => void;
-    updateValue?: (label: string, value: string) => void;
+    setValue: (value: string) => void;
+    updateValue?: (value: string) => void;
   }) {
     cy.log("no default value, non-required, no current value");
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
 
     cy.log("no default value, non-required, has current value");
-    setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
+    filter(NO_DEFAULT_NON_REQUIRED).click();
+    setValue(otherValue);
     filter(NO_DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
     clearButton(NO_DEFAULT_NON_REQUIRED).click();
@@ -260,7 +337,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     cy.log(
       "has default value, non-required, current value different than default",
     );
-    updateValue(DEFAULT_NON_REQUIRED, otherValue);
+    filter(DEFAULT_NON_REQUIRED).click();
+    updateValue(otherValue);
     filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
@@ -271,18 +349,13 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     checkStatusIcon(DEFAULT_REQUIRED, "none");
 
     cy.log("has default value, required, current value different than default");
-    updateValue(DEFAULT_REQUIRED, otherValue);
+    filter(DEFAULT_REQUIRED).click();
+    updateValue(otherValue);
     filter(DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "reset");
     resetButton(DEFAULT_REQUIRED).click();
     filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "none");
-
-    checkParameterSidebarDateDefaultValue({
-      defaultValueFormatted,
-      otherValue,
-      otherValueFormatted,
-    });
   }
 
   function checkParameterSidebarDefaultValue<T = string>({
@@ -295,8 +368,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     defaultValueFormatted: string;
     otherValue: T;
     otherValueFormatted: string;
-    setValue: (label: string, value: T) => void;
-    updateValue: (label: string, value: T) => void;
+    setValue: (labelOrPlaceholder: string, value: T) => void;
+    updateValue: (labelOrPlaceholder: string, value: T) => void;
   }) {
     cy.log("parameter sidebar");
 
@@ -364,7 +437,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
   }
 
-  function checkParameterSidebarDateDefaultValue({
+  function checkParameterSidebarDefaultValueDate({
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
@@ -454,12 +527,117 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
   }
 
+  function checkParameterSidebarDefaultValueDropdown({
+    defaultValueFormatted,
+    otherValue,
+    otherValueFormatted,
+    setValue,
+    updateValue = setValue,
+  }: {
+    defaultValueFormatted: string;
+    otherValue: string;
+    otherValueFormatted: string;
+    setValue: (value: string) => void;
+    updateValue?: (value: string) => void;
+  }) {
+    cy.log("parameter sidebar");
+
+    cy.findByTestId("visibility-toggler").click();
+    cy.icon("variable").click();
+
+    cy.log(NO_DEFAULT_NON_REQUIRED);
+    filterSection("no_default_non_required").within(() => {
+      filter("Default filter widget value").scrollIntoView();
+      filter("Default filter widget value").should(
+        "have.text",
+        "Enter a default value…",
+      );
+      checkStatusIcon("Default filter widget value", "chevron");
+      filter("Default filter widget value").click();
+    });
+
+    setValue(otherValue);
+
+    filterSection("no_default_non_required").within(() => {
+      filter("Default filter widget value").should(
+        "have.text",
+        otherValueFormatted,
+      );
+      checkStatusIcon("Default filter widget value", "clear");
+
+      clearIcon("Default filter widget value").click();
+      filter("Default filter widget value").should(
+        "have.text",
+        "Enter a default value…",
+      );
+      checkStatusIcon("Default filter widget value", "chevron");
+    });
+
+    cy.log(DEFAULT_NON_REQUIRED);
+    filterSection("default_non_required").within(() => {
+      filter("Default filter widget value").scrollIntoView();
+      filter("Default filter widget value").should(
+        "have.text",
+        defaultValueFormatted,
+      );
+      checkStatusIcon("Default filter widget value", "clear");
+
+      clearIcon("Default filter widget value").click();
+      filter("Default filter widget value").should(
+        "have.text",
+        "Enter a default value…",
+      );
+      checkStatusIcon("Default filter widget value", "chevron");
+      filter("Default filter widget value").click();
+    });
+
+    setValue(otherValue);
+
+    filterSection("default_non_required").within(() => {
+      filter("Default filter widget value").should(
+        "have.text",
+        otherValueFormatted,
+      );
+      checkStatusIcon("Default filter widget value", "clear");
+    });
+
+    cy.log(DEFAULT_REQUIRED);
+    filterSection("default_required").within(() => {
+      filter("Default filter widget value").scrollIntoView();
+      filter("Default filter widget value").should(
+        "have.text",
+        defaultValueFormatted,
+      );
+      checkStatusIcon("Default filter widget value", "clear");
+
+      clearIcon("Default filter widget value").click();
+      filter("Default filter widget value (required)").should(
+        "have.text",
+        "Enter a default value…",
+      );
+      checkStatusIcon("Default filter widget value (required)", "chevron");
+      filter("Default filter widget value (required)").click();
+    });
+
+    updateValue(otherValue);
+
+    filterSection("default_required").within(() => {
+      filter("Default filter widget value").should(
+        "have.text",
+        otherValueFormatted,
+      );
+      checkStatusIcon("Default filter widget value", "clear");
+    });
+  }
+
   function filter(labelOrPlaceholder: string) {
     // simple filters (text/number) can be found by placeholders
     // date filters can be found by labels
-    return cy.get(
-      `[placeholder="${labelOrPlaceholder}"],[aria-label="${labelOrPlaceholder}"]`,
-    );
+    return cy.findByLabelText(labelOrPlaceholder);
+    // return cy.findAllByLabelText(labelOrPlaceholder);
+    // return cy.get(
+    //   `[placeholder="${labelOrPlaceholder}"],[aria-label="${labelOrPlaceholder}"]`,
+    // );
   }
 
   function filterSection(id: string) {
@@ -488,14 +666,12 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     return filter(labelOrPlaceholder).parent().icon("chevrondown");
   }
 
-  function addDateFilter(labelOrPlaceholder: string, value: string) {
-    filter(labelOrPlaceholder).click();
+  function addDateFilter(value: string) {
     popover().findByRole("textbox").clear().type(value).blur();
     popover().button("Add filter").click();
   }
 
-  function updateDateFilter(labelOrPlaceholder: string, value: string) {
-    filter(labelOrPlaceholder).click();
+  function updateDateFilter(value: string) {
     popover().findByRole("textbox").clear().type(value).blur();
     popover().button("Update filter").click();
   }
