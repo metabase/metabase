@@ -256,8 +256,7 @@
         implicit-refs (-> (implicit-references-for-query parsed-query db-id)
                           (set/difference explicit-refs))
         field-refs    (concat (mark-reference explicit-refs true)
-                              (mark-reference implicit-refs false))
-        ]
+                              (mark-reference implicit-refs false))]
     {:tables table-refs
      :fields field-refs}))
 

@@ -1,5 +1,6 @@
 (ns metabase.models.query-analysis
   (:require
+   [honey.sql.helpers :as sql.helpers]
    [metabase.util :as u]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -23,21 +24,18 @@
   with invalid references."
   [card-query-map]
   (-> card-query-map
-      (update :join concat
-              [[(t2/table-name :model/QueryField) :qf]
-               [:and
-                [:= :qf.card_id :c.id]
-                [:= :qf.explicit_reference true]]])
-      (update :left-join concat
-              [[(t2/table-name :model/Field) :f]
-               [:= :qf.field_id :f.id]])
-      (update :where
-              (fn [existing-where]
-                [:and
-                 existing-where
-                 [:or
-                  [:= :f.id nil]
-                  [:= :f.active false]]]))))
+      (sql.helpers/join
+       [(t2/table-name :model/QueryField) :qf]
+       [:and
+        [:= :qf.card_id :c.id]
+        [:= :qf.explicit_reference true]])
+      (sql.helpers/left-join
+       [(t2/table-name :model/Field) :f]
+       [:= :qf.field_id :f.id])
+      (sql.helpers/where
+       [:or
+        [:= :f.id nil]
+        [:= :f.active false]])))
 
 (defn- group-errors [errors]
   (reduce (fn [acc [id error]]
