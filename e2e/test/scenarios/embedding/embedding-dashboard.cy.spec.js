@@ -284,6 +284,15 @@ describe("scenarios > embedding > dashboard parameters", () => {
       assertRequiredEnabledForName({ name: "User", enabled: false });
       assertRequiredEnabledForName({ name: "Not Used Filter", enabled: false });
     });
+
+    it("should render cursor pointer on hover over a toggle (metabase#46223)", () => {
+      visitDashboard("@dashboardId");
+
+      cy.findAllByTestId("parameter-value-widget-target")
+        .first()
+        .realHover()
+        .should("have.css", "cursor", "pointer");
+    });
   });
 
   context("API", () => {
