@@ -8729,7 +8729,7 @@ databaseChangeLog:
   - changeSet:
       id: v51.2024-07-29T09:25:14
       author: crisptrutski
-      comment: Index query_table
+      comment: Index query_table.analysis_id
       rollback: # not necessary, will be removed with the table
       preConditions: # linter made me add this
       changes:
@@ -8743,7 +8743,7 @@ databaseChangeLog:
   - changeSet:
       id: v51.2024-07-29T09:25:15
       author: crisptrutski
-      comment: Index query_table
+      comment: Index query_table.table_id
       rollback: # not necessary, will be removed with the table
       preConditions: # linter made me add this
       changes:
