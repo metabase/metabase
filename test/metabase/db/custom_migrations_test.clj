@@ -2151,3 +2151,56 @@
                                       :where  [:= :id dashcard-id]})
                        :visualization_settings
                        json/parse-string)))))))))
+
+(deftest update-legacy-column-keys-in-card-revision-viz-settings-test
+  (testing "v51.2024-07-24T12:00:00"
+    (impl/test-migrations ["v51.2024-07-24T12:00:00"] [migrate!]
+      (let [user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
+                                                  {:first_name  "Howard"
+                                                   :last_name   "Hughes"
+                                                   :email       "howard@aircraft.com"
+                                                   :password    "superstrong"
+                                                   :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-id     (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                                  {:name                   "My Saved Question"
+                                                   :created_at             :%now
+                                                   :updated_at             :%now
+                                                   :creator_id             user-id
+                                                   :display                "table"
+                                                   :dataset_query          "{}"
+                                                   :result_metadata        (json/generate-string result-metadata-for-viz-settings)
+                                                   :visualization_settings (json/generate-string viz-settings-with-field-ref-keys)
+                                                   :database_id            database-id
+                                                   :collection_id          nil})
+            card                                  {:visualization_settings viz-settings-with-field-ref-keys}
+            revision-id (t2/insert-returning-pks! (t2/table-name :model/Revision)
+                                                  {:model     "Card"
+                                                   :model_id  card-id
+                                                   :user_id   user-id
+                                                   :object    (json/generate-string card)
+                                                   :timestamp :%now})]
+        (migrate!)
+        (testing "After the migration, column_settings field ref-based keys are converted to name-based keys"
+          (is (= viz-settings-with-name-keys
+                 (-> (t2/query-one {:select [:object]
+                                    :from   [:revision]
+                                    :where  [:= :id revision-id]})
+                     :object
+                     json/parse-string
+                     (get "visualization_settings")))))
+        (when (not= driver/*driver* :mysql) ; skipping MySQL because of rollback flakes (metabase#37434)
+          (migrate! :down 49)
+          (testing "After reversing the migration, column_settings field ref-based keys are restored"
+            (is (= viz-settings-with-field-ref-keys
+                   (-> (t2/query-one {:select [:object]
+                                      :from   [:revision]
+                                      :where  [:= :id revision-id]})
+                       :object
+                       json/parse-string
+                       (get "visualization_settings"))))))))))
