@@ -15,7 +15,6 @@
                   :dashboard <dashboard-id>}
        :params   <params>}"
   (:require
-   [cheshire.core :as json]
    [compojure.core :refer [GET]]
    [metabase.api.common :as api]
    [metabase.api.dataset :as api.dataset]
@@ -75,7 +74,7 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token parameters]
-  (run-query-for-unsigned-token-async (embed/unsign token) :api (json/parse-string parameters keyword)))
+  (run-query-for-unsigned-token-async (embed/unsign token) :api (api.public/parse-json-parameters parameters)))
 
 (api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
@@ -86,7 +85,7 @@
   (run-query-for-unsigned-token-async
    (embed/unsign token)
    export-format
-   (json/parse-string parameters keyword)
+   (api.public/parse-json-parameters parameters)
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
@@ -148,7 +147,7 @@
   (u/prog1 (process-query-for-dashcard-with-signed-token token
                                                          dashcard-id
                                                          card-id
-                                                         :api (json/parse-string parameters keyword))
+                                                         :api (api.public/parse-json-parameters parameters))
     (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 
@@ -245,7 +244,7 @@
     dashcard-id
     card-id
     export-format
-    (json/parse-string parameters keyword)
+    (api.public/parse-json-parameters parameters)
     :constraints nil
     :middleware {:process-viz-settings? true
                  :js-int-to-string?     false
@@ -267,7 +266,7 @@
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            nil
-                                           (json/parse-string parameters keyword)))
+                                           (api.public/parse-json-parameters parameters)))
 
 (api/defendpoint GET "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
@@ -275,7 +274,7 @@
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            prefix
-                                           (json/parse-string parameters keyword)))
+                                           (api.public/parse-json-parameters parameters)))
 
 (api/defendpoint GET "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
@@ -309,7 +308,7 @@
       :params   <parameters>}"
   [token parameters]
   (run-query-for-unsigned-token-async (embed/unsign token)
-                                      :api (json/parse-string parameters keyword)
+                                      :api (api.public/parse-json-parameters parameters)
                                       :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
@@ -322,7 +321,7 @@
   (u/prog1 (process-query-for-dashcard-with-signed-token token
                                                          dashcard-id
                                                          card-id
-                                                         :api (json/parse-string parameters keyword)
+                                                         :api (api.public/parse-json-parameters parameters)
                                                          :qp  qp.pivot/run-pivot-query)
     (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 

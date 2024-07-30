@@ -71,6 +71,10 @@
                                              id->parameter
                                              id->template-tags-parameter)))))
 
+(defn parse-json-parameters
+  [parameters]
+  (if parameters (json/parse-string parameters keyword) {}))
+
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
@@ -175,7 +179,7 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)))
+  (process-query-for-card-with-public-uuid uuid :api (parse-json-parameters parameters)))
 
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
@@ -188,7 +192,7 @@
   (process-query-for-card-with-public-uuid
    uuid
    export-format
-   (json/parse-string parameters keyword)
+   (parse-json-parameters parameters)
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
@@ -602,7 +606,7 @@
       (binding [qp.perms/*param-values-query* true]
         (api.dashboard/param-values dashboard
                                     param-key
-                                    (or (json/parse-string parameters keyword) {}))))))
+                                    (parse-json-parameters parameters))))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
@@ -617,7 +621,7 @@
         (api.dashboard/param-values
          dashboard
          param-key
-         (or (json/parse-string parameters keyword) {})
+         (parse-json-parameters parameters)
          query)))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
@@ -629,8 +633,9 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)
-                                             :qp qp.pivot/run-pivot-query))
+  (process-query-for-card-with-public-uuid uuid
+                                           :api (parse-json-parameters parameters)
+                                           :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public

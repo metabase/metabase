@@ -14,6 +14,7 @@
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
    [metabase.api.embed.common :as api.embed.common]
+   [metabase.api.public :as api.public]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.util.embed :as embed]
    [metabase.util.malli.schema :as ms]))
@@ -48,7 +49,7 @@
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
       :constraints      {:max-results max-results}
-      :query-params     (json/parse-string parameters keyword))))
+      :query-params     (api.public/parse-json-parameters parameters))))
 
 (api/defendpoint GET "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
@@ -64,7 +65,7 @@
   (api.embed.common/dashboard-param-values token
                                            param-key
                                            nil
-                                           (json/parse-string parameters keyword)
+                                           (api.public/parse-json-parameters parameters)
                                            {:preview true}))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
@@ -85,7 +86,7 @@
      :card-id          card-id
      :embedding-params embedding-params
      :token-params     token-params
-     :query-params     (json/parse-string parameters keyword))))
+     :query-params     (api.public/parse-json-parameters parameters))))
 
 (api/defendpoint GET "/pivot/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
@@ -99,7 +100,7 @@
       :card-id          card-id
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
-      :query-params     (json/parse-string parameters keyword)
+      :query-params     (api.public/parse-json-parameters parameters)
       :qp               qp.pivot/run-pivot-query)))
 
 (api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
@@ -113,7 +114,7 @@
         dashboard-id     (embed/get-in-unsigned-token-or-throw unsigned-token [:resource :dashboard])
         embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
         token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-        query-params     (json/parse-string parameters keyword)]
+        query-params     (api.public/parse-json-parameters parameters)]
     (api.embed.common/process-query-for-dashcard
       :export-format    :api
       :dashboard-id     dashboard-id
