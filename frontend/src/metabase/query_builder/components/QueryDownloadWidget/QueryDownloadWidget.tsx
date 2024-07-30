@@ -3,10 +3,9 @@ import { connect } from "react-redux";
 import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
-import LoadingSpinner from "metabase/components/LoadingSpinner";
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
-import type { DownloadQueryResultsOpts } from "metabase/query_builder/actions";
-import { downloadQueryResults } from "metabase/query_builder/actions";
+import type { DownloadQueryResultsOpts } from "metabase/redux/downloads";
+import { downloadQueryResults } from "metabase/redux/downloads";
 import { Flex, Popover, Tooltip } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Dataset, VisualizationSettings } from "metabase-types/api";
@@ -48,8 +47,7 @@ const QueryDownloadWidget = ({
   onDownload,
 }: QueryDownloadWidgetProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-
-  const [{ loading }, handleDownload] = useAsyncFn(
+  const [handleDownload] = useAsyncFn(
     async (opts: { type: string; enableFormatting: boolean }) => {
       await onDownload({
         ...opts,
@@ -69,20 +67,14 @@ const QueryDownloadWidget = ({
     <Popover opened={isPopoverOpen} onClose={() => setIsPopoverOpen(false)}>
       <Popover.Target>
         <Flex className={className}>
-          {loading ? (
-            <Tooltip label={t`Downloading…`}>
-              <LoadingSpinner size={18} />
-            </Tooltip>
-          ) : (
-            <Tooltip label={t`Download full results`}>
-              <DownloadIcon
-                onClick={() => setIsPopoverOpen(!isPopoverOpen)}
-                name="download"
-                size={20}
-                data-testid="download-button"
-              />
-            </Tooltip>
-          )}
+          <Tooltip label={t`Download full results`}>
+            <DownloadIcon
+              onClick={() => setIsPopoverOpen(!isPopoverOpen)}
+              name="download"
+              size={20}
+              data-testid="download-button"
+            />
+          </Tooltip>
         </Flex>
       </Popover.Target>
       <Popover.Dropdown>

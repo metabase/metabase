@@ -558,3 +558,15 @@ export function reload() {
 export function redirect(url) {
   window.location.href = url;
 }
+
+export function openSaveDialog(fileName, fileContent) {
+  const url = URL.createObjectURL(fileContent);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", fileName);
+  document.body.appendChild(link);
+  link.click();
+
+  URL.revokeObjectURL(url);
+  link.remove();
+}
