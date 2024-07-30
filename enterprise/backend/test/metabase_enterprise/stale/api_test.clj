@@ -1,6 +1,7 @@
 (ns metabase-enterprise.stale.api-test
   (:require  [clojure.string :as str]
              [clojure.test :refer [deftest testing is]]
+             [metabase.analytics.snowplow-test :as snowplow-test]
              [metabase.models.collection :as collection]
              [metabase.models.collection-test :refer [with-collection-hierarchy]]
              [metabase.stale-test :as stale.test]
@@ -200,3 +201,16 @@
             (doseq [limit (range 1 5)
                     [offset v] (map-indexed vector (partition limit 1 (map str "ABCDEFGH")))]
               (is (= v (get-names-page limit offset))))))))))
+
+(deftest snowplow-events-are-emitted
+  (mt/with-premium-features #{:collection-cleanup}
+    (with-collection-hierarchy [{:keys [a]}]
+      (snowplow-test/with-fake-snowplow-collector
+        (mt/user-http-request :crowberto :get 200 (str "collection/" (u/the-id a) "/stale")
+                              :before_date "1988-01-21")
+        (is (= {:data {"collection_id" (:id a)
+                       "event" "stale_items_read"
+                       "total_stale_items_found" 0
+                       "cutoff_date" "1988-01-21T00:00:00Z"}
+                :user-id (str (mt/user->id :crowberto))}
+               (last (snowplow-test/pop-event-data-and-user-id!))))))))
