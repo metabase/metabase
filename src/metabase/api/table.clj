@@ -442,6 +442,7 @@
              :schema           (get-in card [:collection :name] (root-collection-schema-name))
              :moderated_status (:moderated_status card)
              :description      (:description card)
+             :metrics          (:metrics card)
              :type             card-type}
       (and (= card-type :metric)
            dataset-query)
@@ -504,6 +505,7 @@
     (let [cards (t2/select Card
                            {:select    [:c.id :c.dataset_query :c.result_metadata :c.name
                                         :c.description :c.collection_id :c.database_id :c.type
+                                        :c.source_card_id
                                         [:r.status :moderated_status]]
                             :from      [[:report_card :c]]
                             :left-join [[{:select   [:moderated_item_id :status]
@@ -530,8 +532,9 @@
                                                 [(:id card) (into []
                                                                   (keep (comp metadata-fields :id))
                                                                   (:result_metadata card))]))
-                                         cards)]
-      (for [card cards :when (mi/can-read? card)]
+                                         cards)
+          readable-cards (t2/hydrate (filter mi/can-read? cards) :metrics)]
+      (for [card readable-cards]
         ;; a native model can have columns with keys as semantic types only if a user configured them
         (let [trust-semantic-keys? (and (= (:type card) :model)
                                         (= (-> card :dataset_query :type) :native))]

@@ -353,12 +353,25 @@
     :dimension-options
     :fks
     :metadata
-    :metrics
     :plain-object
     :segments
     :schema
     :schema-name
     :table})
+
+(defn- unwrap-card
+  "Sometimes a card is stored in the metadata as some sort of weird object where the thing we actually want is under the
+  key `_card` (not sure why), but if it is just unwrap it and then parse it normally."
+  [obj]
+  (or (object-get obj "_card")
+      obj))
+
+(defn- card->metric-card
+  [card]
+  (-> card
+      (select-keys [:id :table-id :name :description :archived
+                    :dataset-query])
+      (assoc :lib/type :metadata/metric)))
 
 (defn- parse-fields [fields]
   (mapv (parse-object-fn :field) fields))
@@ -373,16 +386,10 @@
       :fields          (parse-fields v)
       :visibility-type (keyword v)
       :dataset-query   (js->clj v :keywordize-keys true)
+      :metrics         (mapv (comp card->metric-card (parse-object-fn :card) unwrap-card) v)
       :type            (keyword v)
       ;; this is not complete, add more stuff as needed.
       v)))
-
-(defn- unwrap-card
-  "Sometimes a card is stored in the metadata as some sort of weird object where the thing we actually want is under the
-  key `_card` (not sure why), but if it is just unwrap it and then parse it normally."
-  [obj]
-  (or (object-get obj "_card")
-      obj))
 
 (defn- assemble-card
   [metadata id]
@@ -465,11 +472,7 @@
           (keep (fn [[id card]]
                   (when (and card (= (:type @card) :metric) (not (:archived @card)))
                     (let [card @card]
-                      [id (-> card
-                              (select-keys [:id :table-id :name :description :archived
-                                            :dataset-query])
-                              (assoc :lib/type :metadata/metric)
-                              delay)]))))
+                      [id (-> card card->metric-card delay)]))))
           cards)))
 
 (defn- parse-metadata [metadata]

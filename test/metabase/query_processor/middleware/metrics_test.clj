@@ -504,3 +504,51 @@
                                  {:source-query {:source-table (meta/id :checkins)
                                                  :joins        [{:condition    [:= [:field 1 nil] 2]
                                                                  :source-query before}]}}))))))))
+
+(deftest ^:parallel model-based-metric-use-test
+  (let [model {:lib/type :metadata/card
+               :id (fresh-card-id meta/metadata-provider)
+               :database-id (meta/id)
+               :name "Mock Model"
+               :type :model
+               :dataset-query (-> meta/metadata-provider
+                                  (lib/query (meta/table-metadata :products))
+                                  (lib/filter (lib/> (meta/field-metadata :products :rating) 2)))}
+        model-mp (lib/composed-metadata-provider
+                  meta/metadata-provider
+                  (lib.tu/mock-metadata-provider
+                   {:cards [model]}))
+        rating-col (m/find-first (comp #{"RATING"} :name) (lib/returned-columns (lib/query model-mp model)))
+        metric1 {:lib/type :metadata/card
+                 :id (fresh-card-id model-mp)
+                 :database-id (meta/id)
+                 :name "Mock Metric 1"
+                 :type :metric
+                 :dataset-query (-> model-mp
+                                    (lib/query model)
+                                    (lib/filter (lib/< rating-col 5))
+                                    (lib/aggregate (lib/avg rating-col)))}
+        metric2 {:lib/type :metadata/card
+                 :id (fresh-card-id model-mp)
+                 :database-id (meta/id)
+                 :name "Mock Metric 2"
+                 :type :metric
+                 :dataset-query (-> model-mp
+                                    (lib/query model)
+                                    (lib/filter (lib/> rating-col 3))
+                                    (lib/aggregate (lib/count)))}
+        mp (lib/composed-metadata-provider
+            model-mp
+            (lib.tu/mock-metadata-provider
+             {:cards [metric1 metric2]}))
+        query (-> (lib/query mp model)
+                  (lib/aggregate (lib.metadata/metric mp (:id metric1)))
+                  (lib/aggregate (lib.metadata/metric mp (:id metric2))))]
+    (testing "model based metrics can be used in question based on that model"
+      (is (=? {:stages [{:source-table (meta/id :products)
+                         :filters [[:> {} [:field {} (meta/id :products :rating)] 2]]}
+                        {:aggregation [[:avg {:name "Mock Metric 1"} [:field {} "RATING"]]
+                                       [:count {:name "Mock Metric 2"}]]
+                         :filters [[:< {} [:field {} "RATING"] [:value {} 5]]
+                                   [:> {} [:field {} "RATING"] [:value {} 3]]]}]}
+              (adjust query))))))
