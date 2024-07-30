@@ -54,6 +54,7 @@ export const ParametersList = ({
     );
   }, [parameters, hideParameters, isEditing]);
 
+
   const requiredFilters = useMemo(() => {
     return parameters.filter(parameter => parameter.required);
   }, [parameters]);
@@ -65,6 +66,7 @@ export const ParametersList = ({
         !parameter.name.endsWith("#hide"),
     );
   }, [parameters]);
+
 
   const handleSortEnd = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
