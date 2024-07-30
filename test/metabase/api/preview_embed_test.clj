@@ -579,8 +579,8 @@
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))
 
-(deftest parameter-values-are-parsed-and-query-suceeds-test
-  (testing "embedding endpoint parameter values are parsed when sensible. (#27643)"
+(deftest boolean-parameter-values-test
+  (testing "embedding endpoint supports boolean parameter values (#27643)"
     (embed-test/with-embedding-enabled-and-new-secret-key
       (mt/dataset places-cam-likes
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
@@ -614,30 +614,73 @@
                                                         :target       [:dimension [:template-tag "LIKED"]]}]
                                                       :card_id      card-id}]
           (testing "for card embeds"
-            (let [false-url (card-query-url card {:_embedding_params {:LIKED "enabled"}})
-                  true-url  (card-query-url card {:_embedding_params {:LIKED "enabled"}})]
+            (let [url (card-query-url card {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
-                     (-> (mt/user-http-request :crowberto :get 202 false-url
+                     (-> (mt/user-http-request :crowberto :get 202 url
                                                :parameters (json/generate-string {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
-                     (-> (mt/user-http-request :crowberto :get 202 true-url
+                     (-> (mt/user-http-request :crowberto :get 202 url
                                                :parameters (json/generate-string {:LIKED true}))
                          :data
                          :rows)))))
           (testing "for dashboard embeds"
-            (let [false-url (dashcard-url dashcard {:_embedding_params {:LIKED "enabled"}})
-                  true-url  (dashcard-url dashcard {:_embedding_params {:LIKED "enabled"}})]
+            (let [url (dashcard-url dashcard {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
-                     (-> (mt/user-http-request :crowberto :get 202 false-url
+                     (-> (mt/user-http-request :crowberto :get 202 url
                                                :parameters (json/generate-string {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
-                     (-> (mt/user-http-request :crowberto :get 202 true-url
+                     (-> (mt/user-http-request :crowberto :get 202 url
                                                :parameters (json/generate-string {:LIKED true}))
+                         :data
+                         :rows))))))))))
+
+(deftest numeric-parameter-values-test
+  (testing "embedding endpoint supports numeric parameter values (#46240)"
+    (embed-test/with-embedding-enabled-and-new-secret-key
+      (mt/dataset places-cam-likes
+        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
+                                                           {:database (mt/id)
+                                                            :type     :native
+                                                            :native
+                                                            {:template-tags
+                                                             {"ID"
+                                                              {:widget-type  :number/=
+                                                               :name         "ID"
+                                                               :type         :dimension
+                                                               :id           "ID"
+                                                               :dimension    [:field (mt/id :places :id) nil]
+                                                               :display-name "ID"
+                                                               :options      nil}}
+                                                             :query "SELECT * FROM PLACES WHERE {{ID}}"}}}
+                       :model/Dashboard {dashboard-id :id} {:parameters
+                                                            [{:name      "ID"
+                                                              :slug      "ID"
+                                                              :id        "ccb91bc"
+                                                              :type      :number/=
+                                                              :sectionId "number"}]}
+                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                      :parameter_mappings
+                                                      [{:parameter_id "ccb91bc"
+                                                        :card_id      card-id
+                                                        :target       [:dimension [:template-tag "ID"]]}]
+                                                      :card_id      card-id}]
+          (testing "for card embeds"
+            (let [url (card-query-url card {:_embedding_params {:ID "enabled"}})]
+              (is (= [[3 "The Dentist" false]]
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:ID 3}))
+                         :data
+                         :rows)))))
+          (testing "for dashboard embeds"
+            (let [url (dashcard-url dashcard {:_embedding_params {:ID "enabled"}})]
+              (is (= [[1 "Tempest" true]]
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:ID 1}))
                          :data
                          :rows))))))))))
