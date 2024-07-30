@@ -71,10 +71,6 @@
                                              id->parameter
                                              id->template-tags-parameter)))))
 
-(defn parse-json-parameters
-  [parameters]
-  (if parameters (json/parse-string parameters keyword) {}))
-
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
@@ -179,7 +175,7 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (process-query-for-card-with-public-uuid uuid :api (parse-json-parameters parameters)))
+  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)))
 
 (api/defendpoint GET "/card/:uuid/query/:export-format"
   "Fetch a publicly-accessible Card and return query results in the specified format. Does not require auth
@@ -192,7 +188,7 @@
   (process-query-for-card-with-public-uuid
    uuid
    export-format
-   (parse-json-parameters parameters)
+   (json/parse-string parameters keyword)
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
@@ -597,32 +593,24 @@
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/values"
   "Fetch filter values for dashboard parameter `param-key`."
-  [uuid param-key parameters]
-  {uuid       ms/UUIDString
-   param-key  ms/NonBlankString
-   parameters [:maybe ms/JSONString]}
+  [uuid param-key :as {constraint-param-key->value :query-params}]
+  {uuid      ms/UUIDString
+   param-key ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
       (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/param-values dashboard
-                                    param-key
-                                    (parse-json-parameters parameters))))))
+        (api.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
-  [uuid param-key query parameters]
-  {uuid       ms/UUIDString
-   param-key  ms/NonBlankString
-   query      ms/NonBlankString
-   parameters [:maybe ms/JSONString]}
+  [uuid param-key query :as {constraint-param-key->value :query-params}]
+  {uuid      ms/UUIDString
+   param-key ms/NonBlankString
+   query     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
       (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/param-values
-         dashboard
-         param-key
-         (parse-json-parameters parameters)
-         query)))))
+        (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
@@ -633,9 +621,8 @@
   [uuid parameters]
   {uuid       ms/UUIDString
    parameters [:maybe ms/JSONString]}
-  (process-query-for-card-with-public-uuid uuid
-                                           :api (parse-json-parameters parameters)
-                                           :qp qp.pivot/run-pivot-query))
+  (process-query-for-card-with-public-uuid uuid :api (json/parse-string parameters keyword)
+                                             :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results for a Card in a publicly-accessible Dashboard. Does not require auth credentials. Public

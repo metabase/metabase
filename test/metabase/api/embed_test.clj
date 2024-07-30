@@ -3,7 +3,6 @@
   (:require
    [buddy.sign.jwt :as jwt]
    [buddy.sign.util :as buddy-util]
-   [cheshire.core :as json]
    [clj-time.core :as time]
    [clojure.data.csv :as csv]
    [clojure.set :as set]
@@ -400,8 +399,7 @@
 
                              (testing "If `:locked` parameter is present in URL params, request should fail"
                                (is (= "You can only specify a value for :venue_id in the JWT."
-                                      (client/client :get 400 (card-query-url card response-format {:params {:venue_id 100}})
-                                                     :parameters (json/generate-string {:venue_id 100}))))))))))
+                                      (client/client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=100"))))))))))
 
 (deftest card-disabled-params-test
   (with-embedding-enabled-and-new-secret-key
@@ -414,8 +412,7 @@
 
         (testing "If a `:disabled` param is passed in the URL the request should fail"
           (is (= "You're not allowed to specify a value for :venue_id."
-                 (client/client :get 400 (card-query-url card response-format)
-                                :parameters (json/generate-string {:venue_id 200})))))))))
+                 (client/client :get 400 (str (card-query-url card response-format) "?venue_id=200")))))))))
 
 (deftest card-enabled-params-test
   (mt/test-helpers-set-global-values!
@@ -424,8 +421,7 @@
         (do-response-formats [response-format request-options]
           (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
             (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
-                   (client/real-client :get 400 (card-query-url card response-format {:params {:venue_id 100}})
-                                       :parameters (json/generate-string {:venue_id 200})))))
+                   (client/real-client :get 400 (str (card-query-url card response-format {:params {:venue_id 100}}) "?venue_id=200")))))
 
           (testing "If an `:enabled` param is present in the JWT, that's ok"
             #_{:clj-kondo/ignore [:deprecated-var]}
@@ -440,9 +436,8 @@
             (test-query-results
              response-format
              (client/real-client :get (response-format->status-code response-format)
-                                 (card-query-url card response-format)
-                                 {:request-options request-options}
-                                 :parameters (json/generate-string {:venue_id 200})))))))))
+                                 (str (card-query-url card response-format) "?venue_id=200")
+                                 {:request-options request-options}))))))))
 
 (defn card-with-date-field-filter-default
   []
@@ -466,15 +461,13 @@
           [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :enabled})]
           (testing "the default should apply if no param value is provided"
             (is (= [[107]]
-                   (mt/rows (client/client :get 202 (card-query-url card ""))))))
-          (testing "check this is the same result as when a default value is provided"
-            (is (= [[107]]
-                   (mt/rows (client/client :get 202 (card-query-url card "")
-                                             :parameters (json/generate-string {:date "Q1-2014"}))))))
+                   (mt/rows (client/client :get 202 (card-query-url card "")))))
+            (testing "check this is the same result as when a default value is provided"
+              (is (= [[107]]
+                     (mt/rows (client/client :get 202 (str (card-query-url card "") "?date=Q1-2014")))))))
           (testing "an empty value should apply if provided as an empty string in the query params"
             (is (= [[1000]]
-                   (mt/rows (client/client :get 202 (card-query-url card "")
-                                           :parameters (json/generate-string {:date ""}))))))
+                   (mt/rows (client/client :get 202 (str (card-query-url card "") "?date="))))))
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
                    (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date nil}}))))))))
@@ -486,8 +479,7 @@
                    (mt/rows (client/client :get 202 (card-query-url card ""))))))
           (testing "you can't apply an empty param value if the parameter is disabled"
             (is (= "You're not allowed to specify a value for :date."
-                   (client/client :get 400 (card-query-url card "")
-                                  :parameters (json/generate-string {:date ""})))))))
+                   (client/client :get 400 (str (card-query-url card "") "?date=")))))))
       (testing "if the param is locked"
         (t2.with-temp/with-temp
           [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :locked})]
@@ -518,8 +510,7 @@
     (with-embedding-enabled-and-new-secret-key
       (t2.with-temp/with-temp [Card card (card-with-date-field-filter)]
         (is (= "count\n107\n"
-               (client/client :get 200 (card-query-url card "/csv")
-                              :parameters (json/generate-string {:date "Q1-2014"}))))))))
+               (client/client :get 200 (str (card-query-url card "/csv") "?date=Q1-2014"))))))))
 
 (deftest csv-forward-url-test
   (mt/test-helpers-set-global-values!
@@ -529,8 +520,7 @@
         (binding [client/*url-prefix* ""]
           (mt/with-temporary-setting-values [site-url (str "http://localhost:" (config/config-str :mb-jetty-port) client/*url-prefix*)]
             (is (= "count\n107\n"
-                   (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv")
-                                       :parameters (json/generate-string {:date "Q1-2014"}))))))))))
+                   (client/real-client :get 200 (str "embed/question/" (card-token card) ".csv?date=Q1-2014"))))))))))
 
 
 ;;; ---------------------------------------- GET /api/embed/dashboard/:token -----------------------------------------
@@ -865,8 +855,7 @@
 
       (testing "if `:locked` parameter is present in URL params, request should fail"
         (is (= "You must specify a value for :venue_id in the JWT."
-               (client/client :get 400 (dashcard-url dashcard)
-                              :parameters (json/generate-string {:venue_id 100}))))))))
+               (client/client :get 400 (str (dashcard-url dashcard) "?venue_id=100"))))))))
 
 (deftest dashboard-disabled-params-test
   (with-embedding-enabled-and-new-secret-key
@@ -878,16 +867,14 @@
 
       (testing "If a `:disabled` param is passed in the URL the request should fail"
         (is (= "You're not allowed to specify a value for :venue_id."
-               (client/client :get 400 (dashcard-url dashcard)
-                              :parameters (json/generate-string {:venue_id 200}))))))))
+               (client/client :get 400 (str (dashcard-url dashcard) "?venue_id=200"))))))))
 
 (deftest dashboard-enabled-params-test
   (with-embedding-enabled-and-new-secret-key
     (with-temp-dashcard [dashcard {:dash {:enable_embedding true, :embedding_params {:venue_id "enabled"}}}]
       (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
         (is (= "You can't specify a value for :venue_id if it's already set in the JWT."
-               (client/client :get 400 (dashcard-url dashcard {:params {:venue_id 100}})
-                              :parameters (json/generate-string {:venue_id 200})))))
+               (client/client :get 400 (str (dashcard-url dashcard {:params {:venue_id 100}}) "?venue_id=200")))))
 
       (testing "If an `:enabled` param is present in the JWT, that's ok"
         (is (=? {:status "completed"
@@ -897,8 +884,7 @@
       (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
         (is (=? {:status   "completed"
                  :data     {:rows [[1]]}}
-                (client/client :get 202 (dashcard-url dashcard)
-                               :parameters (json/generate-string {:venue_id 1}))))))))
+                (client/client :get 202 (str (dashcard-url dashcard) "?venue_id=1"))))))))
 
 (deftest dashboard-native-query-params-with-default-test
   (testing "GET api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id with default values for params"
@@ -919,16 +905,13 @@
                                                       :target [:dimension [:template-tag "date"]]}]}]
        (testing "the default should apply if no param value is provided"
          (is (= [[107]]
-                (mt/rows (client/client :get 202 (dashcard-url dashcard))))))
-       (testing "check this is the same result as when a default value is provided"
-         (is (= [[107]]
-                (mt/rows (client/client :get 202
-                                        (dashcard-url dashcard)
-                                        :parameters (json/generate-string {:date "Q1-2014"}))))))
+                (mt/rows (client/client :get 202 (dashcard-url dashcard)))))
+         (testing "check this is the same result as when a default value is provided"
+           (is (= [[107]]
+                  (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?date=Q1-2014")))))))
        (testing "an empty value should apply if provided as an empty string in the query params"
          (is (= [[1000]]
-                (mt/rows (client/client :get 202 (dashcard-url dashcard)
-                                        :parameters (json/generate-string {:date ""}))))))
+                (mt/rows (client/client :get 202 (str (dashcard-url dashcard) "?date="))))))
        (testing "an empty value should apply if provided as nil in the JWT params"
          (is (= [[1000]]
                 (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date nil}}))))))
@@ -939,8 +922,7 @@
                     (mt/rows (client/client :get 202 (dashcard-url dashcard))))))
            (testing "you can't apply an empty param value if the parameter is disabled"
              (is (= "You're not allowed to specify a value for :date."
-                    (client/client :get 400 (dashcard-url dashcard)
-                                   :parameters (json/generate-string {:date ""})))))))
+                    (client/client :get 400 (str (dashcard-url dashcard) "?date=")))))))
        (testing "if the param is locked"
          (mt/with-temp-vals-in-db Dashboard (u/the-id dashboard) {:embedding_params {:date "locked"}}
            (testing "an empty value specified as `nil` is invalid and should result in an error"
@@ -974,7 +956,7 @@
                                                           :card_id          (u/the-id series-card)
                                                           :position         0}]
             (is (= "completed"
-                   (:status (client/client :get 202 (dashcard-url (assoc dashcard :card_id (u/the-id series-card)))))))))))))
+                   (:status (client/client :get 202 (str (dashcard-url (assoc dashcard :card_id (u/the-id series-card))))))))))))))
 
 ;;; ------------------------------- GET /api/embed/card/:token/field/:field/values nil --------------------------------
 
@@ -1321,21 +1303,18 @@
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/values"
         (is (= {:values          [[40] [67]]
                 :has_more_values false}
-               (client/client :get 200 (values-url)
-                              :parameters (json/generate-string {:_PRICE_ 4})))))
+               (client/client :get 200 (str (values-url) "?_PRICE_=4")))))
       (testing "\nGET /api/embed/dashboard/:token/params/:param-key/search/:query"
         (is (= {:values          []
                 :has_more_values false}
-               (client/client :get 200 (search-url)
-                              :parameters (json/generate-string {:_PRICE_ 4}))))))
+               (client/client :get 200 (str (search-url) "?_PRICE_=4"))))))
 
     (testing "If ENABLED param is present in both JWT and the URL, the request should fail"
       (doseq [url-fn [values-url search-url]
-              :let   [url (url-fn {"price" 4})]]
+              :let   [url (str (url-fn {"price" 4}) "?_PRICE_=4")]]
         (testing (str "\n" url)
           (is (= "You can't specify a value for :price if it's already set in the JWT."
-                 (client/client :get 400 url
-                                :parameters (json/generate-string {:_PRICE_ 4})))))))))
+                 (client/client :get 400 url))))))))
 
 (deftest chain-filter-ignore-current-user-permissions-test
   (testing "Should not fail if request is authenticated but current user does not have data permissions"
@@ -1389,8 +1368,7 @@
                 :let   [url (url-fn {"price" 4})]]
           (testing (str "\n" url)
             (is (= "You can only specify a value for :price in the JWT."
-                   (client/client :get 400 url
-                                  :parameters (json/generate-string {:_PRICE_ 4}))))))))))
+                   (client/client :get 400 (str url "?_PRICE_=4"))))))))))
 
 (deftest chain-filter-disabled-params-test
   (with-chain-filter-fixtures [{:keys [dashboard values-url search-url]}]
@@ -1415,11 +1393,10 @@
 
       (testing "Requests should fail if the URL has a disabled parameter"
         (doseq [url-fn [values-url search-url]
-                :let   [url (url-fn)]]
+                :let   [url (str (url-fn) "?_PRICE_=4")]]
           (testing (str "\n" url)
             (is (= "You're not allowed to specify a value for :price."
-                   (client/client :get 400 url
-                                  :parameters (json/generate-string {:_PRICE_ 4}))))))))))
+                   (client/client :get 400 url)))))))))
 
 ;; Pivot tables
 
@@ -1539,8 +1516,7 @@
 
           (testing "if `:locked` parameter is present in URL params, request should fail"
             (is (= "You must specify a value for :abc in the JWT."
-                   (client/client :get 400 (pivot-dashcard-url dashcard)
-                                  :parameters (json/generate-string {:abc 100}))))))))))
+                   (client/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=100"))))))))))
 
 (deftest pivot-dashcard-disabled-params-test
   (mt/dataset test-data
@@ -1557,8 +1533,7 @@
 
         (testing "If a `:disabled` param is passed in the URL the request should fail"
           (is (= "You're not allowed to specify a value for :abc."
-                 (client/client :get 400 (pivot-dashcard-url dashcard)
-                                :parameters (json/generate-string {:abc 200})))))))))
+                 (client/client :get 400 (str (pivot-dashcard-url dashcard) "?abc=200")))))))))
 
 (deftest pivot-dashcard-enabled-params-test
   (mt/dataset test-data
@@ -1574,8 +1549,7 @@
                                      :dashcard {:parameter_mappings []}}]
         (testing "If `:enabled` param is present in both JWT and the URL, the request should fail"
           (is (= "You can't specify a value for :abc if it's already set in the JWT."
-                 (client/client :get 400 (pivot-dashcard-url dashcard {:params {:abc 100}})
-                                :parameters (json/generate-string {:abc 200})))))
+                 (client/client :get 400 (str (pivot-dashcard-url dashcard {:params {:abc 100}}) "?abc=200")))))
 
         (testing "If an `:enabled` param is present in the JWT, that's ok"
           (let [result (client/client :get 202 (pivot-dashcard-url dashcard {:params {:abc 100}}))
@@ -1586,8 +1560,7 @@
             (is (= 1144 (count rows)))))
 
         (testing "If an `:enabled` param is present in URL params but *not* the JWT, that's ok"
-          (let [result (client/client :get 202 (pivot-dashcard-url dashcard)
-                                      :parameters (json/generate-string {:abc 200}))
+          (let [result (client/client :get 202 (str (pivot-dashcard-url dashcard) "?abc=200"))
                 rows   (mt/rows result)]
             (is (nil? (:row_count result))) ;; row_count isn't included in public endpoints
             (is (= "completed" (:status result)))
@@ -1627,10 +1600,8 @@
                                                                :embedding_params {:NAME "enabled"}}]
           (testing "Card"
             (is (= [[1]]
-                   (mt/rows (client/client :get 202 (card-query-url card "")
-                                           :parameters (json/generate-string {:NAME "Hudson Borer"})))
-                   (mt/rows (client/client :get 202 (card-query-url card "")
-                                           :parameters (json/generate-string { :NAME ["Hudson Borer" "x"]}))))))
+                   (mt/rows (client/client :get 202 (card-query-url card "") :NAME "Hudson Borer"))
+                   (mt/rows (client/client :get 202 (card-query-url card "") :NAME "Hudson Borer" :NAME "x")))))
           (testing "Dashcard"
             (mt/with-temp [Dashboard {dashboard-id :id} {:enable_embedding true
                                                          :embedding_params {:name "enabled"}
@@ -1646,10 +1617,8 @@
                                                                          :card_id      card-id
                                                                          :target       [:dimension [:template-tag "NAME"]]}]}]
               (is (= [[1]]
-                     (mt/rows (client/client :get 202 (dashcard-url dashcard)
-                                             :parameters (json/generate-string {:name "Hudson Borer"})))
-                     (mt/rows (client/client :get 202 (dashcard-url dashcard)
-                                             :parameters (json/generate-string {:name ["Hudson Borer" "x"]}))))))))))))
+                     (mt/rows (client/client :get 202 (dashcard-url dashcard) :name "Hudson Borer"))
+                     (mt/rows (client/client :get 202 (dashcard-url dashcard) :name "Hudson Borer" :name "x")))))))))))
 
 (deftest pass-numeric-param-as-number-test
   (testing "Embedded numeric params should work with numeric (as opposed to string) values in the JWT (#20845)"

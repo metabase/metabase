@@ -1,5 +1,6 @@
 (ns metabase.api.embed.common
   (:require
+   [cheshire.core :as json]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
@@ -117,6 +118,16 @@
                                         :slug                 slug
                                         :dashboard-parameters parameters})))
             :value value}))))
+
+(defn parse-json-parameters
+  "Parses query parameters in a backward compatible way."
+  [query-params]
+  (or (try
+        (when-let [parameters (:parameters query-params)]
+          (json/parse-string parameters keyword))
+        (catch Throwable e
+          nil))
+      query-params))
 
 (mu/defn normalize-query-params :- [:map-of :keyword :any]
   "Take a map of `query-params` and make sure they're in the right format for the rest of our code. Our

@@ -126,9 +126,7 @@ export const PublicOrEmbeddedQuestion = ({
           card,
         )({
           token,
-          parameters: JSON.stringify(
-            getParameterValuesBySlug(parameters, parameterValues),
-          ),
+          ...getParameterValuesBySlug(parameters, parameterValues),
         });
       } else if (uuid) {
         // public links currently apply parameters client-side
