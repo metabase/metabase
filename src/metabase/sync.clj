@@ -44,12 +44,13 @@
     [:metadata]
     [:metadata :analyze :field-values]))
 
-(defn- do-phase! [phase database]
+(defn- do-phase! [database phase]
   (let [f      (phase->fn phase)
         result (f database)]
     (if (instance? Throwable result)
       ;; do nothing if we're configured to just move on.
       (when-not sync-util/*log-exceptions-and-continue?*
+        ;; but if we didn't expect any suppressed exceptions, rethrow it
         (throw result))
       (assoc result :name (name phase)))))
 
@@ -69,8 +70,7 @@
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (->> (scan-phases scan)
-          (keep #(do-phase! % database))
-          (take-while some?)))))
+          (keep (partial do-phase! database))))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
