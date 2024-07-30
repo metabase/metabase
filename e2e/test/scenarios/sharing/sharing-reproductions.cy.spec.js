@@ -366,6 +366,9 @@ describe("issue 21559", { tags: "@external" }, () => {
       chartPathWithFillColor("#88BF4D").should("have.length", 1);
 
       saveDashboard();
+      // Wait for "Edited a few seconds ago" to disappear because the whole
+      // dashboard re-renders after that!
+      cy.findByTestId("revision-history-button").should("not.be.visible");
 
       openAndAddEmailsToSubscriptions([
         `${admin.first_name} ${admin.last_name}`,
