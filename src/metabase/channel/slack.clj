@@ -124,9 +124,12 @@
                          :text {:type "plain_text"
                                 :text (:name dashboard)
                                 :emoji true}}
-        creator-section {:type   "section"
+        link-section    {:type "section"
                          :fields [{:type "mrkdwn"
-                                   :text (str "Sent by " (-> pulse :creator :common_name))}]}
+                                   :text (format "<%s | *Sent from %s by %s*>"
+                                                 (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard))
+                                                 (public-settings/site-name)
+                                                 (-> pulse :creator :common_name))}]}
         filters         (pulse-params/parameters pulse dashboard)
         filter-fields   (for [filter filters]
                           {:type "mrkdwn"
@@ -134,19 +137,7 @@
         filter-section  (when (seq filter-fields)
                           {:type   "section"
                            :fields filter-fields})]
-    (if filter-section
-      {:blocks [header-section filter-section creator-section]}
-      {:blocks [header-section creator-section]})))
-
-(defn- slack-dashboard-footer
-  "Returns a block element with the footer text and link which should be at the end of a Slack dashboard subscription."
-  [pulse dashboard]
-  {:blocks
-   [{:type "divider"}
-    {:type "context"
-     :elements [{:type "mrkdwn"
-                 :text (str "<" (pulse-params/dashboard-url (:id dashboard) (pulse-params/parameters pulse dashboard)) "|"
-                            "*Sent from " (public-settings/site-name) "*>")}]}]})
+    {:blocks (filter some? [header-section filter-section link-section])}))
 
 (defn- create-slack-attachment-data
   "Returns a seq of slack attachment data structures, used in `create-and-upload-slack-attachments!`"
@@ -163,5 +154,4 @@
     {:channel-id  channel-id
      :attachments (remove nil?
                           (flatten [(slack-dashboard-header pulse dashboard)
-                                    (create-slack-attachment-data payload)
-                                    (slack-dashboard-footer pulse dashboard)]))}))
+                                    (create-slack-attachment-data payload)]))}))
