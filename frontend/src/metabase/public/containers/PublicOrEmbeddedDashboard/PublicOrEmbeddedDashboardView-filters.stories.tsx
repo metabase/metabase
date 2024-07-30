@@ -85,7 +85,7 @@ function ReduxDecorator(Story: Story, context: StoryContext) {
     }),
     parameters: {
       parameterValuesCache: {
-        [`{"paramId":"${PARAMETER_ID}","dashId":${DASHBOARD_ID}}`]: {
+        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID}}`]: {
           values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
           has_more_values: parameterType === "search" ? true : false,
         },
@@ -140,7 +140,12 @@ const DASHCARD_TABLE_ID = getNextId();
 const CARD_BAR_ID = getNextId();
 const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
-const PARAMETER_ID = "param-hex";
+const CATEGORY_FILTER = createMockParameter({
+  id: "category-hex",
+  name: "Category",
+  slug: "category",
+});
+const DATE_FILTER_ID = "date-hex";
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
@@ -150,13 +155,6 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
     id: DASHBOARD_ID,
     name: "My dashboard",
     width: "full",
-    parameters: [
-      createMockParameter({
-        id: PARAMETER_ID,
-        name: "Category",
-        slug: "category",
-      }),
-    ],
     dashcards: [
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
@@ -167,10 +165,18 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
         parameter_mappings: [
           {
             card_id: CARD_BAR_ID,
-            parameter_id: PARAMETER_ID,
+            parameter_id: CATEGORY_FILTER.id,
             target: [
               "dimension",
               ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+            ],
+          },
+          {
+            card_id: CARD_BAR_ID,
+            parameter_id: DATE_FILTER_ID,
+            target: [
+              "dimension",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
             ],
           },
         ],
@@ -202,13 +208,13 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
   const PARAMETER_MAPPING: Record<ParameterType, UiParameter[]> = {
     text: getDashboardUiParameters(
       dashboard.dashcards,
-      dashboard.parameters,
+      [CATEGORY_FILTER],
       createMockMetadata({}),
       {},
     ),
     dropdown: getDashboardUiParameters(
       dashboard.dashcards,
-      dashboard.parameters,
+      [CATEGORY_FILTER],
       createMockMetadata({
         databases: [createSampleDatabase()],
       }),
@@ -216,10 +222,24 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
     ),
     search: getDashboardUiParameters(
       dashboard.dashcards,
-      dashboard.parameters,
+      [CATEGORY_FILTER],
       createMockMetadata({
         databases: [createSampleDatabase()],
       }),
+      {},
+    ),
+    date_all_options: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date all options",
+          sectionId: "date",
+          slug: "date_all_options",
+          type: "date/all-options",
+        }),
+      ],
+      createMockMetadata({}),
       {},
     ),
   };
@@ -233,7 +253,7 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
 
 type ArgType = Partial<ComponentProps<typeof PublicOrEmbeddedDashboardView>>;
 
-type ParameterType = "text" | "dropdown" | "search";
+type ParameterType = "text" | "dropdown" | "search" | "date_all_options";
 const createDefaultArgs = (
   args: ArgType & { parameterType?: ParameterType } = {},
 ): ArgType & { parameterType: ParameterType } => {
@@ -408,4 +428,30 @@ DarkThemeParameterSearchWithValue.play = async ({ canvasElement }) => {
     "g",
   );
   await userEvent.click(documentElement.getByText("Widget"));
+};
+
+// Date filters
+export const LightThemeDateFilterAllOptions = Template.bind({});
+LightThemeDateFilterAllOptions.args = createDefaultArgs({
+  parameterType: "date_all_options",
+});
+LightThemeDateFilterAllOptions.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date all options",
+  });
+  await userEvent.click(filter);
+};
+
+export const DarkThemeDateFilterAllOptions = Template.bind({});
+DarkThemeDateFilterAllOptions.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_all_options",
+});
+DarkThemeDateFilterAllOptions.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date all options",
+  });
+  await userEvent.click(filter);
 };

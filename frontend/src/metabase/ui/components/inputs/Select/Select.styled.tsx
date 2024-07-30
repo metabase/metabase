@@ -131,7 +131,7 @@ export const getSelectItemsOverrides = (
       lineHeight: getItemLineHeight(size),
       padding: theme.spacing.sm,
       "&[data-hovered]": {
-        color: "var(--mb-color-text-brand)",
+        color: "var(--mb-color-text-selected)",
         backgroundColor: "var(--mb-color-background-selected)",
       },
       "&[data-selected]": {
