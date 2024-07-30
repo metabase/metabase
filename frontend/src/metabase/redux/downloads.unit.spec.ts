@@ -1,6 +1,6 @@
 import api from "metabase/lib/api";
 
-import * as downloading from "./downloading";
+import * as downloads from "./downloads";
 
 describe("getDatasetResponse", () => {
   describe("normal deployment", () => {
@@ -9,7 +9,7 @@ describe("getDatasetResponse", () => {
     it("should handle absolute URLs", () => {
       const url = `${origin}/embed/question/123.xlsx`;
 
-      expect(downloading.getDatasetDownloadUrl(url)).toBe(
+      expect(downloads.getDatasetDownloadUrl(url)).toBe(
         `${origin}/embed/question/123.xlsx`,
       );
     });
@@ -17,7 +17,7 @@ describe("getDatasetResponse", () => {
     it("should handle relative URLs", () => {
       const url = "/embed/question/123.xlsx";
 
-      expect(downloading.getDatasetDownloadUrl(url)).toBe(
+      expect(downloads.getDatasetDownloadUrl(url)).toBe(
         `/embed/question/123.xlsx`,
       );
     });
@@ -44,7 +44,7 @@ describe("getDatasetResponse", () => {
     it("should handle absolute URLs", () => {
       const url = `${origin}${subpath}/embed/question/123.xlsx`;
 
-      expect(downloading.getDatasetDownloadUrl(url)).toBe(
+      expect(downloads.getDatasetDownloadUrl(url)).toBe(
         `/embed/question/123.xlsx`,
       );
     });
@@ -52,7 +52,7 @@ describe("getDatasetResponse", () => {
     it("should handle relative URLs", () => {
       const url = "/embed/question/123.xlsx";
 
-      expect(downloading.getDatasetDownloadUrl(url)).toBe(
+      expect(downloads.getDatasetDownloadUrl(url)).toBe(
         `/embed/question/123.xlsx`,
       );
     });
