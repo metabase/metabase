@@ -8788,6 +8788,13 @@ databaseChangeLog:
                     foreignKeyName: fk_query_field_analysis_id
                     deleteCascade: true
                     deleteCascadeForce: true # its safe as we have truncated the table
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: query_field
+            constraintName: fk_query_field_analysis_id
+        - dropColumn:
+            tableName: query_field
+            columnName: analysis_id
 
   - changeSet:
       id: v51.2024-07-29T11:25:13
