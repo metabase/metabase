@@ -282,8 +282,6 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted,
       otherValue,
       otherValueFormatted,
-      setValue,
-      updateValue,
     });
   }
 
@@ -370,14 +368,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
-    setValue,
-    updateValue,
   }: {
     defaultValueFormatted: string;
     otherValue: string;
     otherValueFormatted: string;
-    setValue: (label: string, value: string) => void;
-    updateValue: (label: string, value: string) => void;
   }) {
     cy.log("parameter sidebar");
 
@@ -472,59 +466,37 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     return cy.findByTestId(`tag-editor-variable-${id}`);
   }
 
-  function clearIcon(placeholder: string) {
-    return filter(placeholder).parent().icon("close");
+  function clearIcon(labelOrPlaceholder: string) {
+    return filter(labelOrPlaceholder).parent().icon("close");
   }
 
-  function resetIcon(placeholder: string) {
-    return filter(placeholder).parent().icon("revert");
+  function resetIcon(labelOrPlaceholder: string) {
+    return filter(labelOrPlaceholder).parent().icon("revert");
   }
 
-  function clearButton(placeholder: string) {
-    return filter(placeholder).parent().findByLabelText("Clear");
+  function clearButton(labelOrPlaceholder: string) {
+    return filter(labelOrPlaceholder).parent().findByLabelText("Clear");
   }
 
-  function resetButton(placeholder: string) {
-    return filter(placeholder)
+  function resetButton(labelOrPlaceholder: string) {
+    return filter(labelOrPlaceholder)
       .parent()
       .findByLabelText("Reset filter to default state");
   }
 
-  function chevronIcon(placeholder: string) {
-    return filter(placeholder).parent().icon("chevrondown");
+  function chevronIcon(labelOrPlaceholder: string) {
+    return filter(labelOrPlaceholder).parent().icon("chevrondown");
   }
 
-  function addDateFilter(placeholder: string, value: string) {
-    filter(placeholder).click();
+  function addDateFilter(labelOrPlaceholder: string, value: string) {
+    filter(labelOrPlaceholder).click();
     popover().findByRole("textbox").clear().type(value).blur();
     popover().button("Add filter").click();
   }
 
-  function updateDateFilter(placeholder: string, value: string) {
-    filter(placeholder).click();
+  function updateDateFilter(labelOrPlaceholder: string, value: string) {
+    filter(labelOrPlaceholder).click();
     popover().findByRole("textbox").clear().type(value).blur();
-    popover().button("Update filter").click();
-  }
-
-  function addRangeFilter(
-    placeholder: string,
-    firstValue: string,
-    secondValue: string,
-  ) {
-    filter(placeholder).click();
-    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
-    popover().button("Add filter").click();
-  }
-
-  function updateRangeFilter(
-    placeholder: string,
-    firstValue: string,
-    secondValue: string,
-  ) {
-    filter(placeholder).click();
-    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
     popover().button("Update filter").click();
   }
 });
