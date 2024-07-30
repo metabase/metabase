@@ -16,6 +16,7 @@
        :params   <params>}"
   (:require
    [compojure.core :refer [GET]]
+   [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.api.dataset :as api.dataset]
    [metabase.api.embed.common :as api.embed.common]
@@ -84,7 +85,7 @@
   (run-query-for-unsigned-token-async
    (embed/unsign token)
    export-format
-   (api.embed.common/parse-query-params query-params)
+   (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows))
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
@@ -239,7 +240,7 @@
     dashcard-id
     card-id
     export-format
-    (api.embed.common/parse-query-params query-params)
+    (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows))
     :constraints nil
     :middleware {:process-viz-settings? true
                  :js-int-to-string?     false
