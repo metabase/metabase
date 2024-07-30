@@ -274,7 +274,12 @@ export const SMTPConnectionForm = ({
                       {SEND_TEST_BUTTON_STATES[sendingEmail]}
                     </Button>
                   ))}
-                <Button onClick={handleClearEmailSettings}>{t`Clear`}</Button>
+                <Button
+                  onClick={handleClearEmailSettings}
+                  disabled={allSetByEnvVars}
+                >
+                  {t`Clear`}
+                </Button>
               </Flex>
             </Form>
           )}
