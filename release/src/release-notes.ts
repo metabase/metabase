@@ -8,7 +8,7 @@ const releaseTemplate = `## Upgrading
 
 > Before you upgrade, back up your Metabase application database!
 
-Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase.html).
+Check out our [upgrading instructions](https://metabase.com/docs/latest/operations-guide/upgrading-metabase).
 
 Docker image: {{docker-tag}}
 Download the JAR here: {{download-url}}
