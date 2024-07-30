@@ -335,7 +335,7 @@ describe("scenarios > dashboard > download pdf", () => {
   });
 });
 
-describeWithSnowplow("[snowplow] scenarios > dashboard > download pdf", () => {
+describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
     resetSnowplow();
