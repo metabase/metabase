@@ -63,28 +63,38 @@ const getDownloadedResourceType = ({
 
   if (dashcardId != null && token != null) {
     return { resourceType: "dashcard", accessedVia: "static-embed" };
-  } else if (dashboardId != null && uuid != null) {
+  }
+
+  if (dashboardId != null && uuid != null) {
     return { resourceType: "dashcard", accessedVia: "public-link" };
-  } else if (dashboardId != null && dashcardId != null) {
+  }
+
+  if (dashboardId != null && dashcardId != null) {
     return {
       resourceType: "dashcard",
       accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
     };
-  } else if (uuid != null) {
+  }
+
+  if (uuid != null) {
     return { resourceType: "question", accessedVia: "public-link" };
-  } else if (token != null) {
+  }
+
+  if (token != null) {
     return { resourceType: "question", accessedVia: "static-embed" };
-  } else if (cardId != null) {
+  }
+
+  if (cardId != null) {
     return {
       resourceType: "question",
       accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
     };
-  } else {
-    return {
-      resourceType: "ad-hoc-question",
-      accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
-    };
   }
+
+  return {
+    resourceType: "ad-hoc-question",
+    accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
+  };
 };
 
 export const downloadQueryResults =
