@@ -45,8 +45,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "a",
       otherValue: "{backspace}b",
       otherValueFormatted: "b",
-      setValue: (labelOrPlaceholder, value) => {
-        filter(labelOrPlaceholder).focus().clear().type(value).blur();
+      setValue: (label, value) => {
+        filterInput(label).focus().clear().type(value).blur();
       },
     });
   });
@@ -80,8 +80,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       defaultValueFormatted: "1",
       otherValue: "{backspace}2",
       otherValueFormatted: "2",
-      setValue: (labelOrPlaceholder, value) => {
-        filter(labelOrPlaceholder).focus().clear().type(value).blur();
+      setValue: (label, value) => {
+        filterInput(label).focus().clear().type(value).blur();
       },
     });
   });
@@ -211,21 +211,15 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
   }
 
   function checkStatusIcon(
-    labelOrPlaceholder: string,
+    label: string,
     /**
      * Use 'none' when no icon should be visible.
      */
     icon: "chevron" | "reset" | "clear" | "none",
   ) {
-    clearIcon(labelOrPlaceholder).should(
-      icon === "clear" ? "be.visible" : "not.exist",
-    );
-    resetIcon(labelOrPlaceholder).should(
-      icon === "reset" ? "be.visible" : "not.exist",
-    );
-    chevronIcon(labelOrPlaceholder).should(
-      icon === "chevron" ? "be.visible" : "not.exist",
-    );
+    clearIcon(label).should(icon === "clear" ? "be.visible" : "not.exist");
+    resetIcon(label).should(icon === "reset" ? "be.visible" : "not.exist");
+    chevronIcon(label).should(icon === "chevron" ? "be.visible" : "not.exist");
   }
 
   function checkNativeParametersInput<T = string>({
@@ -238,40 +232,52 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     defaultValueFormatted: string;
     otherValue: T;
     otherValueFormatted: string;
-    setValue: (labelOrPlaceholder: string, value: T) => void;
-    updateValue?: (labelOrPlaceholder: string, value: T) => void;
+    setValue: (label: string, value: T) => void;
+    updateValue?: (label: string, value: T) => void;
   }) {
     cy.log("no default value, non-required, no current value");
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "none");
 
     cy.log("no default value, non-required, has current value");
     setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.value", otherValueFormatted);
+    filterInput(NO_DEFAULT_NON_REQUIRED).should(
+      "have.value",
+      otherValueFormatted,
+    );
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
     clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.value", "");
+    filterInput(NO_DEFAULT_NON_REQUIRED).should("have.value", "");
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "none");
 
     cy.log("has default value, non-required, current value same as default");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-    filter(DEFAULT_NON_REQUIRED).should("have.value", defaultValueFormatted);
+    filterInput(DEFAULT_NON_REQUIRED).should(
+      "have.value",
+      defaultValueFormatted,
+    );
     clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.value", "");
+    filterInput(DEFAULT_NON_REQUIRED).should("have.value", "");
 
     cy.log("has default value, non-required, no current value");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.value", defaultValueFormatted);
+    filterInput(DEFAULT_NON_REQUIRED).should(
+      "have.value",
+      defaultValueFormatted,
+    );
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log(
       "has default value, non-required, current value different than default",
     );
     updateValue(DEFAULT_NON_REQUIRED, otherValue);
-    filter(DEFAULT_NON_REQUIRED).should("have.value", otherValueFormatted);
+    filterInput(DEFAULT_NON_REQUIRED).should("have.value", otherValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
     resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.value", defaultValueFormatted);
+    filterInput(DEFAULT_NON_REQUIRED).should(
+      "have.value",
+      defaultValueFormatted,
+    );
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
 
     cy.log("has default value, required, value same as default");
@@ -279,10 +285,10 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
     cy.log("has default value, required, current value different than default");
     updateValue(DEFAULT_REQUIRED, otherValue);
-    filter(DEFAULT_REQUIRED).should("have.value", otherValueFormatted);
+    filterInput(DEFAULT_REQUIRED).should("have.value", otherValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "reset");
     resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.value", defaultValueFormatted);
+    filterInput(DEFAULT_REQUIRED).should("have.value", defaultValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "none");
 
     checkParameterSidebarDefaultValue({
@@ -368,8 +374,8 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     defaultValueFormatted: string;
     otherValue: T;
     otherValueFormatted: string;
-    setValue: (labelOrPlaceholder: string, value: T) => void;
-    updateValue: (labelOrPlaceholder: string, value: T) => void;
+    setValue: (label: string, value: T) => void;
+    updateValue: (label: string, value: T) => void;
   }) {
     cy.log("parameter sidebar");
 
@@ -378,62 +384,65 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
 
     cy.log(NO_DEFAULT_NON_REQUIRED);
     filterSection("no_default_non_required").within(() => {
-      filter("Enter a default value…").scrollIntoView();
-      filter("Enter a default value…").should("have.value", "");
-      checkStatusIcon("Enter a default value…", "none");
+      filter("Default filter widget value").scrollIntoView();
+      filterInput("Default filter widget value").should("have.value", "");
+      checkStatusIcon("Default filter widget value", "none");
 
-      setValue("Enter a default value…", otherValue);
-      filter("Enter a default value…").should(
+      setValue("Default filter widget value", otherValue);
+      filterInput("Default filter widget value").should(
         "have.value",
         otherValueFormatted,
       );
-      checkStatusIcon("Enter a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
 
-      clearIcon("Enter a default value…").click();
-      filter("Enter a default value…").should("have.value", "");
-      checkStatusIcon("Enter a default value…", "none");
+      clearIcon("Default filter widget value").click();
+      filterInput("Default filter widget value").should("have.value", "");
+      checkStatusIcon("Default filter widget value", "none");
     });
 
     cy.log(DEFAULT_NON_REQUIRED);
     filterSection("default_non_required").within(() => {
-      filter("Enter a default value…").scrollIntoView();
-      filter("Enter a default value…").should(
+      filter("Default filter widget value").scrollIntoView();
+      filterInput("Default filter widget value").should(
         "have.value",
         defaultValueFormatted,
       );
-      checkStatusIcon("Enter a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
 
-      clearIcon("Enter a default value…").click();
-      filter("Enter a default value…").should("have.value", "");
-      checkStatusIcon("Enter a default value…", "none");
+      clearIcon("Default filter widget value").click();
+      filterInput("Default filter widget value").should("have.value", "");
+      checkStatusIcon("Default filter widget value", "none");
 
-      setValue("Enter a default value…", otherValue);
-      filter("Enter a default value…").should(
+      setValue("Default filter widget value", otherValue);
+      filterInput("Default filter widget value").should(
         "have.value",
         otherValueFormatted,
       );
-      checkStatusIcon("Enter a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
     });
 
     cy.log(DEFAULT_REQUIRED);
     filterSection("default_required").within(() => {
-      filter("Enter a default value…").scrollIntoView();
-      filter("Enter a default value…").should(
+      filter("Default filter widget value").scrollIntoView();
+      filterInput("Default filter widget value").should(
         "have.value",
         defaultValueFormatted,
       );
-      checkStatusIcon("Enter a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
 
-      clearIcon("Enter a default value…").click();
-      filter("Enter a default value…").should("have.value", "");
-      checkStatusIcon("Enter a default value…", "none");
+      clearIcon("Default filter widget value").click();
+      filterInput("Default filter widget value (required)").should(
+        "have.value",
+        "",
+      );
+      checkStatusIcon("Default filter widget value (required)", "none");
 
-      updateValue("Enter a default value…", otherValue);
-      filter("Enter a default value…").should(
+      updateValue("Default filter widget value (required)", otherValue);
+      filterInput("Default filter widget value").should(
         "have.value",
         otherValueFormatted,
       );
-      checkStatusIcon("Enter a default value…", "clear");
+      checkStatusIcon("Default filter widget value", "clear");
     });
   }
 
@@ -633,44 +642,38 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
     });
   }
 
-  function filter(labelOrPlaceholder: string) {
-    // simple filters (text/number) can be found by placeholders
-    // date filters can be found by labels
-    return cy.findByLabelText(labelOrPlaceholder);
-    // return cy.findAllByLabelText(labelOrPlaceholder);
-    // return cy.get(
-    //   `[placeholder="${labelOrPlaceholder}"],[aria-label="${labelOrPlaceholder}"]`,
-    // );
+  function filter(label: string) {
+    return cy.findByLabelText(label);
   }
 
-  function filterInput(labelOrPlaceholder: string) {
-    return filter(labelOrPlaceholder).findByRole("textbox");
+  function filterInput(label: string) {
+    return filter(label).findByRole("textbox");
   }
 
   function filterSection(id: string) {
     return cy.findByTestId(`tag-editor-variable-${id}`);
   }
 
-  function clearIcon(labelOrPlaceholder: string) {
-    return filter(labelOrPlaceholder).parent().icon("close");
+  function clearIcon(label: string) {
+    return filter(label).parent().icon("close");
   }
 
-  function resetIcon(labelOrPlaceholder: string) {
-    return filter(labelOrPlaceholder).parent().icon("revert");
+  function resetIcon(label: string) {
+    return filter(label).parent().icon("revert");
   }
 
-  function clearButton(labelOrPlaceholder: string) {
-    return filter(labelOrPlaceholder).parent().findByLabelText("Clear");
+  function clearButton(label: string) {
+    return filter(label).parent().findByLabelText("Clear");
   }
 
-  function resetButton(labelOrPlaceholder: string) {
-    return filter(labelOrPlaceholder)
+  function resetButton(label: string) {
+    return filter(label)
       .parent()
       .findByLabelText("Reset filter to default state");
   }
 
-  function chevronIcon(labelOrPlaceholder: string) {
-    return filter(labelOrPlaceholder).parent().icon("chevrondown");
+  function chevronIcon(label: string) {
+    return filter(label).parent().icon("chevrondown");
   }
 
   function addDateFilter(value: string) {

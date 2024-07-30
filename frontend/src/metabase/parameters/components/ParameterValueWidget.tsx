@@ -175,6 +175,7 @@ export const ParameterValueWidget = ({
       >
         <ParameterValueWidgetTrigger
           className={cx(S.noPopover, className)}
+          ariaLabel={parameter.name}
           hasValue={hasValue}
         >
           {showTypeIcon && (

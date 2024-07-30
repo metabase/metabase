@@ -26,7 +26,7 @@ function ParameterValueWidgetTriggerInner(
 ) {
   if (mimicMantine) {
     return (
-      <TriggerContainer ref={ref} hasValue={hasValue}>
+      <TriggerContainer aria-label={ariaLabel} ref={ref} hasValue={hasValue}>
         {children}
       </TriggerContainer>
     );
