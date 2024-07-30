@@ -11,6 +11,7 @@ import {
   EntityPickerModal,
   defaultOptions as defaultEntityPickerOptions,
 } from "../../EntityPicker";
+import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   DashboardPickerItem,
   DashboardPickerOptions,
@@ -66,6 +67,16 @@ export const DashboardPickerModal = ({
     canSelectItem(value) ? value : null,
   );
 
+  const { handleLogRecentItem } = useLogRecentItem();
+
+  const handleOnChange = useCallback(
+    (item: DashboardPickerValueItem) => {
+      onChange(item);
+      handleLogRecentItem(item);
+    },
+    [onChange, handleLogRecentItem],
+  );
+
   const [
     isCreateDialogOpen,
     { turnOn: openCreateDialog, turnOff: closeCreateDialog },
@@ -80,15 +91,15 @@ export const DashboardPickerModal = ({
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else if (canSelectItem(item)) {
-        onChange(item);
+        handleOnChange(item);
       }
     },
-    [onChange, options],
+    [handleOnChange, options],
   );
 
   const handleConfirm = () => {
     if (selectedItem && canSelectItem(selectedItem)) {
-      onChange(selectedItem);
+      handleOnChange(selectedItem);
     }
   };
 

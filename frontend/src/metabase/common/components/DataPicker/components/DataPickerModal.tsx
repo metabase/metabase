@@ -12,6 +12,7 @@ import type {
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
+import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type { QuestionPickerItem } from "../../QuestionPicker";
 import { QuestionPicker } from "../../QuestionPicker";
 import { useAvailableData } from "../hooks";
@@ -70,6 +71,8 @@ export const DataPickerModal = ({
     databaseId,
   });
 
+  const { handleLogRecentItem } = useLogRecentItem();
+
   const modelsShouldShowItem = useMemo(() => {
     return createShouldShowItem(["dataset"], databaseId);
   }, [databaseId]);
@@ -108,9 +111,10 @@ export const DataPickerModal = ({
       const id =
         item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
       onChange(id);
+      handleLogRecentItem(item);
       onClose();
     },
-    [onChange, onClose],
+    [onChange, onClose, handleLogRecentItem],
   );
 
   const handleCardChange = useCallback(
@@ -204,6 +208,7 @@ export const DataPickerModal = ({
       title={title}
       onClose={onClose}
       onItemSelect={handleChange}
+      recentsContext={["selections"]}
     />
   );
 };

@@ -7,6 +7,7 @@ import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
+import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
 import type {
   CollectionPickerItem,
   CollectionPickerOptions,
@@ -54,6 +55,16 @@ export const CollectionPickerModal = ({
     null,
   );
 
+  const { handleLogRecentItem } = useLogRecentItem();
+
+  const handleChange = useCallback(
+    (item: CollectionPickerValueItem) => {
+      onChange(item);
+      handleLogRecentItem(item);
+    },
+    [onChange, handleLogRecentItem],
+  );
+
   const [
     isCreateDialogOpen,
     { turnOn: openCreateDialog, turnOff: closeCreateDialog },
@@ -68,15 +79,15 @@ export const CollectionPickerModal = ({
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else if (canSelectItem(item)) {
-        await onChange(item);
+        await handleChange(item);
       }
     },
-    [onChange, options],
+    [handleChange, options],
   );
 
   const handleConfirm = async () => {
     if (selectedItem && canSelectItem(selectedItem)) {
-      await onChange(selectedItem);
+      await handleChange(selectedItem);
     }
   };
 

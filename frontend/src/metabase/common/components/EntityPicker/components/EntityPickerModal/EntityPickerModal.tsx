@@ -1,19 +1,19 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useLogRecentItemMutation, useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery } from "metabase/api";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
-import {
-  isLoggableActivityModel,
-  type RecentItem,
-  type SearchModel,
-  type SearchRequest,
-  type SearchResult,
-  type SearchResultId,
+import type {
+  RecentContexts,
+  RecentItem,
+  SearchModel,
+  SearchRequest,
+  SearchResult,
+  SearchResultId,
 } from "metabase-types/api";
 
 import type {
@@ -66,9 +66,10 @@ export interface EntityPickerModalProps<Model extends string, Item> {
   actionButtons?: JSX.Element[];
   trapFocus?: boolean;
   /**defaultToRecentTab: If set to true, will initially show the recent tab when the modal appears. If set to false, it will show the tab
-   * with the same model as the initialValue. Defaults to true.
-   */
+   * with the same model as the initialValue. Defaults to true. */
   defaultToRecentTab?: boolean;
+  /**recentsContext: Defaults to returning recents based off both views and selections. Can be overridden by props */
+  recentsContext?: RecentContexts[];
 }
 
 export function EntityPickerModal<
@@ -91,11 +92,12 @@ export function EntityPickerModal<
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
+  recentsContext = ["selections", "views"],
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
     useListRecentsQuery(
-      { context: ["views", "selections"] },
+      { context: recentsContext },
       {
         refetchOnMountOrArgChange: true,
       },
@@ -103,7 +105,6 @@ export function EntityPickerModal<
   const [searchResults, setSearchResults] = useState<SearchResult[] | null>(
     null,
   );
-  const [logRecentItem] = useLogRecentItemMutation();
 
   const [showActionButtons, setShowActionButtons] = useState<boolean>(
     !!actionButtons.length,
@@ -165,18 +166,6 @@ export function EntityPickerModal<
   );
 
   const hasTabs = tabs.length > 1 || searchQuery;
-
-  const handleConfirm = useCallback(() => {
-    if (onConfirm) {
-      onConfirm();
-      if (selectedItem && isLoggableActivityModel(selectedItem)) {
-        logRecentItem({
-          model_id: selectedItem.id,
-          model: selectedItem.model,
-        });
-      }
-    }
-  }, [onConfirm, logRecentItem, selectedItem]);
 
   useWindowEvent(
     "keydown",
@@ -243,7 +232,7 @@ export function EntityPickerModal<
             )}
             {!!hydratedOptions.hasConfirmButtons && onConfirm && (
               <ButtonBar
-                onConfirm={handleConfirm}
+                onConfirm={onConfirm}
                 onCancel={onClose}
                 canConfirm={canSelectItem}
                 actionButtons={showActionButtons ? actionButtons : []}
