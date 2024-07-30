@@ -87,7 +87,7 @@ describe("scenarios > filters > sql filters > field filter", () => {
         multiAutocompleteInput().type("10,");
         cy.findByText("Update filter").click();
       });
-      filterWidget().icon("time_history").click();
+      filterWidget().icon("revert").click();
       filterWidget().findByTestId("field-set-content").should("have.text", "8");
     });
   });
