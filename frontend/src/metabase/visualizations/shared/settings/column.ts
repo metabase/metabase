@@ -30,6 +30,7 @@ const CURRENCIES_WITH_SYMBOLS = new Set([
   "EUR",
   "AUD",
   "BRL",
+  "BTC",
   "CNY",
   "GBP",
   "HKD",
