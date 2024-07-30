@@ -618,12 +618,12 @@ describe("scenarios > dashboard > tabs", () => {
 
     cy.intercept(
       "GET",
-      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}`,
+      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_QUESTION_ID}*`,
       cy.spy().as("firstTabQuerySpy"),
     ).as("firstTabQuery");
     cy.intercept(
       "GET",
-      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_COUNT_QUESTION_ID}`,
+      `/api/embed/dashboard/*/dashcard/*/card/${ORDERS_COUNT_QUESTION_ID}*`,
       cy.spy().as("secondTabQuerySpy"),
     ).as("secondTabQuery");
 
