@@ -30,7 +30,6 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
-   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
    [metabase.server.middleware.session :as mw.session]
@@ -76,13 +75,10 @@
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
-  ;; We need to check this to resolve params - we set `mw.session/as-admin` there
-  (if qp.perms/*param-values-query*
-    card
-    (mi/instance
-      Card
-      (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
-                                  [:dataset_query :type [:native :template-tags]]]))))
+  (mi/instance
+   Card
+   (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
+                               [:dataset_query :type [:native :template-tags]]])))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -588,8 +584,7 @@
    param-key ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-      (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/param-values dashboard param-key constraint-param-key->value)))))
+     (api.dashboard/param-values dashboard param-key constraint-param-key->value))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
@@ -599,8 +594,7 @@
    query     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-      (binding [qp.perms/*param-values-query* true]
-        (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
+     (api.dashboard/param-values dashboard param-key constraint-param-key->value query))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
