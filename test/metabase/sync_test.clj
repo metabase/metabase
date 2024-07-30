@@ -262,6 +262,21 @@
                 (is (= (expected-movie-table) movie))
                 (is (= (expected-studio-table) studio)))))))))
 
+(driver/register! ::sync-database-error-test)
+
+(defmethod driver/describe-database ::sync-database-error-test
+  [_driver _database]
+  (throw (Exception. "OOPS!")))
+
+(deftest sync-database!-error-test
+  (testing "Errors in sync-database! should be caught and handled correctly (#45848)"
+    (mt/with-temp [Database db {:engine ::sync-database-error-test}]
+      (binding [sync-util/*log-exceptions-and-continue?* true]
+        (let [results (sync/sync-database! db)]
+          (testing "Skips the metadata step"
+            (is (= ["analyze" "field-values"]
+                   (map :name results)))))))))
+
 ;; !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 ;; !!                                                                                                               !!
 ;; !! HEY! Your tests probably don't belong in this namespace! Put them in one appropriate to the specific part of  !!

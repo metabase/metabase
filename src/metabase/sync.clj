@@ -49,7 +49,7 @@
         result (f database)]
     (if (instance? Throwable result)
       ;; do nothing if we're configured to just move on.
-      (when-not (sync-util/*log-exceptions-and-continue?*)
+      (when-not sync-util/*log-exceptions-and-continue?*
         (throw result))
       (assoc result :name (name phase)))))
 
@@ -70,7 +70,7 @@
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (->> (scan-phases scan)
           (keep #(do-phase! % database))
-          vec))))
+          (take-while some?)))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
