@@ -15,6 +15,8 @@ export function setupRecentViewsAndSelectionsEndpoints(
   fetchMock.get(url => url.endsWith(`/api/activity/recents?${context}`), {
     recents: recentItems,
   });
+
+  fetchMock.post("path:/api/activity/recents", 200);
 }
 
 export function setupPopularItemsEndpoints(popularItems: PopularItem[]) {

@@ -58,7 +58,7 @@ const setup = (
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
-  setupRecentViewsAndSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([], "context=selections");
 
   renderWithProviders(
     <DataStep
