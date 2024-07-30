@@ -30,6 +30,7 @@ import {
   createQuestion,
   openNotebook,
   notebookButton,
+  shouldDisplayTabs,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -272,6 +273,20 @@ describe("scenarios > question > new", () => {
       entityPickerModalTab("Tables").click();
       cy.findByText("Orders").click();
     });
+
+    cy.log(
+      "The selected table should be saved and show in recents (metabase#45003)",
+    );
+
+    cy.findByRole("button", { name: /Orders/ }).click();
+    shouldDisplayTabs(["Recents", "Models", "Tables", "Saved questions"]);
+    entityPickerModalTab("Recents").click();
+    cy.findByRole("dialog", { name: "Pick your starting data" })
+      .findByRole("button", { name: /Orders/ })
+      .should("exist");
+    cy.findByRole("dialog", { name: "Pick your starting data" })
+      .findByRole("button", { name: /Close/ })
+      .click();
 
     cy.findByTestId("qb-header").within(() => {
       cy.findByText("Save").click();

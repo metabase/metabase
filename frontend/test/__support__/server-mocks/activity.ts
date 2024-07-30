@@ -10,14 +10,11 @@ export function setupRecentViewsEndpoints(recentItems: RecentItem[]) {
 
 export function setupRecentViewsAndSelectionsEndpoints(
   recentItems: RecentItem[],
+  context: string = "context=selections&context=views",
 ) {
-  fetchMock.get(
-    url =>
-      url.endsWith("/api/activity/recents?context=selections&context=views"),
-    {
-      recents: recentItems,
-    },
-  );
+  fetchMock.get(url => url.endsWith(`/api/activity/recents?${context}`), {
+    recents: recentItems,
+  });
 }
 
 export function setupPopularItemsEndpoints(popularItems: PopularItem[]) {
