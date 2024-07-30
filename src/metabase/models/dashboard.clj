@@ -592,7 +592,7 @@
    :transform {:collection_id     (serdes/fk :model/Collection)
                :creator_id        (serdes/fk :model/User)
                :made_public_by_id (serdes/fk :model/User)
-               :parameters        [serdes/export-parameters serdes/import-parameters]
+               :parameters        {:export serdes/export-parameters :import serdes/import-parameters}
                :tabs              (serdes/nested :model/DashboardTab :dashboard_id opts)
                :dashcards         (serdes/nested :model/DashboardCard :dashboard_id opts)}})
 

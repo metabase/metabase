@@ -16,7 +16,7 @@
 
 ;; Serialization
 
-(defmethod serdes/entity-id "DashboardCardSeries" [_ instance] (:card_id instance))
+;;(defmethod serdes/entity-id "DashboardCardSeries" [_ instance] (:card_id instance))
 
 (defmethod serdes/generate-path "DashboardCardSeries" [_ _] nil)
 
@@ -29,7 +29,8 @@
 (defmethod serdes/make-spec "DashboardCardSeries" [_model-name _opts]
   ;; We did not have position in serialization before, it was inferred from the sequence, but current helper
   ;; (`serdes/nested`) is too generic and does not support that.
-  {:copy      [:position]
+  {:copy      []
    :skip      []
-   :transform {:dashboardcard_id (serdes/parent-ref)
+   :transform {:position         {:export (constantly nil) :import identity}
+               :dashboardcard_id (serdes/parent-ref)
                :card_id          (serdes/fk :model/Card)}})

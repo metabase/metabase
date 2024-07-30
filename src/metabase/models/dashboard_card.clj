@@ -369,10 +369,10 @@
                :card_id                (serdes/fk :model/Card)
                :action_id              (serdes/fk :model/Action)
                :dashboard_tab_id       (serdes/fk :model/DashboardTab)
-               :parameter_mappings     [serdes/export-parameter-mappings
-                                        serdes/import-parameter-mappings]
-               :visualization_settings [serdes/export-visualization-settings
-                                        serdes/import-visualization-settings]
+               :parameter_mappings     {:export serdes/export-parameter-mappings
+                                        :import serdes/import-parameter-mappings}
+               :visualization_settings {:export serdes/export-visualization-settings
+                                        :import serdes/import-visualization-settings}
                :series                 (serdes/nested :model/DashboardCardSeries :dashboardcard_id
                                                       (assoc opts
                                                              :sort-by :position

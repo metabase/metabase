@@ -40,4 +40,4 @@
   {:copy      [:name :type :created_at :entity_id]
    :skip      []
    :transform {:human_readable_field_id (serdes/fk :model/Field)
-               :field_id (serdes/parent-ref)}})
+               :field_id                (serdes/parent-ref)}})

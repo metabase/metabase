@@ -324,8 +324,8 @@
         (-> (select-keys instance (:copy spec))
             ;; won't assoc if `generate-path` returned `nil`
             (m/assoc-some :serdes/meta (generate-path model-name instance))
-            (into (for [[k [ser _des]] (:transform spec)
-                        :let [res (ser (get instance k))]
+            (into (for [[k transform] (:transform spec)
+                        :let [res ((:export transform) (get instance k))]
                         ;; include only non-nil transform results
                         :when res]
                     [k res])))))
@@ -696,10 +696,10 @@
     (let [spec (make-spec model-name nil)]
       (when spec
         (-> (select-keys ingested (:copy spec))
-            (into (for [[k [_ser des :as transform]] (:transform spec)
-                        :when (not (::post (meta transform)))
-                        :let [res (des (get ingested k))]
-                        ;; do not try to insert nil values if transformer keeps silence
+            (into (for [[k transform] (:transform spec)
+                        :when (not (::nested transform))
+                        :let [res ((:import transform) (get ingested k))]
+                        ;; do not try to insert nil values if transformer returns nothing
                         :when res]
                     [k res])))))))
 
@@ -707,7 +707,7 @@
   (binding [*current* instance]
     (let [spec (make-spec model-name nil)]
       (doseq [[k [_ser des :as transform]] (:transform spec)
-              :when (::post (meta transform))]
+              :when (::nested (meta transform))]
         (des (get ingested k))))))
 
 (defn default-load-one!
@@ -1515,39 +1515,44 @@
 (defn fk "Export Foreign Key" [model & [field-name]]
   (cond
     ;; this `::fk` is used in tests to determine that foreign keys are handled
-    (= model :model/User)  ^::fk [*export-user* *import-user*]
-    (= model :model/Table) ^::fk [*export-table-fk* *import-table-fk*]
-    (= model :model/Field) ^::fk [*export-field-fk* *import-field-fk*]
-    field-name             ^::fk [#(*export-fk-keyed* % model field-name) #(*import-fk-keyed* % model field-name)]
-    :else                  ^::fk [#(*export-fk* % model) #(*import-fk* % model)]))
+    (= model :model/User)  {::fk true :export *export-user* :import *import-user*}
+    (= model :model/Table) {::fk true :export *export-table-fk* :import *import-table-fk*}
+    (= model :model/Field) {::fk true :export *export-field-fk* :import *import-field-fk*}
+    field-name             {::fk    true
+                            :export #(*export-fk-keyed* % model field-name)
+                            :import #(*import-fk-keyed* % model field-name)}
+    :else                  {::fk true :export #(*export-fk* % model) :import #(*import-fk* % model)}))
 
 (defn nested "Nested entities" [model backward-fk opts]
   (let [model-name (name model)
         sorter     (:sort-by opts :created_at)
         key-field  (:key-field opts :entity_id)]
-    ^::post
-    [(fn [data]
-       ;; if this looks weird, see :series hydration for DashboardCard, it supplies Cards while we need to serialize
-       ;; DashboardCardSeries instances
-       (let [entities (if (t2/instance-of? model (first data))
-                        data
-                        (t2/select model backward-fk (:id *current*)))]
-         (->> (mapv #(extract-one model-name opts %) entities)
-              (sort-by sorter))))
-     (fn [lst]
-       (let [parent-id (:id *current*)
-             loaded    (for [ingested lst
-                             ;; it's not always entity-id though, not for DashcardCardSeries
-                             :let     [entity-id (get ingested key-field)]]
-                         (let [ingested (assoc ingested
-                                               backward-fk parent-id
-                                               :serdes/meta [{:model model-name :id entity-id}])
-                               local    (load-find-local (:serdes/meta ingested))]
-                        (load-one! ingested local)))]
-         (t2/delete! model backward-fk parent-id :id [:not-in (map :id loaded)])))]))
+    {::nested     true
+     :target      model
+     :backward-fk backward-fk
+     :export      (fn [data]
+                    ;; if this looks weird, see :series hydration for DashboardCard, it supplies Cards while we need
+                    ;; to serialize DashboardCardSeries instances
+                    (let [entities (if (t2/instance-of? model (first data))
+                                     data
+                                     (t2/select model backward-fk (:id *current*)))]
+                      (->> (sort-by sorter entities)
+                           (mapv #(extract-one model-name opts %)))))
+     :import      (fn [lst]
+                    (let [parent-id (:id *current*)
+                          loaded    (for [[idx ingested] (map-indexed vector lst)
+                                          ;; it's not always entity-id though, not for DashcardCardSeries
+                                          :let           [entity-id (get ingested key-field)]]
+                                      (let [ingested (assoc ingested
+                                                            backward-fk  parent-id
+                                                            :position    idx
+                                                            :serdes/meta [{:model model-name :id entity-id}])
+                                            local    (load-find-local (:serdes/meta ingested))]
+                                        (load-one! ingested local)))]
+                      (t2/delete! model backward-fk parent-id :id [:not-in (map :id loaded)])))}))
 
 (defn parent-ref "Transformer for parent id for nested entities" []
-  ^::fk [(constantly nil) identity])
+  {::fk true :export (constantly nil) :import identity})
 
 ;;; ## Memoizing appdb lookups
 

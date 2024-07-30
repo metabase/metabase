@@ -49,17 +49,15 @@
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db
     ;; When serialization spec is defined, it describes every column
-    (doseq [m     (-> (methods serdes/make-spec)
-                      (dissoc :default)
-                      keys) #_ serdes.models/exported-models
-            :let  [spec (serdes/make-spec m nil)]
-            :when spec]
+    (doseq [m    (-> (methods serdes/make-spec)
+                     (dissoc :default)
+                     keys)
+            :let [spec (serdes/make-spec m nil)]]
       (let [t      (t2/table-name (keyword "model" m))
-            pk     (first (t2/primary-keys (keyword "model" m)))
             fields (u.conn/app-db-column-types (mdb/app-db) t)
             spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
                               (zipmap (:skip spec) (repeat :skip))
-                              (zipmap [pk :updated_at] (repeat :skip)) ; always skipped
+                              (zipmap [:id :updated_at] (repeat :skip)) ; always skipped
                               (:transform spec))
                        ;; `nil`s are mostly fields which differ on `opts`
                        (dissoc nil))]
@@ -83,4 +81,4 @@
                   :when  (not= transform :skip)]
             (testing (format "%s.%s is foreign key which is handled correctly" m fk)
               ;; uses `(serdes/fk ...)` function
-              (is (::serdes/fk (meta transform))))))))))
+              (is (::serdes/fk transform)))))))))
