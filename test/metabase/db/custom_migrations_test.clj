@@ -2040,18 +2040,22 @@
                                     [:ref [:field 5 {:base-type :type/DateTime}]]                          {"column_title" "5"}
                                     [:ref [:field 6 {:base-type :type/Float}]]                             {"column_title" "6"}
                                     [:name "C7"]                                                           {"column_title" "7"}
-                                    [:name "count"]                                                        {"column_title" "8"}}
+                                    [:name "count"]                                                        {"column_title" "8"}
+                                    ;; unmatched column
+                                    [:ref [:field 9 nil]]                                                  {"column_title" "9"}}
                                    (update-keys json/generate-string))}
             expected
-            {"column_settings" (-> {[:name "C0"]    {"column_title" "0"}
-                                    [:name "C1"]    {"column_title" "1"}
-                                    [:name "C2"]    {"column_title" "2"}
-                                    [:name "C3"]    {"column_title" "3"}
-                                    [:name "C4"]    {"column_title" "4"}
-                                    [:name "C5"]    {"column_title" "5"}
-                                    [:name "C6"]    {"column_title" "6"}
-                                    [:name "C7"]    {"column_title" "7"}
-                                    [:name "count"] {"column_title" "8"}}
+            {"column_settings" (-> {[:name "C0"]          {"column_title" "0"}
+                                    [:name "C1"]          {"column_title" "1"}
+                                    [:name "C2"]          {"column_title" "2"}
+                                    [:name "C3"]          {"column_title" "3"}
+                                    [:name "C4"]          {"column_title" "4"}
+                                    [:name "C5"]          {"column_title" "5"}
+                                    [:name "C6"]          {"column_title" "6"}
+                                    [:name "C7"]          {"column_title" "7"}
+                                    [:name "count"]       {"column_title" "8"}
+                                    ;; unmatched column
+                                    [:ref [:field 9 nil]] {"column_title" "9"}}
                                    (update-keys json/generate-string))}
             user-id     (t2/insert-returning-pks! (t2/table-name :model/User)
                                                   {:first_name  "Howard"
