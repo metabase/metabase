@@ -1,12 +1,20 @@
 name: Prepare cypress environment
 description: Cypress preparation steps
 
+outputs:
+  chrome-path:
+    description: Path to the custom Chrome executable
+    value: ${{ steps.setup-chrome.outputs.chrome-path }}
+
 runs:
   using: "composite"
   steps:
-    - name: Install Replay.io browser
-      run: npx @replayio/cypress install
-      shell: bash
+    - name: Install Chrome v111
+      uses: browser-actions/setup-chrome@v1
+      with:
+        # https://chromium.cypress.io/linux/stable/111.0.5563.146
+        chrome-version: 1097615
+      id: setup-chrome
 
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
