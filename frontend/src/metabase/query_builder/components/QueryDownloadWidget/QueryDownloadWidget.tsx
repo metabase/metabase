@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { connect } from "react-redux";
-import { useAsyncFn } from "react-use";
 import { t } from "ttag";
 
 import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
@@ -47,9 +46,9 @@ const QueryDownloadWidget = ({
   onDownload,
 }: QueryDownloadWidgetProps) => {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
-  const [handleDownload] = useAsyncFn(
-    async (opts: { type: string; enableFormatting: boolean }) => {
-      await onDownload({
+  const handleDownload = useCallback(
+    (opts: { type: string; enableFormatting: boolean }) => {
+      onDownload({
         ...opts,
         question,
         result,
@@ -60,7 +59,16 @@ const QueryDownloadWidget = ({
         visualizationSettings,
       });
     },
-    [question, result, uuid, token, visualizationSettings],
+    [
+      onDownload,
+      question,
+      result,
+      dashboardId,
+      dashcardId,
+      uuid,
+      token,
+      visualizationSettings,
+    ],
   );
 
   return (
