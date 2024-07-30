@@ -5,6 +5,8 @@ import {
   navigationSidebar,
   undo,
   main,
+  describeEE,
+  onlyOnOSS,
   setTokenFeatures,
   getCollectionActions,
   modal,
@@ -19,12 +21,22 @@ describe("scenarios > collections > clean up", () => {
     restore();
   });
 
-  describe("oss", () => {
-    // TODO: blocked by having token feature
-    it.skip("feature should not be available in OSS");
+  describe("oss", { tags: "@OSS" }, () => {
+    beforeEach(() => {
+      onlyOnOSS();
+      cy.signInAsAdmin();
+    });
+
+    it("feature should not be available in OSS", () => {
+      visitCollection(FIRST_COLLECTION_ID);
+      collectionMenu().click();
+      popover().within(() => {
+        cy.findByText("Clean things up").should("not.exist");
+      });
+    });
   });
 
-  describe("action menu", () => {
+  describeEE("action menu", () => {
     it("should show in proper contexts", () => {
       cy.signInAsAdmin();
       setTokenFeatures("all");
@@ -76,7 +88,7 @@ describe("scenarios > collections > clean up", () => {
     });
   });
 
-  describe("clean up collection modal", () => {
+  describeEE("clean up collection modal", () => {
     beforeEach(() => {
       cy.signInAsAdmin();
       setTokenFeatures("all");

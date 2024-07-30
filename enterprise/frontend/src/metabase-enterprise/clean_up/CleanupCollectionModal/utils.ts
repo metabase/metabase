@@ -9,11 +9,6 @@ export const itemKeyFn = (item: StaleCollectionItem) =>
 
 export const dateFilterOptions = [
   {
-    label: c(`Not used in over -1 day`).t`-1 day`,
-    value: "one-day-back",
-    duration: [[-1, "day"]],
-  },
-  {
     label: c(`Occurs in the phrase 'Not used in over 1 month'`).t`1 month`,
     value: "one-month",
     duration: [[1, "month"]],

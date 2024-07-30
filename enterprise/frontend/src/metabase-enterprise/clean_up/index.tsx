@@ -6,7 +6,7 @@ import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { CleanupCollectionModal } from "./CleanupCollectionModal";
 
-if (hasPremiumFeature("collection-cleanup") || !!true) {
+if (hasPremiumFeature("collection_cleanup")) {
   PLUGIN_COLLECTIONS.canCleanUp = true;
 
   PLUGIN_COLLECTIONS.getCleanUpMenuItems = (
