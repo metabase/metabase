@@ -119,8 +119,14 @@
                                         :dashboard-parameters parameters})))
             :value value}))))
 
-(defn parse-json-parameters
-  "Parses query parameters in a backward compatible way."
+(defn parse-query-params
+  "Parses parameter values from the query string in a backward compatible way.
+
+  Before (v50 and below) we passed parameter values as separate query string parameters \"?param1=A&param2=B\". The
+  problem with this approach is we cannot reliably distinguish between numbers and numeric strings, as well as booleans
+  and boolean strings. To fix this issue we introduced another query string parameter `:parameters` which contains
+  serialized JSON with parameter values. If this object cannot be found or parsed, we fallback to plain query string
+  parameters."
   [query-params]
   (or (try
         (when-let [parameters (:parameters query-params)]
