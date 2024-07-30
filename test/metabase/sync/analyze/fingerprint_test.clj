@@ -268,17 +268,19 @@
                                           :fingerprint         nil
                                           :fingerprint_version 1
                                           :last_analyzed       #t "2017-08-09T00:00:00"}]
-      (binding [i/*latest-fingerprint-version* 3]
-        (with-redefs [qp/process-query             (fn [_query rff]
-                                                     (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
-                      fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
-          (is (= {:no-data-fingerprints 0, :failed-fingerprints    0,
-                  :updated-fingerprints 1, :fingerprints-attempted 1}
-                 (#'sync.fingerprint/fingerprint-table! (t2/select-one Table :id (data/id :venues)) [field])))
-          (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
-                  :fingerprint_version 3
-                  :last_analyzed       nil}
-                 (into {} (t2/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field))))))))))
+     (binding [i/*latest-fingerprint-version* 3]
+       (with-redefs [qp/process-query             (fn [_query rff]
+                                                    (transduce identity (rff :metadata) [[1] [2] [3] [4] [5]]))
+                     fingerprinters/fingerprinter (constantly (fingerprinters/constant-fingerprinter {:experimental {:fake-fingerprint? true}}))]
+         (is (= {:no-data-fingerprints   0
+                 :failed-fingerprints    0
+                 :updated-fingerprints   1
+                 :fingerprints-attempted 1}
+                (#'sync.fingerprint/fingerprint-table! (t2/select-one Table :id (data/id :venues)) [field])))
+         (is (= {:fingerprint         {:experimental {:fake-fingerprint? true}}
+                 :fingerprint_version 3
+                 :last_analyzed       nil}
+                (into {} (t2/select-one [Field :fingerprint :fingerprint_version :last_analyzed] :id (u/the-id field))))))))))
 
 (deftest test-fingerprint-failure
   (testing "if fingerprinting fails, the exception should not propagate"
@@ -318,10 +320,9 @@
     (testing "refingerprints up to a limit"
       (with-redefs [sync.fingerprint/save-fingerprint! (constantly nil)
                     sync.fingerprint/max-refingerprint-field-count 31] ;; prime number so we don't have exact matches
-        (let [table (t2/select-one Table :id (mt/id :checkins))
-              results (sync.fingerprint/refingerprint-fields-for-db! (mt/db)
-                                                                (repeat (* @#'sync.fingerprint/max-refingerprint-field-count 2) table)
-                                                                (constantly nil))
+        (let [results (sync.fingerprint/refingerprint-fields-for-db!
+                       (mt/db)
+                       (constantly nil))
               attempted (:fingerprints-attempted results)]
           ;; it can exceed the max field count as our resolution is after each table check it.
           (is (<= @#'sync.fingerprint/max-refingerprint-field-count attempted))

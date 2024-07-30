@@ -194,7 +194,6 @@ email-smtp-username
 start-of-week
 email-smtp-password
 email-smtp-port
-query-caching-min-ttl
 email-from-name
 email-from-address
 email-reply-to
