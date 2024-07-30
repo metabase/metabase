@@ -32,6 +32,9 @@ import {
   filterWidget,
   getFullName,
   openAndAddEmailsToSubscriptions,
+  createQuestionAndDashboard,
+  createQuestion,
+  getDashboardCard,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -329,18 +332,20 @@ describe("issue 21559", { tags: "@external" }, () => {
     },
     display: "scalar",
   };
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
 
     setupSMTP();
 
-    cy.createQuestionAndDashboard({
+    createQuestionAndDashboard({
       questionDetails: q1Details,
     }).then(({ body: { dashboard_id } }) => {
-      cy.createQuestion(q2Details);
+      createQuestion(q2Details);
 
       visitDashboard(dashboard_id);
+      cy.findByTestId("scalar-value").should("have.text", "80.52");
       editDashboard();
     });
   });
@@ -351,9 +356,9 @@ describe("issue 21559", { tags: "@external" }, () => {
     () => {
       cy.findByTestId("add-series-button").click({ force: true });
 
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText(q2Details.name).click();
       cy.findByTestId("add-series-modal").within(() => {
+        cy.findByText(q2Details.name).click();
+
         // wait for elements to appear inside modal
         chartPathWithFillColor("#A989C5").should("have.length", 1);
         chartPathWithFillColor("#88BF4D").should("have.length", 1);
@@ -361,9 +366,13 @@ describe("issue 21559", { tags: "@external" }, () => {
         cy.button("Done").click();
       });
 
+      cy.findByTestId("add-series-modal").should("not.exist");
+
       // Make sure visualization changed to bars
-      chartPathWithFillColor("#A989C5").should("have.length", 1);
-      chartPathWithFillColor("#88BF4D").should("have.length", 1);
+      getDashboardCard(0).within(() => {
+        chartPathWithFillColor("#A989C5").should("have.length", 1);
+        chartPathWithFillColor("#88BF4D").should("have.length", 1);
+      });
 
       saveDashboard();
       // Wait for "Edited a few seconds ago" to disappear because the whole
