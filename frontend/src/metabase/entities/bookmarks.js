@@ -1,5 +1,6 @@
 import { createSelector } from "@reduxjs/toolkit";
 import { assoc, updateIn, dissoc, getIn } from "icepick";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { bookmarkApi } from "metabase/api";
@@ -7,8 +8,8 @@ import Collections from "metabase/entities/collections";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
 import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+import { addUndo } from "metabase/redux/undo";
 import { BookmarkSchema } from "metabase/schema";
-
 const REORDER_ACTION = `metabase/entities/bookmarks/REORDER_ACTION`;
 
 /**
@@ -46,17 +47,29 @@ const Bookmarks = createEntity({
     REORDER: REORDER_ACTION,
   },
   actions: {
-    reorder: bookmarks => async dispatch => {
+    reorder: bookmarks => async (dispatch, getState) => {
+      const bookmarksBeforeReordering = getOrderedBookmarks(getState());
       const orderings = bookmarks.map(({ type, item_id }) => ({
         type,
         item_id,
       }));
-      await entityCompatibleQuery(
-        { orderings },
-        dispatch,
-        bookmarkApi.endpoints.reorderBookmarks,
-      );
-      return { type: REORDER_ACTION, payload: bookmarks };
+      dispatch({ type: REORDER_ACTION, payload: bookmarks });
+      try {
+        await entityCompatibleQuery(
+          { orderings },
+          dispatch,
+          bookmarkApi.endpoints.reorderBookmarks,
+        );
+      } catch (e) {
+        dispatch({ type: REORDER_ACTION, payload: bookmarksBeforeReordering });
+        dispatch(
+          addUndo({
+            icon: "warning",
+            toastColor: "error",
+            message: t`Something went wrong`,
+          }),
+        );
+      }
     },
   },
   objectSelectors: {
