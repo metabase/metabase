@@ -143,8 +143,6 @@ const getDatasetParams = ({
 
   const isEmbeddedQuestion = token != null;
   if (isEmbeddedQuestion) {
-    // For whatever wacky reason the /api/embed endpoint expect params like ?key=value instead
-    // of like ?params=<json-encoded-params-array> like the other endpoints do.
     const params = new URLSearchParams(window.location.search);
     return {
       method: "GET",
