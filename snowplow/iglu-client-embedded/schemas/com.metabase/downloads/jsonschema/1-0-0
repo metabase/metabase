@@ -21,6 +21,11 @@
         "string",
         "null"
       ],
+      "enum": [
+        "question",
+        "dashcard",
+        "ad-hoc-question"
+      ],
       "maxLength": 1024,
       "description": "The type of resource: question, dashcard or ad-hoc-question"
     },
