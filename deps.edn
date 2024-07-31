@@ -158,7 +158,7 @@
   ;; v. 12 of jetty-server triggers "a org/eclipse/jetty/io/EofException has been compiled by a more recent version of
   ;; the Java Runtime (class file version 61.0), this version of the Java Runtime only recognizes class file versions
   ;; up to 55.0"
-  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.20" #_"must be 11"} ; web server
+  org.eclipse.jetty/jetty-server            {:mvn/version "11.0.22" #_"must be 11"} ; web server
   org.eclipse.jetty.websocket/websocket-jetty-server {:mvn/version "11.0.22"}   ; ring-jetty-adapter needs that
   org.flatland/ordered                      {:mvn/version "1.15.12"}            ; ordered maps & sets
   org.graalvm.js/js                         {:mvn/version "22.3.5"}             ; JavaScript engine
@@ -239,7 +239,7 @@
     clj-kondo/clj-kondo          {:mvn/version "2024.08.01"}                ; included here mainly to facilitate working on the stuff in `.clj-kondo/src`
     cloverage/cloverage          {:mvn/version "1.2.4"}
     com.gfredericks/test.chuck   {:mvn/version "0.2.14"}                    ; generating strings from regexes (useful with malli)
-    djblue/portal                {:mvn/version "0.57.0"}                    ; ui for inspecting values
+    djblue/portal                {:mvn/version "0.57.1"}                    ; ui for inspecting values
     hashp/hashp                  {:mvn/version "0.2.2"}                     ; debugging/spying utility
     io.github.camsaul/humane-are {:mvn/version "1.0.2"}
     io.github.metabase/hawk      {:mvn/version "1.0.5"}
