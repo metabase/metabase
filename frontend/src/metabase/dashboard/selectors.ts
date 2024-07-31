@@ -665,5 +665,5 @@ export const getFiltersToReset = createSelector(
 
 export const getCanResetFilters = createSelector(
   [getFiltersToReset],
-  filters => filters.length > 0,
+  filtersToReset => filtersToReset.length > 0,
 );
