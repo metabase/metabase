@@ -68,11 +68,11 @@ export const collectionApi = Api.injectEndpoints({
         url: `/api/collection/${id}/stale`,
         params,
       }),
-      providesTags: response => {
-        const items = response?.data ?? [];
-        const models = _.uniq(items.map(item => item.model));
-        return provideCollectionItemListTags(items, models);
-      },
+      providesTags: response =>
+        provideCollectionItemListTags(response?.data ?? [], [
+          "card",
+          "dashboard",
+        ]),
     }),
     getCollection: builder.query<Collection, getCollectionRequest>({
       query: ({ id, ...body }) => {
