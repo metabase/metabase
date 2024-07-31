@@ -87,6 +87,7 @@ class DebouncedFrame extends Component {
       enabled && this.state.width != null && this.state.height != null
         ? this.state
         : this.props;
+
     return (
       <div
         ref={r => (this._container = r)}
@@ -97,11 +98,9 @@ class DebouncedFrame extends Component {
           ...style,
         }}
       >
-        {width > 0 ? (
-          <div className={CS.absolute} style={{ width, height }}>
-            {children}
-          </div>
-        ) : null}
+        <div className={CS.absolute} style={{ width, height }}>
+          {children}
+        </div>
       </div>
     );
   }
