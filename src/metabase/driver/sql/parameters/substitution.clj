@@ -268,8 +268,6 @@
   [:field
    (u/the-id field)
    {:base-type                (:base-type field)
-    ;; Set default :temporal-unit for temporal parameters so we avoid LHS cast that make indexes unusable.
-    ;; :temporal-unit was set to nil for non temporal fields and this change does not modify that.
     :temporal-unit            (align-temporal-unit-with-param-type-and-value driver field param-type value)
     ::add/source-table        (:table-id field)
     ;; in case anyone needs to know we're compiling a Field filter.
@@ -286,7 +284,8 @@
        :replacement-snippet))
 
 (defn- field-filter->replacement-snippet-for-datetime-field
-  "TODO: convert to gte lt from between last step"
+  "Generate replacement snippet for field filter on datetime field. For details on how range is generated see
+  the docstring of [[params.dates/date-str->datetime-range]]."
   [driver {:keys [field] {:keys [value type]} :value :as _field-filter}]
   (letfn [(->datetime-replacement-snippet-info
             [range]
