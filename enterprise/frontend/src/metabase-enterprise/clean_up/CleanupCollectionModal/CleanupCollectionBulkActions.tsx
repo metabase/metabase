@@ -48,15 +48,15 @@ export const CleanupCollectionBulkActions = ({
         }, 5000) as unknown as number;
 
         const message = ngettext(
-          msgid`${selected.length} item moved to trash`,
-          `${selected.length} items moved to trash`,
+          msgid`${selected.length} item has been moved to the trash.`,
+          `${selected.length} items have been moved to the trash.`,
           selected.length,
         );
 
         setUndo({
           id,
           actions: [() => handleUndo(selected)],
-          icon: "trash",
+          icon: "check",
           canDismiss: true,
           message,
           startedAt: Date.now(),
@@ -75,11 +75,7 @@ export const CleanupCollectionBulkActions = ({
   return (
     <>
       {undo && (
-        <div
-          className={CS.undoContainer}
-          data-testid="undo-list"
-          aria-label="undo-list"
-        >
+        <div className={CS.undoContainer} data-testid="undo-list">
           <UndoToast
             undo={undo}
             onUndo={() => undo.actions?.[0]()}

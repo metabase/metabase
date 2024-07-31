@@ -42,7 +42,7 @@ export const PaginationControls = ({
     <Group
       align="center"
       fw="bold"
-      aria-label="pagination"
+      aria-label={t`Pagination`}
       role="navigation"
       {...props}
     >

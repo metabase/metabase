@@ -1,4 +1,4 @@
-import { t } from "ttag";
+import { c, t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
 import DateTime from "metabase/components/DateTime";
@@ -81,7 +81,7 @@ export const CleanupCollectionTable = ({
             sortingOptions={sortingOptions}
             onSortingOptionsChange={onSortingOptionsChange}
           >
-            {t`Last used at`}
+            {c(`Describes the date something was last used`).t`Last used at`}
           </SortableColumnHeader>
         </tr>
       </thead>
