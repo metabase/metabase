@@ -457,13 +457,7 @@ export const resetParameters = createThunkAction(
     const parameters = getFiltersToReset(getState());
 
     for (const parameter of parameters) {
-      const defaultValue = parameter.default;
-
-      if (defaultValue) {
-        dispatch(setParameterValue(parameter.id, defaultValue));
-      } else {
-        dispatch(setParameterValue(parameter.id, null));
-      }
+      dispatch(setParameterValue(parameter.id, parameter.default ?? null));
     }
   },
 );
