@@ -1,5 +1,6 @@
 import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
 
+import { interceptRoutes } from "./helpers/e2e-performance-helpers";
 import {
   adaptiveRadioButton,
   cacheStrategyForm,
@@ -16,70 +17,61 @@ import {
 // NOTE: These tests just check that the form can be saved. They do not test
 // whether the cache is actually invalidated at the specified times.
 
-describe("scenarios > admin > performance", { tags: "@OSS" }, () => {
-  beforeEach(() => {
-    restore();
-    cy.intercept("PUT", "/api/cache").as("putCacheConfig");
-    cy.intercept("DELETE", "/api/cache").as("deleteCacheConfig");
-    cy.intercept("POST", "/api/persist/enable").as("enablePersistence");
-    cy.intercept("POST", "/api/persist/disable").as("disablePersistence");
-    cy.signInAsAdmin();
+describe(
+  "scenarios > admin > performance > strategy form",
+  { tags: "@OSS" },
+  () => {
+    beforeEach(() => {
+      restore();
+      interceptRoutes();
+      cy.signInAsAdmin();
+      cy.visit("/admin");
+      cy.findByRole("link", { name: "Performance" }).click();
+    });
 
-    cy.visit("/admin");
-    cy.findByRole("link", { name: "Performance" }).click();
-  });
+    it("can enable and disable model persistence", () => {
+      cy.findByRole("tab", { name: "Model persistence" }).click();
+      cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
+      cy.wait("@enablePersistence");
+      cy.findByTestId("toast-undo").contains("Saved");
+      cy.findByTestId("toast-undo")
+        .findByRole("img", { name: /close icon/ })
+        .click();
 
-  it("can enable and disable model persistence", () => {
-    cy.findByRole("tab", { name: "Model persistence" }).click();
-    cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
-    cy.wait("@enablePersistence");
-    cy.findByTestId("toast-undo").contains("Saved");
-    cy.findByTestId("toast-undo")
-      .findByRole("img", { name: /close icon/ })
-      .click();
+      cy.findByRole("checkbox", { name: "Enabled" }).next("label").click();
+      cy.wait("@disablePersistence");
+      cy.findByTestId("toast-undo").contains("Saved");
+    });
 
-    cy.findByRole("checkbox", { name: "Enabled" }).next("label").click();
-    cy.wait("@disablePersistence");
-    cy.findByTestId("toast-undo").contains("Saved");
-  });
+    it("can change when models are refreshed", () => {
+      cy.findByRole("tab", { name: "Model persistence" }).click();
+      cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
+      cy.wait("@enablePersistence");
+      cy.findByTestId("toast-undo").contains("Saved");
+      cy.findByTestId("toast-undo")
+        .findByRole("img", { name: /close icon/ })
+        .click();
+      cy.findByRole("combobox").click();
+      cy.findByRole("listbox").findByText("2 hours").click();
+      cy.findByTestId("toast-undo").contains("Saved");
+    });
 
-  it("can change when models are refreshed", () => {
-    cy.findByRole("tab", { name: "Model persistence" }).click();
-    cy.findByRole("checkbox", { name: "Disabled" }).next("label").click();
-    cy.wait("@enablePersistence");
-    cy.findByTestId("toast-undo").contains("Saved");
-    cy.findByTestId("toast-undo")
-      .findByRole("img", { name: /close icon/ })
-      .click();
-    cy.findByRole("combobox").click();
-    cy.findByRole("listbox").findByText("2 hours").click();
-    cy.findByTestId("toast-undo").contains("Saved");
-  });
+    it("there are two policy options for the default policy, Adaptive and Don't cache results", () => {
+      cacheStrategyForm().findAllByRole("radio").should("have.length", 2);
+      adaptiveRadioButton().should("exist");
+      dontCacheResultsRadioButton().should("exist");
+    });
 
-  it("there are two policy options for the default policy, Adaptive and Don't cache results", () => {
-    cacheStrategyForm().findAllByRole("radio").should("have.length", 2);
-    adaptiveRadioButton().should("exist");
-    dontCacheResultsRadioButton().should("exist");
-  });
-
-  it("can set default policy to Don't cache results", () => {
-    const model = "root";
-    cy.log("Set default policy to Adaptive first");
-    adaptiveRadioButton().click();
-    saveCacheStrategyForm({ strategyType: "ttl", model });
-    adaptiveRadioButton().should("be.checked");
-
-    cy.log("Then set default policy to Don't cache results");
-    dontCacheResultsRadioButton().click();
-    saveCacheStrategyForm({ strategyType: "nocache", model });
-    dontCacheResultsRadioButton().should("be.checked");
-  });
-
-  describe("adaptive strategy", () => {
-    it("can set default policy to adaptive", () => {
+    it("can set default policy to Don't cache results", () => {
+      cy.log("Set default policy to Adaptive first");
       adaptiveRadioButton().click();
       saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
       adaptiveRadioButton().should("be.checked");
+
+      cy.log("Then set default policy to Don't cache results");
+      dontCacheResultsRadioButton().click();
+      saveCacheStrategyForm({ strategyType: "nocache", model: "root" });
+      dontCacheResultsRadioButton().should("be.checked");
     });
 
     it("can configure a minimum query duration for the default adaptive policy", () => {
@@ -90,37 +82,52 @@ describe("scenarios > admin > performance", { tags: "@OSS" }, () => {
       cy.findByLabelText(/Minimum query duration/).should("have.value", "1000");
     });
 
-    it("can configure a multiplier for the default adaptive policy", () => {
-      adaptiveRadioButton().click();
-      cy.findByLabelText(/Multiplier/).type("3");
-      saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
-      adaptiveRadioButton().should("be.checked");
-      cy.findByLabelText(/Multiplier/).should("have.value", "3");
-    });
+    describe("adaptive strategy", () => {
+      it("can set default policy to adaptive", () => {
+        adaptiveRadioButton().click();
+        saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
+        adaptiveRadioButton().should("be.checked");
+      });
 
-    it("can configure both a minimum query duration and a multiplier for the default adaptive policy", () => {
-      adaptiveRadioButton().click();
-      cy.findByLabelText(/Minimum query duration/).type("1234");
-      cy.findByLabelText(/Multiplier/).type("4");
-      saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
-      adaptiveRadioButton().should("be.checked");
-      cy.findByLabelText(/Minimum query duration/).should("have.value", "1234");
-      cy.findByLabelText(/Multiplier/).should("have.value", "4");
+      it("can configure a multiplier for the default adaptive policy", () => {
+        adaptiveRadioButton().click();
+        cy.findByLabelText(/Multiplier/).type("3");
+        saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
+        adaptiveRadioButton().should("be.checked");
+        cy.findByLabelText(/Multiplier/).should("have.value", "3");
+      });
+
+      it("can configure a minimum query duration for the default adaptive policy", () => {
+        adaptiveRadioButton().click();
+        cy.findByLabelText(/Minimum query duration/).type("1000");
+        saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
+        adaptiveRadioButton().should("be.checked");
+        cy.findByLabelText(/Minimum query duration/).should(
+          "have.value",
+          "1000",
+        );
+      });
+
+      it("can configure both a minimum query duration and a multiplier for the default adaptive policy", () => {
+        adaptiveRadioButton().click();
+        cy.findByLabelText(/Minimum query duration/).type("1234");
+        cy.findByLabelText(/Multiplier/).type("4");
+        saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
+        adaptiveRadioButton().should("be.checked");
+        cy.findByLabelText(/Minimum query duration/).should(
+          "have.value",
+          "1234",
+        );
+        cy.findByLabelText(/Multiplier/).should("have.value", "4");
+      });
     });
-  });
-});
+  },
+);
 
 describeEE("EE", () => {
   beforeEach(() => {
     restore();
-    cy.intercept("PUT", "/api/cache").as("putCacheConfig");
-    cy.intercept("DELETE", "/api/cache").as("deleteCacheConfig");
-    cy.intercept(
-      "POST",
-      "/api/cache/invalidate?include=overrides&database=1",
-    ).as("invalidateCacheForSampleDatabase");
-    cy.intercept("POST", "/api/persist/enable").as("enablePersistence");
-    cy.intercept("POST", "/api/persist/disable").as("disablePersistence");
+    interceptRoutes();
     cy.signInAsAdmin();
     setTokenFeatures("all");
   });
@@ -171,7 +178,7 @@ describeEE("EE", () => {
 
   [/Duration/, /Schedule/, /Adaptive/].forEach(strategy => {
     const strategyAsString = strategy.toString().replace(/\//g, "");
-    it(`can configure Sample Database to use a default policy of ${strategyAsString}`, () => {
+    it(`can configure Sample Database to inherit a default policy of ${strategyAsString}`, () => {
       cy.log(`Set default policy to ${strategy}`);
       openStrategyFormForDatabaseOrDefaultPolicy(
         "default policy",
@@ -218,6 +225,11 @@ describeEE("EE", () => {
       cy.log(`Then set ${itemName} to Don't cache results`);
       dontCacheResultsRadioButton().click();
       saveCacheStrategyForm({ strategyType: "nocache", model });
+
+      saveCacheStrategyForm({
+        strategyType: "nocache",
+        model: itemName === "default policy" ? "root" : "database",
+      });
       formLauncher(itemName, "currently", "No caching");
       checkInheritanceIfNeeded(itemName, "No caching");
     });
@@ -228,7 +240,7 @@ describeEE("EE", () => {
       durationRadioButton().click();
       saveCacheStrategyForm({ strategyType: "duration", model });
       cy.log(`${itemName} is now set to Duration`);
-      formLauncher(itemName, "currently", "Duration");
+      formLauncher(itemName, "currently", "Duration: 24h");
       checkInheritanceIfNeeded(itemName, "Duration");
     });
 
