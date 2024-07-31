@@ -16,6 +16,7 @@ import {
   setSearchBoxFilterType,
   multiAutocompleteInput,
   multiAutocompleteValue,
+  modal,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -838,6 +839,26 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     cy.findByLabelText("X").should("contain.text", "Twenty");
     SQLFilter.runQuery("cardQuery");
   });
+
+  it("should clear the static-list values when changing the template tag type and restore them when changing the type back", () => {
+    openNativeEditor();
+    SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Text");
+    setSearchBoxFilterType();
+    setFilterListSource({
+      values: ["Foo", "Bar"],
+    });
+    saveQuestion("SQL filter");
+
+    SQLFilter.openTypePickerFromSelectedFilterType("Text");
+    SQLFilter.chooseType("Number");
+    checkFilterListSourceHasValue({ values: [] });
+
+    SQLFilter.openTypePickerFromSelectedFilterType("Number");
+    SQLFilter.chooseType("Text");
+    checkFilterListSourceHasValue({ values: ["Foo", "Bar"] });
+  });
 });
 
 const getQuestionResource = questionId => ({
@@ -1017,3 +1038,22 @@ const checkFilterValueNotInList = value => {
       cy.findByText(value).should("not.exist");
     });
 };
+
+export function checkFilterListSourceHasValue({ values }) {
+  cy.findByText("Edit").click();
+
+  const expectedString = values
+    .map(value => {
+      if (Array.isArray(value)) {
+        return value.join(", ");
+      }
+      return value;
+    })
+    .join("\n");
+
+  modal().within(() => {
+    cy.findByText("Custom list").click();
+    cy.findByRole("textbox").should("have.value", expectedString);
+    cy.icon("close").click();
+  });
+}
