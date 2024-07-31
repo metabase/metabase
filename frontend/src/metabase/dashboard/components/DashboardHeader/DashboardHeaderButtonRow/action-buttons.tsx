@@ -187,7 +187,7 @@ export const dashboardActionButtons: Record<
             isFullscreen,
             dashboard,
             canEdit,
-            pathname: location.pathname,
+            pathname: location?.pathname,
           })}
         />
       ),

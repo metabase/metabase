@@ -90,6 +90,7 @@ export function DashboardHeaderView({
         className="Header-buttonSection"
         isNavBarOpen={isNavBarOpen}
       >
+        {/*TODO: check if we are in the SDK context and remove excess buttons */}
         <DashboardHeaderButtonRow
           refreshPeriod={refreshPeriod}
           onRefreshPeriodChange={onRefreshPeriodChange}

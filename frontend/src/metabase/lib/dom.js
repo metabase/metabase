@@ -526,6 +526,9 @@ export function isReducedMotionPreferred() {
   return mediaQuery && mediaQuery.matches;
 }
 
+/**
+ * @returns {HTMLElement | undefined}
+ */
 export function getMainElement() {
   const [main] = document.getElementsByTagName("main");
   return main;

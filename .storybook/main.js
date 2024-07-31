@@ -36,6 +36,9 @@ module.exports = {
       new webpack.ProvidePlugin({
         Buffer: ["buffer", "Buffer"],
       }),
+      new webpack.EnvironmentPlugin({
+        IS_EMBEDDING_SDK: isEmbeddingSDK ? "true" : undefined,
+      }),
     ],
     module: {
       ...storybookConfig.module,

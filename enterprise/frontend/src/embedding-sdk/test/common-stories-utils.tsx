@@ -1,10 +1,12 @@
+import { css, Global } from "@emotion/react";
+import cx from "classnames";
 import * as jose from "jose";
 import type { PropsWithChildren } from "react";
 
 import { MetabaseProvider, type SDKConfig } from "embedding-sdk";
+import CS from "metabase/css/core/index.css";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
-
 const METABASE_INSTANCE_URL =
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 const METABASE_JWT_SHARED_SECRET =
@@ -40,5 +42,20 @@ const DEFAULT_CONFIG: SDKConfig = {
 };
 
 export const CommonStoryWrapper = ({ children }: PropsWithChildren) => (
-  <MetabaseProvider config={DEFAULT_CONFIG}>{children}</MetabaseProvider>
+  <>
+    <Global
+      styles={css`
+        #root {
+          width: 100%;
+          height: 100%;
+        }
+      `}
+    />
+    <MetabaseProvider
+      className={cx(CS.fullWidth, CS.fullHeight)}
+      config={DEFAULT_CONFIG}
+    >
+      {children}
+    </MetabaseProvider>
+  </>
 );
