@@ -584,7 +584,7 @@ To keep file sizes over the network under control, both the `export` and `import
 To compress a directory (e.g., a directory named `metabase_data`).
 
 ```sh
-tar -czf  metabase_data
+tar -czf  metabase_data.tgz metabase_data
 ```
 
 #### Extract a directory
