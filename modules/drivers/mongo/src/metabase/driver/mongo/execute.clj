@@ -17,7 +17,7 @@
    [metabase.util.log :as log]
    [metabase.util.malli :as mu])
   (:import
-   (com.mongodb.client AggregateIterable ClientSession MongoCursor MongoDatabase)
+   (com.mongodb.client AggregateIterable ClientSession MongoCursor MongoDatabase MongoIterable)
    (java.util ArrayList Collection)
    (java.util.concurrent TimeUnit)
    (org.bson BsonBoolean BsonInt32)))
@@ -205,3 +205,17 @@
                                                                 :type   qp.error-type/invalid-query}
                                                                e))))]
           (reduce-results native-query query cursor respond))))))
+
+(defn cursor-reducible
+  "Returns a reducible from a MongoIterable which uses a cursor to only hold a subset of results in memory at a time."
+  [^MongoIterable iterable]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ f init]
+      (with-open [^MongoCursor cursor (.cursor iterable)] ; TODO: what happens when this fails?
+        (loop [init' init]
+          (if (.hasNext cursor)
+            (let [result (f init' (.next cursor))]
+              (if (reduced? result)
+                @result
+                (recur result)))
+            init'))))))
