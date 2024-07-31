@@ -1612,7 +1612,7 @@
   [update-viz-settings-fn]
   (let [update-one! (fn [{:keys [id object]}]
                       (let [object  (json/parse-string object)
-                            updated-object (m/update-existing object :cards
+                            updated-object (m/update-existing object "cards"
                                                               (fn [cards] (mapv #(update-revision-viz-settings % [] update-viz-settings-fn) cards)))]
                             (when (not= object updated-object)
                               (t2/query-one {:update :revision
