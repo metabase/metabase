@@ -89,6 +89,11 @@ function ReduxDecorator(Story: Story, context: StoryContext) {
           values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
           has_more_values: parameterType === "search" ? true : false,
         },
+        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
+          {
+            values: [["Gadget"], ["Gizmo"], ["Widget"]],
+            has_more_values: parameterType === "search" ? true : false,
+          },
       },
     },
   });
@@ -360,11 +365,15 @@ LightThemeParameterSearchWithValue.play = async ({ canvasElement }) => {
   await userEvent.click(filter);
 
   const documentElement = within(document.documentElement);
-  await userEvent.type(
-    documentElement.getByPlaceholderText("Search the list"),
-    "g",
-  );
+  const searchInput = documentElement.getByPlaceholderText("Search the list");
   await userEvent.click(documentElement.getByText("Widget"));
+  await userEvent.type(searchInput, "g");
+
+  const dropdown = getLastPopover();
+  (dropdown.getByText("Gadget").parentNode as HTMLElement).setAttribute(
+    "data-hovered",
+    "true",
+  );
 };
 
 // Dark theme
@@ -442,11 +451,15 @@ DarkThemeParameterSearchWithValue.play = async ({ canvasElement }) => {
   await userEvent.click(filter);
 
   const documentElement = within(document.documentElement);
-  await userEvent.type(
-    documentElement.getByPlaceholderText("Search the list"),
-    "g",
-  );
+  const searchInput = documentElement.getByPlaceholderText("Search the list");
   await userEvent.click(documentElement.getByText("Widget"));
+  await userEvent.type(searchInput, "g");
+
+  const dropdown = getLastPopover();
+  (dropdown.getByText("Gadget").parentNode as HTMLElement).setAttribute(
+    "data-hovered",
+    "true",
+  );
 };
 
 // Date filters
@@ -462,6 +475,10 @@ LightThemeDateFilterAllOptions.play = async ({ canvasElement }) => {
     name: "Date all options",
   });
   await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const today = popover.getByRole("button", { name: "Today" });
+  today.classList.add("pseudo-hover");
 };
 
 export const DarkThemeDateFilterAllOptions = Template.bind({});
@@ -475,6 +492,10 @@ DarkThemeDateFilterAllOptions.play = async ({ canvasElement }) => {
     name: "Date all options",
   });
   await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const today = popover.getByRole("button", { name: "Today" });
+  today.classList.add("pseudo-hover");
 };
 
 // Month and Year
@@ -488,6 +509,10 @@ LightThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
     name: "Date Month and Year",
   });
   await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const january = popover.getByText("January");
+  january.classList.add("pseudo-hover");
 };
 
 export const DarkThemeDateFilterMonthYear = Template.bind({});
@@ -501,4 +526,18 @@ DarkThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
     name: "Date Month and Year",
   });
   await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const january = popover.getByText("January");
+  january.classList.add("pseudo-hover");
 };
+
+function getLastPopover() {
+  const lastPopover = Array.from(
+    document.documentElement.querySelectorAll(
+      '[data-element-id="mantine-popover"]',
+    ),
+  ).at(-1) as HTMLElement;
+
+  return within(lastPopover);
+}

@@ -3,6 +3,7 @@ const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const appConfig = require("../webpack.config");
 const fs = require("fs");
 const path = require("path");
+const { features } = require("process");
 
 const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
 
@@ -35,6 +36,7 @@ module.exports = {
     "@storybook/addon-links",
     "@storybook/addon-a11y",
     "@storybook/addon-interactions",
+    "storybook-addon-pseudo-states",
   ],
   babel: () => {},
   typescript: {

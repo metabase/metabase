@@ -283,6 +283,7 @@
     "semver": "^7.6.3",
     "shadow-cljs": "2.27.4",
     "source-map-loader": "^4.0.1",
+    "storybook-addon-pseudo-states": "^3.1.1",
     "stylelint": "^16.2.1",
     "stylelint-config-css-modules": "^4.4.0",
     "stylelint-config-standard": "^36.0.0",
