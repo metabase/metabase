@@ -329,7 +329,7 @@ case([Has Wings] = TRUE  AND [Has Face] = TRUE,  "Bird",
 - [Custom expressions tutorial][custom-expressions-learn]
 
 [aggregate-functions]: ../expressions-list.md#aggregations
-[business-logic]: https://www.metabase.com/learn/analytics/avoiding-data-jargon#create-specific-language-and-shared-definitions
+[business-logic]: https://www.metabase.com/learn/grow-your-data-skills/analytics/avoiding-data-jargon#create-specific-language-and-shared-definitions
 [countif]: ../expressions-list.md#countif
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-list]: ../expressions-list.md
