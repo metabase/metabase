@@ -255,7 +255,7 @@ visualization_settings:
       column_title: Question ID
     '["name","name"]':
       column_title: Question name
-      link_url: "/question/{{entity_id}}"
+      link_url: /question/{{entity_id}}
       view_as: link
   table.cell_column: model_id
   table.columns:

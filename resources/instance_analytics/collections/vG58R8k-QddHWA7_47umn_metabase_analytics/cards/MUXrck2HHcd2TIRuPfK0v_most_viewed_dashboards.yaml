@@ -191,7 +191,7 @@ visualization_settings:
       column_title: Dashboard ID
       link_url: dashboard/{{entity_id}}
       view_as: link
-    '["name","name""]':
+    '["name","name"]':
       column_title: Dashboard name
       link_url: dashboard/{{entity_id}}
       view_as: link

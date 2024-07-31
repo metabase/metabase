@@ -174,7 +174,7 @@ visualization_settings:
     '["name","name"]':
       column_title: Dashboard name
       link_text: ''
-      link_url: "/dashboard/{{entity_id}}"
+      link_url: /dashboard/{{entity_id}}
       view_as: link
     '["name","created_at"]':
       column_title: Added At

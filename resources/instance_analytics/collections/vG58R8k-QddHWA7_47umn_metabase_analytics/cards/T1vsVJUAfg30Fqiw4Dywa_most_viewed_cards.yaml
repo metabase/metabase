@@ -152,7 +152,7 @@ visualization_settings:
       show_mini_bar: true
     '["name","name"]':
       column_title: Question name
-      link_url: "/question/{{entity_id}}"
+      link_url: /question/{{entity_id}}
       view_as: link
     '["name","entity_id"]':
       column_title: Question ID
