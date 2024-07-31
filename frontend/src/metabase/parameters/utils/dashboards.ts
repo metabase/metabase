@@ -72,12 +72,20 @@ export function setParameterType(
   sectionId: string,
 ): Parameter {
   // reset default value
-  const { default: _, ...rest } = parameter;
+  const {
+    default: _,
+    values_source_type,
+    values_source_config,
+    ...rest
+  } = parameter;
 
   return {
     ...rest,
     type,
     sectionId,
+    values_source_type,
+    values_source_config:
+      values_source_type === "static-list" ? undefined : values_source_config,
   };
 }
 
