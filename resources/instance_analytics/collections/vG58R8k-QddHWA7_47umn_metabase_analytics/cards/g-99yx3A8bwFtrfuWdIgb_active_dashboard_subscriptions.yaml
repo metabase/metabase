@@ -516,10 +516,10 @@ result_metadata:
   visibility_type: normal
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Dashboard
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
-    : column_title: Creator
+    '["name","name"]':
+      column_title: Dashboard
+    '["name","full_name"]':
+      column_title: Creator
   table.cell_column: schedule_hour
   table.columns:
   - enabled: false
