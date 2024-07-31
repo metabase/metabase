@@ -1,3 +1,5 @@
+import { t } from "ttag";
+
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import type { IconName } from "metabase/ui";
 import { Icon } from "metabase/ui";
@@ -54,12 +56,12 @@ const StatusLarge = ({
           <Ellipsified>{status.title}</Ellipsified>
         </StatusTitle>
         {onCollapse && (
-          <StatusToggle onClick={onCollapse}>
+          <StatusToggle onClick={onCollapse} aria-label={t`Collapse`}>
             <Icon name="chevrondown" />
           </StatusToggle>
         )}
         {onDismiss && (
-          <StatusToggle onClick={onDismiss}>
+          <StatusToggle onClick={onDismiss} aria-label={t`Dismiss`}>
             <Icon name="close" />
           </StatusToggle>
         )}

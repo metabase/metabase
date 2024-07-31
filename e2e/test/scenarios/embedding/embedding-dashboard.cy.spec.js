@@ -27,6 +27,7 @@ import {
   setEmbeddingParameter,
   assertEmbeddingParameter,
   multiAutocompleteInput,
+  dismissDownloadStatus,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -283,6 +284,15 @@ describe("scenarios > embedding > dashboard parameters", () => {
       assertRequiredEnabledForName({ name: "User", enabled: false });
       assertRequiredEnabledForName({ name: "Not Used Filter", enabled: false });
     });
+
+    it("should render cursor pointer on hover over a toggle (metabase#46223)", () => {
+      visitDashboard("@dashboardId");
+
+      cy.findAllByTestId("parameter-value-widget-target")
+        .first()
+        .realHover()
+        .should("have.css", "cursor", "pointer");
+    });
   });
 
   context("API", () => {
@@ -526,6 +536,35 @@ describe("scenarios > embedding > dashboard parameters", () => {
         assertSheetRowsCount(54)(sheet);
       },
     );
+    dismissDownloadStatus();
+  });
+
+  it("should send 'X-Metabase-Client' header for api requests", () => {
+    cy.intercept("GET", "api/embed/dashboard/*").as("getEmbeddedDashboard");
+
+    cy.get("@dashboardId").then(dashboardId => {
+      cy.request("PUT", `/api/dashboard/${dashboardId}`, {
+        embedding_params: {},
+        enable_embedding: true,
+      });
+
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: {},
+      };
+
+      visitEmbeddedPage(payload, {
+        onBeforeLoad: window => {
+          window.Cypress = undefined;
+        },
+      });
+
+      cy.wait("@getEmbeddedDashboard").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe",
+        );
+      });
+    });
   });
 });
 
@@ -559,12 +598,49 @@ describe("scenarios > embedding > dashboard parameters with defaults", () => {
       });
     });
 
+    cy.get("@dashboardId").then(dashboardId => {
+      const payload = {
+        resource: { dashboard: dashboardId },
+        params: { source: [] },
+      };
+
+      visitEmbeddedPage(payload);
+
+      // wait for the results to load
+
+      // The ID default (1 and 2) should apply, because it is disabled.
+      // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
+      // The Source default ('Facebook') should not apply because the param is locked but the value is unset
+      // If either the Name or Source default applied the result would be 0.
+
+      cy.contains("Test Dashboard");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+    });
+    //visitIframe();
+  });
+
+  it("locked parameters require a value to be specified in the JWT", () => {
+    openStaticEmbeddingModal({ activeTab: "parameters" });
+
+    // ID param is disabled by default
+    setEmbeddingParameter("Name", "Editable");
+    setEmbeddingParameter("Source", "Locked");
+    publishChanges("dashboard", ({ request }) => {
+      assert.deepEqual(request.body.embedding_params, {
+        source: "locked",
+        name: "enabled",
+      });
+    });
+
     visitIframe();
-    // The ID default (1 and 2) should apply, because it is disabled.
-    // The Name default ('Lina Heaney') should not apply, because the Name param is editable and unset
-    // The Source default ('Facebook') should not apply because the param is locked but the value is unset
-    // If either the Name or Source default applied the result would be 0.
-    cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+
+    // The Source parameter is 'locked', and no value has been specified in the token,
+    // thus the API responds with "You must specify a value for :source in the JWT."
+    // and the card will not display.
+
+    getDashboardCard()
+      .findByText("There was a problem displaying this chart.")
+      .should("be.visible");
   });
 });
 

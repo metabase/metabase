@@ -116,7 +116,7 @@
                    target)))
    dashboard-param-id->param))
 
-(mu/defn ^:private resolve-params-for-query :- [:maybe [:sequential :map]]
+(mu/defn- resolve-params-for-query :- [:maybe [:sequential :map]]
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."

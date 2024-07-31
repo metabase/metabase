@@ -73,7 +73,7 @@
           "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
   (premium-features/sandboxed-or-impersonated-user?))
 
-(mu/defn ^:private search-string-clause-for-model
+(mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
    search-native-query  :- [:maybe true?]]
@@ -127,6 +127,11 @@
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
+
+(doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
+  (defmethod build-optional-filter-query [:id model]
+    [_filter model query ids]
+    (sql.helpers/where query [:in (search.config/column-with-model-alias model :id) ids])))
 
 ;; Verified filters
 
@@ -295,14 +300,16 @@
   [honeysql-query :- :map
    model          :- SearchableModel
    search-context :- SearchContext]
-  (let [{:keys [archived?
+  (let [{:keys [models
+                archived?
                 created-at
                 created-by
                 last-edited-at
                 last-edited-by
                 search-string
                 search-native-query
-                verified]}    search-context]
+                verified
+                ids]}    search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
@@ -325,6 +332,10 @@
 
       (some? verified)
       (#(build-optional-filter-query :verified model % verified))
+
+      (and (some? ids)
+           (contains? models model))
+      (#(build-optional-filter-query :id model % ids))
 
       (= "table" model)
       (sql.helpers/where
