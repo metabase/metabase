@@ -184,7 +184,7 @@
                          title
                          description
                          [:div {:class "pulse-body"
-                                :style (style/style {:overflow-x :auto
+                                :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
                                                      :display :block
                                                      :margin  :16px})}
                           (if-let [more-results-message (body/attached-results-text render-type card)]
