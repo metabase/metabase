@@ -1,10 +1,16 @@
 import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_MODEL_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
+  createQuestion,
   getNotebookStep,
   openNotebook,
   openReviewsTable,
   popover,
   restore,
   tableInteractive,
+  visitQuestion,
   visualize,
 } from "e2e/support/helpers";
 
@@ -70,5 +76,81 @@ describe("scenarios > notebook > link to data source", () => {
     );
 
     cy.findByTestId("qb-save-button").should("be.enabled");
+  });
+
+  context("questions", () => {
+    it("should open the source table from a simple question", () => {
+      visitQuestion(ORDERS_COUNT_QUESTION_ID);
+      openNotebook();
+      getNotebookStep("data").findByText("Orders").click(clickConfig);
+
+      cy.log("Make sure Orders table is rendered in a simple mode");
+      cy.findAllByTestId("header-cell").should("contain", "Subtotal");
+      tableInteractive().should("contain", "37.65");
+      cy.findByTestId("question-row-count").should(
+        "have.text",
+        "Showing first 2,000 rows",
+      );
+
+      cy.findByTestId("qb-save-button").should("be.enabled");
+    });
+
+    it("should open the source question from a nested question", () => {
+      createQuestion(
+        {
+          name: "Nested question based on a question",
+          query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
+        },
+        { visitQuestion: true },
+      );
+
+      openNotebook();
+      getNotebookStep("data").findByText("Orders, Count").click(clickConfig);
+
+      cy.log("Make sure the source question rendered in a simple mode");
+      cy.location("pathname").should(
+        "eq",
+        `/question/${ORDERS_COUNT_QUESTION_ID}-orders-count`,
+      );
+      cy.findAllByTestId("header-cell")
+        .should("have.length", "1")
+        .and("have.text", "Count");
+      tableInteractive().should("contain", "18,760");
+      cy.findByTestId("question-row-count").should(
+        "have.text",
+        "Showing 1 row",
+      );
+
+      // Question is not dirty
+      cy.findByTestId("qb-save-button").should("not.exist");
+    });
+
+    it("should open the source model from a nested question", () => {
+      createQuestion(
+        {
+          name: "Nested question based on a model",
+          query: { "source-table": `card__${ORDERS_MODEL_ID}` },
+        },
+        { visitQuestion: true },
+      );
+
+      openNotebook();
+      getNotebookStep("data").findByText("Orders Model").click(clickConfig);
+
+      cy.log("Make sure the source model is rendered in a simple mode");
+      cy.location("pathname").should(
+        "eq",
+        `/model/${ORDERS_MODEL_ID}-orders-model`,
+      );
+      cy.findAllByTestId("header-cell").should("contain", "Subtotal");
+      tableInteractive().should("contain", "37.65");
+      cy.findByTestId("question-row-count").should(
+        "have.text",
+        "Showing first 2,000 rows",
+      );
+
+      // Model is not dirty
+      cy.findByTestId("qb-save-button").should("not.exist");
+    });
   });
 });
