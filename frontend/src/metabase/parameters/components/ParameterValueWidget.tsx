@@ -79,7 +79,7 @@ export const ParameterValueWidget = ({
     const { default: defaultValue } = parameter;
 
     if (
-      defaultValue &&
+      defaultValue != null &&
       !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
@@ -116,7 +116,7 @@ export const ParameterValueWidget = ({
 
     if (
       required &&
-      defaultValue &&
+      defaultValue != null &&
       !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
@@ -129,7 +129,7 @@ export const ParameterValueWidget = ({
       );
     }
 
-    if (required && !defaultValue && value != null) {
+    if (required && defaultValue == null && value != null) {
       return (
         <WidgetStatus
           className={S.widgetStatus}
@@ -165,7 +165,7 @@ export const ParameterValueWidget = ({
   const resetToDefault = () => {
     const { required, default: defaultValue } = parameter;
 
-    if (required && defaultValue && !value) {
+    if (required && defaultValue != null && !value) {
       setValue(defaultValue);
     }
   };
