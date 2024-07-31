@@ -482,15 +482,12 @@
   "Generate offset datetime from `date-str` with respect to `results-timezone`."
   [date-str]
   (when date-str
-    (let [[y M d h m s] (parse-date-str date-str)
-        ;; I'm unable to tell whether we timzone-id will be offset or actuall id. Potentially zoned datetime may be
-        ;; created. For that reason last expression of this function ensures OffsetDateTime is always returned.
-          dt (try (t/zoned-date-time y M d h m s 0 (t/zone-id (qp.timezone/results-timezone-id)))
+    (let [[y M d h m s] (parse-date-str date-str)]
+      (try (.toOffsetDateTime (t/zoned-date-time y M d h m s 0 (t/zone-id (qp.timezone/results-timezone-id))))
+           (catch Throwable _
+             (try (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id)))
                   (catch Throwable _
-                    (try (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id)))
-                         (catch Throwable _
-                           (t/offset-date-time y M d h m s 0 (t/zone-id "Z"))))))]
-      (t/offset-date-time dt))))
+                    (t/offset-date-time y M d h m s 0 (t/zone-id "Z")))))))))
 
 (defn- date-str->unit-fn
   "Return appropriate function for interval end adjustments in [[inclusive-datetime-range-end]]."
