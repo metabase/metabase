@@ -422,7 +422,6 @@ visualization_settings:
       - name
     - base-type: type/Text
       join-alias: Content - Card Qualified
-    key: '["ref",["field",921,{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
     name: name
   - enabled: true
     fieldRef:
@@ -433,7 +432,6 @@ visualization_settings:
       - full_name
     - base-type: type/Text
       join-alias: People - Creator
-    key: '["ref",["field",1377,{"base-type":"type/Text","join-alias":"People - Creator"}]]'
     name: full_name
   - enabled: true
     fieldRef:
@@ -443,7 +441,6 @@ visualization_settings:
       - v_alerts
       - created_at
     - temporal-unit: default
-    key: '["ref",["field",1370,null]]'
     name: created_at
   - enabled: true
     fieldRef:
