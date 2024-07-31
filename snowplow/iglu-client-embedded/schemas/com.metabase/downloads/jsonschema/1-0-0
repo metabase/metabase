@@ -30,12 +30,25 @@
         "null"
       ],
       "maxLength": 1024,
+      "enum": [
+        "internal",
+        "public-link",
+        "static-embed",
+        "interactive-iframe-embed",
+        "sdk-embed"
+      ],
       "description": "How was the resource accessed: internal, public-link, static-embed, sdk or interactive embedding"
     },
     "export_type": {
       "type": [
         "string",
         "null"
+      ],
+      "enum": [
+        "csv",
+        "xlsx",
+        "json",
+        "png"
       ],
       "maxLength": 1024,
       "description": "The export type, csv, png etc"
