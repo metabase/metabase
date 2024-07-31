@@ -196,10 +196,8 @@ result_metadata:
   visibility_type: normal
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
-    : column_title: Person
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
-    : column_title: Person
+    '["name","full_name"]':
+      column_title: Person
   table.cell_column: model_id
   table.columns:
   - enabled: true
