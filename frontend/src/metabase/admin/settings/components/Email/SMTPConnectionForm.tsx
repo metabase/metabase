@@ -40,7 +40,7 @@ const SEND_TEST_BUTTON_STATES = {
 };
 type ButtonStateType = keyof typeof SEND_TEST_BUTTON_STATES;
 
-interface SMTPConnectionFormProps {
+export interface SMTPConnectionFormProps {
   elements: SettingElement[];
   settingValues: Settings;
 }
@@ -54,17 +54,33 @@ type FormValueProps = Pick<
   | "email-smtp-password"
 >;
 
-const FORM_VALUE_SCHEMA = Yup.object({
-  "email-smtp-host": Yup.string().required(Errors.required).default(""),
-  "email-smtp-port": Yup.number()
-    .positive()
-    .nullable()
-    .required(Errors.required)
-    .default(null),
-  "email-smtp-security": Yup.string(),
-  "email-smtp-username": Yup.string().default(""),
-  "email-smtp-password": Yup.string().default(""),
-});
+const anySchema = Yup.mixed().nullable().default(null);
+
+// we need to allow this form to be submitted even when we have removed certain inputs
+// when they are set by env vars
+const getFormValueSchema = (elementMap: _.Dictionary<SettingElement>) => {
+  return Yup.object({
+    "email-smtp-host": elementMap["email-smtp-host"].is_env_setting
+      ? anySchema
+      : Yup.string().required(Errors.required).default(""),
+    "email-smtp-port": elementMap["email-smtp-port"].is_env_setting
+      ? anySchema
+      : Yup.number()
+          .positive()
+          .nullable()
+          .required(Errors.required)
+          .default(null),
+    "email-smtp-security": elementMap["email-smtp-security"].is_env_setting
+      ? anySchema
+      : Yup.string().default("none"),
+    "email-smtp-username": elementMap["email-smtp-username"].is_env_setting
+      ? anySchema
+      : Yup.string().default(""),
+    "email-smtp-password": elementMap["email-smtp-password"].is_env_setting
+      ? anySchema
+      : Yup.string().default(""),
+  });
+};
 
 export const SMTPConnectionForm = ({
   elements,
@@ -81,11 +97,11 @@ export const SMTPConnectionForm = ({
 
   const initialValues = useMemo<FormValueProps>(
     () => ({
-      "email-smtp-host": settingValues["email-smtp-host"] || "",
+      "email-smtp-host": settingValues["email-smtp-host"],
       "email-smtp-port": settingValues["email-smtp-port"],
-      "email-smtp-security": settingValues["email-smtp-security"] || "none",
-      "email-smtp-username": settingValues["email-smtp-username"] || "",
-      "email-smtp-password": settingValues["email-smtp-password"] || "",
+      "email-smtp-security": settingValues["email-smtp-security"] ?? "none",
+      "email-smtp-username": settingValues["email-smtp-username"] ?? "",
+      "email-smtp-password": settingValues["email-smtp-password"] ?? "",
     }),
     [settingValues],
   );
@@ -149,7 +165,7 @@ export const SMTPConnectionForm = ({
         )}
         <FormProvider
           initialValues={initialValues}
-          validationSchema={FORM_VALUE_SCHEMA}
+          validationSchema={getFormValueSchema(elementMap)}
           onSubmit={handleUpdateEmailSettings}
           enableReinitialize
         >
@@ -203,25 +219,26 @@ export const SMTPConnectionForm = ({
                   }}
                 >
                   <Group>
-                    {Object.entries(
-                      elementMap["email-smtp-security"].options || {},
-                    ).map(([value, setting]) => (
-                      <Radio
-                        value={value}
-                        label={setting.name}
-                        key={value}
-                        styles={{
-                          inner: { display: "none" },
-                          label: {
-                            paddingLeft: 0,
-                            color:
-                              values["email-smtp-security"] === value
-                                ? color("brand")
-                                : color("text-dark"),
-                          },
-                        }}
-                      />
-                    ))}
+                    {elementMap["email-smtp-security"].options?.map(
+                      ({ value, name }) => (
+                        <Radio
+                          value={value as string}
+                          name="email-smtp-security"
+                          label={name}
+                          key={name}
+                          styles={{
+                            inner: { display: "none" },
+                            label: {
+                              paddingLeft: 0,
+                              color:
+                                values["email-smtp-security"] === value
+                                  ? color("brand")
+                                  : color("text-dark"),
+                            },
+                          }}
+                        />
+                      ),
+                    )}
                   </Group>
                 </FormRadioGroup>
               </SetByEnvVarWrapper>
@@ -265,15 +282,14 @@ export const SMTPConnectionForm = ({
               <Flex mt="1rem" gap="1.5rem">
                 <FormSubmitButton
                   label={t`Save changes`}
-                  disabled={!dirty}
+                  disabled={!dirty || !isValid || isSubmitting}
                   variant="filled"
                 />
-                {(!dirty && isValid && !isSubmitting) ||
-                  (allSetByEnvVars && (
-                    <Button onClick={handleSendTestEmail}>
-                      {SEND_TEST_BUTTON_STATES[sendingEmail]}
-                    </Button>
-                  ))}
+                {!dirty && isValid && !isSubmitting && (
+                  <Button onClick={handleSendTestEmail}>
+                    {SEND_TEST_BUTTON_STATES[sendingEmail]}
+                  </Button>
+                )}
                 <Button
                   onClick={handleClearEmailSettings}
                   disabled={allSetByEnvVars}

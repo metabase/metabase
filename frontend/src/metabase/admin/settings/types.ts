@@ -20,6 +20,8 @@ export type SettingElement = {
   placeholder?: string;
   options?: { value: SettingValue; name: string }[];
   value?: SettingValue;
+  default?: SettingValue;
+  originalValue?: SettingValue;
   defaultValue?: SettingValue;
   required?: boolean;
   autoFocus?: boolean;
