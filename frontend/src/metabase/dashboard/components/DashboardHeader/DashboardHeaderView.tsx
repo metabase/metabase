@@ -80,9 +80,15 @@ export function DashboardHeaderView({
   const header = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
 
+  const canResetFilters = useSelector(() => true);
   const isSidebarOpen = useSelector(getIsSidebarOpen);
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
+
+  const handleResetFilters = useCallback(() => {
+    // dispatch(())
+    console.log("dispatch");
+  }, [dispatch]);
 
   const _headerButtons = useMemo(
     () => (
@@ -91,6 +97,8 @@ export function DashboardHeaderView({
         isNavBarOpen={isNavBarOpen}
       >
         <DashboardHeaderButtonRow
+          canResetFilters={canResetFilters}
+          onResetFilters={handleResetFilters}
           refreshPeriod={refreshPeriod}
           onRefreshPeriodChange={onRefreshPeriodChange}
           setRefreshElapsedHook={setRefreshElapsedHook}
@@ -104,6 +112,8 @@ export function DashboardHeaderView({
       </HeaderButtonSection>
     ),
     [
+      canResetFilters,
+      handleResetFilters,
       hasNightModeToggle,
       isAnalyticsDashboard,
       isFullscreen,

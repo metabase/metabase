@@ -11,6 +11,8 @@ import type { Collection, Dashboard } from "metabase-types/api";
 export type DashboardActionKey = keyof typeof DASHBOARD_ACTION;
 
 export type DashboardHeaderButtonRowProps = {
+  canResetFilters: boolean;
+  onResetFilters: () => void;
   collection?: Collection;
   isPublic?: boolean;
   isAnalyticsDashboard?: boolean;
@@ -19,6 +21,8 @@ export type DashboardHeaderButtonRowProps = {
   DashboardNightModeControls;
 
 export type HeaderButtonProps = {
+  canResetFilters: boolean;
+  onResetFilters: () => void;
   isEditing: boolean;
   canEdit: boolean;
   hasModelActionsEnabled: boolean;

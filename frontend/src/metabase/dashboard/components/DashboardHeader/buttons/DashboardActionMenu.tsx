@@ -25,17 +25,31 @@ export const DashboardActionMenu = (props: { items: any[] }) => (
 );
 
 export const getExtraButtons = ({
+  canResetFilters,
+  onResetFilters,
   onFullscreenChange,
   isFullscreen,
+  isPublic,
   dashboard,
   canEdit,
   pathname,
 }: DashboardFullscreenControls & {
+  canResetFilters: boolean;
+  onResetFilters: () => void;
   dashboard: Dashboard;
   canEdit: boolean;
+  isPublic: boolean | undefined;
   pathname: string;
 }) => {
   const extraButtons = [];
+
+  if (!isPublic && canResetFilters) {
+    extraButtons.push({
+      title: t`Reset all filters`,
+      icon: "revert",
+      action: () => onResetFilters(),
+    });
+  }
 
   extraButtons.push({
     title: t`Enter fullscreen`,
