@@ -16,7 +16,7 @@ import {
   setSearchBoxFilterType,
   multiAutocompleteInput,
   multiAutocompleteValue,
-  modal,
+  checkFilterListSourceHasValue,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -857,7 +857,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
     SQLFilter.openTypePickerFromSelectedFilterType("Number");
     SQLFilter.chooseType("Text");
-    checkFilterListSourceHasValue({ values: ["Foo", "Bar"] });
+    checkFilterListSourceHasValue({ values: [] });
   });
 });
 
@@ -1038,22 +1038,3 @@ const checkFilterValueNotInList = value => {
       cy.findByText(value).should("not.exist");
     });
 };
-
-export function checkFilterListSourceHasValue({ values }) {
-  cy.findByText("Edit").click();
-
-  const expectedString = values
-    .map(value => {
-      if (Array.isArray(value)) {
-        return value.join(", ");
-      }
-      return value;
-    })
-    .join("\n");
-
-  modal().within(() => {
-    cy.findByText("Custom list").click();
-    cy.findByRole("textbox").should("have.value", expectedString);
-    cy.icon("close").click();
-  });
-}
