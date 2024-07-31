@@ -104,16 +104,12 @@ dataset_query:
 result_metadata: null
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Card ID
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Question name
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
-      column_title: Question Name
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35_2"}]]':
-      column_title: Dashboard Name
-    ? '["ref",["field",["Internal Metabase Database","public","v_dashboardcard","created_at"],{"base-type":"type/DateTimeWithLocalTZ"}]]'
-    : column_title: Added At
+    '["name","entity_id"]':
+      column_title: Card ID
+    '["name","name"]':
+      column_title: Question name
+    '["name","created_at"]':
+      column_title: Added At
   table.cell_column: name
   table.columns:
   - enabled: true
