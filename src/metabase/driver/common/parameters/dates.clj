@@ -511,7 +511,7 @@
   of datetimes. By adding 0 temporal padding the end interval has to be adjusted."
   [end-dt unit-fn]
   (when (and end-dt unit-fn)
-    (t/- (t/+ end-dt (unit-fn 1)) (t/seconds 1))))
+    (t/+ end-dt (unit-fn 1))))
 
 (mu/defn date-str->datetime-range :- DateStringRange
   "Generate range from `date-range-str`.
@@ -519,10 +519,12 @@
   First [[date-string->range]] generates range for dates (inclusive by default). Operating on that range,
   this function:
   1. converts dates to OffsetDateTime, respecting qp timezone, adding zero temporal padding,
-  2. updates range correct _inclusive datetime_
+  2. updates range to correct _end-exclusive datetime_*
   3. formats the range.
 
-  This function is meant to be used for generating inclusive intervals for `:type/DateTime` field filters."
+  This function is meant to be used for generating inclusive intervals for `:type/DateTime` field filters.
+
+  * End-exclusive gte lt filters are generated for `:type/DateTime` fields."
   [raw-date-str]
   (let [range-raw (date-string->range raw-date-str)]
     (-> (update-vals range-raw date-str->qp-aware-offset-dt)

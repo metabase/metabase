@@ -29,7 +29,7 @@
    (clojure.lang IPersistentVector Keyword)
    (java.time.temporal Temporal)
    (java.util UUID)
-   (metabase.driver.common.parameters Date DateRange FieldFilter ReferencedCardQuery ReferencedQuerySnippet)))
+   (metabase.driver.common.parameters Date DateRange DateTimeRange FieldFilter ReferencedCardQuery ReferencedQuerySnippet)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -133,7 +133,7 @@
 
     (->replacement-snippet-info :h2 \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"
   {:added "0.33.4" :arglists '([driver value])}
-  (fn [driver v] [(driver/the-initialized-driver driver) (class v)])
+  (fn [driver v & _args] [(driver/the-initialized-driver driver) (class v)])
   :hierarchy #'driver/hierarchy)
 
 (defn- create-replacement-snippet
@@ -213,6 +213,15 @@
       {:replacement-snippet     (format "BETWEEN %s AND %s" (:sql-string start) (:sql-string end))
        :prepared-statement-args (concat (:param-values start) (:param-values end))})))
 
+(defmethod ->replacement-snippet-info [:sql DateTimeRange]
+  [driver {:keys [start end]} & [field-identifier]]
+  (let [[start end] (map (fn [s]
+                           (->prepared-substitution driver (maybe-parse-temporal-literal s)))
+                         [start end])]
+    {:replacement-snippet     (format "%s >= %s AND %s < %s"
+                                      field-identifier (:sql-string start) field-identifier (:sql-string end))
+     :prepared-statement-args (concat (:param-values start) (:param-values end))}))
+
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
 
 (mu/defn- combine-replacement-snippet-maps :- ParamSnippetInfo
@@ -278,10 +287,13 @@
 
 (defn- field-filter->replacement-snippet-for-datetime-field
   "TODO: convert to gte lt from between last step"
-  [driver {{:keys [value]} :value :as _field-filter}]
-  (->> (params.dates/date-str->datetime-range value)
-       (params/map->DateRange)
-       (->replacement-snippet-info driver)))
+  [driver {:keys [field] {:keys [value type]} :value :as _field-filter}]
+  (letfn [(->datetime-replacement-snippet-info
+            [range]
+            (->replacement-snippet-info driver range (field->identifier driver field type value)))]
+    (-> (params.dates/date-str->datetime-range value)
+        params/map->DateTimeRange
+        ->datetime-replacement-snippet-info)))
 
 (mu/defn- field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
@@ -312,7 +324,7 @@
       ;; Special handling for `FieldFilter`s on `:type/DateTime` fields. DateTime range is always generated.
       (and (params.dates/date-type? param-type)
            (isa? ((some-fn :effective-type :base-type) field) :type/DateTime))
-      (prepend-field (field-filter->replacement-snippet-for-datetime-field driver field-filter))
+      (field-filter->replacement-snippet-for-datetime-field driver field-filter)
 
       ;; convert other date to DateRange record types
       (params.dates/not-single-date-type? param-type) (prepend-field
