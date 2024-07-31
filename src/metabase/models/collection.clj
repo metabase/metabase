@@ -535,7 +535,10 @@
   (ancestors* collection))
 
 (mu/defn- effective-ancestors*
-  "Given a collection, return the effective ancestors of that collection."
+  "Given a collection, return the effective ancestors of that collection.
+  Note that the map `(collection-id->collection)` is cached for the lifetime
+  of the request, so this will make at most one DB query per request regardless
+  of how many times it is called."
   [collection :- [:maybe CollectionWithLocationOrRoot]]
   (if (or (nil? collection)
           (collection.root/is-root-collection? collection))
@@ -550,11 +553,28 @@
 
 (mi/define-batched-hydration-method effective-ancestors
   :effective_ancestors
-  "Efficiently hydrate the `:effective_ancestors` of collections."
+  "Efficiently hydrate the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see.
+  This is used in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we
+  have four Collections, nested like:
+
+    A > B > C > D
+
+  The ancestors of D are:
+
+    [Root] > A > B > C
+
+  If the current User is allowed to see A and C, but not B, `effective-ancestors` of D will be:
+
+    [Root] > A > C
+
+  Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
+  can effectively treat A as the parent of C."
   [collections]
-  (let [annotate (fn [collection]
-                   (assoc collection :effective_ancestors (effective-ancestors* collection)))]
-    (map annotate collections)))
+  (map (fn [collection]
+         (assoc collection
+                :effective_ancestors
+                (effective-ancestors* collection)))
+       collections))
 
 (mu/defn- parent-id* :- [:maybe ms/PositiveInt]
   [{:keys [location]} :- CollectionWithLocationOrRoot]

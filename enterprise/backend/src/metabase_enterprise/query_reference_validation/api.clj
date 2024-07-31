@@ -31,7 +31,6 @@
                              :type (:type collection)
                              :effective_ancestors (map #(select-keys % [:id :name :authority_level :type]) (:effective_ancestors collection))}))))
 
-
 (defn- cards-with-reference-errors
   [{:keys [sort-column sort-direction limit offset collection-ids]}]
   (let [sort-dir-kw         (keyword sort-direction)
@@ -92,7 +91,6 @@
   {sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]
    collection_id  [:maybe ms/PositiveInt]}
-
   (let [collection (if (nil? collection_id)
                      collection/root-collection
                      (t2/select-one :model/Collection :id collection_id))
