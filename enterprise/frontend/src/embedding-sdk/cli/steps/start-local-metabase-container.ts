@@ -8,13 +8,12 @@ import {
   CONTAINER_NAME,
   DEFAULT_PORT,
   IMAGE_NAME,
-  SITE_NAME,
-} from "./constants";
-import { getCurrentDockerPort } from "./get-current-docker-port";
-import { checkIsPortTaken } from "./is-port-taken";
-import { printError, printInfo, printSuccess } from "./print";
-
-const exec = promisify(execCallback);
+} from "embedding-sdk/cli/constants/config";
+import { METABASE_INSTANCE_DEFAULT_ENVS } from "embedding-sdk/cli/constants/env";
+import type { CliStepMethod } from "embedding-sdk/cli/types/types";
+import { getLocalMetabaseContainer } from "embedding-sdk/cli/utils/get-local-metabase-container";
+import { checkIsPortTaken } from "embedding-sdk/cli/utils/is-port-taken";
+import { printInfo, printSuccess } from "embedding-sdk/cli/utils/print";
 
 const messageContainerRunning = (port: number) => `
   Your local Metabase instance is already running on port ${port}.
@@ -26,69 +25,12 @@ const messageContainerStarted = (port: number) => `
   Use the "docker ps" command to see the Docker container's status.
 `;
 
-/**
- * Use the same setup token for every demo instances.
- * This makes it easy to configure across runs.
- */
-export const EMBEDDING_DEMO_SETUP_TOKEN =
-  "2a29948a-ed75-490e-9391-a22690fa5a76";
-
-const METABASE_INSTANCE_DEFAULT_ENVS: Record<string, string> = {
-  MB_SITE_NAME: SITE_NAME,
-  MB_EMBEDDING_APP_ORIGIN: "http://localhost:*",
-  MB_ENABLE_EMBEDDING: "true",
-  MB_EMBEDDING_HOMEPAGE: "visible",
-  MB_SETUP_TOKEN: EMBEDDING_DEMO_SETUP_TOKEN,
-};
-
-/** Container information returned by "docker ps" */
-interface ContainerInfo {
-  ID: string;
-  Image: string;
-  Names: string;
-  Ports: string; // e.g. "0.0.0.0:3366->3000/tcp"
-  Port: number | null; // parsed from Ports, e.g. 3366
-  State: "running" | "exited";
-}
-
-/**
- * Check if the Docker daemon is running.
- */
-export async function checkIsDockerRunning(): Promise<boolean> {
-  try {
-    // `docker ps` returns an error if Docker is not running.
-    const { stderr } = await exec("docker ps");
-
-    return !stderr;
-  } catch (error) {
-    return false;
-  }
-}
-
-export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null> {
-  const { stdout, stderr } = await exec(
-    `docker ps -a --format json --filter name=${CONTAINER_NAME}`,
-  );
-
-  if (stderr) {
-    printError("Failed to check local container status.");
-    printInfo(stderr);
-    return null;
-  }
-
-  if (!stdout) {
-    return null;
-  }
-
-  const info = JSON.parse(stdout) as ContainerInfo;
-
-  return { ...info, Port: getCurrentDockerPort(info.Ports) };
-}
-
 const randInt = (min: number, max: number) =>
   Math.floor(Math.random() * (max - min + 1) + min);
 
-export async function startLocalMetabaseContainer(): Promise<number | false> {
+const exec = promisify(execCallback);
+
+export const startLocalMetabaseContainer: CliStepMethod = async state => {
   let port = DEFAULT_PORT;
 
   const container = await getLocalMetabaseContainer();
@@ -101,7 +43,12 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
     // if the container is already running, we should just print a message.
     if (container.State === "running") {
       printSuccess(messageContainerRunning(port));
-      return port;
+      return [
+        {
+          type: "success",
+        },
+        { ...state, port, instanceUrl: `http://localhost:${port}` },
+      ];
     }
 
     // if the container is exited, we should start it again.
@@ -110,14 +57,25 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
 
       if (stdout.trim().includes(CONTAINER_NAME)) {
         printSuccess(messageContainerStarted(port));
-        return port;
+        return [
+          {
+            type: "success",
+          },
+          { ...state, port, instanceUrl: `http://localhost:${port}` },
+        ];
       }
 
       if (stderr) {
         printInfo(chalk.grey(stderr.trim()));
       }
 
-      return false;
+      return [
+        {
+          type: "error",
+          message: "Failed to start Metabase.",
+        },
+        { ...state, port, instanceUrl: `http://localhost:${port}` },
+      ];
     }
   }
 
@@ -135,7 +93,9 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
     }
 
     // Pass default configuration as environment variables
-    const envFlags = Object.entries(METABASE_INSTANCE_DEFAULT_ENVS)
+    const envFlags = Object.entries({
+      ...METABASE_INSTANCE_DEFAULT_ENVS,
+    })
       .map(([key, value]) => `-e ${key}='${value}'`)
       .join(" ");
 
@@ -146,24 +106,32 @@ export async function startLocalMetabaseContainer(): Promise<number | false> {
     if (stdout) {
       spinner.succeed();
       printSuccess(messageContainerStarted(port));
-      return port;
+      return [
+        {
+          type: "success",
+        },
+        { ...state, port, instanceUrl: `http://localhost:${port}` },
+      ];
     }
 
     spinner.fail();
-
-    if (stderr) {
-      printInfo(chalk.grey(stderr.trim()));
-    }
-
-    return false;
+    return [
+      {
+        type: "error",
+        message: stderr.trim(),
+      },
+      state,
+    ];
   } catch (error) {
     spinner.fail();
 
-    if (error instanceof Error) {
-      printError("Failed to start Metabase.");
-      console.log(error.message);
-    }
-
-    return false;
+    return [
+      {
+        type: "error",
+        message:
+          error instanceof Error ? error.message : "Failed to start Metabase.",
+      },
+      state,
+    ];
   }
-}
+};

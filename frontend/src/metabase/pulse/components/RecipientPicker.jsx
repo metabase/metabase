@@ -8,9 +8,9 @@ import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
+import { isEmail } from "metabase/lib/email";
 import { recipientIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
-import { isEmail } from "metabase/lib/utils";
 import { Text } from "metabase/ui";
 
 import { ErrorMessage } from "./RecipientPicker.styled";

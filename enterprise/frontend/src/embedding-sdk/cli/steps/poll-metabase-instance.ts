@@ -1,20 +1,15 @@
 import fetch from "node-fetch";
 import ora from "ora";
 
+import type { CliStepMethod } from "embedding-sdk/cli/types/types";
+
 const delay = (duration: number) =>
   new Promise(resolve => setTimeout(resolve, duration));
 
 const HEALTH_CHECK_MAX_ATTEMPTS = 60 * 5;
 const HEALTH_CHECK_WAIT = 1000;
 
-/**
- * Keep polling the Metabase instance until it is ready.
- *
- * @param baseUrl
- */
-export async function pollUntilMetabaseInstanceReady(
-  baseUrl: string,
-): Promise<boolean> {
+export const pollMetabaseInstance: CliStepMethod = async state => {
   let attempts = 0;
 
   const spinner = ora(
@@ -29,17 +24,20 @@ export async function pollUntilMetabaseInstanceReady(
 
     // fetch will throw an error if the server is not reachable
     try {
-      const res = await fetch(`${baseUrl}/health`, {
+      const res = await fetch(`${state.instanceUrl}/health`, {
         method: "GET",
       });
-
-      console.log(res);
 
       // Endpoint returns 503 when Metabase is not ready yet.
       // It returns 200 when Metabase is ready.
       if (res.ok) {
         spinner.succeed();
-        return true;
+        return [
+          {
+            type: "success",
+          },
+          state,
+        ];
       }
     } catch (error) {}
 
@@ -50,5 +48,11 @@ export async function pollUntilMetabaseInstanceReady(
 
   spinner.fail();
 
-  return false;
-}
+  return [
+    {
+      type: "error",
+      message: "Metabase instance is not ready.",
+    },
+    state,
+  ];
+};

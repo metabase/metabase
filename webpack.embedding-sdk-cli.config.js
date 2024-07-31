@@ -3,7 +3,7 @@ const webpack = require("webpack");
 const TerserPlugin = require("terser-webpack-plugin");
 
 const SDK_CLI_DIST_PATH = path.join(__dirname, "/resources/embedding-sdk/dist");
-
+const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const SDK_CLI_PATH = path.join(
   __dirname,
   "/enterprise/frontend/src/embedding-sdk/cli",
@@ -16,7 +16,7 @@ const BABEL_CONFIG = {
 };
 
 module.exports = {
-  mode: "production",
+  mode: "development",
   entry: `${SDK_CLI_PATH}/cli.ts`,
   target: "node",
   context: SDK_CLI_PATH,
@@ -29,6 +29,7 @@ module.exports = {
     extensions: [".ts", ".js"],
     alias: {
       metabase: METABASE_SRC_PATH,
+      "embedding-sdk": SDK_SRC_PATH,
     },
   },
   module: {

@@ -12,7 +12,7 @@ const config = {
 
 export const Analytics = () => (
   <MetabaseProvider config={config}>
-    <InteractiveDashboard questionId={1} />
+    <InteractiveDashboard dashboardId={1} />
   </MetabaseProvider>
 )
 `;
