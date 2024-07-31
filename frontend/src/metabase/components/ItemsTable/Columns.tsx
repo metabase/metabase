@@ -159,28 +159,30 @@ export const Columns = {
       testIdPrefix?: string;
       includeDescription?: boolean;
       onClick?: (item: CollectionItem) => void;
-    }) => (
-      <ItemNameCell data-testid={`${testIdPrefix}-name`}>
-        <ItemLinkComponent onClick={onClick} item={item}>
-          <EntityItem.Name name={item.name} variant="list" />
-          <PLUGIN_MODERATION.ModerationStatusIcon
-            size={16}
-            status={item.moderated_status}
-          />
-          {item.description && includeDescription && (
-            <DescriptionIcon
-              name="info"
+    }) => {
+      return (
+        <ItemNameCell data-testid={`${testIdPrefix}-name`}>
+          <ItemLinkComponent onClick={onClick} item={item}>
+            <EntityItem.Name name={item.name} variant="list" />
+            <PLUGIN_MODERATION.ModerationStatusIcon
               size={16}
-              tooltip={
-                <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
-                  {item.description}
-                </Markdown>
-              }
+              status={item.moderated_status}
             />
-          )}
-        </ItemLinkComponent>
-      </ItemNameCell>
-    ),
+            {item.description && includeDescription && (
+              <DescriptionIcon
+                name="info"
+                size={16}
+                tooltip={
+                  <Markdown dark disallowHeading unstyleLinks lineClamp={8}>
+                    {item.description}
+                  </Markdown>
+                }
+              />
+            )}
+          </ItemLinkComponent>
+        </ItemNameCell>
+      );
+    },
   },
   LastEditedBy: {
     Col: () => (

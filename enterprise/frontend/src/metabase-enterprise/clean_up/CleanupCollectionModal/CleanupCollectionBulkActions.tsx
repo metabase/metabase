@@ -85,7 +85,7 @@ export const CleanupCollectionBulkActions = ({
       )}
 
       <BulkActionBar
-        className={CS.container}
+        className={CS.actionBarContainer}
         message={actionMessage}
         opened={selected.length > 0}
       >

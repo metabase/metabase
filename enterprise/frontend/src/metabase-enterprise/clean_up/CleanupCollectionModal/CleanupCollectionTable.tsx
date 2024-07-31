@@ -77,7 +77,7 @@ export const CleanupCollectionTable = ({
           </ColumnHeader>
           {/* Last used at */}
           <SortableColumnHeader
-            name={"last_used_at" as any}
+            name="last_used_at"
             sortingOptions={sortingOptions}
             onSortingOptionsChange={onSortingOptionsChange}
           >

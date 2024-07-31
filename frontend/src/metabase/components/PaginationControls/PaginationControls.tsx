@@ -14,7 +14,6 @@ export type PaginationControlsProps = {
   showTotal?: boolean;
   onNextPage?: (() => void) | null;
   onPreviousPage?: (() => void) | null;
-  showIfSinglePage?: boolean;
 };
 
 export const PaginationControls = ({
@@ -25,12 +24,11 @@ export const PaginationControls = ({
   showTotal = false,
   onNextPage,
   onPreviousPage,
-  showIfSinglePage = false,
   ...props
 }: PaginationControlsProps) => {
   const isSinglePage = total !== undefined && total <= pageSize;
 
-  if (!showIfSinglePage && isSinglePage) {
+  if (isSinglePage) {
     return null;
   }
 
