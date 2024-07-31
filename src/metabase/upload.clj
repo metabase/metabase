@@ -210,6 +210,8 @@
 
 (def ^:private separators ",;\t")
 
+(def ^:private max-infered-lines 10)
+
 (defn- assert-inferred-separator [maybe-s]
   (or maybe-s
       (throw (ex-info (tru "Unable to recognise file separator")
@@ -226,24 +228,25 @@
                           (try (into []
                                      ;; take first two rows and count the number of columns in each to compare headers
                                      ;; vs data rows.
-                                     (comp (take 2) (map count))
+                                     (comp (take max-infered-lines) (map count))
                                      (csv/read-csv reader :separator s))
                                (catch Exception _e nil))))]
     (->> (map (juxt identity count-columns) separators)
          ;; We cannot have more data columns than header columns
          ;; We currently support files without any data rows, and these get a free pass.
-         (remove (fn [[_s [header-column-count data-column-count]]]
-                   (when data-column-count
-                     (> data-column-count header-column-count))))
+         (remove (fn [[_s [header-column-count & data-row-column-counts]]]
+                   (some #(> % header-column-count) data-row-column-counts)))
          ;; Prefer separators according to the follow criteria, in order:
          ;; - Splitting the header at least once
-         ;; - Giving a consistent column split for the first two lines of the file
+         ;; - Giving a consistent column split for all the lines
+         ;; - The maximum number of column splits
          ;; - The number of fields in the header
          ;; - The precedence order in how we define them, e.g.. bias towards comma
-         (sort-by (fn [[_ [header-column-count data-column-count]]]
+         (sort-by (fn [[_ [header-column-count & data-row-column-counts]]]
                     [(when header-column-count
                        (> header-column-count 1))
-                     (= header-column-count data-column-count)
+                     (apply = header-column-count data-row-column-counts)
+                     (reduce max 0 data-row-column-counts)
                      header-column-count])
                   u/reverse-compare)
          ffirst
