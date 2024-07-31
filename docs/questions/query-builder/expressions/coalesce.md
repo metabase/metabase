@@ -181,4 +181,4 @@ coalesce([Notes], [Comments] "No notes or comments.")
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
 [spreadsheets-to-bi]: /blog/spreadsheets-to-bi
-[sql-reference-guide]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html#common-sql-reference-guides
+[sql-reference-guide]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#common-sql-reference-guides

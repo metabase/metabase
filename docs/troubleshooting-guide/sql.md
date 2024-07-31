@@ -6,7 +6,7 @@ title: Troubleshooting SQL questions
 
 ## Incorrect results
 
-- [Aggregations (counts, sums, etc.) are wrong](https://www.metabase.com/learn/debugging-sql/sql-logic#aggregated-results-counts-sums-etc-are-wrong).
+- [Aggregations (counts, sums, etc.) are wrong](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic#aggregated-results-counts-sums-etc-are-wrong).
 - [Results have duplicated rows](https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic-duplicated-data).
 - [Results are missing rows](https://www.metabase.com/learn/debugging-sql/sql-logic-missing-data).
 - [Dates and times are wrong](./timezones.md).
