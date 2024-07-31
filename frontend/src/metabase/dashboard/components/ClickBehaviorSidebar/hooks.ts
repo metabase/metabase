@@ -3,14 +3,11 @@ import { t } from "ttag";
 import { hasActionsMenu } from "metabase/lib/click-behavior";
 import { useSelector } from "metabase/lib/redux";
 import { getApplicationName } from "metabase/selectors/whitelabel";
-import type {
-  ClickBehaviorType,
-  QuestionDashboardCard,
-} from "metabase-types/api";
+import type { ClickBehaviorType, DashboardCard } from "metabase-types/api";
 
 export function useClickBehaviorOptionName(
   value: ClickBehaviorType,
-  dashcard: QuestionDashboardCard,
+  dashcard: DashboardCard,
 ) {
   const applicationName = useSelector(getApplicationName);
   if (value === "actionMenu") {
