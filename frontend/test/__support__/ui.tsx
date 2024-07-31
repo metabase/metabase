@@ -293,9 +293,14 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
  * @see https://metaboat.slack.com/archives/C505ZNNH4/p1684753502335459?thread_ts=1684751522.480859&cid=C505ZNNH4
  */
 export const waitForLoaderToBeRemoved = async () => {
-  await waitFor(() => {
-    expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
-  });
+  await waitFor(
+    () => {
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
+      // default timeout is 1s, but sometimes it's not enough and leads to flakiness,
+      // 3s should be enough
+    },
+    { timeout: 3000 },
+  );
 };
 
 /**
