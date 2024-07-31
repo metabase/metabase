@@ -63,7 +63,7 @@
     nil)
   (metadatas-for-table [_this _metadata-type _table-id]
     nil)
-  (metadatas-for-tables [_this _metadata-type _table-ids]
+  (metadatas-for-card [_this _metadata-type _card-id]
     nil)
   (setting [_this _setting-key]
     nil))

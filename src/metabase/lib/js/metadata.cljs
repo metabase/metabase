@@ -353,25 +353,12 @@
     :dimension-options
     :fks
     :metadata
+    :metrics
     :plain-object
     :segments
     :schema
     :schema-name
     :table})
-
-(defn- unwrap-card
-  "Sometimes a card is stored in the metadata as some sort of weird object where the thing we actually want is under the
-  key `_card` (not sure why), but if it is just unwrap it and then parse it normally."
-  [obj]
-  (or (object-get obj "_card")
-      obj))
-
-(defn- card->metric-card
-  [card]
-  (-> card
-      (select-keys [:id :table-id :name :description :archived
-                    :dataset-query])
-      (assoc :lib/type :metadata/metric)))
 
 (defn- parse-fields [fields]
   (mapv (parse-object-fn :field) fields))
@@ -386,10 +373,16 @@
       :fields          (parse-fields v)
       :visibility-type (keyword v)
       :dataset-query   (js->clj v :keywordize-keys true)
-      :metrics         (mapv (comp card->metric-card (parse-object-fn :card) unwrap-card) v)
       :type            (keyword v)
       ;; this is not complete, add more stuff as needed.
       v)))
+
+(defn- unwrap-card
+  "Sometimes a card is stored in the metadata as some sort of weird object where the thing we actually want is under the
+  key `_card` (not sure why), but if it is just unwrap it and then parse it normally."
+  [obj]
+  (or (object-get obj "_card")
+      obj))
 
 (defn- assemble-card
   [metadata id]
@@ -465,6 +458,12 @@
         (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
         nil))))
 
+(defn- card->metric-card
+  [card]
+  (-> card
+      (select-keys [:id :table-id :name :description :archived :dataset-query :source-card-id])
+      (assoc :lib/type :metadata/metric)))
+
 (defn- metric-cards
   [delayed-cards]
   (when-let [cards @delayed-cards]
@@ -516,7 +515,20 @@
     (into []
           (keep (fn [[_id dlay]]
                   (when-let [object (some-> dlay deref)]
-                    (when (= (:table-id object) table-id)
+                    (when (and (= (:table-id object) table-id)
+                               (or (not= metadata-type :metadata/metric)
+                                   (nil? (:source-card-id object))))
+                      object))))
+          (some-> metadata k deref))))
+
+(defn- metadatas-for-card
+  [metadata metadata-type card-id]
+  (let [k (case metadata-type
+            :metadata/metric :metrics)]
+    (into []
+          (keep (fn [[_id dlay]]
+                  (when-let [object (some-> dlay deref)]
+                    (when (= (:source-card-id object) card-id)
                       object))))
           (some-> metadata k deref))))
 
@@ -539,9 +551,8 @@
         (tables metadata database-id))
       (metadatas-for-table [_this metadata-type table-id]
         (metadatas-for-table metadata metadata-type table-id))
-      (metadatas-for-tables [_this metadata-type table-ids]
-        ;; since this is already all in memory, we don't worry about batching
-        (map #(metadatas-for-table metadata metadata-type %) table-ids))
+      (metadatas-for-card [_this metadata-type card-id]
+        (metadatas-for-card metadata metadata-type card-id))
       (setting [_this setting-key]
         (setting unparsed-metadata setting-key))
 

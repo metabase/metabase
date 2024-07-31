@@ -144,8 +144,7 @@
        (let [source-table (lib.util/source-table-id query)
              metrics (if source-table
                        (lib.metadata/metadatas-for-table query :metadata/metric source-table)
-                       ;; TODO introduce lib.metadata/metadatas-for-card?
-                       (:metrics (lib.metadata/card query (lib.util/source-card-id query))))]
+                       (lib.metadata/metadatas-for-card query :metadata/metric (lib.util/source-card-id query)))]
          (not-empty
           (into []
                 (comp (filter (fn [metric-card]

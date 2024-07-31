@@ -29,13 +29,11 @@
     (track-ids! tracker tracking-type [table-id]))
   (lib.metadata.protocols/metadatas-for-table metadata-provider metadata-type table-id))
 
-(defn- metadatas-for-tables [tracker metadata-provider metadata-type table-ids]
+(defn- metadatas-for-card [tracker metadata-provider metadata-type card-id]
   (let [tracking-type (case metadata-type
-                        :metadata/column        ::table-fields
-                        :metadata/metric        ::table-metrics
-                        :metadata/segment       ::table-segments)]
-    (track-ids! tracker tracking-type table-ids))
-  (lib.metadata.protocols/metadatas-for-tables metadata-provider metadata-type table-ids))
+                        :metadata/metric        ::card-metrics)]
+    (track-ids! tracker tracking-type [card-id]))
+  (lib.metadata.protocols/metadatas-for-card metadata-provider metadata-type card-id))
 
 (defn- setting [tracker metadata-provider setting-key]
   (track-ids! tracker ::setting [setting-key])
@@ -55,8 +53,8 @@
     (lib.metadata.protocols/tables metadata-provider))
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table tracker metadata-provider metadata-type table-id))
-  (metadatas-for-tables [_this metadata-type table-ids]
-    (metadatas-for-tables tracker metadata-provider metadata-type table-ids))
+  (metadatas-for-card [_this metadata-type card-id]
+    (metadatas-for-card tracker metadata-provider metadata-type card-id))
   (setting [_this setting-key]
     (setting tracker metadata-provider setting-key))
 

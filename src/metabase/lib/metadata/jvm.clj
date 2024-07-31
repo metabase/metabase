@@ -351,27 +351,16 @@
                :active          true
                :visibility_type [:not-in #{"sensitive" "retired"}])
 
-
     :metadata/metric
-    (t2/select :metadata/metric :table_id table-id, :type :metric, :archived false)
+    (t2/select :metadata/metric :table_id table-id, :source_card_id [:= nil], :type :metric, :archived false)
 
     :metadata/segment
     (t2/select :metadata/segment :table_id table-id, :archived false)))
 
-(defn- metadatas-for-tables [metadata-type table-ids]
-  (when (seq table-ids)
-    (case metadata-type
-      :metadata/column
-      (t2/select :metadata/column
-                 :table_id        [:in table-ids]
-                 :active          true
-                 :visibility_type [:not-in #{"sensitive" "retired"}])
-
-      :metadata/metric
-      (t2/select :metadata/metric :table_id [:in table-ids] :type :metric, :archived false)
-
-      :metadata/segment
-      (t2/select :metadata/segment :table_id [:in table-ids] :archived false))))
+(defn- metadatas-for-card [metadata-type card-id]
+  (case metadata-type
+    :metadata/metric
+    (t2/select :metadata/metric :source_card_id card-id, :type :metric, :archived false)))
 
 (p/deftype+ UncachedApplicationDatabaseMetadataProvider [database-id]
   lib.metadata.protocols/MetadataProvider
@@ -383,8 +372,8 @@
     (tables database-id))
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table metadata-type table-id))
-  (metadatas-for-tables [_this metadata-type table-ids]
-    (metadatas-for-tables metadata-type table-ids))
+  (metadatas-for-card [_this metadata-type card-id]
+    (metadatas-for-card metadata-type card-id))
   (setting [_this setting-name]
     (setting/get setting-name))
 
