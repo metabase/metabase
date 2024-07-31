@@ -22,7 +22,7 @@
    [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
@@ -710,6 +710,7 @@
                  (some? search-native-query)                 (assoc :search-native-query search-native-query)
                  (some? verified)                            (assoc :verified verified)
                  (seq ids)                                   (assoc :ids ids))]
-    (when (seq ids)
-      (assert (= (count models) 1) "We can only retrieve by ids when you ask for a single model"))
+    (when (and (seq ids)
+               (not= (count models) 1))
+      (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
