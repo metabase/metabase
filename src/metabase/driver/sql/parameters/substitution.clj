@@ -278,12 +278,10 @@
 
 (defn- field-filter->replacement-snippet-for-datetime-field
   "TODO: convert to gte lt from between last step"
-  [driver {{:keys [type value]} :value :as _fff}]
-  (let [range (if (params.dates/not-single-date-type? type)
-                (params.dates/range-str->datetime-range value)
-                (params.dates/single-date-str->datetime-range value))]
-    (->> (params/map->DateRange range)
-         (->replacement-snippet-info driver))))
+  [driver {{:keys [value]} :value :as _field-filter}]
+  (->> (params.dates/date-str->datetime-range value)
+       (params/map->DateRange)
+       (->replacement-snippet-info driver)))
 
 (mu/defn- field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
@@ -311,6 +309,7 @@
              ->honeysql
              (honeysql->replacement-snippet-info driver)))
 
+      ;; Special handling for `FieldFilter`s on `:type/DateTime` fields. DateTime range is always generated.
       (and (params.dates/date-type? param-type)
            (isa? ((some-fn :effective-type :base-type) field) :type/DateTime))
       (prepend-field (field-filter->replacement-snippet-for-datetime-field driver field-filter))

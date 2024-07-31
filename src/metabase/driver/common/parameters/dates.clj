@@ -471,14 +471,17 @@
                           :type  qp.error-type/invalid-parameter}))))))
 
 (defn- parse-date-str
+  "Generate parts vector for `yyyy-MM-ddThh:mm:ss` format `date-str`. Trailing parts, if not present in the string,
+  are added."
   [date-str]
   (let [parts (mapv #(Integer/parseInt %)
                     (str/split date-str #"-|:|T"))]
-     (into parts (repeat (- 6 (count parts)) 0))))
+    (into parts (repeat (- 6 (count parts)) 0))))
 
 (defn- date-str->qp-aware-offset-dt
+  "Generate offset datetime from `date-str` with respect to `results-timezone`."
   [date-str]
-  (when (not-empty date-str)
+  (when date-str
     (let [[y M d h m s] (parse-date-str date-str)
         ;; I'm unable to tell whether we timzone-id will be offset or actuall id. Potentially zoned datetime may be
         ;; created. For that reason last expression of this function ensures OffsetDateTime is always returned.
@@ -490,28 +493,40 @@
       (t/offset-date-time dt))))
 
 (defn- date-str->unit-fn
+  "Return appropriate function for interval end adjustments in [[inclusive-datetime-range-end]]."
   [date-str]
-  (when (not-empty date-str)
+  (when date-str
     (if (re-matches shared.ut/local-date-regex date-str)
       t/days
       t/minutes)))
 
-(mu/defn single-date-str->datetime-range :- DateStringRange
-  "Create range suitable for >= < comparison checking whether datetime is on specific date."
-  [date-str]
-  (let [dt (date-str->qp-aware-offset-dt date-str)]
-    (-> {:start dt
-         :end   (t/+ dt ((date-str->unit-fn date-str) 1))}
-        format-date-range)))
+(defn- inclusive-datetime-range-end
+  "Transform `end-dt` OffsetDateTime to appropriate range end.
 
-(mu/defn range-str->datetime-range :- DateStringRange
-  "TODO"
-  [date-range-str]
-  (let [range* (date-string->range date-range-str)
-        unit-fn (date-str->unit-fn (some #(when (some? %) %) (vals range*)))]
-    (-> range*
-        (update-vals date-str->qp-aware-offset-dt)
-        (update :end #(when % (t/+ % (unit-fn 1))))
+  Context. Datetime range is required for `FieldFilter`s on `:type/DateTime` fields (see the
+  [[metabase.driver.sql.parameters.substitution/field-filter->replacement-snippet-info]]) instead of _Date Range_
+  available from [[date-string->range]].
+
+  [[date-string->range]] returns interval of dates. [[date-str->datetime-range]] modifies the interval to consist
+  of datetimes. By adding 0 temporal padding the end interval has to be adjusted."
+  [end-dt unit-fn]
+  (when (and end-dt unit-fn)
+    (t/- (t/+ end-dt (unit-fn 1)) (t/seconds 1))))
+
+(mu/defn date-str->datetime-range :- DateStringRange
+  "Generate range from `date-range-str`.
+
+  First [[date-string->range]] generates range for dates (inclusive by default). Operating on that range,
+  this function:
+  1. converts dates to OffsetDateTime, respecting qp timezone, adding zero temporal padding,
+  2. updates range correct _inclusive datetime_
+  3. formats the range.
+
+  This function is meant to be used for generating inclusive intervals for `:type/DateTime` field filters."
+  [raw-date-str]
+  (let [range-raw (date-string->range raw-date-str)]
+    (-> (update-vals range-raw date-str->qp-aware-offset-dt)
+        (update :end inclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
         format-date-range)))
 
 (mu/defn date-string->filter :- mbql.s/Filter
