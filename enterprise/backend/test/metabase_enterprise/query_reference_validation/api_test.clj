@@ -138,7 +138,7 @@
               [{:id     card-1
                 :name   "A"
                 :errors [{:type "inactive-field", :table "T1", :field "FA"}
-                         {:type "inactive-field", :table "T1", :field "FAB"}]}
+                         {:type "unknown-field", :table "T1", :field "FAB"}]}
                {:id     card-2
                 :name   "B"
                 :errors [{:type "inactive-field", :table "T1", :field "FB"}]}]}
