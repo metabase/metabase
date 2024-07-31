@@ -137,6 +137,8 @@ export function ViewTitleHeaderRightSide({
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
+  const isBrandNew =
+    !question.isSaved() && !result && queryBuilderMode === "notebook";
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
@@ -178,15 +180,16 @@ export function ViewTitleHeaderRightSide({
           onCloseSummary={onCloseSummary}
         />
       )}
-      {QuestionNotebookButton.shouldRender({
-        question,
-        isActionListVisible,
-      }) && (
-        <QuestionNotebookButton
-          isShowingNotebook={isShowingNotebook}
-          setQueryBuilderMode={setQueryBuilderMode}
-        />
-      )}
+      {!isBrandNew &&
+        QuestionNotebookButton.shouldRender({
+          question,
+          isActionListVisible,
+        }) && (
+          <QuestionNotebookButton
+            isShowingNotebook={isShowingNotebook}
+            setQueryBuilderMode={setQueryBuilderMode}
+          />
+        )}
       {ToggleNativeQueryPreview.shouldRender({
         question,
         queryBuilderMode,
