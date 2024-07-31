@@ -1,25 +1,44 @@
+import path from "node:path";
+
+import {
+  removeDirectory,
+  verifyDownloadTasks,
+} from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
-const { verifyDownloadTasks } = require("cy-verify-downloads");
 
-const {
-  removeDirectory,
-} = require("./commands/downloads/deleteDownloadsFolder");
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
-const isQaDatabase = process.env["QA_DB_ENABLED"];
+const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 
 const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
+
+// docs say that tsconfig paths should handle aliases, but they don't
+const assetsResolverPlugin = {
+  name: "assetsResolver",
+  setup(build) {
+    // Redirect all paths starting with "assets/" to "resources/"
+    build.onResolve({ filter: /^assets\// }, args => {
+      return {
+        path: path.join(
+          __dirname,
+          "../../resources/frontend_client/app",
+          args.path,
+        ),
+      };
+    });
+  },
+};
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -33,7 +52,10 @@ const defaultConfig = {
     on(
       "file:preprocessor",
       createBundler({
-        plugins: [NodeModulesPolyfillPlugin()],
+        loader: {
+          ".svg": "text",
+        },
+        plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
         sourcemap: "inline",
       }),
     );
@@ -110,13 +132,13 @@ const defaultConfig = {
   //   1. testFiles and
   //   2. integrationFolder
   specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
+  viewportHeight: 800,
+  viewportWidth: 1280,
 };
 
 const mainConfig = {
   ...defaultConfig,
   projectId: "ywjy9z",
-  viewportHeight: 800,
-  viewportWidth: 1280,
   numTestsKeptInMemory: process.env["CI"] ? 1 : 50,
   reporter: "cypress-multi-reporters",
   reporterOptions: {
