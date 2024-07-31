@@ -366,7 +366,7 @@
        (finally
          ;; I'm experimenting with disabling this, it seems preposterous that this would actually cause test flakes --
          ;; Cam
-         (do #_when #_(not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
+         (when true #_(not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
            (driver/drop-table! driver/*driver*
                                (:db_id table)
                                (#'upload/table-identifier table))))))
@@ -583,6 +583,18 @@
       (let [f (csv-file-with lines)]
         (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unable to recognise file separator"
                               (#'upload/infer-separator f)))))))
+
+(deftest infer-separator-multiline-test
+  (testing "it picks the only viable separator forced by a quote"
+    (let [file (csv-file-with ["name, first;surname"
+                               "bond, james;bond"
+                               "\"semi;\";colon"])]
+      (is (= \; (#'upload/infer-separator file)))))
+  (testing "it considers consistency across the split count"
+    (let [file (csv-file-with ["product name; amount, in dollars"
+                               "blunderbuss;  1,000"
+                               "cyberwagon;   1,000,000"])]
+      (is (= \; (#'upload/infer-separator file))))))
 
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
