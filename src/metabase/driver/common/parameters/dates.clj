@@ -510,6 +510,13 @@
   (when (and end-dt unit-fn)
     (t/+ end-dt (unit-fn 1))))
 
+(defn- fallback-raw-range
+  "Try to extract date time value if [[date-string->range]] fails."
+  [date-str]
+  (let [date-str (first (re-find #"\d+-\d+-\d+T?(\d?+)?(:\d+)?(:\d+)?" date-str))]
+    {:start date-str
+     :end   date-str}))
+
 (mu/defn date-str->datetime-range :- DateStringRange
   "Generate range from `date-range-str`.
 
@@ -523,7 +530,11 @@
 
   * End-exclusive gte lt filters are generated for `:type/DateTime` fields."
   [raw-date-str]
-  (let [range-raw (date-string->range raw-date-str)]
+  (let [;; `raw-date-str` is sanitized in case it contains millis and timezone which are incompatible
+        ;; with [[date-string->range]]. `substitute-field-filter-test` expects that to happen.
+        range-raw (try (date-string->range raw-date-str)
+                       (catch Throwable _
+                         (fallback-raw-range raw-date-str)))]
     (-> (update-vals range-raw date-str->qp-aware-offset-dt)
         (update :end inclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
         format-date-range)))

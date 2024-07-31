@@ -84,7 +84,7 @@
   (params/map->FieldFilter
    {:field (meta/field-metadata :orders :created-at)
     :value {:type  :date/single
-            :value "2019-09-20T19:52"}}))
+            :value (str (t/offset-date-time "2019-09-20T19:52:00.000-07:00"))}}))
 
 (deftest ^:parallel substitute-field-filter-test
   (testing "field-filters"
