@@ -303,6 +303,20 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
       createMockMetadata({}),
       {},
     ),
+    date_relative: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date relative",
+          sectionId: "date",
+          slug: "date_relative",
+          type: "date/relative",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
   };
   return (
     <PublicOrEmbeddedDashboardView
@@ -322,7 +336,8 @@ type ParameterType =
   | "date_month_year"
   | "date_quarter_year"
   | "date_single"
-  | "date_range";
+  | "date_range"
+  | "date_relative";
 
 const createDefaultArgs = (
   args: ArgType & { parameterType?: ParameterType } = {},
@@ -775,4 +790,46 @@ DarkThemeDateFilterRange.play = async ({ canvasElement }) => {
 
   const popover = getLastPopover();
   popover.getByText("15").classList.add("pseudo-hover");
+};
+
+// Relative
+export const LightThemeDateFilterRelative = Template.bind({});
+LightThemeDateFilterRelative.args = createDefaultArgs({
+  parameterType: "date_relative",
+  parameterValues: {
+    [DATE_FILTER_ID]: "thisday",
+  },
+});
+LightThemeDateFilterRelative.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date relative",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover
+    .getByRole("button", { name: "Yesterday" })
+    .classList.add("pseudo-hover");
+};
+
+export const DarkThemeDateFilterRelative = Template.bind({});
+DarkThemeDateFilterRelative.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_relative",
+  parameterValues: {
+    [DATE_FILTER_ID]: "thisday",
+  },
+});
+DarkThemeDateFilterRelative.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date relative",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover
+    .getByRole("button", { name: "Yesterday" })
+    .classList.add("pseudo-hover");
 };
