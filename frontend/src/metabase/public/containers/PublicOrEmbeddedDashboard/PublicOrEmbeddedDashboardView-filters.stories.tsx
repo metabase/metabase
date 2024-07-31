@@ -261,6 +261,20 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
       createMockMetadata({}),
       {},
     ),
+    date_quarter_year: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date Quarter and Year",
+          sectionId: "date",
+          slug: "date_quarter_and_year",
+          type: "date/quarter-year",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
   };
   return (
     <PublicOrEmbeddedDashboardView
@@ -277,7 +291,9 @@ type ParameterType =
   | "dropdown"
   | "search"
   | "date_all_options"
-  | "date_month_year";
+  | "date_month_year"
+  | "date_quarter_year";
+
 const createDefaultArgs = (
   args: ArgType & { parameterType?: ParameterType } = {},
 ): ArgType & { parameterType: ParameterType } => {
@@ -293,6 +309,16 @@ const createDefaultArgs = (
     ...args,
   };
 };
+
+function getLastPopover() {
+  const lastPopover = Array.from(
+    document.documentElement.querySelectorAll(
+      '[data-element-id="mantine-popover"]',
+    ),
+  ).at(-1) as HTMLElement;
+
+  return within(lastPopover);
+}
 
 // Light theme
 export const LightThemeText = Template.bind({});
@@ -554,12 +580,93 @@ DarkThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
     .setAttribute("data-hovered", "true");
 };
 
-function getLastPopover() {
-  const lastPopover = Array.from(
-    document.documentElement.querySelectorAll(
-      '[data-element-id="mantine-popover"]',
-    ),
-  ).at(-1) as HTMLElement;
+// Quarter and Year
+export const LightThemeDateFilterQuarterYear = Template.bind({});
+LightThemeDateFilterQuarterYear.args = createDefaultArgs({
+  parameterType: "date_quarter_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "Q1-2024",
+  },
+});
+LightThemeDateFilterQuarterYear.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Quarter and Year",
+  });
+  await userEvent.click(filter);
 
-  return within(lastPopover);
-}
+  const popover = getLastPopover();
+  const month = popover.getByText("Q2");
+  month.classList.add("pseudo-hover");
+};
+
+export const LightThemeDateFilterQuarterYearDropdown = Template.bind({});
+LightThemeDateFilterQuarterYearDropdown.args = createDefaultArgs({
+  parameterType: "date_quarter_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "Q1-2024",
+  },
+});
+LightThemeDateFilterQuarterYearDropdown.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Quarter and Year",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+
+  await userEvent.click(
+    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+  );
+  const dropdown = getLastPopover();
+  dropdown
+    .getByRole("option", { name: "2023" })
+    .setAttribute("data-hovered", "true");
+};
+
+export const DarkThemeDateFilterQuarterYear = Template.bind({});
+DarkThemeDateFilterQuarterYear.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_quarter_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "Q1-2024",
+  },
+});
+DarkThemeDateFilterQuarterYear.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Quarter and Year",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const month = popover.getByText("Q2");
+  month.classList.add("pseudo-hover");
+};
+
+export const DarkThemeDateFilterQuarterYearDropdown = Template.bind({});
+DarkThemeDateFilterQuarterYearDropdown.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_quarter_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "Q1-2024",
+  },
+});
+DarkThemeDateFilterQuarterYearDropdown.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Quarter and Year",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+
+  await userEvent.click(
+    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+  );
+  const dropdown = getLastPopover();
+  dropdown
+    .getByRole("option", { name: "2023" })
+    .setAttribute("data-hovered", "true");
+};
