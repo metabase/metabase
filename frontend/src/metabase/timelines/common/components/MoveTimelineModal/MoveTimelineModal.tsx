@@ -33,8 +33,8 @@ const MoveTimelineModal = ({
       value={{ id: timeline.collection_id ?? "root", model: "collection" }}
       title={t`Move ${getTimelineName(timeline)}`}
       onClose={onClose}
-      onChange={async newCollection => {
-        await handleSubmit(newCollection.id);
+      onChange={newCollection => {
+        handleSubmit(newCollection.id);
       }}
       options={{
         confirmButtonText: t`Move`,

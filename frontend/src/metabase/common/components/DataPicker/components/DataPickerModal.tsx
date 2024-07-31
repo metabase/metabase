@@ -71,7 +71,7 @@ export const DataPickerModal = ({
     databaseId,
   });
 
-  const { handleLogRecentItem } = useLogRecentItem();
+  const { tryLogRecentItem } = useLogRecentItem();
 
   const modelsShouldShowItem = useMemo(() => {
     return createShouldShowItem(["dataset"], databaseId);
@@ -111,10 +111,10 @@ export const DataPickerModal = ({
       const id =
         item.model === "table" ? item.id : getQuestionVirtualTableId(item.id);
       onChange(id);
-      handleLogRecentItem(item);
+      tryLogRecentItem(item);
       onClose();
     },
-    [onChange, onClose, handleLogRecentItem],
+    [onChange, onClose, tryLogRecentItem],
   );
 
   const handleCardChange = useCallback(

@@ -55,14 +55,14 @@ export const CollectionPickerModal = ({
     null,
   );
 
-  const { handleLogRecentItem } = useLogRecentItem();
+  const { tryLogRecentItem } = useLogRecentItem();
 
   const handleChange = useCallback(
     (item: CollectionPickerValueItem) => {
       onChange(item);
-      handleLogRecentItem(item);
+      tryLogRecentItem(item);
     },
-    [onChange, handleLogRecentItem],
+    [onChange, tryLogRecentItem],
   );
 
   const [
@@ -75,19 +75,19 @@ export const CollectionPickerModal = ({
   }>();
 
   const handleItemSelect = useCallback(
-    async (item: CollectionPickerItem) => {
+    (item: CollectionPickerItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
       } else if (canSelectItem(item)) {
-        await handleChange(item);
+        handleChange(item);
       }
     },
     [handleChange, options],
   );
 
-  const handleConfirm = async () => {
+  const handleConfirm = () => {
     if (selectedItem && canSelectItem(selectedItem)) {
-      await handleChange(selectedItem);
+      handleChange(selectedItem);
     }
   };
 

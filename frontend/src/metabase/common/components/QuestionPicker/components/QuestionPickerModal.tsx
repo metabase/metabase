@@ -59,14 +59,14 @@ export const QuestionPickerModal = ({
   const [selectedItem, setSelectedItem] = useState<QuestionPickerItem | null>(
     null,
   );
-  const { handleLogRecentItem } = useLogRecentItem();
+  const { tryLogRecentItem } = useLogRecentItem();
 
   const handleOnChange = useCallback(
     (item: QuestionPickerValueItem) => {
       onChange(item);
-      handleLogRecentItem(item);
+      tryLogRecentItem(item);
     },
-    [onChange, handleLogRecentItem],
+    [onChange, tryLogRecentItem],
   );
 
   const handleItemSelect = useCallback(

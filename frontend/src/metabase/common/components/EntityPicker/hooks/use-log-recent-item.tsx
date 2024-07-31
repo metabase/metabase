@@ -9,9 +9,9 @@ import type { NotebookDataPickerValueItem } from "../../DataPicker";
 export const useLogRecentItem = () => {
   const [logRecentItem] = useLogRecentItemMutation();
 
-  const handleLogRecentItem = useCallback(
+  const tryLogRecentItem = useCallback(
     (item: CollectionPickerItem | NotebookDataPickerValueItem) => {
-      if (item && isLoggableActivityModel(item)) {
+      if (isLoggableActivityModel(item)) {
         logRecentItem({
           model_id: item.id,
           model: item.model,
@@ -22,6 +22,6 @@ export const useLogRecentItem = () => {
   );
 
   return {
-    handleLogRecentItem,
+    tryLogRecentItem,
   };
 };

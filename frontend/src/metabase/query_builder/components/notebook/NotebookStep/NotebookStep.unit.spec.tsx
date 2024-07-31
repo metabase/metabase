@@ -25,7 +25,7 @@ function setup({ step = createMockNotebookStep() }: SetupOpts = {}) {
 
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
-  setupRecentViewsAndSelectionsEndpoints([], "context=selections");
+  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
 
   renderWithProviders(
     <NotebookStep

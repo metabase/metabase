@@ -67,14 +67,14 @@ export const DashboardPickerModal = ({
     canSelectItem(value) ? value : null,
   );
 
-  const { handleLogRecentItem } = useLogRecentItem();
+  const { tryLogRecentItem } = useLogRecentItem();
 
   const handleOnChange = useCallback(
     (item: DashboardPickerValueItem) => {
       onChange(item);
-      handleLogRecentItem(item);
+      tryLogRecentItem(item);
     },
-    [onChange, handleLogRecentItem],
+    [onChange, tryLogRecentItem],
   );
 
   const [
