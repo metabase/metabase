@@ -453,12 +453,19 @@ export const setParameterValueToDefault = createThunkAction(
 export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
 export const resetParameters = createThunkAction(
   RESET_PARAMETERS,
-  () => (dispatch, getState) => {
+  () => (_dispatch, getState) => {
     const parameters = getFiltersToReset(getState());
 
-    for (const parameter of parameters) {
-      dispatch(setParameterValue(parameter.id, parameter.default ?? null));
-    }
+    return parameters.map(parameter => {
+      const newValue = parameter.default ?? null;
+      const isValueEmpty = isParameterValueEmpty(newValue);
+
+      return {
+        id: parameter.id,
+        value: isValueEmpty ? PULSE_PARAM_EMPTY : newValue,
+        isDraft: false,
+      };
+    });
   },
 );
 
