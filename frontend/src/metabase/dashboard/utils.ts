@@ -371,11 +371,11 @@ export function createTabSlug({
   return [id, ...name.toLowerCase().split(" ")].join("-");
 }
 
-export function canResetFilters(parameters: UiParameter[]) {
+export function canResetFilters(parameters: UiParameter[]): boolean {
   return parameters.some(canResetFilter);
 }
 
-export function canResetFilter(parameter: UiParameter) {
+export function canResetFilter(parameter: UiParameter): boolean {
   const { default: defaultValue, value } = parameter;
   const hasDefaultValue = defaultValue != null;
   const hasValue = value != null;
