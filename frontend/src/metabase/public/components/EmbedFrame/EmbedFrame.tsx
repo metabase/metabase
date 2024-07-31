@@ -209,12 +209,7 @@ export const EmbedFrame = ({
                     <Button
                       variant="subtle"
                       leftIcon={<Icon name="document" />}
-                      styles={{
-                        root: {
-                          color: "var(--mb-color-text-secondary)",
-                          ":hover": { color: "var(--mb-color-brand)" },
-                        },
-                      }}
+                      color="brand"
                       onClick={saveAsPDF}
                     >
                       {getExportTabAsPdfButtonText(dashboard.tabs)}
