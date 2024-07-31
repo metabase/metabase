@@ -54,6 +54,7 @@ import type {
   RowValue,
   RawSeries,
   NumericScale,
+  ColumnSetting,
 } from "metabase-types/api";
 import { numericScale } from "metabase-types/api";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
@@ -74,9 +75,7 @@ const KEYS_TO_COMPARE = new Set([
   "suffix",
 ]);
 
-function getLineAreaBarComparisonSettings(
-  columnSettings: Record<string, unknown>,
-) {
+function getLineAreaBarComparisonSettings(columnSettings: ColumnSetting) {
   return _.pick(columnSettings, (value, key) => {
     if (!KEYS_TO_COMPARE.has(key)) {
       return false;

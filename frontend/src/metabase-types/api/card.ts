@@ -128,9 +128,11 @@ export type YAxisScale = NumericScale;
 
 export interface ColumnSetting {
   column_title?: string;
+  number_separators?: string;
+  currency?: string;
 
   // some options are untyped
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export type VisualizationSettings = {
