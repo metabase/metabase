@@ -2,7 +2,7 @@
  ["src" "resources-ee"]
 
  :deps
- {com.vertica.jdbc/vertica-jdbc {:mvn/version "23.4.0-0"}}
+ {com.vertica.jdbc/vertica-jdbc {:mvn/version "24.3.0-0"}}
 
  :aliases
  {:oss
