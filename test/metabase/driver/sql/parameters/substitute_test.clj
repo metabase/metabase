@@ -91,9 +91,9 @@
     (testing "non-optional"
       (let [query ["select * from orders where " (param "created_at")]]
         (testing "param is present"
-          (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" BETWEEN ? AND ?"
+          (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"
                   [(t/zoned-date-time "2019-09-20T19:52:00" (t/zone-id "UTC"))
-                   (t/zoned-date-time "2019-09-20T19:52:59" (t/zone-id "UTC"))]]
+                   (t/zoned-date-time "2019-09-20T19:53:00" (t/zone-id "UTC"))]]
                  (substitute query {"created_at" (date-field-filter-value)}))))
         (testing "param is missing"
           (is (= ["select * from orders where 1 = 1" []]
@@ -102,9 +102,9 @@
     (testing "optional"
       (let [query ["select * from orders " (optional "where " (param "created_at"))]]
         (testing "param is present"
-          (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" BETWEEN ? AND ?"
+          (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"
                   [(t/zoned-date-time "2019-09-20T19:52:00" (t/zone-id "UTC"))
-                   (t/zoned-date-time "2019-09-20T19:52:59" (t/zone-id "UTC"))]]
+                   (t/zoned-date-time "2019-09-20T19:53:00" (t/zone-id "UTC"))]]
                  (substitute query {"created_at" (date-field-filter-value)}))))
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from orders" nil]
