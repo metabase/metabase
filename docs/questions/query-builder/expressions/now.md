@@ -19,7 +19,7 @@ Let's say you have some project data, and you want to add a status column for ea
 To mark a task in progress, you'd use the expression:
 
 ```
-now >= [Start] AND now < [Deadline] 
+now >= [Start] AND now < [Deadline]
 ```
 
 To check if you need to ask for an extension:
@@ -44,7 +44,7 @@ case(now >= [Start] AND now < [Deadline], "In progress",
 
 ## Data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Returned by `now`  |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Returned by `now`  |
 | ----------------------- | -------------------- |
 | String                  | ❌                   |
 | Number                  | ❌                   |
@@ -52,7 +52,7 @@ case(now >= [Start] AND now < [Deadline], "In progress",
 | Boolean                 | ❌                   |
 | JSON                    | ❌                   |
 
-`now` returns a `timestamp with time zone` if time zones are supported by your database, otherwise `now` returns a `timestamp without time zone`. 
+`now` returns a `timestamp with time zone` if time zones are supported by your database, otherwise `now` returns a `timestamp without time zone`.
 
 For more info about the way these data types behave in Metabase, see [Timezones](../../../configuring-metabase/timezones.md#data-types).
 

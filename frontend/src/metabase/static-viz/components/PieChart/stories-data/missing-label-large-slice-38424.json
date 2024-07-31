@@ -1,0 +1,264 @@
+[
+  {
+    "card": {
+      "original_card_id": 380,
+      "can_delete": false,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-07-02T22:11:40.150476Z",
+      "parameters": [],
+      "metabase_version": "v0.50.8-SNAPSHOT (2e92f70)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "archive_operation_id": null,
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "archived_directly": null,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {
+        "pie.percent_visibility": "inside"
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-07-02T22:11:40.340246Z"
+      },
+      "collection_preview": true,
+      "entity_id": "iDujAXYZdsM0_0Yya_xLk",
+      "archived_directly": false,
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 380,
+      "dataset_query": {
+        "database": 2,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "select 'first' as \"data\", 5 as \"amount\"\nunion all\nselect 'second' as \"data\", 5 as \"amount\"\nunion all\nselect 'third' as \"data\", 5 as \"amount\"\nunion all\nselect 'fourth' as \"data\", 500 as \"amount\""
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-07-09T19:52:06.348318Z",
+      "moderation_reviews": [],
+      "can_restore": false,
+      "creator_id": 1,
+      "average_query_time": 314.3888888888889,
+      "type": "question",
+      "last_used_at": null,
+      "dashboard_count": 1,
+      "last_query_start": "2024-07-09T19:52:06.137314Z",
+      "name": "Pie - percentage doesn't show on chart when greater than 95 #38424",
+      "query_type": "native",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-07-02T21:59:05.546376Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "display_name": "data",
+          "field_ref": [
+            "field",
+            "data",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "data",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 5.5
+              }
+            }
+          }
+        },
+        {
+          "display_name": "amount",
+          "field_ref": [
+            "field",
+            "amount",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "amount",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 2,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 5,
+                "q1": 5,
+                "q3": 318.8174251267029,
+                "max": 500,
+                "sd": 247.5,
+                "avg": 128.75
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": null,
+      "collection_position": null,
+      "view_count": 0,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["first", 5],
+        ["second", 5],
+        ["third", 5],
+        ["fourth", 500]
+      ],
+      "cols": [
+        {
+          "display_name": "data",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "data",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "data",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        },
+        {
+          "display_name": "amount",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "amount",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "amount",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "select 'first' as \"data\", 5 as \"amount\"\nunion all\nselect 'second' as \"data\", 5 as \"amount\"\nunion all\nselect 'third' as \"data\", 5 as \"amount\"\nunion all\nselect 'fourth' as \"data\", 500 as \"amount\""
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "data",
+            "field_ref": [
+              "field",
+              "data",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "data",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 5.5
+                }
+              }
+            }
+          },
+          {
+            "display_name": "amount",
+            "field_ref": [
+              "field",
+              "amount",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "amount",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 2,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 5,
+                  "q1": 5,
+                  "q3": 318.8174251267029,
+                  "max": 500,
+                  "sd": 247.5,
+                  "avg": 128.75
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

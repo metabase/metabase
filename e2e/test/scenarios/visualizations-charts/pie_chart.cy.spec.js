@@ -5,6 +5,7 @@ import {
   visitQuestionAdhoc,
   popover,
   tableHeaderClick,
+  pieSlices,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -62,11 +63,11 @@ describe("scenarios > visualizations > pie chart", () => {
 function ensurePieChartRendered(rows, totalValue) {
   cy.findByTestId("query-visualization-root").within(() => {
     // detail
-    cy.findByText("Total").should("be.visible");
-    cy.findByTestId("detail-value").should("have.text", totalValue);
+    cy.findByText("TOTAL").should("be.visible");
+    cy.findByText(totalValue).should("be.visible");
 
     // slices
-    cy.findAllByTestId("slice").should("have.length", rows.length);
+    pieSlices().should("have.length", rows.length);
 
     // legend
     rows.forEach((name, i) => {
