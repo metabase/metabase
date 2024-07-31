@@ -9,6 +9,8 @@ import {
   getGenericErrorMessage,
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { areParameterValuesIdentical } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
@@ -367,4 +369,30 @@ export function createTabSlug({
     return "";
   }
   return [id, ...name.toLowerCase().split(" ")].join("-");
+}
+
+export function canResetFilters(parameters: UiParameter[]) {
+  return parameters.some(canResetFilter);
+}
+
+export function canResetFilter(parameter: UiParameter) {
+  const { default: defaultValue, value } = parameter;
+  const hasDefaultValue = defaultValue != null;
+  const hasValue = value != null;
+
+  if (hasDefaultValue) {
+    return !areParameterValuesIdentical(
+      wrapArray(value),
+      wrapArray(defaultValue),
+    );
+  }
+
+  return hasValue;
+}
+
+function wrapArray<T>(value: T | T[]): T[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
 }

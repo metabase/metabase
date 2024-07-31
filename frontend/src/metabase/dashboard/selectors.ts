@@ -21,7 +21,6 @@ import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
 import {
   getValuePopulatedParameters as _getValuePopulatedParameters,
-  areParameterValuesIdentical,
   getParameterValuesBySlug,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
@@ -43,6 +42,7 @@ import type {
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
+  canResetFilters,
   hasDatabaseActionsEnabled,
   isQuestionCard,
   isQuestionDashCard,
@@ -664,30 +664,3 @@ export const getCanResetFilters = createSelector(
     return canResetFilters(visibleParameters);
   },
 );
-
-function canResetFilters(parameters) {
-  return parameters.some(canResetFilter);
-}
-
-function canResetFilter(parameter) {
-  const { default: defaultValue, value } = parameter;
-  const hasDefaultValue = defaultValue != null;
-  const hasValue = value != null;
-
-  if (hasDefaultValue) {
-    return !areParameterValuesIdentical(
-      wrapArray(value),
-      wrapArray(defaultValue),
-    );
-  }
-
-  return hasValue;
-}
-
-// TODO: de-duplicate
-function wrapArray<T>(value: T | T[]): T[] {
-  if (Array.isArray(value)) {
-    return value;
-  }
-  return [value];
-}
