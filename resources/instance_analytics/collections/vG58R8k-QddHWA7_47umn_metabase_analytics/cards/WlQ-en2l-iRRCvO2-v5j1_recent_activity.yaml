@@ -341,8 +341,8 @@ result_metadata:
   visibility_type: normal
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Content name
+    '["name","name"]':
+      column_title: Content name
       link_url: /{{entity_type}}/{{entity_id}}
       view_as: link
   table.cell_column: details
