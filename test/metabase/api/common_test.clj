@@ -135,3 +135,27 @@
       (underive :event/write-permission-failure ::permission-failure-event)
       (underive :event/update-permission-failure ::permission-failure-event)
       (underive :event/create-permission-failure ::permission-failure-event))))
+
+(deftest present-items-works
+  (testing "order is preserved"
+    (is (= [{:id 1 :model :foo} {:id 2 :model :foo} {:id 3 :model :foo}]
+           (api/present-items (fn [_ vs]
+                                (reverse vs))
+                              [{:id 1 :model :foo}
+                               {:id 2 :model :foo}
+                               {:id 3 :model :foo}]))))
+  (testing "duplicate IDs across different models are fine, order is maintained"
+    (is (= [{:id 1 :model :foo}
+            {:id 1 :model :bar}
+            {:id 2 :model :foo}
+            {:id 2 :model :bar}
+            {:id 3 :model :foo}
+            {:id 3 :model :bar}]
+           (api/present-items (fn [_ vs]
+                                (reverse vs))
+                              [{:id 1 :model :foo}
+                               {:id 1 :model :bar}
+                               {:id 2 :model :foo}
+                               {:id 2 :model :bar}
+                               {:id 3 :model :foo}
+                               {:id 3 :model :bar}])))))
