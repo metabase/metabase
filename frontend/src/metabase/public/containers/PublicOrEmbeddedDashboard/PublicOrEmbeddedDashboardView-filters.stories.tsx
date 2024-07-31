@@ -275,6 +275,34 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
       createMockMetadata({}),
       {},
     ),
+    date_single: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date single",
+          sectionId: "date",
+          slug: "date_single",
+          type: "date/single",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
+    date_range: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date range",
+          sectionId: "date",
+          slug: "date_range",
+          type: "date/range",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
   };
   return (
     <PublicOrEmbeddedDashboardView
@@ -292,7 +320,9 @@ type ParameterType =
   | "search"
   | "date_all_options"
   | "date_month_year"
-  | "date_quarter_year";
+  | "date_quarter_year"
+  | "date_single"
+  | "date_range";
 
 const createDefaultArgs = (
   args: ArgType & { parameterType?: ParameterType } = {},
@@ -669,4 +699,80 @@ DarkThemeDateFilterQuarterYearDropdown.play = async ({ canvasElement }) => {
   dropdown
     .getByRole("option", { name: "2023" })
     .setAttribute("data-hovered", "true");
+};
+
+// Single date
+export const LightThemeDateFilterSingle = Template.bind({});
+LightThemeDateFilterSingle.args = createDefaultArgs({
+  parameterType: "date_single",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-06-01",
+  },
+});
+LightThemeDateFilterSingle.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date single",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover.getByText("15").classList.add("pseudo-hover");
+};
+
+export const DarkThemeDateFilterSingle = Template.bind({});
+DarkThemeDateFilterSingle.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_single",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-06-01",
+  },
+});
+DarkThemeDateFilterSingle.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date single",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover.getByText("15").classList.add("pseudo-hover");
+};
+
+// Range
+export const LightThemeDateFilterRange = Template.bind({});
+LightThemeDateFilterRange.args = createDefaultArgs({
+  parameterType: "date_range",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-06-01~2024-06-10",
+  },
+});
+LightThemeDateFilterRange.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date range",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover.getByText("15").classList.add("pseudo-hover");
+};
+
+export const DarkThemeDateFilterRange = Template.bind({});
+DarkThemeDateFilterRange.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_range",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-06-01~2024-06-10",
+  },
+});
+DarkThemeDateFilterRange.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date range",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover.getByText("15").classList.add("pseudo-hover");
 };
