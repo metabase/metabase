@@ -6,7 +6,7 @@ import { t } from "ttag";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/components/EditBar";
 import CS from "metabase/css/core/index.css";
-import { updateDashboard } from "metabase/dashboard/actions";
+import { resetParameters, updateDashboard } from "metabase/dashboard/actions";
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
@@ -87,8 +87,7 @@ export function DashboardHeaderView({
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
   const handleResetFilters = useCallback(() => {
-    // dispatch(())
-    console.log("dispatch");
+    dispatch(resetParameters());
   }, [dispatch]);
 
   const _headerButtons = useMemo(

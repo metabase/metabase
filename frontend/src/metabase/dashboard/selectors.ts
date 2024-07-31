@@ -42,7 +42,7 @@ import type {
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
-  canResetFilters,
+  filtersToReset,
   hasDatabaseActionsEnabled,
   isQuestionCard,
   isQuestionDashCard,
@@ -653,14 +653,17 @@ export const getHasModelActionsEnabled = createSelector(
   },
 );
 
-export const getCanResetFilters = createSelector(
+export const getVisibleValuePopulatedParameters = createSelector(
   [getValuePopulatedParameters, getHiddenParameterSlugs],
-  (parameters, hiddenParameterSlugs) => {
-    const visibleParameters = getVisibleParameters(
-      parameters,
-      hiddenParameterSlugs,
-    );
+  getVisibleParameters,
+);
 
-    return canResetFilters(visibleParameters);
-  },
+export const getFiltersToReset = createSelector(
+  [getVisibleValuePopulatedParameters],
+  filtersToReset,
+);
+
+export const getCanResetFilters = createSelector(
+  [getFiltersToReset],
+  filters => filters.length > 0,
 );

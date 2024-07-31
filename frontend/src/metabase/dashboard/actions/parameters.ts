@@ -56,6 +56,7 @@ import {
   getParameterValues,
   getParameterMappingsBeforeEditing,
   getSelectedTabId,
+  getFiltersToReset,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -445,6 +446,24 @@ export const setParameterValueToDefault = createThunkAction(
     const defaultValue = parameter?.default;
     if (defaultValue) {
       dispatch(setParameterValue(parameterId, defaultValue));
+    }
+  },
+);
+
+export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
+export const resetParameters = createThunkAction(
+  RESET_PARAMETERS,
+  () => (dispatch, getState) => {
+    const parameters = getFiltersToReset(getState());
+
+    for (const parameter of parameters) {
+      const defaultValue = parameter.default;
+
+      if (defaultValue) {
+        dispatch(setParameterValue(parameter.id, defaultValue));
+      } else {
+        dispatch(setParameterValue(parameter.id, null));
+      }
     }
   },
 );
