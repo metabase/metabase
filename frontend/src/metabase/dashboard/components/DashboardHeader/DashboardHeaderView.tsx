@@ -11,6 +11,7 @@ import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/D
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import {
+  getCanResetFilters,
   getIsEditing,
   getIsHeaderVisible,
   getIsSidebarOpen,
@@ -80,7 +81,7 @@ export function DashboardHeaderView({
   const header = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
 
-  const canResetFilters = useSelector(() => true);
+  const canResetFilters = useSelector(getCanResetFilters);
   const isSidebarOpen = useSelector(getIsSidebarOpen);
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);

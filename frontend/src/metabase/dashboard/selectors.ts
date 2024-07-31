@@ -11,6 +11,7 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import * as Urls from "metabase/lib/urls";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -19,8 +20,9 @@ import { getIsWebApp } from "metabase/selectors/web-app";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
 import {
-  getParameterValuesBySlug,
   getValuePopulatedParameters as _getValuePopulatedParameters,
+  areParameterValuesIdentical,
+  getParameterValuesBySlug,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -650,3 +652,42 @@ export const getHasModelActionsEnabled = createSelector(
     return hasModelActionsEnabled;
   },
 );
+
+export const getCanResetFilters = createSelector(
+  [getValuePopulatedParameters, getHiddenParameterSlugs],
+  (parameters, hiddenParameterSlugs) => {
+    const visibleParameters = getVisibleParameters(
+      parameters,
+      hiddenParameterSlugs,
+    );
+
+    return canResetFilters(visibleParameters);
+  },
+);
+
+function canResetFilters(parameters) {
+  return parameters.some(canResetFilter);
+}
+
+function canResetFilter(parameter) {
+  const { default: defaultValue, value } = parameter;
+  const hasDefaultValue = defaultValue != null;
+  const hasValue = value != null;
+
+  if (hasDefaultValue) {
+    return !areParameterValuesIdentical(
+      wrapArray(value),
+      wrapArray(defaultValue),
+    );
+  }
+
+  return hasValue;
+}
+
+// TODO: de-duplicate
+function wrapArray<T>(value: T | T[]): T[] {
+  if (Array.isArray(value)) {
+    return value;
+  }
+  return [value];
+}
