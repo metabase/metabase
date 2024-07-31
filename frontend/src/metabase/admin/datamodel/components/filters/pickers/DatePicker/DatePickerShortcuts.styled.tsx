@@ -8,7 +8,7 @@ export const ShortcutButton = styled(Button)`
   border: none;
 
   &:hover {
-    color: "var(--mb-color-text-brand)";
+    color: var(--mb-color-text-brand);
     background: none;
   }
 `;
