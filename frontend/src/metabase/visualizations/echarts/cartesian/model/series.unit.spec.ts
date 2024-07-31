@@ -30,6 +30,7 @@ const renderingContextMock: RenderingContext = {
   formatValue: value => `formatted: ${value}`,
   getColor: colorName => colorName,
   measureText: () => 0,
+  measureTextHeight: () => 0,
   fontFamily: "Lato",
   theme: DEFAULT_VISUALIZATION_THEME,
 };
