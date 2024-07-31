@@ -502,6 +502,9 @@ DarkThemeDateFilterAllOptions.play = async ({ canvasElement }) => {
 export const LightThemeDateFilterMonthYear = Template.bind({});
 LightThemeDateFilterMonthYear.args = createDefaultArgs({
   parameterType: "date_month_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-01",
+  },
 });
 LightThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
@@ -511,14 +514,25 @@ LightThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
   await userEvent.click(filter);
 
   const popover = getLastPopover();
-  const january = popover.getByText("January");
-  january.classList.add("pseudo-hover");
+  const month = popover.getByText("March");
+  month.classList.add("pseudo-hover");
+
+  await userEvent.click(
+    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+  );
+  const dropdown = getLastPopover();
+  dropdown
+    .getByRole("option", { name: "2023" })
+    .setAttribute("data-hovered", "true");
 };
 
 export const DarkThemeDateFilterMonthYear = Template.bind({});
 DarkThemeDateFilterMonthYear.args = createDefaultArgs({
   theme: "night",
   parameterType: "date_month_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-01",
+  },
 });
 DarkThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
   const canvas = within(canvasElement);
@@ -528,8 +542,16 @@ DarkThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
   await userEvent.click(filter);
 
   const popover = getLastPopover();
-  const january = popover.getByText("January");
-  january.classList.add("pseudo-hover");
+  const month = popover.getByText("March");
+  month.classList.add("pseudo-hover");
+
+  await userEvent.click(
+    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+  );
+  const dropdown = getLastPopover();
+  dropdown
+    .getByRole("option", { name: "2023" })
+    .setAttribute("data-hovered", "true");
 };
 
 function getLastPopover() {

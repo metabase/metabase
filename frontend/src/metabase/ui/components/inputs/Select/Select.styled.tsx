@@ -29,7 +29,8 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       ...getSelectItemsOverrides(theme, size),
       // For epic (metabase#38699)
       dropdown: {
-        background: theme.fn.themeColor("bg-white"),
+        background: "var(--mb-color-background)",
+        borderColor: "var(--mb-color-border)",
         ">div": {
           maxHeight: "none !important",
         },
@@ -87,6 +88,8 @@ export const getSelectInputOverrides = (
     },
     input: {
       ref: getStylesRef("input"),
+      color: "var(--mb-color-text-primary)",
+      backgroundColor: "var(--mb-color-background)",
 
       "&[data-disabled]": {
         opacity: 1,
@@ -136,7 +139,7 @@ export const getSelectItemsOverrides = (
       },
       "&[data-selected]": {
         color: theme.fn.themeColor("text-white"),
-        backgroundColor: theme.fn.themeColor("brand"),
+        backgroundColor: "var(--mb-color-background-brand)",
       },
       "&[data-disabled]": {
         color: theme.fn.themeColor("text-light"),
