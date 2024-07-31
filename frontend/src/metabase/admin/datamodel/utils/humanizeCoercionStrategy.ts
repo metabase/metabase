@@ -1,4 +1,4 @@
-const LEFT_TERM_CONVERSIONS = {
+const LEFT_TERM_CONVERSIONS: Record<string, string> = {
   ISO8601: "ISO 8601",
   UNIXSeconds: "UNIX seconds",
   UNIXMilliSeconds: "UNIX milliseconds",
@@ -8,7 +8,7 @@ const LEFT_TERM_CONVERSIONS = {
   YYYYMMDDHHMMSSBytes: "YYYYMMDDHHMMSS bytes",
 };
 
-const RIGHT_TERM_CONVERSIONS = {
+const RIGHT_TERM_CONVERSIONS: Record<string, string> = {
   DateTime: "Datetime",
 };
 
@@ -17,7 +17,7 @@ const RIGHT_TERM_CONVERSIONS = {
  * @param {string} fullString - The coercion strategy as it comes from the back-end
  * @returns {string}
  */
-export function humanizeCoercionStrategy(fullString) {
+export function humanizeCoercionStrategy(fullString: string) {
   const shortString = fullString.replace("Coercion/", "");
 
   const [leftTerm, rightTerm] = shortString.split("->");
@@ -27,17 +27,17 @@ export function humanizeCoercionStrategy(fullString) {
     : treatTermsAndJoin(leftTerm, rightTerm);
 }
 
-function treatTermsAndJoin(left, right) {
+function treatTermsAndJoin(left: string, right: string) {
   const treatedLeftTerm = treatLeftTerm(left);
   const treatedRightTerm = treatRightTerm(right);
 
   return [treatedLeftTerm, treatedRightTerm].join(" → ");
 }
 
-function treatLeftTerm(term) {
+function treatLeftTerm(term: string) {
   return LEFT_TERM_CONVERSIONS[term] || term;
 }
 
-function treatRightTerm(term) {
+function treatRightTerm(term: string) {
   return RIGHT_TERM_CONVERSIONS[term] || term;
 }
