@@ -151,10 +151,8 @@ visualization_settings:
     '["name","count"]':
       column_title: Question views
       show_mini_bar: true
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
-    : column_title: Person Name
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
-    : column_title: User
+    '["name","full_name"]':
+      column_title: Person Name
   table.cell_column: model_id
   table.columns:
   - enabled: true

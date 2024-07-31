@@ -96,19 +96,15 @@ visualization_settings:
   column_settings:
     '["name","count"]':
       show_mini_bar: true
-    '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
-      column_title: Description
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Question ID
-    '["ref",["field",["Internal Metabase Database","public","v_content","id"],{"join-alias":"Question 35"}]]':
-      column_title: Dashboard ID
-      link_text: Dashboard {{id}}
-      link_url: ''
-      view_as: null
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Question name
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
-      column_title: Dashboard name
+    '["name","entity_id"]':
+      column_title: Question ID
+      link_url: question/{{entity_id}}
+      view_as: link
+    '["name","name"]':
+      column_title: Question name
+      link_text: ''
+      link_url: question/{{entity_id}}
+      view_as: link
   graph.dimensions:
   - name
   graph.metrics:

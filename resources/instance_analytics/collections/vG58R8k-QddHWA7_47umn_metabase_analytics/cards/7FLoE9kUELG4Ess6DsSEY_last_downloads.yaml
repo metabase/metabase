@@ -657,29 +657,29 @@ result_metadata:
   visibility_type: normal
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Question ID
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Dashboard Qualified"}]]'
-    : column_title: Dashboard ID
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Question name
+    '["name","entity_id"]':
+      column_title: Question ID
+    '["name","entity_id_2"]':
+      column_title: Dashboard ID
+    '["name","name"]':
+      column_title: Question name
       link_text: ''
       link_url: /question/{{entity_id}}
       view_as: link
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Dashboard Qualified"}]]'
-    : column_title: Dashboard name
+    '["name","name_2"]':
+      column_title: Dashboard name
       link_url: /dashboard/{{entity_id_2}}
       view_as: link
-    ? '["ref",["field",["Internal Metabase Database","public","v_databases","entity_id"],{"base-type":"type/Integer","join-alias":"Databases - Database Qualified"}]]'
-    : column_title: Database ID
-    ? '["ref",["field",["Internal Metabase Database","public","v_databases","name"],{"base-type":"type/Text","join-alias":"Databases - Database Qualified"}]]'
-    : column_title: Database name
+    '["name","entity_id_3"]':
+      column_title: Database ID
+    '["name","name_3"]':
+      column_title: Database name
       link_url: /browse/{{entity_id_3}}
       view_as: link
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
-    : column_title: User name
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","user_id"],{"base-type":"type/Integer","join-alias":"People - User"}]]'
-    : column_title: User ID
+    '["name","full_name"]':
+      column_title: User name
+    '["name","user_id"]':
+      column_title: User ID
   table.cell_column: running_time_seconds
   table.columns:
   - enabled: true
