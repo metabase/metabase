@@ -2146,15 +2146,13 @@
   (testing "database_enabled_actions should hydrate according to database-enable-actions setting"
     (mt/test-drivers (mt/normal-drivers-with-feature :actions)
       (mt/with-actions-test-data
-        (doseq [enable-actions? [true false]
-                encrypt-db?     [true false]]
-          (mt/with-temp-env-var-value! [mb-encryption-secret-key encrypt-db?]
-            (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable-actions?}}
-              (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
-                (mt/with-temp [Dashboard     {dashboard-id :id} {}
-                               DashboardCard _ {:action_id action-id, :dashboard_id dashboard-id}]
-                  (is (partial= {:dashcards [{:action {:database_enabled_actions enable-actions?}}]}
-                                (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id)))))))))))))
+        (doseq [enable-actions? [true false]]
+          (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions enable-actions?}}
+            (mt/with-actions [{:keys [action-id]} {:type :query :visualization_settings {:hello true}}]
+              (mt/with-temp [Dashboard     {dashboard-id :id} {}
+                             DashboardCard _ {:action_id action-id, :dashboard_id dashboard-id}]
+                (is (partial= {:dashcards [{:action {:database_enabled_actions enable-actions?}}]}
+                              (mt/user-http-request :crowberto :get 200 (format "dashboard/%s" dashboard-id))))))))))))
 
 (deftest add-card-parameter-mapping-permissions-test
   (testing "PUT /api/dashboard/:id"

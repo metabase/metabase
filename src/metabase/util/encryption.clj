@@ -26,24 +26,22 @@
 (defn validate-and-hash-secret-key
   "Check the minimum length of the key and hash it for internal usage."
   [^String secret-key]
-  (when-let [secret-key secret-key]
-    (when (seq secret-key)
-      (assert (>= (count secret-key) 16)
-              (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
-      (secret-key->hash secret-key))))
+  (assert (>= (count secret-key) 16)
+          (str (trs "MB_ENCRYPTION_SECRET_KEY must be at least 16 characters.")))
+  (secret-key->hash secret-key))
 
 ;; apperently if you're not tagging in an arglist, `^bytes` will set the `:tag` metadata to `clojure.core/bytes` (ick)
 ;; so you have to do `^{:tag 'bytes}` instead
 (defonce ^:private ^{:tag 'bytes} default-secret-key
-  (validate-and-hash-secret-key (env/env :mb-encryption-secret-key)))
+  (validate-and-hash-secret-key (or (env/env :mb-encryption-secret-key) "DEFAULT_SECRET_KEY")))
 
 ;; log a nice message letting people know whether DB details encryption is enabled
 (when-not *compile-files*
   (log/info
-   (if default-secret-key
+   (if (env/env :mb-encryption-secret-key)
      "Saved credentials encryption is ENABLED for this Metabase instance."
      "Saved credentials encryption is DISABLED for this Metabase instance.")
-   (u/emoji (if default-secret-key "🔐" "🔓"))
+   (u/emoji (if (env/env :mb-encryption-secret-key) "🔐" "🔓"))
    "\n"
    "For more information, see https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html"))
 
@@ -72,12 +70,19 @@
         (encrypt-bytes secret-key)
         codec/base64-encode)))
 
+(defn default-encrypted-bytes?
+  "Returns true if bytes have been encrypted with a default secret key (not ), otherwise false."
+  [^bytes b]
+  :nyi)
+
 (defn decrypt-bytes
   "Decrypt bytes `b` using a `secret-key` (a 64-byte byte array), which by default is the hashed value of
   `MB_ENCRYPTION_SECRET_KEY`."
   {:added "0.41.0"}
   (^String [^bytes b]
-   (decrypt-bytes default-secret-key b))
+   (if (default-encrypted-bytes? b)
+     :nyi
+     (decrypt-bytes default-secret-key b)))
   (^String [secret-key, ^bytes b]
    (let [[initialization-vector message] (split-at 16 b)]
      (crypto/decrypt (byte-array message)
@@ -92,28 +97,6 @@
    (decrypt default-secret-key s))
   (^String [secret-key, ^String s]
    (codecs/bytes->str (decrypt-bytes secret-key (codec/base64-decode s)))))
-
-(defn maybe-encrypt
-  "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of `s`; otherwise return `s` as-is."
-  (^String [^String s]
-   (maybe-encrypt default-secret-key s))
-  (^String [secret-key, ^String s]
-   (if secret-key
-     (when (seq s)
-       (encrypt secret-key s))
-     s)))
-
-(defn maybe-encrypt-bytes
-  "If `MB_ENCRYPTION_SECRET_KEY` is set, return an encrypted version of the given bytes `b`; otherwise return `b`
-  as-is."
-  {:added "0.41.0"}
-  (^bytes [^bytes b]
-   (maybe-encrypt-bytes default-secret-key b))
-  (^bytes [secret-key, ^bytes b]
-   (if secret-key
-     (when (seq b)
-       (encrypt-bytes secret-key b))
-     b)))
 
 (def ^:private ^:const aes256-tag-length 32)
 (def ^:private ^:const aes256-block-size 16)
@@ -142,7 +125,19 @@
                       (codec/base64-decode s))]
       (possibly-encrypted-bytes? b))))
 
-(defn maybe-decrypt
+(defn default-encrypted-string?
+  "Returns true if it's likely that `s` is an encrypted string. Specifically we need `s` to be a non-blank, base64
+  encoded string of the correct length. See docstring for `possibly-encrypted-bytes?` for an explanation of correct
+  length."
+  [^String s]
+  (u/ignore-exceptions
+   (when-let [b (and (not (str/blank? s))
+                     (u/base64-string? s)
+                     (codec/base64-decode s))]
+     (possibly-encrypted-bytes? b))))
+
+
+(defn decrypt
   "If `MB_ENCRYPTION_SECRET_KEY` is set and `v` is encrypted, decrypt `v`; otherwise return `s` as-is. Attempts to check
   whether `v` is an encrypted String, in which case the decrypted String is returned, or whether `v` is encrypted bytes,
   in which case the decrypted bytes are returned."

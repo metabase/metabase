@@ -125,12 +125,12 @@
 
 (def ^:private encrypted-json-in
   "Should mirror [[metabase.models.interface/encrypted-json-in]]"
-  (comp encryption/maybe-encrypt json-in))
+  (comp encryption/encrypt json-in))
 
 (defn- encrypted-json-out
   "Should mirror [[metabase.models.interface/encrypted-json-out]]"
   [v]
-  (let [decrypted (encryption/maybe-decrypt v)]
+  (let [decrypted (encryption/decrypt v)]
     (try
       (json/parse-string decrypted true)
       (catch Throwable e
@@ -1433,7 +1433,7 @@
 (defn- raw-setting-value [key]
   (some-> (t2/query-one {:select [:value], :from :setting, :where [:= :key key]})
           :value
-          encryption/maybe-decrypt))
+          encryption/decrypt))
 
 (define-reversible-migration MigrateUploadsSettings
   (do (when (some-> (raw-setting-value "uploads-enabled") parse-boolean)
@@ -1451,10 +1451,10 @@
                                          "uploads-schema-name"
                                          "uploads-table-prefix"]]}))
   (when-let [db (t2/query-one {:select [:*], :from :metabase_database, :where :uploads_enabled})]
-    (let [settings [{:key "uploads-database-id",  :value (encryption/maybe-encrypt (str (:id db)))}
-                    {:key "uploads-enabled",      :value (encryption/maybe-encrypt "true")}
-                    {:key "uploads-table-prefix", :value (encryption/maybe-encrypt (:uploads_table_prefix db))}
-                    {:key "uploads-schema-name",  :value (encryption/maybe-encrypt (:uploads_schema_name db))}]]
+    (let [settings [{:key "uploads-database-id",  :value (encryption/encrypt (str (:id db)))}
+                    {:key "uploads-enabled",      :value (encryption/encrypt "true")}
+                    {:key "uploads-table-prefix", :value (encryption/encrypt (:uploads_table_prefix db))}
+                    {:key "uploads-schema-name",  :value (encryption/encrypt (:uploads_schema_name db))}]]
       (->> settings
            (filter :value)
            (t2/insert! :setting)))))
@@ -1465,3 +1465,55 @@
     (run! decrypt! ["query-caching-ttl-ratio"
                     "query-caching-min-ttl"
                     "enable-query-caching"])))
+
+(define-reversible-migration EncryptAllDocuments
+  (let [encrypt-fn (fn [value]
+                     (if (encryption/possibly-encrypted-string? value)
+                       value
+                       (encryption/encrypt value)))
+        encrypt-bytes-fn (fn [value]
+                           (if (encryption/possibly-encrypted-bytes? value)
+                             value
+                             (encryption/encrypt-bytes value)))]
+    ;; Forward migration
+    (t2/with-transaction [t-conn {:datasource (mdb/data-source)}]
+      ;; Encrypt Database details
+      (doseq [[id details] (t2/select-pk->fn :details Database)]
+        (t2/update! :conn t-conn :metabase_database
+                    {:id id}
+                    {:details (encrypt-fn (json/encode details))}))
+      ;; Encrypt Setting values
+      (doseq [[key value] (t2/select-fn->fn :key :value Setting)]
+        (t2/update! :conn t-conn :setting
+                    {:key key}
+                    {:value (encrypt-fn value)}))
+      ;; Encrypt Secret values
+      (doseq [[id value] (t2/select-pk->fn :value Secret)]
+        (t2/update! :conn t-conn :secret
+                    {:id id}
+                    {:value (encrypt-bytes-fn value)}))))
+  ;; Reverse migration
+  (let [decrypt-fn (fn [value]
+                     (if (encryption/possibly-encrypted-string? value)
+                       (encryption/decrypt value)
+                       value))
+        decrypt-bytes-fn (fn [value]
+                           (if (encryption/possibly-encrypted-bytes? value)
+                             (encryption/decrypt-bytes value)
+                             value))]
+    (t2/with-transaction [t-conn {:datasource (mdb/data-source)}]
+      ;; Decrypt Database details
+      (doseq [[id details] (t2/select-pk->fn :details Database)]
+        (t2/update! :conn t-conn :metabase_database
+                    {:id id}
+                    {:details (decrypt-fn details)}))
+      ;; Decrypt Setting values
+      (doseq [[key value] (t2/select-fn->fn :key :value Setting)]
+        (t2/update! :conn t-conn :setting
+                    {:key key}
+                    {:value (decrypt-fn value)}))
+      ;; Decrypt Secret values
+      (doseq [[id value] (t2/select-pk->fn :value Secret)]
+        (t2/update! :conn t-conn :secret
+                    {:id id}
+                    {:value (decrypt-bytes-fn value)})))))

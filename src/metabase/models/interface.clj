@@ -253,12 +253,12 @@
 
 (def encrypted-json-in
   "Serialize encrypted json."
-  (comp encryption/maybe-encrypt json-in))
+  (comp encryption/encrypt json-in))
 
 (defn encrypted-json-out
   "Deserialize encrypted json."
   [v]
-  (let [decrypted (encryption/maybe-decrypt v)]
+  (let [decrypted (encryption/decrypt v)]
     (try
       (json/parse-string decrypted true)
       (catch Throwable e
@@ -387,8 +387,8 @@
 
 (def transform-secret-value
   "Transform for secret value."
-  {:in  (comp encryption/maybe-encrypt-bytes codecs/to-bytes)
-   :out (comp encryption/maybe-decrypt maybe-blob->bytes)})
+  {:in  (comp encryption/encrypt-bytes codecs/to-bytes)
+   :out (comp encryption/decrypt maybe-blob->bytes)})
 
 (defn decompress
   "Decompress `compressed-bytes`."

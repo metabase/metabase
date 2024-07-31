@@ -70,19 +70,19 @@
          #"Message seems corrupt or manipulated"
          (encryption/decrypt secret-2 (encryption/encrypt secret "WOW"))))))
 
-(deftest ^:parallel maybe-decrypt-not-encrypted-test
-  (testing "trying to `maybe-decrypt` something that's not encrypted should return it as-is"
+(deftest ^:parallel decrypt-not-encrypted-test
+  (testing "trying to `decrypt` something that's not encrypted should return it as-is"
     (is (= "{\"a\":100}"
-           (encryption/maybe-decrypt secret "{\"a\":100}")))
+           (encryption/decrypt secret "{\"a\":100}")))
     (is (= "abc"
-           (encryption/maybe-decrypt secret "abc")))))
+           (encryption/decrypt secret "abc")))))
 
-(deftest ^:parallel maybe-decrypt-with-wrong-key-test
-  (testing (str "trying to decrypt something that is encrypted with the wrong key with `maybe-decrypt` should return "
+(deftest ^:parallel decrypt-with-wrong-key-test
+  (testing (str "trying to decrypt something that is encrypted with the wrong key with `decrypt` should return "
                 "the ciphertext...")
     (let [original-ciphertext (encryption/encrypt secret "WOW")]
       (is (= original-ciphertext
-             (encryption/maybe-decrypt secret-2 original-ciphertext))))))
+             (encryption/decrypt secret-2 original-ciphertext))))))
 
 (defn- includes-encryption-warning? [log-messages]
   (some (fn [[level _ message]]
@@ -94,7 +94,7 @@
 (deftest no-errors-for-unencrypted-test
   (testing "Something obviously not encrypted should avoiding trying to decrypt it (and thus not log an error)"
     (is (empty? (mt/with-log-messages-for-level :warn
-                  (encryption/maybe-decrypt secret "abc"))))))
+                  (encryption/decrypt secret "abc"))))))
 
 (def ^:private fake-ciphertext
   "AES+CBC's block size is 16 bytes and the tag length is 32 bytes. This is a string of characters that is the same
@@ -107,12 +107,12 @@
                 "decrypted. If unable to decrypt it, log a warning.")
     (is (includes-encryption-warning?
          (mt/with-log-messages-for-level :warn
-           (encryption/maybe-decrypt secret fake-ciphertext))))
+           (encryption/decrypt secret fake-ciphertext))))
     (is (includes-encryption-warning?
          (mt/with-log-messages-for-level :warn
-           (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))))
+           (encryption/decrypt secret-2 (encryption/encrypt secret "WOW")))))))
 
 (deftest ^:parallel possibly-encrypted-test
   (testing "Something that is not encrypted, but might be should return the original text"
     (is (= fake-ciphertext
-           (encryption/maybe-decrypt secret fake-ciphertext)))))
+           (encryption/decrypt secret fake-ciphertext)))))
