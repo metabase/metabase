@@ -221,7 +221,6 @@
     "esbuild": "^0.21.1",
     "eslint": "7.32.0",
     "eslint-import-resolver-webpack": "^0.8.3",
-    "eslint-loader": "4.0.2",
     "eslint-plugin-cypress": "^2.12.1",
     "eslint-plugin-import": "^2.29.1",
     "eslint-plugin-jest": "^27.2.0",

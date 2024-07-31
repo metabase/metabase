@@ -31,9 +31,6 @@ const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const devMode = WEBPACK_BUNDLE !== "production";
 const useFilesystemCache = process.env.FS_CACHE === "true";
 const edition = process.env.MB_EDITION || "oss";
-const shouldUseEslint =
-  process.env.WEBPACK_BUNDLE !== "production" &&
-  process.env.USE_ESLINT === "true";
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
 
 // Babel:
@@ -147,22 +144,6 @@ const config = {
         exclude: /node_modules|cljs|css\/core\/fonts\.styled\.ts/,
         use: [SWC_LOADER],
       },
-      ...(shouldUseEslint
-        ? [
-            {
-              test: /\.(tsx?|jsx?)$/,
-              exclude: /node_modules|cljs|\.spec\.js/,
-              use: [
-                {
-                  loader: "eslint-loader",
-                  options: {
-                    rulePaths: [__dirname + "/frontend/lint/eslint-rules"],
-                  },
-                },
-              ],
-            },
-          ]
-        : []),
       {
         test: /\.(svg|png)$/,
         type: "asset/resource",
