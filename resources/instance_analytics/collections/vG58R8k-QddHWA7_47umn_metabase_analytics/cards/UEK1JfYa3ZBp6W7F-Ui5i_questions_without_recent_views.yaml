@@ -105,14 +105,14 @@ dataset_query:
 result_metadata: null
 visualization_settings:
   column_settings:
-    '["ref",["expression","Days since last view"]]':
+    '["name","Days since last view"]':
       show_mini_bar: true
-    '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer"}]]':
+    '["name","entity_id"]':
       column_title: Question ID
       link_text: ''
       link_url: /question/{{entity_id}}
       view_as: link
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text"}]]':
+    '["name","name"]':
       link_text: ''
       link_url: /question/{{entity_id}}
       view_as: link
