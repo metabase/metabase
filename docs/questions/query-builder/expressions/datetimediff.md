@@ -60,7 +60,7 @@ datetimeDiff([Aging Start], now, "day")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeDiff` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeDiff` |
 | ------------------------------------------------------------------------------------------------ | ------------------------- |
 | String                                                                                           | ❌                        |
 | Number                                                                                           | ❌                        |

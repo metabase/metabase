@@ -75,7 +75,7 @@ case(between(now, [Opened On], [Finish By]), "Yes", "No")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeAdd` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeAdd` |
 | ------------------------------------------------------------------------------------------------ | ------------------------ |
 | String                                                                                           | ❌                       |
 | Number                                                                                           | ❌                       |
