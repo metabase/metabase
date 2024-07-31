@@ -31,7 +31,8 @@
                               :sso-ldap
                               :sso-saml
                               :upload_management
-                              :whitelabel}
+                              :whitelabel
+                              :collection-cleanup}
           (is (= {:advanced_permissions           true
                   :attached_dwh                   true
                   :audit_app                      true
@@ -54,5 +55,6 @@
                   :sso_ldap                       true
                   :sso_saml                       true
                   :upload_management              false
-                  :whitelabel                     true}
+                  :whitelabel                     true
+                  :collection_cleanup             true}
                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

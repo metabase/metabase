@@ -236,9 +236,8 @@ export const fetchCardData = createThunkAction(
               token: dashcard.dashboard_id,
               dashcardId: dashcard.id,
               cardId: card.id,
-              ...getParameterValuesBySlug(
-                dashboard.parameters,
-                parameterValues,
+              parameters: JSON.stringify(
+                getParameterValuesBySlug(dashboard.parameters, parameterValues),
               ),
               ignore_cache: ignoreCache,
             },
