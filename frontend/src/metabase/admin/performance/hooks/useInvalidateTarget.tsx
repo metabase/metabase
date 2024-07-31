@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+import { color } from "metabase/lib/colors";
 import { useDispatch } from "metabase/lib/redux";
 import { addUndo } from "metabase/redux/undo";
 import { CacheConfigApi } from "metabase/services";
@@ -34,7 +35,7 @@ export const useInvalidateTarget = (
             icon: "warning",
             message: e.data.message,
             toastColor: "error",
-            dismissIconColor: "var(--mb-color-text-white)",
+            dismissIconColor: color("text-white"),
           }),
         );
       }

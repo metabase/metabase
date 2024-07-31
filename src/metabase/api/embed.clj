@@ -62,7 +62,7 @@
       :card-id           card-id
       :token-params      (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params  (t2/select-one-fn :embedding_params Card :id card-id)
-      :query-params      query-params
+      :query-params      (api.embed.common/parse-query-params query-params)
       :qp                qp
       :constraints       constraints
       :options           options)))
@@ -75,7 +75,7 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token & query-params]
-  (run-query-for-unsigned-token-async (embed/unsign token) :api query-params))
+  (run-query-for-unsigned-token-async (embed/unsign token) :api (api.embed.common/parse-query-params query-params)))
 
 (api/defendpoint GET ["/card/:token/query/:export-format", :export-format api.dataset/export-format-regex]
   "Like `GET /api/embed/card/query`, but returns the results as a file in the specified format."
@@ -85,7 +85,7 @@
   (run-query-for-unsigned-token-async
    (embed/unsign token)
    export-format
-   (dissoc (m/map-keys keyword query-params) :format_rows)
+   (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows))
    :constraints nil
    :middleware {:process-viz-settings? true
                 :js-int-to-string?     false
@@ -132,7 +132,7 @@
       :card-id          card-id
       :embedding-params (t2/select-one-fn :embedding_params Dashboard :id dashboard-id)
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
-      :query-params     (dissoc query-params :format_rows)
+      :query-params     (api.embed.common/parse-query-params (dissoc query-params :format_rows))
       :constraints      constraints
       :qp               qp
       :middleware       middleware)))
@@ -143,7 +143,8 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id     ms/PositiveInt}
-  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params)
+  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api
+                                                         (api.embed.common/parse-query-params query-params))
     (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 
@@ -230,7 +231,7 @@
                                          :export-format api.dataset/export-format-regex]
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
   `embedding-secret-key` return the data in one of the export formats"
-  [token export-format dashcard-id card-id format_rows, :as {:keys [query-params]}]
+  [token export-format dashcard-id card-id format_rows :as {:keys [query-params]}]
   {dashcard-id   ms/PositiveInt
    card-id       ms/PositiveInt
    format_rows   [:maybe :boolean]
@@ -239,7 +240,7 @@
     dashcard-id
     card-id
     export-format
-    (m/map-keys keyword query-params)
+    (api.embed.common/parse-query-params (dissoc (m/map-keys keyword query-params) :format_rows))
     :constraints nil
     :middleware {:process-viz-settings? true
                  :js-int-to-string?     false
@@ -258,12 +259,14 @@
 (api/defendpoint GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
-  (api.embed.common/dashboard-param-values token param-key nil query-params))
+  (api.embed.common/dashboard-param-values token param-key nil
+                                           (api.embed.common/parse-query-params query-params)))
 
 (api/defendpoint GET "/dashboard/:token/params/:param-key/search/:prefix"
   "Embedded version of chain filter search endpoint."
   [token param-key prefix :as {:keys [query-params]}]
-  (api.embed.common/dashboard-param-values token param-key prefix query-params))
+  (api.embed.common/dashboard-param-values token param-key prefix
+                                           (api.embed.common/parse-query-params query-params)))
 
 (api/defendpoint GET "/card/:token/params/:param-key/values"
   "Embedded version of api.card filter values endpoint."
@@ -296,7 +299,9 @@
      {:resource {:question <card-id>}
       :params   <parameters>}"
   [token & query-params]
-  (run-query-for-unsigned-token-async (embed/unsign token) :api query-params :qp qp.pivot/run-pivot-query))
+  (run-query-for-unsigned-token-async (embed/unsign token)
+                                      :api (api.embed.common/parse-query-params query-params)
+                                      :qp qp.pivot/run-pivot-query))
 
 (api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard using a JSON Web Token signed with the
@@ -304,7 +309,9 @@
   [token dashcard-id card-id & query-params]
   {dashcard-id ms/PositiveInt
    card-id ms/PositiveInt}
-  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id :api query-params :qp qp.pivot/run-pivot-query)
+  (u/prog1 (process-query-for-dashcard-with-signed-token token dashcard-id card-id
+                                                         :api (api.embed.common/parse-query-params query-params)
+                                                         :qp qp.pivot/run-pivot-query)
     (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard})))
 
 (api/define-routes)
