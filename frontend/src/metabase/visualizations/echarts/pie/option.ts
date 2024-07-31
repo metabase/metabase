@@ -25,27 +25,33 @@ function getSliceByKey(key: PieSliceData["key"], slices: PieSlice[]) {
 }
 
 function getTotalGraphicOption(
+  settings: ComputedVisualizationSettings,
   chartModel: PieChartModel,
   formatters: PieChartFormatters,
   renderingContext: RenderingContext,
   hoveredIndex: number | undefined,
   outerRadius: number,
 ) {
+  let valueText = "";
+  let labelText = "";
+
   // Don't display any text if there isn't enough width
-  if (outerRadius * 2 < DIMENSIONS.totalDiameterThreshold) {
-    return undefined;
+  const hasSufficientWidth =
+    outerRadius * 2 >= DIMENSIONS.totalDiameterThreshold;
+
+  if (hasSufficientWidth && settings["pie.show_total"]) {
+    valueText = formatters.formatMetric(
+      hoveredIndex != null
+        ? chartModel.slices[hoveredIndex].data.displayValue
+        : chartModel.total,
+    );
+    labelText =
+      hoveredIndex != null
+        ? formatters
+            .formatDimension(chartModel.slices[hoveredIndex].data.key)
+            .toUpperCase()
+        : TOTAL_TEXT;
   }
-  const valueText = formatters.formatMetric(
-    hoveredIndex != null
-      ? chartModel.slices[hoveredIndex].data.displayValue
-      : chartModel.total,
-  );
-  const labelText =
-    hoveredIndex != null
-      ? formatters
-          .formatDimension(chartModel.slices[hoveredIndex].data.key)
-          .toUpperCase()
-      : TOTAL_TEXT;
 
   return {
     type: "group",
@@ -150,15 +156,14 @@ export function getPieChartOption(
   );
 
   // "Show total" setting
-  const graphicOption = settings["pie.show_total"]
-    ? getTotalGraphicOption(
-        chartModel,
-        formatters,
-        renderingContext,
-        hoveredIndex,
-        outerRadius,
-      )
-    : undefined;
+  const graphicOption = getTotalGraphicOption(
+    settings,
+    chartModel,
+    formatters,
+    renderingContext,
+    hoveredIndex,
+    outerRadius,
+  );
 
   // "Show percentages: On the chart" setting
   const formatSlicePercent = (key: PieSliceData["key"]) => {
