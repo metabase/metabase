@@ -10,6 +10,7 @@ import {
   popover,
   restore,
   tableInteractive,
+  visitModel,
   visitQuestion,
   visualize,
 } from "e2e/support/helpers";
@@ -151,6 +152,94 @@ describe("scenarios > notebook > link to data source", () => {
 
       // Model is not dirty
       cy.findByTestId("qb-save-button").should("not.exist");
+    });
+  });
+
+  context("models", () => {
+    it("should open the underlying model", () => {
+      visitModel(ORDERS_MODEL_ID);
+      openNotebook();
+      getNotebookStep("data").findByText("Orders Model").click(clickConfig);
+
+      cy.log("Make sure the source model is rendered in a simple mode");
+      cy.location("pathname").should(
+        "eq",
+        `/model/${ORDERS_MODEL_ID}-orders-model`,
+      );
+      cy.findAllByTestId("header-cell").should("contain", "Subtotal");
+      tableInteractive().should("contain", "37.65");
+      cy.findByTestId("question-row-count").should(
+        "have.text",
+        "Showing first 2,000 rows",
+      );
+
+      // Model is not dirty
+      cy.findByTestId("qb-save-button").should("not.exist");
+    });
+
+    it("should open the nested model (based on a question) as the data source", () => {
+      createQuestion(
+        {
+          name: "Nested model based on a question",
+          query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
+          type: "model",
+        },
+        { visitQuestion: true, wrapId: true, idAlias: "nestedModelId" },
+      );
+
+      openNotebook();
+      getNotebookStep("data")
+        .findByText("Nested model based on a question")
+        .click(clickConfig);
+
+      cy.log("Make sure the source model is rendered in a simple mode");
+      cy.get("@nestedModelId").then(id => {
+        cy.location("pathname").should(
+          "eq",
+          `/model/${id}-nested-model-based-on-a-question`,
+        );
+        cy.findByTestId("scalar-value").should("have.text", "18,760");
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 1 row",
+        );
+
+        // Model is not dirty
+        cy.findByTestId("qb-save-button").should("not.exist");
+      });
+    });
+
+    it("should open the nested model (based on a model) as the data source", () => {
+      createQuestion(
+        {
+          name: "Nested model based on a model",
+          query: { "source-table": `card__${ORDERS_MODEL_ID}` },
+          type: "model",
+        },
+        { visitQuestion: true, wrapId: true, idAlias: "nestedModelId" },
+      );
+
+      openNotebook();
+      getNotebookStep("data")
+        .findByText("Nested model based on a model")
+        .click(clickConfig);
+
+      cy.log("Make sure the source model is rendered in a simple mode");
+      cy.get("@nestedModelId").then(id => {
+        cy.location("pathname").should(
+          "eq",
+          `/model/${id}-nested-model-based-on-a-model`,
+        );
+        cy.findAllByTestId("header-cell").should("contain", "Subtotal");
+        tableInteractive().should("contain", "37.65");
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing first 2,000 rows",
+        );
+
+        // Model is not dirty
+        cy.findByTestId("qb-save-button").should("not.exist");
+      });
     });
   });
 });
