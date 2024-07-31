@@ -124,8 +124,8 @@
 
 (deftest saml-scim-user-provisioning
   (testing "SAML user provisioning is disabled when SCIM is enabled"
-    (mt/with-temporary-setting-values [saml-user-provisioning-enabled? true
-                                       scim-enabled                    true]
+    (mt/with-temporary-raw-setting-values [saml-user-provisioning-enabled? true
+                                           scim-enabled                    true]
       (is (false? (sso-settings/saml-user-provisioning-enabled?))))))
 
 (deftest jwt-settings-token-features-test
