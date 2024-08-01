@@ -16,7 +16,7 @@ const BABEL_CONFIG = {
 };
 
 module.exports = {
-  mode: "development",
+  mode: "production",
   entry: `${SDK_CLI_PATH}/cli.ts`,
   target: "node",
   context: SDK_CLI_PATH,
