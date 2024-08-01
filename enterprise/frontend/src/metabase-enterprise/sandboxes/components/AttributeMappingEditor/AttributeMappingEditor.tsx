@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { t } from "ttag";
 
+import { MappingEditor } from "metabase/core/components/MappingEditor";
 import type { SelectChangeEvent } from "metabase/core/components/Select";
 import Select, { Option } from "metabase/core/components/Select";
 import Tooltip from "metabase/core/components/Tooltip";
@@ -15,7 +16,6 @@ import type {
 } from "metabase-types/api";
 
 import QuestionParameterTargetWidget from "../../containers/QuestionParameterTargetWidget";
-import { MappingEditor } from "../MappingEditor";
 
 interface AttributeMappingEditorProps {
   value: any;

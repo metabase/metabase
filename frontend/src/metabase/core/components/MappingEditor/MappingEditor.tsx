@@ -5,7 +5,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
-import { Button, TextInput, Icon } from "metabase/ui";
+import { Button, TextInput, Icon, type ButtonProps } from "metabase/ui";
 
 type DefaultRenderInputProps = {
   value: MappingValue;
@@ -31,7 +31,7 @@ const DefaultRenderInput = ({
 type MappingValue = string;
 type MappingType = Record<string, MappingValue>;
 
-interface MappingEditorProps {
+export interface MappingEditorProps {
   value: MappingType;
   onChange: (val: MappingType) => void;
   onError?: (val: boolean) => void;
@@ -47,6 +47,7 @@ interface MappingEditorProps {
   canAdd?: boolean;
   canDelete?: boolean;
   addText?: string;
+  addButtonProps?: ButtonProps;
   swapKeyAndValue?: boolean;
 }
 
@@ -94,6 +95,7 @@ export const MappingEditor = ({
   canAdd = true,
   canDelete = true,
   addText = "Add",
+  addButtonProps,
   swapKeyAndValue,
 }: MappingEditorProps) => {
   const [entries, setEntries] = useState<Entry[]>(buildEntries(mapping));
@@ -154,7 +156,7 @@ export const MappingEditor = ({
                     variant="subtle"
                     onClick={() => handleChange(removeEntry(entries, index))}
                     color={"text"}
-                    data-testId="remove-mapping"
+                    data-testid="remove-mapping"
                   />
                 </td>
               )}
@@ -169,6 +171,7 @@ export const MappingEditor = ({
                   leftIcon={<Icon name="add" />}
                   variant="subtle"
                   onClick={() => handleChange(addEntry(entries))}
+                  {...addButtonProps}
                 >
                   {addText}
                 </Button>

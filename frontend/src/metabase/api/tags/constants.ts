@@ -7,6 +7,7 @@ export const TAG_TYPES = [
   "bookmark",
   "card",
   "cloud-migration",
+  "channel",
   "collection",
   "dashboard",
   "database",
