@@ -116,6 +116,7 @@ const DashboardApp = (props: DashboardAppProps) => {
     isEditing,
     isDirty,
     route,
+    setErrorPage,
     router,
   } = props;
 
@@ -229,6 +230,7 @@ const DashboardApp = (props: DashboardAppProps) => {
         onFullscreenChange={onFullscreenChange}
         onRefreshPeriodChange={onRefreshPeriodChange}
         parameterQueryParams={parameterQueryParams}
+        onSetErrorPage={setErrorPage}
         {...dashboardProps}
       />
       {/* For rendering modal urls */}

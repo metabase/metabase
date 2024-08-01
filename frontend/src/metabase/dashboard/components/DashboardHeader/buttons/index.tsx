@@ -15,3 +15,4 @@ export * from "./FullscreenAnalyticsDashboard";
 export * from "./SaveEditButton";
 export * from "./FullscreenToggle";
 export * from "./NightModeToggleButton";
+export * from "./ExportAsPdfButton";

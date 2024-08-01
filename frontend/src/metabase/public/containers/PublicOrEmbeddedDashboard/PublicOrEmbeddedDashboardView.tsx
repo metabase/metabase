@@ -7,8 +7,8 @@ import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type {
-  setParameterValueToDefault as setParameterValueToDefaultDashboardAction,
   setParameterValue as setParameterValueDashboardAction,
+  setParameterValueToDefault as setParameterValueToDefaultDashboardAction,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
@@ -16,16 +16,14 @@ import { DashboardGridConnected } from "metabase/dashboard/components/DashboardG
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
-import { getIsEditing } from "metabase/dashboard/selectors";
 import type {
   DashboardFullscreenControls,
+  DashboardNightModeControls,
   DashboardRefreshPeriodControls,
   EmbedHideParameters,
-  DashboardNightModeControls,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
-import { useSelector } from "metabase/lib/redux";
 import ParametersS from "metabase/parameters/components/ParameterValueWidget.module.css";
 import type { DisplayTheme } from "metabase/public/lib/types";
 import { EmbeddingSdkMode } from "metabase/visualizations/click-actions/modes/EmbeddingSdkMode";
@@ -96,11 +94,9 @@ export function PublicOrEmbeddedDashboardView({
 } & DashboardRefreshPeriodControls &
   DashboardNightModeControls &
   DashboardFullscreenControls) {
-  const isEditing = useSelector(getIsEditing);
-
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
-      dashboardActionKeys={!isEditing ? DASHBOARD_DISPLAY_ACTIONS : null}
+      dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
       refreshPeriod={refreshPeriod}
       onRefreshPeriodChange={onRefreshPeriodChange}
       onFullscreenChange={onFullscreenChange}

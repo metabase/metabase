@@ -3,6 +3,7 @@ import type { JSX } from "react";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { t } from "ttag";
 
+import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/components/EditBar";
 import CS from "metabase/css/core/index.css";
@@ -24,6 +25,7 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { Collection, Dashboard } from "metabase-types/api";
 
 import {
@@ -84,14 +86,17 @@ export function DashboardHeaderView({
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
+  const { dashboardActions } = useInteractiveDashboardContext();
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+
   const _headerButtons = useMemo(
     () => (
       <HeaderButtonSection
         className="Header-buttonSection"
         isNavBarOpen={isNavBarOpen}
       >
-        {/*TODO: check if we are in the SDK context and remove excess buttons */}
         <DashboardHeaderButtonRow
+          dashboardActionKeys={dashboardActions}
           refreshPeriod={refreshPeriod}
           onRefreshPeriodChange={onRefreshPeriodChange}
           setRefreshElapsedHook={setRefreshElapsedHook}
@@ -101,12 +106,15 @@ export function DashboardHeaderView({
           onNightModeChange={onNightModeChange}
           hasNightModeToggle={hasNightModeToggle}
           isAnalyticsDashboard={isAnalyticsDashboard}
+          isEmbeddingSdk={isEmbeddingSdk}
         />
       </HeaderButtonSection>
     ),
     [
+      dashboardActions,
       hasNightModeToggle,
       isAnalyticsDashboard,
+      isEmbeddingSdk,
       isFullscreen,
       isNavBarOpen,
       isNightMode,

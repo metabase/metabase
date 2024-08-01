@@ -14,6 +14,7 @@ export type DashboardHeaderButtonRowProps = {
   collection?: Collection;
   isPublic?: boolean;
   isAnalyticsDashboard?: boolean;
+  isEmbeddingSdk: boolean;
 } & DashboardRefreshPeriodControls &
   DashboardFullscreenControls &
   DashboardNightModeControls;

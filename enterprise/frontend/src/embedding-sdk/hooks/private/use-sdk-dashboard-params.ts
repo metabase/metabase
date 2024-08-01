@@ -17,6 +17,7 @@ export type SdkDashboardDisplayProps = {
   withTitle?: boolean;
   withCardTitle?: boolean;
   withDownloads?: boolean;
+  withEdit?: boolean;
   hiddenParameters?: string[];
 };
 

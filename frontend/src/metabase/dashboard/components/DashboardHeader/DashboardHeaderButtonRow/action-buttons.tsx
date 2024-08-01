@@ -22,6 +22,7 @@ import {
   FullscreenToggle,
   getExtraButtons,
   NightModeToggleButton,
+  ExportAsPdfButton,
   shouldRenderSubscriptionButton,
 } from "../buttons";
 
@@ -52,6 +53,7 @@ export const DASHBOARD_ACTION = {
   DASHBOARD_INFO: "DASHBOARD_INFO",
   DASHBOARD_ACTION_MENU: "DASHBOARD_ACTION_MENU",
   FULLSCREEN_ANALYTICS_DASHBOARD: "FULLSCREEN_ANALYTICS_DASHBOARD",
+  EXPORT_AS_PDF: "EXPORT_AS_PDF",
 } as const;
 
 export const dashboardActionButtons: Record<
@@ -168,7 +170,8 @@ export const dashboardActionButtons: Record<
         onFullscreenChange={onFullscreenChange}
       />
     ),
-    enabled: ({ isFullscreen, isPublic }) => isPublic || isFullscreen,
+    enabled: ({ isFullscreen, isPublic, isEmbeddingSdk }) =>
+      isPublic || isFullscreen || isEmbeddingSdk,
   },
   [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
     component: DashboardBookmark,
@@ -177,6 +180,10 @@ export const dashboardActionButtons: Record<
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
     component: DashboardInfoButton,
     enabled: ({ isEditing }) => !isEditing,
+  },
+  [DASHBOARD_ACTION.EXPORT_AS_PDF]: {
+    component: ExportAsPdfButton,
+    enabled: ({ isEditing, isEmbeddingSdk }) => !isEditing && isEmbeddingSdk,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
     component: withRouter<HeaderButtonProps>(

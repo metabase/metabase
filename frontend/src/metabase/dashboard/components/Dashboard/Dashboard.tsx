@@ -106,7 +106,7 @@ export type DashboardProps = {
   closeSidebar: () => void;
 
   closeNavbar: () => void;
-  setErrorPage: (error: unknown) => void;
+  onSetErrorPage: (error: unknown) => void;
   onChangeLocation: (location: Location) => void;
 
   setParameterName: (id: ParameterId, name: string) => void;
@@ -192,7 +192,7 @@ function Dashboard(props: DashboardProps) {
     parameterValues,
     selectedTabId,
     setEditingDashboard,
-    setErrorPage,
+    onSetErrorPage,
     setSharing,
     toggleSidebar,
     parameterQueryParams,
@@ -258,7 +258,7 @@ function Dashboard(props: DashboardProps) {
       });
 
       if (!isSuccessfulFetchDashboardResult(result)) {
-        setErrorPage(result.payload);
+        onSetErrorPage(result.payload);
         return;
       }
 
@@ -277,7 +277,7 @@ function Dashboard(props: DashboardProps) {
         }
       } catch (error) {
         if (error instanceof Response && error.status === 404) {
-          setErrorPage({ ...error, context: "dashboard" });
+          onSetErrorPage({ ...error, context: "dashboard" });
         } else {
           console.error(error);
           setError(error);
@@ -294,7 +294,7 @@ function Dashboard(props: DashboardProps) {
       onRefreshPeriodChange,
       parameterQueryParams,
       setEditingDashboard,
-      setErrorPage,
+      onSetErrorPage,
     ],
   );
 

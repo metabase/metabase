@@ -23,6 +23,7 @@ export const DashboardHeaderButtonRow = ({
   dashboardActionKeys = null,
   isPublic = false,
   isAnalyticsDashboard = false,
+  isEmbeddingSdk = false,
   ...props
 }: {
   dashboardActionKeys?: DashboardActionKey[] | null;
@@ -61,6 +62,7 @@ export const DashboardHeaderButtonRow = ({
             formInput,
             isAdmin,
             isPublic,
+            isEmbeddingSdk,
             ...props,
           };
 
