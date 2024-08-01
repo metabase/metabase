@@ -55,11 +55,11 @@ export const getColumnSettings = (
   settings: VisualizationSettings,
   column: Pick<DatasetColumn, "name" | "field_ref">,
 ) => {
-  return getObjectColumnSettings(settings.column_settings ?? {}, column);
+  return getObjectColumnSettings(settings.column_settings, column);
 };
 
 export const getObjectColumnSettings = (
-  settings: Record<string, ColumnSettings>,
+  settings: Record<string, ColumnSettings> | null | undefined,
   column: Pick<DatasetColumn, "name" | "field_ref">,
 ) => {
   return (
