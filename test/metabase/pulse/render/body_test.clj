@@ -530,37 +530,57 @@
             (is (= (map :key (get-in funnel-card [:visualization_settings :funnel.rows]))
                    section-labels))))))))
 
-(deftest render-categorical-donut-test
-  (let [columns [{:name          "category",
-                  :display_name  "Category",
-                  :base_type     :type/Text
-                  :semantic_type nil}
-                 {:name          "NumPurchased",
-                  :display_name  "NumPurchased",
-                  :base_type     :type/Integer
-                  :semantic_type nil}]
-        render  (fn [rows & [viz-settings]]
-                  (body/render :categorical/donut :inline pacific-tz
-                               render.tu/test-card
-                               nil
-                               {:cols columns :rows rows :viz-settings viz-settings}))
-        prune   (fn prune [html-tree]
-                  (walk/prewalk (fn no-maps [x]
-                                  (if (vector? x)
-                                    (filterv (complement map?) x)
-                                    x))
-                                html-tree))]
-    (testing "Renders without error"
-      (let [rendered-info (render [[nil 10] ["Doohickey" 65] ["Widget" 25]] {:show_values true})]
-        (is (has-inline-image? rendered-info))))
-    (testing "Includes percentages"
-      (is (= [:div
-              [:img]
-              [:table
-               [:tr [:td [:span "•"]] [:td "(empty)"] [:td "10%"]]
-               [:tr [:td [:span "•"]] [:td "Doohickey"] [:td "65%"]]
-               [:tr [:td [:span "•"]] [:td "Widget"] [:td "25%"]]]]
-             (prune (:content (render [[nil 10] ["Doohickey" 65] ["Widget" 25]]))))))))
+(deftest render-pie-chart-test
+  (testing "The static-viz pie chart renders correctly."
+    (mt/dataset test-data
+      (let [q       {:database (mt/id)
+                     :type     :query
+                     :query
+                     {:source-table (mt/id :products)
+                      :aggregation  [[:count]]
+                      :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]}}
+            colours {:Doohickey "#AAAAAA"
+                     :Gadget    "#BBBBBB"
+                     :Gizmo     "#CCCCCC"
+                     :Widget    "#DDDDDD"}]
+        (mt/with-temp [:model/Card {card-a-id :id} {:name                   "not-a-crumble"
+                                                    :display                :pie
+                                                    :visualization_settings {:pie.colors colours}
+                                                    :dataset_query          q}
+                       :model/Card {card-b-id :id} {:name                   "maybe-a-donut"
+                                                    :display                :pie
+                                                    :visualization_settings {:pie.show_legend false
+                                                                             :pie.show_total  false
+                                                                             :pie.colors      colours}
+                                                    :dataset_query          q}]
+          (let [card-a-doc (render.tu/render-card-as-hickory card-a-id)
+                card-b-doc (render.tu/render-card-as-hickory card-b-id)]
+            ;; The test asserts that all 4 slices exist by seeing that each path element has the colour assigned to that category
+            ;; we should expect to see each of the 4 (and only those 4) colours.
+            ;; This is also true of the colours for the legend circle elements.
+            ;; When legend and Totals are disabled, we should expect those elements not to exist in the render
+            (doseq [[doc test-str expectations] [[card-a-doc "Renders with legend and 'total'."
+                                                  {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :total-els-text     #{"TOTAL"}}]
+                                                 [card-b-doc "Renders legend even if disabled in viz-settings, so that static pie charts are legible, but does not render total if it is disabled."
+                                                  {:legend-els-colours #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :slice-els-colours  #{"#AAAAAA" "#BBBBBB" "#CCCCCC" "#DDDDDD"}
+                                                   :total-els-text     #{}}]]]
+              (let [legend-elements (->> (hik.s/select (hik.s/tag :circle) doc)
+                                         (map #(get-in % [:attrs :fill]))
+                                         set)
+                    slice-elements  (->> (hik.s/select (hik.s/tag :path) doc)
+                                         (map #(get-in % [:attrs :fill]))
+                                         set)
+                    total-elements  (->> (hik.s/select (hik.s/find-in-text #"TOTAL") doc)
+                                         (map (fn [el] (-> el :content first)))
+                                         set)]
+                (testing test-str
+                  (is (= expectations
+                         {:legend-els-colours legend-elements
+                          :slice-els-colours  slice-elements
+                          :total-els-text     total-elements})))))))))))
 
 (deftest render-progress
   (let [col [{:name          "NumPurchased",
@@ -578,23 +598,6 @@
     (testing "Renders negative value without error"
       (let [rendered-info (render [[-25]])]
         (is (has-inline-image? rendered-info))))))
-
-(def donut-info #'body/donut-info)
-
-(deftest ^:parallel donut-info-test
-  (let [rows [["a" 45] ["b" 45] ["c" 5] ["d" 5]]]
-    (testing "If everything is above the threshold does nothing"
-      (is (= rows (:rows (donut-info 4 rows)))))
-    (testing "Collapses smaller sections below threshold"
-      (is (= [["a" 45] ["b" 45] ["Other" 10]]
-             (:rows (donut-info 5 rows)))))
-    (testing "Computes percentages"
-      (is (= {"a" "45%" "b" "45%" "Other" "10%"}
-             (:percentages (donut-info 5 rows)))))
-    (testing "Includes zero percent rows"
-      (let [rows [["a" 50] ["b" 50] ["d" 0]]]
-        (is (= {"a" "50%" "b" "50%" "Other" "0%"}
-               (:percentages (donut-info 5 rows))))))))
 
 (deftest ^:parallel format-percentage-test
   (are [value expected] (= expected

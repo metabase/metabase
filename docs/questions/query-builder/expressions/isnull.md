@@ -141,7 +141,7 @@ case(isnull([Feedback]), "Unknown feedback.", [Feedback])
 
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
-[data-types]: https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types
+[data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types
 [notebook-editor-def]: https://www.metabase.com/glossary/query_builder
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/

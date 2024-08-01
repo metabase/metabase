@@ -290,6 +290,10 @@
   [[_tag field n unit options]]
   (lib.options/ensure-uuid [:time-interval (or options {}) (->pMBQL field) n unit]))
 
+(defmethod ->pMBQL :relative-time-interval
+  [[_tag & [_column _value _bucket _offset-value _offset-bucket :as args]]]
+  (lib.options/ensure-uuid (into [:relative-time-interval {}] (map ->pMBQL) args)))
+
 ;; `:offset` is the same in legacy and pMBQL, but we need to update the expr it wraps.
 (defmethod ->pMBQL :offset
   [[tag opts expr n, :as clause]]

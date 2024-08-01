@@ -159,6 +159,12 @@
        (maybe-normalize-token amount))
      (maybe-normalize-token unit)]))
 
+(defmethod normalize-mbql-clause-tokens :relative-time-interval
+  [[_ col & [_value _bucket _offset-value _offset-bucket :as args]]]
+  (into [:relative-time-interval (normalize-tokens col :ignore-path)]
+        (map maybe-normalize-token)
+        args))
+
 (defmethod normalize-mbql-clause-tokens :relative-datetime
   ;; Normalize a `relative-datetime` clause. `relative-datetime` comes in two flavors:
   ;;
