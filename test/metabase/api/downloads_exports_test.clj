@@ -551,14 +551,14 @@
                                                                             :query    {:source-table (mt/id :orders)}}
                                                             :visualization_settings
                                                             {:table.cell_column "SUBTOTAL"
-                                                             :column_settings   {"[\"name\",\"SUBTOTAL\"]"
+                                                             :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
                                                                                  {:column_title "SUB CASH MONEY"}}}}
                        :model/Dashboard {dashboard-id :id} {}
                        :model/DashboardCard dashcard {:dashboard_id dashboard-id
                                                       :card_id      card-id
                                                       :visualization_settings
                                                       {:table.cell_column "TOTAL"
-                                                       :column_settings   {"[\"name\",\"TOTAL\"]"
+                                                       :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
                                                                            {:column_title "CASH MONEY"}}}}]
           (let [card-result     (card-download card :csv true)
                 dashcard-result (dashcard-download dashcard :csv true)
@@ -581,14 +581,14 @@
                                                                            :query    {:source-table (mt/id :orders)}}
                                                            :visualization_settings
                                                            {:table.cell_column "SUBTOTAL"
-                                                            :column_settings   {"[\"name\",\"SUBTOTAL\"]"
+                                                            :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
                                                                                 {:column_title "SUB CASH MONEY"}}}}
                        :model/Dashboard {dashboard-id :id} {}
                        :model/DashboardCard dashcard  {:dashboard_id dashboard-id
                                                        :card_id      card-id
                                                        :visualization_settings
                                                        {:table.cell_column "TOTAL"
-                                                        :column_settings   {"[\"name\",\"TOTAL\"]"
+                                                        :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
                                                                             {:column_title "CASH MONEY"}}}}]
           (let [subscription-result (subscription-attachment! dashcard :csv true)
                 alert-result        (alert-attachment! card :csv true)
