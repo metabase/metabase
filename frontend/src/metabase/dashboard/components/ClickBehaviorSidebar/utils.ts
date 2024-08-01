@@ -1,7 +1,10 @@
 import { getIn } from "icepick";
 
 import type { IconName } from "metabase/ui";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import {
+  getColumnKey,
+  getLegacyColumnKey,
+} from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
   ClickBehaviorType,
   DatasetColumn,
@@ -23,10 +26,18 @@ export function getClickBehaviorForColumn(
   dashcard: DashboardCard,
   column: DatasetColumn,
 ) {
-  return getIn(dashcard, [
-    "visualization_settings",
-    "column_settings",
-    getColumnKey(column),
-    "click_behavior",
-  ]);
+  return (
+    getIn(dashcard, [
+      "visualization_settings",
+      "column_settings",
+      getColumnKey(column),
+      "click_behavior",
+    ]) ??
+    getIn(dashcard, [
+      "visualization_settings",
+      "column_settings",
+      getLegacyColumnKey(column),
+      "click_behavior",
+    ])
+  );
 }

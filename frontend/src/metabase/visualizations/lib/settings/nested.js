@@ -11,6 +11,7 @@ export function nestedSettings(
     objectName = "object",
     getObjects,
     getObjectKey,
+    getLegacyObjectKey = getObjectKey,
     getSettingDefinitionsForObject,
     getInheritedSettingsForObject = () => ({}),
     component,
@@ -39,10 +40,11 @@ export function nestedSettings(
     const allComputedSettings = {};
     for (const object of objects) {
       const key = getObjectKey(object);
+      const legacyKey = getLegacyObjectKey(object);
       allComputedSettings[key] = getComputedSettingsForObject(
         series,
         object,
-        allStoredSettings[key] || {},
+        allStoredSettings[key] ?? allStoredSettings[legacyKey] ?? {},
         extra,
       );
     }
@@ -110,9 +112,11 @@ export function nestedSettings(
         const cache = new Map();
         return object => {
           const key = getObjectKey(object);
+          const legacyKey = getLegacyObjectKey(object);
           if (!cache.has(key)) {
             const inheritedSettings = getInheritedSettingsForObject(object);
-            const storedSettings = settings[id][key] || {};
+            const storedSettings =
+              settings[id][key] ?? settings[id][legacyKey] ?? {};
             cache.set(key, {
               ...getComputedSettingsForObject(
                 series,
