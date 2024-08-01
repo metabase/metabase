@@ -480,7 +480,7 @@
              (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id))))))))
 
 (defn- date-str->unit-fn
-  "Return appropriate function for interval end adjustments in [[inclusive-datetime-range-end]]."
+  "Return appropriate function for interval end adjustments in [[exclusive-datetime-range-end]]."
   [date-str]
   (when date-str
     (if (re-matches shared.ut/local-date-regex date-str)
