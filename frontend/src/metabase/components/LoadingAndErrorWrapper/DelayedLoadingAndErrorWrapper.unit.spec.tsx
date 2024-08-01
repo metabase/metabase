@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "__support__/ui";
+import { render, screen } from "__support__/ui";
 
 import { DelayedLoadingAndErrorWrapper } from "./DelayedLoadingAndErrorWrapper";
 
@@ -20,12 +20,7 @@ describe("DelayedLoadingAndErrorWrapper", () => {
       );
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
-      await waitFor(
-        () => expect(screen.getByTestId("loader")).toBeInTheDocument(),
-        {
-          timeout: 150,
-        },
-      );
+      await screen.findByTestId("loader", undefined, { timeout: 150 });
     });
 
     it("should display a given child if loading is false", () => {
