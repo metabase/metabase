@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import ora from "ora";
 
-import type { CliStepMethod } from "embedding-sdk/cli/types/types";
+import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 
 const delay = (duration: number) =>
   new Promise(resolve => setTimeout(resolve, duration));

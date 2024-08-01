@@ -1,4 +1,4 @@
-import type { CliStepMethod } from "../types/types";
+import type { CliStepMethod } from "../types/cli";
 import { printEmptyLines, printTitle } from "../utils/print";
 
 export const showMetabaseCliTitle: CliStepMethod = state => {

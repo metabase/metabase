@@ -3,7 +3,7 @@ import ora from "ora";
 import { installSdk } from "embedding-sdk/cli/steps/install-sdk";
 import { getPackageVersion } from "embedding-sdk/cli/utils/get-package-version";
 
-import type { CliStepMethod } from "../types/types";
+import type { CliStepMethod } from "../types/cli";
 
 export const checkSdkAvailable: CliStepMethod = async state => {
   const spinner = ora("Checking if SDK is installed…").start();

@@ -1,3 +1,5 @@
+import type { CLI_STEPS } from "embedding-sdk/cli/run";
+
 export type CliState = Partial<{
   port: number;
   instanceUrl: string;
@@ -15,7 +17,7 @@ export type CliError = {
 
 export type CliSuccess = {
   type: "success";
-  nextStep?: CliStep;
+  nextStep?: keyof typeof CLI_STEPS;
 };
 
 export type CliDone = {
@@ -30,19 +32,3 @@ export type CliStepMethod = (
   state: CliState,
   ...options: any[]
 ) => CliOutput | Promise<CliOutput>;
-
-export const CLI_ORDER = [
-  "TITLE",
-  "CHECK_REACT_PROJECT",
-  "CHECK_SDK_VERSION",
-  "ADD_EMBEDDING_TOKEN",
-  "CHECK_DOCKER_RUNNING",
-  "GENERATE_CREDENTIALS",
-  "START_LOCAL_METABASE_CONTAINER",
-  "POLL_METABASE_INSTANCE",
-  "SETUP_METABASE_INSTANCE",
-  "CREATE_API_KEY",
-  "GET_CODE_SAMPLE",
-];
-
-export type CliStep = typeof CLI_ORDER[number];

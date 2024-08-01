@@ -5,7 +5,7 @@ import toggle from "inquirer-toggle";
 import ora from "ora";
 import { promisify } from "util";
 
-import type { CliStepMethod } from "embedding-sdk/cli/types/types";
+import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import {
   printEmptyLines,
   printInfo,

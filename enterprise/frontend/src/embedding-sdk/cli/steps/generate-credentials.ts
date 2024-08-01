@@ -2,7 +2,7 @@ import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
 
-import type { CliStepMethod } from "embedding-sdk/cli/types/types";
+import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import { generateRandomDemoPassword } from "embedding-sdk/cli/utils/generate-password";
 import { OUTPUT_STYLES, printEmptyLines } from "embedding-sdk/cli/utils/print";
 import { isEmail } from "metabase/lib/email";

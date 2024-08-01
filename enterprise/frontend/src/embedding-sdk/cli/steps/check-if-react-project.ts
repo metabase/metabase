@@ -11,7 +11,7 @@ import {
   hasPackageJson,
 } from "embedding-sdk/cli/utils/get-package-version";
 
-import type { CliStepMethod } from "../types/types";
+import type { CliStepMethod } from "../types/cli";
 
 const isReactVersionSupported = (version: string) =>
   semver.satisfies(semver.coerce(version)!, "18.x");

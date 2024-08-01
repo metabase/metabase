@@ -5,7 +5,7 @@ import fetch from "node-fetch";
 import ora from "ora";
 import { promisify } from "util";
 
-import type { CliOutput, CliStepMethod } from "embedding-sdk/cli/types/types";
+import type { CliOutput, CliStepMethod } from "embedding-sdk/cli/types/cli";
 import {
   OUTPUT_STYLES,
   printEmptyLines,
@@ -56,7 +56,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
     return [
       {
         type: "success",
-        nextStep: "START_LOCAL_METABASE_CONTAINER",
+        nextStep: "setupMetabaseInstance",
       },
       state,
     ];

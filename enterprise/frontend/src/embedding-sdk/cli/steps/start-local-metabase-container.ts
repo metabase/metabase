@@ -10,7 +10,7 @@ import {
   IMAGE_NAME,
 } from "embedding-sdk/cli/constants/config";
 import { METABASE_INSTANCE_DEFAULT_ENVS } from "embedding-sdk/cli/constants/env";
-import type { CliStepMethod } from "embedding-sdk/cli/types/types";
+import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import { getLocalMetabaseContainer } from "embedding-sdk/cli/utils/get-local-metabase-container";
 import { checkIsPortTaken } from "embedding-sdk/cli/utils/is-port-taken";
 import { printInfo, printSuccess } from "embedding-sdk/cli/utils/print";
@@ -92,10 +92,16 @@ export const startLocalMetabaseContainer: CliStepMethod = async state => {
       port = randInt(3000, 3500);
     }
 
-    // Pass default configuration as environment variables
-    const envFlags = Object.entries({
+    const envVars = {
       ...METABASE_INSTANCE_DEFAULT_ENVS,
-    })
+    };
+
+    if (state.token) {
+      envVars.MB_PREMIUM_EMBEDDING_TOKEN = state.token;
+    }
+
+    // Pass default configuration as environment variables
+    const envFlags = Object.entries(envVars)
       .map(([key, value]) => `-e ${key}='${value}'`)
       .join(" ");
 

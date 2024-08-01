@@ -2,7 +2,7 @@ import clipboard from "clipboardy";
 import toggle from "inquirer-toggle";
 
 import { getCodeSample } from "embedding-sdk/cli/constants/code-sample";
-import type { CliStepMethod } from "embedding-sdk/cli/types/types";
+import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import {
   printEmptyLines,
   printInfo,
@@ -43,6 +43,9 @@ export const generateCodeSample: CliStepMethod = async state => {
   } else {
     printSuccess(
       "Paste the code above into your React application to embed Metabase.",
+    );
+    printInfo(
+      "Then, put <Analytics /> in your component to view the dashboard!",
     );
   }
   return [

@@ -1,7 +1,7 @@
 import fetch from "node-fetch";
 import ora from "ora";
 
-import type { CliStepMethod } from "embedding-sdk/cli/types/types";
+import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 
 export const createApiKey: CliStepMethod = async state => {
   if (!state.instanceUrl || !state.cookie) {

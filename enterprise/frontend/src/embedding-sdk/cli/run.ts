@@ -1,3 +1,4 @@
+import { ANONYMOUS_TRACKING_INFO } from "embedding-sdk/cli/constants/messages";
 import { addEmbeddingToken } from "embedding-sdk/cli/steps/add-embedding-token";
 import { checkIsDockerRunning } from "embedding-sdk/cli/steps/check-docker-running";
 import { createApiKey } from "embedding-sdk/cli/steps/create-api-key";
@@ -9,35 +10,30 @@ import { showMetabaseCliTitle } from "embedding-sdk/cli/steps/show-metabase-cli-
 import { startLocalMetabaseContainer } from "embedding-sdk/cli/steps/start-local-metabase-container";
 import { printEmptyLines, printInfo } from "embedding-sdk/cli/utils/print";
 
-import { ANONYMOUS_TRACKING_INFO } from "./constants/messages";
 import { checkIfReactProject } from "./steps/check-if-react-project";
 import { checkSdkAvailable } from "./steps/check-sdk-available";
-import {
-  CLI_ORDER,
-  type CliOutput,
-  type CliStep,
-  type CliStepMethod,
-} from "./types/types";
+import type { CliState } from "./types/cli";
 
-export const CLI_STEPS: Record<CliStep, CliStepMethod> = {
-  TITLE: showMetabaseCliTitle,
-  CHECK_REACT_PROJECT: checkIfReactProject,
-  CHECK_SDK_VERSION: checkSdkAvailable,
-  ADD_EMBEDDING_TOKEN: addEmbeddingToken,
-  CHECK_DOCKER_RUNNING: checkIsDockerRunning,
-  GENERATE_CREDENTIALS: generateCredentials,
-  START_LOCAL_METABASE_CONTAINER: startLocalMetabaseContainer,
-  POLL_METABASE_INSTANCE: pollMetabaseInstance,
-  SETUP_METABASE_INSTANCE: setupMetabaseInstance,
-  CREATE_API_KEY: createApiKey,
-  GET_CODE_SAMPLE: generateCodeSample,
+export const CLI_STEPS = {
+  showMetabaseCliTitle,
+  checkIfReactProject,
+  checkSdkAvailable,
+  addEmbeddingToken,
+  checkIsDockerRunning,
+  generateCredentials,
+  startLocalMetabaseContainer,
+  pollMetabaseInstance,
+  setupMetabaseInstance,
+  createApiKey,
+  generateCodeSample,
 };
 
-export const runCli = async () => {
-  let state = {};
-  for (let i = 0; i < CLI_ORDER.length; i++) {
-    const step = CLI_ORDER[i];
-    const [output, newState]: CliOutput = await CLI_STEPS[step](state);
+export async function runCli() {
+  let state: CliState = {};
+
+  for (let i = 0; i < Object.values(CLI_STEPS).length; i++) {
+    const step = Object.values(CLI_STEPS)[i];
+    const [output, nextState] = await step(state);
 
     if (output.type === "error") {
       console.error(output.message);
@@ -45,15 +41,22 @@ export const runCli = async () => {
     }
 
     if (output.type === "success" && output.nextStep) {
-      i = CLI_ORDER.indexOf(output.nextStep) - 1;
+      i = Object.keys(CLI_STEPS).indexOf(output.nextStep) - 1;
     }
 
-    state = newState;
+    state = nextState;
   }
 
   printEmptyLines(2);
   console.log(ANONYMOUS_TRACKING_INFO);
 
+  if (!state.token) {
+    printEmptyLines(2);
+    printInfo(
+      "Don't forget to add your premium token to your Metabase instance in the admin settings!",
+    );
+  }
+
   printEmptyLines(2);
   printInfo("All done! 🚀 You can now embed Metabase into your React app.");
-};
+}
