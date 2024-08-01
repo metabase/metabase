@@ -153,6 +153,33 @@ describe("scenarios > notebook > link to data source", () => {
       // Model is not dirty
       cy.findByTestId("qb-save-button").should("not.exist");
     });
+
+    it('should open the "trash" if the source question has been archived', () => {
+      createQuestion({
+        name: "Nested question based on a question",
+        query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
+      }).then(({ body: nestedQuestion }) => {
+        cy.log("Move the source question to the trash");
+        cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+          archived: true,
+        });
+
+        visitQuestion(nestedQuestion.id);
+      });
+
+      openNotebook();
+      getNotebookStep("data").findByText("Orders, Count").click(clickConfig);
+
+      cy.log('Make sure the source question opens in the "trash"');
+      cy.location("pathname").should(
+        "eq",
+        `/question/${ORDERS_COUNT_QUESTION_ID}-orders-count`,
+      );
+      cy.findByTestId("archive-banner").should(
+        "contain",
+        "This question is in the trash",
+      );
+    });
   });
 
   context("models", () => {
