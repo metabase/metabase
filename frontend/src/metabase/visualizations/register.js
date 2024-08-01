@@ -15,7 +15,7 @@ import { LineChart } from "./visualizations/LineChart";
 import { LinkViz } from "./visualizations/LinkViz";
 import { Map } from "./visualizations/Map";
 import ObjectDetail from "./visualizations/ObjectDetail";
-import PieChart from "./visualizations/PieChart";
+import { PieChart } from "./visualizations/PieChart";
 import PivotTable from "./visualizations/PivotTable";
 import Progress from "./visualizations/Progress";
 import RowChart from "./visualizations/RowChart";

@@ -265,6 +265,50 @@
        (finally
         (t2/delete! :model/Database (mt/id)))))))
 
+(deftest sync-indexes-top-level-and-nested-column-with-same-name-test
+  (mt/test-driver :mongo
+    (testing "when a table has fields at the top level and nested level with the same name
+             we shouldn't mistakenly mark both of them as indexed if one is(#46312)"
+      (mt/dataset (mt/dataset-definition "index-duplicate-name"
+                    ["top-level-indexed"
+                     [{:field-name "name" :indexed? true :base-type :type/Text}
+                      {:field-name "class" :indexed? false :base-type :type/Text}]
+                     [["Metabase" {"name" "Physics"}]]]
+                    ["nested-indexed"
+                     [{:field-name "name" :indexed? false :base-type :type/Text}
+                      {:field-name "class" :indexed? false :base-type :type/Text}]
+                     [["Metabase" {"name" "Physics"}]]])
+        (mongo.connection/with-mongo-database [db (mt/db)]
+          (mongo.util/create-index (mongo.util/collection db "nested-indexed") (array-map "class.name" 1)))
+       (sync/sync-database! (mt/db) {:scan :schema})
+       (testing "top level indexed, nested not"
+         (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
+                                      :table_id (mt/id :top-level-indexed) :name "name")]
+           (testing "sanity check that we have 2 `name` fields"
+             (is (= 2 (count name-fields))))
+
+           (testing "only the top level field is indexed"
+             (is (=? [{:name             "name"
+                       :parent_id        nil
+                       :database_indexed true}
+                      {:name             "name"
+                       :parent_id        (mt/malli=? int?)
+                       :database_indexed false}]
+                     (sort-by :parent_id name-fields))))))
+       (testing "nested field indexed, top level not"
+         (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
+                                      :table_id (mt/id :nested-indexed) :name "name")]
+           (testing "sanity check that we have 2 `name` fields"
+             (is (= 2 (count name-fields))))
+           (testing "only the nested field is indexed"
+             (is (=? [{:name             "name"
+                       :parent_id        nil
+                       :database_indexed false}
+                      {:name             "name"
+                       :parent_id        (mt/malli=? int?)
+                       :database_indexed true}]
+                     (sort-by :parent_id name-fields))))))))))
+
 (deftest describe-table-indexes-test
   (mt/test-driver :mongo
     (mt/dataset (mt/dataset-definition "indexing"
@@ -561,8 +605,8 @@
     (testing "make sure x-rays don't use features that the driver doesn't support"
       (is (empty?
            (lib.util.match/match-one (->> (magic/automagic-analysis (t2/select-one Field :id (mt/id :venues :price)) {})
-                                  :dashcards
-                                  (mapcat (comp :breakout :query :dataset_query :card)))
+                                      :dashcards
+                                      (mapcat (comp :breakout :query :dataset_query :card)))
              [:field _ (_ :guard :binning)]))))))
 
 (deftest no-values-test
