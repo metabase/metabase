@@ -1,4 +1,5 @@
 import {
+  ADMIN_PERSONAL_COLLECTION_ID,
   ORDERS_COUNT_QUESTION_ID,
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
@@ -266,6 +267,39 @@ describe("scenarios > notebook > link to data source", () => {
 
         // Model is not dirty
         cy.findByTestId("qb-save-button").should("not.exist");
+      });
+    });
+  });
+
+  context("permissions", () => {
+    it('should open the "trash" if the source question has been archived', () => {
+      createQuestion({
+        name: "Nested question based on a question",
+        query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
+      }).then(({ body: nestedQuestion }) => {
+        cy.log("Move the source question to admin's personal collection");
+        cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+          collection_id: ADMIN_PERSONAL_COLLECTION_ID,
+        });
+
+        cy.signInAsNormalUser();
+        visitQuestion(nestedQuestion.id);
+
+        cy.log("We should not even show the notebook icon");
+        cy.findByTestId("qb-header-action-panel")
+          .icon("notebook")
+          .should("not.exist");
+
+        cy.log(
+          "Even if user opens the notebook link directly, they should not see the source question. We open the entity picker instead",
+        );
+        cy.visit(`/question/${nestedQuestion.id}/notebook`);
+        cy.findByTestId("entity-picker-modal").within(() => {
+          cy.findByText("Pick your starting data").should("be.visible");
+          cy.findByLabelText("Close").click();
+        });
+
+        getNotebookStep("data").should("contain", "Pick your starting data");
       });
     });
   });
