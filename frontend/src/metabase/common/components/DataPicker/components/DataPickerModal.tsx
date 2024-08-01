@@ -124,9 +124,10 @@ export const DataPickerModal = ({
       }
 
       onChange(getQuestionVirtualTableId(item.id));
+      tryLogRecentItem(item);
       onClose();
     },
-    [onChange, onClose],
+    [onChange, onClose, tryLogRecentItem],
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
