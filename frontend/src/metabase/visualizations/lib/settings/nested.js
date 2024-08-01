@@ -43,7 +43,7 @@ export function nestedSettings(
       allComputedSettings[key] = getComputedSettingsForObject(
         series,
         object,
-        getObjectSettings(allStoredSettings, object),
+        getObjectSettings(allStoredSettings, object) ?? {},
         extra,
       );
     }
@@ -114,7 +114,8 @@ export function nestedSettings(
           const key = getObjectKey(object);
           if (!cache.has(key)) {
             const inheritedSettings = getInheritedSettingsForObject(object);
-            const storedSettings = getObjectSettings(settings[id], object);
+            const storedSettings =
+              getObjectSettings(settings[id], object) ?? {};
             cache.set(key, {
               ...getComputedSettingsForObject(
                 series,
