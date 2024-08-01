@@ -7,6 +7,7 @@ import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
+import { listChannels } from "metabase/api/channel";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
@@ -615,6 +616,7 @@ export function AlertEditSchedule({
 class AlertEditChannelsInner extends Component {
   componentDidMount() {
     this.props.fetchPulseFormInput();
+    this.props.fetchChannels();
   }
 
   // Technically pulse definition is equal to alert definition
@@ -632,7 +634,7 @@ class AlertEditChannelsInner extends Component {
   };
 
   render() {
-    const { alert, user, users, formInput } = this.props;
+    const { alert, user, users, formInput, channels } = this.props;
     return (
       <div className={cx(CS.mt4, CS.pt2)}>
         <h3
@@ -644,6 +646,7 @@ class AlertEditChannelsInner extends Component {
             pulseId={alert.id}
             pulseIsValid={true}
             formInput={formInput}
+            channels={channels}
             user={user}
             users={users}
             setPulse={this.onSetPulse}
@@ -665,9 +668,11 @@ export const AlertEditChannels = _.compose(
     (state, props) => ({
       user: getUser(state),
       formInput: getPulseFormInput(state),
+      channels: listChannels.select()(state)?.data || [],
     }),
     {
       fetchPulseFormInput,
+      fetchChannels: listChannels.initiate,
     },
   ),
 )(AlertEditChannelsInner);

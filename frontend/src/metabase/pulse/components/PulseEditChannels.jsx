@@ -21,6 +21,7 @@ import RecipientPicker from "./RecipientPicker";
 export const CHANNEL_ICONS = {
   email: "mail",
   slack: "slack",
+  http: "webhook",
 };
 
 const CHANNEL_NOUN_PLURAL = {
