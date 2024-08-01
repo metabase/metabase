@@ -26,7 +26,6 @@ import {
 import {
   getColumnKey,
   getObjectColumnSettings,
-  getLegacyColumnKey,
 } from "metabase-lib/v1/queries/utils/get-column-key";
 import {
   findColumnIndexesForColumnSettings,
@@ -72,7 +71,6 @@ export function columnSettings({
     getObjects: getColumns,
     getObjectKey: getColumnKey,
     getObjectSettings: getObjectColumnSettings,
-    getLegacyObjectKey: getLegacyColumnKey,
     getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
