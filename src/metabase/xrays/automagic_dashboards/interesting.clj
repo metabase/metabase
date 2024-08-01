@@ -46,6 +46,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -108,21 +109,19 @@
                                    :type/DateTime
                                    ((juxt :earliest :latest))
                                    (map u.date/parse))
-        date?             (isa? (:base_type field) :type/Date)
-        date-time?        (isa? (:base_type field) :type/DateTime)
-        time?             (isa? (:base_type field) :type/Time)]
+        can-use?  #(mbql.s/valid-temporal-unit-for-base-type? (:base_type field) %)]
     (if (and earliest latest)
       (let [duration      (u.date/period-duration earliest latest)
             greater-than? #(u.date/greater-than-period-duration? % duration)]
         (cond
-         ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
-         (and (or time? date-time?) (greater-than? (t/hours 3)))  :minute
-         (and (or time? date-time?) (greater-than? (t/days 7)))   :hour
-         (and (or date? date-time?) (greater-than? (t/months 6))) :day
-         (and (or date? date-time?) (greater-than? (t/years 10))) :month
-         (or date? date-time?)                                    :year
-         time?                                                    :hour))
-      (if time? :hour :day))))
+         ;; e.g. if [duration between earliest and latest] < 3 hours then use `:minute` resolution
+         (and (greater-than? (t/hours 3))  (can-use? :minute)) :minute
+         (and (greater-than? (t/days 7))   (can-use? :hour))   :hour
+         (and (greater-than? (t/months 6)) (can-use? :day))    :day
+         (and (greater-than? (t/years 10)) (can-use? :month))  :month
+         (can-use? :year) :year
+         (can-use? :hour) :hour))
+      (if (can-use? :day) :day :hour))))
 
 (defmethod ->reference [:mbql Field]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
