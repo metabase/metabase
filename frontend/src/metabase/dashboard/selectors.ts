@@ -43,6 +43,7 @@ import type {
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
   filtersToReset,
+  getMappedParametersIds,
   hasDatabaseActionsEnabled,
   isQuestionCard,
   isQuestionDashCard,
@@ -574,6 +575,23 @@ export const getCurrentTabDashcards = createSelector(
   },
 );
 
+export const getHiddenParameterSlugs = createSelector(
+  [getDashboardComplete, getParameters, getIsEditing],
+  (dashboard, parameters, isEditing) => {
+    if (isEditing || !dashboard) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const parameterIds = getMappedParametersIds(dashboard.dashcards);
+    const hiddenParameters = parameters.filter(
+      parameter => !parameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(parameter => parameter.slug).join(",");
+  },
+);
+
 export const getTabHiddenParameterSlugs = createSelector(
   [getParameters, getCurrentTabDashcards, getIsEditing],
   (parameters, currentTabDashcards, isEditing) => {
@@ -582,10 +600,7 @@ export const getTabHiddenParameterSlugs = createSelector(
       return undefined;
     }
 
-    const currentTabParameterIds = currentTabDashcards.flatMap(
-      (dc: DashboardCard) =>
-        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
-    );
+    const currentTabParameterIds = getMappedParametersIds(currentTabDashcards);
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
     );
@@ -654,7 +669,7 @@ export const getHasModelActionsEnabled = createSelector(
 );
 
 export const getVisibleValuePopulatedParameters = createSelector(
-  [getValuePopulatedParameters, getTabHiddenParameterSlugs],
+  [getValuePopulatedParameters, getHiddenParameterSlugs],
   getVisibleParameters,
 );
 

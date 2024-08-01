@@ -24,6 +24,7 @@ import type {
   Database,
   Dataset,
   EmbedDataset,
+  ParameterId,
   QuestionDashboardCard,
   VirtualCard,
   VirtualCardDisplay,
@@ -395,4 +396,13 @@ function wrapArray<T>(value: T | T[]): T[] {
     return value;
   }
   return [value];
+}
+
+export function getMappedParametersIds(
+  dashcards: DashboardCard[],
+): ParameterId[] {
+  return dashcards.flatMap((dashcard: DashboardCard) => {
+    const mappings = dashcard.parameter_mappings ?? [];
+    return mappings.map(parameter => parameter.parameter_id);
+  });
 }
