@@ -52,10 +52,10 @@ export const getLegacyColumnKey = (
 };
 
 export const getColumnSettings = (
-  settings: VisualizationSettings,
+  settings: VisualizationSettings | null | undefined,
   column: Pick<DatasetColumn, "name" | "field_ref">,
 ) => {
-  return getObjectColumnSettings(settings.column_settings, column);
+  return getObjectColumnSettings(settings?.column_settings, column);
 };
 
 export const getObjectColumnSettings = (
