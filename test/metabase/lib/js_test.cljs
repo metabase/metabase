@@ -395,6 +395,9 @@
     [:time-interval {} [:field {} int?] 10 :day]
     (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) 10 "day"] nil)
 
+    [:relative-time-interval {} [:field {} int?] 10 :day 10 :month]
+    (lib.js/expression-clause "time-interval" [(meta/field-metadata :products :created-at) 10 "day" 10 "month"] nil)
+
     [:relative-datetime {} :current :day]
     (lib.js/expression-clause "relative-datetime" ["current" "day"] nil)
 
