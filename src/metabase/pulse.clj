@@ -24,7 +24,9 @@
    [metabase.util.retry :as retry]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (io.github.resilience4j.retry Retry)))
 
 (set! *warn-on-reflection* true)
 
@@ -277,7 +279,7 @@
           send!       (fn []
                           (task-history/with-task-history {:task         "channel-send"
                                                            :task_details {:retry-config   (when retry/*retry-config*
-                                                                                            {:max-attempts (.. retry/*retry-config* getRetryConfig getMaxAttempts)})
+                                                                                            {:max-attempts (.. ^Retry retry/*retry-config* getRetryConfig getMaxAttempts)})
                                                                           :channel-type   (:type channel)
                                                                           :channel-id     (:id channel)
                                                                           :pulse-id       pulse-id
