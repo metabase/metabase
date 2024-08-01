@@ -171,8 +171,16 @@
   (let [parsers (map #(upload-parsing/upload-type->parser % settings) col-upload-types)]
     (for [row rows]
       (for [[value parser] (u/map-all vector row parsers)]
-        (when-not (str/blank? value)
-          (parser value))))))
+        (do
+          (when-not parser
+            (throw (ex-info (format "Column count in data (%s) exceeds the number of in the header (%s)"
+                                    (count rows)
+                                    (count parsers))
+                            {:settings settings
+                             :col-upload-types rows
+                             :row row})))
+          (when-not (str/blank? value)
+            (parser value)))))))
 
 (defn- remove-indices
   "Removes the elements at the given indices from the collection. Indices is a set."
@@ -217,6 +225,25 @@
       (throw (ex-info (tru "Unable to recognise file separator")
                       {:status-code 422}))))
 
+(defn- separator-priority
+  "Prefer separators according to the follow criteria, in order:
+
+   - Splitting the header at least once
+   - Giving a consistent column split for all the lines
+   - Not having more columns in any row than in the header
+   - The maximum number of column splits
+   - The number of fields in the header
+   - The precedence order in how we define them, e.g.. bias towards comma
+
+  This last preference is implicit in the order of [[separators]]"
+  [[header-column-count & data-row-column-counts]]
+  [(when header-column-count
+     (> header-column-count 1))
+   (apply = header-column-count data-row-column-counts)
+   (not (some #(> % header-column-count) data-row-column-counts))
+   (reduce max 0 data-row-column-counts)
+   header-column-count])
+
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
   Our heuristic is to use the separator that gives us the most number of columns.
@@ -232,23 +259,7 @@
                                      (csv/read-csv reader :separator s))
                                (catch Exception _e nil))))]
     (->> (map (juxt identity count-columns) separators)
-         ;; We cannot have more data columns than header columns
-         ;; We currently support files without any data rows, and these get a free pass.
-         (remove (fn [[_s [header-column-count & data-row-column-counts]]]
-                   (some #(> % header-column-count) data-row-column-counts)))
-         ;; Prefer separators according to the follow criteria, in order:
-         ;; - Splitting the header at least once
-         ;; - Giving a consistent column split for all the lines
-         ;; - The maximum number of column splits
-         ;; - The number of fields in the header
-         ;; - The precedence order in how we define them, e.g.. bias towards comma
-         (sort-by (fn [[_ [header-column-count & data-row-column-counts]]]
-                    [(when header-column-count
-                       (> header-column-count 1))
-                     (apply = header-column-count data-row-column-counts)
-                     (reduce max 0 data-row-column-counts)
-                     header-column-count])
-                  u/reverse-compare)
+         (sort-by (comp separator-priority second) u/reverse-compare)
          ffirst
          assert-inferred-separator)))
 
