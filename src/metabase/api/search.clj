@@ -20,7 +20,7 @@
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -572,7 +572,8 @@
            model-ancestors?
            table-db-id
            search-native-query
-           verified]}      :- [:map {:closed true}
+           verified
+           ids]}           :- [:map {:closed true}
                                [:search-string                                        [:maybe ms/NonBlankString]]
                                [:models                                               [:maybe [:set SearchableModel]]]
                                [:archived                            {:optional true} [:maybe :boolean]]
@@ -586,7 +587,8 @@
                                [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
                                [:search-native-query                 {:optional true} [:maybe true?]]
                                [:model-ancestors?                    {:optional true} [:maybe boolean?]]
-                               [:verified                            {:optional true} [:maybe true?]]]] :- SearchContext
+                               [:verified                            {:optional true} [:maybe true?]]
+                               [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]]] :- SearchContext
   (when (some? verified)
     (premium-features/assert-has-any-features
      [:content-verification :official-collections]
@@ -606,7 +608,11 @@
                  (some? limit)                              (assoc :limit-int limit)
                  (some? offset)                             (assoc :offset-int offset)
                  (some? search-native-query)                (assoc :search-native-query search-native-query)
-                 (some? verified)                           (assoc :verified verified))]
+                 (some? verified)                           (assoc :verified verified)
+                 (seq ids)                                  (assoc :ids ids))]
+    (when (and (seq ids)
+               (not= (count models) 1))
+      (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))
 
 ;; TODO maybe deprecate this and make it as a parameter in `GET /api/search/models`
@@ -650,6 +656,7 @@
   - `last_edited_by`: search for items last edited by a specific user
   - `search_native_query`: set to true to search the content of native queries
   - `verified`: set to true to search for verified items only (requires Content Management or Official Collections premium feature)
+  - `ids`: search for items with those ids, works iff single value passed to `models`
 
   Note that not all item types support all filters, and the results will include only models that support the provided filters. For example:
   - The `created-by` filter supports dashboards, models, actions, and cards.
@@ -657,7 +664,7 @@
 
   A search query that has both filters applied will only return models and cards."
   [q archived created_at created_by table_db_id models last_edited_at last_edited_by
-   filter_items_in_personal_collection model_ancestors search_native_query verified]
+   filter_items_in_personal_collection model_ancestors search_native_query verified ids]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
@@ -669,7 +676,8 @@
    last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    model_ancestors                     [:maybe :boolean]
    search_native_query                 [:maybe true?]
-   verified                            [:maybe true?]}
+   verified                            [:maybe true?]
+   ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]}
   (api/check-valid-page-params mw.offset-paging/*limit* mw.offset-paging/*offset*)
   (let [models-set (if (seq models)
                      (set models)
@@ -688,6 +696,7 @@
               :offset              mw.offset-paging/*offset*
               :model-ancestors?    model_ancestors
               :search-native-query search_native_query
-              :verified            verified}))))
+              :verified            verified
+              :ids                 (set ids)}))))
 
 (api/define-routes)
