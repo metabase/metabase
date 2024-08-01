@@ -1,7 +1,7 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 
 export const Container = styled.div`
@@ -22,12 +22,16 @@ export const TabButton = styled(Button)<TabButtonProps>`
   padding-right: 0;
   margin-left: ${space(2)};
   margin-right: ${space(2)};
-  border-bottom: ${({ selected }) =>
+  ${({ selected }) =>
     selected
-      ? "2px solid var(--mb-color-text-brand)"
-      : "2px solid transparent"};
-  color: ${({ selected }) =>
-    selected ? "var(--mb-color-text-brand)" : color("text-medium")};
+      ? css`
+          border-bottom: 2px solid var(--mb-color-text-brand);
+          color: var(--mb-color-text-brand);
+        `
+      : css`
+          border-bottom: 2px solid transparent;
+          color: var(--mb-color-text-secondary);
+        `}
 
   &:hover {
     background: none;
@@ -40,7 +44,7 @@ export const BackButton = styled(TabButton)`
   border: none;
   border-radius: 0;
   margin-left: ${space(1)};
-  color: var(--mb-color-text-medium);
+  color: var(--mb-color-text-secondary);
 
   &:hover {
     color: var(--mb-color-text-brand);
