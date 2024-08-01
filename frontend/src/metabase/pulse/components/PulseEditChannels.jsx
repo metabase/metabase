@@ -12,9 +12,13 @@ import SchedulePicker from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
-import { channelIsValid, createChannel } from "metabase/lib/pulse";
+import {
+  channelIsValid,
+  createChannel,
+  createWebhookChannel,
+} from "metabase/lib/pulse";
 import SlackChannelField from "metabase/sharing/components/SlackChannelField";
-import { Icon } from "metabase/ui";
+import { Icon, Button, Flex } from "metabase/ui";
 
 import RecipientPicker from "./RecipientPicker";
 
@@ -48,7 +52,7 @@ export default class PulseEditChannels extends Component {
   };
   static defaultProps = {};
 
-  addChannel(type) {
+  addChannel(type, webhook) {
     const { pulse, formInput } = this.props;
 
     const channelSpec = formInput.channels[type];
@@ -56,7 +60,12 @@ export default class PulseEditChannels extends Component {
       return;
     }
 
-    const channel = createChannel(channelSpec);
+    console.log(type, webhook);
+
+    const channel =
+      type === "http"
+        ? createWebhookChannel(channelSpec, webhook)
+        : createChannel(channelSpec);
 
     this.props.setPulse({ ...pulse, channels: pulse.channels.concat(channel) });
 
@@ -97,7 +106,7 @@ export default class PulseEditChannels extends Component {
     this.props.setPulse({ ...pulse, channels });
   }
 
-  toggleChannel(type, enable) {
+  toggleChannel(type, enable, webhook) {
     const { pulse } = this.props;
     if (enable) {
       if (pulse.channels.some(c => c.channel_type === type)) {
@@ -111,7 +120,7 @@ export default class PulseEditChannels extends Component {
           ),
         );
       } else {
-        this.addChannel(type);
+        this.addChannel(type, webhook);
       }
     } else {
       const channel = pulse.channels.find(
@@ -164,7 +173,7 @@ export default class PulseEditChannels extends Component {
       this.props.pulseIsValid && channelIsValid(channel, channelSpec);
 
     return (
-      <li key={index} className={CS.py2}>
+      <li key={`channel-${channelSpec}`} className={CS.py2}>
         {channelSpec.error && (
           <div className={cx(CS.pb2, CS.textBold, CS.textError)}>
             {channelSpec.error}
@@ -247,6 +256,7 @@ export default class PulseEditChannels extends Component {
 
   renderChannelSection(channelSpec) {
     const { pulse, user } = this.props;
+
     const channels = pulse.channels
       .map((c, i) => [c, i])
       .filter(([c, i]) => c.enabled && c.channel_type === channelSpec.type)
@@ -286,19 +296,70 @@ export default class PulseEditChannels extends Component {
     );
   }
 
+  renderWebhookSection(channels, channelSpec) {
+    const { pulse, testWebhook } = this.props;
+    console.log(pulse);
+
+    return channels.map(webhook => (
+      <li key={`webhook-${webhook.id}`} className={CS.borderRowDivider}>
+        <div
+          className={cx(CS.flex, CS.alignCenter, CS.p3, CS.borderRowDivider)}
+        >
+          <Icon className={cx(CS.mr1, CS.textLight)} name="webhook" size={28} />
+
+          <h2>{webhook.name}</h2>
+          <Flex className={CS.flexAlignRight} gap="0.5rem" align="center">
+            <Button
+              onClick={() =>
+                testWebhook({
+                  name: webhook.name,
+                  channels: [createWebhookChannel(channelSpec, webhook)],
+                  cards: [
+                    {
+                      id: pulse.card.id,
+                      include_csv: false,
+                      include_xls: false,
+                      dashboard_card_id: null,
+                    },
+                  ],
+                  skip_if_empty: false,
+                  alert_condition: "rows",
+                })
+              }
+              mr="0.5rem"
+            >
+              Test
+            </Button>
+            <Toggle
+              value={pulse.channels.some(
+                c => c.channel_id === webhook.id && c.enabled,
+              )}
+              onChange={value =>
+                this.toggleChannel(channelSpec.type, value, webhook)
+              }
+            />
+          </Flex>
+        </div>
+      </li>
+    ));
+  }
+
   render() {
-    const { formInput } = this.props;
+    const { formInput, channels: webhooks } = this.props;
 
     // Default to show the default channels until full formInput is loaded
-    const channels = formInput.channels || {
+    const formChannels = formInput.channels || {
       email: { name: t`Email`, type: "email" },
       slack: { name: t`Slack`, type: "slack" },
     };
     return (
       <ul className={cx(CS.bordered, CS.rounded, CS.bgWhite)}>
-        {Object.values(channels).map(channelSpec =>
-          this.renderChannelSection(channelSpec),
-        )}
+        {Object.values(formChannels).map(channelSpec => {
+          if (channelSpec.type === "http") {
+            return this.renderWebhookSection(webhooks, channelSpec);
+          }
+          return this.renderChannelSection(channelSpec);
+        })}
       </ul>
     );
   }

@@ -14,6 +14,7 @@ export type Channel = {
   schedule_frame?: null | "first";
   schedule_hour?: number | null;
   schedule_type?: "hourly" | "daily" | "weekly" | "monthly";
+  channel_id?: number;
 };
 
 type ChannelField = {

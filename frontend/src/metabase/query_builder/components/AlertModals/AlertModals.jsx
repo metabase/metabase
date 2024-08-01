@@ -7,7 +7,7 @@ import { t, jt, ngettext, msgid } from "ttag";
 import _ from "underscore";
 
 import { createAlert, deleteAlert, updateAlert } from "metabase/alert/alert";
-import { listChannels } from "metabase/api/channel";
+import { listChannels, testAlert } from "metabase/api";
 import ButtonWithStatus from "metabase/components/ButtonWithStatus";
 import ChannelSetupModal from "metabase/components/ChannelSetupModal";
 import DeleteModalWithConfirm from "metabase/components/DeleteModalWithConfirm";
@@ -634,7 +634,7 @@ class AlertEditChannelsInner extends Component {
   };
 
   render() {
-    const { alert, user, users, formInput, channels } = this.props;
+    const { alert, user, users, formInput, channels, testWebhook } = this.props;
     return (
       <div className={cx(CS.mt4, CS.pt2)}>
         <h3
@@ -655,6 +655,7 @@ class AlertEditChannelsInner extends Component {
             invalidRecipientText={domains =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`
             }
+            testWebhook={testWebhook}
           />
         </div>
       </div>
@@ -673,6 +674,7 @@ export const AlertEditChannels = _.compose(
     {
       fetchPulseFormInput,
       fetchChannels: listChannels.initiate,
+      testWebhook: testAlert.initiate,
     },
   ),
 )(AlertEditChannelsInner);

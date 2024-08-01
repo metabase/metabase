@@ -9,6 +9,7 @@ import {
 import type {
   Channel,
   ChannelSpec,
+  NotificationChannel,
   NotificationRecipient,
   Pulse,
   PulseParameter,
@@ -37,6 +38,11 @@ export function channelIsValid(channel: Channel, channelSpec: ChannelSpec) {
       return (
         channel.details?.channel &&
         fieldsAreValid(channel, channelSpec) &&
+        scheduleIsValid(channel)
+      );
+      case "http":
+      return (
+        channel.channel_id &&
         scheduleIsValid(channel)
       );
     default:
@@ -186,6 +192,19 @@ export function createChannel(channelSpec: ChannelSpec) {
     enabled: true,
     recipients: [],
     details: details,
+    schedule_type: channelSpec.schedules[0],
+    schedule_day: "mon",
+    schedule_hour: 8,
+    schedule_frame: "first",
+  };
+}
+
+export function createWebhookChannel(channelSpec: ChannelSpec, webhook: NotificationChannel){
+  return {
+    channel_type: "http",
+    channel_id: webhook.id,
+    enabled: true,
+    details: {},
     schedule_type: channelSpec.schedules[0],
     schedule_day: "mon",
     schedule_hour: 8,
