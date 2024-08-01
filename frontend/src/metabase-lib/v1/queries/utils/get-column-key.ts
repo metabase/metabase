@@ -63,6 +63,6 @@ export const getObjectColumnSettings = (
   column: Pick<DatasetColumn, "name" | "field_ref">,
 ) => {
   return (
-    settings?.[getColumnKey(column)] ?? settings?.[getLegacyColumnKey(column)]
+    settings?.[getLegacyColumnKey(column)] ?? settings?.[getColumnKey(column)]
   );
 };
