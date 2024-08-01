@@ -90,9 +90,9 @@ describe("scenarios > question > download", () => {
           accessed_via: "internal",
           export_type: fileType,
         });
-      });
 
-      dismissDownloadStatus();
+        dismissDownloadStatus();
+      });
     });
   });
 
