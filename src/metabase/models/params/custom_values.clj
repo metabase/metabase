@@ -72,8 +72,7 @@
                                         (-> card :dataset_query :query))]
                  ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
                  (-> inner-mbql
-                     (dissoc :aggregation)
-                     (dissoc :order-by)
+                     (dissoc :aggregation :order-by)
                      (assoc :breakout [value-field-ref])
                      (update :limit (fnil min *max-rows*) *max-rows*)
                      (update :filter (fn [old]
