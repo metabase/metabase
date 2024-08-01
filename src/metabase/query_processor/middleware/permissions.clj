@@ -41,7 +41,7 @@
   metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   [_query])
 
-(mu/defn ^:private check-card-read-perms
+(mu/defn- check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [database-id :- ::lib.schema.id/database
    card-id     :- ::lib.schema.id/card]

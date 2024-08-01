@@ -30,6 +30,7 @@ import {
   startNewQuestion,
   visitDashboard,
   visualize,
+  dismissDownloadStatus,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -90,6 +91,8 @@ describe("scenarios > question > download", () => {
           export_type: fileType,
         });
       });
+
+      dismissDownloadStatus();
     });
   });
 
@@ -133,6 +136,8 @@ describe("scenarios > question > download", () => {
         },
       );
 
+      dismissDownloadStatus();
+
       downloadAndAssert(
         {
           ...opts,
@@ -157,6 +162,8 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
+      dismissDownloadStatus();
+
       editDashboard();
 
       setFilter("ID");
@@ -180,6 +187,8 @@ describe("scenarios > question > download", () => {
       });
 
       assertOrdersExport(1);
+
+      dismissDownloadStatus();
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -253,6 +262,8 @@ describe("scenarios > question > download", () => {
                 assertSheetRowsCount(1)(sheet);
               },
             );
+
+            dismissDownloadStatus();
           });
         });
       });
@@ -360,6 +371,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
       expectGoodSnowplowEvent({
         event: "dashboard_pdf_exported",
         dashboard_id: dashboard.id,
+        dashboard_accessed_via: "internal",
       });
     });
   });

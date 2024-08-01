@@ -28,11 +28,12 @@ import {
   HistoryHeader,
 } from "./DashboardInfoSidebar.styled";
 
-type DashboardAttributeType = string | number | null | boolean;
-
 interface DashboardInfoSidebarProps {
   dashboard: Dashboard;
-  setDashboardAttribute: (name: string, value: DashboardAttributeType) => void;
+  setDashboardAttribute: <Key extends keyof Dashboard>(
+    attribute: Key,
+    value: Dashboard[Key],
+  ) => void;
 }
 
 export function DashboardInfoSidebar({

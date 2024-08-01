@@ -2,11 +2,13 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
+import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
@@ -14,6 +16,8 @@ import {
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
+import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
@@ -154,14 +158,17 @@ export const EmbedFrame = ({
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
 
   const saveAsPDF = async () => {
-    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-    await saveDashboardPdf(
-      cardNodeSelector,
-      name ?? t`Exported dashboard`,
-    ).then(() => {
-      // TODO: tracking
-      // trackExportDashboardToPDF(dashboard.id);
+    const dashboardAccessedVia = match(dashboard?.id)
+      .when(isJWT, () => "static-embed" as const)
+      .when(isUuid, () => "public-link" as const)
+      .otherwise(() => "sdk-embed" as const);
+
+    trackExportDashboardToPDF({
+      dashboardAccessedVia,
     });
+
+    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
+    await saveDashboardPdf(cardNodeSelector, name ?? t`Exported dashboard`);
   };
 
   return (

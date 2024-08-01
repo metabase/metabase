@@ -85,6 +85,8 @@ jobs:
     env:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
+      # make sure that builds on release branches get licenses, because we use them for releases
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
     steps:
       - uses: actions/checkout@v4
       - name: Prepare front-end environment
@@ -210,6 +212,21 @@ jobs:
           --browser ${{ steps.cypress-prep.outputs.chrome-path }}
         env:
           CYPRESS_QA_DB_MONGO: true
+
+      - name: Run Embedding SDK Storybook
+        if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
+        uses: ./.github/actions/run-embedding-sdk-storybook
+
+      - name: Run E2E tests for Embedding SDK
+        if: matrix.context == 'embedding-sdk' && github.event_name != 'schedule'
+        run: |
+          yarn run test-cypress-run \
+          --env grepTags="-@slow+-@flaky --@quarantine",grepOmitFiltered=true \
+          --folder 'embedding-sdk' \
+          --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+        env:
+          CYPRESS_IS_EMBEDDING_SDK: true
+        shell: bash
 
       - name: Upload Test Results
         uses: ./.github/actions/upload-test-results
