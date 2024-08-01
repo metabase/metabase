@@ -70,7 +70,8 @@
                                                  [:scan {:optional true} [:maybe [:enum :schema :full]]]]]]
    (sync-util/sync-operation :sync database (format "Sync %s" (sync-util/name-for-logging database))
      (->> (scan-phases scan)
-          (keep (partial do-phase! database))))))
+          (keep (partial do-phase! database))
+          (doall)))))
 
 (mu/defn sync-table!
   "Perform all the different sync operations synchronously for a given `table`. Since often called on a sequence of
