@@ -67,7 +67,7 @@ const chartSettingNestedSettings =
               getObjectKey(object),
               getObjectSettings(objectsSettings, object),
             ])
-            .filter(([key, settings]) => settings != null),
+            .filter(([_, settings]) => settings != null),
         );
         onChange({
           ...oldSettings,
