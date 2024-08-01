@@ -648,7 +648,7 @@
 (def default-sensitive-fields
   "Set of fields that should always be obfuscated in API responses, as they contain sensitive data."
   #{:password :pass :tunnel-pass :tunnel-private-key :tunnel-private-key-passphrase :access-token :refresh-token
-    :service-account-json})
+    :service-account-json :conn-uri})
 
 (defn sensitive-fields
   "Returns all sensitive fields that should be redacted in API responses for a given database. Calls get-sensitive-fields
