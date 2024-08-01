@@ -78,8 +78,11 @@
   "Given the format settings for a currency column, returns the symbol, code or name for the
   appropriate currency."
   [format-settings]
-  (let [currency-code (::mb.viz/currency format-settings "USD")]
-    (condp = (::mb.viz/currency-style format-settings "symbol")
+  (let [currency-code (or (::mb.viz/currency format-settings)
+                          (:currency format-settings "USD"))]
+    (condp = (or (::mb.viz/currency-style format-settings)
+                 (:currency_style format-settings)
+                 "symbol")
       "symbol"
       (if (currency/supports-symbol? currency-code)
         (get-in currency/currency [(keyword currency-code) :symbol])
@@ -104,9 +107,11 @@
                               (get col-settings' {::mb.viz/column-name id-or-name}))
           is-currency?    (or (isa? (:semantic_type col) :type/Currency)
                               (= (::mb.viz/number-style format-settings) "currency"))
-          merged-settings (if is-currency?
-                            (merge-global-settings format-settings :type/Currency)
-                            format-settings)
+          merged-settings (merge
+                           (:settings col)
+                           (if is-currency?
+                             (merge-global-settings format-settings :type/Currency)
+                             format-settings))
           column-title    (or (when format-rows? (::mb.viz/column-title merged-settings))
                               (:display_name col)
                               (:name col))]
