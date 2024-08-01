@@ -144,7 +144,7 @@
 
 (deftest field-filter-date-test
   (doseq [date-filter ["created_range" "created_my" "created_qy" "created_rel" "date_ao"]]
-    (is (= "SELECT * FROM people WHERE CAST(\"PUBLIC\".\"PEOPLE\".\"CREATED_AT\" AS date) BETWEEN ? AND ?"
+    (is (= "SELECT * FROM people WHERE \"PUBLIC\".\"PEOPLE\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"PEOPLE\".\"CREATED_AT\" < ?"
            (->sql (mt/native-query {:template-tags (tags date-filter)
                                     :query         (format "SELECT * FROM people WHERE {{%s}}" date-filter)}))))))
 
