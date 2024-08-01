@@ -574,7 +574,7 @@ export const getCurrentTabDashcards = createSelector(
   },
 );
 
-export const getHiddenParameterSlugs = createSelector(
+export const getTabHiddenParameterSlugs = createSelector(
   [getParameters, getCurrentTabDashcards, getIsEditing],
   (parameters, currentTabDashcards, isEditing) => {
     if (isEditing) {
@@ -654,7 +654,7 @@ export const getHasModelActionsEnabled = createSelector(
 );
 
 export const getVisibleValuePopulatedParameters = createSelector(
-  [getValuePopulatedParameters, getHiddenParameterSlugs],
+  [getValuePopulatedParameters, getTabHiddenParameterSlugs],
   getVisibleParameters,
 );
 

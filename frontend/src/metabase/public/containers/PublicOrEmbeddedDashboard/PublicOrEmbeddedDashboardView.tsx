@@ -123,7 +123,7 @@ export function PublicOrEmbeddedDashboardView({
       (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
     ).length > 0;
 
-  const hiddenParameterSlugs = getHiddenParameterSlugs({
+  const hiddenParameterSlugs = getTabHiddenParameterSlugs({
     parameters,
     dashboard,
     selectedTabId,
@@ -206,7 +206,7 @@ export function PublicOrEmbeddedDashboardView({
   );
 }
 
-function getHiddenParameterSlugs({
+function getTabHiddenParameterSlugs({
   parameters,
   dashboard,
   selectedTabId,
