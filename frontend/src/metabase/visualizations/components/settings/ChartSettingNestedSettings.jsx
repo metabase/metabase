@@ -76,10 +76,8 @@ const chartSettingNestedSettings =
           );
           if (editingObject) {
             const objectsSettings = this.props.value || {};
-            const objectSettings = getObjectSettings(
-              objectsSettings,
-              editingObject,
-            );
+            const objectSettings =
+              getObjectSettings(objectsSettings, editingObject) ?? {};
             const objectSettingsWidgets = getSettingsWidgetsForObject(
               series,
               editingObject,
