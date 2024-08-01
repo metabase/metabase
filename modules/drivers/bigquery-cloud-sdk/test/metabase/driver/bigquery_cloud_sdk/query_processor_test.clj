@@ -627,21 +627,38 @@
       :bigquery-cloud-sdk
       (mt/dataset
         attempted-murders
-        (doseq [:let [expectations {["Europe/Oslo" :date "2020-01-09"] #t"2020-01-09",
-                                    ["Europe/Oslo" :datetime "2020-01-09"] #t"2020-01-09T00:00",
-                                    ["Europe/Oslo" :datetime "2020-01-09T01:03"] #t"2020-01-09T01:03",
-                                    ["Europe/Oslo" :datetime_tz "2020-01-09"] #t"2020-01-09T01:00+01:00[Europe/Oslo]",
-                                    ["Europe/Oslo" :datetime_tz "2020-01-09T01:03"] #t"2020-01-09T02:03+01:00[Europe/Oslo]",
-                                    ["UTC" :date "2020-01-09"] #t"2020-01-09",
-                                    ["UTC" :datetime "2020-01-09"] #t"2020-01-09T00:00",
-                                    ["UTC" :datetime "2020-01-09T01:03"] #t"2020-01-09T01:03",
-                                    ["UTC" :datetime_tz "2020-01-09"] #t"2020-01-09T00:00Z[UTC]",
-                                    ["UTC" :datetime_tz "2020-01-09T01:03"] #t"2020-01-09T01:03Z[UTC]",
-                                    [nil :date "2020-01-09"] #t"2020-01-09"
-                                    [nil :datetime "2020-01-09"] #t"2020-01-09T00:00",
-                                    [nil :datetime "2020-01-09T01:03"] #t"2020-01-09T01:03",
-                                    [nil :datetime_tz "2020-01-09"] (t/offset-date-time (u.date/parse "2020-01-09T00:00Z"))
-                                    [nil :datetime_tz "2020-01-09T01:03"] #t"2020-01-09T01:03Z[UTC]"}]
+        (doseq [:let [expectations {["Europe/Oslo" :date "2020-01-09"]
+                                    [#t"2020-01-09"],
+                                    ["Europe/Oslo" :datetime "2020-01-09"]
+                                    [#t "2020-01-09T00:00" #t "2020-01-10T00:00"],
+                                    ["Europe/Oslo" :datetime "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03" #t "2020-01-09T01:04"],
+                                    ["Europe/Oslo" :datetime_tz "2020-01-09"]
+                                    [#t "2020-01-09T00:00+01:00[Europe/Oslo]" #t "2020-01-10T00:00+01:00[Europe/Oslo]"],
+                                    ["Europe/Oslo" :datetime_tz "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03+01:00[Europe/Oslo]" #t "2020-01-09T01:04+01:00[Europe/Oslo]"],
+
+                                    ["UTC" :date "2020-01-09"]
+                                    [#t"2020-01-09"],
+                                    ["UTC" :datetime "2020-01-09"]
+                                    [#t "2020-01-09T00:00" #t "2020-01-10T00:00"],
+                                    ["UTC" :datetime "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03" #t "2020-01-09T01:04"],
+                                    ["UTC" :datetime_tz "2020-01-09"]
+                                    [#t "2020-01-09T00:00Z[UTC]" #t "2020-01-10T00:00Z[UTC]"],
+                                    ["UTC" :datetime_tz "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03Z[UTC]" #t "2020-01-09T01:04Z[UTC]"],
+
+                                    [nil :date "2020-01-09"]
+                                    [#t"2020-01-09"]
+                                    [nil :datetime "2020-01-09"]
+                                    [#t "2020-01-09T00:00" #t "2020-01-10T00:00"],
+                                    [nil :datetime "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03" #t "2020-01-09T01:04"],
+                                    [nil :datetime_tz "2020-01-09"]
+                                    [#t "2020-01-09T00:00Z[UTC]" #t "2020-01-10T00:00Z[UTC]"]
+                                    [nil :datetime_tz "2020-01-09T01:03"]
+                                    [#t "2020-01-09T01:03Z[UTC]" #t "2020-01-09T01:04Z[UTC]"]}]
                 tz [nil "Europe/Oslo" "UTC"]
                 field [:date :datetime :datetime_tz]
                 value (cond-> ["2020-01-09"]
@@ -667,7 +684,7 @@
                                          :name "d"
                                          :target [:dimension [:template-tag "d"]]
                                          :value value}]}]
-                (is (= [expected] (:params (qp.compile/compile query))))))))))))
+                (is (= expected (:params (qp.compile/compile query))))))))))))
 
 (deftest current-datetime-honeysql-form-test
   (mt/test-driver :bigquery-cloud-sdk
