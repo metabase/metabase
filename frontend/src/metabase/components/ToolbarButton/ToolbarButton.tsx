@@ -1,9 +1,8 @@
 import type { ButtonHTMLAttributes, Ref, MouseEvent } from "react";
 import { forwardRef } from "react";
 
-import { color } from "metabase/lib/colors";
 import type { ActionIconProps, IconName } from "metabase/ui";
-import { ActionIcon, Icon, Tooltip } from "metabase/ui";
+import { ActionIcon, Box, Icon, Tooltip } from "metabase/ui";
 
 export type ToolbarButtonProps = {
   icon?: IconName;
@@ -55,7 +54,10 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
       {...actionIconProps}
     >
       {children ?? (
-        <Icon name={icon} color={isActive ? color("brand") : undefined} />
+        <Icon
+          name={icon}
+          color={isActive ? "var(--mb-color-brand)" : undefined}
+        />
       )}
     </ActionIcon>
   );
@@ -63,5 +65,9 @@ export const ToolbarButton = forwardRef(function ToolbarButton(
   if (!tooltipLabel) {
     return actionButton;
   }
-  return <Tooltip label={tooltipLabel}>{actionButton}</Tooltip>;
+  return (
+    <Tooltip label={tooltipLabel}>
+      <Box>{actionButton}</Box>
+    </Tooltip>
+  );
 });

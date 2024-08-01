@@ -5,17 +5,16 @@ import userEvent, {
 
 import { ToolbarButton, type ToolbarButtonProps } from "./ToolbarButton";
 
-describe("ToolbarButton", () => {
-  const defaultProps: ToolbarButtonProps = {
+const setup = (props: Partial<ToolbarButtonProps> = {}) => {
+  const mergedProps: ToolbarButtonProps = {
     "aria-label": "Test Button",
     icon: "gear",
+    ...props,
   };
+  render(<ToolbarButton {...mergedProps} />);
+};
 
-  const setup = (props: Partial<ToolbarButtonProps> = {}) => {
-    const mergedProps = { ...defaultProps, ...props };
-    render(<ToolbarButton {...mergedProps} />);
-  };
-
+describe("ToolbarButton", () => {
   describe("Rendering", () => {
     it("renders with default props", () => {
       setup();
