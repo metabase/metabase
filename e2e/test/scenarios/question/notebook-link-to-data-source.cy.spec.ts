@@ -319,5 +319,23 @@ describe("scenarios > notebook > link to data source", () => {
         getNotebookStep("data").should("contain", "Pick your starting data");
       });
     });
+
+    it("user with the curate collection permissions but without write query permissions shouldn't be able to see/open the source question", () => {
+      createQuestion({
+        name: "Nested question based on a question",
+        query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
+      }).then(({ body: nestedQuestion }) => {
+        cy.signIn("nodata");
+        visitQuestion(nestedQuestion.id);
+
+        cy.log("We should not even show the notebook icon");
+        cy.findByTestId("qb-header-action-panel")
+          .icon("notebook")
+          .should("not.exist");
+
+        // TODO update the following once metabase##46398 is fixed
+        // cy.visit(`/question/${nestedQuestion.id}/notebook`);
+      });
+    });
   });
 });
