@@ -105,7 +105,7 @@ export const getMultiSelectOverrides =
           fontWeight: "bold",
           fontSize: getSize({ size, sizes: theme.fontSizes }),
           borderRadius: theme.radius.xs,
-          color: "var(--mb-color-text-brand)",
+          color: "var(--mb-color-text-selected)",
           backgroundColor: "var(--mb-color-background-selected)",
         },
         defaultValueRemove: {

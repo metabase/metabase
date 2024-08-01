@@ -85,10 +85,15 @@ function ReduxDecorator(Story: Story, context: StoryContext) {
     }),
     parameters: {
       parameterValuesCache: {
-        [`{"paramId":"${PARAMETER_ID}","dashId":${DASHBOARD_ID}}`]: {
+        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID}}`]: {
           values: [["Doohickey"], ["Gadget"], ["Gizmo"], ["Widget"]],
           has_more_values: parameterType === "search" ? true : false,
         },
+        [`{"paramId":"${CATEGORY_FILTER.id}","dashId":${DASHBOARD_ID},"query":"g"}`]:
+          {
+            values: [["Gadget"], ["Gizmo"], ["Widget"]],
+            has_more_values: parameterType === "search" ? true : false,
+          },
       },
     },
   });
@@ -140,7 +145,12 @@ const DASHCARD_TABLE_ID = getNextId();
 const CARD_BAR_ID = getNextId();
 const CARD_TABLE_ID = getNextId();
 const TAB_ID = getNextId();
-const PARAMETER_ID = "param-hex";
+const CATEGORY_FILTER = createMockParameter({
+  id: "category-hex",
+  name: "Category",
+  slug: "category",
+});
+const DATE_FILTER_ID = "date-hex";
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
@@ -150,13 +160,6 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
     id: DASHBOARD_ID,
     name: "My dashboard",
     width: "full",
-    parameters: [
-      createMockParameter({
-        id: PARAMETER_ID,
-        name: "Category",
-        slug: "category",
-      }),
-    ],
     dashcards: [
       createMockDashboardCard({
         id: DASHCARD_BAR_ID,
@@ -167,10 +170,18 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
         parameter_mappings: [
           {
             card_id: CARD_BAR_ID,
-            parameter_id: PARAMETER_ID,
+            parameter_id: CATEGORY_FILTER.id,
             target: [
               "dimension",
               ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+            ],
+          },
+          {
+            card_id: CARD_BAR_ID,
+            parameter_id: DATE_FILTER_ID,
+            target: [
+              "dimension",
+              ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
             ],
           },
         ],
@@ -202,13 +213,13 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
   const PARAMETER_MAPPING: Record<ParameterType, UiParameter[]> = {
     text: getDashboardUiParameters(
       dashboard.dashcards,
-      dashboard.parameters,
+      [CATEGORY_FILTER],
       createMockMetadata({}),
       {},
     ),
     dropdown: getDashboardUiParameters(
       dashboard.dashcards,
-      dashboard.parameters,
+      [CATEGORY_FILTER],
       createMockMetadata({
         databases: [createSampleDatabase()],
       }),
@@ -216,10 +227,94 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
     ),
     search: getDashboardUiParameters(
       dashboard.dashcards,
-      dashboard.parameters,
+      [CATEGORY_FILTER],
       createMockMetadata({
         databases: [createSampleDatabase()],
       }),
+      {},
+    ),
+    date_all_options: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date all options",
+          sectionId: "date",
+          slug: "date_all_options",
+          type: "date/all-options",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
+    date_month_year: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date Month and Year",
+          sectionId: "date",
+          slug: "date_month_and_year",
+          type: "date/month-year",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
+    date_quarter_year: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date Quarter and Year",
+          sectionId: "date",
+          slug: "date_quarter_and_year",
+          type: "date/quarter-year",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
+    date_single: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date single",
+          sectionId: "date",
+          slug: "date_single",
+          type: "date/single",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
+    date_range: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date range",
+          sectionId: "date",
+          slug: "date_range",
+          type: "date/range",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
+    date_relative: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: DATE_FILTER_ID,
+          name: "Date relative",
+          sectionId: "date",
+          slug: "date_relative",
+          type: "date/relative",
+        }),
+      ],
+      createMockMetadata({}),
       {},
     ),
   };
@@ -233,7 +328,17 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
 
 type ArgType = Partial<ComponentProps<typeof PublicOrEmbeddedDashboardView>>;
 
-type ParameterType = "text" | "dropdown" | "search";
+type ParameterType =
+  | "text"
+  | "dropdown"
+  | "search"
+  | "date_all_options"
+  | "date_month_year"
+  | "date_quarter_year"
+  | "date_single"
+  | "date_range"
+  | "date_relative";
+
 const createDefaultArgs = (
   args: ArgType & { parameterType?: ParameterType } = {},
 ): ArgType & { parameterType: ParameterType } => {
@@ -249,6 +354,16 @@ const createDefaultArgs = (
     ...args,
   };
 };
+
+function getLastPopover() {
+  const lastPopover = Array.from(
+    document.documentElement.querySelectorAll(
+      '[data-element-id="mantine-popover"]',
+    ),
+  ).at(-1) as HTMLElement;
+
+  return within(lastPopover);
+}
 
 // Light theme
 export const LightThemeText = Template.bind({});
@@ -321,11 +436,15 @@ LightThemeParameterSearchWithValue.play = async ({ canvasElement }) => {
   await userEvent.click(filter);
 
   const documentElement = within(document.documentElement);
-  await userEvent.type(
-    documentElement.getByPlaceholderText("Search the list"),
-    "g",
-  );
+  const searchInput = documentElement.getByPlaceholderText("Search the list");
   await userEvent.click(documentElement.getByText("Widget"));
+  await userEvent.type(searchInput, "g");
+
+  const dropdown = getLastPopover();
+  (dropdown.getByText("Gadget").parentNode as HTMLElement).setAttribute(
+    "data-hovered",
+    "true",
+  );
 };
 
 // Dark theme
@@ -403,9 +522,314 @@ DarkThemeParameterSearchWithValue.play = async ({ canvasElement }) => {
   await userEvent.click(filter);
 
   const documentElement = within(document.documentElement);
-  await userEvent.type(
-    documentElement.getByPlaceholderText("Search the list"),
-    "g",
-  );
+  const searchInput = documentElement.getByPlaceholderText("Search the list");
   await userEvent.click(documentElement.getByText("Widget"));
+  await userEvent.type(searchInput, "g");
+
+  const dropdown = getLastPopover();
+  (dropdown.getByText("Gadget").parentNode as HTMLElement).setAttribute(
+    "data-hovered",
+    "true",
+  );
+};
+
+// Date filters
+
+// All options
+export const LightThemeDateFilterAllOptions = Template.bind({});
+LightThemeDateFilterAllOptions.args = createDefaultArgs({
+  parameterType: "date_all_options",
+});
+LightThemeDateFilterAllOptions.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date all options",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const today = popover.getByRole("button", { name: "Today" });
+  today.classList.add("pseudo-hover");
+};
+
+export const DarkThemeDateFilterAllOptions = Template.bind({});
+DarkThemeDateFilterAllOptions.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_all_options",
+});
+DarkThemeDateFilterAllOptions.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date all options",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const today = popover.getByRole("button", { name: "Today" });
+  today.classList.add("pseudo-hover");
+};
+
+// Month and Year
+export const LightThemeDateFilterMonthYear = Template.bind({});
+LightThemeDateFilterMonthYear.args = createDefaultArgs({
+  parameterType: "date_month_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-01",
+  },
+});
+LightThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Month and Year",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const month = popover.getByText("March");
+  month.classList.add("pseudo-hover");
+
+  await userEvent.click(
+    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+  );
+  const dropdown = getLastPopover();
+  dropdown
+    .getByRole("option", { name: "2023" })
+    .setAttribute("data-hovered", "true");
+};
+
+export const DarkThemeDateFilterMonthYear = Template.bind({});
+DarkThemeDateFilterMonthYear.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_month_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-01",
+  },
+});
+DarkThemeDateFilterMonthYear.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Month and Year",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const month = popover.getByText("March");
+  month.classList.add("pseudo-hover");
+
+  await userEvent.click(
+    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+  );
+  const dropdown = getLastPopover();
+  dropdown
+    .getByRole("option", { name: "2023" })
+    .setAttribute("data-hovered", "true");
+};
+
+// Quarter and Year
+export const LightThemeDateFilterQuarterYear = Template.bind({});
+LightThemeDateFilterQuarterYear.args = createDefaultArgs({
+  parameterType: "date_quarter_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "Q1-2024",
+  },
+});
+LightThemeDateFilterQuarterYear.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Quarter and Year",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const month = popover.getByText("Q2");
+  month.classList.add("pseudo-hover");
+};
+
+export const LightThemeDateFilterQuarterYearDropdown = Template.bind({});
+LightThemeDateFilterQuarterYearDropdown.args = createDefaultArgs({
+  parameterType: "date_quarter_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "Q1-2024",
+  },
+});
+LightThemeDateFilterQuarterYearDropdown.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Quarter and Year",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+
+  await userEvent.click(
+    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+  );
+  const dropdown = getLastPopover();
+  dropdown
+    .getByRole("option", { name: "2023" })
+    .setAttribute("data-hovered", "true");
+};
+
+export const DarkThemeDateFilterQuarterYear = Template.bind({});
+DarkThemeDateFilterQuarterYear.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_quarter_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "Q1-2024",
+  },
+});
+DarkThemeDateFilterQuarterYear.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Quarter and Year",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const month = popover.getByText("Q2");
+  month.classList.add("pseudo-hover");
+};
+
+export const DarkThemeDateFilterQuarterYearDropdown = Template.bind({});
+DarkThemeDateFilterQuarterYearDropdown.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_quarter_year",
+  parameterValues: {
+    [DATE_FILTER_ID]: "Q1-2024",
+  },
+});
+DarkThemeDateFilterQuarterYearDropdown.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date Quarter and Year",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+
+  await userEvent.click(
+    popover.getAllByDisplayValue("2024").at(-1) as HTMLElement,
+  );
+  const dropdown = getLastPopover();
+  dropdown
+    .getByRole("option", { name: "2023" })
+    .setAttribute("data-hovered", "true");
+};
+
+// Single date
+export const LightThemeDateFilterSingle = Template.bind({});
+LightThemeDateFilterSingle.args = createDefaultArgs({
+  parameterType: "date_single",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-06-01",
+  },
+});
+LightThemeDateFilterSingle.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date single",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover.getByText("15").classList.add("pseudo-hover");
+};
+
+export const DarkThemeDateFilterSingle = Template.bind({});
+DarkThemeDateFilterSingle.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_single",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-06-01",
+  },
+});
+DarkThemeDateFilterSingle.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date single",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover.getByText("15").classList.add("pseudo-hover");
+};
+
+// Range
+export const LightThemeDateFilterRange = Template.bind({});
+LightThemeDateFilterRange.args = createDefaultArgs({
+  parameterType: "date_range",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-06-01~2024-06-10",
+  },
+});
+LightThemeDateFilterRange.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date range",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover.getByText("15").classList.add("pseudo-hover");
+};
+
+export const DarkThemeDateFilterRange = Template.bind({});
+DarkThemeDateFilterRange.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_range",
+  parameterValues: {
+    [DATE_FILTER_ID]: "2024-06-01~2024-06-10",
+  },
+});
+DarkThemeDateFilterRange.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date range",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover.getByText("15").classList.add("pseudo-hover");
+};
+
+// Relative
+export const LightThemeDateFilterRelative = Template.bind({});
+LightThemeDateFilterRelative.args = createDefaultArgs({
+  parameterType: "date_relative",
+  parameterValues: {
+    [DATE_FILTER_ID]: "thisday",
+  },
+});
+LightThemeDateFilterRelative.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date relative",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover
+    .getByRole("button", { name: "Yesterday" })
+    .classList.add("pseudo-hover");
+};
+
+export const DarkThemeDateFilterRelative = Template.bind({});
+DarkThemeDateFilterRelative.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "date_relative",
+  parameterValues: {
+    [DATE_FILTER_ID]: "thisday",
+  },
+});
+DarkThemeDateFilterRelative.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Date relative",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  popover
+    .getByRole("button", { name: "Yesterday" })
+    .classList.add("pseudo-hover");
 };

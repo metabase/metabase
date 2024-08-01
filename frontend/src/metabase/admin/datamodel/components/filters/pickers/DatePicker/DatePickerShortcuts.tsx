@@ -12,7 +12,6 @@ import { ShortcutButton, Separator } from "./DatePickerShortcuts.styled";
 
 type Props = {
   className?: string;
-  primaryColor?: string;
   dateShortcutOptions?: DateShortcutOptions;
 
   filter: Filter;
@@ -29,7 +28,6 @@ export default function DatePickerShortcuts({
   dateShortcutOptions,
   onCommit,
   onBack,
-  primaryColor,
 }: Props) {
   const dimension = filter.dimension?.();
   let title = "";
@@ -55,7 +53,6 @@ export default function DatePickerShortcuts({
       {DAY_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
-          primaryColor={primaryColor}
           onClick={() => {
             onCommit(init(filter));
           }}
@@ -67,7 +64,6 @@ export default function DatePickerShortcuts({
       {MONTH_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
-          primaryColor={primaryColor}
           onClick={() => {
             onCommit(init(filter));
           }}
@@ -79,7 +75,6 @@ export default function DatePickerShortcuts({
       {MISC_OPTIONS.map(({ displayName, init }) => (
         <ShortcutButton
           key={displayName}
-          primaryColor={primaryColor}
           onClick={() => {
             onFilterChange(init(filter));
           }}

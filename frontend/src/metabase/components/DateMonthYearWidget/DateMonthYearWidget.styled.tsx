@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
@@ -29,10 +30,15 @@ export const MonthRoot = styled.div<MonthRootProps>`
   padding: 0.5rem 1rem;
   border-radius: 99px;
   color: ${props => props.isSelected && color("text-white")};
-  background-color: ${props => props.isSelected && color("brand")};
+  background-color: ${props =>
+    props.isSelected && "var(--mb-color-background-brand)"};
 
   &:hover {
-    background-color: ${props =>
-      !props.isSelected && "var(--mb-color-bg-light)"};
+    ${props =>
+      !props.isSelected &&
+      css`
+        color: var(--mb-color-text-selected);
+        background-color: var(--mb-color-background-selected);
+      `}
   }
 `;

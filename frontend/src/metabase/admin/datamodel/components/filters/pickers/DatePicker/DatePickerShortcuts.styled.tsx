@@ -2,16 +2,13 @@ import styled from "@emotion/styled";
 
 import Button from "metabase/core/components/Button";
 
-type ShortcutButtonProps = {
-  primaryColor?: string;
-};
-
-export const ShortcutButton = styled(Button)<ShortcutButtonProps>`
+export const ShortcutButton = styled(Button)`
+  transition: none;
   display: block;
   border: none;
 
   &:hover {
-    color: ${props => props.primaryColor || "var(--mb-color-brand)"};
+    color: var(--mb-color-text-brand);
     background: none;
   }
 `;

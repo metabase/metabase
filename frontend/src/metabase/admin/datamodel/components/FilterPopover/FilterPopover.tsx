@@ -286,7 +286,6 @@ export function FilterPopover({
           className={className}
           filter={filter}
           dateShortcutOptions={dateShortcutOptions}
-          primaryColor={primaryColor}
           minWidth={MIN_WIDTH}
           maxWidth={MAX_WIDTH}
           onBack={onBack}
