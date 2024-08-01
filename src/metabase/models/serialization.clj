@@ -700,7 +700,7 @@
         (-> (select-keys ingested (:copy spec))
             (into (for [[k transform] (:transform spec)
                         :when (not (::nested transform))
-                        :let [res ((:import transform) (get ingested k))]
+                        :let  [res ((:import transform) (get ingested k))]
                         ;; do not try to insert nil values if transformer returns nothing
                         :when res]
                     [k res])))))))
@@ -708,9 +708,9 @@
 (defn- spec-post-process! [model-name ingested instance]
   (binding [*current* instance]
     (let [spec (make-spec model-name nil)]
-      (doseq [[k [_ser des :as transform]] (:transform spec)
-              :when (::nested (meta transform))]
-        (des (get ingested k))))))
+      (doseq [[k transform] (:transform spec)
+              :when         (::nested transform)]
+        ((:import transform) (get ingested k))))))
 
 (defn default-load-one!
   "Default implementation of `load-one!`"
@@ -826,7 +826,7 @@
   [id model]
   (when id
     (let [model-name (name model)
-          model      (t2.model/resolve-model (symbol model-name))
+          ;;model      (t2.model/resolve-model (symbol model-name))
           entity     (t2/select-one model (first (t2/primary-keys model)) id)
           path       (when entity
                        (mapv :id (generate-path model-name entity)))]
@@ -850,8 +850,8 @@
   Unusual parameter order means this can be used as `(update x :some_id import-fk 'SomeModel)`."
   [eid model]
   (when eid
-    (let [model-name (name model)
-          model      (t2.model/resolve-model (symbol model-name))
+    (let [;;model-name (name model)
+          ;;model      (t2.model/resolve-model (symbol model-name))
           eid        (if (vector? eid)
                        (last eid)
                        eid)

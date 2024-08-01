@@ -377,12 +377,12 @@
   (let [table (serdes/load-find-local (pop path))]
     (t2/select-one Field :name (-> path last :id) :table_id (:id table))))
 
-(defmethod serdes/extract-query "Field" [_model-name _opts]
-  (let [d (t2/select Dimension)
+(defmethod serdes/extract-query "Field" [_model-name opts]
+  (let [d          (t2/select Dimension)
         dimensions (->> d
                         (group-by :field_id))]
     (eduction (map #(assoc % :dimensions (get dimensions (:id %))))
-              (t2/reducible-select Field))))
+              (t2/reducible-select Field {:where (:where opts true)}))))
 
 (defmethod serdes/dependencies "Field" [field]
   ;; Fields depend on their parent Table, plus any foreign Fields referenced by their Dimensions.
