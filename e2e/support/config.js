@@ -34,6 +34,12 @@ const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 const convertStringToInt = string =>
   string.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
+const CI_SPEC_PATTERN = "e2e/test/**/*.ci.cy.spec.{js,ts}";
+const LOCAL_SPEC_PATTERN = "e2e/test/**/*.cy.spec.{js,ts}";
+
+const isCI = process.env.CI === "1" || process.env.CI === "true";
+const specPattern = isCI ? CI_SPEC_PATTERN : LOCAL_SPEC_PATTERN;
+
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
@@ -155,7 +161,7 @@ const defaultConfig = {
   // New `specPattern` is the combination of the old:
   //   1. testFiles and
   //   2. integrationFolder
-  specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
+  specPattern,
   viewportHeight: 800,
   viewportWidth: 1280,
 };
