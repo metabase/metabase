@@ -47,22 +47,27 @@ export const DelayedLoadingAndErrorWrapper = ({
     return () => clearTimeout(timeout);
   }, [delay]);
 
+  // Handle error condition
   if (error) {
     return <LoadingAndErrorWrapper error={error} {...props} />;
   }
-  if (!loading) {
-    return <>{children}</>;
+
+  // Handle loading condition
+  if (loading) {
+    if (!showWrapper) {
+      // Don't show the wrapper yet, but make tests aware that things are loading
+      return <span data-testid="loading-indicator" />;
+    }
+    if (loader) {
+      return loader;
+    }
+    return (
+      <LoadingAndErrorWrapper error={error} loading={loading} {...props}>
+        {children}
+      </LoadingAndErrorWrapper>
+    );
   }
-  if (!showWrapper) {
-    // Don't show the wrapper yet, but make tests aware that things are loading
-    return <span data-testid="loading-indicator" />;
-  }
-  if (loader) {
-    return loader;
-  }
-  return (
-    <LoadingAndErrorWrapper error={error} loading={loading} {...props}>
-      {children}
-    </LoadingAndErrorWrapper>
-  );
+
+  // Happy path
+  return <>{children}</>;
 };
