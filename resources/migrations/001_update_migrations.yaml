@@ -6900,6 +6900,7 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:32
       author: noahmoss
       comment: Migrate download-results permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
       changes:
         - sqlFile:
             dbms: postgresql,h2
@@ -6923,6 +6924,7 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:33
       author: noahmoss
       comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
       changes:
         - sqlFile:
             dbms: postgresql,h2
@@ -7054,6 +7056,7 @@ databaseChangeLog:
                   name: db_id
               - column:
                   name: perm_value
+      rollback: # not needed
 
   - changeSet:
       id: v50.2024-02-26T22:15:53
@@ -7078,6 +7081,7 @@ databaseChangeLog:
                   name: table_id
               - column:
                   name: perm_value
+      rollback: # not needed
 
   - changeSet:
       id: v50.2024-02-26T22:15:54
