@@ -79,6 +79,7 @@ export function nestedSettings(
   // decorate with nested settings HOC
   const widget = chartSettingNestedSettings({
     getObjectKey,
+    getLegacyObjectKey,
     getSettingsWidgetsForObject,
   })(component);
 

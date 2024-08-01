@@ -11,7 +11,7 @@ import ChartSettingsWidget from "../ChartSettingsWidget";
  * @deprecated HOCs are deprecated
  */
 const chartSettingNestedSettings =
-  ({ getObjectKey, getSettingsWidgetsForObject }) =>
+  ({ getObjectKey, getLegacyObjectKey, getSettingsWidgetsForObject }) =>
   ComposedComponent =>
     class extends Component {
       constructor(props) {
@@ -56,8 +56,19 @@ const chartSettingNestedSettings =
       };
 
       handleChangeSettingsForObjectKey = (objectKey, changedSettings) => {
-        const { onChange } = this.props;
-        const objectsSettings = this.props.value || {};
+        const { objects, onChange } = this.props;
+
+        const object = objects.find(
+          object => getObjectKey(object) === objectKey,
+        );
+        const objectsSettings = { ...this.props.value };
+        if (object) {
+          const legacyObjectKey = getLegacyObjectKey(object);
+          if (objectKey !== legacyObjectKey) {
+            delete objectsSettings[getLegacyObjectKey(object)];
+          }
+        }
+
         const objectSettings = objectsSettings[objectKey] || {};
         const newSettings = updateSettings(objectSettings, changedSettings);
         onChange({
@@ -76,7 +87,10 @@ const chartSettingNestedSettings =
           );
           if (editingObject) {
             const objectsSettings = this.props.value || {};
-            const objectSettings = objectsSettings[editingObjectKey] || {};
+            const objectSettings =
+              objectsSettings[editingObjectKey] ||
+              objectsSettings[getLegacyObjectKey(editingObject)] ||
+              {};
             const objectSettingsWidgets = getSettingsWidgetsForObject(
               series,
               editingObject,
