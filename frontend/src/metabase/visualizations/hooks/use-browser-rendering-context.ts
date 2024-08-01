@@ -29,7 +29,7 @@ export const useBrowserRenderingContext = (
     const style = getVisualizationTheme({
       theme: theme.other,
       isDashboard,
-      isNightmode: isNightMode && isFullscreen,
+      isNightMode: isNightMode && isFullscreen,
     });
 
     return {
