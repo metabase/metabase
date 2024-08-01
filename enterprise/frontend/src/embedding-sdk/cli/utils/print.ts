@@ -4,7 +4,6 @@ const MAX_WIDTH = 80;
 
 export const OUTPUT_STYLES = {
   title: chalk.bold.bgHex("#509EE3").white,
-  // title: chalk.bold.hex("#509EE3"),
   version: chalk.hex("#509EE3"),
   link: chalk.underline.blueBright,
   error: chalk.red.bold,
