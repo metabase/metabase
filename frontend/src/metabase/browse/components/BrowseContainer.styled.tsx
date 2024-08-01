@@ -17,7 +17,6 @@ export const BrowseContainer = styled.div`
 `;
 
 export const BrowseSection = styled(Flex)`
-  max-width: 64rem;
   margin: 0 auto;
   width: 100%;
 `;

@@ -69,70 +69,73 @@ export const CollectionBreadcrumbsWithTooltip = ({
   const maxWidths = getBreadcrumbMaxWidths(shownCollections, 96, ellipsifyPath);
 
   return (
-    <Tooltip
-      label={pathString}
-      disabled={!isTooltipEnabled}
-      multiline
-      maw="20rem"
+    <ResponsiveContainer
+      aria-label={pathString}
+      data-testid={`breadcrumbs-for-collection: ${collection.name}`}
+      name={containerName}
+      w="auto"
     >
-      <ResponsiveContainer
-        aria-label={pathString}
-        data-testid={`breadcrumbs-for-collection: ${collection.name}`}
-        name={containerName}
-        w="auto"
-      >
-        <CollectionLink to={Urls.collection(collection)}>
-          <Flex
-            align="center"
-            w="100%"
-            lh="1"
-            style={{ flexFlow: "row nowrap" }}
+      <CollectionLink to={Urls.collection(collection)}>
+        <Flex
+          align="center"
+          w="100%"
+          lh="1"
+          style={{ flexFlow: "row nowrap" }}
+          data-testid="collection-breadcrumb-flex"
+        >
+          <CollectionsIcon
+            name="folder"
+            // Stopping propagation so that the parent <tr>'s onclick won't fire
+            onClick={(e: React.MouseEvent) => e.stopPropagation()}
+          />
+          <Tooltip
+            label={pathString}
+            disabled={!isTooltipEnabled}
+            multiline
+            maw="20rem"
           >
-            <CollectionsIcon
-              name="folder"
-              // Stopping propagation so that the parent <tr>'s onclick won't fire
-              onClick={(e: React.MouseEvent) => e.stopPropagation()}
-            />
-            {shownCollections.map((collection, index) => {
-              const key = `collection${collection.id}`;
-              return (
-                <BreadcrumbGroup
-                  spacing={0}
-                  key={key}
-                  // Stopping propagation so that the parent <tr>'s onclick won't fire
-                  onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                >
-                  {index > 0 && <PathSeparator />}
-                  <CollectionBreadcrumbsWrapper
-                    containerName={containerName}
-                    style={{ alignItems: "center" }}
-                    w="auto"
-                    display="flex"
+            <Flex wrap="nowrap">
+              {shownCollections.map((collection, index) => {
+                const key = `collection${collection.id}`;
+                return (
+                  <BreadcrumbGroup
+                    spacing={0}
+                    key={key}
+                    // Stopping propagation so that the parent <tr>'s onclick won't fire
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
                   >
-                    {index === 0 && !justOneShown && (
-                      <InitialEllipsis ref={initialEllipsisRef} />
-                    )}
-                    {index > 0 && ellipsifyPath && <Ellipsis />}
-                    <Breadcrumb
-                      maxWidth={maxWidths[index]}
-                      index={index}
-                      isSoleBreadcrumb={collections.length === 1}
+                    {index > 0 && <PathSeparator />}
+                    <CollectionBreadcrumbsWrapper
                       containerName={containerName}
-                      ref={(el: HTMLDivElement | null) =>
-                        el && ref.current.set(key, el)
-                      }
-                      key={collection.id}
+                      style={{ alignItems: "center" }}
+                      w="auto"
+                      display="flex"
                     >
-                      {getCollectionName(collection)}
-                    </Breadcrumb>
-                  </CollectionBreadcrumbsWrapper>
-                </BreadcrumbGroup>
-              );
-            })}
-          </Flex>
-        </CollectionLink>
-      </ResponsiveContainer>
-    </Tooltip>
+                      {index === 0 && !justOneShown && (
+                        <InitialEllipsis ref={initialEllipsisRef} />
+                      )}
+                      {index > 0 && ellipsifyPath && <Ellipsis />}
+                      <Breadcrumb
+                        maxWidth={maxWidths[index]}
+                        index={index}
+                        isSoleBreadcrumb={collections.length === 1}
+                        containerName={containerName}
+                        ref={(el: HTMLDivElement | null) =>
+                          el && ref.current.set(key, el)
+                        }
+                        key={collection.id}
+                      >
+                        {getCollectionName(collection)}
+                      </Breadcrumb>
+                    </CollectionBreadcrumbsWrapper>
+                  </BreadcrumbGroup>
+                );
+              })}
+            </Flex>
+          </Tooltip>
+        </Flex>
+      </CollectionLink>
+    </ResponsiveContainer>
   );
 };
 
