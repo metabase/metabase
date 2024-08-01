@@ -143,8 +143,8 @@ const buildNativePermission = (
       dbValue === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
         DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
       DATA_PERMISSION_OPTIONS.queryBuilder,
-      DATA_PERMISSION_OPTIONS.no,
       DATA_PERMISSION_OPTIONS.controlled,
+      DATA_PERMISSION_OPTIONS.no,
     ]),
     postActions: {
       controlled: () => navigateToGranularPermissions(groupId, entityId),

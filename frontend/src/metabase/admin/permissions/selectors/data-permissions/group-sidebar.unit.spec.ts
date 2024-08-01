@@ -111,16 +111,16 @@ describe("getGroupsDataPermissionEditor", () => {
         iconColor: "warning",
       },
       {
-        label: `No`,
-        value: DataPermissionValue.NO,
-        icon: "close",
-        iconColor: "danger",
-      },
-      {
         label: `Granular`,
         value: DataPermissionValue.CONTROLLED,
         icon: "permissions_limited",
         iconColor: "warning",
+      },
+      {
+        label: `No`,
+        value: DataPermissionValue.NO,
+        icon: "close",
+        iconColor: "danger",
       },
     ]);
 
