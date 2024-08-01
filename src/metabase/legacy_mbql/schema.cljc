@@ -858,6 +858,13 @@
   unit    [:ref ::RelativeDatetimeUnit]
   options (optional TimeIntervalOptions))
 
+(defclause ^:sugar relative-time-interval
+  col           Field
+  value         :int
+  bucket        [:ref ::RelativeDatetimeUnit]
+  offset-value  :int
+  offset-bucket [:ref ::RelativeDatetimeUnit])
+
 ;; A segment is a special `macro` that saves some pre-definied filter clause, e.g. [:segment 1]
 ;; this gets replaced by a normal Filter clause in MBQL macroexpansion
 ;;
@@ -890,7 +897,7 @@
               ;; filters drivers must implement
               and or not = != < > <= >= between starts-with ends-with contains
               ;; SUGAR filters drivers do not need to implement
-              does-not-contain inside is-empty not-empty is-null not-null time-interval segment)]])
+              does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval segment)]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])

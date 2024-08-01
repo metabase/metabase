@@ -196,6 +196,10 @@
     {{:query {"FILTER" ["time-interval" 10 -10 "day"]}}
      {:query {:filter [:time-interval 10 -10 :day]}}}
 
+    "relative-time-interval is correctly normalized"
+    {{:query {"FILTER" ["relative-time-interval" 10 "week" -10 "week"]}}
+     {:query {:filter [:relative-time-interval 10 :week -10 :week]}}}
+
     "make sure we support time-interval options"
     {["TIME_INTERVAL" 10 -30 "DAY" {"include_current" true}]
      [:time-interval 10 -30 :day {:include-current true}]}
