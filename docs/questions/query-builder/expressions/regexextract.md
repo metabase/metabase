@@ -43,7 +43,7 @@ Now, you can use **Campaign Name** in places where you need clean labels, such a
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `regexextract`  |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `regexextract`  |
 | ----------------------- | -------------------- |
 | String                  | ✅                   |
 | Number                  | ❌                   |

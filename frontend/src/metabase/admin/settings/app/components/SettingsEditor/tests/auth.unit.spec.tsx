@@ -8,9 +8,9 @@ import {
 import type { SetupOpts } from "./setup";
 import { setup } from "./setup";
 
-const setupPremium = (feature: string, opts?: SetupOpts) => {
+const setupPremium = async (feature: string, opts?: SetupOpts) => {
   setupGroupsEndpoint([createMockGroup()]);
-  setup({
+  await setup({
     ...opts,
     tokenFeatures: createMockTokenFeatures({
       [feature]: true,
@@ -21,7 +21,9 @@ const setupPremium = (feature: string, opts?: SetupOpts) => {
 
 describe("SettingsEditorApp", () => {
   it("shows JWT auth option", async () => {
-    setupPremium("sso_jwt", { initialRoute: "/admin/settings/authentication" });
+    await setupPremium("sso_jwt", {
+      initialRoute: "/admin/settings/authentication",
+    });
 
     expect(await screen.findByText("JWT")).toBeInTheDocument();
     expect(
@@ -32,7 +34,7 @@ describe("SettingsEditorApp", () => {
   });
 
   it("shows SAML auth option", async () => {
-    setupPremium("sso_saml", {
+    await setupPremium("sso_saml", {
       initialRoute: "/admin/settings/authentication",
     });
 
@@ -45,7 +47,7 @@ describe("SettingsEditorApp", () => {
   });
 
   it("lets users access JWT settings", async () => {
-    setupPremium("sso_jwt", {
+    await setupPremium("sso_jwt", {
       initialRoute: "/admin/settings/authentication/jwt",
     });
 
@@ -56,7 +58,7 @@ describe("SettingsEditorApp", () => {
   });
 
   it("lets users access SAML settings", async () => {
-    setupPremium("sso_saml", {
+    await setupPremium("sso_saml", {
       initialRoute: "/admin/settings/authentication/saml",
     });
 
@@ -69,7 +71,7 @@ describe("SettingsEditorApp", () => {
   });
 
   it("shows session timeout option", async () => {
-    setupPremium("session_timeout_config", {
+    await setupPremium("session_timeout_config", {
       initialRoute: "/admin/settings/authentication",
     });
 
