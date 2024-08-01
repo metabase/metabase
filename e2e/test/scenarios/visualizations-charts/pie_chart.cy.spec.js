@@ -6,6 +6,7 @@ import {
   popover,
   tableHeaderClick,
   pieSlices,
+  leftSidebar,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -57,6 +58,32 @@ describe("scenarios > visualizations > pie chart", () => {
       ["Gizmo", "false"],
       ["Widget", "false"],
     ].map(args => checkLegendItemAriaCurrent(args[0], args[1]));
+  });
+
+  it("should instantly toggle the total after changing the setting", () => {
+    visitQuestionAdhoc({
+      dataset_query: testQuery,
+      display: "pie",
+    });
+
+    cy.findByTestId("viz-settings-button").click();
+
+    leftSidebar().within(() => {
+      cy.findByText("Display").click();
+      cy.findByText("Show total").click();
+    });
+
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("TOTAL").should("not.exist");
+    });
+
+    leftSidebar().within(() => {
+      cy.findByText("Show total").click();
+    });
+
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("TOTAL").should("be.visible");
+    });
   });
 });
 
