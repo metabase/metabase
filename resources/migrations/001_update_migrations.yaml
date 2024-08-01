@@ -6848,9 +6848,22 @@ databaseChangeLog:
             onDelete: CASCADE
 
   - changeSet:
+      id: v50.2024-01-10T03:27:29.5
+      author: noahmoss
+      comment: Analyze permissions table (on postgresql) in preparation for subsequent migrations
+      validCheckSum: ANY
+      dbms: postgresql
+      runInTransaction: false
+      changes:
+        - sql: >
+            ANALYZE permissions;
+      rollback:
+
+  - changeSet:
       id: v50.2024-01-10T03:27:30
       author: noahmoss
       comment: Migrate data-access permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
       changes:
         - sqlFile:
             dbms: postgresql,h2
