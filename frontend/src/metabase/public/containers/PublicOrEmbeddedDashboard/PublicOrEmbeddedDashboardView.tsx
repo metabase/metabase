@@ -12,16 +12,15 @@ import type {
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
-import { getDashboardActions } from "metabase/dashboard/components/DashboardActions";
 import { DashboardGridConnected } from "metabase/dashboard/components/DashboardGrid";
+import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
+import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedHideDownloadButton,
   EmbedHideParameters,
-  EmbedThemeControls,
-  RefreshPeriod,
+  DashboardNightModeControls,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
@@ -59,24 +58,17 @@ export function PublicOrEmbeddedDashboardView({
   setParameterValue,
   setParameterValueToDefault,
   dashboardId,
+  background,
   bordered,
   titled,
   theme,
   hideParameters,
-  hideDownloadButton,
   navigateToNewCardFromDashboard,
   slowCards,
   cardTitled,
+  downloadsEnabled,
 }: {
   dashboard: Dashboard | null;
-  hasNightModeToggle?: boolean;
-  isFullscreen: boolean;
-  isNightMode: boolean;
-  onFullscreenChange: DashboardFullscreenControls["onFullscreenChange"];
-  onNightModeChange: EmbedThemeControls["onNightModeChange"];
-  onRefreshPeriodChange: DashboardRefreshPeriodControls["onRefreshPeriodChange"];
-  refreshPeriod: RefreshPeriod;
-  setRefreshElapsedHook: DashboardRefreshPeriodControls["setRefreshElapsedHook"];
   selectedTabId: SelectedTabId;
   parameters: UiParameter[];
   parameterValues: Record<string, ParameterValueOrArray>;
@@ -88,31 +80,34 @@ export function PublicOrEmbeddedDashboardView({
     typeof setParameterValueToDefaultDashboardAction
   >;
   dashboardId: DashboardId;
+  background: boolean;
   bordered: boolean;
   titled: boolean;
   theme: DisplayTheme;
   hideParameters: EmbedHideParameters;
-  hideDownloadButton: EmbedHideDownloadButton;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
   slowCards: Record<number, boolean>;
   cardTitled: boolean;
-}) {
-  const buttons = !isWithinIframe()
-    ? getDashboardActions({
-        dashboard,
-        hasNightModeToggle,
-        isFullscreen,
-        isNightMode,
-        onFullscreenChange,
-        onNightModeChange,
-        onRefreshPeriodChange,
-        refreshPeriod,
-        setRefreshElapsedHook,
-        isPublic: true,
-      })
-    : [];
+  downloadsEnabled: boolean;
+} & DashboardRefreshPeriodControls &
+  DashboardNightModeControls &
+  DashboardFullscreenControls) {
+  const buttons = !isWithinIframe() ? (
+    <DashboardHeaderButtonRow
+      dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
+      refreshPeriod={refreshPeriod}
+      onRefreshPeriodChange={onRefreshPeriodChange}
+      onFullscreenChange={onFullscreenChange}
+      setRefreshElapsedHook={setRefreshElapsedHook}
+      isFullscreen={isFullscreen}
+      hasNightModeToggle={hasNightModeToggle}
+      onNightModeChange={onNightModeChange}
+      isNightMode={isNightMode}
+      isPublic={true}
+    />
+  ) : null;
 
   const visibleDashcards = (dashboard?.dashcards ?? []).filter(
     dashcard => !isActionDashCard(dashcard),
@@ -131,6 +126,11 @@ export function PublicOrEmbeddedDashboardView({
     selectedTabId,
   });
 
+  const normalizedTheme = normalizeTheme({
+    theme,
+    background,
+  });
+
   return (
     <EmbedFrame
       name={dashboard && dashboard.name}
@@ -143,18 +143,17 @@ export function PublicOrEmbeddedDashboardView({
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
       enableParameterRequiredBehavior
-      actionButtons={
-        buttons.length > 0 && <div className={CS.flex}>{buttons}</div>
-      }
+      actionButtons={buttons ? <div className={CS.flex}>{buttons}</div> : null}
       dashboardTabs={
         dashboard?.tabs &&
         dashboard.tabs.length > 1 && <DashboardTabs dashboardId={dashboardId} />
       }
+      background={background}
       bordered={bordered}
       titled={titled}
-      theme={theme}
+      theme={normalizedTheme}
       hide_parameters={hideParameters}
-      hide_download_button={hideDownloadButton}
+      downloadsEnabled={downloadsEnabled}
     >
       <LoadingAndErrorWrapper
         className={cx({
@@ -194,6 +193,7 @@ export function PublicOrEmbeddedDashboardView({
                 withCardTitle={cardTitled}
                 clickBehaviorSidebarDashcard={null}
                 navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+                downloadsEnabled={downloadsEnabled}
               />
             </DashboardContainer>
           );
@@ -239,4 +239,22 @@ function getCurrentTabDashcards({
   return dashboard?.dashcards.filter(
     dashcard => dashcard.dashboard_tab_id === selectedTabId,
   );
+}
+
+/**
+ * When both `background: false` and `theme: "transparent"` options are supplied,
+ * the new behavior takes precedence (metabase#43838)
+ */
+function normalizeTheme({
+  theme,
+  background,
+}: {
+  theme: DisplayTheme;
+  background: boolean;
+}) {
+  if (!background && theme === "transparent") {
+    return "light";
+  }
+
+  return theme;
 }

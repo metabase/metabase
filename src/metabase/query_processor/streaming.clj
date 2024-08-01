@@ -109,7 +109,7 @@
                         deduped-cols)]
     [ordered-cols output-order]))
 
-(mu/defn ^:private streaming-rff :- ::qp.schema/rff
+(mu/defn- streaming-rff :- ::qp.schema/rff
   [results-writer :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)]
   (fn [{:keys [cols viz-settings] :as initial-metadata}]
     (let [[ordered-cols output-order] (order-cols cols viz-settings)
@@ -133,7 +133,7 @@
          (qp.si/write-row! results-writer row (dec (vswap! row-count inc)) ordered-cols viz-settings')
          metadata)))))
 
-(mu/defn ^:private streaming-result-fn :- fn?
+(mu/defn- streaming-result-fn :- fn?
   [results-writer   :- (lib.schema.common/instance-of-class metabase.query_processor.streaming.interface.StreamingResultsWriter)
    ^OutputStream os :- (lib.schema.common/instance-of-class OutputStream)]
   (let [orig qp.pipeline/*result*]

@@ -54,11 +54,12 @@ export const DASHBOARD_PDF_EXPORT_ROOT_ID =
   "Dashboard-Parameters-And-Cards-Container";
 
 export const DEFAULT_DASHBOARD_DISPLAY_OPTIONS: EmbedDisplayParams = {
+  background: true,
   bordered: false,
   titled: true,
   cardTitled: true,
-  hideDownloadButton: null,
   hideParameters: null,
   font: null,
   theme: "light",
+  downloadsEnabled: true,
 };

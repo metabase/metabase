@@ -32,7 +32,7 @@ title: DatetimeAdd
 
 `amount`:
 
-- A whole number or a decimal number.
+- An integer. You cannot use fractional values. For example, you cannot add "half a year" (0.5).
 - May be a negative number: `datetimeAdd("2021-03-25", -1, "month")` will return `2021-04-25`.
 
 ## Calculating an end date
@@ -75,7 +75,7 @@ case(between(now, [Opened On], [Finish By]), "Yes", "No")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeAdd` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeAdd` |
 | ------------------------------------------------------------------------------------------------ | ------------------------ |
 | String                                                                                           | ❌                       |
 | Number                                                                                           | ❌                       |

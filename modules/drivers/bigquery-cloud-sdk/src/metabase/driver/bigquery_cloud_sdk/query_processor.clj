@@ -44,7 +44,7 @@
    {:error/message "Valid BigQuery project-id"}
    valid-project-identifier?])
 
-(mu/defn ^:private project-id-for-current-query :- ProjectIdentifierString
+(mu/defn- project-id-for-current-query :- ProjectIdentifierString
   "Fetch the project-id for the current database associated with this query, if defined AND different from the
   project ID associated with the service account credentials."
   []
@@ -753,17 +753,37 @@
       (merge qualified
              (select-keys unqualified #{:group-by})))))
 
+(defn- adjust-order-by-clause
+  [[dir [_clause _id-or-name opts :as clause]]]
+  [dir
+   ;; Following code ensures that only selected columns (with exception of those comming from different source than
+   ;; this source table and having no binning and no bucketing) are forced to use aliases.
+   ;;
+   ;; This solves Bigquery's inability to use expression from group by in order by.
+   ;; ex: `select a + 1, b from T group by a + 1 order by a + 1 asc` would fail.
+   ;; vs: `select a + 1 as asdf, b from T group by a + 1 order by asdf asc` would not fail.
+   ;;
+   ;; Also it handles case as follows: `select b from T join U ... order by a`, where field a is in both T and U
+   ;; tables. Problem is solved by qualifying that order by field.
+   (if (and
+        (::add/desired-alias opts)
+        (or (not (pos-int? (::add/source-table opts)))
+            (:binning opts)
+            (:temporal-unit opts)))
+     (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
+     clause)])
+
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :asc]
   [driver clause]
   ((get-method sql.qp/->honeysql [:sql :asc])
    driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+   (adjust-order-by-clause clause)))
 
 (defmethod sql.qp/->honeysql [:bigquery-cloud-sdk :desc]
   [driver clause]
   ((get-method sql.qp/->honeysql [:sql :desc])
    driver
-   (sql.qp/rewrite-fields-to-force-using-column-aliases clause)))
+   (adjust-order-by-clause clause)))
 
 (defmethod temporal-type ::sql.qp/compiled
   [[_compiled x, :as form]]
@@ -935,10 +955,25 @@
         result              (parent-method driver field-filter)]
     (cond-> result
       field-temporal-type (update :prepared-statement-args (fn [args]
-                                                             (for [arg args]
-                                                               (if (instance? java.time.temporal.Temporal arg)
-                                                                 (->temporal-type field-temporal-type arg)
-                                                                 arg)))))))
+                                                             (let [request-time-zone-id (qp.timezone/requested-timezone-id)]
+                                                               (map (fn [arg]
+                                                                      (if (instance? java.time.temporal.Temporal arg)
+                                                                        ;; Since we add the zone as part of the
+                                                                        ;; LHS of the filter, we need to add the zone to
+                                                                        ;; the RHS as well.
+                                                                        (let [result (->temporal-type field-temporal-type arg)]
+                                                                          (cond
+                                                                            (or (not request-time-zone-id)
+                                                                                (not= :type/DateTimeWithLocalTZ (:base-type field)))
+                                                                            result
+
+                                                                            (instance? java.time.ZonedDateTime result)
+                                                                            (t/with-zone-same-instant result request-time-zone-id)
+
+                                                                            (instance? java.time.OffsetDateTime result)
+                                                                            (t/with-zone-same-instant (t/zoned-date-time result) request-time-zone-id)))
+                                                                        arg))
+                                                                    args)))))))
 
 (defmethod sql.qp/cast-temporal-string [:bigquery-cloud-sdk :Coercion/ISO8601->DateTime]
   [_driver _semantic_type expr]

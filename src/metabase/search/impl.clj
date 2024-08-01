@@ -8,6 +8,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
    [metabase.models.collection :as collection]
+   [metabase.models.collection.root :as collection.root]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
    [metabase.models.interface :as mi]
@@ -22,14 +23,13 @@
    [metabase.search.util :as search.util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.i18n :refer [tru deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
-   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +39,7 @@
    :keyword
    [:tuple :any :keyword]])
 
-(mu/defn ^:private ->column-alias :- keyword?
+(mu/defn- ->column-alias :- keyword?
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
   column name"
   [column-or-aliased :- HoneySQLColumn]
@@ -47,7 +47,7 @@
     (second column-or-aliased)
     column-or-aliased))
 
-(mu/defn ^:private canonical-columns :- [:sequential HoneySQLColumn]
+(mu/defn- canonical-columns :- [:sequential HoneySQLColumn]
   "Returns a seq of canonicalized list of columns for the search query with the given `model` Will return column names
   prefixed with the `model` name so that it can be used in criteria. Projects a `nil` for columns the `model` doesn't
   have and doesn't modify aliases."
@@ -77,7 +77,7 @@
          [:cast nil col-type])
        search-col])))
 
-(mu/defn ^:private select-clause-for-model :- [:sequential HoneySQLColumn]
+(mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `search.config/all-search-columns`."
@@ -87,12 +87,12 @@
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
-(mu/defn ^:private from-clause-for-model :- [:tuple [:tuple :keyword :keyword]]
+(mu/defn- from-clause-for-model :- [:tuple [:tuple :keyword :keyword]]
   [model :- SearchableModel]
   (let [{:keys [db-model alias]} (get search.config/model-to-db-model model)]
     [[(t2/table-name db-model) alias]]))
 
-(mu/defn ^:private base-query-for-model :- [:map {:closed true}
+(mu/defn- base-query-for-model :- [:map {:closed true}
                                             [:select :any]
                                             [:from :any]
                                             [:where :any]
@@ -155,7 +155,7 @@
                   [:not-like :collection.location (format "/%d/%%" id)]))
                [:= collection-id-col nil]))))))
 
-(mu/defn ^:private add-table-db-id-clause
+(mu/defn- add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
   [query :- ms/Map id :- [:maybe ms/PositiveInt]]
@@ -163,7 +163,7 @@
     (sql.helpers/where query [:= id :db_id])
     query))
 
-(mu/defn ^:private add-card-db-id-clause
+(mu/defn- add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
   [query :- ms/Map id :- [:maybe ms/PositiveInt]]
@@ -171,7 +171,7 @@
     (sql.helpers/where query [:= id :database_id])
     query))
 
-(mu/defn ^:private replace-select :- :map
+(mu/defn- replace-select :- :map
   "Replace a select from query that has alias is `target-alias` with [`with` `target-alias`] column, throw an error if
   can't find the target select.
 
@@ -195,7 +195,7 @@
                                                     :target-alias target-alias
                                                     :with         with})))))
 
-(mu/defn ^:private with-last-editing-info :- :map
+(mu/defn- with-last-editing-info :- :map
   [query :- :map
    model :- [:enum "card" "dashboard"]]
   (-> query
@@ -206,7 +206,7 @@
                               [:= :r.most_recent true]
                               [:= :r.model (search.config/search-model->revision-model model)]])))
 
-(mu/defn ^:private with-moderated-status :- :map
+(mu/defn- with-moderated-status :- :map
   [query :- :map
    model :- [:enum "card" "dataset"]]
   (-> query
@@ -221,7 +221,7 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
-(mu/defn ^:private shared-card-impl
+(mu/defn- shared-card-impl
   [model      :- :metabase.models.card/type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
@@ -432,7 +432,7 @@
                   (map :model)
                   set))))
 
-(mu/defn ^:private full-search-query
+(mu/defn- full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
   one model without errors. Therefore we degenerate it down for it"
   [search-ctx :- SearchContext]
@@ -443,7 +443,8 @@
       {:select [nil]}
 
       (= (count models) 1)
-      (search-query-for-model (first models) search-ctx)
+      (merge (search-query-for-model (first models) search-ctx)
+             {:limit search.config/*db-max-results*})
 
       :else
       {:select   [:*]
@@ -451,7 +452,8 @@
                                           :let  [query (search-query-for-model model search-ctx)]
                                           :when (seq query)]
                                       query))} :alias_is_required_by_sql_but_not_needed_here]]
-       :order-by order-clause})))
+       :order-by order-clause
+       :limit    search.config/*db-max-results*})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by from result."
@@ -470,48 +472,21 @@
 (defn add-dataset-collection-hierarchy
   "Adds `collection_effective_ancestors` to *datasets* in the search results."
   [search-results]
-  (let [;; this helper function takes a search result (with `collection_id` and `collection_location`) and returns the
-        ;; effective location of the result.
-        result->loc  (fn [{:keys [collection_id collection_location]}]
-                        (:effective_location
-                         (t2/hydrate
-                          (if (nil? collection_id)
-                            collection/root-collection
-                            {:location collection_location})
-                          :effective_location)))
-        ;; a map of collection-ids to collection info
-        col-id->info (into {}
-                           (for [item  search-results
-                                 :when (= (:model item) "dataset")]
-                              [(:collection_id item)
-                               {:id                 (:collection_id item)
-                                :name               (-> {:name (:collection_name item)
-                                                         :id   (:collection_id item)
-                                                         :type (:collection_type item)}
-                                                        collection/maybe-localize-trash-name
-                                                        :name)
-                                :type               (:collection_type item)
-                                :effective_location (result->loc item)}]))
-        ;; the set of all collection IDs where we *don't* know the collection name. For example, if `col-id->info`
-        ;; contained `{1 {:effective_location "/2/" :name "Foo"}}`, we need to look up the name of collection `2`.
-        to-fetch     (into #{} (comp (keep :effective_location)
-                                     (mapcat collection/location-path->ids)
-                                      ;; already have these names
-                                     (remove col-id->info))
-                            (vals col-id->info))
-        ;; the now COMPLETE map of collection IDs to info
-        col-id->info (merge (if (seq to-fetch)
-                              (t2/select-pk->fn #(select-keys % [:name :type :id]) :model/Collection :id [:in to-fetch])
-                              {})
-                            (update-vals col-id->info #(dissoc % :effective_location)))
-        annotate     (fn [x]
-                        (cond-> x
-                          (= (:model x) "dataset")
+  (let [annotate     (fn [result]
+                        (cond-> result
+                          (= (:model result) "dataset")
                           (assoc :collection_effective_ancestors
-                                 (if-let [loc (result->loc x)]
-                                   (->> (collection/location-path->ids loc)
-                                        (map col-id->info))
-                                   []))))]
+                                 (->> (t2/hydrate
+                                       (if (nil? (:collection_id result))
+                                         collection/root-collection
+                                         {:location (:collection_location result)})
+                                       :effective_ancestors)
+                                      :effective_ancestors
+                                      ;; two pieces for backwards compatibility:
+                                      ;; - remove the root collection
+                                      ;; - remove the `personal_owner_id`
+                                      (remove collection.root/is-root-collection?)
+                                      (map #(dissoc % :personal_owner_id))))))]
     (map annotate search-results)))
 
 (defn- add-collection-effective-location
@@ -597,11 +572,9 @@
         to-toucan-instance (fn [row]
                              (let [model (-> row :model search.config/model-to-db-model :db-model)]
                                (t2.instance/instance model row)))
-        reducible-results  (reify clojure.lang.IReduceInit
-                             (reduce [_this rf init]
-                               (binding [t2.jdbc.options/*options* (assoc t2.jdbc.options/*options* :max-rows search.config/*db-max-results*)]
-                                 (reduce rf init (t2/reducible-query search-query)))))
+        reducible-results  (t2/reducible-query search-query)
         xf                 (comp
+                            (take search.config/*db-max-results*)
                             (map t2.realize/realize)
                             (map to-toucan-instance)
                             (map #(if (and (t2/instance-of? :model/Collection %)
@@ -626,6 +599,7 @@
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true                           hydrate-user-metadata
+
                               (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                               true                           (add-collection-effective-location)
                               true                           (map serialize))
@@ -664,7 +638,8 @@
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
-   [:verified                            {:optional true} [:maybe true?]]])
+   [:verified                            {:optional true} [:maybe true?]]
+   [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]])
 
 (mu/defn search-context
   "Create a new search context that you can pass to other functions like [[search]]."
@@ -683,7 +658,8 @@
            model-ancestors?
            table-db-id
            search-native-query
-           verified]}      :- ::search-context.input] :- SearchContext
+           verified
+           ids]}      :- ::search-context.input] :- SearchContext
   ;; for prod where Malli is disabled
   {:pre [(pos-int? current-user-id) (set? current-user-perms)]}
   (when (some? verified)
@@ -692,7 +668,7 @@
      (deferred-tru "Content Management or Official Collections")))
   (let [models (if (string? models) [models] models)
         ctx    (cond-> {:archived?          (boolean archived)
-                        :current-user-id current-user-id
+                        :current-user-id    current-user-id
                         :current-user-perms current-user-perms
                         :model-ancestors?   (boolean model-ancestors?)
                         :models             models
@@ -700,11 +676,15 @@
                  (some? created-at)                          (assoc :created-at created-at)
                  (seq created-by)                            (assoc :created-by created-by)
                  (some? filter-items-in-personal-collection) (assoc :filter-items-in-personal-collection filter-items-in-personal-collection)
-                 (some? last-edited-at)                     (assoc :last-edited-at last-edited-at)
-                 (seq last-edited-by)                       (assoc :last-edited-by last-edited-by)
-                 (some? table-db-id)                        (assoc :table-db-id table-db-id)
-                 (some? limit)                              (assoc :limit-int limit)
-                 (some? offset)                             (assoc :offset-int offset)
-                 (some? search-native-query)                (assoc :search-native-query search-native-query)
-                 (some? verified)                           (assoc :verified verified))]
+                 (some? last-edited-at)                      (assoc :last-edited-at last-edited-at)
+                 (seq last-edited-by)                        (assoc :last-edited-by last-edited-by)
+                 (some? table-db-id)                         (assoc :table-db-id table-db-id)
+                 (some? limit)                               (assoc :limit-int limit)
+                 (some? offset)                              (assoc :offset-int offset)
+                 (some? search-native-query)                 (assoc :search-native-query search-native-query)
+                 (some? verified)                            (assoc :verified verified)
+                 (seq ids)                                   (assoc :ids ids))]
+    (when (and (seq ids)
+               (not= (count models) 1))
+      (throw (ex-info (tru "Filtering by ids work only when you ask for a single model") {:status-code 400})))
     (assoc ctx :models (search.filter/search-context->applicable-models ctx))))

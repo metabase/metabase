@@ -22,7 +22,7 @@
   (when (integer? metric-id)
     (lib.metadata/metric query metric-id)))
 
-(mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
+(mu/defn- metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
   (when dataset-query
     (let [normalized-definition (cond-> dataset-query
@@ -78,12 +78,18 @@
    (select-keys metric-metadata [:description :aggregation-position])))
 
 (defmethod lib.metadata.calculation/display-info-method :metric
-  [query stage-number [_tag _opts metric-id-or-name]]
-  (if-let [metric-metadata (resolve-metric query metric-id-or-name)]
-    (lib.metadata.calculation/display-info query stage-number metric-metadata)
-    {:effective-type    :type/*
-     :display-name      (fallback-display-name)
-     :long-display-name (fallback-display-name)}))
+  [query stage-number [_tag opts metric-id-or-name]]
+  (let [display-name (:display-name opts)
+        opts (cond-> opts
+               (and display-name (not (:long-display-name opts)))
+               (assoc :long-display-name display-name))]
+    (merge
+     (if-let [metric-metadata (resolve-metric query metric-id-or-name)]
+       (lib.metadata.calculation/display-info query stage-number metric-metadata)
+       {:effective-type    :type/*
+        :display-name      (fallback-display-name)
+        :long-display-name (fallback-display-name)})
+     (select-keys opts [:name :display-name :long-display-name]))))
 
 (defmethod lib.metadata.calculation/column-name-method :metric
   [query stage-number [_tag _opts metric-id-or-name]]

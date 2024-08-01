@@ -235,7 +235,7 @@
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
         coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
-        text-operators [:= :!= :contains :does-not-contain :is-null :not-null :is-empty :not-empty :starts-with :ends-with]]
+        text-operators [:= :!= :contains :does-not-contain :is-empty :not-empty :starts-with :ends-with]]
     (is (= ["ID"
             "NAME"
             "LAST_LOGIN"
@@ -275,7 +275,6 @@
                                   ">"       {:display-name ">", :long-display-name "Greater than"}
                                   ">="      {:display-name "≥", :long-display-name "Greater than or equal to"},}
                  "NAME"          {"="        {:display-name "=", :long-display-name "Is"}
-                                  "is-null" {:display-name "Is null", :long-display-name "Is null"}
                                   "is-empty" {:display-name "Is empty", :long-display-name "Is empty"}}
                  "LAST_LOGIN"    {"!=" {:display-name "≠", :long-display-name "Excludes"}
                                   ">"  {:display-name ">", :long-display-name "After"}}
@@ -402,7 +401,7 @@
                           :lib/desired-column-alias "ID",
                           :display-name "ID",
                           :position 10}]]
-        (is (= [:= :!= :is-null :not-null :is-empty :not-empty]
+        (is (= [:= :!= :is-empty :not-empty]
                (mapv :short (lib.filter.operator/filter-operators column)))))))
 
 (deftest ^:parallel replace-filter-clause-test
@@ -702,7 +701,11 @@
                                           (lib/expression-clause :interval [-1 :month] nil)] nil)
                   (lib/expression-clause :relative-datetime [0 :month] nil)
                   (lib/expression-clause :relative-datetime [1 :month] nil)],
-        :name "Created At is in the next month, starting 1 month from now"}])))
+        :name "Created At is in the next month, starting 1 month from now"}
+       {:clause [:relative-time-interval created-at 10 :week 10 :week]
+        :name "Created At is in the next 10 weeks, starting 10 weeks from now"}
+       {:clause [:relative-time-interval created-at -10 :week -10 :week]
+        :name "Created At is in the previous 10 weeks, starting 10 weeks ago"}])))
 
 (deftest ^:parallel specific-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]

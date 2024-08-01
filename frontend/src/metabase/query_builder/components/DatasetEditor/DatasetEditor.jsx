@@ -5,9 +5,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
 import { usePrevious } from "react-use";
 import { t } from "ttag";
-import _ from "underscore";
 
-import { useModelIndexesListQuery } from "metabase/common/hooks";
+import { useListModelIndexesQuery } from "metabase/api";
 import ActionButton from "metabase/components/ActionButton";
 import DebouncedFrame from "metabase/components/DebouncedFrame";
 import { LeaveConfirmationModalContent } from "metabase/components/LeaveConfirmationModal";
@@ -33,6 +32,7 @@ import {
   getVisualizationSettings,
   isResultsMetadataDirty,
 } from "metabase/query_builder/selectors";
+import { getWritableColumnProperties } from "metabase/query_builder/utils";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -53,7 +53,7 @@ import {
 } from "./DatasetEditor.styled";
 import DatasetFieldMetadataSidebar from "./DatasetFieldMetadataSidebar";
 import DatasetQueryEditor from "./DatasetQueryEditor";
-import EditorTabs from "./EditorTabs";
+import { EditorTabs } from "./EditorTabs";
 import { TabHintToast } from "./TabHintToast";
 import { EDITOR_TAB_INDEXES } from "./constants";
 
@@ -187,16 +187,6 @@ function getColumnTabIndex(columnIndex, focusedFieldIndex) {
     : EDITOR_TAB_INDEXES.PREVIOUS_FIELDS;
 }
 
-const FIELDS = [
-  "id",
-  "display_name",
-  "description",
-  "semantic_type",
-  "fk_target_field_id",
-  "visibility_type",
-  "settings",
-];
-
 function DatasetEditor(props) {
   const {
     question,
@@ -235,10 +225,14 @@ function DatasetEditor(props) {
     [resultsMetadata, visualizationSettings],
   );
 
-  const { data: modelIndexes } = useModelIndexesListQuery({
-    query: { model_id: question.id() },
-    enabled: question.isSaved() && question.type() === "model",
-  });
+  const { data: modelIndexes } = useListModelIndexesQuery(
+    {
+      model_id: question.id(),
+    },
+    {
+      skip: !question.isSaved() || question.type() !== "model",
+    },
+  );
 
   const isEditingQuery = datasetEditorTab === "query";
   const isEditingMetadata = datasetEditorTab === "metadata";
@@ -289,7 +283,8 @@ function DatasetEditor(props) {
   const inheritMappedFieldProperties = useCallback(
     changes => {
       const mappedField = metadata.field?.(changes.id)?.getPlainObject();
-      const inheritedProperties = _.pick(mappedField, ...FIELDS);
+      const inheritedProperties =
+        mappedField && getWritableColumnProperties(mappedField);
       return mappedField ? merge(inheritedProperties, changes) : changes;
     },
     [metadata],
@@ -364,7 +359,7 @@ function DatasetEditor(props) {
       await updateQuestion(questionWithDisplay, { rerunQuery: false });
       onOpenModal(MODAL_TYPES.SAVE);
     } else if (canBeDataset) {
-      await onSave(questionWithDisplay, { rerunQuery: false });
+      await onSave(questionWithDisplay, { rerunQuery: true });
       await setQueryBuilderMode("view");
       runQuestionQuery();
     } else {
@@ -492,16 +487,8 @@ function DatasetEditor(props) {
           isMetric ? null : (
             <EditorTabs
               currentTab={datasetEditorTab}
+              disabledMetadata={!resultsMetadata}
               onChange={onChangeEditorTab}
-              options={[
-                { id: "query", name: t`Query`, icon: "notebook" },
-                {
-                  id: "metadata",
-                  name: t`Metadata`,
-                  icon: "label",
-                  disabled: !resultsMetadata,
-                },
-              ]}
             />
           )
         }

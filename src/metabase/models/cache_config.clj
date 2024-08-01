@@ -79,11 +79,13 @@
       {:left-join [:report_card      [:and
                                       [:= :model [:inline "question"]]
                                       [:= :model_id :report_card.id]
-                                      [:= :report_card.collection_id collection]]
+                                      (when collection
+                                        [:= :report_card.collection_id collection])]
                    :report_dashboard [:and
                                       [:= :model [:inline "dashboard"]]
                                       [:= :model_id :report_dashboard.id]
-                                      [:= :report_dashboard.collection_id collection]]]
+                                      (when collection
+                                        [:= :report_dashboard.collection_id collection])]]
        :where     [:case
                    [:= :model [:inline "question"]]  [:!= :report_card.id nil]
                    [:= :model [:inline "dashboard"]] [:!= :report_dashboard.id nil]

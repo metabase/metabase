@@ -30,14 +30,13 @@
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
-   [metabase.models.query-field :as query-field]
    [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
@@ -171,8 +170,8 @@
     (when lib.metadata.jvm/*metadata-provider-cache*
       (try
         (prefetch-tables-for-cards! dataset-cards)
-      (catch Throwable t
-        (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
+        (catch Throwable t
+          (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
     (binding [query-perms/*card-instances*
               (when (seq source-card-ids)
                 (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
@@ -507,7 +506,8 @@
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
-      (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
+      (when (:parameters changes)
+        (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
@@ -534,7 +534,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-field/update-query-fields-for-card! card)))
+    (query-analysis/analyze-async! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -562,7 +562,7 @@
   [card]
   (u/prog1 card
     (when (contains? (t2/changes card) :dataset_query)
-      (query-field/update-query-fields-for-card! card))))
+      (query-analysis/analyze-async! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -793,61 +793,6 @@
                (map? (:dataset_query card)) (update :dataset_query dissoc :lib/metadata))]
     (next-method card json-generator)))
 
-(defn- replaced-inner-query-for-native-card
-  [query {:keys [fields tables] :as _replacement-ids}]
-  (let [keyvals-set         #(set/union (set (keys %))
-                                        (set (vals %)))
-        id->field           (if (empty? fields)
-                              {}
-                              (m/index-by :id
-                                          (t2/query {:select [[:f.id :id]
-                                                              [:f.name :column]
-                                                              [:t.name :table]
-                                                              [:t.schema :schema]]
-                                                     :from   [[:metabase_field :f]]
-                                                     :join   [[:metabase_table :t] [:= :f.table_id :t.id]]
-                                                     :where  [:in :f.id (keyvals-set fields)]})))
-        id->table           (if (empty? tables)
-                              {}
-                              (m/index-by :id
-                                          (t2/query {:select [[:t.id :id]
-                                                              [:t.name :table]
-                                                              [:t.schema :schema]]
-                                                     :from   [[:metabase_table :t]]
-                                                     :where  [:in :t.id (keyvals-set tables)]})))
-        remove-id           #(select-keys % [:column :table :schema])
-        get-or-throw-from   (fn [m] (fn [k] (if (contains? m k)
-                                              (remove-id (get m k))
-                                              (throw (ex-info "ID not found" {:id k :available m})))))
-        ids->replacements   (fn [id->replacement-id id->row row->identifier]
-                              (-> id->replacement-id
-                                  (u/update-keys-vals (get-or-throw-from id->row))
-                                  (update-vals row->identifier)))
-        ;; Note: we are naively providing unqualified new identifier names as the replacements.
-        ;; this will break if previously unambiguous identifiers become ambiguous due to the replacements
-        column-replacements (ids->replacements fields id->field :column)
-        table-replacements  (ids->replacements tables id->table :table)]
-    (query-analyzer/replace-names query {:columns column-replacements
-                                         :tables  table-replacements})))
-
-
-(defn replace-fields-and-tables!
-  "Given a card and a map of the form
-
-  {:fields {1 2, 3 4}
-   :tables {100 101}}
-
-  Update the card so that its references to the Field with ID 1 is replaced by Field 2, etc."
-  [{q :dataset_query :as card} replacements]
-  (if (= :native (:type q))
-    (let [new-query (assoc-in q [:native :query]
-                              (replaced-inner-query-for-native-card q replacements))]
-      (update-card! {:card-before-update card
-                     :card-updates       {:dataset_query new-query}
-                     :actor              api/*current-user*}))
-    (throw (ex-info "We don't (yet) support replacing field and table refs in cards with MBQL queries"
-                    {:card card :replacements replacements}))))
-
 ;;; ------------------------------------------------- Serialization --------------------------------------------------
 
 (defmethod serdes/extract-query "Card" [_ opts]
@@ -876,55 +821,55 @@
                                     [(when (:table_id m) #{(serdes/table->path (:table_id m))})
                                      (when (:id m)       #{(serdes/field->path (:id m))})])))))
 
-(defmethod serdes/extract-one "Card"
-  [_model-name _opts card]
-  ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
-  ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
-  ;; :collection_id is extracted as its entity_id or identity-hash.
-  ;; :creator_id as the user's email.
-  (-> (serdes/extract-one-basics "Card" card)
-      (update :database_id            serdes/*export-fk-keyed* 'Database :name)
-      (update :table_id               serdes/*export-table-fk*)
-      (update :collection_id          serdes/*export-fk* 'Collection)
-      (update :creator_id             serdes/*export-user*)
-      (update :made_public_by_id      serdes/*export-user*)
-      (update :dataset_query          serdes/export-mbql)
-      (update :parameters             serdes/export-parameters)
-      (update :parameter_mappings     serdes/export-parameter-mappings)
-      (update :visualization_settings serdes/export-visualization-settings)
-      (update :result_metadata        export-result-metadata)
-      (dissoc :cache_invalidated_at :view_count :last_used_at :initially_published_at
-              :dataset_query_metrics_v2_migration_backup)))
-
-(defmethod serdes/load-xform "Card"
-  [card]
-  (-> card
-      serdes/load-xform-basics
-      (update :database_id            serdes/*import-fk-keyed* 'Database :name)
-      (update :table_id               serdes/*import-table-fk*)
-      (update :creator_id             serdes/*import-user*)
-      (update :made_public_by_id      serdes/*import-user*)
-      (update :collection_id          serdes/*import-fk* 'Collection)
-      (update :dataset_query          serdes/import-mbql)
-      (update :parameters             serdes/import-parameters)
-      (update :parameter_mappings     serdes/import-parameter-mappings)
-      (update :visualization_settings serdes/import-visualization-settings)
-      (update :result_metadata        import-result-metadata)))
+(defmethod serdes/make-spec "Card"
+  [_model-name]
+  {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
+          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
+   :skip [ ;; always instance-specific
+          :id :updated_at
+          ;; cache invalidation is instance-specific
+          :cache_invalidated_at
+          ;; those are instance-specific analytic columns
+          :view_count :last_used_at :initially_published_at
+          ;; this is data migration column
+          :dataset_query_metrics_v2_migration_backup
+          ;; this column is not used anymore
+          :cache_ttl]
+   :transform
+   {:database_id            [#(serdes/*export-fk-keyed* % 'Database :name)
+                             #(serdes/*import-fk-keyed* % 'Database :name)]
+    :table_id               [serdes/*export-table-fk*
+                             serdes/*import-table-fk*]
+    :collection_id          [#(serdes/*export-fk* % 'Collection)
+                             #(serdes/*import-fk* % 'Collection)]
+    :creator_id             [serdes/*export-user*
+                             serdes/*import-user*]
+    :made_public_by_id      [serdes/*export-user*
+                             serdes/*import-user*]
+    :dataset_query          [serdes/export-mbql
+                             serdes/import-mbql]
+    :parameters             [serdes/export-parameters
+                             serdes/import-parameters]
+    :parameter_mappings     [serdes/export-parameter-mappings
+                             serdes/import-parameter-mappings]
+    :visualization_settings [serdes/export-visualization-settings
+                             serdes/import-visualization-settings]
+    :result_metadata        [export-result-metadata
+                             import-result-metadata]}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
            result_metadata table_id visualization_settings]}]
-  (->> (map serdes/mbql-deps parameter_mappings)
-       (reduce set/union #{})
-       (set/union (serdes/parameters-deps parameters))
-       (set/union #{[{:model "Database" :id database_id}]})
-       ; table_id and collection_id are nullable.
-       (set/union (when table_id #{(serdes/table->path table_id)}))
-       (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
-       (set/union (result-metadata-deps result_metadata))
-       (set/union (serdes/mbql-deps dataset_query))
-       (set/union (serdes/visualization-settings-deps visualization_settings))
-       vec))
+  (set
+   (concat
+    (mapcat serdes/mbql-deps parameter_mappings)
+    (serdes/parameters-deps parameters)
+    [[{:model "Database" :id database_id}]]
+    (when table_id #{(serdes/table->path table_id)})
+    (when collection_id #{[{:model "Collection" :id collection_id}]})
+    (result-metadata-deps result_metadata)
+    (serdes/mbql-deps dataset_query)
+    (serdes/visualization-settings-deps visualization_settings))))
 
 (defmethod serdes/descendants "Card" [_model-name id]
   (let [card               (t2/select-one Card :id id)
@@ -932,19 +877,17 @@
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
-    (set/union
+    (set
+     (concat
       (when (and (string? source-table)
                  (str/starts-with? source-table "card__"))
-        #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
-      (when (seq template-tags)
-        (set (for [card-id template-tags]
-               ["Card" card-id])))
-      (when (seq parameters-card-id)
-        (set (for [card-id parameters-card-id]
-               ["Card" card-id])))
-      (when (seq snippets)
-        (set (for [snippet-id snippets]
-               ["NativeQuerySnippet" snippet-id]))))))
+        [["Card" (parse-long (subs source-table 6))]])
+      (for [card-id template-tags]
+        ["Card" card-id])
+      (for [card-id parameters-card-id]
+        ["Card" card-id])
+      (for [snippet-id snippets]
+        ["NativeQuerySnippet" snippet-id])))))
 
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------

@@ -154,6 +154,7 @@ export const tokenFeatures = [
   "llm_autodescription",
   "official_collections",
   "sandboxes",
+  "scim",
   "sso_google",
   "sso_jwt",
   "sso_ldap",
@@ -329,6 +330,8 @@ export type UserSettings = {
   "expand-browse-in-nav"?: boolean;
   "expand-bookmarks-in-nav"?: boolean;
   "browse-filter-only-verified-models"?: boolean;
+  "show-updated-permission-modal": boolean;
+  "show-updated-permission-banner": boolean;
 };
 
 export type Settings = InstanceSettings &

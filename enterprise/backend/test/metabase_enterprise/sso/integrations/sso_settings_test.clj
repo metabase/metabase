@@ -122,6 +122,13 @@
            #"Setting saml-slo-enabled is not enabled because feature :sso-saml is not available"
            (sso-settings/saml-slo-enabled! true))))))
 
+(deftest saml-scim-user-provisioning
+  (testing "SAML user provisioning is disabled when SCIM is enabled"
+    (mt/with-premium-features #{:sso-saml :scim}
+      (mt/with-temporary-setting-values [saml-user-provisioning-enabled? true
+                                         scim-enabled                    true]
+          (is (false? (sso-settings/saml-user-provisioning-enabled?)))))))
+
 (deftest jwt-settings-token-features-test
   (testing "Getting JWT settings should return their default values without :sso-jwt feature flag enabled"
     (doseq [feature? [true false]]

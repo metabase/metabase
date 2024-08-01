@@ -39,7 +39,7 @@
       (isa? semantic-type :type/PK)
       (isa? semantic-type :type/FK)))
 
-(mu/defn ^:private field-should-be-category? :- [:maybe :boolean]
+(mu/defn- field-should-be-category? :- [:maybe :boolean]
   [fingerprint :- [:maybe fingerprint.schema/Fingerprint]
    field       :- analyze.schema/Field]
   (let [distinct-count (get-in fingerprint [:global :distinct-count])
@@ -55,7 +55,7 @@
                   category-cardinality-threshold)
       true)))
 
-(mu/defn ^:private field-should-be-auto-list? :- [:maybe :boolean]
+(mu/defn- field-should-be-auto-list? :- [:maybe :boolean]
   "Based on `distinct-count`, should we mark this `field` as `has-field-values` = `auto-list`?"
   [fingerprint :- [:maybe fingerprint.schema/Fingerprint]
    field       :- [:map [:has-field-values {:optional true} [:maybe ::lib.schema.metadata/column.has-field-values]]]]

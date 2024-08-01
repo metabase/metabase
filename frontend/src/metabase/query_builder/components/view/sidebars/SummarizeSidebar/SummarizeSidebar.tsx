@@ -27,6 +27,7 @@ export function SummarizeSidebar({
 }: SummarizeSidebarProps) {
   const {
     query,
+    stageIndex,
     aggregations,
     hasAggregations,
     handleAddAggregations,
@@ -36,7 +37,10 @@ export function SummarizeSidebar({
     handleUpdateBreakout,
     handleRemoveBreakout,
     handleReplaceBreakouts,
-  } = useSummarizeQuery(initialQuery, onQueryChange);
+  } = useSummarizeQuery({
+    query: initialQuery,
+    onQueryChange,
+  });
 
   const handleDoneClick = useCallback(() => {
     onQueryChange(query);
@@ -53,6 +57,7 @@ export function SummarizeSidebar({
       <SummarizeAggregationItemList
         px="lg"
         query={query}
+        stageIndex={stageIndex}
         aggregations={aggregations}
         onAddAggregations={handleAddAggregations}
         onUpdateAggregation={handleUpdateAggregation}
@@ -63,6 +68,7 @@ export function SummarizeSidebar({
         <SummarizeBreakoutColumnList
           px="lg"
           query={query}
+          stageIndex={stageIndex}
           onAddBreakout={handleAddBreakout}
           onUpdateBreakout={handleUpdateBreakout}
           onRemoveBreakout={handleRemoveBreakout}

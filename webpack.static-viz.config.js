@@ -1,5 +1,6 @@
 const YAML = require("json-to-pretty-yaml");
 const TerserPlugin = require("terser-webpack-plugin");
+const webpack = require("webpack");
 const { StatsWriterPlugin } = require("webpack-stats-plugin");
 
 const ASSETS_PATH = __dirname + "/resources/frontend_client/app/assets";

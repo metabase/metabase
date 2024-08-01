@@ -275,6 +275,18 @@
               (lib.metadata.calculation/display-name query stage-number expr style)
               (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))))
 
+(defmethod lib.metadata.calculation/display-name-method :relative-time-interval
+  [query stage-number [_tag _opts column value bucket offset-value offset-bucket] style]
+  (if (neg? offset-value)
+    (i18n/tru "{0} is in the {1}, starting {2} ago"
+              (lib.metadata.calculation/display-name query stage-number column style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
+              (inflections/pluralize (abs offset-value) (name offset-bucket)))
+    (i18n/tru "{0} is in the {1}, starting {2} from now"
+              (lib.metadata.calculation/display-name query stage-number column style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
+              (inflections/pluralize (abs offset-value) (name offset-bucket)))))
+
 (defmethod lib.metadata.calculation/display-name-method :relative-datetime
   [_query _stage-number [_tag _opts n unit] _style]
   (i18n/tru "{0}" (lib.temporal-bucket/describe-temporal-interval n unit)))
@@ -302,10 +314,11 @@
 (lib.common/defop ends-with [whole part])
 (lib.common/defop contains [whole part])
 (lib.common/defop does-not-contain [whole part])
+(lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
 (lib.common/defop time-interval [x amount unit])
 (lib.common/defop segment [segment-id])
 
-(mu/defn ^:private add-filter-to-stage
+(mu/defn- add-filter-to-stage
   "Add a new filter clause to a `stage`, ignoring it if it is a duplicate clause (ignoring :lib/uuid)."
   [stage      :- ::lib.schema/stage
    new-filter :- [:maybe ::lib.schema.expression/boolean]]

@@ -26,7 +26,6 @@ export interface Card<Q extends DatasetQuery = DatasetQuery>
   enable_embedding: boolean;
   embedding_params: EmbeddingParameters | null;
   can_write: boolean;
-  can_run_adhoc_query: boolean;
   can_restore: boolean;
   can_delete: boolean;
   initially_published_at: string | null;
@@ -190,6 +189,15 @@ export type VisualizationSettings = {
   "scalar.field"?: string;
   "scalar.switch_positive_negative"?: boolean;
   "scalar.compact_primary_number"?: boolean;
+
+  // Pie Settings
+  "pie.dimension"?: string;
+  "pie.metric"?: string;
+  "pie.show_legend"?: boolean;
+  "pie.show_total"?: boolean;
+  "pie.percent_visibility"?: "off" | "legend" | "inside";
+  "pie.slice_threshold"?: number;
+  "pie.colors"?: Record<string, string>;
 
   [key: string]: any;
 };

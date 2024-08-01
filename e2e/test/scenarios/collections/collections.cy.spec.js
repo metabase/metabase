@@ -28,6 +28,9 @@ import {
   openCollectionMenu,
   createQuestion,
   entityPickerModalItem,
+  createCollection,
+  openCollectionItemMenu,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -705,7 +708,6 @@ describe("scenarios > collection defaults", () => {
 
           entityPickerModal().within(() => {
             cy.log("should disable all moving collections");
-            cy.findByRole("tab", { name: /Collections/ }).click();
             findPickerItem("First collection").should("have.attr", "disabled");
             findPickerItem("Another collection").should(
               "have.attr",
@@ -716,6 +718,72 @@ describe("scenarios > collection defaults", () => {
               "data-active",
               "true",
             );
+          });
+        });
+
+        it("moving collections should disable moving into any of the moving collections in recents or search (metabase#45248)", () => {
+          createCollection({ name: "Outer collection 1" }).then(
+            ({ body: { id: parentCollectionId } }) => {
+              cy.wrap(parentCollectionId).as("outerCollectionId");
+              createCollection({
+                name: "Inner collection 1",
+                parent_id: parentCollectionId,
+              }).then(({ body: { id: innerCollectionId } }) => {
+                cy.wrap(innerCollectionId).as("innerCollectionId");
+              });
+              createCollection({
+                name: "Inner collection 2",
+                parent_id: parentCollectionId,
+              });
+            },
+          );
+          createCollection({ name: "Outer collection 2" });
+
+          // modify the inner collection so that it shows up in recents
+          cy.get("@innerCollectionId").then(innerCollectionId => {
+            cy.request("PUT", `/api/collection/${innerCollectionId}`, {
+              name: "Inner collection 1 - modified",
+            });
+          });
+          cy.visit("/collection/root");
+
+          cy.log("single move");
+
+          cy.findByTestId("collection-table").within(() => {
+            openCollectionItemMenu("Outer collection 1");
+          });
+
+          popover().findByText("Move").click();
+
+          entityPickerModal().within(() => {
+            entityPickerModalTab("Recents").should(
+              "have.attr",
+              "data-active",
+              "true",
+            );
+
+            cy.findByText(/inner collection/).should("not.exist");
+
+            cy.button("Cancel").click();
+          });
+
+          cy.log("bulk move");
+
+          cy.findByTestId("collection-table").within(() => {
+            selectItemUsingCheckbox("Orders");
+            selectItemUsingCheckbox("Outer collection 1");
+          });
+
+          cy.findByTestId("toast-card").button("Move").click();
+
+          entityPickerModal().within(() => {
+            entityPickerModalTab("Recents").should(
+              "have.attr",
+              "data-active",
+              "true",
+            );
+
+            cy.findByText(/inner collection/).should("not.exist");
           });
         });
       });
@@ -774,13 +842,10 @@ describe("scenarios > collection items listing", () => {
     cy.findByTestId(testId).findByText(columnName).click();
   }
 
-  function getAllCollectionItemNames() {
-    const testId = "collection-entry-name";
-    return cy.findAllByTestId(testId).then(nodes => {
-      const actualNames = _.map(nodes, "innerText");
-      const sortedNames = _.sortBy(actualNames);
-      return { actualNames, sortedNames };
-    });
+  function assertCollectionItemsOrder(testId, names) {
+    for (let index = 0; index < names.length; ++index) {
+      cy.findAllByTestId(testId).eq(index).should("have.text", names[index]);
+    }
   }
 
   function visitRootCollection() {
@@ -885,130 +950,151 @@ describe("scenarios > collection items listing", () => {
       archiveAll();
     });
 
-    it(
-      "should allow to sort unpinned items by columns asc and desc",
-      { tags: "@flaky" },
-      () => {
-        ["A", "B", "C"].forEach((letter, i) => {
-          cy.createDashboard({
-            name: `${letter} Dashboard`,
-            collection_position: null,
-          });
-
-          // Signing in as a different users, so we have different names in "Last edited by"
-          // In that way we can test sorting by this column correctly
-          cy.signIn("normal");
-
-          cy.createQuestion({
-            name: `${letter} Question`,
-            collection_position: null,
-            query: TEST_QUESTION_QUERY,
-          });
+    it("should allow to sort unpinned items by columns asc and desc", () => {
+      ["A", "B", "C"].forEach((letter, i) => {
+        cy.createDashboard({
+          name: `${letter} Dashboard`,
+          collection_position: null,
         });
 
-        visitRootCollection();
-        // We're waiting for the loading spinner to disappear from the main sidebar.
-        // Otherwise, this causes the page re-render and the flaky test.
-        cy.findByTestId("main-navbar-root").get("circle").should("not.exist");
+        // Signing in as a different users, so we have different names in "Last edited by"
+        // In that way we can test sorting by this column correctly
+        cy.signIn("normal");
 
-        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-          expect(actualNames, "sorted alphabetically by default").to.deep.equal(
-            sortedNames,
-          );
+        cy.createQuestion({
+          name: `${letter} Question`,
+          collection_position: null,
+          query: TEST_QUESTION_QUERY,
         });
+      });
 
-        toggleSortingFor(/Name/i);
-        cy.wait("@getCollectionItems");
+      visitRootCollection();
+      // We're waiting for the loading spinner to disappear from the main sidebar.
+      // Otherwise, this causes the page re-render and the flaky test.
+      cy.findByTestId("main-navbar-root").get("circle").should("not.exist");
 
-        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-          expect(actualNames, "sorted alphabetically reversed").to.deep.equal(
-            sortedNames.reverse(),
-          );
-        });
+      cy.log("sorted alphabetically by default");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "A Dashboard",
+        "A Question",
+        "B Dashboard",
+        "B Question",
+        "C Dashboard",
+        "C Question",
+        "First collection",
+      ]);
 
-        toggleSortingFor(/Name/i);
-        // Not sure why the same XHR doesn't happen after we click the "Name" sorting again?
-        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-          expect(actualNames, "sorted alphabetically").to.deep.equal(
-            sortedNames,
-          );
-        });
+      toggleSortingFor(/Name/i);
+      cy.wait("@getCollectionItems");
 
-        toggleSortingFor(/Type/i);
-        cy.wait("@getCollectionItems");
-        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-          const dashboardsFirst = _.chain(sortedNames)
-            .sortBy(name => name.toLowerCase().includes("question"))
-            .sortBy(name => name.toLowerCase().includes("collection"))
-            .sortBy(name => name.toLowerCase().includes("metabase analytics"))
-            .value();
-          expect(actualNames, "sorted dashboards first").to.deep.equal(
-            dashboardsFirst,
-          );
-        });
+      cy.log("sorted alphabetically reversed");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "First collection",
+        "C Question",
+        "C Dashboard",
+        "B Question",
+        "B Dashboard",
+        "A Question",
+        "A Dashboard",
+      ]);
 
-        toggleSortingFor(/Type/i);
-        cy.wait("@getCollectionItems");
-        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-          const questionsFirst = _.chain(sortedNames)
-            .sortBy(name => name.toLowerCase().includes("question"))
-            .sortBy(name => name.toLowerCase().includes("dashboard"))
-            .value();
-          expect(actualNames, "sorted questions first").to.deep.equal(
-            questionsFirst,
-          );
-        });
+      toggleSortingFor(/Name/i);
+      // Not sure why the same XHR doesn't happen after we click the "Name" sorting again?
+      cy.log("sorted alphabetically");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "A Dashboard",
+        "A Question",
+        "B Dashboard",
+        "B Question",
+        "C Dashboard",
+        "C Question",
+        "First collection",
+      ]);
 
-        const lastEditedByColumnTestId = "collection-entry-last-edited-by";
+      toggleSortingFor(/Type/i);
+      cy.wait("@getCollectionItems");
 
-        toggleSortingFor(/Last edited by/i);
-        cy.wait("@getCollectionItems");
+      cy.log("sorted dashboards first");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "A Dashboard",
+        "B Dashboard",
+        "C Dashboard",
+        "A Question",
+        "B Question",
+        "C Question",
+        "First collection",
+      ]);
 
-        cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
-          const actualNames = _.map(nodes, "innerText");
-          const sortedNames = _.chain(actualNames)
-            .sortBy(actualNames)
-            .sortBy(name => !name)
-            .value();
-          expect(
-            actualNames,
-            "sorted by last editor name alphabetically",
-          ).to.deep.equal(sortedNames);
-        });
+      toggleSortingFor(/Type/i);
+      cy.wait("@getCollectionItems");
 
-        toggleSortingFor(/Last edited by/i);
-        cy.wait("@getCollectionItems");
+      cy.log("sorted collections first");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "First collection",
+        "A Question",
+        "B Question",
+        "C Question",
+        "A Dashboard",
+        "B Dashboard",
+        "C Dashboard",
+      ]);
 
-        cy.findAllByTestId(lastEditedByColumnTestId).then(nodes => {
-          const actualNames = _.map(nodes, "innerText");
-          const sortedNames = _.sortBy(actualNames);
-          expect(
-            actualNames,
-            "sorted by last editor name alphabetically reversed",
-          ).to.deep.equal(sortedNames.reverse());
-        });
+      toggleSortingFor(/Last edited by/i);
+      cy.wait("@getCollectionItems");
 
-        toggleSortingFor(/Last edited at/i);
-        cy.wait("@getCollectionItems");
+      cy.log("sorted by last editor name alphabetically");
+      assertCollectionItemsOrder("collection-entry-last-edited-by", [
+        "Bobby Tables",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "",
+      ]);
 
-        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-          expect(actualNames, "sorted newest last").to.deep.equal(sortedNames);
-        });
+      toggleSortingFor(/Last edited by/i);
+      cy.wait("@getCollectionItems");
 
-        toggleSortingFor(/Last edited at/i);
-        cy.wait("@getCollectionItems");
+      cy.log("sorted by last editor name alphabetically reversed");
+      assertCollectionItemsOrder("collection-entry-last-edited-by", [
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Bobby Tables",
+        "",
+      ]);
 
-        getAllCollectionItemNames().then(({ actualNames, sortedNames }) => {
-          const newestFirst = _.chain(sortedNames)
-            .reverse()
-            .sortBy(name => name.toLowerCase().includes("collection"))
-            .sortBy(name => name.toLowerCase().includes("personal"))
-            .sortBy(name => name.toLowerCase().includes("metabase analytics"))
-            .value();
-          expect(actualNames, "sorted newest first").to.deep.equal(newestFirst);
-        });
-      },
-    );
+      toggleSortingFor(/Last edited at/i);
+      cy.wait("@getCollectionItems");
+
+      cy.log("sorted newest last");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "A Dashboard",
+        "A Question",
+        "B Dashboard",
+        "B Question",
+        "C Dashboard",
+        "C Question",
+        "First collection",
+      ]);
+
+      toggleSortingFor(/Last edited at/i);
+      cy.wait("@getCollectionItems");
+
+      cy.log("sorted newest first");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "C Question",
+        "C Dashboard",
+        "B Question",
+        "B Dashboard",
+        "A Question",
+        "A Dashboard",
+        "First collection",
+      ]);
+    });
 
     it("should reset pagination if sorting applied on not first page", () => {
       _.times(15, i => cy.createDashboard(`dashboard ${i}`));

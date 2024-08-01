@@ -12,7 +12,8 @@
    [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data.dataset-definitions :as defs]))
+   [metabase.test.data.dataset-definitions :as defs]
+   [metabase.util.date-2 :as u.date]))
 
 (deftest ^:parallel basic-internal-remapping-test
   (mt/test-drivers (mt/normal-drivers)
@@ -39,7 +40,7 @@
                     :limit    4}))))))))
 
 (deftest ^:parallel basic-external-remapping-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                          (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                                          (mt/id :categories :name)))
@@ -115,7 +116,7 @@
              col)}))
 
 (deftest ^:parallel foreign-keys-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                          (lib.tu/remap-metadata-provider (mt/id :venues :category_id)
                                                                          (mt/id :categories :name)))
@@ -142,7 +143,7 @@
                (mt/formatted-rows [str int str] results)))))))
 
 (deftest ^:parallel remappings-with-field-clause-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing (str "Check that we can have remappings when we include a `:fields` clause that restricts the query "
                   "fields returned")
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -173,7 +174,7 @@
 
 (deftest ^:parallel remap-inside-mbql-query-test
   (testing "Test that we can remap inside an MBQL query"
-    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                            (lib.tu/remap-metadata-provider (mt/id :checkins :venue_id)
                                                                            (mt/id :venues :name)))
@@ -185,7 +186,7 @@
                     (map last))))))))
 
 (deftest ^:parallel remapping-with-conflicting-names-test
-  (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
     (testing (str "Test a remapping with conflicting names, in the case below there are two name fields, one from "
                   "Venues and the other from Categories")
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -204,7 +205,7 @@
   ;;
   ;; Having a self-referencing FK is currently broken with the Redshift and Oracle backends. The issue related to fix
   ;; this is https://github.com/metabase/metabase/issues/8510
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :foreign-keys) :redshift :oracle :vertica)
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join) :redshift :oracle :vertica)
     (mt/dataset test-data-self-referencing-user
       (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                            (lib.tu/remap-metadata-provider (mt/id :users :created_by)
@@ -243,7 +244,7 @@
 
 (deftest remappings-with-implicit-joins-test
   (mt/with-temporary-setting-values [report-timezone "UTC"]
-    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys :nested-queries)
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :nested-queries)
       (testing "Queries with implicit joins should still work when FK remaps are used (#13641)"
         (mt/dataset test-data
           (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -256,8 +257,8 @@
                            :order-by     [[:asc $id] [:asc $product_id->products.category]]
                            :limit        1})]
               (mt/with-native-query-testing-context query
-                (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50.134Z" 3 "Rustic Paper Car"]]
-                       (mt/formatted-rows [int int int 2.0 2.0 2.0 identity str int str]
+                (is (= [[6 1 60 29.8 1.64 31.44 nil "2019-11-06T16:38:50Z" 3 "Rustic Paper Car"]]
+                       (mt/formatted-rows [int int int 2.0 2.0 2.0 identity u.date/temporal-str->iso8601-str int str]
                          (qp/process-query query))))))))))))
 
 (deftest ^:parallel multiple-fk-remaps-test
@@ -296,32 +297,31 @@
         (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
                                              qp.test-util/mock-fks-application-database-metadata-provider
                                              (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
-          (binding [qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests* true]
-            (let [query (mt/mbql-query products
-                          {:joins    [{:source-query {:source-table $$orders
-                                                      :breakout     [$orders.product_id]
-                                                      :aggregation  [[:sum $orders.quantity]]}
-                                       :alias        "Orders"
-                                       :condition    [:= $id &Orders.orders.product_id]
-                                       :fields       [&Orders.title
-                                                      &Orders.*sum/Integer]}]
-                           :fields   [$title $category]
-                           :order-by [[:asc $id]]
-                           :limit    3})]
-              (mt/with-native-query-testing-context query
-                (let [results (qp/process-query query)]
-                  (when (= driver/*driver* :h2)
-                    (testing "Metadata"
-                      (is (= [["TITLE"    "Title"]
-                              ["CATEGORY" "Category"]
-                              ["TITLE_2"  "Orders → Title"]
-                              ["sum"      "Orders → Sum"]]
-                             (map (juxt :name :display_name) (mt/cols results))))))
-                  (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
-                          ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
-                          ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
-                         (mt/formatted-rows [str str str int]
-                           results))))))))))))
+          (let [query (mt/mbql-query products
+                                     {:joins    [{:source-query {:source-table $$orders
+                                                                 :breakout     [$orders.product_id]
+                                                                 :aggregation  [[:sum $orders.quantity]]}
+                                                  :alias        "Orders"
+                                                  :condition    [:= $id &Orders.orders.product_id]
+                                                  :fields       [&Orders.title
+                                                                 &Orders.*sum/Integer]}]
+                                      :fields   [$title $category]
+                                      :order-by [[:asc $id]]
+                                      :limit    3})]
+            (mt/with-native-query-testing-context query
+              (let [results (qp/process-query query)]
+                (when (= driver/*driver* :h2)
+                  (testing "Metadata"
+                    (is (= [["TITLE"    "Title"]
+                            ["CATEGORY" "Category"]
+                            ["TITLE_2"  "Orders → Title"]
+                            ["sum"      "Orders → Sum"]]
+                           (map (juxt :name :display_name) (mt/cols results))))))
+                (is (= [["Rustic Paper Wallet"       "Gizmo"     "Rustic Paper Wallet"       347]
+                        ["Small Marble Shoes"        "Doohickey" "Small Marble Shoes"        352]
+                        ["Synergistic Granite Chair" "Doohickey" "Synergistic Granite Chair" 286]]
+                       (mt/formatted-rows [str str str int]
+                                          results)))))))))))
 
 (deftest ^:parallel inception-style-nested-query-with-joins-test
   (testing "source query > source query > query with join (with remappings) should work (#14724)"

@@ -1,16 +1,12 @@
-import cx from "classnames";
-
-import CS from "metabase/css/core/index.css";
 import { Group, type GroupProps } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { AddAggregationButton } from "../AddAggregationButton";
 import { AggregationItem } from "../AggregationItem";
 
-import { STAGE_INDEX } from "./use-summarize-query";
-
 type SummarizeAggregationItemListProps = {
   query: Lib.Query;
+  stageIndex: number;
   aggregations: Lib.AggregationClause[];
   onAddAggregations: (aggregations: Lib.Aggregable[]) => void;
   onUpdateAggregation: (
@@ -22,6 +18,7 @@ type SummarizeAggregationItemListProps = {
 
 export const SummarizeAggregationItemList = ({
   query,
+  stageIndex,
   aggregations,
   onAddAggregations,
   onUpdateAggregation,
@@ -29,15 +26,16 @@ export const SummarizeAggregationItemList = ({
   ...containerProps
 }: SummarizeAggregationItemListProps) => (
   <Group
+    data-testid="summarize-aggregation-item-list"
     spacing="sm"
     align="flex-start"
-    className={cx(CS.overflowYScroll)}
     {...containerProps}
   >
     {aggregations.map((aggregation, aggregationIndex) => (
       <AggregationItem
-        key={Lib.displayInfo(query, STAGE_INDEX, aggregation).longDisplayName}
+        key={aggregationIndex}
         query={query}
+        stageIndex={stageIndex}
         aggregation={aggregation}
         aggregationIndex={aggregationIndex}
         onAdd={onAddAggregations}
@@ -47,6 +45,10 @@ export const SummarizeAggregationItemList = ({
         onRemove={() => onRemoveAggregation(aggregation)}
       />
     ))}
-    <AddAggregationButton query={query} onAddAggregations={onAddAggregations} />
+    <AddAggregationButton
+      query={query}
+      stageIndex={stageIndex}
+      onAddAggregations={onAddAggregations}
+    />
   </Group>
 );

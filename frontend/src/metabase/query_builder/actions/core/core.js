@@ -3,7 +3,7 @@ import _ from "underscore";
 
 import { fetchAlertsForQuestion } from "metabase/alert/alert";
 import Databases from "metabase/entities/databases";
-import { ModelIndexes } from "metabase/entities/model-indexes";
+import { updateModelIndexes } from "metabase/entities/model-indexes/actions";
 import Questions from "metabase/entities/questions";
 import Revision from "metabase/entities/revisions";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -221,15 +221,15 @@ export const apiCreateQuestion = question => {
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
-
     dispatch({ type: API_CREATE_QUESTION, payload: card });
+
+    await dispatch(loadMetadataForCard(card));
 
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
-    const metadataOptions = { reload: isModel || isMetric };
-    await dispatch(loadMetadataForCard(card, metadataOptions));
-
-    return createdQuestion;
+    if (isModel || isMetric) {
+      dispatch(runQuestionQuery());
+    }
   };
 };
 
@@ -241,7 +241,6 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
-    const isMetric = question.type() === "metric";
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
@@ -280,11 +279,10 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
     if (isModel) {
       // this needs to happen after the question update completes in case we have changed the type
       // of the primary key field in the same update
-      await dispatch(ModelIndexes.actions.updateModelIndexes(question));
+      await dispatch(updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: isModel || isMetric };
-    await dispatch(loadMetadataForCard(question.card(), metadataOptions));
+    await dispatch(loadMetadataForCard(question.card()));
 
     if (rerunQuery) {
       dispatch(runQuestionQuery());

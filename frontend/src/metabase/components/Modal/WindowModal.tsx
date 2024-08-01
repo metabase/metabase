@@ -124,7 +124,7 @@ export class WindowModal extends Component<WindowModalProps> {
         container={this._modalElement}
         enableMouseEvents={enableMouseEvents}
         // disable keydown to allow FocusTrap to work
-        unsandboxEvents={["onKeyDown"]}
+        unsandboxedEvents={["onKeyDown"]}
       >
         <TransitionGroup
           appear={enableTransition}

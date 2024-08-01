@@ -11,6 +11,7 @@
             NativeQuerySnippet PermissionsGroup PermissionsGroupMembership Pulse
             PulseCard PulseChannel PulseChannelRecipient Revision Timeline TimelineEvent User]]
    [metabase.models.collection :as collection]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection-test :as collection-test]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.graph-test :as graph.test]
@@ -648,12 +649,13 @@
                   :name                (:name card)
                   :collection_position nil
                   :collection_preview  true
-                  :database_id         nil
+                  :database_id         (mt/id)
                   :display             "table"
                   :description         nil
                   :entity_id           (:entity_id card)
                   :moderated_status    "verified"
                   :model               "card"
+                  :last_used_at        (:last_used_at card)
                   :fully_parameterized  true}])
                (mt/obj->json->obj
                 (:data (mt/user-http-request :crowberto :get 200
@@ -689,7 +691,7 @@
                                                            :collection_id (u/the-id collection)}
                                Card       {card-id-2 :id} {:collection_id (u/the-id collection)}]
         (is (= #{{:id card-id-1 :database_id (mt/id)}
-                 {:id card-id-2 :database_id nil}}
+                 {:id card-id-2 :database_id (mt/id)}}
                (->> (:data (mt/user-http-request :crowberto :get 200
                                                  (str "collection/" (u/the-id collection) "/items")))
                     (map #(select-keys % [:id :database_id]))
@@ -1345,7 +1347,7 @@
   (testing "does a second-level Collection have its parent and its children?"
     (with-collection-hierarchy [a b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors c))))
       (testing "children"
@@ -1356,8 +1358,8 @@
   (testing "Does a third-level Collection? have its parent and its children?"
     (with-collection-hierarchy [a b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}
-                                      {:name "C", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}
+                                      {:name "C", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/C/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -1369,7 +1371,7 @@
                 "and say we are a child of A")
     (with-collection-hierarchy [a b d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -1378,7 +1380,7 @@
   (testing "for D: If, on the other hand, we remove A, we should see C as the only ancestor and as a root-level Collection."
     (with-collection-hierarchy [b c d g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "C", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "C", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/C/"}
                (api-get-collection-ancestors d))))
       (testing "children"
@@ -1389,7 +1391,7 @@
   (testing "for C: if we remove D we should get E and F as effective children"
     (with-collection-hierarchy [a b c e f g]
       (testing "ancestors"
-        (is (= {:effective_ancestors [{:name "A", :id true, :can_write false, :personal_owner_id nil}]
+        (is (= {:effective_ancestors [{:name "A", :type nil, :id true, :can_write false, :personal_owner_id nil}]
                 :effective_location  "/A/"}
                (api-get-collection-ancestors c))))
       (testing "children"
@@ -1434,6 +1436,7 @@
                  :is_personal                              false}
                 {:name              "Rasta Toucan's Personal Collection",
                  :id                true,
+                 :type              nil
                  :personal_owner_id root-owner-id,
                  :can_write         true}]
                (:effective_ancestors (api-get-collection-ancestors collection))))))))
@@ -2262,3 +2265,18 @@
     (testing "Cards can't be moved to the trash"
       (mt/user-http-request :crowberto :put 400 (str "card/" (u/the-id card)) {:collection_id (collection/trash-collection-id)})
       (is (not (t2/exists? :model/Card :collection_id (collection/trash-collection-id)))))))
+
+(deftest skip-graph-skips-graph-on-graph-PUT
+  (is (malli= [:map [:revision :int] [:groups :map]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id) :groups {}})))
+  (is (malli= [:map {:closed true} [:revision :int]]
+              (mt/user-http-request :crowberto
+                                    :put 200
+                                    "collection/graph"
+                                    {:revision (c-perm-revision/latest-id)
+                                     :groups {}
+                                     :skip_graph true}))
+      "PUTs with skip_graph should not return the coll permission graph."))

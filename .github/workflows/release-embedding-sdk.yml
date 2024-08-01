@@ -89,6 +89,7 @@ jobs:
           ./bin/embedding-sdk/release_utils.bash update_readme ${{ inputs.sdk_version }}
 
       - name: Bump published npm package version
+        # NOTE: this should happen before "Build SDK bundle" as we inject SDK version into the code during build step
         run: |
           ./bin/embedding-sdk/release_utils.bash update_package_json_template ${{ inputs.sdk_version }}
 

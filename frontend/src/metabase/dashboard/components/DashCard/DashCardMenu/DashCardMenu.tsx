@@ -2,6 +2,7 @@ import { useDisclosure } from "@mantine/hooks";
 import cx from "classnames";
 import { isValidElement, useState } from "react";
 
+import type { SdkPluginsConfig } from "embedding-sdk";
 import { useInteractiveDashboardContext } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import CS from "metabase/css/core/index.css";
 import {
@@ -39,6 +40,7 @@ interface DashCardMenuProps {
   uuid?: string;
   token?: string;
   visualizationSettings?: VisualizationSettings;
+  downloadsEnabled: boolean;
 }
 
 export type DashCardMenuItem = {
@@ -47,6 +49,20 @@ export type DashCardMenuItem = {
   onClick: () => void;
   disabled?: boolean;
 } & MenuItemProps;
+
+function isDashCardMenuEmpty(plugins?: SdkPluginsConfig) {
+  const dashcardMenu = plugins?.dashboard?.dashcardMenu;
+
+  if (!plugins || !dashcardMenu || typeof dashcardMenu !== "object") {
+    return false;
+  }
+
+  return (
+    dashcardMenu?.withDownloads === false &&
+    dashcardMenu?.withEditLink === false &&
+    !dashcardMenu?.customItems?.length
+  );
+}
 
 export const DashCardMenu = ({
   question,
@@ -76,7 +92,15 @@ export const DashCardMenu = ({
     },
   });
 
+  if (isDashCardMenuEmpty(plugins)) {
+    return null;
+  }
+
   const getMenuContent = () => {
+    if (typeof plugins?.dashboard?.dashcardMenu === "function") {
+      return plugins.dashboard.dashcardMenu({ question: question.card() });
+    }
+
     if (isValidElement(plugins?.dashboard?.dashcardMenu)) {
       return plugins.dashboard.dashcardMenu;
     }
@@ -129,19 +153,19 @@ interface QueryDownloadWidgetOpts {
   question: Question;
   result?: Dataset;
   isXray?: boolean;
-  isEmbed: boolean;
   /** If public sharing or static/public embed */
   isPublicOrEmbedded?: boolean;
   isEditing: boolean;
+  downloadsEnabled: boolean;
 }
 
 DashCardMenu.shouldRender = ({
   question,
   result,
   isXray,
-  isEmbed,
   isPublicOrEmbedded,
   isEditing,
+  downloadsEnabled,
 }: QueryDownloadWidgetOpts) => {
   // Do not remove this check until we completely remove the old code related to Audit V1!
   // MLv2 doesn't handle `internal` queries used for Audit V1.
@@ -149,12 +173,11 @@ DashCardMenu.shouldRender = ({
     question.datasetQuery(),
   );
 
-  if (isEmbed) {
-    return isEmbed;
+  if (isPublicOrEmbedded) {
+    return downloadsEnabled && !!result?.data && !result?.error;
   }
   return (
     !isInternalQuery &&
-    !isPublicOrEmbedded &&
     !isEditing &&
     !isXray &&
     (canEditQuestion(question) || canDownloadResults(result))

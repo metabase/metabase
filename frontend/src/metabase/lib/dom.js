@@ -14,7 +14,16 @@ export const getScrollY = () =>
 // Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
 export const isWithinIframe = function () {
   try {
-    return !isCypressActive && window.self !== window.top;
+    if (isCypressActive) {
+      return false;
+    }
+
+    // Mock that we're embedding, so we could visual test embed components
+    if (window.overrideIsWithinIframe) {
+      return true;
+    }
+
+    return window.self !== window.top;
   } catch (e) {
     return true;
   }
@@ -557,4 +566,16 @@ export function reload() {
  */
 export function redirect(url) {
   window.location.href = url;
+}
+
+export function openSaveDialog(fileName, fileContent) {
+  const url = URL.createObjectURL(fileContent);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", fileName);
+  document.body.appendChild(link);
+  link.click();
+
+  URL.revokeObjectURL(url);
+  link.remove();
 }
