@@ -1,0 +1,305 @@
+[
+  {
+    "card": {
+      "original_card_id": 401,
+      "can_delete": false,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-08-01T22:59:00.876257Z",
+      "parameters": [],
+      "metabase_version": "v0.1.26-SNAPSHOT (7892978)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "archive_operation_id": null,
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "archived_directly": null,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {
+        "pie.percent_visibility": "both",
+        "pie.slice_threshold": 2.5,
+        "pie.decimal_places": 0
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-08-01T22:59:48.916354Z"
+      },
+      "collection_preview": true,
+      "entity_id": "HXtLDU9VvScR8oira85Hi",
+      "archived_directly": false,
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 401,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              "platform",
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ],
+          "source-table": "card__77"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-08-01T23:00:19.868688Z",
+      "moderation_reviews": [],
+      "can_restore": false,
+      "creator_id": 1,
+      "average_query_time": 355.5,
+      "type": "question",
+      "last_used_at": "2024-08-01T23:00:17.60585Z",
+      "dashboard_count": 1,
+      "last_query_start": "2024-08-01T23:00:17.221173Z",
+      "name": "Pie - Number of Decimal Places Both - Metacritic Games by platform - Modified - Modified",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-08-01T22:52:19.345702Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "semantic_type": "type/Category",
+          "name": "platform",
+          "field_ref": [
+            "field",
+            "platform",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1352,
+          "visibility_type": "normal",
+          "display_name": "Platform",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 22,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.5754
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "name": "count",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 22,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 2,
+                "q1": 186,
+                "q3": 1122,
+                "max": 4592,
+                "sd": 1015.5250832969095,
+                "avg": 815.6363636363636
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 143,
+      "collection_position": null,
+      "view_count": 3,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["3DS", 400],
+        ["DS", 730],
+        ["Dreamcast", 125],
+        ["GameBoyAdvance", 444],
+        ["GameCube", 452],
+        ["Nintendo64", 70],
+        ["PC", 4592],
+        ["PSP", 513],
+        ["PlayStation", 188],
+        ["PlayStation2", 1418],
+        ["PlayStation3", 1269],
+        ["PlayStation4", 1928],
+        ["PlayStation5", 3],
+        ["PlayStationVita", 257],
+        ["Stadia", 4],
+        ["Switch", 1122],
+        ["Wii", 664],
+        ["WiiU", 186],
+        ["Xbox", 793],
+        ["Xbox360", 1666],
+        ["XboxOne", 1118],
+        ["XboxSeriesX", 2]
+      ],
+      "cols": [
+        {
+          "database_type": "varchar",
+          "semantic_type": "type/Category",
+          "table_id": 143,
+          "name": "platform",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "platform",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1352,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Platform",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 22,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.5754
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "database_type": "int8",
+          "semantic_type": "type/Quantity",
+          "name": "count",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/BigInteger",
+          "aggregation_index": 0,
+          "display_name": "Count",
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"platform\" AS \"platform\", COUNT(*) AS \"count\" FROM (SELECT \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"name\" AS \"name\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"platform\" AS \"platform\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"r_date\" AS \"r_date\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"score\" AS \"score\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"user_score\" AS \"user_score\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"developer\" AS \"developer\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"genre\" AS \"genre\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"players\" AS \"players\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"critics\" AS \"critics\", \"csv_upload_data\".\"csv_upload_games_20231121140652\".\"users\" AS \"users\" FROM \"csv_upload_data\".\"csv_upload_games_20231121140652\") AS \"source\" GROUP BY \"source\".\"platform\" ORDER BY \"source\".\"platform\" ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/Category",
+            "name": "platform",
+            "field_ref": [
+              "field",
+              "platform",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 1352,
+            "visibility_type": "normal",
+            "display_name": "Platform",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 22,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.5754
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "name": "count",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 22,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 2,
+                  "q1": 186,
+                  "q3": 1122,
+                  "max": 4592,
+                  "sd": 1015.5250832969095,
+                  "avg": 815.6363636363636
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]
