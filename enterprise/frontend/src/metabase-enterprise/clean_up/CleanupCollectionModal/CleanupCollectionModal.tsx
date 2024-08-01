@@ -3,7 +3,7 @@ import { withRouter } from "react-router";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { skipToken, useListStaleCollectionItemsQuery } from "metabase/api";
+import { skipToken } from "metabase/api";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { PaginationControls } from "metabase/components/PaginationControls";
 import Search from "metabase/entities/search";
@@ -11,8 +11,10 @@ import { useListSelect } from "metabase/hooks/use-list-select";
 import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Modal } from "metabase/ui";
-import type { StaleCollectionItem } from "metabase-types/api";
+import { useListStaleCollectionItemsQuery } from "metabase-enterprise/api/collection";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+
+import type { StaleCollectionItem } from "../types";
 
 import { CleanupCollectionBulkActions } from "./CleanupCollectionBulkActions";
 import CS from "./CleanupCollectionModal.module.css";
