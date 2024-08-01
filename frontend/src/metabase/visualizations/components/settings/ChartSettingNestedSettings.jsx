@@ -57,22 +57,21 @@ const chartSettingNestedSettings =
 
       handleChangeSettingsForObjectKey = (changedKey, changedSettings) => {
         const { objects, onChange } = this.props;
-        const objectsSettings = this.props.value ?? {};
-        const objectSettings =
-          getObjectSettings(objectsSettings, changedKey) ?? {};
-        // updates the settings in case the object key changes
-        const updatedSettings = Object.fromEntries(
-          objects
-            .map(object => [
-              getObjectKey(object),
-              getObjectSettings(objectsSettings, object),
-            ])
-            .filter(([_, settings]) => settings != null),
-        );
-        onChange({
-          ...updatedSettings,
-          [changedKey]: updateSettings(objectSettings, changedSettings),
-        });
+        const oldSettings = this.props.value || {};
+        const newSettings = objects.reduce((newSettings, object) => {
+          const currentKey = getObjectKey(object);
+          const objectSettings = getObjectSettings(oldSettings, object);
+          if (currentKey === changedKey) {
+            newSettings[currentKey] = updateSettings(
+              objectSettings,
+              changedSettings,
+            );
+          } else {
+            newSettings[currentKey] = objectSettings;
+          }
+          return newSettings;
+        }, {});
+        onChange(newSettings);
       };
 
       render() {
