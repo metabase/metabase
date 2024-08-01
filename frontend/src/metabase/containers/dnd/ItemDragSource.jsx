@@ -3,8 +3,6 @@ import { Component } from "react";
 import { DragSource } from "react-dnd";
 import { getEmptyImage } from "react-dnd-html5-backend";
 
-import { isRootTrashCollection } from "metabase/collections/utils";
-
 import { dragTypeForItem } from ".";
 
 class ItemDragSource extends Component {
@@ -55,11 +53,7 @@ export default DragSource(
       if (item) {
         const items = selected && selected.length > 0 ? selected : [item];
         try {
-          if (isRootTrashCollection(collection) || item.archived) {
-            await Promise.all(
-              items.map(i => i.setCollection && i.setArchived(!item.archived)),
-            );
-          } else if (collection !== undefined) {
+          if (collection !== undefined) {
             await Promise.all(
               items.map(i => i.setCollection && i.setCollection(collection)),
             );
