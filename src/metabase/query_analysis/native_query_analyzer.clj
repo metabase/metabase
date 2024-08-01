@@ -181,20 +181,21 @@
   "See if we can qualify the schema and table-id for any explicit field refs which couldn't resolve their field"
   [table-refs field-refs]
   ;; Note, at this point we have given up on any pretense of respecting case sensitivity
-  (let [t->ids  (group-by (comp u/lower-case-en :table) table-refs)
-        s+t->id (u/index-by (juxt (comp u/lower-case-en :schema)
-                                  (comp u/lower-case-en :table))
-                            table-refs)]
+  (let [normalize        u/lower-case-en
+        t->ids           (group-by (comp normalize :table) table-refs)
+        s+t->id          (u/index-by (juxt (comp normalize :schema)
+                                           (comp normalize :table))
+                                     table-refs)
+        merge-table-refs (fn [{:keys [schema table] :as field-ref}]
+                           (map #(merge field-ref %)
+                                (if schema
+                                  [(s+t->id [(normalize schema) (normalize table)])]
+                                  (t->ids (normalize table)))))]
     (into (empty field-refs)
-          (mapcat (fn [{:keys [schema table table-id] :as ref}]
-                    (if table-id
-                      [ref]
-                      (or (if schema
-                            (when-let [table-ref (s+t->id [(u/lower-case-en schema)
-                                                           (u/lower-case-en table)])]
-                              [(merge ref table-ref)])
-                            (seq (map #(merge ref %) (t->ids (u/lower-case-en table)))))
-                          [ref]))))
+          (mapcat (fn [{:keys [table-id] :as field-ref}]
+                    (or (when-not table-id
+                          (seq (merge-table-refs field-ref)))
+                        [field-ref])))
           field-refs)))
 
 (defn- explicit-field-refs-for-query
