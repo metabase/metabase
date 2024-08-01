@@ -196,6 +196,7 @@ export type VisualizationSettings = {
   "pie.show_legend"?: boolean;
   "pie.show_total"?: boolean;
   "pie.percent_visibility"?: "off" | "legend" | "inside";
+  "pie.decimal_places"?: number;
   "pie.slice_threshold"?: number;
   "pie.colors"?: Record<string, string>;
 
