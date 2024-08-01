@@ -24,17 +24,22 @@ function getPieBorderColor(
 /**
  * Computes the visualization style from the Mantine theme.
  */
-export function getVisualizationTheme(
-  options: MantineThemeOther,
-  isDashboard?: boolean,
-  isNightMode?: boolean,
-  isStaticViz?: boolean,
-): VisualizationTheme {
-  const { cartesian } = options;
+export function getVisualizationTheme({
+  theme,
+  isDashboard,
+  isNightMode,
+  isStaticViz,
+}: {
+  theme: MantineThemeOther;
+  isDashboard?: boolean;
+  isNightMode?: boolean;
+  isStaticViz?: boolean;
+}): VisualizationTheme {
+  const { cartesian } = theme;
 
   // This allows sdk users to set the base font size,
   // which scales the visualization's font sizes.
-  const baseFontSize = getSizeInPx(options.fontSize);
+  const baseFontSize = getSizeInPx(theme.fontSize);
 
   // ECharts requires font sizes in px for offset calculations.
   const px = (value: string) =>
@@ -50,14 +55,12 @@ export function getVisualizationTheme(
     pie: {
       borderColor: isStaticViz
         ? color("text-white")
-        : getPieBorderColor(options, isDashboard, isNightMode),
+        : getPieBorderColor(theme, isDashboard, isNightMode),
     },
   };
 }
 
-export const DEFAULT_VISUALIZATION_THEME = getVisualizationTheme(
-  DEFAULT_METABASE_COMPONENT_THEME,
-  false,
-  false,
-  true,
-);
+export const DEFAULT_VISUALIZATION_THEME = getVisualizationTheme({
+  theme: DEFAULT_METABASE_COMPONENT_THEME,
+  isStaticViz: true,
+});
