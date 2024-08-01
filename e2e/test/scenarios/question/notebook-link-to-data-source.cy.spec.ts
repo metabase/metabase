@@ -300,6 +300,23 @@ describe("scenarios > notebook > link to data source", () => {
         });
 
         getNotebookStep("data").should("contain", "Pick your starting data");
+
+        cy.log(
+          "The same should be true for a user that additionally doesn't have write query permissions",
+        );
+        cy.signIn("nodata");
+        visitQuestion(nestedQuestion.id);
+        cy.findByTestId("qb-header-action-panel")
+          .icon("notebook")
+          .should("not.exist");
+
+        cy.visit(`/question/${nestedQuestion.id}/notebook`);
+        cy.findByTestId("entity-picker-modal").within(() => {
+          cy.findByText("Pick your starting data").should("be.visible");
+          cy.findByLabelText("Close").click();
+        });
+
+        getNotebookStep("data").should("contain", "Pick your starting data");
       });
     });
   });
