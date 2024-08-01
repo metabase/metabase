@@ -61,13 +61,16 @@ const chartSettingNestedSettings =
         const objectSettings =
           getObjectSettings(objectsSettings, changedKey) ?? {};
         const newSettings = updateSettings(objectSettings, changedSettings);
-        onChange({
-          ...Object.fromEntries(
-            objects.map(object => [
+        const oldSettings = Object.fromEntries(
+          objects
+            .map(object => [
               getObjectKey(object),
               getObjectSettings(objectsSettings, object),
-            ]),
-          ),
+            ])
+            .filter(([key, settings]) => settings != null),
+        );
+        onChange({
+          ...oldSettings,
           [changedKey]: newSettings,
         });
       };
