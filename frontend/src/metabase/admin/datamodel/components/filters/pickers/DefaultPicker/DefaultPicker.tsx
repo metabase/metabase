@@ -13,7 +13,7 @@ import {
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import { getColumnSettings } from "metabase-lib/v1/queries/utils/get-column-key";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
-import type { FieldId, RowValue } from "metabase-types/api";
+import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
 
 import NumberPicker from "../NumberPicker";
 import SelectPicker from "../SelectPicker";
@@ -66,7 +66,7 @@ export function DefaultPicker({
 
   const column = dimension?.column?.();
   const columnSettings =
-    column && getColumnSettings(visualizationSettings, column);
+    column && getColumnSettings(visualizationSettings, column as DatasetColumn);
 
   const fieldMetadata = field?.metadata?.fields[field?.id as FieldId];
   const fieldSettings = {
