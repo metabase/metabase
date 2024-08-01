@@ -68,6 +68,7 @@ export const ParameterValueWidget = ({
   const [isFocused, setIsFocused] = useState(false);
 
   const hasValue = !parameterHasNoDisplayValue(value);
+  const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
   const fieldHasValueOrFocus = parameter.value != null || isFocused;
   const noPopover = hasNoPopover(parameter);
   const parameterTypeIcon = getParameterIconName(parameter);
@@ -79,7 +80,7 @@ export const ParameterValueWidget = ({
     const { default: defaultValue } = parameter;
 
     if (
-      defaultValue != null &&
+      hasDefaultValue &&
       !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
@@ -92,7 +93,7 @@ export const ParameterValueWidget = ({
       );
     }
 
-    if (value != null) {
+    if (hasValue) {
       return (
         <WidgetStatus
           className={S.widgetStatus}
@@ -116,7 +117,7 @@ export const ParameterValueWidget = ({
 
     if (
       required &&
-      defaultValue != null &&
+      hasDefaultValue &&
       !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
@@ -129,7 +130,7 @@ export const ParameterValueWidget = ({
       );
     }
 
-    if (required && defaultValue == null && value != null) {
+    if (required && !hasDefaultValue && hasValue) {
       return (
         <WidgetStatus
           className={S.widgetStatus}

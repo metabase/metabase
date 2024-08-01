@@ -19,10 +19,7 @@ import {
 } from "metabase/plugins";
 import { Stack } from "metabase/ui";
 import SessionTimeoutSetting from "metabase-enterprise/auth/components/SessionTimeoutSetting";
-import {
-  hasAnySsoPremiumFeature,
-  hasPremiumFeature,
-} from "metabase-enterprise/settings";
+import { hasPremiumFeature } from "metabase-enterprise/settings";
 
 import { createSessionMiddleware } from "../auth/middleware/session-middleware";
 
@@ -64,18 +61,6 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
         type: "boolean",
         getHidden: (_settings, derivedSettings) =>
           !hasPremiumFeature("disable_password_login") ||
-          (!derivedSettings["google-auth-enabled"] &&
-            !derivedSettings["ldap-enabled"] &&
-            !derivedSettings["saml-enabled"] &&
-            !derivedSettings["jwt-enabled"]),
-      },
-      {
-        key: "send-new-sso-user-admin-email?",
-        display_name: t`Notify admins of new SSO users`,
-        description: t`When enabled, administrators will receive an email the first time a user uses Single Sign-On.`,
-        type: "boolean",
-        getHidden: (_, derivedSettings) =>
-          !hasAnySsoPremiumFeature() ||
           (!derivedSettings["google-auth-enabled"] &&
             !derivedSettings["ldap-enabled"] &&
             !derivedSettings["saml-enabled"] &&
