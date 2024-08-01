@@ -161,10 +161,10 @@
                          {:type "unknown-field", :table "T1", :field "FAB"}]}
                {:id     card-2
                 :name   "B"
-                :errors [{:type "inactive-field", :table "T1", :field "FB"}]}
+                :errors [{:type "inactive-table", :table "T2"}]}
                {:id     card-3
                 :name   "C"
-                :errors [{:type "unknown-table", :table "T3", :field "FC"}]}]}
+                :errors [{:type "unknown-table", :table "T3"}]}]}
                (-> (get!)
                    (select-keys [:data :total])
                    (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data)))))))))
