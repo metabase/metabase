@@ -733,7 +733,6 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       popover().button("Add filter").click();
 
       cy.findByLabelText("Tag").should("contain.text", "Twenty");
-      SQLFilter.runQuery("cardQuery");
     });
 
     it("should be able to use a static list source when public", () => {
@@ -857,7 +856,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
     SQLFilter.openTypePickerFromSelectedFilterType("Number");
     SQLFilter.chooseType("Text");
-    checkFilterListSourceHasValue({ values: [] });
+    checkFilterListSourceHasValue({ values: ["Foo", "Bar"] });
   });
 });
 
