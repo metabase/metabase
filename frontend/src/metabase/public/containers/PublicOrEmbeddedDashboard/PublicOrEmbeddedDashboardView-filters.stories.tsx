@@ -150,7 +150,9 @@ const CATEGORY_FILTER = createMockParameter({
   name: "Category",
   slug: "category",
 });
+const NUMBER_FILTER_ID = "number-hex";
 const DATE_FILTER_ID = "date-hex";
+const UNIT_OF_TIME_FILTER_ID = "unit-of-time-hex";
 
 interface CreateDashboardOpts {
   hasScroll?: boolean;
@@ -184,6 +186,26 @@ function createDashboard({ hasScroll }: CreateDashboardOpts = {}) {
               ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
             ],
           },
+          {
+            card_id: CARD_BAR_ID,
+            parameter_id: UNIT_OF_TIME_FILTER_ID,
+            target: [
+              "dimension",
+              [
+                "field",
+                PRODUCTS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+          },
+          {
+            card_id: CARD_BAR_ID,
+            parameter_id: NUMBER_FILTER_ID,
+            target: [
+              "dimension",
+              ["field", PRODUCTS.RATING, { "base-type": "type/Float" }],
+            ],
+          },
         ],
       }),
       createMockDashboardCard({
@@ -214,6 +236,20 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
     text: getDashboardUiParameters(
       dashboard.dashcards,
       [CATEGORY_FILTER],
+      createMockMetadata({}),
+      {},
+    ),
+    number: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: NUMBER_FILTER_ID,
+          name: "Number Equals",
+          sectionId: "number",
+          slug: "number_equals",
+          type: "number/=",
+        }),
+      ],
       createMockMetadata({}),
       {},
     ),
@@ -317,6 +353,20 @@ const Template: ComponentStory<typeof PublicOrEmbeddedDashboardView> = args => {
       createMockMetadata({}),
       {},
     ),
+    temporal_unit: getDashboardUiParameters(
+      dashboard.dashcards,
+      [
+        createMockParameter({
+          id: UNIT_OF_TIME_FILTER_ID,
+          name: "Unit of Time",
+          sectionId: "temporal-unit",
+          slug: "unit_of_time",
+          type: "temporal-unit",
+        }),
+      ],
+      createMockMetadata({}),
+      {},
+    ),
   };
   return (
     <PublicOrEmbeddedDashboardView
@@ -330,6 +380,7 @@ type ArgType = Partial<ComponentProps<typeof PublicOrEmbeddedDashboardView>>;
 
 type ParameterType =
   | "text"
+  | "number"
   | "dropdown"
   | "search"
   | "date_all_options"
@@ -337,7 +388,8 @@ type ParameterType =
   | "date_quarter_year"
   | "date_single"
   | "date_range"
-  | "date_relative";
+  | "date_relative"
+  | "temporal_unit";
 
 const createDefaultArgs = (
   args: ArgType & { parameterType?: ParameterType } = {},
@@ -832,4 +884,86 @@ DarkThemeDateFilterRelative.play = async ({ canvasElement }) => {
   popover
     .getByRole("button", { name: "Yesterday" })
     .classList.add("pseudo-hover");
+};
+
+// Unit of time
+export const LightThemeUnitOfTime = Template.bind({});
+LightThemeUnitOfTime.args = createDefaultArgs({
+  parameterType: "temporal_unit",
+  parameterValues: {
+    [UNIT_OF_TIME_FILTER_ID]: "minute",
+  },
+});
+LightThemeUnitOfTime.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Unit of Time",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  (popover.getByText("Hour").parentNode as HTMLElement).classList.add(
+    "pseudo-hover",
+  );
+};
+
+export const DarkThemeUnitOfTime = Template.bind({});
+DarkThemeUnitOfTime.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "temporal_unit",
+  parameterValues: {
+    [UNIT_OF_TIME_FILTER_ID]: "minute",
+  },
+});
+DarkThemeUnitOfTime.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Unit of Time",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  (popover.getByText("Hour").parentNode as HTMLElement).classList.add(
+    "pseudo-hover",
+  );
+};
+
+// Number widget
+export const LightThemeNumber = Template.bind({});
+LightThemeNumber.args = createDefaultArgs({
+  parameterType: "number",
+});
+LightThemeNumber.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Number Equals",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const searchInput = popover.getByPlaceholderText("Enter a number");
+  await userEvent.type(searchInput, "11");
+  await userEvent.tab();
+
+  await userEvent.type(searchInput, "99");
+};
+
+export const DarkThemeNumber = Template.bind({});
+DarkThemeNumber.args = createDefaultArgs({
+  theme: "night",
+  parameterType: "number",
+});
+DarkThemeNumber.play = async ({ canvasElement }) => {
+  const canvas = within(canvasElement);
+  const filter = await canvas.findByRole("button", {
+    name: "Number Equals",
+  });
+  await userEvent.click(filter);
+
+  const popover = getLastPopover();
+  const searchInput = popover.getByPlaceholderText("Enter a number");
+  await userEvent.type(searchInput, "11");
+  await userEvent.tab();
+
+  await userEvent.type(searchInput, "99");
 };
