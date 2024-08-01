@@ -1,6 +1,7 @@
 (ns metabase.api.preview-embed-test
   (:require
    [buddy.sign.jwt :as jwt]
+   [cheshire.core :as json]
    [clojure.test :refer :all]
    [crypto.random :as crypto-random]
    [metabase.api.dashboard-test :as api.dashboard-test]
@@ -578,8 +579,8 @@
                       :has_more_values false}
                      (mt/user-http-request :rasta :get 200 url))))))))))
 
-(deftest parameter-values-are-parsed-and-query-suceeds-test
-  (testing "embedding endpoint parameter values are parsed when sensible. (#27643)"
+(deftest boolean-parameter-values-test
+  (testing "embedding endpoint supports boolean parameter values (#27643)"
     (embed-test/with-embedding-enabled-and-new-secret-key
       (mt/dataset places-cam-likes
         (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
@@ -587,20 +588,20 @@
                                                             :type     :native
                                                             :native
                                                             {:template-tags
-                                                             {"ASDF"
+                                                             {"LIKED"
                                                               {:widget-type  :string/=
                                                                :default      [true]
-                                                               :name         "ASDF"
+                                                               :name         "LIKED"
                                                                :type         :dimension
-                                                               :id           "ASDF"
+                                                               :id           "LIKED"
                                                                :dimension    [:field (mt/id :places :liked) nil]
-                                                               :display-name "Asdf"
+                                                               :display-name "Liked"
                                                                :options      nil
                                                                :required     true}}
-                                                             :query "SELECT * FROM PLACES WHERE {{ASDF}}"}}}
+                                                             :query "SELECT * FROM PLACES WHERE {{LIKED}}"}}}
                        :model/Dashboard {dashboard-id :id} {:parameters
-                                                            [{:name      "ASDF"
-                                                              :slug      "ASDF"
+                                                            [{:name      "LIKED"
+                                                              :slug      "LIKED"
                                                               :id        "ccb91bc"
                                                               :type      :string/=
                                                               :sectionId "string"
@@ -610,29 +611,61 @@
                                                       :parameter_mappings
                                                       [{:parameter_id "ccb91bc"
                                                         :card_id      card-id
-                                                        :target       [:dimension [:template-tag "ASDF"]]}]
+                                                        :target       [:dimension [:template-tag "LIKED"]]}]
                                                       :card_id      card-id}]
           (testing "for card embeds"
-            (let [false-url (format "%s?ASDF=false" (card-query-url card {:_embedding_params {:ASDF "enabled"}}))
-                  true-url  (format "%s?ASDF=true" (card-query-url card {:_embedding_params {:ASDF "enabled"}}))]
+            (let [url (card-query-url card {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
-                     (-> (mt/user-http-request :crowberto :get 202 false-url)
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
-                     (-> (mt/user-http-request :crowberto :get 202 true-url)
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:LIKED true}))
                          :data
                          :rows)))))
           (testing "for dashboard embeds"
-            (let [false-url (format "%s?ASDF=false" (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}}))
-                  true-url  (format "%s?ASDF=true" (dashcard-url dashcard {:_embedding_params {:ASDF "enabled"}}))]
+            (let [url (dashcard-url dashcard {:_embedding_params {:LIKED "enabled"}})]
               (is (= [[3 "The Dentist" false]]
-                     (-> (mt/user-http-request :crowberto :get 202 false-url)
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:LIKED false}))
                          :data
                          :rows)))
               (is (= [[1 "Tempest" true]
                       [2 "Bullit" true]]
-                     (-> (mt/user-http-request :crowberto :get 202 true-url)
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:LIKED true}))
+                         :data
+                         :rows))))))))))
+
+(deftest string-parameter-values-test
+  (testing "embedding endpoint should not parse string values into numbers (#46240)"
+    (embed-test/with-embedding-enabled-and-new-secret-key
+      (mt/dataset airports
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                           {:database (mt/id)
+                                                            :type :query
+                                                            :query
+                                                            {:source-table (mt/id :airport)
+                                                             :fields       [[:field (mt/id :airport :name) nil]]}}}
+                       :model/Dashboard {dashboard-id :id} {:parameters
+                                                            [{:name      "NAME"
+                                                              :slug      "NAME"
+                                                              :id        "ccb91bc"
+                                                              :type      :string/contains
+                                                              :sectionId "number"}]}
+                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                      :parameter_mappings
+                                                      [{:parameter_id "ccb91bc"
+                                                        :card_id      card-id
+                                                        :target       [:dimension [:field (mt/id :airport :name) nil]]}]
+                                                      :card_id      card-id}]
+          (testing "for dashboard embeds"
+            (let [url (dashcard-url dashcard {:_embedding_params {:NAME "enabled"}})]
+              (is (= [["Cheongju International Airport/Cheongju Air Base (K-59/G-513)"]]
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:NAME "513"}))
                          :data
                          :rows))))))))))

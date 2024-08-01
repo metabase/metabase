@@ -165,13 +165,6 @@
                                                   (json/generate-string (public-settings/application-colors))))]
     (svg-string->bytes svg-string)))
 
-(defn categorical-donut
-  "Clojure entrypoint to render a categorical donut chart. Rows should be tuples of [category numeric-value]. Returns a
-  byte array of a png file"
-  [rows legend-colors settings]
-  (let [svg-string (.asString (js/execute-fn-name (context) "categorical_donut" rows (seq legend-colors) (json/generate-string settings)))]
-    (svg-string->bytes svg-string)))
-
 (defn gauge
   "Clojure entrypoint to render a gauge chart. Returns a byte array of a png file"
   [card data]

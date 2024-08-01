@@ -428,4 +428,4 @@ More on [Dashboard filters][dashboard-filters].
 [sql-variables]: https://www.metabase.com/learn/sql-questions/sql-variables.html
 [troubleshooting-filters]: ../../troubleshooting-guide/filters.md
 [troubleshooting-sql]: ../../troubleshooting-guide/sql.md
-[basic-input]: https://www.metabase.com/learn/sql-questions/sql-variables.html#basic-input-variable-text
+[basic-input]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/working-with-sql/sql-variables#basic-input-variable-text
