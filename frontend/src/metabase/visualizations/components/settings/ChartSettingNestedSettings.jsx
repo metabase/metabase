@@ -60,6 +60,7 @@ const chartSettingNestedSettings =
         const objectsSettings = this.props.value ?? {};
         const objectSettings =
           getObjectSettings(objectsSettings, changedKey) ?? {};
+        // updates the settings in case the object key changes
         const updatedSettings = Object.fromEntries(
           objects
             .map(object => [
