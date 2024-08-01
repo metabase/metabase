@@ -579,10 +579,9 @@
   ;; column count is greater than the header column count regardless of the separators we choose
   (let [lines [","
                ",,,;;;\t\t"]]
-    (testing "throws an error if there's no clear winner"
+    (testing "will defer data width errors to insertion time if other separators are degenerate"
       (let [f (csv-file-with lines)]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unable to recognise file separator"
-                              (#'upload/infer-separator f)))))))
+        (is (= \, (#'upload/infer-separator f)))))))
 
 (deftest infer-separator-multiline-test
   (testing "it picks the only viable separator forced by a quote"
