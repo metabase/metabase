@@ -46,7 +46,8 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         height: getSize({ size, sizes: SIZES }),
         cursor: "pointer",
         borderRadius: theme.radius.xs,
-        border: `1px solid ${theme.fn.themeColor("bg-dark")}`,
+        border: "1px solid var(--mb-color-text-secondary)",
+        backgroundColor: "var(--mb-color-background)",
 
         "&:checked": {
           borderColor: "var(--mb-color-background-brand)",
