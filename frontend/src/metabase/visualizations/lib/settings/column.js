@@ -25,6 +25,7 @@ import {
 } from "metabase-lib/v1/types/utils/isa";
 import {
   getColumnKey,
+  getObjectColumnSettings,
   getLegacyColumnKey,
 } from "metabase-lib/v1/queries/utils/get-column-key";
 import {
@@ -70,6 +71,7 @@ export function columnSettings({
     objectName: "column",
     getObjects: getColumns,
     getObjectKey: getColumnKey,
+    getObjectSettings: getObjectColumnSettings,
     getLegacyObjectKey: getLegacyColumnKey,
     getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,

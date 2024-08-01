@@ -11,7 +11,7 @@ export function nestedSettings(
     objectName = "object",
     getObjects,
     getObjectKey,
-    getLegacyObjectKey = getObjectKey,
+    getObjectSettings,
     getSettingDefinitionsForObject,
     getInheritedSettingsForObject = () => ({}),
     component,
@@ -40,11 +40,10 @@ export function nestedSettings(
     const allComputedSettings = {};
     for (const object of objects) {
       const key = getObjectKey(object);
-      const legacyKey = getLegacyObjectKey(object);
       allComputedSettings[key] = getComputedSettingsForObject(
         series,
         object,
-        allStoredSettings[key] ?? allStoredSettings[legacyKey] ?? {},
+        getObjectSettings(allStoredSettings, object),
         extra,
       );
     }
@@ -79,7 +78,7 @@ export function nestedSettings(
   // decorate with nested settings HOC
   const widget = chartSettingNestedSettings({
     getObjectKey,
-    getLegacyObjectKey,
+    getObjectSettings,
     getSettingsWidgetsForObject,
   })(component);
 
@@ -113,11 +112,9 @@ export function nestedSettings(
         const cache = new Map();
         return object => {
           const key = getObjectKey(object);
-          const legacyKey = getLegacyObjectKey(object);
           if (!cache.has(key)) {
             const inheritedSettings = getInheritedSettingsForObject(object);
-            const storedSettings =
-              settings[id][key] ?? settings[id][legacyKey] ?? {};
+            const storedSettings = getObjectSettings(settings[id], object);
             cache.set(key, {
               ...getComputedSettingsForObject(
                 series,

@@ -8,7 +8,11 @@ import {
   isFieldReference,
   isValidDimensionReference,
 } from "metabase-lib/v1/references";
-import type { DatasetColumn, VisualizationSettings } from "metabase-types/api";
+import type {
+  ColumnSettings,
+  DatasetColumn,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 export const getColumnKey = (column: Pick<DatasetColumn, "name">) => {
   return JSON.stringify(["name", column.name]);
@@ -51,8 +55,14 @@ export const getColumnSettings = (
   settings: VisualizationSettings,
   column: Pick<DatasetColumn, "name" | "field_ref">,
 ) => {
+  return getObjectColumnSettings(settings.column_settings ?? {}, column);
+};
+
+export const getObjectColumnSettings = (
+  settings: Record<string, ColumnSettings>,
+  column: Pick<DatasetColumn, "name" | "field_ref">,
+) => {
   return (
-    settings.column_settings?.[getColumnKey(column)] ??
-    settings.column_settings?.[getLegacyColumnKey(column)]
+    settings?.[getColumnKey(column)] ?? settings?.[getLegacyColumnKey(column)]
   );
 };

@@ -126,6 +126,15 @@ export type XAxisScale = "ordinal" | "histogram" | "timeseries" | NumericScale;
 
 export type YAxisScale = NumericScale;
 
+export interface ColumnSettings {
+  column_title?: string;
+  number_separators?: string;
+  currency?: string;
+
+  // some options are untyped
+  [key: string]: any;
+}
+
 export type VisualizationSettings = {
   "graph.show_values"?: boolean;
   "stackable.stack_type"?: StackType;
@@ -133,6 +142,7 @@ export type VisualizationSettings = {
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
+  column_settings?: Record<string, ColumnSettings>;
 
   // X-axis
   "graph.x_axis.title_text"?: string;
