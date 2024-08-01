@@ -10,6 +10,7 @@
    [metabase.models.interface :as mi]
    [metabase.models.pulse :as pulse :refer [Pulse]]
    [metabase.models.serialization :as serdes]
+   [metabase.models.task-history :as task-history]
    [metabase.pulse.parameters :as pulse-params]
    [metabase.pulse.util :as pu]
    [metabase.query-processor.timezone :as qp.timezone]
@@ -23,7 +24,9 @@
    [metabase.util.retry :as retry]
    [metabase.util.ui-logic :as ui-logic]
    [metabase.util.urls :as urls]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+   (io.github.resilience4j.retry Retry)))
 
 (set! *warn-on-reflection* true)
 
@@ -267,24 +270,35 @@
          :email (:email recipient)}
         {:kind :user
          :user recipient}))
+    :http
+    []
     (do
      (log/warnf "Unknown channel type %s" (:channel_type pulse-channel))
      [])))
 
-(defn- channel-send!
-  [& args]
-  (try
-    (apply channel/send! args)
-    (catch Exception e
-      ;; Token errors have already been logged and we should not retry.
-      (when-not (and (= :channel/slack (:type (first args)))
-                     (contains? (:errors (ex-data e)) :slack-token))
-        (throw e)))))
-
 (defn- send-retrying!
-  [& args]
+  [pulse-id channel message]
   (try
-    (apply (retry/decorate channel-send!) args)
+    (let [;; once we upgraded to retry 2.x, we can use (.. retry getMetrics getNumberOfTotalCalls) instead of tracking
+          ;; this manually
+          retry-count (volatile! 0)
+          send!       (fn []
+                          (task-history/with-task-history {:task         "channel-send"
+                                                           :task_details {:retry-config   (when retry/*retry-config*
+                                                                                            {:max-attempts (.. ^Retry retry/*retry-config* getRetryConfig getMaxAttempts)})
+                                                                          :channel-type   (:type channel)
+                                                                          :channel-id     (:id channel)
+                                                                          :pulse-id       pulse-id
+                                                                          :retry-attempts @retry-count}}
+                            (try
+                              (channel/send! channel message)
+                              (catch Exception e
+                                (vswap! retry-count inc)
+                                ;; Token errors have already been logged and we should not retry.
+                                (when-not (and (= :channel/slack (:type channel))
+                                               (contains? (:errors (ex-data e)) :slack-token))
+                                  (throw e))))))]
+      ((retry/decorate send!)))
     (catch Throwable e
       (log/error e "Error sending notification!"))))
 
@@ -341,7 +355,7 @@
                                      (alert-or-pulse pulse)
                                      (:id pulse)
                                      (:channel_type pulse-channel))
-                         (send-retrying! channel message)))
+                         (send-retrying! pulse-id channel message)))
                      (catch Exception e
                        (log/errorf e "Error sending %s %d to channel %s" (alert-or-pulse pulse) (:id pulse) (:channel_type pulse-channel)))))
           (when (:alert_first_only pulse)
