@@ -56,7 +56,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
     return [
       {
         type: "success",
-        nextStep: "setupMetabaseInstance",
+        nextStep: "startLocalMetabaseContainer",
       },
       state,
     ];
