@@ -440,7 +440,7 @@ describe("Dashboard utils", () => {
       { default: ["a", "b"], value: ["b", "a", "c"], expected: true },
       { default: ["a", "b"], value: ["b"], expected: true },
     ])(
-      "default = $default | value = $value | expected = $expected",
+      "default = `$default` | value = `$value` | expected = `$expected`",
       ({ default: defaultValue, value, expected }) => {
         const parameter = createMockUiParameter({
           default: defaultValue,
