@@ -14,7 +14,7 @@ For users to unsubscribe themselves from a pulse subscription.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/pulse/`
 
@@ -31,11 +31,11 @@ Fetch all dashboard subscriptions. By default, returns only subscriptions for wh
 
 ### PARAMS:
 
-*  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`archived`** nullable value must be a valid boolean string ('true' or 'false').
 
-*  **`dashboard_id`** nullable value must be an integer greater than zero.
+-  **`dashboard_id`** nullable value must be an integer greater than zero.
 
-*  **`creator_or_recipient`** nullable value must be a valid boolean string ('true' or 'false').
+-  **`creator_or_recipient`** nullable value must be a valid boolean string ('true' or 'false').
 
 ## `GET /api/pulse/:id`
 
@@ -44,7 +44,7 @@ Fetch `Pulse` with ID. If the user is a recipient of the Pulse but does not have
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/pulse/form_input`
 
@@ -56,7 +56,7 @@ Get HTML rendering of a Card with `id`.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/pulse/preview_card_info/:id`
 
@@ -64,7 +64,7 @@ Get JSON object containing HTML rendering of a Card with `id` and other informat
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/pulse/preview_card_png/:id`
 
@@ -72,7 +72,7 @@ Get PNG rendering of a Card with `id`.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/pulse/preview_dashboard/:id`
 
@@ -84,7 +84,7 @@ Get HTML rendering of a Dashboard with `id`.
 
 ### PARAMS:
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `POST /api/pulse/`
 
@@ -92,21 +92,21 @@ Create a new `Pulse`.
 
 ### PARAMS:
 
-*  **`name`** value must be a non-blank string.
+-  **`name`** value must be a non-blank string.
 
-*  **`cards`** one or more value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.
+-  **`cards`** one or more value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.
 
-*  **`channels`** one or more map
+-  **`channels`** one or more map.
 
-*  **`skip_if_empty`** nullable boolean
+-  **`skip_if_empty`** nullable boolean.
 
-*  **`collection_id`** nullable value must be an integer greater than zero.
+-  **`collection_id`** nullable value must be an integer greater than zero.
 
-*  **`collection_position`** nullable value must be an integer greater than zero.
+-  **`collection_position`** nullable value must be an integer greater than zero.
 
-*  **`dashboard_id`** nullable value must be an integer greater than zero.
+-  **`dashboard_id`** nullable value must be an integer greater than zero.
 
-*  **`parameters`** nullable sequence of map
+-  **`parameters`** nullable sequence of map.
 
 ## `POST /api/pulse/test`
 
@@ -114,19 +114,19 @@ Test send an unsaved pulse.
 
 ### PARAMS:
 
-*  **`name`** value must be a non-blank string.
+-  **`name`** value must be a non-blank string.
 
-*  **`cards`** one or more value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.
+-  **`cards`** one or more value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.
 
-*  **`channels`** one or more map
+-  **`channels`** one or more map.
 
-*  **`skip_if_empty`** nullable boolean
+-  **`skip_if_empty`** nullable boolean.
 
-*  **`collection_id`** nullable value must be an integer greater than zero.
+-  **`collection_id`** nullable value must be an integer greater than zero.
 
-*  **`collection_position`** nullable value must be an integer greater than zero.
+-  **`collection_position`** nullable value must be an integer greater than zero.
 
-*  **`dashboard_id`** nullable value must be an integer greater than zero.
+-  **`dashboard_id`** nullable value must be an integer greater than zero.
 
 ## `PUT /api/pulse/:id`
 
@@ -134,23 +134,23 @@ Update a Pulse with `id`.
 
 ### PARAMS:
 
-*  **`skip_if_empty`** nullable boolean
+-  **`skip_if_empty`** nullable boolean.
 
-*  **`parameters`** nullable sequence of Value must be a map.
+-  **`parameters`** nullable sequence of Value must be a map.
 
-*  **`archived`** nullable boolean
+-  **`archived`** nullable boolean.
 
-*  **`channels`** nullable one or more map
+-  **`channels`** nullable one or more map.
 
-*  **`collection_id`** nullable value must be an integer greater than zero.
+-  **`collection_id`** nullable value must be an integer greater than zero.
 
-*  **`name`** nullable value must be a non-blank string.
+-  **`name`** nullable value must be a non-blank string.
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
-*  **`cards`** nullable one or more value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.
+-  **`cards`** nullable one or more value must be a map with the following keys `(collection_id, description, display, id, include_csv, include_xls, name, dashboard_id, parameter_mappings)`, or value must be a map with the keys `id`, `include_csv`, `include_xls`, and `dashboard_card_id`., or value must be a map with the keys `include_csv`, `include_xls`, and `dashboard_card_id`.
 
-*  **`pulse-updates`**
+-  **`pulse-updates`**
 
 ---
 

@@ -38,7 +38,19 @@ Endpoint that checks if the supplied password meets the currently configured pas
 
 ### PARAMS:
 
-*  **`password`** password is too common.
+-  **`password`** password is too common.
+
+## `POST /api/util/product-feedback`
+
+Endpoint to provide feedback from the product.
+
+### PARAMS:
+
+-  **`comments`** nullable value must be a non-blank string.
+
+-  **`source`** value must be a non-blank string.
+
+-  **`email`** nullable value must be a non-blank string.
 
 ---
 

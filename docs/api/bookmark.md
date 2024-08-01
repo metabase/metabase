@@ -22,9 +22,9 @@ Delete a bookmark. Will delete a bookmark assigned to the user making the reques
 
 ### PARAMS:
 
-*  **`model`** enum of card, dashboard, collection
+-  **`model`** enum of card, dashboard, collection.
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `GET /api/bookmark/`
 
@@ -36,9 +36,9 @@ Create a new bookmark for user.
 
 ### PARAMS:
 
-*  **`model`** enum of card, dashboard, collection
+-  **`model`** enum of card, dashboard, collection.
 
-*  **`id`** value must be an integer greater than zero.
+-  **`id`** value must be an integer greater than zero.
 
 ## `PUT /api/bookmark/ordering`
 
@@ -46,7 +46,7 @@ Sets the order of bookmarks for user.
 
 ### PARAMS:
 
-*  **`orderings`** sequence of map where {:type -> <enum of card, dashboard, collection>, :item_id -> <value must be an integer greater than zero.>}
+-  **`orderings`** sequence of map where {:type -> <enum of card, dashboard, collection>, :item_id -> <value must be an integer greater than zero.>}.
 
 ---
 

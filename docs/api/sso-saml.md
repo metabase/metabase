@@ -16,7 +16,7 @@ You must be a superuser to do this.
 
 ### PARAMS:
 
-*  **`settings`** map
+-  **`settings`** map.
 
 ---
 

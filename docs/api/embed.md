@@ -46,7 +46,7 @@ Fetch a Card via a JSON Web Token signed with the `embedding-secret-key`.
 
 ### PARAMS:
 
-*  **`token`**
+-  **`token`**
 
 ## `GET /api/embed/card/:token/field/:field-id/remapping/:remapped-id`
 
@@ -55,13 +55,13 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`field-id`** value must be an integer greater than zero.
+-  **`field-id`** value must be an integer greater than zero.
 
-*  **`remapped-id`** value must be an integer greater than zero.
+-  **`remapped-id`** value must be an integer greater than zero.
 
-*  **`value`** value must be a non-blank string.
+-  **`value`** value must be a non-blank string.
 
 ## `GET /api/embed/card/:token/field/:field-id/search/:search-field-id`
 
@@ -69,15 +69,15 @@ Search for values of a Field that is referenced by an embedded Card.
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`field-id`** value must be an integer greater than zero.
+-  **`field-id`** value must be an integer greater than zero.
 
-*  **`search-field-id`** value must be an integer greater than zero.
+-  **`search-field-id`** value must be an integer greater than zero.
 
-*  **`value`** value must be a non-blank string.
+-  **`value`** value must be a non-blank string.
 
-*  **`limit`** nullable value must be an integer greater than zero.
+-  **`limit`** nullable value must be an integer greater than zero.
 
 ## `GET /api/embed/card/:token/field/:field-id/values`
 
@@ -85,9 +85,9 @@ Fetch FieldValues for a Field that is referenced by an embedded Card.
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`field-id`** value must be an integer greater than zero.
+-  **`field-id`** value must be an integer greater than zero.
 
 ## `GET /api/embed/card/:token/params/:param-key/search/:prefix`
 
@@ -95,11 +95,11 @@ Embedded version of chain filter search endpoint.
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`param-key`** 
+-  **`param-key`** 
 
-*  **`prefix`**
+-  **`prefix`**
 
 ## `GET /api/embed/card/:token/params/:param-key/values`
 
@@ -107,9 +107,9 @@ Embedded version of api.card filter values endpoint.
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`param-key`**
+-  **`param-key`**
 
 ## `GET /api/embed/card/:token/query`
 
@@ -122,11 +122,11 @@ Fetch the results of running a Card using a JSON Web Token signed with the `embe
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`&`** 
+-  **`&`** 
 
-*  **`query-params`**
+-  **`query-params`**
 
 ## `GET /api/embed/card/:token/query/:export-format`
 
@@ -134,11 +134,13 @@ Like `GET /api/embed/card/query`, but returns the results as a file in the speci
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`export-format`** enum of csv, api, xlsx, json
+-  **`export-format`** enum of csv, api, xlsx, json.
 
-*  **`query-params`**
+-  **`format_rows`** nullable boolean.
+
+-  **`query-params`**
 
 ## `GET /api/embed/dashboard/:token`
 
@@ -150,7 +152,7 @@ Fetch a Dashboard via a JSON Web Token signed with the `embedding-secret-key`.
 
 ### PARAMS:
 
-*  **`token`**
+-  **`token`**
 
 ## `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
@@ -159,15 +161,15 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`dashcard-id`** value must be an integer greater than zero.
+-  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** value must be an integer greater than zero.
+-  **`card-id`** value must be an integer greater than zero.
 
-*  **`&`** 
+-  **`&`** 
 
-*  **`query-params`**
+-  **`query-params`**
 
 ## `GET /api/embed/dashboard/:token/dashcard/:dashcard-id/card/:card-id/:export-format`
 
@@ -176,15 +178,17 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`export-format`** enum of csv, api, xlsx, json
+-  **`export-format`** enum of csv, api, xlsx, json.
 
-*  **`dashcard-id`** value must be an integer greater than zero.
+-  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** value must be an integer greater than zero.
+-  **`card-id`** value must be an integer greater than zero.
 
-*  **`query-params`**
+-  **`format_rows`** nullable boolean.
+
+-  **`query-params`**
 
 ## `GET /api/embed/dashboard/:token/field/:field-id/remapping/:remapped-id`
 
@@ -193,13 +197,13 @@ Fetch remapped Field values. This is the same as `GET /api/field/:id/remapping/:
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`field-id`** value must be an integer greater than zero.
+-  **`field-id`** value must be an integer greater than zero.
 
-*  **`remapped-id`** value must be an integer greater than zero.
+-  **`remapped-id`** value must be an integer greater than zero.
 
-*  **`value`** value must be a non-blank string.
+-  **`value`** value must be a non-blank string.
 
 ## `GET /api/embed/dashboard/:token/field/:field-id/search/:search-field-id`
 
@@ -207,15 +211,15 @@ Search for values of a Field that is referenced by a Card in an embedded Dashboa
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`field-id`** value must be an integer greater than zero.
+-  **`field-id`** value must be an integer greater than zero.
 
-*  **`search-field-id`** value must be an integer greater than zero.
+-  **`search-field-id`** value must be an integer greater than zero.
 
-*  **`value`** value must be a non-blank string.
+-  **`value`** value must be a non-blank string.
 
-*  **`limit`** nullable value must be an integer greater than zero.
+-  **`limit`** nullable value must be an integer greater than zero.
 
 ## `GET /api/embed/dashboard/:token/field/:field-id/values`
 
@@ -223,9 +227,9 @@ Fetch FieldValues for a Field that is used as a param in an embedded Dashboard.
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`field-id`** value must be an integer greater than zero.
+-  **`field-id`** value must be an integer greater than zero.
 
 ## `GET /api/embed/dashboard/:token/params/:param-key/search/:prefix`
 
@@ -233,13 +237,13 @@ Embedded version of chain filter search endpoint.
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`param-key`** 
+-  **`param-key`** 
 
-*  **`prefix`** 
+-  **`prefix`** 
 
-*  **`query-params`**
+-  **`query-params`**
 
 ## `GET /api/embed/dashboard/:token/params/:param-key/values`
 
@@ -247,11 +251,11 @@ Embedded version of chain filter values endpoint.
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`param-key`** 
+-  **`param-key`** 
 
-*  **`query-params`**
+-  **`query-params`**
 
 ## `GET /api/embed/pivot/card/:token/query`
 
@@ -264,11 +268,11 @@ Fetch the results of running a Card using a JSON Web Token signed with the `embe
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`&`** 
+-  **`&`** 
 
-*  **`query-params`**
+-  **`query-params`**
 
 ## `GET /api/embed/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id`
 
@@ -277,15 +281,15 @@ Fetch the results of running a Card belonging to a Dashboard using a JSON Web To
 
 ### PARAMS:
 
-*  **`token`** 
+-  **`token`** 
 
-*  **`dashcard-id`** value must be an integer greater than zero.
+-  **`dashcard-id`** value must be an integer greater than zero.
 
-*  **`card-id`** value must be an integer greater than zero.
+-  **`card-id`** value must be an integer greater than zero.
 
-*  **`&`** 
+-  **`&`** 
 
-*  **`query-params`**
+-  **`query-params`**
 
 ---
 
