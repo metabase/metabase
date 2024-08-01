@@ -73,7 +73,7 @@ const getFieldProps = (field: EngineField, override?: EngineFieldOverride) => {
 
 const getInputProps = (field: EngineField) => {
   return {
-    rightIcon: field["helper-text"] ? "info" : undefined,
+    rightIcon: field["helper-text"] ? ("info" as const) : undefined,
     rightIconTooltip: field["helper-text"],
   };
 };
