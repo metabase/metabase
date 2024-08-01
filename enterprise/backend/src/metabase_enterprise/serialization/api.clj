@@ -1,7 +1,6 @@
 (ns metabase-enterprise.serialization.api
   (:require
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [compojure.core :refer [POST]]
    [java-time.api :as t]
@@ -106,8 +105,7 @@
   (->> (.listFiles parent)
        (u/seek (fn [^File f]
                  (and (.isDirectory f)
-                      (seq (set/intersection v2.ingest/legal-top-level-paths
-                                             (set (.list f)))))))))
+                      (some v2.ingest/legal-top-level-paths (.list f)))))))
 
 (defn- unpack&import [^File file & [size]]
   (let [dst      (io/file parent-dir (u.random/random-name))

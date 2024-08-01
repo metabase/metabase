@@ -212,6 +212,10 @@
   (testing "We are able to find serialization dir even in presence of various hidden dirs"
     (let [dst (io/file api.serialization/parent-dir (u.random/random-name))]
       (.mkdirs (io/file dst "._hidden_dir"))
+      (.mkdirs (io/file dst "not_hidden_dir"))
+      (is (= nil
+             (#'api.serialization/find-serialization-dir dst)))
       (.mkdirs (io/file dst "real_dir" "collections"))
       (is (= "real_dir"
-             (.getName ^File (#'api.serialization/find-serialization-dir dst)))))))
+             (.getName ^File (#'api.serialization/find-serialization-dir dst))))
+      (run! io/delete-file (reverse (file-seq dst))))))

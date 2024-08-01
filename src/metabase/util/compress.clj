@@ -40,7 +40,8 @@
     dst))
 
 (defn untgz
-  "Uncompress tar+gzip file `archive` to a directory `dst`."
+  "Uncompress tar+gzip file `archive` to a directory `dst`.
+  Skips hidden entries, returns number of unpacked entries (files + dirs)."
   [^File archive ^File dst]
   (with-open [tar (-> (io/input-stream archive)
                       (GzipCompressorInputStream.)
