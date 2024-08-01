@@ -25,7 +25,7 @@ import {
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
+const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
   SAMPLE_DATABASE;
 
 describe("issue 18067", () => {
@@ -202,7 +202,7 @@ describe("issue 16334", () => {
 
     const getVisualizationSettings = targetId => ({
       column_settings: {
-        ['["name","RATING"]']: {
+        [`["ref",["field",${REVIEWS.RATING},null]]`]: {
           click_behavior: {
             targetId,
             parameterMapping: {

@@ -1058,7 +1058,7 @@ describe("issue 12368", () => {
       "table.pivot_column": "CATEGORY",
       "table.cell_column": "count",
       column_settings: {
-        ['["name","VENDOR"]']: {
+        [`["ref",["field",${PRODUCTS.VENDOR},null]]`]: {
           column_title: "Vendor2",
         },
       },

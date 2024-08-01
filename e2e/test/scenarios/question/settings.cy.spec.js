@@ -299,7 +299,7 @@ describe("scenarios > question > settings", () => {
         display: "table",
         visualization_settings: {
           column_settings: {
-            ['["name","TOTAL"]']: {
+            [`["ref",["field",${ORDERS.SUBTOTAL},null]]`]: {
               column_title: newColumnTitle,
             },
           },

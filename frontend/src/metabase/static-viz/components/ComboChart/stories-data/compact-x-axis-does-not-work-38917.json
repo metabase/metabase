@@ -28,7 +28,7 @@
         "graph.series_order": null,
         "graph.x_axis.axis_enabled": "compact",
         "column_settings": {
-          "[\"name\",\"attack\"]": {
+          "[\"ref\",[\"field\",1493,null]]": {
             "scale": 1.1111111111111112,
             "decimals": 100
           }

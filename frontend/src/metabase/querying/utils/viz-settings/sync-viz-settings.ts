@@ -1,10 +1,5 @@
 import * as Lib from "metabase-lib";
-import {
-  getColumnKey,
-  getColumnNameFromKey,
-} from "metabase-lib/v1/queries/utils/get-column-key";
 import type {
-  ColumnSetting,
   Series,
   SingleSeries,
   VisualizationSettings,
@@ -58,7 +53,6 @@ export function syncVizSettings(
 ): VisualizationSettings {
   let nextSettings = settings;
   nextSettings = syncTableColumns(nextSettings, newColumns, oldColumns);
-  nextSettings = syncColumnSettings(nextSettings, newColumns, oldColumns);
   nextSettings = syncGraphMetrics(nextSettings, newColumns, oldColumns);
   return nextSettings;
 }
@@ -96,7 +90,7 @@ type SyncColumnNamesOpts<T> = {
   settings: T[];
   newColumns: ColumnInfo[];
   oldColumns: ColumnInfo[];
-  getColumnName: (setting: T) => string | undefined;
+  getColumnName: (setting: T) => string;
   setColumnName: (setting: T, newName: string) => T;
   createSetting: (column: ColumnInfo) => T;
   shouldCreateSetting: (column: ColumnInfo) => boolean | undefined;
@@ -121,9 +115,8 @@ function syncColumns<T>({
     oldColumns.map(column => [column.key, column.name]),
   );
   const remappedSettings = settings.reduce((settings: T[], setting) => {
-    const oldName = getColumnName(setting);
-    const oldKey = oldName && oldKeyByName[oldName];
-    const newName = oldKey && newNameByKey[oldKey];
+    const oldKey = oldKeyByName[getColumnName(setting)];
+    const newName = newNameByKey[oldKey];
     if (!oldKey) {
       settings.push(setting);
     } else if (newName) {
@@ -160,32 +153,6 @@ function syncTableColumns(
       createSetting: column => ({ name: column.name, enabled: true }),
       shouldCreateSetting: () => true,
     }),
-  };
-}
-
-function syncColumnSettings(
-  settings: VisualizationSettings,
-  newColumns: ColumnInfo[],
-  oldColumns: ColumnInfo[],
-): VisualizationSettings {
-  const columnSettings = settings["column_settings"];
-  if (!columnSettings) {
-    return settings;
-  }
-
-  const columnEntries = syncColumns<[string, ColumnSetting]>({
-    settings: Object.entries(columnSettings),
-    newColumns,
-    oldColumns,
-    getColumnName: ([key]) => getColumnNameFromKey(key),
-    setColumnName: ([_, setting], name) => [getColumnKey({ name }), setting],
-    createSetting: column => [getColumnKey(column), {}],
-    shouldCreateSetting: () => false,
-  });
-
-  return {
-    ...settings,
-    column_settings: Object.fromEntries(columnEntries),
   };
 }
 

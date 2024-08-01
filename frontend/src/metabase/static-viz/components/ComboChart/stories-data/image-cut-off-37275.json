@@ -159,6 +159,9 @@
         "series_settings": { "Rate": { "color": "#88BF4D" } },
         "graph.y_axis.title_text": "Monthly Rate",
         "column_settings": {
+          "[\"ref\",[\"expression\",\"Monthly rate\"]]": {
+            "number_style": "percent"
+          },
           "[\"name\",\"Rate\"]": { "number_style": "percent" }
         },
         "graph.metrics": ["Rate"]

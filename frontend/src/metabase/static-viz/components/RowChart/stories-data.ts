@@ -4,7 +4,7 @@ export const MULTIPLE_SERIES: StaticRowChartProps = {
   settings: {
     "graph.dimensions": ["CREATED_AT", "CATEGORY"],
     column_settings: {
-      '["name","CREATED_AT"]': {
+      '["ref",["field",12,null]]': {
         date_style: "MMMM D, YYYY",
         date_abbreviate: true,
       },
@@ -179,7 +179,7 @@ export const METRIC_COLUMN_WITH_SCALING: StaticRowChartProps = {
   settings: {
     "graph.dimensions": ["CREATED_AT", "CATEGORY"],
     column_settings: {
-      '["name","CREATED_AT"]': {
+      '["ref",["field",12,null]]': {
         date_style: "MMMM D, YYYY",
         date_abbreviate: true,
       },

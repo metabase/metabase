@@ -89,7 +89,7 @@ describe("scenarios > question > download", () => {
 
   it("should allow downloading unformatted CSV data", () => {
     const fieldRef = ["field", ORDERS.TOTAL, null];
-    const columnKey = '["name","TOTAL"]';
+    const columnKey = `["ref",${JSON.stringify(fieldRef)}]`;
 
     createQuestion(
       {

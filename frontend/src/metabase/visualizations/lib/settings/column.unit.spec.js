@@ -39,13 +39,12 @@ describe("column settings", () => {
   it("should find by column 'field' ID ref", () => {
     const series = seriesWithColumn({
       id: 42,
-      name: "foo",
       field_ref: ["field", 42, null],
     });
     const defs = { ...columnSettings() };
     const stored = {
       column_settings: {
-        '["name","foo"]': {
+        '["ref",["field",42,null]]': {
           currency: "BTC",
         },
       },
