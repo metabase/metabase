@@ -194,7 +194,9 @@ export async function getIssueWithCache ({
 }
 
 function checksPassed(checks: GithubCheck[]) {
-  const MIN_TOTAL_CHECKS = 95;
+  // we need to check total checks to make sure we didn't hit a temporary state where all checks are passing
+  // because only a few checks have triggered
+  const MIN_TOTAL_CHECKS = 95; // v49 has 96 checks, v50 has 99 checks
 
   const failedChecks = checks.filter((check) =>
     !["success", "skipped"].includes(check.conclusion ?? ''));

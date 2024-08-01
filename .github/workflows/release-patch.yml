@@ -49,7 +49,7 @@ jobs:
                 branch: `release-x.${majorVersion}.x`,
               });
 
-              const hasBeenReleased = await  hasCommitBeenReleased({
+              const hasBeenReleased = await hasCommitBeenReleased({
                 github,
                 owner: context.repo.owner,
                 repo: context.repo.repo,

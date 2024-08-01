@@ -22,7 +22,7 @@ export function mentionUserByGithubLogin(githubLogin?: string | null) {
   if (githubLogin && githubLogin in githubSlackMap) {
     return `<@${githubSlackMap[githubLogin]}>`;
   }
-  return `${githubLogin ?? 'unassigned'}`;
+  return `@${githubLogin ?? 'unassigned'}`;
 }
 
 export function mentionSlackTeam(teamName: string) {
