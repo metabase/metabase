@@ -250,7 +250,7 @@
                     (constantly mock-default-result))))))))))
 
 (deftest ^:parallel order-by-aggregation-fields-test
-  (testing "Values could be retrieved for queries containing ordering by aggregation"
+  (testing "Values could be retrieved for queries containing ordering by aggregation (#46369)"
     (doseq [model? [true false]]
       (testing (format "source card is a %s" (if model? "model" "question"))
         (mt/with-temp
