@@ -406,15 +406,22 @@ const createDefaultArgs = (
     ...args,
   };
 };
-
-function getLastPopover() {
+function getLastPopover(wrapped?: true): ReturnType<typeof within>;
+function getLastPopover(wrapped: false): HTMLElement;
+function getLastPopover(
+  wrapped = true,
+): HTMLElement | ReturnType<typeof within> {
   const lastPopover = Array.from(
     document.documentElement.querySelectorAll(
       '[data-element-id="mantine-popover"]',
     ),
   ).at(-1) as HTMLElement;
 
-  return within(lastPopover);
+  if (wrapped) {
+    return within(lastPopover);
+  }
+
+  return lastPopover;
 }
 
 // Light theme
@@ -433,12 +440,12 @@ LightThemeTextWithValue.play = async ({ canvasElement }) => {
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);
 
-  const documentElement = within(document.documentElement);
+  const popover = getLastPopover();
   await userEvent.type(
-    documentElement.getByPlaceholderText("Enter some text"),
+    popover.getByPlaceholderText("Enter some text"),
     "filter value",
   );
-  await userEvent.tab();
+  await userEvent.click(getLastPopover(false));
 };
 
 export const LightThemeParameterList = Template.bind({});
@@ -515,12 +522,12 @@ DarkThemeTextWithValue.play = async ({ canvasElement }) => {
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);
 
-  const documentElement = within(document.documentElement);
+  const popover = getLastPopover();
   await userEvent.type(
-    documentElement.getByPlaceholderText("Enter some text"),
+    popover.getByPlaceholderText("Enter some text"),
     "filter value",
   );
-  await userEvent.tab();
+  await userEvent.click(getLastPopover(false));
 };
 
 export const DarkThemeParameterList = Template.bind({});
@@ -943,7 +950,7 @@ LightThemeNumber.play = async ({ canvasElement }) => {
   const popover = getLastPopover();
   const searchInput = popover.getByPlaceholderText("Enter a number");
   await userEvent.type(searchInput, "11");
-  await userEvent.tab();
+  await userEvent.click(getLastPopover(false));
 
   await userEvent.type(searchInput, "99");
 };
@@ -963,7 +970,7 @@ DarkThemeNumber.play = async ({ canvasElement }) => {
   const popover = getLastPopover();
   const searchInput = popover.getByPlaceholderText("Enter a number");
   await userEvent.type(searchInput, "11");
-  await userEvent.tab();
+  await userEvent.click(getLastPopover(false));
 
   await userEvent.type(searchInput, "99");
 };
