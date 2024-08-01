@@ -1,4 +1,5 @@
 import { render, screen, waitFor } from "__support__/ui";
+
 import { DelayedLoadingAndErrorWrapper } from "./DelayedLoadingAndErrorWrapper";
 
 describe("DelayedLoadingAndErrorWrapper", () => {
