@@ -272,7 +272,7 @@ describe("scenarios > notebook > link to data source", () => {
   });
 
   context("permissions", () => {
-    it('should open the "trash" if the source question has been archived', () => {
+    it("shouldn't show the source question if it lives in a collection that user can't see", () => {
       createQuestion({
         name: "Nested question based on a question",
         query: { "source-table": `card__${ORDERS_COUNT_QUESTION_ID}` },
