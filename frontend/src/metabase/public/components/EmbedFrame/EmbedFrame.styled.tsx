@@ -7,7 +7,6 @@ import { FullWidthContainer } from "metabase/styled-components/layout/FullWidthC
 import {
   breakpointMinSmall,
   breakpointMinLarge,
-  breakpointMinMedium,
   space,
   breakpointMaxSmall,
 } from "metabase/styled-components/theme";
@@ -165,16 +164,16 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   align-items: center;
   ${props => footerVariantStyles[props.variant]}
   height: calc(50 / 16 * 1rem);
-  padding: 0 0.5rem;
+  padding: 0 1em;
 
-  ${breakpointMinMedium} {
+  ${breakpointMinSmall} {
     height: calc(65 / 16 * 1rem);
-    padding: 0 1rem;
+    padding: 0 1.5rem;
   }
 
   ${breakpointMinLarge} {
     height: calc(80 / 16 * 1rem);
-    padding: 0 1.5rem;
+    padding: 0 2rem;
   }
 `;
 
