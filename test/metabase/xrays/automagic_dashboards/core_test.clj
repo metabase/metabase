@@ -1119,30 +1119,6 @@
                first
                key)))))
 
-
-;;; ------------------- Datetime resolution inference -------------------
-
-(deftest ^:parallel optimal-datetime-resolution-test
-  (doseq [[m expected] [[{:earliest "2015"
-                          :latest   "2017"}
-                         :month]
-                        [{:earliest "2017-01-01"
-                          :latest   "2017-03-04"}
-                         :day]
-                        [{:earliest "2005"
-                          :latest   "2017"}
-                         :year]
-                        [{:earliest "2017-01-01"
-                          :latest   "2017-01-02"}
-                         :hour]
-                        [{:earliest "2017-01-01T00:00:00"
-                          :latest   "2017-01-01T00:02:00"}
-                         :minute]]
-          :let         [fingerprint {:type {:type/DateTime m}}]]
-    (testing (format "fingerprint = %s" (pr-str fingerprint))
-      (is (= expected
-             (#'interesting/optimal-datetime-resolution {:fingerprint fingerprint}))))))
-
 ;;; -------------------- Filters --------------------
 
 (defn field! [table column]
