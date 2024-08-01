@@ -1,5 +1,5 @@
 import type { IconName } from "metabase/ui";
-import { getColumnSettings } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ClickBehaviorType,
   DatasetColumn,

@@ -26,7 +26,7 @@ import {
 import {
   getColumnKey,
   getObjectColumnSettings,
-} from "metabase-lib/v1/queries/utils/get-column-key";
+} from "metabase-lib/v1/queries/utils/column-key";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,

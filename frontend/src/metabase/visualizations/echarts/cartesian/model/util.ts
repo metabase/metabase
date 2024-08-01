@@ -3,7 +3,7 @@ import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
-import { getColumnSettings } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   NEGATIVE_BAR_DATA_LABEL_KEY_SUFFIX,

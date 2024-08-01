@@ -11,7 +11,7 @@ import {
   isFuzzyOperator,
 } from "metabase-lib/v1/operators/utils";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
-import { getColumnSettings } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
 
