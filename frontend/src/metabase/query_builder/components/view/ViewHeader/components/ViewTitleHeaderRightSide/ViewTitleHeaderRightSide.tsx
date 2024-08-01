@@ -180,16 +180,16 @@ export function ViewTitleHeaderRightSide({
           onCloseSummary={onCloseSummary}
         />
       )}
-      {!isBrandNew &&
-        QuestionNotebookButton.shouldRender({
-          question,
-          isActionListVisible,
-        }) && (
-          <QuestionNotebookButton
-            isShowingNotebook={isShowingNotebook}
-            setQueryBuilderMode={setQueryBuilderMode}
-          />
-        )}
+      {QuestionNotebookButton.shouldRender({
+        question,
+        isActionListVisible,
+        isBrandNew,
+      }) && (
+        <QuestionNotebookButton
+          isShowingNotebook={isShowingNotebook}
+          setQueryBuilderMode={setQueryBuilderMode}
+        />
+      )}
       {ToggleNativeQueryPreview.shouldRender({
         question,
         queryBuilderMode,
