@@ -10,7 +10,10 @@ import {
   getPermissionErrorMessage,
 } from "metabase/visualizations/lib/errors";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
-import { areParameterValuesIdentical } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  areParameterValuesIdentical,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   ActionDashboardCard,
   BaseDashboardCard,
@@ -377,14 +380,13 @@ export function filtersToReset(parameters: UiParameter[]): UiParameter[] {
 }
 
 export function canResetFilter(parameter: UiParameter): boolean {
-  const { default: defaultValue, value } = parameter;
-  const hasDefaultValue = defaultValue != null;
-  const hasValue = value != null;
+  const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
+  const hasValue = !parameterHasNoDisplayValue(parameter.value);
 
   if (hasDefaultValue) {
     return !areParameterValuesIdentical(
-      wrapArray(value),
-      wrapArray(defaultValue),
+      wrapArray(parameter.value),
+      wrapArray(parameter.default),
     );
   }
 
