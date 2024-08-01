@@ -5,7 +5,8 @@ import { getSizeInPx } from "metabase/visualizations/shared/utils/size-in-px";
 import type { VisualizationTheme } from "metabase/visualizations/types";
 
 function getPieBorderColor(
-  options: MantineThemeOther,
+  dashboardCardBg: string,
+  questionBg: string,
   isDashboard: boolean | undefined,
   isNightMode: boolean | undefined,
 ) {
@@ -13,12 +14,12 @@ function getPieBorderColor(
     return "var(--mb-color-bg-night)";
   }
   if (isDashboard) {
-    return options.dashboard.card.backgroundColor;
+    return dashboardCardBg;
   }
-  if (options.question.backgroundColor === "transparent") {
+  if (questionBg === "transparent") {
     return "var(--mb-color-bg-white)";
   }
-  return options.question.backgroundColor;
+  return questionBg;
 }
 
 /**
@@ -30,12 +31,15 @@ export function getVisualizationTheme({
   isNightMode,
   isStaticViz,
 }: {
-  theme: MantineThemeOther;
+  theme: Partial<MantineThemeOther>;
   isDashboard?: boolean;
   isNightMode?: boolean;
   isStaticViz?: boolean;
 }): VisualizationTheme {
-  const { cartesian } = theme;
+  const { cartesian, dashboard, question } = theme;
+  if (cartesian == null || dashboard == null || question == null) {
+    throw Error("Missing required theme values");
+  }
 
   // This allows sdk users to set the base font size,
   // which scales the visualization's font sizes.
@@ -55,7 +59,12 @@ export function getVisualizationTheme({
     pie: {
       borderColor: isStaticViz
         ? color("text-white")
-        : getPieBorderColor(theme, isDashboard, isNightMode),
+        : getPieBorderColor(
+            dashboard.card.backgroundColor,
+            question.backgroundColor,
+            isDashboard,
+            isNightMode,
+          ),
     },
   };
 }

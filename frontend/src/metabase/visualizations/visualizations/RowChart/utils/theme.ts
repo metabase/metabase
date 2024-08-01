@@ -57,5 +57,5 @@ export const useRowChartTheme = (
         color: color("border"),
       },
     };
-  }, [theme, fontFamily]);
+  }, [theme, fontFamily, isDashboard, isFullscreen, isNightMode]);
 };
