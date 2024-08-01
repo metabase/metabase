@@ -5,7 +5,7 @@
    [metabase.api.common :as api]
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.collection :as collection]
-   [metabase.models.query-field :as query-field]
+   [metabase.models.query-analysis :as query-analysis]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -54,9 +54,9 @@
                                               :u.first_name :u.last_name :u.email]
                                              sort-dir-kw]]
                               [(into sorting-selects [sort-dir-kw])])
-        card-query          (query-field/cards-with-reference-errors
+        card-query          (query-analysis/cards-with-reference-errors
                              (m/assoc-some
-                              ;; TODO this table has a lot of fields... we should whittle down to what we need.
+                              ;; TODO this table has a lot of fields... we should whittle down to only the ones we need.
                               {:select    (into [:c.*] sorting-selects)
                                :from      [[(t2/table-name :model/Card) :c]]
                                :left-join sorting-joins
@@ -71,7 +71,7 @@
                               :limit  limit
                               :offset offset))
         cards               (t2/select :model/Card card-query)
-        id->errors          (query-field/reference-errors cards)
+        id->errors          (query-analysis/reference-errors cards)
         add-errors          (fn [{:keys [id] :as card}]
                               (assoc card :errors (sort-by (juxt :table :field :type) (id->errors id))))]
     {:data (map (comp present add-errors) (t2/hydrate cards [:collection :effective_ancestors] :creator))
