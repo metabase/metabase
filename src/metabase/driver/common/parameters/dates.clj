@@ -470,24 +470,14 @@
                          {:param date-string
                           :type  qp.error-type/invalid-parameter}))))))
 
-(defn- parse-date-str
-  "Generate parts vector for `yyyy-MM-ddThh:mm:ss` format `date-str`. Trailing parts, if not present in the string,
-  are added."
-  [date-str]
-  (let [parts (mapv #(Integer/parseInt %)
-                    (str/split date-str #"-|:|T"))]
-    (into parts (repeat (- 6 (count parts)) 0))))
-
 (defn- date-str->qp-aware-offset-dt
-  "Generate offset datetime from `date-str` with respect to `results-timezone`."
+  "Generate offset datetime from `date-str` with respect to qp's `results-timezone`."
   [date-str]
   (when date-str
-    (let [[y M d h m s] (parse-date-str date-str)]
+    (let [[y M d h m s] (shared.ut/yyyyMMddhhmmss->parts date-str)]
       (try (.toOffsetDateTime (t/zoned-date-time y M d h m s 0 (t/zone-id (qp.timezone/results-timezone-id))))
            (catch Throwable _
-             (try (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id)))
-                  (catch Throwable _
-                    (t/offset-date-time y M d h m s 0 (t/zone-id "Z")))))))))
+             (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id))))))))
 
 (defn- date-str->unit-fn
   "Return appropriate function for interval end adjustments in [[inclusive-datetime-range-end]]."
@@ -497,7 +487,7 @@
       t/days
       t/minutes)))
 
-(defn- inclusive-datetime-range-end
+(defn- exclusive-datetime-range-end
   "Transform `end-dt` OffsetDateTime to appropriate range end.
 
   Context. Datetime range is required for `FieldFilter`s on `:type/DateTime` fields (see the
@@ -522,7 +512,7 @@
 
   First [[date-string->range]] generates range for dates (inclusive by default). Operating on that range,
   this function:
-  1. converts dates to OffsetDateTime, respecting qp timezone, adding zero temporal padding,
+  1. converts dates to OffsetDateTime, respecting qp's timezone, adding zero temporal padding,
   2. updates range to correct _end-exclusive datetime_*
   3. formats the range.
 
@@ -536,7 +526,7 @@
                        (catch Throwable _
                          (fallback-raw-range raw-date-str)))]
     (-> (update-vals range-raw date-str->qp-aware-offset-dt)
-        (update :end inclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
+        (update :end exclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
         format-date-range)))
 
 (mu/defn date-string->filter :- mbql.s/Filter
