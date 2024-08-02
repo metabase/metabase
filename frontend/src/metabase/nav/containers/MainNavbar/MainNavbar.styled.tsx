@@ -11,7 +11,7 @@ import {
 import { Box, type BoxProps, Icon } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";
-import {ExpandToggleButton} from "./SidebarItems/SidebarItems.styled";
+import { ExpandToggleButton } from "./SidebarItems/SidebarItems.styled";
 
 const openSidebarCSS = css`
   width: ${NAV_SIDEBAR_WIDTH};
