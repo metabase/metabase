@@ -21,6 +21,7 @@ import ModalContent from "metabase/components/ModalContent";
 import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import fitViewport from "metabase/hoc/FitViewPort";
+import { useToggle } from "metabase/hooks/use-toggle";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { updateUserSetting } from "metabase/redux/settings";
 import type { IconName } from "metabase/ui";
@@ -80,8 +81,11 @@ function PermissionsPageLayout({
   route,
   toolbarRightContent,
   helpContent,
-  showSplitPermsModal = false,
+  showSplitPermsModal: _showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
+  const [showSplitPermsModal, { turnOff: disableSplitPermsModal }] =
+    useToggle(_showSplitPermsModal);
+
   const saveError = useSelector(state => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
 
@@ -97,6 +101,7 @@ function PermissionsPageLayout({
   }, [dispatch]);
 
   const handleDimissSplitPermsModal = () => {
+    disableSplitPermsModal();
     dispatch(
       updateUserSetting({ key: "show-updated-permission-modal", value: false }),
     );
