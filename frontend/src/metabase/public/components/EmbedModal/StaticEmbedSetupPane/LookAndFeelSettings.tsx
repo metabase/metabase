@@ -180,26 +180,20 @@ export const LookAndFeelSettings = ({
           />
 
           {canWhitelabel && (
-            // We only show the "Download Data" toggle if the users are pro/enterprise
-            <DisplayOptionSection
-              title={t`Download data`}
-              titleId={downloadDataId}
-            >
-              <Switch
-                aria-labelledby={downloadDataId}
-                label={t`Enable users to download data from this embed`}
-                labelPosition="left"
-                size="sm"
-                variant="stretch"
-                checked={displayOptions.downloads ?? true}
-                onChange={e =>
-                  onChangeDisplayOptions({
-                    ...displayOptions,
-                    downloads: e.target.checked,
-                  })
-                }
-              />
-            </DisplayOptionSection>
+            <Switch
+              aria-labelledby={downloadDataId}
+              label={t`Download buttons`}
+              labelPosition="left"
+              size="sm"
+              variant="stretch"
+              checked={displayOptions.downloads ?? true}
+              onChange={e =>
+                onChangeDisplayOptions({
+                  ...displayOptions,
+                  downloads: e.target.checked,
+                })
+              }
+            />
           )}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>
