@@ -105,7 +105,7 @@ describe("InteractiveQuestion.NotebookButton", () => {
 
     setup({ isOpen: true });
 
-    expect(await screen.findByLabelText("notebook icon")).toBeInTheDocument();
+    expect(await screen.findByTestId("notebook-button")).toBeInTheDocument();
     expect(shouldRenderSpy).toHaveBeenCalledTimes(1);
   });
 
@@ -113,7 +113,7 @@ describe("InteractiveQuestion.NotebookButton", () => {
     const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
     const { clickSpy } = setup({ isOpen: true });
 
-    await userEvent.click(await screen.findByLabelText("notebook icon"));
+    await userEvent.click(await screen.findByTestId("notebook-button"));
     expect(shouldRenderSpy).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });

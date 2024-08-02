@@ -8,7 +8,9 @@ import {
 import type { NotebookStepType } from "metabase/query_builder/components/notebook/types";
 
 export function notebookButton() {
-  return cy.findByTestId("qb-header-action-panel").findByTestId("notebook-button");
+  return cy
+    .findByTestId("qb-header-action-panel")
+    .findByTestId("notebook-button");
 }
 
 /**
