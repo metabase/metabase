@@ -121,4 +121,3 @@ A personal collection works just like any other collection except that its permi
 [sandbox-rows]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
 [sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
-[table-permissions]: ./data.md#table-permissions

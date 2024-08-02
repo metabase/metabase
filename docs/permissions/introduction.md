@@ -76,5 +76,4 @@ Whenever you change permissions for a group, make sure you:
 [sandbox-rows]: https://www.metabase.com/learn/permissions/data-sandboxing-row-permissions
 [slack-integration]: ../configuring-metabase/slack.md
 [sql-snippet-folders]: ../questions/native-editor/sql-snippets.md
-[table-permissions]: data.md#table-permissions
 [troubleshooting-permissions]: ../troubleshooting-guide/permissions.md
