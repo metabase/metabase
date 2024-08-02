@@ -67,17 +67,6 @@
   --mb-base-color-white: #fff;
 
   /* Brand */
-  --mb-base-color-brand: color-mix(in srgb, var(--mb-color-brand), black 85%);
-  --mb-base-color-brand-90: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    black 75%
-  );
-  --mb-base-color-brand-80: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    black 65%
-  );
   --mb-base-color-brand-70: color-mix(
     in srgb,
     var(--mb-color-brand),
@@ -88,22 +77,12 @@
     var(--mb-color-brand),
     black 25%
   );
-  --mb-base-color-brand-50: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    black 10%
-  );
   /*   brand */
   --mb-base-color-brand-40: var(--mb-color-brand);
   --mb-base-color-brand-30: color-mix(
     in srgb,
     var(--mb-color-brand),
     white 45%
-  );
-  --mb-base-color-brand-20: color-mix(
-    in srgb,
-    var(--mb-color-brand),
-    white 70%
   );
   --mb-base-color-brand-10: color-mix(
     in srgb,
@@ -112,30 +91,13 @@
   );
 
   /* Blue */
-  --mb-base-color-blue: hsl(208deg, 72%, 5%);
-  --mb-base-color-blue-90: hsl(208deg, 72%, 10%);
-  --mb-base-color-blue-80: hsl(208deg, 72%, 20%);
-  --mb-base-color-blue-70: hsl(208deg, 72%, 30%);
-  --mb-base-color-blue-60: hsl(208deg, 72%, 40%);
-  --mb-base-color-blue-50: hsl(208deg, 72%, 50%);
   /*   brand */
   --mb-base-color-blue-40: #509ee3;
-  --mb-base-color-blue-30: hsl(208deg, 72%, 70%);
-  --mb-base-color-blue-20: hsl(208deg, 72%, 80%);
-  --mb-base-color-blue-10: hsl(208deg, 72%, 90%);
 
   /* Gray */
-  --mb-base-color-gray: hsl(208deg, 12%, 5%);
-  --mb-base-color-gray-90: hsl(208deg, 12%, 10%);
   /*   bg-black */
   --mb-base-color-gray-80: #2e353b;
   --mb-base-color-gray-70: hsl(208deg, 12%, 30%);
-  --mb-base-color-gray-60: hsl(208deg, 12%, 40%);
-  --mb-base-color-gray-50: hsl(208deg, 12%, 50%);
-  --mb-base-color-gray-40: hsl(208deg, 12%, 60%);
-  --mb-base-color-gray-30: hsl(208deg, 12%, 70%);
-  --mb-base-color-gray-20: hsl(208deg, 12%, 80%);
-  --mb-base-color-gray-10: hsl(208deg, 12%, 90%);
 }
 
 .textDefault {
