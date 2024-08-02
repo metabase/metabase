@@ -600,15 +600,17 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
     cy.signInAsAdmin();
   });
 
-  it("works across all tabs with 'auto-apply filters' on", () => {
-    createDashboardWithTabsAndParameters({ auto_apply_filters: true });
-    checkResetAllFiltersWorksAcrossTabs();
+  describe("resetting to empty value", () => {
+    it("works across all tabs with 'auto-apply filters' on", () => {
+      checkResetAllFiltersWorksAcrossTabs({ autoApplyFilters: true });
+    });
+
+    it("works across all tabs with 'auto-apply filters' off", () => {
+      checkResetAllFiltersWorksAcrossTabs({ autoApplyFilters: false });
+    });
   });
 
-  it("works across all tabs with 'auto-apply filters' off", () => {
-    createDashboardWithTabsAndParameters({ auto_apply_filters: false });
-    checkResetAllFiltersWorksAcrossTabs();
-  });
+  describe("resetting to default value", () => {});
 });
 
 function createDashboardWithParameters(
@@ -637,50 +639,6 @@ function createDashboardWithParameters(
 
     visitDashboard(dashboard_id);
   });
-}
-
-function createDashboardWithTabsAndParameters(
-  dashboardDetails: DashboardDetails,
-) {
-  createDashboardWithTabs({
-    tabs: [TAB_A, TAB_B],
-    parameters: [PARAMETER_A, PARAMETER_B],
-    dashcards: [
-      {
-        id: -1,
-        dashboard_tab_id: TAB_A.id,
-        size_x: 10,
-        size_y: 4,
-        row: 0,
-        col: 0,
-        card_id: ORDERS_QUESTION_ID,
-        parameter_mappings: [
-          {
-            parameter_id: PARAMETER_A.id,
-            card_id: ORDERS_QUESTION_ID,
-            target: ["dimension", ORDERS_CREATED_AT_FIELD],
-          },
-        ],
-      },
-      {
-        id: -2,
-        dashboard_tab_id: TAB_B.id,
-        size_x: 10,
-        size_y: 4,
-        row: 0,
-        col: 0,
-        card_id: ORDERS_COUNT_QUESTION_ID,
-        parameter_mappings: [
-          {
-            parameter_id: PARAMETER_B.id,
-            card_id: ORDERS_COUNT_QUESTION_ID,
-            target: ["dimension", ORDERS_CREATED_AT_FIELD],
-          },
-        ],
-      },
-    ],
-    ...dashboardDetails,
-  }).then(dashboard => visitDashboard(dashboard.id));
 }
 
 function checkStatusIcon(
@@ -850,7 +808,51 @@ function checkParameterSidebarDefaultValue<T = string>({
   });
 }
 
-function checkResetAllFiltersWorksAcrossTabs() {
+function checkResetAllFiltersWorksAcrossTabs({
+  autoApplyFilters,
+}: {
+  autoApplyFilters: boolean;
+}) {
+  createDashboardWithTabs({
+    tabs: [TAB_A, TAB_B],
+    parameters: [PARAMETER_A, PARAMETER_B],
+    auto_apply_filters: autoApplyFilters,
+    dashcards: [
+      {
+        id: -1,
+        dashboard_tab_id: TAB_A.id,
+        size_x: 10,
+        size_y: 4,
+        row: 0,
+        col: 0,
+        card_id: ORDERS_QUESTION_ID,
+        parameter_mappings: [
+          {
+            parameter_id: PARAMETER_A.id,
+            card_id: ORDERS_QUESTION_ID,
+            target: ["dimension", ORDERS_CREATED_AT_FIELD],
+          },
+        ],
+      },
+      {
+        id: -2,
+        dashboard_tab_id: TAB_B.id,
+        size_x: 10,
+        size_y: 4,
+        row: 0,
+        col: 0,
+        card_id: ORDERS_COUNT_QUESTION_ID,
+        parameter_mappings: [
+          {
+            parameter_id: PARAMETER_B.id,
+            card_id: ORDERS_COUNT_QUESTION_ID,
+            target: ["dimension", ORDERS_CREATED_AT_FIELD],
+          },
+        ],
+      },
+    ],
+  }).then(dashboard => visitDashboard(dashboard.id));
+
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
   getDashboardCard(0).findByText("37.65").should("be.visible");
@@ -858,6 +860,9 @@ function checkResetAllFiltersWorksAcrossTabs() {
 
   addDateFilter(PARAMETER_A.name, "01/01/2024");
   filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
+  if (!autoApplyFilters) {
+    cy.button("Apply").click();
+  }
   checkResetAllFiltersShown();
   getDashboardCard(0).findByText("116.01").should("be.visible");
   getDashboardCard(0).findByText("37.65").should("not.exist");
@@ -868,6 +873,9 @@ function checkResetAllFiltersWorksAcrossTabs() {
   getDashboardCard(0).findByText("18,760").should("be.visible");
 
   addDateFilter(PARAMETER_B.name, "01/01/2023");
+  if (!autoApplyFilters) {
+    cy.button("Apply").click();
+  }
   checkResetAllFiltersShown();
   filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
   getDashboardCard(0).findByText("5").should("be.visible");
