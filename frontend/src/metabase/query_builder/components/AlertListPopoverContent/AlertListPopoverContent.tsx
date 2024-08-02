@@ -1,18 +1,20 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import { Component, useState } from "react";
-import { connect } from "react-redux";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
+
 import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
-import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
+import { useSelector } from "metabase/lib/redux";
 import { getQuestionAlerts } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
-import { AlertListItem } from "metabase/query_builder/components/AlertListPopoverContent/AlertListItem";
-import { useSelector } from "metabase/lib/redux";
-import { Alert } from "metabase-types/api";
+import type { Alert } from "metabase-types/api";
+
+import { CreateAlertModalContent } from "../AlertModals";
+
+import { AlertListItem } from "./AlertListItem";
 
 type AlertListPopoverContentProps = {
   setMenuFreeze: (freeze: boolean) => void;
