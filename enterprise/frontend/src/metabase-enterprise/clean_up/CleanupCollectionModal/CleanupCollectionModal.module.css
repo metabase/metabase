@@ -1,0 +1,21 @@
+.modalContent {
+  display: flex !important;
+  flex-direction: column;
+}
+
+.modalHeader {
+  border-bottom: 1px solid var(--mb-color-border);
+}
+
+.modalBody {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow-y: scroll;
+}
+
+.modalFooter {
+  background: var(--mb-color-bg-white);
+  position: sticky;
+  bottom: 0;
+}

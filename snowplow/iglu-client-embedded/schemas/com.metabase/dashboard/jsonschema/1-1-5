@@ -1,0 +1,115 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Dashboard events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "dashboard",
+    "format": "jsonschema",
+    "version": "1-1-4"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "dashboard_created",
+        "dashboard_saved",
+        "question_added_to_dashboard",
+        "auto_apply_filters_disabled",
+        "dashboard_tab_created",
+        "dashboard_tab_deleted",
+        "dashboard_tab_duplicated",
+        "new_text_card_created",
+        "new_heading_card_created",
+        "new_link_card_created",
+        "new_action_card_created",
+        "card_set_to_hide_when_no_results",
+        "dashboard_pdf_exported",
+        "card_moved_to_tab",
+        "dashboard_card_duplicated",
+        "dashboard_card_replaced",
+        "dashboard_section_added",
+        "dashboard_width_toggled",
+        "dashboard_filter_required"
+      ],
+      "maxLength": 1024
+    },
+    "dashboard_id": {
+      "description": "Unique identifier for a dashboard within the Metabase instance",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "question_id": {
+      "description": "Unique identifier for a question added to a dashboard",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "num_tabs": {
+      "description": "Number of tabs affected after the event",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "total_num_tabs": {
+      "description": "Total number of active tabs after the events",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "duration_milliseconds": {
+      "description": "Duration the action took to complete in milliseconds",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "section_layout": {
+      "description": "String describing the layout that was selected from the pre-built options",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "full_width": {
+      "description": "Boolean set to True if the dashboard was toggled to full width and False if full width was disabled.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "dashboard_accessed_via": {
+      "description": "Indicate if the dashboard was accessed via metabase ('internal'), public link, static embed etc",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "internal",
+        "public-link",
+        "static-embed",
+        "interactive-iframe-embed",
+        "sdk-embed"
+      ]
+    }
+  },
+  "required": [
+    "event",
+    "dashboard_id"
+  ],
+  "additionalProperties": true
+}
