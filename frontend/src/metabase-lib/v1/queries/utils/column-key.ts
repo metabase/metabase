@@ -14,7 +14,9 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-export const getColumnKey = (column: Pick<DatasetColumn, "name">) => {
+export const getColumnKey = (
+  column: Pick<DatasetColumn, "name" | "field_ref">,
+) => {
   return JSON.stringify(["name", column.name]);
 };
 
