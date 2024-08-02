@@ -54,6 +54,7 @@ WHERE pg.name != 'Administrators'
       END;
 
 -- Insert table-level permissions only where no DB-level permissions exist
+ANALYZE data_permissions;
 
 WITH escaped_schema_table AS (
     SELECT
@@ -95,6 +96,8 @@ WHERE NOT EXISTS (
       AND dp.table_id = est.table_id
       AND dp.perm_type = 'perms/download-results'
 );
+
+ANALYZE data_permissions;
 
 -- Insert 'no' permissions for any table and group combinations that weren't covered by the previous query
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)

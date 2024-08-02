@@ -39,6 +39,8 @@ WHERE pg.name != 'Administrators'
           ELSE FALSE
       END;
 
+ANALYZE data_permissions;
+
 WITH escaped_schema_table AS (
     SELECT
         mt.id AS table_id,
@@ -72,6 +74,8 @@ WHERE NOT EXISTS (
       AND dp.table_id = est.table_id
       AND dp.perm_type = 'perms/manage-table-metadata'
 );
+
+ANALYZE data_permissions;
 
 -- Insert 'no' permissions for any table and group combinations that weren't covered by the previous query
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)

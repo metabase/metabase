@@ -6867,6 +6867,7 @@ databaseChangeLog:
       author: noahmoss
       comment: Migrate data-access permissions from `permissions` to `data_permissions`
       validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
             dbms: postgresql,h2
@@ -6904,6 +6905,7 @@ databaseChangeLog:
       author: noahmoss
       comment: Migrate download-results permissions from `permissions` to `data_permissions`
       validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
             dbms: postgresql,h2
@@ -6928,6 +6930,7 @@ databaseChangeLog:
       author: noahmoss
       comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
       validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
             dbms: postgresql,h2

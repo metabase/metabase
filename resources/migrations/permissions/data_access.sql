@@ -92,6 +92,8 @@ WHERE NOT EXISTS (
       AND dp.perm_type = 'perms/data-access'
 );
 
+ANALYZE data_permissions;
+
 -- Insert no-self-service rows into data_permissions for any table and group combinations that weren't inserted by the previous query
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT
