@@ -28,7 +28,9 @@ export const trackExportDashboardToPDF = ({
 }) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
     event: "dashboard_pdf_exported",
-    // we send 0 because the snowplow table requires a value
+    // We made dashboard_id optional because we don't want to send
+    // UUIDs or JWTs when in public or static embed scenarios.
+    // Because the field is still required in the snowplow table we send 0.
     dashboard_id: dashboardId ?? 0,
     dashboard_accessed_via: dashboardAccessedVia,
   });
