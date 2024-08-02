@@ -83,9 +83,6 @@ export function setParameterType(
     ...rest,
     type,
     sectionId,
-    values_source_type,
-    values_source_config:
-      values_source_type === "static-list" ? undefined : values_source_config,
   };
 }
 

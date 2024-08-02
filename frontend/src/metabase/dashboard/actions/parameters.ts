@@ -405,14 +405,19 @@ function restoreValueConfigIfNeeded(
     return false;
   }
 
-  if (
-    parameterToRestore.values_source_type === "static-list" &&
-    parameterToRestore.values_source_config
-  ) {
+  if (parameterToRestore.values_source_config) {
     dispatch(
       setParameterSourceConfig(
         parameterId,
         parameterToRestore.values_source_config,
+      ),
+    );
+  }
+  if (parameterToRestore.values_source_type) {
+    dispatch(
+      setParameterSourceType(
+        parameterId,
+        parameterToRestore.values_source_type,
       ),
     );
   }
