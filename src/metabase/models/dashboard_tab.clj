@@ -64,9 +64,10 @@
    (serdes/infer-self-path "DashboardTab" dashcard)])
 
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
-  {:copy      [:created_at :entity_id :name :position]
+  {:copy      [:entity_id :name :position]
    :skip      []
-   :transform {:dashboard_id (serdes/parent-ref)}})
+   :transform {:created_at   (serdes/date)
+               :dashboard_id (serdes/parent-ref)}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 

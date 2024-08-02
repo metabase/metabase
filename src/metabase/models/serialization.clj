@@ -24,6 +24,7 @@
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
    [metabase.util.connection :as u.conn]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
    [toucan2.model :as t2.model]))
@@ -1551,10 +1552,15 @@
                                                             :serdes/meta [{:model model-name :id entity-id}])
                                             local    (load-find-local (:serdes/meta ingested))]
                                         (load-one! ingested local)))]
-                      (t2/delete! model backward-fk parent-id :id [:not-in (map :id loaded)])))}))
+                      (if-not (seq loaded)
+                        (t2/delete! model backward-fk parent-id)
+                        (t2/delete! model backward-fk parent-id :id [:not-in (map :id loaded)]))))}))
 
 (defn parent-ref "Transformer for parent id for nested entities" []
   {::fk true :export (constantly nil) :import identity})
+
+(defn date "Transformer to parse the dates" []
+  {:export identity :import #(if (string? %) (u.date/parse %) %)})
 
 ;;; ## Memoizing appdb lookups
 
