@@ -10,10 +10,8 @@
 
 (def id-timestamp-format-re
   "Timestamp is of format `yyyy-MM-dd'T'HH:mm:ss`.
-  E.g: v49.2023-12-14T08:54:54
-
-  Extra numbers after the timestamp are acceptable for adding new migrations between adjacent IDs."
-  #"^v\d{2,}\.(\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]+)$")
+  E.g: v49.2023-12-14T08:54:54"
+  #"^v\d{2,}\.(\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[1-2][0-9]|3[0-1])T([0-1][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9])$")
 
 (def id-number-format-re
   "E.g: v49.00-008

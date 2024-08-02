@@ -6831,6 +6831,18 @@ databaseChangeLog:
             indexName: idx_data_permissions_group_id
 
   - changeSet:
+      id: v50.2024-01-10T03:27:20
+      author: noahmoss
+      comment: Analyze permissions table (on postgresql) in preparation for subsequent migrations
+      validCheckSum: ANY
+      dbms: postgresql
+      runInTransaction: false
+      changes:
+        - sql: >
+            ANALYZE permissions;
+      rollback:
+
+  - changeSet:
       id: v50.2024-01-10T03:27:29
       author: noahmoss
       comment: Drop foreign key constraint on sandboxes.permissions_id
@@ -6846,18 +6858,6 @@ databaseChangeLog:
             referencedColumnNames: id
             constraintName: fk_sandboxes_ref_permissions
             onDelete: CASCADE
-
-  - changeSet:
-      id: v50.2024-01-10T03:27:295
-      author: noahmoss
-      comment: Analyze permissions table (on postgresql) in preparation for subsequent migrations
-      validCheckSum: ANY
-      dbms: postgresql
-      runInTransaction: false
-      changes:
-        - sql: >
-            ANALYZE permissions;
-      rollback:
 
   - changeSet:
       id: v50.2024-01-10T03:27:30
