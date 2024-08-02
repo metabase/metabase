@@ -15,7 +15,7 @@ import type { Dashboard } from "metabase-types/api";
 export const DashboardActionMenu = (props: { items: any[] }) => (
   <EntityMenu
     key="dashboard-action-menu-button"
-    triggerAriaLabel="dashboard-menu-button"
+    triggerAriaLabel={t`Move, trash, and more…`}
     items={props.items}
     triggerIcon="ellipsis"
     tooltip={t`Move, trash, and more…`}
