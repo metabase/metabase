@@ -12,10 +12,8 @@ import {
   getWaterfallChartDataDensity,
   getWaterfallLabelFormatter,
 } from "metabase/visualizations/echarts/cartesian/model/series";
-import type {
-  ShowWarning,
-  WaterfallChartModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { WaterfallChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import { getCartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import type {
   ComputedVisualizationSettings,

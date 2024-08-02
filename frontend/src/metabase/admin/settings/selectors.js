@@ -8,6 +8,7 @@ import { DashboardSelector } from "metabase/components/DashboardSelector";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_ADMIN_SETTINGS_UPDATES,
+  PLUGIN_ADMIN_SETTINGS_AUTH_TABS,
   PLUGIN_EMBEDDING,
   PLUGIN_LLM_AUTODESCRIPTION,
 } from "metabase/plugins";
@@ -280,6 +281,14 @@ export const ADMIN_SETTINGS_SECTIONS = {
   authentication: {
     name: t`Authentication`,
     order: 60,
+    key: "authentication",
+    tabs:
+      PLUGIN_ADMIN_SETTINGS_AUTH_TABS.length <= 1
+        ? undefined
+        : PLUGIN_ADMIN_SETTINGS_AUTH_TABS.map(tab => ({
+            ...tab,
+            isActive: tab.key === "authentication",
+          })),
     settings: [], // added by plugins
     adminOnly: true,
   },

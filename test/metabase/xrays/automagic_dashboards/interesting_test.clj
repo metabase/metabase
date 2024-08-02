@@ -593,3 +593,53 @@
              (interesting/normalize-seq-of-maps :froobs froobs)))
       (is (= [{:nurnies-name "Baz" :size 100}]
              (interesting/normalize-seq-of-maps :nurnies nurnies))))))
+
+
+;;; ------------------- Datetime resolution inference -------------------
+
+(deftest ^:parallel optimal-temporal-resolution-test
+  (doseq [[m base-type expected] [[{:earliest "2015"
+                                    :latest   "2017"}
+                                   :type/DateTime
+                                   :month]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2017-03-04"}
+                                   :type/DateTime
+                                   :day]
+                                  [{:earliest "2005"
+                                    :latest   "2017"}
+                                   :type/DateTime
+                                   :year]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2017-01-02"}
+                                   :type/DateTime
+                                   :hour]
+                                  [{:earliest "2017-01-01T00:00:00"
+                                    :latest   "2017-01-01T00:02:00"}
+                                   :type/DateTime
+                                   :minute]
+                                  [{:earliest "2017-01-01T00:02:00"
+                                    :latest   "2017-01-01T00:02:00"}
+                                   :type/DateTime
+                                   :minute]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2017-01-01"}
+                                   :type/Date
+                                   :day]
+                                  [{:earliest "2017-01-01"
+                                    :latest   "2018-01-01"}
+                                   :type/Date
+                                   :month]
+                                  [{:earliest "00:02:00"
+                                    :latest   "00:02:00"}
+                                   :type/Time
+                                   :minute]
+                                  [{:earliest "00:02:00"
+                                    :latest   "10:02:00"}
+                                   :type/Time
+                                   :hour]]
+          :let         [fingerprint {:type {:type/DateTime m}}]]
+    (testing (format "base_type=%s, fingerprint = %s" base-type (pr-str fingerprint))
+      (is (= expected
+             (#'interesting/optimal-temporal-resolution {:fingerprint fingerprint
+                                                         :base_type   base-type}))))))

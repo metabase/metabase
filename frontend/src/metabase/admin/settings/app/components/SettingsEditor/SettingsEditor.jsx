@@ -10,6 +10,7 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import { prepareAnalyticsValue } from "metabase/admin/settings/utils";
+import { UpsellSSO } from "metabase/admin/upsells";
 import { AdminLayout } from "metabase/components/AdminLayout";
 import { NotFound } from "metabase/components/ErrorPages";
 import SaveStatus from "metabase/components/SaveStatus";
@@ -18,6 +19,7 @@ import CS from "metabase/css/core/index.css";
 import title from "metabase/hoc/Title";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 import MetabaseSettings from "metabase/lib/settings";
+import { Box } from "metabase/ui";
 
 import {
   getActiveSection,
@@ -80,7 +82,14 @@ class SettingsEditor extends Component {
     this.props.initializeSettings();
   }
 
-  updateSetting = async (setting, newValue) => {
+  /**
+   * @param {Object} setting
+   * @param {*} newValue
+   * @param {Object} options - allows external callers in setting's that user custom components to hook into the success or failure of the update
+   * @param {function} [options.onChanged] - callback fired after the setting has been updated
+   * @param {function} [options.onError] - callback fired after the setting has failed to update
+   */
+  updateSetting = async (setting, newValue, options) => {
     const { settingValues, updateSetting, reloadSettings, dispatch } =
       this.props;
 
@@ -90,14 +99,17 @@ class SettingsEditor extends Component {
 
     // TODO: mutation bad!
     setting.value = newValue;
+
+    const handlerParams = [
+      oldValue,
+      newValue,
+      settingValues,
+      this.handleChangeSetting,
+    ];
+
     try {
       if (setting.onBeforeChanged) {
-        await setting.onBeforeChanged(
-          oldValue,
-          newValue,
-          settingValues,
-          this.handleChangeSetting,
-        );
+        await setting.onBeforeChanged(...handlerParams);
       }
 
       if (!setting.disableDefaultUpdate) {
@@ -105,12 +117,11 @@ class SettingsEditor extends Component {
       }
 
       if (setting.onChanged) {
-        await setting.onChanged(
-          oldValue,
-          newValue,
-          settingValues,
-          this.handleChangeSetting,
-        );
+        await setting.onChanged(...handlerParams);
+      }
+
+      if (options?.onChanged) {
+        await options.onChanged(...handlerParams);
       }
 
       if (setting.disableDefaultUpdate) {
@@ -141,9 +152,13 @@ class SettingsEditor extends Component {
         typeof value === "number" && value,
       );
     } catch (error) {
+      console.error(error);
       const message =
         error && (error.message || (error.data && error.data.message));
       this.saveStatusRef.current.setSaveError(message);
+      if (options?.onError) {
+        options.onError(error, message);
+      }
       MetabaseAnalytics.trackStructEvent(
         "General Settings",
         setting.display_name,
@@ -261,11 +276,29 @@ class SettingsEditor extends Component {
     );
   }
 
+  renderUpsell() {
+    const upsell =
+      this.props.activeSectionName === "authentication" ? (
+        <UpsellSSO source="authentication-sidebar" />
+      ) : null;
+
+    if (!upsell) {
+      return null;
+    }
+
+    return <Box style={{ flexShrink: 0 }}>{upsell}</Box>;
+  }
+
   render() {
     return (
-      <AdminLayout sidebar={this.renderSettingsSections()}>
-        <SaveStatus ref={this.saveStatusRef} />
-        <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>
+      <AdminLayout
+        sidebar={this.renderSettingsSections()}
+        upsell={this.renderUpsell()}
+      >
+        <Box w="100%">
+          <SaveStatus ref={this.saveStatusRef} />
+          <ErrorBoundary>{this.renderSettingsPane()}</ErrorBoundary>
+        </Box>
       </AdminLayout>
     );
   }

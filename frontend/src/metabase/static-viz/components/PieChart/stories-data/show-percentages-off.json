@@ -1,0 +1,290 @@
+[
+  {
+    "card": {
+      "original_card_id": 350,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-05T23:25:48.732478Z",
+      "parameters": [],
+      "metabase_version": "v0.2.0-SNAPSHOT (a727fad)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {
+        "pie.percent_visibility": "off"
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-06-05T23:25:49.002825Z"
+      },
+      "collection_preview": true,
+      "entity_id": "xq-CICSwAvPRd66fSkWTz",
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 350,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 1,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              58,
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-06T00:06:32.256498Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 276.9230769230769,
+      "type": "question",
+      "last_used_at": "2024-06-06T00:06:32.251418Z",
+      "dashboard_count": 1,
+      "last_query_start": "2024-06-06T00:06:32.090899Z",
+      "name": "Pie - Show percentages off - Products by category",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 1,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-06-05T21:21:49.288174Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            58,
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 58,
+          "visibility_type": "normal",
+          "display_name": "Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 42,
+                "q1": 46.5,
+                "q3": 53.5,
+                "max": 54,
+                "sd": 5.477225575051661,
+                "avg": 50
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 1,
+      "collection_position": null,
+      "view_count": 10,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["Doohickey", 42],
+        ["Gadget", 53],
+        ["Gizmo", 51],
+        ["Widget", 54]
+      ],
+      "cols": [
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "table_id": 1,
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            58,
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 58,
+          "position": 3,
+          "visibility_type": "normal",
+          "display_name": "Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" AS \"CATEGORY\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"PRODUCTS\" GROUP BY \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" ORDER BY \"PUBLIC\".\"PRODUCTS\".\"CATEGORY\" ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              58,
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 58,
+            "visibility_type": "normal",
+            "display_name": "Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 42,
+                  "q1": 46.5,
+                  "q3": 53.5,
+                  "max": 54,
+                  "sd": 5.477225575051661,
+                  "avg": 50
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

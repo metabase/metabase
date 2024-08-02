@@ -25,12 +25,6 @@
 ;;;
 ;;; where keys are a map of String ID => metadata
 
-;; TODO: This is always wrapped with `keyword` in its usage so that may as well be memoized too.
-(def ^:private ^{:arglists '([k])} memoized-kebab-key
-  "Even tho [[u/->kebab-case-en]] has LRU memoization, plain memoization is significantly faster, and since the keys
-  we're parsing here are bounded it's fine to memoize this stuff forever."
-  (memoize u/->kebab-case-en))
-
 (defn- object-get [obj k]
   (when (and obj (js-in k obj))
     (gobject/get obj k)))
@@ -108,7 +102,7 @@
     (comp
      ;; convert keys to kebab-case keywords
      (map (fn [[k v]]
-            [(cond-> (keyword (memoized-kebab-key k))
+            [(cond-> (keyword (u/->kebab-case-en k))
                rename-key (#(or (rename-key %) %)))
              v]))
      ;; remove [[excluded-keys]]
@@ -244,7 +238,7 @@
   [m]
   (obj->clj
    (map (fn [[k v]]
-          (let [k (keyword (memoized-kebab-key k))
+          (let [k (keyword (u/->kebab-case-en k))
                 k (if (= k :binning-strategy)
                     :strategy
                     k)

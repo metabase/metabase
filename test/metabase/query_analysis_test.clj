@@ -28,13 +28,16 @@
     (is (false? (query-analysis/enabled-type? :unexpected)))))
 
 (defn- field-id-references [card-or-query]
-  (->> (:dataset_query card-or-query card-or-query)
+  (-> (:dataset_query card-or-query card-or-query)
        (#'query-analysis/query-references)
-       ;; lowercase names to avoid tests being driver-dependent
-       (map #(-> %
-                 (update :table u/lower-case-en)
-                 (update :column u/lower-case-en)))
-       (sort-by (juxt :table :column))))
+       (update-vals
+        (fn [refs]
+          (->> refs
+               ;; lowercase names to avoid tests being driver-dependent
+               (map #(-> %
+                         (update :table u/lower-case-en)
+                         (update :column u/lower-case-en)))
+               (sort-by (juxt :table :column)))))))
 
 (deftest parse-mbql-test
   (testing "Parsing MBQL query returns correct used fields"
@@ -52,12 +55,12 @@
       (is (= (mt/$ids
               [{:table-id (mt/id :venues), :table "venues", :field-id %venues.name, :column "name", :explicit-reference true}
                {:table-id (mt/id :venues), :table "venues", :field-id %venues.price, :column "price", :explicit-reference true}])
-             (field-id-references c1)))
-      (is (empty? (field-id-references c2)))
+             (:fields (field-id-references c1))))
+      (is (empty? (:fields (field-id-references c2))))
       (is (= (mt/$ids
               [{:table-id (mt/id :checkins), :table "checkins", :field-id %checkins.venue_id, :column "venue_id", :explicit-reference true}
                {:table-id (mt/id :venues), :table "venues", :field-id %venues.id, :column "id", :explicit-reference true}])
-             (field-id-references c3)))))
+             (:fields (field-id-references c3))))))
   (testing "Parsing pMBQL query returns correct used fields"
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
@@ -69,7 +72,7 @@
                :field-id (mt/id :venues :name)
                :column "name"
                :explicit-reference true}]
-             (field-id-references mlv2-query))))))
+             (:fields (field-id-references mlv2-query)))))))
 
 (deftest replace-fields-and-tables!-test
   (testing "fields and tables in a native card can be replaced"

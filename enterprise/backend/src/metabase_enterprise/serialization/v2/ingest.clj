@@ -56,7 +56,7 @@
       (yaml/from-file {:key-fn parse-key})
       read-timestamps))
 
-(def ^:private legal-top-level-paths
+(def legal-top-level-paths "Known top-level paths for directory with serialization output"
   #{"actions" "collections" "databases" "snippets"}) ; But return the hierarchy without labels.
 
 (defn- ingest-all [^File root-dir]
