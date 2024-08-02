@@ -375,10 +375,6 @@ export function createTabSlug({
   return [id, ...name.toLowerCase().split(" ")].join("-");
 }
 
-export function filtersToReset(parameters: UiParameter[]): UiParameter[] {
-  return parameters.filter(canResetFilter);
-}
-
 export function canResetFilter(parameter: UiParameter): boolean {
   const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
   const hasValue = !parameterHasNoDisplayValue(parameter.value);

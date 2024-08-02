@@ -42,7 +42,7 @@ import type {
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
-  filtersToReset,
+  canResetFilter,
   getMappedParametersIds,
   hasDatabaseActionsEnabled,
   isQuestionCard,
@@ -675,7 +675,7 @@ export const getVisibleValuePopulatedParameters = createSelector(
 
 export const getFiltersToReset = createSelector(
   [getVisibleValuePopulatedParameters],
-  filtersToReset,
+  parameters => parameters.filter(canResetFilter),
 );
 
 export const getCanResetFilters = createSelector(
