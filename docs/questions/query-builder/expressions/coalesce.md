@@ -180,5 +180,4 @@ coalesce([Notes], [Comments] "No notes or comments.")
 [notebook-editor-def]: https://www.metabase.com/glossary/notebook_editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
-[spreadsheets-to-bi]: /blog/spreadsheets-to-bi
 [sql-reference-guide]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#common-sql-reference-guides

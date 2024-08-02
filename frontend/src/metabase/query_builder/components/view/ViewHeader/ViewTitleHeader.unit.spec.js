@@ -326,6 +326,7 @@ describe("ViewTitleHeader", () => {
           const { setQueryBuilderMode } = setup({
             card,
             queryBuilderMode: "notebook",
+            result: { data: [] },
           });
           fireEvent.click(screen.getByLabelText("notebook icon"));
           expect(setQueryBuilderMode).toHaveBeenCalledWith("view");
@@ -464,6 +465,14 @@ describe("ViewHeader | Ad-hoc GUI question", () => {
         screen.queryByText("Total is less than 50"),
       ).not.toBeInTheDocument();
       expect(screen.queryByText("Tax is not empty")).not.toBeInTheDocument();
+    });
+
+    it("hides the close notebook editor for brand new questions", () => {
+      setup({
+        card,
+        queryBuilderMode: "notebook",
+      });
+      expect(screen.queryByLabelText("notebook icon")).not.toBeInTheDocument();
     });
   });
 });

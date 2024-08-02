@@ -257,6 +257,12 @@ type AuthorityLevelMenuItem = {
   action: () => void;
 };
 
+type CleanUpMenuItem = {
+  title: string;
+  icon: string;
+  link: string;
+};
+
 export type ItemWithCollection = { collection: CollectionEssentials };
 
 export const PLUGIN_COLLECTIONS = {
@@ -285,6 +291,15 @@ export const PLUGIN_COLLECTIONS = {
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
+  canCleanUp: false,
+  getCleanUpMenuItems: (
+    _itemCount: number,
+    _url: string,
+    _isInstanceAnalyticsCustom: boolean,
+    _isTrashed: boolean,
+    _canWrite: boolean,
+  ): CleanUpMenuItem[] => [],
+  cleanUpRoute: null as React.ReactElement | null,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<

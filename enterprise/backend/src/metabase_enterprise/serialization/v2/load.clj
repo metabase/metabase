@@ -108,4 +108,5 @@
                     :seen      #{}
                     :ingestion ingestion
                     :from-ids  (m/index-by :id contents)}]
+      (log/infof "Starting deserialization, total %s documents" (count contents))
       (reduce load-one! ctx contents))))

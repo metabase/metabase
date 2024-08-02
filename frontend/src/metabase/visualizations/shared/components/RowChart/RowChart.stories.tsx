@@ -85,7 +85,7 @@ export const Default = Template.bind({});
 Default.args = DEFAULT_ROW_CHART_ARGS;
 
 const ThemedRowChart = () => {
-  const theme = useRowChartTheme("Lato");
+  const theme = useRowChartTheme("Lato", false, false);
 
   return (
     <Box h={600} bg="white" p="8px">

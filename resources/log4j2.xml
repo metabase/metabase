@@ -28,6 +28,8 @@
     <Logger name="metabase.plugins" level="DEBUG"/>
     <Logger name="metabase.server.middleware" level="DEBUG"/>
     <Logger name="metabase.query-processor.async" level="DEBUG"/>
+    <Logger name="metabase.task.analyze-queries" level="INFO"/>
+    <Logger name="metabase.task.sweep-query-analysis" level="INFO"/>
     <Logger name="com.mchange" level="ERROR"/>
     <Logger name="org.quartz" level="INFO"/>
     <Logger name="liquibase" level="ERROR"/>
