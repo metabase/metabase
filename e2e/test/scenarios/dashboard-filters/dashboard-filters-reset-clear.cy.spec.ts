@@ -17,6 +17,7 @@ import {
   type StructuredQuestionDetails,
 } from "e2e/support/helpers";
 import { checkNotNull } from "metabase/lib/types";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import type { LocalFieldReference } from "metabase-types/api";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS } = SAMPLE_DATABASE;
@@ -714,6 +715,17 @@ function checkDashboardParameters<T = string>({
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
   checkResetAllFiltersShown();
 
+  // reset all filters
+  cy.button("Move, trash, and more…").click();
+  popover().findByText("Reset all filters").click();
+  filter(NO_DEFAULT_NON_REQUIRED).should("have.text", NO_DEFAULT_NON_REQUIRED);
+  checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
+  checkResetAllFiltersHidden();
+
+  // revert so that we can try clearing with status button as well
+  setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
+
+  // clear with status button
   clearButton(NO_DEFAULT_NON_REQUIRED).click();
   filter(NO_DEFAULT_NON_REQUIRED).should("have.text", NO_DEFAULT_NON_REQUIRED);
   checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
@@ -721,17 +733,29 @@ function checkDashboardParameters<T = string>({
 
   cy.log("has default value, non-required, current value same as default");
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-  checkResetAllFiltersHidden();
   filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  checkResetAllFiltersHidden();
 
   clearButton(DEFAULT_NON_REQUIRED).click();
   filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-  checkResetAllFiltersShown();
-
-  cy.log("has default value, non-required, no current value");
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
+  // reset all filters
+  cy.button("Move, trash, and more…").click();
+  popover().findByText("Reset all filters").click();
+  checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
+  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+
+  // revert so that we can try resetting with status button as well
+  clearButton(DEFAULT_NON_REQUIRED).click();
+
+  cy.log("has default value, non-required, no current value");
+  filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
+  checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
+  checkResetAllFiltersShown();
+
+  // reset with status button
   resetButton(DEFAULT_NON_REQUIRED).click();
   filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
@@ -745,6 +769,17 @@ function checkDashboardParameters<T = string>({
   checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
+  // reset all filters
+  cy.button("Move, trash, and more…").click();
+  popover().findByText("Reset all filters").click();
+  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
+  checkResetAllFiltersHidden();
+
+  // revert so that we can try resetting with status button as well
+  updateValue(DEFAULT_NON_REQUIRED, otherValue);
+
+  // reset with status button
   resetButton(DEFAULT_NON_REQUIRED).click();
   filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
@@ -760,6 +795,17 @@ function checkDashboardParameters<T = string>({
   checkStatusIcon(DEFAULT_REQUIRED, "reset");
   checkResetAllFiltersShown();
 
+  // reset all filters
+  cy.button("Move, trash, and more…").click();
+  popover().findByText("Reset all filters").click();
+  filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
+  checkStatusIcon(DEFAULT_REQUIRED, "none");
+  checkResetAllFiltersHidden();
+
+  // revert so that we can try resetting with status button as well
+  updateValue(DEFAULT_REQUIRED, otherValue);
+
+  // reset with status button
   resetButton(DEFAULT_REQUIRED).click();
   filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
   checkStatusIcon(DEFAULT_REQUIRED, "none");
