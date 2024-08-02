@@ -8,7 +8,10 @@ import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
-import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
+import {
+  trackExportDashboardToPDF,
+  type DashboardAccessedVia,
+} from "metabase/dashboard/analytics";
 import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
@@ -159,9 +162,10 @@ export const EmbedFrame = ({
 
   const saveAsPDF = async () => {
     const dashboardAccessedVia = match(dashboard?.id)
-      .when(isJWT, () => "static-embed" as const)
-      .when(isUuid, () => "public-link" as const)
-      .otherwise(() => "sdk-embed" as const);
+      .returnType<DashboardAccessedVia>()
+      .when(isJWT, () => "static-embed")
+      .when(isUuid, () => "public-link")
+      .otherwise(() => "sdk-embed");
 
     trackExportDashboardToPDF({
       dashboardAccessedVia,

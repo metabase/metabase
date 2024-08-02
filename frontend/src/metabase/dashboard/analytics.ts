@@ -12,7 +12,7 @@ export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   });
 };
 
-type DashboardAccessedVia =
+export type DashboardAccessedVia =
   | "internal"
   | "public-link"
   | "static-embed"
