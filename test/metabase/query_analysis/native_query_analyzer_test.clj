@@ -91,7 +91,7 @@
   (testing "real existent schema"
     (let [sql "select id from public.venues"]
       (is (= [(field-reference :venues :id)] (field-refs sql)))
-      (is (= [(table-reference :venues)] #p (table-refs sql)))))
+      (is (= [(table-reference :venues)] (table-refs sql)))))
   (testing "non-existent schema"
     (let [sql "select id from blah.venues"]
       (is (= [(missing-field-reference :blah :venues :id)] (field-refs sql)))
