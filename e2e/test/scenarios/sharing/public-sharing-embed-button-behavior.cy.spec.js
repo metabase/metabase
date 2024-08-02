@@ -636,7 +636,7 @@ describe("#39152 sharing an unsaved question", () => {
             popover().findByText("Oswald").click();
 
             cy.log(
-              "Assert that it sends `disabled: false` when downloads are disabled",
+              "Assert that it sends `downloads: false` when downloads are disabled",
             );
             modal().findByLabelText("Download data").click({ force: true });
 
