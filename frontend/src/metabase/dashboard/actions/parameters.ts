@@ -421,6 +421,11 @@ function restoreValueConfigIfNeeded(
       ),
     );
   }
+  if (parameterToRestore.values_query_type) {
+    dispatch(
+      setParameterQueryType(parameterId, parameterToRestore.values_query_type),
+    );
+  }
 
   return true;
 }

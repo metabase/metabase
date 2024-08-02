@@ -76,6 +76,7 @@ export function setParameterType(
     default: _,
     values_source_type,
     values_source_config,
+    values_query_type,
     ...rest
   } = parameter;
 
