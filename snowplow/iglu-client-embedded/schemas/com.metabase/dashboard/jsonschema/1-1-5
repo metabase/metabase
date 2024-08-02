@@ -97,6 +97,13 @@
       "type": [
         "string",
         "null"
+      ],
+      "enum": [
+        "internal",
+        "public-link",
+        "static-embed",
+        "interactive-iframe-embed",
+        "sdk-embed"
       ]
     }
   },
