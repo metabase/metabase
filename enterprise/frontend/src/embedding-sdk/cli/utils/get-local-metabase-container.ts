@@ -2,6 +2,8 @@ import { exec as execCallback } from "child_process";
 
 import { promisify } from "util";
 
+import { safeJsonParse } from "metabase/lib/json-parse";
+
 import { CONTAINER_NAME } from "../constants/config";
 
 import { getCurrentDockerPort } from "./get-current-docker-port";
@@ -34,7 +36,11 @@ export async function getLocalMetabaseContainer(): Promise<ContainerInfo | null>
     return null;
   }
 
-  const info = JSON.parse(stdout) as ContainerInfo;
+  const info = safeJsonParse(stdout) as ContainerInfo;
+
+  if (!info) {
+    return null;
+  }
 
   return { ...info, Port: getCurrentDockerPort(info.Ports) };
 }

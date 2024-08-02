@@ -1,6 +1,6 @@
 import querystring from "querystring";
 
-import { safeJsonParse } from "metabase/lib/utils";
+import { safeJsonParse } from "metabase/lib/json-parse";
 
 function parseQueryStringOptions(s: string) {
   const options: Record<string, string | string[] | boolean | undefined> =
