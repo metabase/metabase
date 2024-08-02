@@ -76,6 +76,9 @@
             (is (=? {:data [{:model "database" :model_id (:id db)}]}
                     (mt/user-http-request :crowberto :get 200 "cache/" {}
                                           :model :database)))
+            (is (=? {:data [{:model "question" :model_id (:id card1)}]}
+                    (mt/user-http-request :crowberto :get 200 "cache/" {}
+                                          :model :question)))
             (is (=? {:data [{:model "dashboard" :model_id (:id dash1)}
                             {:model "question" :model_id (:id card1)}]}
                     (mt/user-http-request :crowberto :get 200 "cache/" {}

@@ -46,6 +46,7 @@
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
@@ -100,43 +101,47 @@
   ->reference (fn [template-type model]
                 [template-type (mi/model model)]))
 
-(defn- optimal-datetime-resolution
+(defn- optimal-temporal-resolution
   [field]
   (let [[earliest latest] (some->> field
                                    :fingerprint
                                    :type
                                    :type/DateTime
                                    ((juxt :earliest :latest))
-                                   (map u.date/parse))]
+                                   (map u.date/parse))
+        can-use?  #(mbql.s/valid-temporal-unit-for-base-type? (:base_type field) %)]
     (if (and earliest latest)
-      ;; e.g. if 3 hours > [duration between earliest and latest] then use `:minute` resolution
-      (condp u.date/greater-than-period-duration? (u.date/period-duration earliest latest)
-        (t/hours 3) :minute
-        (t/days 7) :hour
-        (t/months 6) :day
-        (t/years 10) :month
-        :year)
-      :day)))
+      (let [duration   (u.date/period-duration earliest latest)
+            less-than? #(u.date/greater-than-period-duration? % duration)]
+        (cond
+         ;; e.g. if [duration between earliest and latest] < 3 hours then use `:minute` resolution
+         (and (less-than? (t/hours 3))  (can-use? :minute)) :minute
+         (and (less-than? (t/days 7))   (can-use? :hour))   :hour
+         (and (less-than? (t/months 6)) (can-use? :day))    :day
+         (and (less-than? (t/years 10)) (can-use? :month))  :month
+         (can-use? :year) :year
+         (can-use? :hour) :hour))
+      (if (can-use? :day) :day :hour))))
 
 (defmethod ->reference [:mbql Field]
   [_ {:keys [fk_target_field_id id link aggregation name base_type] :as field}]
   (let [reference (mbql.normalize/normalize
-                    (cond
-                      link [:field id {:source-field link}]
-                      fk_target_field_id [:field fk_target_field_id {:source-field id}]
-                      id [:field id nil]
-                      :else [:field name {:base-type base_type}]))]
+                   (cond
+                    link               [:field id {:source-field link}]
+                    fk_target_field_id [:field fk_target_field_id {:source-field id}]
+                    id                 [:field id {:base-type base_type}]
+                    :else              [:field name {:base-type base_type}]))]
     (cond
-      (isa? base_type :type/Temporal)
-      (mbql.u/with-temporal-unit reference (keyword (or aggregation
-                                                        (optimal-datetime-resolution field))))
+     (isa? base_type :type/Temporal)
+     (mbql.u/with-temporal-unit reference (keyword (or aggregation
+                                                       (optimal-temporal-resolution field))))
 
-      (and aggregation
-           (isa? base_type :type/Number))
-      (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
+     (and aggregation
+          (isa? base_type :type/Number))
+     (mbql.u/update-field-options reference assoc-in [:binning :strategy] (keyword aggregation))
 
-      :else
-      reference)))
+     :else
+     reference)))
 
 (defmethod ->reference [:string Field]
   [_ {:keys [display_name full-name link]}]

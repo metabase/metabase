@@ -81,7 +81,6 @@
          :or   {model "root"}}
         :query-params}]
   {model      (ms/QueryVectorOf cache-config/CachingModel)
-   ;; note that `nil` in `collection` means all configurations not scoped to any particular collection
    collection [:maybe ms/PositiveInt]
    id         [:maybe ms/PositiveInt]}
   (when (and (not (premium-features/enable-cache-granular-controls?))

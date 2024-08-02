@@ -12,7 +12,7 @@ We recommend creating a `metabase` database user with the following database rol
 
 Bundling your privileges into roles based on use cases makes it easier to manage privileges in the future (especially in [multi-tenant situations](#multi-tenant-permissions)). For example, you could:
 
-- Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/databases/data-landscape#data-analysis-layer) that need read-only access to the analytics tables in your database.
+- Use the same `analytics` role for other BI tools in your [data stack](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-landscape#data-analysis-layer) that need read-only access to the analytics tables in your database.
 - Revoke the write access for `metabase_model_persistence` without affecting the write access for `metabase_actions`.
 
 ## Minimum database privileges
@@ -160,7 +160,7 @@ GRANT metabase_uploads TO metabase;
 
 ## Multi-tenant permissions
 
-If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/permissions/multi-tenant-permissions#granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user.
+If you're setting up multi-tenant permissions for customers who need SQL access, you can [create one database connection per customer](https://www.metabase.com/learn/metabase-basics/administration/permissions/multi-tenant-permissions#granting-customers-native-sql-access-to-their-schema). That means each customer will connect to the database using their own database user.
 
 Let's say you have customers named Tangerine and Lemon:
 
