@@ -7,7 +7,7 @@ import Popover from "metabase/components/Popover";
 import CS from "metabase/css/core/index.css";
 import { Icon } from "metabase/ui";
 
-import { AlertListPopoverContent } from "metabase/query_builder/components/AlertListPopoverContent";
+import { AlertListPopoverContent } from "../AlertListPopoverContent";
 
 import { AlertIcon } from "./QuestionAlertWidget.styled";
 
