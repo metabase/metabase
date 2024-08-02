@@ -29,7 +29,7 @@ export function modal() {
 }
 
 export function tooltip() {
-  return cy.get(".emotion-Tooltip-tooltip");
+  return cy.get(".tippy-content");
 }
 
 export function entityPickerModal() {
