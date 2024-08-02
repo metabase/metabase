@@ -17,25 +17,28 @@ import {
 import type { CliState } from "./types/cli";
 
 export const CLI_STEPS = [
-  ["showMetabaseCliTitle", showMetabaseCliTitle],
-  ["checkIfReactProject", checkIfReactProject],
-  ["checkSdkAvailable", checkSdkAvailable],
-  ["addEmbeddingToken", addEmbeddingToken],
-  ["checkIsDockerRunning", checkIsDockerRunning],
-  ["generateCredentials", generateCredentials],
-  ["startLocalMetabaseContainer", startLocalMetabaseContainer],
-  ["pollMetabaseInstance", pollMetabaseInstance],
-  ["setupMetabaseInstance", setupMetabaseInstance],
-  ["createApiKey", createApiKey],
-  ["generateCodeSample", generateCodeSample],
+  { id: "showMetabaseCliTitle", executeStep: showMetabaseCliTitle },
+  { id: "checkIfReactProject", executeStep: checkIfReactProject },
+  { id: "checkSdkAvailable", executeStep: checkSdkAvailable },
+  { id: "addEmbeddingToken", executeStep: addEmbeddingToken },
+  { id: "checkIsDockerRunning", executeStep: checkIsDockerRunning },
+  { id: "generateCredentials", executeStep: generateCredentials },
+  {
+    id: "startLocalMetabaseContainer",
+    executeStep: startLocalMetabaseContainer,
+  },
+  { id: "pollMetabaseInstance", executeStep: pollMetabaseInstance },
+  { id: "setupMetabaseInstance", executeStep: setupMetabaseInstance },
+  { id: "createApiKey", executeStep: createApiKey },
+  { id: "generateCodeSample", executeStep: generateCodeSample },
 ] as const;
 
 export async function runCli() {
   let state: CliState = {};
 
   for (let i = 0; i < CLI_STEPS.length; i++) {
-    const [_, execute] = CLI_STEPS[i];
-    const [output, nextState] = await execute(state);
+    const { executeStep } = CLI_STEPS[i];
+    const [output, nextState] = await executeStep(state);
 
     if (output.type === "error") {
       console.error(output.message);
@@ -43,7 +46,7 @@ export async function runCli() {
     }
 
     if (output.type === "success" && output.nextStep) {
-      i = CLI_STEPS.findIndex(([stepId]) => stepId === output.nextStep) - 1;
+      i = CLI_STEPS.findIndex(({ id }) => id === output.nextStep) - 1;
     }
 
     state = nextState;

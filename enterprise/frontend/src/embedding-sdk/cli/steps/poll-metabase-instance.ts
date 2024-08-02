@@ -14,14 +14,9 @@ export const pollMetabaseInstance: CliStepMethod = async state => {
 
   const spinner = ora(
     "Waiting for the Metabase instance to be ready (~2 mins)",
-  );
+  ).start();
 
   while (attempts < HEALTH_CHECK_MAX_ATTEMPTS) {
-    // The instance is not yet ready. Show a message so users can anticipate the wait.
-    if (attempts === 1) {
-      spinner.start();
-    }
-
     // fetch will throw an error if the server is not reachable
     try {
       const res = await fetch(`${state.instanceUrl}/health`, {
