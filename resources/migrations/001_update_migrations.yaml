@@ -6833,14 +6833,17 @@ databaseChangeLog:
   - changeSet:
       id: v50.2024-01-10T03:27:20
       author: noahmoss
-      comment: Analyze permissions table (on postgresql) in preparation for subsequent migrations
+      comment: Analyze permissions table in preparation for subsequent migrations
       validCheckSum: ANY
-      dbms: postgresql
       runInTransaction: false
       changes:
-        - sql: >
-            ANALYZE permissions;
-      rollback:
+        - sql:
+            sql: ANALYZE permissions;
+            dbms: postgresql
+        - sql:
+            sql: ANALYZE TABLE permissions;
+            dbms: mysql,mariadb
+      rollback: # not needed
 
   - changeSet:
       id: v50.2024-01-10T03:27:29
