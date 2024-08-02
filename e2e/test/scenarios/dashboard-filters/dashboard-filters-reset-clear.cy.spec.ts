@@ -622,29 +622,39 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
   }) {
     cy.log("no default value, non-required, no current value");
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
+    checkResetAllFiltersHidden();
 
     cy.log("no default value, non-required, has current value");
     setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
     filter(NO_DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
+    checkResetAllFiltersShown();
+
     clearButton(NO_DEFAULT_NON_REQUIRED).click();
     filter(NO_DEFAULT_NON_REQUIRED).should(
       "have.text",
       NO_DEFAULT_NON_REQUIRED,
     );
     checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
+    checkResetAllFiltersHidden();
 
     cy.log("has default value, non-required, current value same as default");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
+    checkResetAllFiltersHidden();
     filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+
     clearButton(DEFAULT_NON_REQUIRED).click();
     filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
+    checkResetAllFiltersShown();
 
     cy.log("has default value, non-required, no current value");
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
+    checkResetAllFiltersShown();
+
     resetButton(DEFAULT_NON_REQUIRED).click();
     filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
+    checkResetAllFiltersHidden();
 
     cy.log(
       "has default value, non-required, current value different than default",
@@ -652,20 +662,27 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     updateValue(DEFAULT_NON_REQUIRED, otherValue);
     filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
+    checkResetAllFiltersShown();
+
     resetButton(DEFAULT_NON_REQUIRED).click();
     filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
+    checkResetAllFiltersHidden();
 
     cy.log("has default value, required, value same as default");
     checkStatusIcon(DEFAULT_REQUIRED, "none");
+    checkResetAllFiltersHidden();
 
     cy.log("has default value, required, current value different than default");
     updateValue(DEFAULT_REQUIRED, otherValue);
     filter(DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "reset");
+    checkResetAllFiltersShown();
+
     resetButton(DEFAULT_REQUIRED).click();
     filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
     checkStatusIcon(DEFAULT_REQUIRED, "none");
+    checkResetAllFiltersHidden();
 
     checkParameterSidebarDefaultValue({
       defaultValueFormatted,
@@ -746,6 +763,18 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       filter("Default value").should("have.text", otherValueFormatted);
       checkStatusIcon("Default value", "clear");
     });
+  }
+
+  function checkResetAllFiltersShown() {
+    cy.button("Move, trash, and more…").click();
+    popover().findByText("Reset all filters").should("be.visible");
+    cy.button("Move, trash, and more…").click();
+  }
+
+  function checkResetAllFiltersHidden() {
+    cy.button("Move, trash, and more…").click();
+    popover().findByText("Reset all filters").should("not.exist");
+    cy.button("Move, trash, and more…").click();
   }
 
   function filter(label: string) {
