@@ -291,6 +291,36 @@ describe("scenarios > notebook > link to data source", () => {
       cy.findByTestId("qb-save-button").should("not.exist");
     });
 
+    it("should open the underlying native model", () => {
+      const model: NativeQuestionDetails = {
+        name: "Native model",
+        native: {
+          query: "select 1 as foo",
+          "template-tags": {},
+        },
+        type: "model",
+      };
+
+      createNativeQuestion(model).then(({ body: { id, name } }) => {
+        visitModel(id);
+
+        openNotebook();
+        getNotebookStep("data").findByText(name).click(clickConfig);
+
+        cy.log("Make sure the source model rendered in a simple mode");
+        cy.location("pathname").should("eq", `/model/${id}-native-model`);
+
+        cy.findByTestId("scalar-value").should("have.text", "1");
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 1 row",
+        );
+
+        // Model is not dirty
+        cy.findByTestId("qb-save-button").should("not.exist");
+      });
+    });
+
     it("should open the nested model (based on a question) as the data source", () => {
       createQuestion(
         {
