@@ -4,7 +4,6 @@ import { jt, t } from "ttag";
 import { UpsellMetabaseBanner } from "metabase/admin/upsells/UpsellMetabaseBanner";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type {
@@ -63,8 +62,6 @@ export const LookAndFeelSettings = ({
     getSetting(state, "available-fonts"),
   );
   const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
-
-  const downloadDataId = useUniqueId("download-data");
 
   return (
     <>
@@ -181,7 +178,6 @@ export const LookAndFeelSettings = ({
 
           {canWhitelabel && (
             <Switch
-              aria-labelledby={downloadDataId}
               label={t`Download buttons`}
               labelPosition="left"
               size="sm"
