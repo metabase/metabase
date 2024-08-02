@@ -831,7 +831,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
       .findByPlaceholderText("Select a default value…")
       .click();
 
-    popover().findByText("20").click();
+    popover().findByText("Twenty").click();
 
     saveQuestion("SQL filter");
 

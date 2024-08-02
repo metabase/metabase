@@ -2,7 +2,7 @@ import { useCallback, useRef } from "react";
 import { useUnmount } from "react-use";
 import { useDebouncedCallback } from "use-debounce";
 
-import { Select, Loader } from "metabase/ui";
+import { Select, Loader, type SelectOption } from "metabase/ui";
 
 import { PickerIcon } from "../ParameterValuePicker.styled";
 import { blurOnCommitKey } from "../utils";
@@ -11,7 +11,7 @@ import S from "./ListPicker.css";
 
 interface ListPickerProps {
   value: string;
-  options: string[];
+  options: (string | SelectOption)[];
   onChange: (value: string) => void;
   onClear: () => void;
   onSearchChange?: (query: string) => void;
