@@ -4,6 +4,7 @@ import {
   ORDERS_MODEL_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  createNativeQuestion,
   createQuestion,
   getNotebookStep,
   openNotebook,
@@ -14,6 +15,7 @@ import {
   visitModel,
   visitQuestion,
   visualize,
+  type NativeQuestionDetails,
 } from "e2e/support/helpers";
 
 // https://docs.cypress.io/api/cypress-api/platform
@@ -127,6 +129,49 @@ describe("scenarios > notebook > link to data source", () => {
       cy.findByTestId("qb-save-button").should("not.exist");
     });
 
+    it("should open the source question from a nested question where the source is native question", () => {
+      const source = {
+        name: "Native source",
+        native: {
+          query: "select 1 as foo",
+          "template-tags": {},
+        },
+      };
+
+      createNativeQuestion(source).then(({ body: sourceQuestion }) => {
+        createQuestion(
+          {
+            name: "Nested question based on a native question",
+            query: { "source-table": `card__${sourceQuestion.id}` },
+          },
+          { visitQuestion: true },
+        );
+
+        openNotebook();
+        getNotebookStep("data").findByText(source.name).click(clickConfig);
+
+        cy.log("Make sure the source question rendered in a simple mode");
+        cy.location("pathname").should(
+          "eq",
+          `/question/${sourceQuestion.id}-native-source`,
+        );
+
+        cy.findAllByTestId("header-cell")
+          .should("have.length", "1")
+          .and("have.text", "FOO");
+        cy.get("#main-data-grid")
+          .findByTestId("cell-data")
+          .should("have.text", "1");
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 1 row",
+        );
+
+        // Question is not dirty
+        cy.findByTestId("qb-save-button").should("not.exist");
+      });
+    });
+
     it("should open the source model from a nested question", () => {
       createQuestion(
         {
@@ -153,6 +198,47 @@ describe("scenarios > notebook > link to data source", () => {
 
       // Model is not dirty
       cy.findByTestId("qb-save-button").should("not.exist");
+    });
+
+    it("should open the source model from a nested question where the source is native model", () => {
+      const source: NativeQuestionDetails = {
+        name: "Native source",
+        native: {
+          query: "select 1 as foo",
+          "template-tags": {},
+        },
+        type: "model",
+      };
+
+      createNativeQuestion(source).then(({ body: sourceQuestion }) => {
+        createQuestion(
+          {
+            name: "Nested question based on a native question",
+            query: { "source-table": `card__${sourceQuestion.id}` },
+          },
+          { visitQuestion: true },
+        );
+
+        openNotebook();
+        getNotebookStep("data")
+          .findByText(sourceQuestion.name)
+          .click(clickConfig);
+
+        cy.log("Make sure the source model rendered in a simple mode");
+        cy.location("pathname").should(
+          "eq",
+          `/model/${sourceQuestion.id}-native-source`,
+        );
+
+        cy.findByTestId("scalar-value").should("have.text", "1");
+        cy.findByTestId("question-row-count").should(
+          "have.text",
+          "Showing 1 row",
+        );
+
+        // Model is not dirty
+        cy.findByTestId("qb-save-button").should("not.exist");
+      });
     });
 
     it('should open the "trash" if the source question has been archived', () => {
