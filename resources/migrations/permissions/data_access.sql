@@ -105,7 +105,7 @@ CROSS JOIN metabase_table mt
 LEFT JOIN data_permissions dp
 ON dp.group_id = pg.id
    AND dp.db_id = mt.db_id
-   AND dp.table_id = mt.id
+   AND (dp.table_id = mt.id OR dp.table_id IS NULL)
    AND dp.perm_type = 'perms/data-access'
 WHERE pg.name != 'Administrators'
   AND dp.group_id IS NULL;
