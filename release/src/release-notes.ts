@@ -216,11 +216,11 @@ const sortCategories = (categories: ProductCategory[]): ProductCategory[] => {
   return (
     categories
       // We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
-      .filter(cat => cat !== ProductCategory.Other)
+      .filter(cat => cat !== ProductCategory.other)
       .sort((a, b) => a.localeCompare(b))
       .concat(
-        categories.includes(ProductCategory.Other)
-          ? [ProductCategory.Other]
+        categories.includes(ProductCategory.other)
+          ? [ProductCategory.other]
           : [],
       )
   );
