@@ -38,6 +38,9 @@ module.exports = {
     "@storybook/addon-interactions",
     "storybook-addon-pseudo-states",
   ],
+  features: {
+    interactionsDebugger: true,
+  },
   babel: () => {},
   typescript: {
     reactDocgen: "react-docgen-typescript-plugin",

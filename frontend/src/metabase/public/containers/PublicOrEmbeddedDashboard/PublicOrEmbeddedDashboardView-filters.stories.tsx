@@ -454,6 +454,7 @@ LightThemeText.play = async ({ canvasElement }) => {
 export const LightThemeTextWithValue = Template.bind({});
 LightThemeTextWithValue.args = createDefaultArgs();
 LightThemeTextWithValue.play = async ({ canvasElement }) => {
+  const asyncCallback = createAsyncCallback();
   const canvas = within(canvasElement);
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);
@@ -464,6 +465,7 @@ LightThemeTextWithValue.play = async ({ canvasElement }) => {
     "filter value",
   );
   await userEvent.click(getLastPopoverElement());
+  asyncCallback();
 };
 
 export const LightThemeParameterSearch = Template.bind({});
