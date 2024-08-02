@@ -864,11 +864,18 @@ function checkResetAllFiltersWorksAcrossTabs() {
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(1).click();
   checkResetAllFiltersShown();
+  filter(PARAMETER_B.name).should("have.text", PARAMETER_B.name);
   getDashboardCard(0).findByText("18,760").should("be.visible");
+
+  addDateFilter(PARAMETER_B.name, "01/01/2023");
+  checkResetAllFiltersShown();
+  filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
+  getDashboardCard(0).findByText("5").should("be.visible");
 
   cy.button("Move, trash, and more…").click();
   popover().findByText("Reset all filters").click();
   checkResetAllFiltersHidden();
+  filter(PARAMETER_B.name).should("have.text", PARAMETER_B.name);
   getDashboardCard(0).findByText("18,760").should("be.visible");
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(0).click();
