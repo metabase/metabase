@@ -17,7 +17,7 @@ import type {
 } from "metabase-types/api";
 import type { DownloadsState, State } from "metabase-types/store";
 
-import { trackDownloadResults } from "./downloading-analytics";
+import { trackDownloadResults } from "./downloads-analytics";
 
 export interface DownloadQueryResultsOpts {
   type: string;
