@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<Configuration>
+<Configuration monitorInterval="30">
   <Appenders>
     <Console name="STDOUT" target="SYSTEM_OUT" follow="true">
       <PatternLayout pattern="%date %level %logger{2} :: %message%n%throwable">
@@ -32,7 +32,7 @@
     <Logger name="metabase.task.sweep-query-analysis" level="INFO"/>
     <Logger name="com.mchange" level="ERROR"/>
     <Logger name="org.quartz" level="INFO"/>
-    <Logger name="liquibase" level="ERROR"/>
+    <Logger name="liquibase" level="INFO"/>
     <Logger name="net.snowflake.client.jdbc.SnowflakeConnectString" level="ERROR"/>
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>

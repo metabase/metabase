@@ -65,6 +65,7 @@ WITH escaped_schema_table AS (
         CONCAT('/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/table/', mt.id, '/query/') AS query_path,
         CONCAT('/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/table/', mt.id, '/query/segmented/') AS segmented_query_path
     FROM metabase_table mt
+    WHERE active = true
 )
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT
@@ -102,10 +103,12 @@ SELECT
     'no-self-service' AS perm_value
 FROM permissions_group pg
 CROSS JOIN metabase_table mt
-LEFT JOIN data_permissions dp
-ON dp.group_id = pg.id
-   AND dp.db_id = mt.db_id
-   AND (dp.table_id = mt.id OR dp.table_id IS NULL)
-   AND dp.perm_type = 'perms/data-access'
-WHERE pg.name != 'Administrators'
-  AND dp.group_id IS NULL;
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM data_permissions dp
+    WHERE dp.group_id = pg.id
+      AND dp.db_id = mt.db_id
+      AND (dp.table_id = mt.id
+           OR dp.table_id IS NULL)
+      AND dp.perm_type = 'perms/data-access'
+);

@@ -100,17 +100,19 @@ WHERE NOT EXISTS (
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT
     pg.id AS group_id,
-    'perms/data-access' AS perm_type,
+    'perms/download-results' AS perm_type,
     mt.db_id,
     mt.schema AS schema_name,
     mt.id AS table_id,
     'no' AS perm_value
 FROM permissions_group pg
 CROSS JOIN metabase_table mt
-LEFT JOIN data_permissions dp
-ON dp.group_id = pg.id
-   AND dp.db_id = mt.db_id
-   AND (dp.table_id = mt.id OR dp.table_id IS NULL)
-   AND dp.perm_type = 'perms/data-access'
-WHERE pg.name != 'Administrators'
-  AND dp.group_id IS NULL;
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM data_permissions dp
+    WHERE dp.group_id = pg.id
+      AND dp.db_id = mt.db_id
+      AND (dp.table_id = mt.id
+           OR dp.table_id IS NULL)
+      AND dp.perm_type = 'perms/download-results'
+);

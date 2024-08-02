@@ -83,13 +83,13 @@ SELECT
     mt.id AS table_id,
     'no' AS perm_value
 FROM permissions_group pg
-JOIN metabase_table mt
-ON NOT EXISTS (
+CROSS JOIN metabase_table mt
+WHERE NOT EXISTS (
     SELECT 1
     FROM data_permissions dp
     WHERE dp.group_id = pg.id
       AND dp.db_id = mt.db_id
       AND (dp.table_id = mt.id
-           OR dp.table_ID IS NULL)
+           OR dp.table_id IS NULL)
       AND dp.perm_type = 'perms/manage-table-metadata'
 );
