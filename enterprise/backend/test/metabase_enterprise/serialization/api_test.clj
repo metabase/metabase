@@ -8,8 +8,10 @@
    [metabase.models :refer [Card Collection Dashboard]]
    [metabase.test :as mt]
    [metabase.util.compress :as u.compress]
+   [metabase.util.random :as u.random]
    [toucan2.core :as t2])
   (:import
+   (java.io File)
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream)
    (org.apache.commons.compress.compressors.gzip GzipCompressorInputStream)))
 
@@ -90,7 +92,7 @@
                     (let [res   (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
                                                       :collection (:id coll) :data_model false :settings false)
                           lines (str/split-lines (slurp (io/input-stream res)))]
-                      (testing "First three lines for coll+dash+card, and then error during compression"
+                      (testing "First three lines for coll+dash+card, and then an error during compression"
                         (is (= #{"Collection" "Dashboard" "Card"}
                                (log-types (take 3 lines))))
                         (is (re-find #"deliberate error message" (str/join "\n" (->> lines (drop 3) (take 3))))))))))
@@ -205,3 +207,15 @@
         ;; in `api/on-response!`, so maybe add some Thread/sleep here.
         (is (= known-files
                (set (.list (io/file api.serialization/parent-dir)))))))))
+
+(deftest find-serialization-dir-test
+  (testing "We are able to find serialization dir even in presence of various hidden dirs"
+    (let [dst (io/file api.serialization/parent-dir (u.random/random-name))]
+      (.mkdirs (io/file dst "._hidden_dir"))
+      (.mkdirs (io/file dst "not_hidden_dir"))
+      (is (= nil
+             (#'api.serialization/find-serialization-dir dst)))
+      (.mkdirs (io/file dst "real_dir" "collections"))
+      (is (= "real_dir"
+             (.getName ^File (#'api.serialization/find-serialization-dir dst))))
+      (run! io/delete-file (reverse (file-seq dst))))))
