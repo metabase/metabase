@@ -1,6 +1,7 @@
 (ns metabase.util.compress
   (:require
-   [clojure.java.io :as io])
+   [clojure.java.io :as io]
+   [clojure.string :as str])
   (:import
    (java.io File)
    (org.apache.commons.compress.archivers.tar TarArchiveEntry TarArchiveInputStream TarArchiveOutputStream)
@@ -39,16 +40,20 @@
     dst))
 
 (defn untgz
-  "Uncompress tar+gzip file `archive` to a directory `dst`."
+  "Uncompress tar+gzip file `archive` to a directory `dst`.
+  Skips hidden entries, returns number of unpacked entries (files + dirs)."
   [^File archive ^File dst]
   (with-open [tar (-> (io/input-stream archive)
                       (GzipCompressorInputStream.)
                       (TarArchiveInputStream.))]
-    (let [[dir :as tar-entries] (entries tar)]
-      (doseq [^TarArchiveEntry e tar-entries]
-        (let [f (io/file dst (.getName e))]
-          (if (.isFile e)
-            (io/copy tar f)
-            (.mkdirs f))))
-      (when dir
-        (.getName ^TarArchiveEntry dir)))))
+    (let [tar-entries (entries tar)]
+      (count
+       (for [^TarArchiveEntry e tar-entries
+             :let [actual-name (last (.split (.getName e) "/"))]
+             ;; skip hidden files
+             :when (not (str/starts-with? actual-name "."))]
+         (let [f (io/file dst (.getName e))]
+           (if (.isFile e)
+             (io/copy tar f)
+             (.mkdirs f))
+           true))))))

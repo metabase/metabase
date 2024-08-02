@@ -421,8 +421,7 @@ describe("#39152 sharing an unsaved question", () => {
               titled: true,
               font: "instance",
               theme: "light",
-              // TODO: change to expect the correct value of  `downloads`
-              hide_download_button: null,
+              downloads: null,
             },
           });
 
@@ -441,8 +440,7 @@ describe("#39152 sharing an unsaved question", () => {
               titled: true,
               font: "instance",
               theme: "light",
-              // TODO: change to expect the correct value of  `downloads`
-              hide_download_button: null,
+              downloads: null,
             },
           });
 
@@ -468,8 +466,7 @@ describe("#39152 sharing an unsaved question", () => {
               titled: true,
               font: "instance",
               theme: "light",
-              // TODO: change to expect the correct value of  `downloads`
-              hide_download_button: null,
+              downloads: null,
             },
           });
 
@@ -509,8 +506,7 @@ describe("#39152 sharing an unsaved question", () => {
               titled: false,
               font: "instance",
               theme: "night",
-              // TODO: change to expect the correct value of  `downloads`
-              hide_download_button: null,
+              downloads: null,
             },
           });
 
@@ -533,7 +529,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: false,
                 font: "instance",
                 theme: "night",
-                hide_download_button: null,
+                downloads: null,
               },
             });
           }
@@ -566,8 +562,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                // TODO: change to expect the correct value of  `downloads`
-                hide_download_button: null,
+                downloads: true,
               },
             });
 
@@ -586,8 +581,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                // TODO: change to expect the correct value of  `downloads`
-                hide_download_button: null,
+                downloads: true,
               },
             });
 
@@ -613,8 +607,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: true,
                 font: "instance",
                 theme: "light",
-                // TODO: change to expect the correct value of  `downloads`
-                hide_download_button: null,
+                downloads: true,
               },
             });
 
@@ -642,9 +635,10 @@ describe("#39152 sharing an unsaved question", () => {
 
             popover().findByText("Oswald").click();
 
-            if (resource === "question") {
-              modal().findByLabelText("Download data").click({ force: true });
-            }
+            cy.log(
+              "Assert that it sends `downloads: false` when downloads are disabled",
+            );
+            modal().findByLabelText("Download buttons").click({ force: true });
 
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")
@@ -661,8 +655,7 @@ describe("#39152 sharing an unsaved question", () => {
                 titled: false,
                 font: "custom",
                 theme: "night",
-                // TODO: change to expect the correct value of  `downloads`
-                hide_download_button: null,
+                downloads: false,
               },
             });
           });

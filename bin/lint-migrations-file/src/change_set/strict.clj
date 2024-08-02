@@ -150,9 +150,12 @@
   "Returns false if addColumn changeSet uses deleteCascade. See Metabase issue #14321"
   [{:keys [changes]}]
   (let [[change-type {:keys [columns]}] (ffirst changes)]
-    (if (= :addColumn change-type)
-      (not-any? #(-> % :column :constraints :deleteCascade) columns)
-      true)))
+    (or (not= :addColumn change-type)
+        (not-any? (fn [c]
+                    (let [constraint (-> c :column :constraints)]
+                      (and (:deleteCascade constraint)
+                           (not (:deleteCascadeForce constraint)))))
+                  columns))))
 
 (s/def ::change-set
   (s/and

@@ -8,9 +8,11 @@
    [clojure.string :as str]
    [compojure.core :refer [GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
+   [java-time.api :as t]
    [malli.core :as mc]
    [malli.transform :as mtx]
    [medley.core :as m]
+   [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.db.query :as mdb.query]
@@ -119,7 +121,7 @@
                              [:= :type collection/trash-collection-type] 1
                              :else 2]] :asc]
                           [:%lower.name :asc]]})
-    exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
+   exclude-other-user-collections (remove-other-users-personal-subcollections api/*current-user-id*)))
 
 (api/defendpoint GET "/"
   "Fetch a list of all Collections that the current user has read permissions for (`:can_write` is returned as an
@@ -400,6 +402,7 @@
 (defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
+                     :last_used_at
                      :c.collection_id
                      :c.archived_directly
                      :c.archived
@@ -518,7 +521,8 @@
       false)))
 
 (defn- fully-parameterized-query? [row]
-  (let [parsed-query (-> row :dataset_query json/parse-string)
+  (let [parsed-query (cond-> (:dataset_query row)
+                       (string? (:dataset_query row)) json/parse-string)
         ;; TODO TB handle pMBQL native queries
         native-query (when (contains? parsed-query "native")
                        (-> parsed-query mbql.normalize/normalize :native))]
@@ -545,6 +549,7 @@
 
 (defn- dashboard-query [collection {:keys [archived? pinned-state]}]
   (-> {:select    [:d.id :d.name :d.description :d.entity_id :d.collection_position
+                   [:last_viewed_at :last_used_at]
                    :d.collection_id
                    :d.archived_directly
                    [(h2x/literal "dashboard") :model]
@@ -782,7 +787,7 @@
    :model :collection_position :authority_level [:personal_owner_id :integer] :location
    :last_edit_email :last_edit_first_name :last_edit_last_name :moderated_status :icon
    [:last_edit_user :integer] [:last_edit_timestamp :timestamp] [:database_id :integer]
-   :collection_type [:archived :boolean]
+   :collection_type [:archived :boolean] [:last_used_at :timestamp]
    ;; for determining whether a model is based on a csv-uploaded table
    [:table_id :integer] [:is_upload :boolean] :query_type])
 
@@ -952,6 +957,154 @@
   [id]
   {id ms/PositiveInt}
   (collection-detail (api/read-check Collection id)))
+
+(defn- effective-children-ids
+  "Returns effective children ids for collection."
+  [collection permissions-set]
+  (let [visible-collection-ids (set (collection/permissions-set->visible-collection-ids
+                                     permissions-set
+                                     {:permission-level :write}))
+        all-descendants (map :id (collection/descendants-flat collection))]
+    (filterv visible-collection-ids all-descendants)))
+
+(defmulti present-model-items
+  "Given a model and a list of items, return the items in the format the API client expects. Note that order does not
+  matter! The calling function, `present-items`, is responsible for ensuring the order is maintained."
+  (fn [model _items] model))
+
+(defn- present-collections [rows]
+  (let [coll-id->coll (into {} (for [{coll :collection} rows
+                                        :when (some? coll)] [(:id coll) coll]))
+        to-fetch (into #{} (comp (keep :effective_location)
+                                    (mapcat collection/location-path->ids)
+                                    (remove coll-id->coll))
+                       (vals coll-id->coll))
+        coll-id->coll (merge (if (seq to-fetch)
+                               (t2/select-pk->fn identity :model/Collection :id [:in to-fetch])
+                               {})
+                             coll-id->coll)
+        annotate (fn [x]
+                   (assoc x :collection {:id (get-in x [:collection :id])
+                                         :name (get-in x [:collection :name])
+                                         :authority_level (get-in x [:collection :authority_level])
+                                         :type (get-in x [:collection :type])
+                                         :effective_ancestors (if-let [loc (:effective_location (:collection x))]
+                                                                (->> (collection/location-path->ids loc)
+                                                                     (map coll-id->coll)
+                                                                     (map #(select-keys % [:id :name :authority_level :type])))
+                                                                [])}))]
+    (map annotate rows)))
+
+(defmethod present-model-items :model/Card [_ cards]
+  (->> (t2/hydrate (t2/select [:model/Card
+                               :id
+                               :description
+                               :collection_id
+                               :name
+                               :entity_id
+                               :archived
+                               :collection_position
+                               :display
+                               :collection_preview
+                               :database_id
+                               [nil :location]
+                               :dataset_query
+                               :last_used_at
+                               [{:select   [:status]
+                                 :from     [:moderation_review]
+                                 :where    [:and
+                                            [:= :moderated_item_type "card"]
+                                            [:= :moderated_item_id :report_card.id]
+                                            [:= :most_recent true]]
+                                 ;; limit 1 to ensure that there is only one result but this invariant should hold true, just
+                                 ;; protecting against potential bugs
+                                 :order-by [[:id :desc]]
+                                 :limit    1}
+                                :moderated_status]]
+                              :id [:in (set (map :id cards))])
+                   :can_write :can_delete :can_restore [:collection :effective_location])
+       present-collections
+       (map (fn [card]
+              (-> card
+                  (assoc :model (if (card/model? card) "dataset" "card"))
+                  (assoc :fully_parameterized (fully-parameterized-query? card))
+                  (dissoc :dataset_query))))))
+
+(defmethod present-model-items :model/Dashboard [_ dashboards]
+  (->> (t2/hydrate (t2/select [:model/Dashboard
+                               :id
+                               :description
+                               :collection_id
+                               :name
+                               :entity_id
+                               :archived
+                               :collection_position
+                               [:last_viewed_at :last_used_at]
+                               ["dashboard" :model]
+                               [nil :location]
+                               [nil :database_id]]
+
+                              :id [:in (set (map :id dashboards))])
+                   :can_write :can_delete :can_restore [:collection :effective_location])
+       present-collections))
+
+(defenterprise find-stale-candidates
+  "Finds stale content in the given collection."
+  metabase-enterprise.stale
+  [& _args]
+  {:rows []
+   :total 0})
+
+(api/defendpoint GET "/:id/stale"
+  "A flexible endpoint that returns stale entities, in the same shape as collections/items, with the following options:
+  - `before_date` - only return entities that were last edited before this date (default: 6 months ago)
+  - `is_recursive` - if true, return entities from all children of the collection, not just the direct children (default: false)
+  - `sort_column` - the column to sort by (default: name)
+  - `sort_direction` - the direction to sort by (default: asc)"
+  [id before_date is_recursive sort_column sort_direction]
+  {id             [:or ms/PositiveInt [:= :root]]
+   before_date    [:maybe :string]
+   is_recursive   [:boolean {:default false}]
+   sort_column    [:maybe {:default :name} [:enum :name :last_used_at]]
+   sort_direction [:maybe {:default :asc} (into [:enum] (map keyword valid-sort-directions))]}
+  (premium-features/assert-has-feature :collection-cleanup (tru "Collection Cleanup"))
+  (let [before-date    (if before_date
+                         (try (t/local-date "yyyy-MM-dd" before_date)
+                              (catch Exception _
+                                (throw (ex-info (str "invalid before_date: '"
+                                                     before_date
+                                                     "' expected format: 'yyyy-MM-dd'")
+                                                {:status 400}))))
+                         (t/minus (t/local-date) (t/months 6)))
+        collection     (if (= id :root)
+                         (root-collection nil)
+                         (t2/select-one :model/Collection id))
+        _              (api/read-check collection)
+        collection-ids (->> (if is_recursive
+                              (conj (effective-children-ids collection @api/*current-user-permissions-set*)
+                                    id)
+                              [id])
+                            (mapv (fn root->nil [x] (if (= :root x) nil x)))
+                            set)
+
+        {:keys [total rows]}
+        (find-stale-candidates {:collection-ids collection-ids
+                                :cutoff-date    before-date
+                                :limit          mw.offset-paging/*limit*
+                                :offset         mw.offset-paging/*offset*
+                                :sort-column    sort_column
+                                :sort-direction sort_direction})
+
+        snowplow-payload {:collection_id           (when-not (= :root id) id)
+                          :total_stale_items_found total
+                          ;; convert before-date to a date-time string before sending it.
+                          :cutoff_date             (format "%sT00:00:00Z" (str before-date))}]
+    (snowplow/track-event! ::snowplow/stale-items-read api/*current-user-id* snowplow-payload)
+    {:total  total
+     :data   (api/present-items present-model-items rows)
+     :limit  mw.offset-paging/*limit*
+     :offset mw.offset-paging/*offset*}))
+
 
 (api/defendpoint GET "/trash"
   "Fetch the trash collection, as in `/api/collection/:trash-id`"

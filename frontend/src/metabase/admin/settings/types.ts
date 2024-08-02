@@ -11,6 +11,8 @@ export type SettingElement = {
   key?: SettingKey;
   tab?: string;
   display_name?: string;
+  env_name?: string;
+  is_env_setting?: boolean;
   type?: string;
   description?: string;
   note?: string;
@@ -18,6 +20,8 @@ export type SettingElement = {
   placeholder?: string;
   options?: { value: SettingValue; name: string }[];
   value?: SettingValue;
+  default?: SettingValue;
+  originalValue?: SettingValue;
   defaultValue?: SettingValue;
   required?: boolean;
   autoFocus?: boolean;

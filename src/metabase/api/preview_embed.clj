@@ -46,7 +46,7 @@
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
       :constraints      {:max-results max-results}
-      :query-params     query-params)))
+      :query-params     (api.embed.common/parse-query-params query-params))))
 
 (api/defendpoint GET "/dashboard/:token"
   "Fetch a Dashboard you're considering embedding by passing a JWT `token`. "
@@ -59,7 +59,11 @@
 (api/defendpoint GET "/dashboard/:token/params/:param-key/values"
   "Embedded version of chain filter values endpoint."
   [token param-key :as {:keys [query-params]}]
-  (api.embed.common/dashboard-param-values token param-key nil query-params {:preview true}))
+  (api.embed.common/dashboard-param-values token
+                                           param-key
+                                           nil
+                                           (api.embed.common/parse-query-params query-params)
+                                           {:preview true}))
 
 (api/defendpoint GET "/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
   "Fetch the results of running a Card belonging to a Dashboard you're considering embedding with JWT `token`."
@@ -78,7 +82,7 @@
      :card-id          card-id
      :embedding-params embedding-params
      :token-params     token-params
-     :query-params     query-params)))
+     :query-params     (api.embed.common/parse-query-params query-params))))
 
 (api/defendpoint GET "/pivot/card/:token/query"
   "Fetch the query results for a Card you're considering embedding by passing a JWT `token`."
@@ -91,7 +95,7 @@
       :card-id          card-id
       :token-params     (embed/get-in-unsigned-token-or-throw unsigned-token [:params])
       :embedding-params (embed/get-in-unsigned-token-or-throw unsigned-token [:_embedding_params])
-      :query-params     query-params
+      :query-params     (api.embed.common/parse-query-params query-params)
       :qp               qp.pivot/run-pivot-query)))
 
 (api/defendpoint GET "/pivot/dashboard/:token/dashcard/:dashcard-id/card/:card-id"
@@ -111,7 +115,7 @@
       :card-id          card-id
       :embedding-params embedding-params
       :token-params     token-params
-      :query-params     query-params
+      :query-params     (api.embed.common/parse-query-params query-params)
       :qp               qp.pivot/run-pivot-query)))
 
 (api/define-routes)

@@ -147,6 +147,12 @@
   {:text name
    :type :tab-title})
 
+(defn- render-tabs?
+  "Check if a dashboard has more than 1 tab, and thus needs them to be rendered.
+  We don't need to render the tab title if only 1 exists (issue #45123)."
+  [dashboard-or-id]
+  (< 1 (t2/count :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id))))
+
 (defn- execute-dashboard
   "Fetch all the dashcards in a dashboard for a Pulse, and execute non-text cards.
 
@@ -154,13 +160,13 @@
   [{:keys [skip_if_empty] pulse-creator-id :creator_id :as pulse} dashboard & {:as _options}]
   (let [dashboard-id (u/the-id dashboard)]
     (mw.session/with-current-user pulse-creator-id
-      (let [parts (if (dashboard/has-tabs? dashboard)
-                    (let [tabs            (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
-                          tabs-with-cards (filter #(seq (:cards %)) tabs)]
-                      (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards
-                                            :when                   (seq cards)]
+      (let [parts (if (render-tabs? dashboard)
+                    (let [tabs               (t2/hydrate (t2/select :model/DashboardTab :dashboard_id dashboard-id) :tab-cards)
+                          tabs-with-cards    (filter #(seq (:cards %)) tabs)
+                          should-render-tab? (< 1 (count tabs-with-cards))]
+                      (doall (flatten (for [{:keys [cards] :as tab} tabs-with-cards]
                                         (concat
-                                         (when (< 1 (count tabs-with-cards))
+                                         (when should-render-tab?
                                            [(tab->part tab)])
                                          (dashcards->part cards pulse dashboard))))))
                     (dashcards->part (t2/select :model/DashboardCard :dashboard_id dashboard-id) pulse dashboard))]

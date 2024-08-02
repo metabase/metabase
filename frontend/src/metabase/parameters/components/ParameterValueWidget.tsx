@@ -205,7 +205,11 @@ export const ParameterValueWidget = ({
       {...popoverProps}
     >
       <Popover.Target>
-        <Box onClick={toggle}>
+        <Box
+          data-testid="parameter-value-widget-target"
+          onClick={toggle}
+          className={CS.cursorPointer}
+        >
           <Sortable
             id={parameter.id}
             draggingStyle={{ opacity: 0.5 }}

@@ -11,6 +11,10 @@ on:
       commit:
         description: 'A full-length commit SHA-1 hash'
         required: true
+      auto:
+        description: 'auto-patch release DO NOT SET MANUALLY'
+        type: boolean
+        default: false
 
 jobs:
   start-message:
@@ -248,5 +252,6 @@ jobs:
               inputs: {
                 commit: '${{ inputs.commit }}',
                 version: '${{ inputs.version }}',
+                auto: '${{ inputs.auto }}',
               }
             });

@@ -1,0 +1,257 @@
+[
+  {
+    "card": {
+      "original_card_id": 385,
+      "can_delete": false,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-07-08T18:26:30.545529Z",
+      "parameters": [],
+      "metabase_version": "v0.1.14-SNAPSHOT (19194d0)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "archive_operation_id": null,
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "archived_directly": null,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {},
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-07-08T18:26:30.748419Z"
+      },
+      "collection_preview": true,
+      "entity_id": "vl-92ZiILt7Vg5HPlhXgg",
+      "archived_directly": false,
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 385,
+      "dataset_query": {
+        "database": 2,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "SELECT 1 , 'test'"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-07-08T18:26:30.545529Z",
+      "moderation_reviews": [],
+      "can_restore": false,
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "last_used_at": null,
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "Pie - Native SQL having the first column as numeric breaks pie chart and funnel chart when send via email/slack #28568",
+      "query_type": "native",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-07-02T21:59:05.546376Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "display_name": "?column?",
+          "field_ref": [
+            "field",
+            "?column?",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "?column?",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1,
+                "q3": 1,
+                "max": 1,
+                "sd": null,
+                "avg": 1
+              }
+            }
+          }
+        },
+        {
+          "display_name": "?column?",
+          "field_ref": [
+            "field",
+            "?column?_2",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "?column?",
+          "base_type": "type/Text",
+          "effective_type": "type/Text",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 4
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": null,
+      "collection_position": null,
+      "view_count": 0,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [[1, "test"]],
+      "cols": [
+        {
+          "display_name": "?column?",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "?column?",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "?column?",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "?column?",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "?column?_2",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "name": "?column?_2",
+          "base_type": "type/Text",
+          "effective_type": "type/Text"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "SELECT 1 , 'test'"
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "?column?",
+            "field_ref": [
+              "field",
+              "?column?",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "?column?",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1,
+                  "q3": 1,
+                  "max": 1,
+                  "sd": null,
+                  "avg": 1
+                }
+              }
+            }
+          },
+          {
+            "display_name": "?column?",
+            "field_ref": [
+              "field",
+              "?column?_2",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "name": "?column?",
+            "base_type": "type/Text",
+            "effective_type": "type/Text",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 4
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

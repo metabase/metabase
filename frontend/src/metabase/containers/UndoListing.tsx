@@ -65,7 +65,7 @@ interface UndoToastProps {
   onDismiss: () => void;
 }
 
-function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
+export function UndoToast({ undo, onUndo, onDismiss }: UndoToastProps) {
   const dispatch = useDispatch();
   const [mounted, setMounted] = useState(false);
   const [paused, setPaused] = useState(false);

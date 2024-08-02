@@ -155,7 +155,17 @@ export const PLUGIN_ADMIN_USER_FORM_FIELDS = {
 export const PLUGIN_ADMIN_USER_MENU_ITEMS = [];
 export const PLUGIN_ADMIN_USER_MENU_ROUTES = [];
 
+// auth settings
+interface AuthTabs {
+  name: string;
+  key: string;
+  to: string;
+}
+
+export const PLUGIN_ADMIN_SETTINGS_AUTH_TABS: AuthTabs[] = [];
+
 // authentication providers
+
 export const PLUGIN_AUTH_PROVIDERS: GetAuthProviders[] = [];
 
 export const PLUGIN_LDAP_FORM_FIELDS = {
@@ -247,6 +257,12 @@ type AuthorityLevelMenuItem = {
   action: () => void;
 };
 
+type CleanUpMenuItem = {
+  title: string;
+  icon: string;
+  link: string;
+};
+
 export type ItemWithCollection = { collection: CollectionEssentials };
 
 export const PLUGIN_COLLECTIONS = {
@@ -275,6 +291,15 @@ export const PLUGIN_COLLECTIONS = {
   filterOutItemsFromInstanceAnalytics: <Item extends ItemWithCollection>(
     items: Item[],
   ) => items as Item[],
+  canCleanUp: false,
+  getCleanUpMenuItems: (
+    _itemCount: number,
+    _url: string,
+    _isInstanceAnalyticsCustom: boolean,
+    _isTrashed: boolean,
+    _canWrite: boolean,
+  ): CleanUpMenuItem[] => [],
+  cleanUpRoute: null as React.ReactElement | null,
 };
 
 export type CollectionAuthorityLevelIcon = ComponentType<

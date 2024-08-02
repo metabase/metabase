@@ -5,6 +5,7 @@ import EntityMenu from "metabase/components/EntityMenu";
 import { trackExportDashboardToPDF } from "metabase/dashboard/analytics";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
+import { isWithinIframe } from "metabase/lib/dom";
 import { PLUGIN_DASHBOARD_HEADER } from "metabase/plugins";
 import {
   getExportTabAsPdfButtonText,
@@ -51,7 +52,12 @@ export const getExtraButtons = ({
     action: async () => {
       const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
       await saveDashboardPdf(cardNodeSelector, dashboard.name).then(() => {
-        trackExportDashboardToPDF(dashboard.id);
+        trackExportDashboardToPDF({
+          dashboardId: dashboard.id,
+          dashboardAccessedVia: isWithinIframe()
+            ? "interactive-iframe-embed"
+            : "internal",
+        });
       });
     },
   });

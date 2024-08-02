@@ -380,7 +380,8 @@
                                                                                   :include-archived-items :all}))))))))
 
 (deftest effective-location-path-test
-  (with-redefs [collection/collection-id->collection (constantly
+  (with-redefs [audit/is-collection-id-audit? (constantly false)
+                collection/collection-id->collection (constantly
                                                       (zipmap (map * (next (range 10)) (repeat 10))
                                                               (next (map (fn [id]
                                                                            {:id id
@@ -518,25 +519,10 @@
 ;;; |                              Nested Collections: Ancestors & Effective Ancestors                               |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- ancestors [collection]
-  (map :name (#'collection/ancestors collection)))
-
-(deftest ancestors-test
-  (with-collection-hierarchy [{:keys [c d e]}]
-    (testing "Can we hydrate `ancestors` the way we'd hope?"
-      (is (= ["A" "C"]
-             (ancestors d)))
-      (is (= ["A" "C" "D"]
-             (ancestors e))))
-    (testing "trying it on C should give us only A"
-      (is (= ["A"]
-             (ancestors c))))))
-
-
 ;;; ---------------------------------------------- Effective Ancestors -----------------------------------------------
 
 (defn- effective-ancestors [collection]
-  (map :name (#'collection/effective-ancestors* collection)))
+  (map :name (:effective_ancestors (t2/hydrate collection :effective_ancestors))))
 
 (deftest effective-ancestors-test
   (with-collection-hierarchy [{:keys [a c d]}]
@@ -559,6 +545,12 @@
       (with-current-user-perms-for-collections [d]
         (is (= []
                (effective-ancestors d)))))))
+
+(deftest effective-ancestors-root-collection-test
+  ;; happens if we do, e.g. `(t2/hydrate a-card-in-the-root-collection [:collection :effective_ancestors])`
+  (testing "`nil` and the root collection should get `[]` as their effective_ancestors"
+    (is (= [[] []]
+           (map :effective_ancestors (t2/hydrate [nil collection/root-collection] :effective_ancestors))))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

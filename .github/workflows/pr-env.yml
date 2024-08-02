@@ -11,6 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name == github.repository
     name: Build Metabase Docker image
     timeout-minutes: 60
     permissions:
@@ -165,3 +166,4 @@ jobs:
             👋 Deploying a preview environment for commit ${{ github.event.pull_request.head.sha || github.sha }}.
             ✅ Preview:
                 https://pr${{ github.event.number }}.coredev.metabase.com
+            🗒️ [login instructions](https://www.notion.so/metabase/Ephemeral-PR-Environments-c74a3710c87a460dbf4fc0007a001458)

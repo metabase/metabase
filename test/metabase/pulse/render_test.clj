@@ -127,8 +127,8 @@
                                                      {:base_type :type/Number}]
                                               :rows [["A" 2]
                                                      ["B" 3]]})))))
-  (testing "Pie charts are correctly identified and return `:categorical/donut`."
-    (is (= :categorical/donut
+  (testing "Pie charts are correctly identified and return `:javascript_visualization`."
+    (is (= :javascript_visualization
            (render/detect-pulse-chart-type {:display :pie}
                                            {}
                                            {:cols [{:base_type :type/Text}

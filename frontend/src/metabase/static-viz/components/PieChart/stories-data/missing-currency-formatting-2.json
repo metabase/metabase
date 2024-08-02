@@ -1,0 +1,388 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 8,
+      "collection_position": null,
+      "table_id": 1,
+      "can_run_adhoc_query": true,
+      "result_metadata": [
+        {
+          "description": "The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.",
+          "semantic_type": "type/Price",
+          "coercion_strategy": null,
+          "name": "PRICE",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            24,
+            {
+              "base-type": "type/Float",
+              "join-alias": "Products",
+              "binning": {
+                "strategy": "num-bins",
+                "min-value": 12.5,
+                "max-value": 100.0,
+                "num-bins": 8,
+                "bin-width": 12.5
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "id": 24,
+          "visibility_type": "normal",
+          "display_name": "Products → Price",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 170,
+              "nil%": 0.0
+            },
+            "type": {
+              "type/Number": {
+                "min": 15.691943673970439,
+                "q1": 37.25154462926434,
+                "q3": 75.45898071609447,
+                "max": 98.81933684368194,
+                "sd": 21.711481557852057,
+                "avg": 55.74639966792074
+              }
+            }
+          },
+          "base_type": "type/Float"
+        },
+        {
+          "display_name": "Sum of Total",
+          "semantic_type": "type/Currency",
+          "settings": {
+            "currency": "USD"
+          },
+          "field_ref": ["aggregation", 0],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 7,
+              "nil%": 0.0
+            },
+            "type": {
+              "type/Number": {
+                "min": 28736.694011055744,
+                "q1": 174576.8862639765,
+                "q3": 271320.6692900193,
+                "max": 392735.2694337764,
+                "sd": 111670.79255772682,
+                "avg": 215803.0975786616
+              }
+            }
+          }
+        }
+      ],
+      "creator": {
+        "email": "conor@metabase.com",
+        "first_name": "Conor",
+        "last_login": "2024-06-10T20:56:03.695266Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 104,
+        "last_name": "Dewey",
+        "date_joined": "2021-08-23T15:23:19.745598Z",
+        "common_name": "Conor Dewey"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": 1453,
+      "query_type": "query",
+      "name": "Orders + Products, Cumulative sum of Total, Grouped by Created At: Month",
+      "last_query_start": "2024-06-18T17:24:03.809796Z",
+      "dashboard_count": 0,
+      "last_used_at": "2024-06-18T17:24:04.222234Z",
+      "type": "question",
+      "average_query_time": 354.8333333333333333,
+      "creator_id": 104,
+      "moderation_reviews": [],
+      "updated_at": "2024-06-18T17:24:04.233203Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 1,
+          "joins": [
+            {
+              "strategy": "left-join",
+              "alias": "Products",
+              "condition": [
+                "=",
+                [
+                  "field",
+                  10,
+                  {
+                    "base-type": "type/Integer"
+                  }
+                ],
+                [
+                  "field",
+                  2,
+                  {
+                    "base-type": "type/BigInteger",
+                    "join-alias": "Products"
+                  }
+                ]
+              ],
+              "source-table": 3
+            }
+          ],
+          "aggregation": [
+            [
+              "sum",
+              [
+                "field",
+                23,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              24,
+              {
+                "base-type": "type/Float",
+                "join-alias": "Products",
+                "binning": {
+                  "strategy": "default"
+                }
+              }
+            ]
+          ]
+        }
+      },
+      "id": 15468,
+      "parameter_mappings": [],
+      "display": "pie",
+      "archived_directly": false,
+      "entity_id": "jIP1AHmHDmeBIc0QuobkE",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 104,
+        "email": "conor@metabase.com",
+        "first_name": "Conor",
+        "last_name": "Dewey",
+        "timestamp": "2024-01-23T19:32:07.825264Z"
+      },
+      "visualization_settings": {
+        "graph.show_goal": false,
+        "table.cell_column": "SUBTOTAL",
+        "graph.series_order_dimension": null,
+        "graph.goal_value": 140000000,
+        "graph.metrics": ["sum", "sum"],
+        "graph.series_order": null,
+        "table.pivot_column": "QUANTITY",
+        "graph.dimensions": ["CREATED_AT"],
+        "stackable.stack_type": "normalized"
+      },
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "query___dashboard_summarization",
+        "archive_operation_id": null,
+        "name": "Query / Dashboard Summarization",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 1453,
+        "archived_directly": null,
+        "entity_id": "uxCL5TAxO0z7yMhS2o2qq",
+        "location": "/201/1446/1452/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-01-23T19:20:32.551321Z"
+      },
+      "metabase_version": "vUNKNOWN (4046809)",
+      "parameters": [],
+      "created_at": "2024-01-23T19:26:54.45038Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null,
+      "can_delete": true
+    },
+    "data": {
+      "rows": [
+        [12.5, 28736.694011055744],
+        [25, 169910.41361932785],
+        [37.5, 257168.1884902365],
+        [50, 197456.6504083654],
+        [62.5, 276038.1628899469],
+        [75, 392735.2694337764],
+        [87.5, 188576.30419792255]
+      ],
+      "results_timezone": "GMT",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.",
+            "semantic_type": "type/Price",
+            "coercion_strategy": null,
+            "name": "PRICE",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              24,
+              {
+                "base-type": "type/Float",
+                "join-alias": "Products",
+                "binning": {
+                  "strategy": "num-bins",
+                  "min-value": 12.5,
+                  "max-value": 100,
+                  "num-bins": 8,
+                  "bin-width": 12.5
+                }
+              }
+            ],
+            "effective_type": "type/Float",
+            "id": 24,
+            "visibility_type": "normal",
+            "display_name": "Products → Price",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 170,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 15.691943673970439,
+                  "q1": 37.25154462926434,
+                  "q3": 75.45898071609447,
+                  "max": 98.81933684368194,
+                  "sd": 21.711481557852057,
+                  "avg": 55.74639966792074
+                }
+              }
+            },
+            "base_type": "type/Float"
+          },
+          {
+            "display_name": "Sum of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "USD"
+            },
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 7,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 28736.694011055744,
+                  "q1": 174576.8862639765,
+                  "q3": 271320.6692900193,
+                  "max": 392735.2694337764,
+                  "sd": 111670.79255772682,
+                  "avg": 215803.0975786616
+                }
+              }
+            }
+          }
+        ]
+      },
+      "requested_timezone": "US/Pacific",
+      "format-rows?": true,
+      "cols": [
+        {
+          "description": "The list price of the product. Note that this is not always the price the product sold for due to discounts, promotions, etc.",
+          "semantic_type": "type/Price",
+          "table_id": 3,
+          "coercion_strategy": null,
+          "binning_info": {
+            "min_value": 12.5,
+            "max_value": 100,
+            "num_bins": 8,
+            "bin_width": 12.5,
+            "binning_strategy": "num-bins"
+          },
+          "name": "PRICE",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            24,
+            {
+              "base-type": "type/Float",
+              "join-alias": "Products",
+              "binning": {
+                "strategy": "num-bins",
+                "min-value": 12.5,
+                "max-value": 100,
+                "num-bins": 8,
+                "bin-width": 12.5
+              }
+            }
+          ],
+          "effective_type": "type/Float",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 24,
+          "position": 5,
+          "visibility_type": "normal",
+          "display_name": "Products → Price",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 170,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 15.691943673970439,
+                "q1": 37.25154462926434,
+                "q3": 75.45898071609447,
+                "max": 98.81933684368194,
+                "sd": 21.711481557852057,
+                "avg": 55.74639966792074
+              }
+            }
+          },
+          "base_type": "type/Float",
+          "source_alias": "Products"
+        },
+        {
+          "semantic_type": "type/Currency",
+          "name": "sum",
+          "settings": {
+            "currency": "USD"
+          },
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/Float",
+          "aggregation_index": 0,
+          "display_name": "Sum of Total",
+          "base_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT (FLOOR(((\"Products\".\"PRICE\" - 12.5) / 12.5)) * 12.5) + 12.5 AS \"Products__PRICE\", SUM(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"sum\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PRODUCTS\" AS \"Products\" ON \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" = \"Products\".\"ID\" GROUP BY (FLOOR(((\"Products\".\"PRICE\" - 12.5) / 12.5)) * 12.5) + 12.5 ORDER BY (FLOOR(((\"Products\".\"PRICE\" - 12.5) / 12.5)) * 12.5) + 12.5 ASC",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "insights": null
+    }
+  }
+]

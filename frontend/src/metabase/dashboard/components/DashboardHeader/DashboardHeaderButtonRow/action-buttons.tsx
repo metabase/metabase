@@ -170,7 +170,7 @@ export const dashboardActionButtons: Record<
         onFullscreenChange={onFullscreenChange}
       />
     ),
-    enabled: ({ isFullscreen, isPublic, isEmbeddingSdk }) =>
+    enabled: ({ isFullscreen, isPublic, isEmbeddingSdk = false }) =>
       isPublic || isFullscreen || isEmbeddingSdk,
   },
   [DASHBOARD_ACTION.DASHBOARD_BOOKMARK]: {
@@ -183,7 +183,8 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.EXPORT_AS_PDF]: {
     component: ExportAsPdfButton,
-    enabled: ({ isEditing, isEmbeddingSdk }) => !isEditing && isEmbeddingSdk,
+    enabled: ({ isEditing, isEmbeddingSdk = false }) =>
+      !isEditing && isEmbeddingSdk,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
     component: withRouter<HeaderButtonProps>(
