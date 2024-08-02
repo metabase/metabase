@@ -48,7 +48,9 @@
           (try
             (query-analysis/analyze-card! card)
             (failure-map/track-success! card)
-            (Thread/sleep (wait-proportional (u/since-ms timer)))
+            (let [sleep-ms (wait-proportional (u/since-ms timer))]
+              (log/infof "Waiting %s millis before analysing further cards" sleep-ms)
+              (Thread/sleep sleep-ms))
             (catch Exception e
               (log/errorf e "Error analysing and updating query for Card %s" card-id)
               (failure-map/track-failure! card)
