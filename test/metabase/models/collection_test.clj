@@ -380,7 +380,8 @@
                                                                                   :include-archived-items :all}))))))))
 
 (deftest effective-location-path-test
-  (with-redefs [collection/collection-id->collection (constantly
+  (with-redefs [audit/is-collection-id-audit? (constantly false)
+                collection/collection-id->collection (constantly
                                                       (zipmap (map * (next (range 10)) (repeat 10))
                                                               (next (map (fn [id]
                                                                            {:id id
