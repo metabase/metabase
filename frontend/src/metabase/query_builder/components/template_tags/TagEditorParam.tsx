@@ -117,6 +117,7 @@ class TagEditorParamInner extends Component<Props> {
           ...parameter,
           values_source_type: undefined,
           values_source_config: undefined,
+          values_query_type: undefined,
         });
       } else {
         // reset the original values_source_config when changing the type
@@ -124,6 +125,7 @@ class TagEditorParamInner extends Component<Props> {
           ...parameter,
           values_source_type: originalParameter?.values_source_type,
           values_source_config: originalParameter?.values_source_config,
+          values_query_type: originalParameter?.values_query_type,
         });
       }
     }
