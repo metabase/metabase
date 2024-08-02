@@ -8,6 +8,7 @@ import {
   createQuestionAndDashboard,
   dashboardParameterSidebar,
   editDashboard,
+  getDashboardCard,
   popover,
   restore,
   updateDashboardCards,
@@ -852,22 +853,29 @@ function checkParameterSidebarDefaultValue<T = string>({
 function checkResetAllFiltersWorksAcrossTabs() {
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
+  getDashboardCard(0).findByText("37.65").should("be.visible");
+  getDashboardCard(0).findByText("116.01").should("not.exist");
 
   addDateFilter(PARAMETER_A.name, "01/01/2024");
   filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
   checkResetAllFiltersShown();
+  getDashboardCard(0).findByText("116.01").should("be.visible");
+  getDashboardCard(0).findByText("37.65").should("not.exist");
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(1).click();
   checkResetAllFiltersShown();
+  getDashboardCard(0).findByText("18,760").should("be.visible");
 
   cy.button("Move, trash, and more…").click();
   popover().findByText("Reset all filters").click();
-
   checkResetAllFiltersHidden();
+  getDashboardCard(0).findByText("18,760").should("be.visible");
 
   cy.findAllByTestId("tab-button-input-wrapper").eq(0).click();
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
+  getDashboardCard(0).findByText("37.65").should("be.visible");
+  getDashboardCard(0).findByText("116.01").should("not.exist");
 }
 
 function checkResetAllFiltersShown() {
