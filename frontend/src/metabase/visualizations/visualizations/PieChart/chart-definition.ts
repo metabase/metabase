@@ -112,6 +112,19 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         ],
       },
     },
+    "pie.decimal_places": {
+      section: t`Display`,
+      title: t`Number of decimal places`,
+      widget: "number",
+      props: {
+        placeholder: t`Auto`,
+        options: { isInteger: true, isNonNegative: true },
+      },
+      getHidden: (_, settings) =>
+        settings["pie.percent_visibility"] == null ||
+        settings["pie.percent_visibility"] === "off",
+      readDependencies: ["pie.percent_visibility"],
+    },
     "pie.slice_threshold": {
       section: t`Display`,
       title: t`Minimum slice percentage`,
