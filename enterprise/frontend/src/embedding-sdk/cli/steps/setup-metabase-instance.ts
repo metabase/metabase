@@ -90,7 +90,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
           headers: { "content-type": "application/json" },
           signal: AbortSignal.timeout(2500),
         }),
-      { retries: 20, delay: 0 },
+      { retries: 20, delay: 100 },
     );
 
     if (!res.ok) {
