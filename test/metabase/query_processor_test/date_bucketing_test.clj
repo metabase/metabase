@@ -883,10 +883,10 @@
                 :breakout    [!year.date]}))))))
 
 ;; RELATIVE DATES
-(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds]
+(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds intervalCount]
   pretty/PrettyPrintable
   (pretty [_]
-    (list 'TimestampDatasetDef. intervalSeconds)))
+    (list 'TimestampDatasetDef. intervalSeconds intervalCount)))
 
 (defn- driver->current-datetime-base-type
   "Returns the :base-type of the \"current timestamp\" HoneySQL form defined by the driver `d`. Relies upon the driver
@@ -899,9 +899,10 @@
 
 (defmethod mt/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
-  (let [interval-seconds (.intervalSeconds this)]
+  (let [interval-seconds (.intervalSeconds this)
+        intervalCount    (.intervalCount this)]
     (mt/dataset-definition
-     (str "interval_" interval-seconds)
+     (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)))
      ["checkins"
       [{:field-name "timestamp"
         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
@@ -923,11 +924,17 @@
                                                               (* i interval-seconds)
                                                               :second))
                           (u.date/add :second (* i interval-seconds)))
-                 (assert <>))])
-            (range -15 15))])))
+                        (assert <>))])
+            (let [shift (quot intervalCount 2)
+                  lower-bound (- shift)
+                  upper-bound (- intervalCount shift)]
+              (range lower-bound upper-bound)))])))
 
-(defn- dataset-def-with-timestamps [interval-seconds]
-  (TimestampDatasetDef. interval-seconds))
+(defn- dataset-def-with-timestamps
+  ([interval-seconds]
+   (dataset-def-with-timestamps interval-seconds 30))
+  ([interval-seconds interval-count]
+   (TimestampDatasetDef. interval-seconds interval-count)))
 
 (def ^:private checkins:4-per-minute
   "Dynamically generated dataset with 30 checkins spaced 15 seconds apart, from 3 mins 45 seconds ago to 3 minutes 30
@@ -942,6 +949,10 @@
 (def ^:private checkins:1-per-day
   "Dynamically generated dataset with 30 checkins spaced 24 hours apart, from 15 days ago to 14 days in the future."
   (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
+
+(def ^:private checkins:1-per-day:60
+  "Dynamically generated dataset with 60 checkins spaced 24 hours apart, from 30 days ago to 29 days in the future."
+  (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60)) 60))
 
 (defn- checkins-db-is-old?
   "Determine whether we need to recreate one of the dynamically-generated datasets above, if the data has grown a little
@@ -1058,7 +1069,7 @@
    ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
    (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
      (mt/dataset
-      checkins:1-per-day
+      checkins:1-per-day:60
       (is (= 7
              (ffirst
               (mt/formatted-rows
@@ -1435,7 +1446,7 @@
     (mt/test-drivers
      (disj (mt/normal-drivers-with-feature :date-arithmetics) :athena)
      (mt/dataset
-      checkins:1-per-day
+      checkins:1-per-day:60
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                     (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
