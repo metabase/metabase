@@ -9,6 +9,8 @@ import {
   setupSMTP,
   visitQuestion,
   getFullName,
+  popover,
+  queryBuilderFooter,
 } from "e2e/support/helpers";
 
 const { normal, admin } = USERS;
@@ -102,21 +104,19 @@ describe("scenarios > alert > alert permissions", { tags: "@external" }, () => {
     it("should let you unsubscribe from both your own and others' alerts", () => {
       // Unsubscribe from your own alert
       visitQuestion(ORDERS_BY_YEAR_QUESTION_ID);
-      cy.icon("bell").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Unsubscribe").click();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Okay, you're unsubscribed");
+      queryBuilderFooter().icon("bell").click();
+      popover().within(() => {
+        cy.findByText("Unsubscribe").click();
+        cy.findByText("Okay, you're unsubscribed");
+      });
 
       // Unsubscribe from others' alerts
       visitQuestion(ORDERS_COUNT_QUESTION_ID);
-      cy.icon("bell").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Unsubscribe").click();
-
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Okay, you're unsubscribed");
+      queryBuilderFooter().icon("bell").click();
+      popover().within(() => {
+        cy.findByText("Unsubscribe").click();
+        cy.findByText("Okay, you're unsubscribed");
+      });
     });
   });
 });
