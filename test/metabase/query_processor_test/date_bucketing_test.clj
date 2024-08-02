@@ -950,7 +950,7 @@
   "Dynamically generated dataset with 30 checkins spaced 24 hours apart, from 15 days ago to 14 days in the future."
   (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
 
-(def ^:private checkins:1-per-day:60
+(def ^:private checkins:1-per-day-60
   "Dynamically generated dataset with 60 checkins spaced 24 hours apart, from 30 days ago to 29 days in the future."
   (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60)) 60))
 
@@ -1069,7 +1069,7 @@
    ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
    (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
      (mt/dataset
-      checkins:1-per-day:60
+      checkins:1-per-day-60
       (is (= 7
              (ffirst
               (mt/formatted-rows
@@ -1446,7 +1446,7 @@
     (mt/test-drivers
      (disj (mt/normal-drivers-with-feature :date-arithmetics) :athena)
      (mt/dataset
-      checkins:1-per-day:60
+      checkins:1-per-day-60
       (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
                     (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
