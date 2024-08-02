@@ -137,8 +137,14 @@ export function ViewTitleHeaderRightSide({
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
-  const isBrandNew =
-    !question.isSaved() && !result && queryBuilderMode === "notebook";
+  const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
+  // eslint-disable-next-line no-console -- debug FIXME for testing only
+  console.log({
+    isSaved,
+    questionIsSaved: question.isSaved(),
+    result,
+    queryBuilderMode,
+  });
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
