@@ -205,7 +205,7 @@ const formatCategoryIssues = (category: string, issues: Issue[]): string => {
 
 // For each issue category ("Enhancements", "Bug Fixes", etc.), we want to group issues by product category
 const groupIssuesByProductCategory = (issues: Record<string, Issue[]>) => {
-  const categories = sortCategories(Object.keys(issues));
+  const categories = sortCategories(Object.keys(issues).map(key => key as ProductCategory));
 
   return categories
     .map(category => formatCategoryIssues(category, issues[category]))
