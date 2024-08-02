@@ -940,3 +940,10 @@ See [fonts](../configuring-metabase/fonts.md).")
   :export?    false
   :default    true
   :type       :boolean)
+
+(defsetting download-row-limit
+  (deferred-tru "Exports row limit, not including xlsx.")
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  :doc false)
