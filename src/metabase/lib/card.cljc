@@ -76,6 +76,7 @@
 
 (defn- ->card-metadata-column
   [col
+   card-id
    card
    field]
    (let [col (-> col
@@ -87,15 +88,15 @@
               {:lib/type                :metadata/column
                :lib/source              :source/card
                :lib/source-column-alias ((some-fn :lib/source-column-alias :name) col)})
-       card
-       (assoc :lib/card-id (u/the-id card))
+       card-id
+       (assoc :lib/card-id card-id)
 
        (and *force-broken-card-refs*
             ;; never force broken refs for Models, because Models can have give columns with completely
             ;; different names the Field ID of a different column, somehow. See #22715
             (or
-             ;; we can only do this check if `card` is passed in.
-             (not card)
+             ;; we can only do this check if `card-id` is passed in.
+             (not card-id)
              (not= (:type card) :model)))
        (assoc ::force-broken-id-refs true)
 
@@ -113,12 +114,13 @@
   ([metadata-providerable :- ::lib.schema.metadata/metadata-providerable
     card-or-id            :- [:maybe [:or ::lib.schema.id/card ::lib.schema.metadata/card]]
     cols                  :- [:sequential :map]]
-   (let [card              (lib.metadata/card metadata-providerable (u/the-id card-or-id))
-         metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+   (let [metadata-provider (lib.metadata/->metadata-provider metadata-providerable)
+         card-id           (u/the-id card-or-id)
+         card              (lib.metadata/card metadata-providerable card-id)
          field-ids         (keep :id cols)
          fields            (lib.metadata.protocols/metadatas metadata-provider :metadata/column field-ids)
          field-id->field   (m/index-by :id fields)]
-     (mapv #(->card-metadata-column % card (get field-id->field (:id %))) cols))))
+     (mapv #(->card-metadata-column % card-id card (get field-id->field (:id %))) cols))))
 
 (def ^:private CardColumnMetadata
   [:merge
