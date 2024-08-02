@@ -143,7 +143,7 @@ const getLabels = (issue: Issue): string[] => {
   if (typeof issue.labels === "string") {
     return [issue.labels];
   }
-  return issue.labels.map(label => label.name);
+  return issue.labels.map(label => label.name || "");
 };
 
 const hasCategory = (labels: string[], category: string): boolean => {
@@ -172,17 +172,14 @@ const formatCategoryIssues = (category: string, issues: Issue[]): string => {
   return `**${category}**\n\n${issues.map(formatIssue).join("\n")}`;
 };
 
+// We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
 const sortCategories = (categories: ProductCategory[]): ProductCategory[] => {
+  const categoryOther = categories.filter(category => category === ProductCategory.other);
   return (
     categories
-      // We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
       .filter(cat => cat !== ProductCategory.other)
       .sort((a, b) => a.localeCompare(b))
-      .concat(
-        categories.includes(ProductCategory.other)
-          ? [ProductCategory.other]
-          : [],
-      )
+      .concat(categoryOther)
   );
 };
 
