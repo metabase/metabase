@@ -118,11 +118,24 @@ const defaultArgs: Partial<
 export const LightThemeDefault = Template.bind({});
 LightThemeDefault.args = defaultArgs;
 
+export const LightThemeDefaultNoResults = Template.bind({});
+LightThemeDefaultNoResults.args = {
+  ...defaultArgs,
+  result: createMockDataset(),
+};
+
 // Dark theme
 export const DarkThemeDefault = Template.bind({});
 DarkThemeDefault.args = {
   ...defaultArgs,
   theme: "night",
+};
+
+export const DarkThemeDefaultNoResults = Template.bind({});
+DarkThemeDefaultNoResults.args = {
+  ...defaultArgs,
+  theme: "night",
+  result: createMockDataset(),
 };
 
 // Transparent theme
