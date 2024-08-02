@@ -821,7 +821,7 @@
    metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.query-field-test/with-test-setup                             macros.metabase.models.query-field-test/with-test-setup
+   metabase.models.query-analysis-test/with-test-setup                          macros.metabase.models.query-analysis-test/with-test-setup
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
    metabase.query-processor.streaming/streaming-response                        macros.metabase.query-processor.streaming/streaming-response
    metabase.related-test/with-world                                             macros.metabase.related-test/with-world
