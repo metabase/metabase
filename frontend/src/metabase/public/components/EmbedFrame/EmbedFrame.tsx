@@ -160,7 +160,7 @@ export const EmbedFrame = ({
   const canParameterPanelSticky =
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
 
-  const saveAsPDF = async () => {
+  const saveAsPDF = () => {
     const dashboardAccessedVia = match(dashboard?.id)
       .returnType<DashboardAccessedVia>()
       .when(isJWT, () => "static-embed")
@@ -172,7 +172,7 @@ export const EmbedFrame = ({
     });
 
     const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-    await saveDashboardPdf(cardNodeSelector, name ?? t`Exported dashboard`);
+    saveDashboardPdf(cardNodeSelector, name ?? t`Exported dashboard`);
   };
 
   return (
