@@ -638,7 +638,7 @@ describe("#39152 sharing an unsaved question", () => {
             cy.log(
               "Assert that it sends `downloads: false` when downloads are disabled",
             );
-            modal().findByLabelText("Download data").click({ force: true });
+            modal().findByLabelText("Download buttons").click({ force: true });
 
             cy.findByTestId("embed-backend")
               .findByTestId("copy-button")

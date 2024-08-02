@@ -268,9 +268,10 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         cy.log(
           "Embedding settings page should not show option to disable downloads",
         );
-        cy.findByLabelText("Customizing look and feel")
-          .should("not.contain", "Download data")
-          .and("not.contain", "Download buttons");
+        cy.findByLabelText("Customizing look and feel").should(
+          "not.contain",
+          "Download buttons",
+        );
 
         cy.log('Use API to "publish" this question and to enable its filter');
         cy.request("PUT", `/api/card/${questionId}`, {
@@ -328,7 +329,7 @@ describeEE("scenarios > embedding > questions > downloads", () => {
         });
 
         cy.log("Disable downloads");
-        cy.findByLabelText("Download data")
+        cy.findByLabelText("Download buttons")
           .as("allow-download-toggle")
           .should("be.checked");
 
