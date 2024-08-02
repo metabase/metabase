@@ -110,24 +110,21 @@ class TagEditorParamInner extends Component<Props> {
 
       setParameterValue(tag.id, null);
 
-      if (parameter.values_source_type === "static-list") {
-        // const originalType = originalParameter?.values_source_type;
-        // console.log("HERE", originalParameter, originalType);
-
-        if (!originalTag || originalTag.type !== type) {
-          // clear the values_source_config when changing the type
-          // as the values will most likely not work for the new type.
-          setTemplateTagConfig(tag, {
-            ...parameter,
-            values_source_config: undefined,
-          });
-        } else {
-          // reset the original values_source_config when changing the type
-          setTemplateTagConfig(tag, {
-            ...parameter,
-            values_source_config: originalParameter?.values_source_config,
-          });
-        }
+      if (!originalTag || originalTag.type !== type) {
+        // clear the values_source_config when changing the type
+        // as the values will most likely not work for the new type.
+        setTemplateTagConfig(tag, {
+          ...parameter,
+          values_source_type: undefined,
+          values_source_config: undefined,
+        });
+      } else {
+        // reset the original values_source_config when changing the type
+        setTemplateTagConfig(tag, {
+          ...parameter,
+          values_source_type: originalParameter?.values_source_type,
+          values_source_config: originalParameter?.values_source_config,
+        });
       }
     }
   };
