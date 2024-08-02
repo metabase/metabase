@@ -1,72 +1,61 @@
-import { Component } from "react";
+import { match } from "ts-pattern";
 import _ from "underscore";
+
 import {
   AM_PM_OPTIONS,
   getDayOfWeekOptions,
   HOUR_OPTIONS,
 } from "metabase/lib/date-time";
+import { Box, Text } from "metabase/ui";
+import type { Channel } from "metabase-types/api";
 
+export const AlertScheduleText = ({
+  schedule,
+  verbose,
+}: {
+  schedule: Channel;
+  verbose: boolean;
+}) => {
+  const scheduleType = schedule.schedule_type;
 
-
-export class AlertScheduleText extends Component {
-  getScheduleText = () => {
-    const { schedule, verbose } = this.props;
-    const scheduleType = schedule.schedule_type;
-
-    // these are pretty much copy-pasted from SchedulePicker
-    if (scheduleType === "hourly") {
-      return verbose ? "hourly" : "Hourly";
-    } else if (scheduleType === "daily") {
-      const hourOfDay = schedule.schedule_hour;
-      const hour = _.find(
-        HOUR_OPTIONS,
-        opt => opt.value === hourOfDay % 12,
-      ).name;
-      const amPm = _.find(
-        AM_PM_OPTIONS,
-        opt => opt.value === (hourOfDay >= 12 ? 1 : 0),
-      ).name;
-
-      return `${verbose ? "daily at " : "Daily, "} ${hour} ${amPm}`;
-    } else if (scheduleType === "weekly") {
-      const hourOfDay = schedule.schedule_hour;
-      const dayOfWeekOptions = getDayOfWeekOptions();
-
-      const day = _.find(
-        dayOfWeekOptions,
-        o => o.value === schedule.schedule_day,
-      ).name;
-      const hour = _.find(
-        HOUR_OPTIONS,
-        opt => opt.value === hourOfDay % 12,
-      ).name;
-      const amPm = _.find(
-        AM_PM_OPTIONS,
-        opt => opt.value === (hourOfDay >= 12 ? 1 : 0),
-      ).name;
-
-      if (verbose) {
-        return `weekly on ${day}s at ${hour} ${amPm}`;
-      } else {
-        // omit the minute part of time
-        return `${day}s, ${hour.substr(0, hour.indexOf(":"))} ${amPm}`;
-      }
-    }
-  };
-
-  render() {
-    const { verbose } = this.props;
-
-    const scheduleText = this.getScheduleText();
-
-    if (verbose) {
-      return (
-        <span>
-          Checking <b>{scheduleText}</b>
-        </span>
-      );
-    } else {
-      return <span>{scheduleText}</span>;
-    }
+  if (!scheduleType) {
+    return null;
   }
-}
+
+  const hourOfDay = schedule.schedule_hour;
+
+  const dayOfWeekOptions = getDayOfWeekOptions();
+
+  const day = _.find(
+    dayOfWeekOptions,
+    o => o.value === schedule.schedule_day,
+  )?.name;
+  const hour = _.find(
+    HOUR_OPTIONS,
+    opt => !!hourOfDay && opt.value === hourOfDay % 12,
+  )?.name;
+  const amPm = _.find(
+    AM_PM_OPTIONS,
+    opt => !!hourOfDay && opt.value === (hourOfDay >= 12 ? 1 : 0),
+  )?.name;
+
+  const scheduleText = match([scheduleType, verbose])
+    .returnType<string | null>()
+    .with(["hourly", true], () => "hourly")
+    .with(["hourly", false], () => "Hourly")
+    .with(["daily", true], () => "daily at " + hour + " " + amPm)
+    .with(["daily", false], () => "Daily, " + hour + " " + amPm)
+    .with(["weekly", true], () => `weekly on ${day}s at ${hour} ${amPm}`)
+    .with(["weekly", false], () => {
+      return hour
+        ? `${day}s, ${hour.substring(0, hour.indexOf(":"))} ${amPm}`
+        : null;
+    })
+    .otherwise(() => null);
+
+  return (
+    <Box component="span">
+      <Text fw={verbose ? "bold" : "normal"}>{scheduleText}</Text>
+    </Box>
+  );
+};

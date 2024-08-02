@@ -40,10 +40,29 @@ export const getDayOfWeekOptions = (): DayOfWeekOption[] => {
   ];
 };
 
-export const HOUR_OPTIONS = _.times(12, n => ({
-  name: (n === 0 ? 12 : n) + ":00",
-  value: n,
-}));
+type HourValue = {
+  name: `${number}:00`;
+  value: number;
+};
+
+type ValidHour<T extends HourValue> = T["name"] extends `${infer H}:00`
+  ? H extends `${T["value"]}` | "12" // '12' handles the case for 12:00 where value should be 0
+    ? T
+    : never
+  : never;
+
+type HourOption = ValidHour<{
+  name: `${number}:00`;
+  value: number;
+}>;
+
+export const HOUR_OPTIONS: HourOption[] = Array.from(
+  { length: 12 },
+  (_, n) => ({
+    name: `${n === 0 ? 12 : n}:00`,
+    value: n === 0 ? 12 : n,
+  }),
+);
 
 export const MINUTE_OPTIONS = _.times(60, n => ({
   name: n.toString(),

@@ -6,13 +6,14 @@ import { unsubscribeFromAlert } from "metabase/alert/alert";
 import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { AlertCreatorTitle } from "metabase/query_builder/components/AlertListPopoverContent/AlertCreatorTitle";
-import { AlertScheduleText } from "metabase/query_builder/components/AlertListPopoverContent/AlertScheduleText";
-import { UnsubscribedListItem } from "metabase/query_builder/components/AlertListPopoverContent/UnsubscribedListItem";
 import { UpdateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { Alert } from "metabase-types/api";
+
+import { AlertCreatorTitle } from "./AlertCreatorTitle";
+import { AlertScheduleText } from "./AlertScheduleText";
+import { UnsubscribedListItem } from "./UnsubscribedListItem";
 
 type AlertListItemProps = {
   alert: Alert;
