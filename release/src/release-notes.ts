@@ -1,5 +1,3 @@
-import { match } from "ts-pattern";
-
 import { nonUserFacingLabels, hiddenLabels } from "./constants";
 import { getMilestoneIssues, isLatestRelease, hasBeenReleased } from "./github";
 import type { Issue, ReleaseProps } from "./types";
@@ -127,7 +125,7 @@ const getIssueType = (issue: Issue): IssueType => {
   return IssueType.enhancements;
 };
 
-const addIssueToMap = (
+const addIssueToCategory = (
   issueMap: Record<IssueType, Partial<Record<ProductCategory, Issue[]>>>,
   issue: Issue,
   issueType: IssueType,
@@ -174,13 +172,13 @@ const formatCategoryIssues = (category: string, issues: Issue[]): string => {
 
 // We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
 const sortCategories = (categories: ProductCategory[]): ProductCategory[] => {
-  const categoryOther = categories.filter(category => category === ProductCategory.other);
-  return (
-    categories
-      .filter(cat => cat !== ProductCategory.other)
-      .sort((a, b) => a.localeCompare(b))
-      .concat(categoryOther)
+  const uncategorizedIssues = categories.filter(
+    category => category === ProductCategory.other,
   );
+  return categories
+    .filter(cat => cat !== ProductCategory.other)
+    .sort((a, b) => a.localeCompare(b))
+    .concat(uncategorizedIssues);
 };
 
 // For each issue category ("Enhancements", "Bug Fixes", etc.), we want to group issues by product category
@@ -207,7 +205,7 @@ export const categorizeIssues = (issues: Issue[]) => {
     .forEach(issue => {
       const issueType = getIssueType(issue);
       const productCategory = getProductCategory(issue);
-      addIssueToMap(issueMap, issue, issueType, productCategory);
+      addIssueToCategory(issueMap, issue, issueType, productCategory);
     });
 
   return issueMap;
