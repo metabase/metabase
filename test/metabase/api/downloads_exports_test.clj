@@ -613,15 +613,27 @@
 
 (deftest downloads-row-limit-test
   (testing "Downloads row limit works."
-    (mt/with-temporary-setting-values [public-settings/download-row-limit 100]
+    (mt/with-temporary-setting-values [public-settings/download-row-limit 1050000]
       (mt/dataset test-data
         (mt/with-temp [:model/Card card {:display       :table
                                          :dataset_query {:database (mt/id)
                                                          :type     :native
                                                          :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
           (let [results (all-outputs! card :csv true)]
-            (is (= {:card-download           101
-                    :alert-attachment        101
-                    :dashcard-download       101
-                    :subscription-attachment 101}
-                     (update-vals results count)))))))))
+            (is (= {:card-download           1050001
+                    :alert-attachment        1050001
+                    :dashcard-download       1050001
+                    :subscription-attachment 1050001}
+                     (update-vals results count))))))))
+  (testing "Downloads row limit default works."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display       :table
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
+        (let [results (all-outputs! card :csv true)]
+          (is (= {:card-download           1048576
+                  :alert-attachment        1048576
+                  :dashcard-download       1048576
+                  :subscription-attachment 1048576}
+                 (update-vals results count))))))))
