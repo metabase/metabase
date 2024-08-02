@@ -11,6 +11,7 @@ import {
 import { renderWithProviders, screen } from "__support__/ui";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
+import { QuestionNotebookButton } from "metabase/query_builder/components/view/ViewHeader/components";
 import {
   createMockCard,
   createMockCardQueryMetadata,
@@ -62,7 +63,7 @@ const setup = ({
     TEST_CARD,
     createMockCardQueryMetadata({
       databases: [TEST_DB],
-      tables: [TEST_TABLE], // to be editable, card must have table and databse metadata
+      tables: [TEST_TABLE], // to be editable, card must have table and database metadata
     }),
   );
 
@@ -95,16 +96,25 @@ const setup = ({
 };
 
 describe("InteractiveQuestion.NotebookButton", () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it("should render the notebook button", async () => {
+    const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
+
     setup({ isOpen: true });
 
     expect(await screen.findByLabelText("notebook icon")).toBeInTheDocument();
+    expect(shouldRenderSpy).toHaveBeenCalledTimes(1);
   });
 
   it("should fire click handler when clicking the notebook button", async () => {
+    const shouldRenderSpy = jest.spyOn(QuestionNotebookButton, "shouldRender");
     const { clickSpy } = setup({ isOpen: true });
 
     await userEvent.click(await screen.findByLabelText("notebook icon"));
+    expect(shouldRenderSpy).toHaveBeenCalledTimes(1);
     expect(clickSpy).toHaveBeenCalledTimes(1);
   });
 });
