@@ -75,6 +75,8 @@
   true)
 
 (defn- ->card-metadata-column
+  "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata. Note that `card` might be unavailable so we
+  accept both `card-id` and `card`."
   [col
    card-id
    card
