@@ -137,8 +137,7 @@ export function ViewTitleHeaderRightSide({
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
-  const isBrandNew =
-    !question.isSaved() && !result && queryBuilderMode === "notebook";
+  const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (

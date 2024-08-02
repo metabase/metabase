@@ -7,6 +7,7 @@ import {
   openProductsTable,
   openReviewsTable,
   openPeopleTable,
+  openNotebook,
   popover,
   visitQuestionAdhoc,
   visualize,
@@ -757,7 +758,7 @@ describe("scenarios > question > filter", () => {
     filterField("Category").findByText("Gizmo").click();
 
     cy.findByTestId("apply-filters").click();
-    cy.findByLabelText("notebook icon").click();
+    openNotebook();
 
     // filter
     getNotebookStep("filter").should("contain", "Category is Gizmo");
@@ -941,7 +942,7 @@ describe("scenarios > question > filter", () => {
       });
 
       it("from the custom question (metabase#16386-3)", () => {
-        cy.icon("notebook").click();
+        openNotebook();
 
         filter({ mode: "notebook" });
 
@@ -956,7 +957,7 @@ describe("scenarios > question > filter", () => {
       });
 
       it("from custom expressions", () => {
-        cy.icon("notebook").click();
+        openNotebook();
 
         filter({ mode: "notebook" });
 
@@ -995,7 +996,7 @@ describe("scenarios > question > filter", () => {
     beforeEach(setupBooleanQuery);
 
     it("with case", () => {
-      cy.icon("notebook").click();
+      openNotebook();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Custom column").click();
@@ -1022,7 +1023,7 @@ describe("scenarios > question > filter", () => {
     });
 
     it("with CountIf", () => {
-      cy.icon("notebook").click();
+      openNotebook();
       summarize({ mode: "notebook" });
       popover().contains("Custom Expression").click();
       expressionEditorWidget().within(() => {
