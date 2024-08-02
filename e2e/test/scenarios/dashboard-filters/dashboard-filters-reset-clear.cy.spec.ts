@@ -1,5 +1,10 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import {
+  createDashboardWithTabs,
   createQuestionAndDashboard,
   dashboardParameterSidebar,
   editDashboard,
@@ -70,6 +75,26 @@ const ORDERS_QUESTION: StructuredQuestionDetails = {
     limit: 1,
   },
 };
+
+const PARAMETER_A = {
+  name: "Parameter A",
+  slug: "parameter-a",
+  id: "fed1b910",
+  type: "date/single",
+  sectionId: "date",
+};
+
+const PARAMETER_B = {
+  name: "Parameter B",
+  slug: "parameter-b",
+  id: "fed1b911",
+  type: "date/single",
+  sectionId: "date",
+};
+
+const TAB_A = { id: 1, name: "Tab A" };
+
+const TAB_B = { id: 2, name: "Tab B" };
 
 const NO_DEFAULT_NON_REQUIRED = "no default value, non-required";
 
@@ -568,6 +593,23 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
   });
 });
 
+describe("scenarios > dashboard > filters > reset all filters", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("works across all tabs with 'auto-apply filters' on", () => {
+    createDashboardWithTabsAndParameters({ auto_apply_filters: true });
+    checkResetAllFilters();
+  });
+
+  it("works across all tabs with 'auto-apply filters' off", () => {
+    createDashboardWithTabsAndParameters({ auto_apply_filters: false });
+    checkResetAllFilters();
+  });
+});
+
 function createDashboardWithParameters(
   questionDetails: StructuredQuestionDetails,
   targetField: LocalFieldReference,
@@ -594,6 +636,50 @@ function createDashboardWithParameters(
 
     visitDashboard(dashboard_id);
   });
+}
+
+function createDashboardWithTabsAndParameters(
+  dashboardDetails: DashboardDetails,
+) {
+  createDashboardWithTabs({
+    tabs: [TAB_A, TAB_B],
+    parameters: [PARAMETER_A, PARAMETER_B],
+    dashcards: [
+      {
+        id: -1,
+        dashboard_tab_id: TAB_A.id,
+        size_x: 10,
+        size_y: 4,
+        row: 0,
+        col: 0,
+        card_id: ORDERS_QUESTION_ID,
+        parameter_mappings: [
+          {
+            parameter_id: PARAMETER_A.id,
+            card_id: ORDERS_QUESTION_ID,
+            target: ["dimension", ORDERS_CREATED_AT_FIELD],
+          },
+        ],
+      },
+      {
+        id: -2,
+        dashboard_tab_id: TAB_B.id,
+        size_x: 10,
+        size_y: 4,
+        row: 0,
+        col: 0,
+        card_id: ORDERS_COUNT_QUESTION_ID,
+        parameter_mappings: [
+          {
+            parameter_id: PARAMETER_B.id,
+            card_id: ORDERS_COUNT_QUESTION_ID,
+            target: ["dimension", ORDERS_CREATED_AT_FIELD],
+          },
+        ],
+      },
+    ],
+    ...dashboardDetails,
+  }).then(dashboard => visitDashboard(dashboard.id));
 }
 
 function checkStatusIcon(
@@ -761,6 +847,27 @@ function checkParameterSidebarDefaultValue<T = string>({
     filter("Default value").should("have.text", otherValueFormatted);
     checkStatusIcon("Default value", "clear");
   });
+}
+
+function checkResetAllFilters() {
+  checkResetAllFiltersHidden();
+  filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
+
+  addDateFilter(PARAMETER_A.name, "01/01/2024");
+  filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
+  checkResetAllFiltersShown();
+
+  cy.findAllByTestId("tab-button-input-wrapper").eq(1).click();
+  checkResetAllFiltersShown();
+
+  cy.button("Move, trash, and more…").click();
+  popover().findByText("Reset all filters").click();
+
+  checkResetAllFiltersHidden();
+
+  cy.findAllByTestId("tab-button-input-wrapper").eq(0).click();
+  checkResetAllFiltersHidden();
+  filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
 }
 
 function checkResetAllFiltersShown() {
