@@ -601,12 +601,12 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
 
   it("works across all tabs with 'auto-apply filters' on", () => {
     createDashboardWithTabsAndParameters({ auto_apply_filters: true });
-    checkResetAllFilters();
+    checkResetAllFiltersWorksAcrossTabs();
   });
 
   it("works across all tabs with 'auto-apply filters' off", () => {
     createDashboardWithTabsAndParameters({ auto_apply_filters: false });
-    checkResetAllFilters();
+    checkResetAllFiltersWorksAcrossTabs();
   });
 });
 
@@ -849,7 +849,7 @@ function checkParameterSidebarDefaultValue<T = string>({
   });
 }
 
-function checkResetAllFilters() {
+function checkResetAllFiltersWorksAcrossTabs() {
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
 
