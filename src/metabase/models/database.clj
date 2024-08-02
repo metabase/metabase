@@ -438,10 +438,11 @@
   {:copy      [:auto_run_queries :cache_field_values_schedule :cache_ttl :caveats :created_at :dbms_version
                :description :engine :is_audit :is_full_sync :is_on_demand :is_sample :metadata_sync_schedule :name
                :points_of_interest :refingerprint :settings :timezone :uploads_enabled :uploads_schema_name
-               :uploads_table_prefix
-               (when include-database-secrets :details)]
-   :skip      [(when-not include-database-secrets :details)]
-   :transform {:creator_id          (serdes/fk :model/User)
+               :uploads_table_prefix]
+   :skip      []
+   :transform {;; details should be imported if available regardless of options
+               :details             {:export #(when include-database-secrets %) :import identity}
+               :creator_id          (serdes/fk :model/User)
                :initial_sync_status {:export identity :import (constantly "complete")}}})
 
 (defmethod serdes/entity-id "Database"
@@ -455,21 +456,6 @@
 (defmethod serdes/load-find-local "Database"
   [[{:keys [id]}]]
   (t2/select-one Database :name id))
-
-;;; FIXME: verify with a test that this still stands (it should though)
-
-;; (defmethod serdes/load-insert! "Database" [_ ingested]
-;;   (let [m (get-method serdes/load-insert! :default)]
-;;     (m "Database"
-;;        (if (:details ingested)
-;;          ingested
-;;          (assoc ingested :details {})))))
-
-;; (defmethod serdes/load-update! "Database" [_ ingested local]
-;;   (let [m (get-method serdes/load-update! :default)]
-;;     (m "Database"
-;;        (update ingested :details #(or % (:details local) {}))
-;;        local)))
 
 (defmethod serdes/storage-path "Database" [{:keys [name]} _]
   ;; ["databases" "db_name" "db_name"] directory for the database with same-named file inside.

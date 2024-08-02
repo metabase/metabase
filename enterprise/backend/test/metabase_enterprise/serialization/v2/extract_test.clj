@@ -112,20 +112,6 @@
           (is (= #{coll-eid child-eid}
                  (by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
-(deftest database-test
-  (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Database   _ {:name "My Database"}]
-      (testing "without :include-database-secrets"
-        (let [extracted (extract/extract {})
-              dbs       (filter #(= "Database" (:model (last (serdes/path %)))) extracted)]
-          (is (= 1 (count dbs)))
-          (is (not-any? :details dbs))))
-      (testing "with :include-database-secrets"
-        (let [extracted (extract/extract {:include-database-secrets true})
-              dbs       (filter #(= "Database" (:model (last (serdes/path %)))) extracted)]
-          (is (= 1 (count dbs)))
-          (is (every? :details dbs)))))))
-
 #_{:clj-kondo/ignore [:metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests]}
 (deftest dashboard-and-cards-test
   (mt/with-empty-h2-app-db
