@@ -478,7 +478,7 @@ describe("scenarios > admin > performance", () => {
         cancelConfirmationModal();
 
         cy.log("Modal appears when another Performance tab is clicked");
-        cy.findByRole("tab", { name: "Database caching settings" }).click();
+        cy.findByRole("tab", { name: "Database caching" }).click();
         cancelConfirmationModal();
       });
     });

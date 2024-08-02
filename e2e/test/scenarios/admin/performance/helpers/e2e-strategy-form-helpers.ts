@@ -5,7 +5,7 @@ import {
 } from "metabase/components/Schedule/constants";
 import type { CacheStrategyType, CacheableModel } from "metabase-types/api";
 
-import { databaseCachingSettingsPage } from "./e2e-performance-helpers";
+import { databaseCachingPage } from "./e2e-performance-helpers";
 
 /** Save the cache strategy form and wait for a response from the relevant endpoint */
 export const saveCacheStrategyForm = (options?: {
@@ -53,21 +53,19 @@ export const formLauncher = (
 ) => {
   const regExp = new RegExp(`Edit.*${itemName}.*${preface}.*${strategyLabel}`);
   cy.log(`Finding strategy for launcher for regular expression: ${regExp}`);
-  const launcher = databaseCachingSettingsPage().findByLabelText(regExp);
+  const launcher = databaseCachingPage().findByLabelText(regExp);
   launcher.should("exist");
   return launcher;
 };
 
-/** Opens the strategy form on 'Database caching settings' tab */
+/** Opens the strategy form on 'Database caching' tab */
 export const openStrategyFormForDatabaseOrDefaultPolicy = (
   /** To open the form for the default policy, set this parameter to "default policy" */
   databaseNameOrDefaultPolicy: string,
   currentStrategyLabel?: string,
 ) => {
   cy.visit("/admin/performance");
-  cy.findByRole("tablist")
-    .get("[aria-selected]")
-    .contains("Database caching settings");
+  cy.findByRole("tablist").get("[aria-selected]").contains("Database caching");
   cy.log(`Open strategy form for ${databaseNameOrDefaultPolicy}`);
   formLauncher(
     databaseNameOrDefaultPolicy,
