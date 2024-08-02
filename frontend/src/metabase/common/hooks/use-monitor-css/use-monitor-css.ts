@@ -19,6 +19,7 @@ export const useMonitorCSS = (
             "Found elements with class 'undefined':",
             elementsWithUndefinedClasses,
           );
+          // Mark the elements so we don't alert twice
           elementsWithUndefinedClasses.forEach(element => {
             element.setAttribute("data-undefined-class-noted", "true");
           });
