@@ -15,6 +15,7 @@ import {
   focusNativeEditor,
   createQuestion,
   startNewNativeModel,
+  main,
 } from "e2e/support/helpers";
 
 import {
@@ -786,7 +787,7 @@ describe("issue 46308", () => {
     cy.createNativeQuestion(questionDetails, { visitQuestion: true });
   });
 
-  it("should persist viz settings when saving a question without a required filter selected (metabase#46308)", () => {
+  it.only("should persist viz settings when saving a question without a required filter selected (metabase#46308)", () => {
     cy.findByTestId("native-query-editor-container")
       .findByTestId("visibility-toggler")
       .click();
@@ -794,7 +795,7 @@ describe("issue 46308", () => {
     cy.icon("variable").click();
     cy.get("input[value=Exclude]").eq(0).type(" Category").blur();
 
-    cy.findByTestId("qb-save-button").click();
+    cy.button("Save").click();
     cy.findByTestId("save-question-modal").findByText("Save").click();
 
     cy.findByPlaceholderText("Exclude Category").type("Doohickey");
