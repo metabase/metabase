@@ -8810,6 +8810,37 @@ databaseChangeLog:
               column:
                 name: analysis_id
 
+  - changeSet:
+      id: v51.2024-08-02T11:56:27
+      author: crisptrutski
+      comment: Add `schema` column to query fields
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: query_field
+                columnName: schema
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: schema
+                  type: varchar(254) # matching metabase_table.schema
+                  remarks: name of the schema of the table being referenced
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-08-02T12:02:21
+      author: crisptrutski
+      comment: Make `table` nullable on query fields
+      changes:
+        - dropNotNullConstraint:
+            tableName: query_field
+            columnDataType: varchar(254) # matching metabase_table.name
+            columnName: table
+            remarks: This value is null if the field does not exist, and macaw could not determine the table
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

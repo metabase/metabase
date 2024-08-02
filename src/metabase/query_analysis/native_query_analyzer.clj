@@ -31,7 +31,8 @@
 (def ^:private field-and-table-fragment
   "HoneySQL fragment to get the Field and Table"
   {:select    [[:f.id :field-id] [:f.name :column]
-               [:t.id :table-id] [:t.name :table]]
+               [:t.id :table-id] [:t.name :table]
+               [:t.schema :schema]]
    ;; (t2/table-name :model/Table) doesn't work on CI since models/table.clj hasn't been loaded
    :from      [[:metabase_table :t]]
    :left-join [[:metabase_field :f] [:= :f.table_id :t.id]]})
@@ -99,13 +100,16 @@
 
 (defn table-reference
   "Used by tests"
-  [db-id table]
-  (t2/select-one :model/QueryTable
-                 {:select [[:t.id :table-id] [:t.name :table]]
-                  :from   [[(t2/table-name :model/Table) :t]]
-                  :where  [:and
-                           [:= :t.db_id db-id]
-                           (table-query {:table (name table)})]}))
+  ([db-id table]
+   (table-reference db-id nil table))
+  ([db-id schema table]
+   (t2/select-one :model/QueryTable
+                  {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
+                   :from   [[(t2/table-name :model/Table) :t]]
+                   :where  [:and
+                            [:= :t.db_id db-id]
+                            (table-query {:schema (some-> schema name)
+                                          :table (name table)})]})))
 
 (defn field-reference
   "Used by tests"
@@ -171,7 +175,7 @@
     (consolidate-tables
      tables
      (t2/select :model/QueryTable
-                {:select [[:t.id :table-id] [:t.name :table]]
+                {:select [[:t.id :table-id] [:t.name :table] [:t.schema :schema]]
                  :from   [[(t2/table-name :model/Table) :t]]
                  :where  [:and
                          [:= :t.db_id db-id]
@@ -188,8 +192,11 @@
                                      table-refs)
         merge-table-refs (fn [{:keys [schema table] :as field-ref}]
                            (map #(merge field-ref %)
-                                (if schema
+                                (cond
+                                  schema
                                   [(s+t->id [(normalize schema) (normalize table)])]
+
+                                  table
                                   (t->ids (normalize table)))))]
     (into (empty field-refs)
           (mapcat (fn [{:keys [table-id] :as field-ref}]
