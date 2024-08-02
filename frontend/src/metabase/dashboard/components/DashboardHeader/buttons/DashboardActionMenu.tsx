@@ -29,7 +29,6 @@ export const getExtraButtons = ({
   onResetFilters,
   onFullscreenChange,
   isFullscreen,
-  isPublic,
   dashboard,
   canEdit,
   pathname,
@@ -38,12 +37,11 @@ export const getExtraButtons = ({
   onResetFilters: () => void;
   dashboard: Dashboard;
   canEdit: boolean;
-  isPublic: boolean | undefined;
   pathname: string;
 }) => {
   const extraButtons = [];
 
-  if (!isPublic && canResetFilters) {
+  if (canResetFilters) {
     extraButtons.push({
       title: t`Reset all filters`,
       icon: "revert",

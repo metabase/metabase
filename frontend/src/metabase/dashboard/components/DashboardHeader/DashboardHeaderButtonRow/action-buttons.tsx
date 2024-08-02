@@ -185,7 +185,6 @@ export const dashboardActionButtons: Record<
         onResetFilters,
         onFullscreenChange,
         isFullscreen,
-        isPublic,
         dashboard,
         canEdit,
         location,
@@ -198,7 +197,6 @@ export const dashboardActionButtons: Record<
             isFullscreen,
             dashboard,
             canEdit,
-            isPublic,
             pathname: location.pathname,
           })}
         />
