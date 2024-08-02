@@ -116,7 +116,10 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       section: t`Display`,
       title: t`Number of decimal places`,
       widget: "number",
-      props: { options: { isInteger: true, isNonNegative: true } },
+      props: {
+        placeholder: t`Auto`,
+        options: { isInteger: true, isNonNegative: true },
+      },
       getHidden: (_, settings) =>
         settings["pie.percent_visibility"] == null ||
         settings["pie.percent_visibility"] === "off",
