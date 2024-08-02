@@ -31,7 +31,6 @@ import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import { AppContainer, AppContent, AppContentContainer } from "./App.styled";
 import ErrorBoundary from "./ErrorBoundary";
-import { useMonitorCSS } from "./common/hooks/use-monitor-css/use-monitor-css";
 import { NewModals } from "./new/components/NewModals/NewModals";
 import { Palette } from "./palette/components/Palette";
 
@@ -97,8 +96,6 @@ function App({
   useEffect(() => {
     initializeIframeResizer();
   }, []);
-
-  useMonitorCSS();
 
   return (
     <ErrorBoundary onError={onError}>
