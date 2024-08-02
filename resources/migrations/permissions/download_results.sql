@@ -104,13 +104,13 @@ SELECT
     mt.db_id,
     mt.schema AS schema_name,
     mt.id AS table_id,
-    'no-self-service' AS perm_value
+    'no' AS perm_value
 FROM permissions_group pg
 CROSS JOIN metabase_table mt
 LEFT JOIN data_permissions dp
 ON dp.group_id = pg.id
    AND dp.db_id = mt.db_id
-   AND dp.table_id = mt.id
+   AND (dp.table_id = mt.id OR dp.table_id IS NULL)
    AND dp.perm_type = 'perms/data-access'
 WHERE pg.name != 'Administrators'
   AND dp.group_id IS NULL;
