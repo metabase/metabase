@@ -375,7 +375,8 @@
   ([summary execution]
    (-> summary
        (update :executions u/safe-inc)
-       (update-in [:by_status (if (:has_error execution)
+       ;; MYSQL is returning true as 1, false as 0! what!
+       (update-in [:by_status (if (#{1 true} (:has_error execution))
                                 "failed"
                                 "completed")] u/safe-inc)
        (update-in [:num_per_user (:executor_id execution)] u/safe-inc)

@@ -222,6 +222,8 @@
 (deftest new-impl-test
   (mt/with-temp [QueryExecution _ (merge query-execution-defaults
                                          {:error "some error"})
+                 QueryExecution _ (merge query-execution-defaults
+                                         {:error "some error"})
                  QueryExecution _ query-execution-defaults]
     (is (= (old-execution-metrics)
            (#'stats/execution-metrics))
