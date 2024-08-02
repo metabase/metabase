@@ -1,6 +1,7 @@
 export const IMAGE_NAME = "metabase/metabase-enterprise:latest";
 export const CONTAINER_NAME = "metabase-enterprise-embedding";
 export const SITE_NAME = "Metabase Embedding SDK Demo";
+export const SDK_PACKAGE_NAME = "@metabase/embedding-sdk-react";
 
 /**
  * Default port for the local Metabase instance.

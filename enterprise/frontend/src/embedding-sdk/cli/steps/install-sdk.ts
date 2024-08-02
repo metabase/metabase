@@ -5,6 +5,7 @@ import toggle from "inquirer-toggle";
 import ora from "ora";
 import { promisify } from "util";
 
+import { SDK_PACKAGE_NAME } from "embedding-sdk/cli/constants/config";
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import {
   printEmptyLines,
@@ -43,7 +44,7 @@ export async function installPackage(packageName: string) {
     const command = await getInstallCommand(packageName);
 
     spinner = ora(
-      `Installing @metabase/embedding-sdk-react with \`${command}…\``,
+      `Installing ${SDK_PACKAGE_NAME} with \`${command}…\``,
     ).start();
     const exec = promisify(execCallback);
     // Execute the command
@@ -67,7 +68,7 @@ export const installSdk: CliStepMethod = async state => {
 
   if (shouldStart) {
     printEmptyLines();
-    await installPackage("@metabase/embedding-sdk-react");
+    await installPackage(SDK_PACKAGE_NAME);
     printEmptyLines();
     return [
       {
@@ -76,7 +77,7 @@ export const installSdk: CliStepMethod = async state => {
       state,
     ];
   } else {
-    const command = await getInstallCommand("@metabase/embedding-sdk-react");
+    const command = await getInstallCommand(SDK_PACKAGE_NAME);
     printEmptyLines();
     printInfo("You can install the SDK later by running:");
     printSuccess(command);

@@ -1,10 +1,12 @@
+import { SDK_PACKAGE_NAME } from "embedding-sdk/cli/constants/config";
+
 export const getCodeSample = (url: string, apiKey: string) => `
 import {
   MetabaseProvider,
   InteractiveDashboard,
-} from '@metabase/embedding-sdk-react'
+} from '${SDK_PACKAGE_NAME}'
 
-/** @type {import('@metabase/embedding-sdk-react').SDKConfig} */
+/** @type {import('${SDK_PACKAGE_NAME}').SDKConfig} */
 const config = {
   metabaseInstanceUrl: \`${url}\`,
   apiKey: '${apiKey}'

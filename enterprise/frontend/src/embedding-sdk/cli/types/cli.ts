@@ -17,7 +17,7 @@ export type CliError = {
 
 export type CliSuccess = {
   type: "success";
-  nextStep?: keyof typeof CLI_STEPS;
+  nextStep?: typeof CLI_STEPS[number][0];
 };
 
 export type CliDone = {

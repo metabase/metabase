@@ -1,39 +1,41 @@
 import { ANONYMOUS_TRACKING_INFO } from "embedding-sdk/cli/constants/messages";
-import { addEmbeddingToken } from "embedding-sdk/cli/steps/add-embedding-token";
-import { checkIsDockerRunning } from "embedding-sdk/cli/steps/check-docker-running";
-import { createApiKey } from "embedding-sdk/cli/steps/create-api-key";
-import { generateCredentials } from "embedding-sdk/cli/steps/generate-credentials";
-import { generateCodeSample } from "embedding-sdk/cli/steps/get-code-sample";
-import { pollMetabaseInstance } from "embedding-sdk/cli/steps/poll-metabase-instance";
-import { setupMetabaseInstance } from "embedding-sdk/cli/steps/setup-metabase-instance";
-import { showMetabaseCliTitle } from "embedding-sdk/cli/steps/show-metabase-cli-title";
-import { startLocalMetabaseContainer } from "embedding-sdk/cli/steps/start-local-metabase-container";
 import { printEmptyLines, printInfo } from "embedding-sdk/cli/utils/print";
 
-import { checkIfReactProject } from "./steps/check-if-react-project";
-import { checkSdkAvailable } from "./steps/check-sdk-available";
-import type { CliState } from "./types/cli";
-
-export const CLI_STEPS = {
-  showMetabaseCliTitle,
-  checkIfReactProject,
-  checkSdkAvailable,
+import {
   addEmbeddingToken,
   checkIsDockerRunning,
+  createApiKey,
   generateCredentials,
-  startLocalMetabaseContainer,
+  generateCodeSample,
   pollMetabaseInstance,
   setupMetabaseInstance,
-  createApiKey,
-  generateCodeSample,
-};
+  showMetabaseCliTitle,
+  startLocalMetabaseContainer,
+  checkIfReactProject,
+  checkSdkAvailable,
+} from "./steps";
+import type { CliState } from "./types/cli";
+
+export const CLI_STEPS = [
+  ["showMetabaseCliTitle", showMetabaseCliTitle],
+  ["checkIfReactProject", checkIfReactProject],
+  ["checkSdkAvailable", checkSdkAvailable],
+  ["addEmbeddingToken", addEmbeddingToken],
+  ["checkIsDockerRunning", checkIsDockerRunning],
+  ["generateCredentials", generateCredentials],
+  ["startLocalMetabaseContainer", startLocalMetabaseContainer],
+  ["pollMetabaseInstance", pollMetabaseInstance],
+  ["setupMetabaseInstance", setupMetabaseInstance],
+  ["createApiKey", createApiKey],
+  ["generateCodeSample", generateCodeSample],
+] as const;
 
 export async function runCli() {
   let state: CliState = {};
 
-  for (let i = 0; i < Object.values(CLI_STEPS).length; i++) {
-    const step = Object.values(CLI_STEPS)[i];
-    const [output, nextState] = await step(state);
+  for (let i = 0; i < CLI_STEPS.length; i++) {
+    const [_, execute] = CLI_STEPS[i];
+    const [output, nextState] = await execute(state);
 
     if (output.type === "error") {
       console.error(output.message);
@@ -41,7 +43,7 @@ export async function runCli() {
     }
 
     if (output.type === "success" && output.nextStep) {
-      i = Object.keys(CLI_STEPS).indexOf(output.nextStep) - 1;
+      i = CLI_STEPS.findIndex(([stepId]) => stepId === output.nextStep) - 1;
     }
 
     state = nextState;
