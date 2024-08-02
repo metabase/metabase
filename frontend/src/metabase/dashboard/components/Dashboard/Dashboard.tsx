@@ -1,4 +1,4 @@
-import type { Location, Query } from "history";
+import type { Query } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
@@ -107,7 +107,6 @@ export type DashboardProps = {
 
   closeNavbar: () => void;
   onSetErrorPage: (error: unknown) => void;
-  onChangeLocation: (location: Location) => void;
 
   setParameterName: (id: ParameterId, name: string) => void;
   setParameterType: (id: ParameterId, type: string, sectionId: string) => void;
@@ -196,6 +195,7 @@ function Dashboard(props: DashboardProps) {
     setSharing,
     toggleSidebar,
     parameterQueryParams,
+    downloadsEnabled = true,
   } = props;
 
   const dispatch = useDispatch();
@@ -380,9 +380,7 @@ function Dashboard(props: DashboardProps) {
         navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
         selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
-        // downloads are always enabled on internal dashboards
-        // you will still need to have permissions to download the data
-        downloadsEnabled
+        downloadsEnabled={downloadsEnabled}
       />
     );
   };
