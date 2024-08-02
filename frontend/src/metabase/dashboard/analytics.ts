@@ -31,7 +31,7 @@ export const trackExportDashboardToPDF = ({
     // We made dashboard_id optional because we don't want to send
     // UUIDs or JWTs when in public or static embed scenarios.
     // Because the field is still required in the snowplow table we send 0.
-    dashboard_id: dashboardId ?? 0,
+    dashboard_id: typeof dashboardId === "number" ? dashboardId : 0,
     dashboard_accessed_via: dashboardAccessedVia,
   });
 };
