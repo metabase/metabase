@@ -22,7 +22,7 @@ export const BrowseSection = styled(Flex)`
   width: 100%;
 `;
 
-export const BrowseHeader = styled.header`
+export const BrowseHeader = styled.div`
   display: flex;
   flex-direction: column;
   padding: 1rem 2.5rem 3rem 2.5rem;

@@ -7,7 +7,6 @@ import type {
   ModelFilterControlsProps,
 } from "metabase/browse/utils";
 import { useUserSetting } from "metabase/common/hooks";
-import { color } from "metabase/lib/colors";
 import { Button, Icon, Paper, Popover, Switch, Text } from "metabase/ui";
 
 export const ModelFilterControls = ({
@@ -74,9 +73,10 @@ const Dot = () => {
       right="0px"
       top="7px"
       radius="50%"
-      bg={color("brand")}
+      bg={"var(--mb-color-brand)"}
       w="sm"
       h="sm"
+      data-testid="filter-dot"
     />
   );
 };
