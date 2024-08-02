@@ -252,7 +252,7 @@ export type CreateDashboardRequest = {
   cache_ttl?: number;
   collection_id?: CollectionId | null;
   collection_position?: number | null;
-  tabs?: DashboardTab[];
+  tabs?: Pick<DashboardTab, "id" | "name" | "position">[];
 };
 
 export type UpdateDashboardRequest = {
