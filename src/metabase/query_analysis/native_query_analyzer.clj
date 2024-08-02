@@ -140,18 +140,31 @@
           references)))
 
 (defn- consolidate-columns
-  "Qualify analyzed columns with the corresponding database IDs, where we are able to resolve them."
+  "Qualify analyzed columns with the corresponding tables, where we are able to resolve them."
   [analyzed-columns database-columns]
-  ;; TODO we should handle schema as well
-  (let [->tab-key             (comp u/lower-case-en :table)
-        ->col-key             (comp u/lower-case-en :column)
-        column->records       (group-by ->col-key database-columns)
-        table+column->records (group-by (juxt ->tab-key ->col-key) database-columns)]
+  (let [->schema-key   (comp u/lower-case-en :schema)
+        ->table-key    (comp u/lower-case-en :table)
+        ->column-key   (comp u/lower-case-en :column)
+        ;; it may turn out cheaper to do scans versus building all these maps...
+        ;; alternately, a c->t->s trie could also make more sense
+        c->records     (group-by ->column-key database-columns)
+        t+c->records   (group-by (juxt ->table-key ->column-key) database-columns)
+        s+t+c->records (group-by (juxt ->schema-key ->table-key ->column-key) database-columns)]
     (strip-redundant-refs
-     (mapcat (fn [{:keys [table column] :as reference}]
-               (or (if table
-                     (table+column->records [(normalized-key table) (normalized-key column)])
-                     (column->records (normalized-key column)))
+     (mapcat (fn [{:keys [schema table column] :as reference}]
+               ;; match on what we know - where ambiguous, match with everything plausible
+               (or (cond
+                     schema
+                     (s+t+c->records [(normalized-key schema)
+                                      (normalized-key table)
+                                      (normalized-key column)])
+
+                     table
+                     (t+c->records [(normalized-key table)
+                                    (normalized-key column)])
+                     :else
+                     (c->records (normalized-key column)))
+                   ;; not found in the database records
                    [(update-vals reference strip-quotes)]))
              analyzed-columns))))
 
