@@ -51,6 +51,15 @@ export const getLegacyColumnKey = (
   );
 };
 
+export const getColumnNameFromKey = (key: string) => {
+  try {
+    const [tag, name] = JSON.parse(key);
+    return tag === "name" ? name : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export const getColumnSettings = (
   settings: VisualizationSettings | null | undefined,
   column: Pick<DatasetColumn, "name" | "field_ref">,
