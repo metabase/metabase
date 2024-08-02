@@ -154,6 +154,7 @@ interface PivotTableRootProps {
 
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
   height: 100%;
+  overflow: auto;
   font-size: ${({ theme }) => theme.other.pivotTable.cell.fontSize};
 
   ${props =>

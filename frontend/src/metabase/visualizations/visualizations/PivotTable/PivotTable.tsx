@@ -60,6 +60,8 @@ import {
   getCellWidthsForSection,
 } from "./utils";
 
+const MIN_USABLE_BODY_WIDTH = 300;
+
 const mapStateToProps = (state: State) => ({
   fontFamily: getSetting(state, "application-font"),
 });
@@ -87,6 +89,7 @@ function _PivotTable({
   fontFamily,
   onVisualizationClick,
 }: PivotTableProps) {
+  const [viewPortWidth, setViewPortWidth] = useState(width);
   const [gridElement, setGridElement] = useState<HTMLElement | null>(null);
   const columnWidthSettings = settings["pivot_table.column_widths"];
 
@@ -280,6 +283,32 @@ function _PivotTable({
     updateHeaderWidths(newColumnWidths);
   };
 
+  const leftHeaderWidth =
+    pivoted?.rowIndexes.length > 0
+      ? LEFT_HEADER_LEFT_SPACING + (totalLeftHeaderWidths ?? 0)
+      : 0;
+
+  useEffect(() => {
+    const availableBodyWidth = width - leftHeaderWidth;
+    const fullBodyWidth = sumArray(
+      getCellWidthsForSection(valueHeaderWidths, pivoted?.valueIndexes, 0),
+    );
+
+    const minUsableBodyWidth = Math.min(MIN_USABLE_BODY_WIDTH, fullBodyWidth);
+    if (availableBodyWidth < minUsableBodyWidth) {
+      setViewPortWidth(leftHeaderWidth + minUsableBodyWidth);
+    } else {
+      setViewPortWidth(width);
+    }
+  }, [
+    totalLeftHeaderWidths,
+    valueHeaderWidths,
+    pivoted?.valueIndexes,
+    width,
+    leftHeaderWidths,
+    leftHeaderWidth,
+  ]);
+
   if (pivoted === null || !leftHeaderWidths || columnsChanged) {
     return null;
   }
@@ -301,11 +330,7 @@ function _PivotTable({
 
   const topHeaderHeight = topHeaderRows * CELL_HEIGHT;
   const bodyHeight = height - topHeaderHeight;
-
-  const leftHeaderWidth =
-    rowIndexes.length > 0
-      ? LEFT_HEADER_LEFT_SPACING + (totalLeftHeaderWidths ?? 0)
-      : 0;
+  const topHeaderWidth = viewPortWidth - leftHeaderWidth;
 
   function getCellClickHandler(clicked: PivotTableClicked) {
     if (!clicked) {
@@ -377,10 +402,11 @@ function _PivotTable({
               </PivotTableTopLeftCellsContainer>
               {/* top header */}
               <Collection
+                style={{ minWidth: `${topHeaderWidth}px` }}
                 ref={topHeaderRef}
                 className={CS.scrollHideAll}
                 isNightMode={isNightMode}
-                width={width - leftHeaderWidth}
+                width={topHeaderWidth}
                 height={topHeaderHeight}
                 cellCount={topHeaderItems.length}
                 cellRenderer={({ index, style, key }) => (
@@ -458,7 +484,7 @@ function _PivotTable({
                   {() => (
                     <Grid
                       aria-label={PIVOT_TABLE_BODY_LABEL}
-                      width={width - leftHeaderWidth}
+                      width={viewPortWidth - leftHeaderWidth}
                       height={bodyHeight}
                       className={CS.textDark}
                       rowCount={rowCount}
