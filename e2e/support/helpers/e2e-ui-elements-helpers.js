@@ -28,6 +28,10 @@ export function modal() {
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
+export function tooltip() {
+  return cy.get(".emotion-Tooltip-tooltip");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }

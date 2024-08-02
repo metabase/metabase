@@ -79,3 +79,18 @@ export type Tag = {
     url: string,
   }
 };
+
+export type GithubCheck = {
+  id: number;
+  name: string;
+  node_id: string;
+  head_sha: string;
+  external_id: string | null;
+  url: string | null;
+  html_url: string | null;
+  details_url: string | null;
+  status: "queued" | "in_progress" | "completed";
+  conclusion: "success" | "failure" | "neutral" | "cancelled" | "timed_out" | "action_required" | "skipped" | null;
+  started_at: string | null;
+  completed_at: string | null;
+};

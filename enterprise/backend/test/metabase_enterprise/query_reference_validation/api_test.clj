@@ -24,41 +24,80 @@
                                                               :table_id table-1}
                             :model/Field      {field-2 :id}  {:active   false
                                                               :name     "FB"
-                                                              :table_id table-1}
-                            :model/Field      {field-3 :id}  {:active   false
-                                                              :name     "FC"
                                                               :table_id table-2}
+
+                            :model/QueryAnalysis {qa-1 :id}  {:card_id card-1}
+                            :model/QueryAnalysis {qa-2 :id}  {:card_id card-2}
+                            :model/QueryAnalysis {qa-3 :id}  {:card_id card-3}
+
+                            ;; QTs not to include:
+                            ;; - Table is still active
+                            :model/QueryTable {}             {:card_id     card-1
+                                                              :analysis_id qa-1
+                                                              :table       "ORDERS"
+                                                              :table_id    (mt/id :orders)}
+
+                            :model/QueryTable {}              {:card_id     card-1
+                                                               :analysis_id qa-1
+                                                               :table       "T1"
+                                                               :table_id    table-1}
+                            :model/QueryTable {}              {:card_id     card-2
+                                                               :analysis_id qa-2
+                                                               :table       "T2"
+                                                               :table_id    table-2}
+                            :model/QueryTable {}              {:card_id     card-3
+                                                               :analysis_id qa-3
+                                                               :table       "T3"
+                                                               :table_id    nil}
+
                             ;; QFs not to include:
                             ;; - Field is still active
-                            :model/QueryField {}             {:card_id  card-1
-                                                              :table    "ORDERS"
-                                                              :column   "tax"
-                                                              :field_id (mt/id :orders :tax)}
+                            :model/QueryField {}             {:card_id     card-1
+                                                              :analysis_id qa-3
+                                                              :table       "ORDERS"
+                                                              :column      "tax"
+                                                              :table_id    (mt/id :orders)
+                                                              :field_id    (mt/id :orders :tax)}
                             ;; - Implicit reference
                             :model/QueryField {}             {:card_id            card-2
+                                                              :analysis_id        qa-3
                                                               :table              "T1"
                                                               :column             "FA"
                                                               :field_id           field-1
                                                               :explicit_reference false}
                             ;; QFs to include:
-                            :model/QueryField {qf-1 :id}     {:card_id  card-1
-                                                              :table    "T1"
-                                                              :column   "FA"
-                                                              :field_id field-1}
-                            :model/QueryField {qf-1b :id}    {:card_id  card-1
-                                                              :table    "T1"
-                                                              :column   "FAB"
-                                                              :field_id nil}
-                            :model/QueryField {qf-2 :id}     {:card_id  card-2
-                                                              :table    "T1"
-                                                              :column   "FB"
-                                                              :field_id field-2}
-                            :model/QueryField {qf-3 :id}     {:card_id  card-3
-                                                              :table    "T2"
-                                                              :column   "FC"
-                                                              :field_id field-3}]
+                            :model/QueryField {}             {:card_id     card-1
+                                                              :analysis_id qa-1
+                                                              :table       "T1"
+                                                              :column      "FA"
+                                                              :table_id    table-1
+                                                              :field_id    field-1}
+                            :model/QueryField {}             {:card_id     card-1
+                                                              :analysis_id qa-1
+                                                              :table       "T1"
+                                                              :column      "FAB"
+                                                              :table_id    table-1
+                                                              :field_id    nil}
+                            :model/QueryField {}             {:card_id     card-2
+                                                              :analysis_id qa-2
+                                                              :table       "T2"
+                                                              :column      "FB"
+                                                              :table_id    table-2
+                                                              :field_id    field-2}
+                            :model/QueryField {}             {:card_id     card-2
+                                                              :analysis_id qa-2
+                                                              :table       "T2"
+                                                              :column      "FBB"
+                                                              :table_id    table-2
+                                                              :field_id    nil}
+                            :model/QueryField {}             {:card_id     card-3
+                                                              :analysis_id qa-3
+                                                              :table       "T3"
+                                                              :column      "FC"
+                                                              :table_id    nil
+                                                              :field_id    nil}]
      (mt/with-premium-features #{:query-reference-validation}
-       (mt/call-with-map-params f [card-1 card-2 card-3 card-4 qf-1 qf-1b qf-2 qf-3 coll-3 coll-2])))))
+       (mt/call-with-map-params f [card-1 card-2 card-3 card-4 coll-2 coll-3])))))
 
 (defmacro ^:private with-test-setup
   "Creates some non-stale QueryFields and anaphorically provides stale QueryField IDs called `qf-{1-3}` and `qf-1b` and
@@ -68,7 +107,7 @@
   `card-4` is guaranteed not to have problems"
   [& body]
   `(do-with-test-setup
-    (mt/with-anaphora [qf-1 qf-1b qf-2 qf-3 card-1 card-2 card-3 card-4 coll-2 coll-3]
+    (mt/with-anaphora [card-1 card-2 card-3 card-4 coll-2 coll-3]
       ~@body)))
 
 (def ^:private url "ee/query-reference-validation/invalid-cards")
@@ -101,6 +140,16 @@
                                                    :type nil}]}}]
              (map #(select-keys % [:collection]) (:data (get!))))))))
 
+(deftest premium-feature-test
+  (testing "It requires the premium feature"
+    (mt/with-premium-features #{}
+      (is (= (str "Query Reference Validation is a paid feature not currently available to your instance. Please upgrade to"
+                  " use it. Learn more at metabase.com/upgrade/")
+             (mt/user-http-request :crowberto :get 402 url))))))
+
+(defn- with-data-keys [{:keys [data] :as resp} ks]
+  (assoc resp :data (map (fn [d] (select-keys d ks)) data)))
+
 (deftest list-invalid-cards-basic-test
   (testing "Only returns cards with problematic field refs"
     (with-test-setup
@@ -112,21 +161,13 @@
                          {:type "unknown-field", :table "T1", :field "FAB"}]}
                {:id     card-2
                 :name   "B"
-                :errors [{:type "inactive-field", :table "T1", :field "FB"}]}
+                :errors [{:type "inactive-table", :table "T2"}]}
                {:id     card-3
                 :name   "C"
-                :errors [{:type "inactive-table", :table "T2", :field "FC"}]}]}
+                :errors [{:type "unknown-table", :table "T3"}]}]}
                (-> (get!)
                    (select-keys [:data :total])
-                   (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data))))))))
-  (testing "It requires the premium feature"
-    (mt/with-premium-features #{}
-      (is (= (str "Query Reference Validation is a paid feature not currently available to your instance. Please upgrade to"
-                  " use it. Learn more at metabase.com/upgrade/")
-             (mt/user-http-request :crowberto :get 402 url))))))
-
-(defn- with-data-keys [{:keys [data] :as resp} ks]
-  (assoc resp :data (map (fn [d] (select-keys d ks)) data)))
+                   (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data)))))))))
 
 (deftest pagination-test
   (testing "Lets you page results"
@@ -141,7 +182,7 @@
                          {:type "unknown-field", :table "T1", :field "FAB"}]}
                {:id     card-2
                 :name   "B"
-                :errors [{:type "inactive-field", :table "T1", :field "FB"}]}]}
+                :errors [{:type "inactive-table", :table "T2"}]}]}
                (-> (get! {:limit 2})
                    (select-keys [:total :limit :offset :data])
                    (with-data-keys [:id :name :errors]))))
@@ -151,7 +192,7 @@
               :data
               [{:id     card-3
                 :name   "C"
-                :errors [{:type "inactive-table", :table "T2", :field "FC"}]}]}
+                :errors [{:type "unknown-table", :table "T3"}]}]}
              (-> (get! {:limit 1 :offset 2})
                  (select-keys [:total :limit :offset :data])
                  (with-data-keys [:id :name :errors])))))))
