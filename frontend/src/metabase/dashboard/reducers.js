@@ -297,7 +297,7 @@ const draftParameterValues = handleActions(
       next: (state, { payload: parameters }) => {
         return parameters.reduce(
           (result, parameter) => assoc(result, parameter.id, parameter.value),
-          [state ?? {}],
+          state ?? {},
         );
       },
     },
