@@ -6,7 +6,6 @@ import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import { EditableDashboard } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard";
-import { InteractiveDashboardProvider } from "embedding-sdk/components/public/InteractiveDashboard/context";
 import { getDashboardActions } from "embedding-sdk/components/public/InteractiveDashboard/utils";
 import {
   type SdkDashboardDisplayProps,
@@ -32,6 +31,8 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { QuestionDashboardCard } from "metabase-types/api";
+
+import { InteractiveDashboardProvider } from "./context";
 
 export type InteractiveDashboardProps = {
   withEdit?: boolean;

@@ -191,7 +191,7 @@ export const EmbedFrame = ({
                   )}
                   <Box style={{ flex: 1 }} />
                   {dashboard && downloadsEnabled && (
-                    <ExportAsPdfButton dashboard={dashboard} />
+                    <ExportAsPdfButton dashboard={dashboard} color="brand" />
                   )}
                 </TitleAndButtonsContainer>
               </TitleAndDescriptionContainer>

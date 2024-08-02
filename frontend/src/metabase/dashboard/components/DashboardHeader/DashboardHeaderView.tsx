@@ -25,7 +25,6 @@ import { color } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { PLUGIN_COLLECTION_COMPONENTS } from "metabase/plugins";
 import { getIsNavbarOpen } from "metabase/selectors/app";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { Collection, Dashboard } from "metabase-types/api";
 
 import {
@@ -87,7 +86,6 @@ export function DashboardHeaderView({
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
 
   const { dashboardActions } = useInteractiveDashboardContext();
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
   const _headerButtons = useMemo(
     () => (
@@ -106,7 +104,6 @@ export function DashboardHeaderView({
           onNightModeChange={onNightModeChange}
           hasNightModeToggle={hasNightModeToggle}
           isAnalyticsDashboard={isAnalyticsDashboard}
-          isEmbeddingSdk={isEmbeddingSdk}
         />
       </HeaderButtonSection>
     ),
@@ -114,7 +111,6 @@ export function DashboardHeaderView({
       dashboardActions,
       hasNightModeToggle,
       isAnalyticsDashboard,
-      isEmbeddingSdk,
       isFullscreen,
       isNavBarOpen,
       isNightMode,

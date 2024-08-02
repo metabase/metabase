@@ -33,7 +33,6 @@ import { type DispatchFn, useDispatch } from "metabase/lib/redux";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
 import { setErrorPage } from "metabase/redux/app";
-import { Flex } from "metabase/ui";
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -209,35 +208,33 @@ const PublicOrEmbeddedDashboardInner = ({
   });
 
   return (
-    <Flex w="100%" h="100%" direction="row" justify="stretch" align="stretch">
-      <PublicOrEmbeddedDashboardView
-        dashboard={dashboard}
-        hasNightModeToggle={hasNightModeToggle}
-        isFullscreen={isFullscreen}
-        isNightMode={isNightMode}
-        onFullscreenChange={onFullscreenChange}
-        onNightModeChange={onNightModeChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        refreshPeriod={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        selectedTabId={selectedTabId}
-        parameters={parameters}
-        parameterValues={parameterValues}
-        draftParameterValues={draftParameterValues}
-        setParameterValue={setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
-        dashboardId={dashboardId}
-        background={background}
-        bordered={bordered}
-        titled={titled}
-        theme={theme}
-        hideParameters={hideParameters}
-        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-        slowCards={slowCards}
-        cardTitled={cardTitled}
-        downloadsEnabled={downloadsEnabled}
-      />
-    </Flex>
+    <PublicOrEmbeddedDashboardView
+      dashboard={dashboard}
+      hasNightModeToggle={hasNightModeToggle}
+      isFullscreen={isFullscreen}
+      isNightMode={isNightMode}
+      onFullscreenChange={onFullscreenChange}
+      onNightModeChange={onNightModeChange}
+      onRefreshPeriodChange={onRefreshPeriodChange}
+      refreshPeriod={refreshPeriod}
+      setRefreshElapsedHook={setRefreshElapsedHook}
+      selectedTabId={selectedTabId}
+      parameters={parameters}
+      parameterValues={parameterValues}
+      draftParameterValues={draftParameterValues}
+      setParameterValue={setParameterValue}
+      setParameterValueToDefault={setParameterValueToDefault}
+      dashboardId={dashboardId}
+      background={background}
+      bordered={bordered}
+      titled={titled}
+      theme={theme}
+      hideParameters={hideParameters}
+      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+      slowCards={slowCards}
+      cardTitled={cardTitled}
+      downloadsEnabled={downloadsEnabled}
+    />
   );
 };
 

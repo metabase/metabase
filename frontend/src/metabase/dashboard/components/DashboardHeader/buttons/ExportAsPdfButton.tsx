@@ -16,7 +16,13 @@ import {
 } from "metabase/visualizations/lib/save-dashboard-pdf";
 import type { Dashboard } from "metabase-types/api";
 
-export const ExportAsPdfButton = ({ dashboard }: { dashboard: Dashboard }) => {
+export const ExportAsPdfButton = ({
+  dashboard,
+  color,
+}: {
+  dashboard: Dashboard;
+  color?: string;
+}) => {
   const dispatch = useDispatch();
 
   const saveAsPDF = () => {
@@ -41,7 +47,7 @@ export const ExportAsPdfButton = ({ dashboard }: { dashboard: Dashboard }) => {
     <Button
       variant="subtle"
       leftIcon={<Icon name="document" />}
-      color="brand"
+      color={color || "text-dark"}
       onClick={() => dispatch(saveAsPDF)}
     >
       {getExportTabAsPdfButtonText(dashboard.tabs)}
