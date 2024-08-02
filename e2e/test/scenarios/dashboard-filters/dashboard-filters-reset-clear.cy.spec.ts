@@ -566,278 +566,275 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
         }
       });
   });
+});
 
-  function createDashboardWithParameters(
-    questionDetails: StructuredQuestionDetails,
-    targetField: LocalFieldReference,
-    parameters: DashboardDetails["parameters"],
-  ) {
-    createQuestionAndDashboard({
-      questionDetails,
-      dashboardDetails: {
-        parameters,
-      },
-    }).then(({ body: { dashboard_id, card_id } }) => {
-      updateDashboardCards({
-        dashboard_id,
-        cards: [
-          {
-            parameter_mappings: parameters?.map(parameter => ({
-              parameter_id: parameter.id,
-              card_id: checkNotNull(card_id),
-              target: ["dimension", targetField],
-            })),
-          },
-        ],
-      });
-
-      visitDashboard(dashboard_id);
+function createDashboardWithParameters(
+  questionDetails: StructuredQuestionDetails,
+  targetField: LocalFieldReference,
+  parameters: DashboardDetails["parameters"],
+) {
+  createQuestionAndDashboard({
+    questionDetails,
+    dashboardDetails: {
+      parameters,
+    },
+  }).then(({ body: { dashboard_id, card_id } }) => {
+    updateDashboardCards({
+      dashboard_id,
+      cards: [
+        {
+          parameter_mappings: parameters?.map(parameter => ({
+            parameter_id: parameter.id,
+            card_id: checkNotNull(card_id),
+            target: ["dimension", targetField],
+          })),
+        },
+      ],
     });
-  }
 
-  function checkStatusIcon(
-    label: string,
-    /**
-     * Use 'none' when no icon should be visible.
-     */
-    icon: "chevron" | "reset" | "clear" | "none",
-  ) {
-    clearIcon(label).should(icon === "clear" ? "be.visible" : "not.exist");
-    resetIcon(label).should(icon === "reset" ? "be.visible" : "not.exist");
-    chevronIcon(label).should(icon === "chevron" ? "be.visible" : "not.exist");
-  }
+    visitDashboard(dashboard_id);
+  });
+}
 
-  function checkDashboardParameters<T = string>({
-    defaultValueFormatted,
-    otherValue,
-    otherValueFormatted,
-    setValue,
-    updateValue = setValue,
-  }: {
-    defaultValueFormatted: string;
-    otherValue: T;
-    otherValueFormatted: string;
-    setValue: (label: string, value: T) => void;
-    updateValue?: (label: string, value: T) => void;
-  }) {
-    cy.log("no default value, non-required, no current value");
-    checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
-    checkResetAllFiltersHidden();
+function checkStatusIcon(
+  label: string,
+  /**
+   * Use 'none' when no icon should be visible.
+   */
+  icon: "chevron" | "reset" | "clear" | "none",
+) {
+  clearIcon(label).should(icon === "clear" ? "be.visible" : "not.exist");
+  resetIcon(label).should(icon === "reset" ? "be.visible" : "not.exist");
+  chevronIcon(label).should(icon === "chevron" ? "be.visible" : "not.exist");
+}
 
-    cy.log("no default value, non-required, has current value");
-    setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
-    filter(NO_DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
-    checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
-    checkResetAllFiltersShown();
+function checkDashboardParameters<T = string>({
+  defaultValueFormatted,
+  otherValue,
+  otherValueFormatted,
+  setValue,
+  updateValue = setValue,
+}: {
+  defaultValueFormatted: string;
+  otherValue: T;
+  otherValueFormatted: string;
+  setValue: (label: string, value: T) => void;
+  updateValue?: (label: string, value: T) => void;
+}) {
+  cy.log("no default value, non-required, no current value");
+  checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
+  checkResetAllFiltersHidden();
 
-    clearButton(NO_DEFAULT_NON_REQUIRED).click();
-    filter(NO_DEFAULT_NON_REQUIRED).should(
-      "have.text",
-      NO_DEFAULT_NON_REQUIRED,
-    );
-    checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
-    checkResetAllFiltersHidden();
+  cy.log("no default value, non-required, has current value");
+  setValue(NO_DEFAULT_NON_REQUIRED, otherValue);
+  filter(NO_DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+  checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "clear");
+  checkResetAllFiltersShown();
 
-    cy.log("has default value, non-required, current value same as default");
-    checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-    checkResetAllFiltersHidden();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  clearButton(NO_DEFAULT_NON_REQUIRED).click();
+  filter(NO_DEFAULT_NON_REQUIRED).should("have.text", NO_DEFAULT_NON_REQUIRED);
+  checkStatusIcon(NO_DEFAULT_NON_REQUIRED, "chevron");
+  checkResetAllFiltersHidden();
 
-    clearButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
-    checkResetAllFiltersShown();
+  cy.log("has default value, non-required, current value same as default");
+  checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
+  checkResetAllFiltersHidden();
+  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
 
-    cy.log("has default value, non-required, no current value");
-    checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
-    checkResetAllFiltersShown();
+  clearButton(DEFAULT_NON_REQUIRED).click();
+  filter(DEFAULT_NON_REQUIRED).should("have.text", DEFAULT_NON_REQUIRED);
+  checkResetAllFiltersShown();
 
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
-    checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-    checkResetAllFiltersHidden();
+  cy.log("has default value, non-required, no current value");
+  checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
+  checkResetAllFiltersShown();
 
-    cy.log(
-      "has default value, non-required, current value different than default",
-    );
-    updateValue(DEFAULT_NON_REQUIRED, otherValue);
-    filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
-    checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
-    checkResetAllFiltersShown();
+  resetButton(DEFAULT_NON_REQUIRED).click();
+  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
+  checkResetAllFiltersHidden();
 
-    resetButton(DEFAULT_NON_REQUIRED).click();
-    filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
-    checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
-    checkResetAllFiltersHidden();
+  cy.log(
+    "has default value, non-required, current value different than default",
+  );
+  updateValue(DEFAULT_NON_REQUIRED, otherValue);
+  filter(DEFAULT_NON_REQUIRED).should("have.text", otherValueFormatted);
+  checkStatusIcon(DEFAULT_NON_REQUIRED, "reset");
+  checkResetAllFiltersShown();
 
-    cy.log("has default value, required, value same as default");
-    checkStatusIcon(DEFAULT_REQUIRED, "none");
-    checkResetAllFiltersHidden();
+  resetButton(DEFAULT_NON_REQUIRED).click();
+  filter(DEFAULT_NON_REQUIRED).should("have.text", defaultValueFormatted);
+  checkStatusIcon(DEFAULT_NON_REQUIRED, "clear");
+  checkResetAllFiltersHidden();
 
-    cy.log("has default value, required, current value different than default");
-    updateValue(DEFAULT_REQUIRED, otherValue);
-    filter(DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
-    checkStatusIcon(DEFAULT_REQUIRED, "reset");
-    checkResetAllFiltersShown();
+  cy.log("has default value, required, value same as default");
+  checkStatusIcon(DEFAULT_REQUIRED, "none");
+  checkResetAllFiltersHidden();
 
-    resetButton(DEFAULT_REQUIRED).click();
-    filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
-    checkStatusIcon(DEFAULT_REQUIRED, "none");
-    checkResetAllFiltersHidden();
+  cy.log("has default value, required, current value different than default");
+  updateValue(DEFAULT_REQUIRED, otherValue);
+  filter(DEFAULT_REQUIRED).should("have.text", otherValueFormatted);
+  checkStatusIcon(DEFAULT_REQUIRED, "reset");
+  checkResetAllFiltersShown();
 
-    checkParameterSidebarDefaultValue({
-      defaultValueFormatted,
-      otherValue,
-      otherValueFormatted,
-      setValue,
-      updateValue,
-    });
-  }
+  resetButton(DEFAULT_REQUIRED).click();
+  filter(DEFAULT_REQUIRED).should("have.text", defaultValueFormatted);
+  checkStatusIcon(DEFAULT_REQUIRED, "none");
+  checkResetAllFiltersHidden();
 
-  function checkParameterSidebarDefaultValue<T = string>({
+  checkParameterSidebarDefaultValue({
     defaultValueFormatted,
     otherValue,
     otherValueFormatted,
     setValue,
     updateValue,
-  }: {
-    defaultValueFormatted: string;
-    otherValue: T;
-    otherValueFormatted: string;
-    setValue: (label: string, value: T) => void;
-    updateValue: (label: string, value: T) => void;
-  }) {
-    cy.log("parameter sidebar");
-    editDashboard();
+  });
+}
 
-    cy.log(NO_DEFAULT_NON_REQUIRED);
-    editFilter(NO_DEFAULT_NON_REQUIRED);
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").scrollIntoView();
-      filter("Default value").should("have.text", "No default");
-      checkStatusIcon("Default value", "chevron");
-    });
+function checkParameterSidebarDefaultValue<T = string>({
+  defaultValueFormatted,
+  otherValue,
+  otherValueFormatted,
+  setValue,
+  updateValue,
+}: {
+  defaultValueFormatted: string;
+  otherValue: T;
+  otherValueFormatted: string;
+  setValue: (label: string, value: T) => void;
+  updateValue: (label: string, value: T) => void;
+}) {
+  cy.log("parameter sidebar");
+  editDashboard();
 
-    setValue("Default value", otherValue);
+  cy.log(NO_DEFAULT_NON_REQUIRED);
+  editFilter(NO_DEFAULT_NON_REQUIRED);
+  dashboardParameterSidebar().within(() => {
+    filter("Default value").scrollIntoView();
+    filter("Default value").should("have.text", "No default");
+    checkStatusIcon("Default value", "chevron");
+  });
 
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", otherValueFormatted);
-      checkStatusIcon("Default value", "clear");
+  setValue("Default value", otherValue);
 
-      clearButton("Default value").click();
-      filter("Default value").should("have.text", "No default");
-      checkStatusIcon("Default value", "chevron");
-    });
+  dashboardParameterSidebar().within(() => {
+    filter("Default value").should("have.text", otherValueFormatted);
+    checkStatusIcon("Default value", "clear");
 
-    cy.log(DEFAULT_NON_REQUIRED);
-    editFilter(DEFAULT_NON_REQUIRED);
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", defaultValueFormatted);
-      checkStatusIcon("Default value", "clear");
+    clearButton("Default value").click();
+    filter("Default value").should("have.text", "No default");
+    checkStatusIcon("Default value", "chevron");
+  });
 
-      clearButton("Default value").click();
-      filter("Default value").should("have.text", "No default");
-      checkStatusIcon("Default value", "chevron");
-    });
+  cy.log(DEFAULT_NON_REQUIRED);
+  editFilter(DEFAULT_NON_REQUIRED);
+  dashboardParameterSidebar().within(() => {
+    filter("Default value").should("have.text", defaultValueFormatted);
+    checkStatusIcon("Default value", "clear");
 
-    setValue("Default value", otherValue);
+    clearButton("Default value").click();
+    filter("Default value").should("have.text", "No default");
+    checkStatusIcon("Default value", "chevron");
+  });
 
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", otherValueFormatted);
-      checkStatusIcon("Default value", "clear");
-    });
+  setValue("Default value", otherValue);
 
-    cy.log(DEFAULT_REQUIRED);
-    editFilter(DEFAULT_REQUIRED);
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", defaultValueFormatted);
-      checkStatusIcon("Default value", "clear");
+  dashboardParameterSidebar().within(() => {
+    filter("Default value").should("have.text", otherValueFormatted);
+    checkStatusIcon("Default value", "clear");
+  });
 
-      clearButton("Default value").click();
-      filter("Default value (required)").should("have.text", "No default");
-      checkStatusIcon("Default value (required)", "chevron");
-    });
+  cy.log(DEFAULT_REQUIRED);
+  editFilter(DEFAULT_REQUIRED);
+  dashboardParameterSidebar().within(() => {
+    filter("Default value").should("have.text", defaultValueFormatted);
+    checkStatusIcon("Default value", "clear");
 
-    updateValue("Default value (required)", otherValue);
+    clearButton("Default value").click();
+    filter("Default value (required)").should("have.text", "No default");
+    checkStatusIcon("Default value (required)", "chevron");
+  });
 
-    dashboardParameterSidebar().within(() => {
-      filter("Default value").should("have.text", otherValueFormatted);
-      checkStatusIcon("Default value", "clear");
-    });
-  }
+  updateValue("Default value (required)", otherValue);
 
-  function checkResetAllFiltersShown() {
-    cy.button("Move, trash, and more…").click();
-    popover().findByText("Reset all filters").should("be.visible");
-    cy.button("Move, trash, and more…").click();
-  }
+  dashboardParameterSidebar().within(() => {
+    filter("Default value").should("have.text", otherValueFormatted);
+    checkStatusIcon("Default value", "clear");
+  });
+}
 
-  function checkResetAllFiltersHidden() {
-    cy.button("Move, trash, and more…").click();
-    popover().findByText("Reset all filters").should("not.exist");
-    cy.button("Move, trash, and more…").click();
-  }
+function checkResetAllFiltersShown() {
+  cy.button("Move, trash, and more…").click();
+  popover().findByText("Reset all filters").should("be.visible");
+  cy.button("Move, trash, and more…").click();
+}
 
-  function filter(label: string) {
-    return cy.findByLabelText(label);
-  }
+function checkResetAllFiltersHidden() {
+  cy.button("Move, trash, and more…").click();
+  popover().findByText("Reset all filters").should("not.exist");
+  cy.button("Move, trash, and more…").click();
+}
 
-  function editFilter(label: string) {
-    cy.findByTestId("edit-dashboard-parameters-widget-container")
-      .findByText(label)
-      .click();
-  }
+function filter(label: string) {
+  return cy.findByLabelText(label);
+}
 
-  function clearIcon(label: string) {
-    return filter(label).icon("close");
-  }
+function editFilter(label: string) {
+  cy.findByTestId("edit-dashboard-parameters-widget-container")
+    .findByText(label)
+    .click();
+}
 
-  function resetIcon(label: string) {
-    return filter(label).icon("revert");
-  }
+function clearIcon(label: string) {
+  return filter(label).icon("close");
+}
 
-  function clearButton(label: string) {
-    return filter(label).findByLabelText("Clear");
-  }
+function resetIcon(label: string) {
+  return filter(label).icon("revert");
+}
 
-  function resetButton(label: string) {
-    return filter(label).findByLabelText("Reset filter to default state");
-  }
+function clearButton(label: string) {
+  return filter(label).findByLabelText("Clear");
+}
 
-  function chevronIcon(label: string) {
-    return filter(label).icon("chevrondown");
-  }
+function resetButton(label: string) {
+  return filter(label).findByLabelText("Reset filter to default state");
+}
 
-  function addDateFilter(label: string, value: string) {
-    filter(label).click();
-    popover().findByRole("textbox").clear().type(value).blur();
-    popover().button("Add filter").click();
-  }
+function chevronIcon(label: string) {
+  return filter(label).icon("chevrondown");
+}
 
-  function updateDateFilter(label: string, value: string) {
-    filter(label).click();
-    popover().findByRole("textbox").clear().type(value).blur();
-    popover().button("Update filter").click();
-  }
+function addDateFilter(label: string, value: string) {
+  filter(label).click();
+  popover().findByRole("textbox").clear().type(value).blur();
+  popover().button("Add filter").click();
+}
 
-  function addRangeFilter(
-    label: string,
-    firstValue: string,
-    secondValue: string,
-  ) {
-    filter(label).click();
-    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
-    popover().button("Add filter").click();
-  }
+function updateDateFilter(label: string, value: string) {
+  filter(label).click();
+  popover().findByRole("textbox").clear().type(value).blur();
+  popover().button("Update filter").click();
+}
 
-  function updateRangeFilter(
-    label: string,
-    firstValue: string,
-    secondValue: string,
-  ) {
-    filter(label).click();
-    popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
-    popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
-    popover().button("Update filter").click();
-  }
-});
+function addRangeFilter(
+  label: string,
+  firstValue: string,
+  secondValue: string,
+) {
+  filter(label).click();
+  popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+  popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
+  popover().button("Add filter").click();
+}
+
+function updateRangeFilter(
+  label: string,
+  firstValue: string,
+  secondValue: string,
+) {
+  filter(label).click();
+  popover().findAllByRole("textbox").first().clear().type(firstValue).blur();
+  popover().findAllByRole("textbox").last().clear().type(secondValue).blur();
+  popover().button("Update filter").click();
+}
