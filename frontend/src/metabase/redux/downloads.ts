@@ -63,6 +63,12 @@ const getDownloadedResourceType = ({
 
   const isInIframe = isWithinIframe();
 
+  const defaultAccessedVia = process.env.EMBEDDING_SDK_VERSION
+    ? "sdk-embed"
+    : isInIframe
+    ? "interactive-iframe-embed"
+    : "internal";
+
   if (dashcardId != null && token != null) {
     return { resourceType: "dashcard", accessedVia: "static-embed" };
   }
@@ -74,7 +80,7 @@ const getDownloadedResourceType = ({
   if (dashboardId != null && dashcardId != null) {
     return {
       resourceType: "dashcard",
-      accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
+      accessedVia: defaultAccessedVia,
     };
   }
 
@@ -89,13 +95,13 @@ const getDownloadedResourceType = ({
   if (cardId != null) {
     return {
       resourceType: "question",
-      accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
+      accessedVia: defaultAccessedVia,
     };
   }
 
   return {
     resourceType: "ad-hoc-question",
-    accessedVia: isInIframe ? "interactive-iframe-embed" : "internal",
+    accessedVia: defaultAccessedVia,
   };
 };
 
