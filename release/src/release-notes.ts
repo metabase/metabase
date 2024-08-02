@@ -120,96 +120,56 @@ enum ProductCategory {
   other = "Other",
 }
 
-// We want to first categorize issues by type, then by product category
-const issueMap: Record<IssueType, Partial<Record<ProductCategory, Issue[]>>> = {
-  bugFixes: {},
-  enhancements: {},
-  alreadyFixedIssues: {},
-  underTheHoodIssues: {},
+const getIssueType = (issue: Issue): IssueType => {
+  if (isNonUserFacingIssue(issue)) return IssueType.underTheHoodIssues;
+  if (isAlreadyFixedIssue(issue)) return IssueType.alreadyFixedIssues;
+  if (isBugIssue(issue)) return IssueType.bugFixes;
+  return IssueType.enhancements;
 };
 
-export const categorizeIssues = (issues: Issue[]) => {
-  return issues
-    .filter(issue => !isHiddenIssue(issue))
-    .reduce(
-      (issueMap, issue) => {
-        const issueCategory: IssueType = match(issue)
-          .when(isNonUserFacingIssue, () => IssueType.underTheHoodIssues)
-          .when(isAlreadyFixedIssue, () => IssueType.alreadyFixedIssues)
-          .when(isBugIssue, () => IssueType.bugFixes)
-          .otherwise(() => IssueType.enhancements);
-
-        const productCategory = getProductCategory(issue);
-
-        return {
-          ...issueMap,
-          [issueCategory]: {
-            ...issueMap[issueCategory],
-            [productCategory]: [
-              ...(issueMap[issueCategory][productCategory] || []),
-              issue,
-            ],
-          },
-        };
-      },
-      { ...issueMap },
-    );
+const addIssueToMap = (
+  issueMap: Record<IssueType, Partial<Record<ProductCategory, Issue[]>>>,
+  issue: Issue,
+  issueType: IssueType,
+  productCategory: ProductCategory,
+) => {
+  if (!issueMap[issueType][productCategory]) {
+    issueMap[issueType][productCategory] = [];
+  }
+  issueMap[issueType][productCategory]!.push(issue);
 };
 
-const getProductCategory = (issue: Issue): ProductCategory => {
-  const labelName =
-    typeof issue.labels === "string"
-      ? issue.labels
-      : issue.labels.map(label => label.name).join(" ");
+const getLabels = (issue: Issue): string[] => {
+  if (typeof issue.labels === "string") {
+    return [issue.labels];
+  }
+  return issue.labels.map(label => label.name);
+};
 
-  return match(labelName)
-    .when(
-      label => label.includes("Administration"),
-      () => ProductCategory.administration,
-    )
-    .when(
-      label => label.includes("Database"),
-      () => ProductCategory.database,
-    )
-    .when(
-      label => label.includes("Embedding"),
-      () => ProductCategory.embedding,
-    )
-    .when(
-      label => label.includes("Operation"),
-      () => ProductCategory.operation,
-    )
-    .when(
-      label => label.includes("Organization"),
-      () => ProductCategory.organization,
-    )
-    .when(
-      label => label.includes("Querying"),
-      () => ProductCategory.querying,
-    )
-    .when(
-      label => label.includes("Reporting"),
-      () => ProductCategory.reporting,
-    )
-    .when(
-      label => label.includes("Visualization"),
-      () => ProductCategory.visualization,
-    )
-    .otherwise(() => ProductCategory.other);
+const hasCategory = (labels: string[], category: string): boolean => {
+  return labels.some(label => label.includes(category));
+};
+
+export const getProductCategory = (issue: Issue): ProductCategory => {
+  const labels = getLabels(issue);
+
+  if (hasCategory(labels, "Administration"))
+    return ProductCategory.administration;
+  if (hasCategory(labels, "Database")) return ProductCategory.database;
+  if (hasCategory(labels, "Embedding")) return ProductCategory.embedding;
+  if (hasCategory(labels, "Operation")) return ProductCategory.operation;
+  if (hasCategory(labels, "Organization")) return ProductCategory.organization;
+  if (hasCategory(labels, "Querying")) return ProductCategory.querying;
+  if (hasCategory(labels, "Reporting")) return ProductCategory.reporting;
+  if (hasCategory(labels, "Visualization"))
+    return ProductCategory.visualization;
+
+  return ProductCategory.other;
 };
 
 // Format issues for a single product category
 const formatCategoryIssues = (category: string, issues: Issue[]): string => {
   return `**${category}**\n\n${issues.map(formatIssue).join("\n")}`;
-};
-
-// For each issue category ("Enhancements", "Bug Fixes", etc.), we want to group issues by product category
-const groupIssuesByProductCategory = (issues: Record<string, Issue[]>) => {
-  const categories = sortCategories(Object.keys(issues).map(key => key as ProductCategory));
-
-  return categories
-    .map(category => formatCategoryIssues(category, issues[category]))
-    .join("\n\n");
 };
 
 const sortCategories = (categories: ProductCategory[]): ProductCategory[] => {
@@ -224,6 +184,36 @@ const sortCategories = (categories: ProductCategory[]): ProductCategory[] => {
           : [],
       )
   );
+};
+
+// For each issue category ("Enhancements", "Bug Fixes", etc.), we want to group issues by product category
+const groupIssuesByProductCategory = (issues: Record<string, Issue[]>) => {
+  const categories = sortCategories(
+    Object.keys(issues).map(key => key as ProductCategory),
+  );
+
+  return categories
+    .map(category => formatCategoryIssues(category, issues[category]))
+    .join("\n\n");
+};
+
+export const categorizeIssues = (issues: Issue[]) => {
+  const issueMap = {
+    [IssueType.bugFixes]: {},
+    [IssueType.enhancements]: {},
+    [IssueType.alreadyFixedIssues]: {},
+    [IssueType.underTheHoodIssues]: {},
+  };
+
+  issues
+    .filter(issue => !isHiddenIssue(issue))
+    .forEach(issue => {
+      const issueType = getIssueType(issue);
+      const productCategory = getProductCategory(issue);
+      addIssueToMap(issueMap, issue, issueType, productCategory);
+    });
+
+  return issueMap;
 };
 
 export const generateReleaseNotes = ({
