@@ -31,6 +31,7 @@ import {
   SidebarHeading,
   SidebarHeadingWrapper,
   SidebarSection,
+  TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import type { SelectedItem } from "../types";
@@ -171,7 +172,6 @@ function MainNavbarView({
           />
           <Tree
             data={collectionsWithoutTrash}
-            // FIXME: Ensure this works properly when the trash collection is selected
             selectedId={collectionItem?.id}
             onSelect={onItemSelect}
             TreeNode={SidebarCollectionLink}
@@ -205,7 +205,7 @@ function MainNavbarView({
         </SidebarSection>
 
         {trashCollection && (
-          <SidebarSection>
+          <TrashSidebarSection>
             <Tree
               data={[trashCollection]}
               selectedId={collectionItem?.id}
@@ -213,7 +213,7 @@ function MainNavbarView({
               TreeNode={SidebarCollectionLink}
               role="tree"
             />
-          </SidebarSection>
+          </TrashSidebarSection>
         )}
       </div>
       <WhatsNewNotification />
