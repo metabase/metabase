@@ -93,6 +93,16 @@ const PARAMETER_B = {
   sectionId: "date",
 };
 
+const PARAMETER_A_DEFAULT_VALUE = {
+  ...PARAMETER_A,
+  default: "2023-01-05",
+};
+
+const PARAMETER_B_DEFAULT_VALUE = {
+  ...PARAMETER_B,
+  default: "2023-01-05",
+};
+
 const TAB_A = { id: 1, name: "Tab A" };
 
 const TAB_B = { id: 2, name: "Tab B" };
@@ -602,15 +612,43 @@ describe("scenarios > dashboard > filters > reset all filters", () => {
 
   describe("resetting to empty value", () => {
     it("works across all tabs with 'auto-apply filters' on", () => {
-      checkResetAllFiltersWorksAcrossTabs({ autoApplyFilters: true });
+      createDashboardWithParameterInEachTab({
+        autoApplyFilters: true,
+        parameters: [PARAMETER_A, PARAMETER_B],
+      });
+      checkResetAllFiltersWorksAcrossTabs({
+        autoApplyFilters: true,
+      });
     });
 
     it("works across all tabs with 'auto-apply filters' off", () => {
-      checkResetAllFiltersWorksAcrossTabs({ autoApplyFilters: false });
+      createDashboardWithParameterInEachTab({
+        autoApplyFilters: false,
+        parameters: [PARAMETER_A, PARAMETER_B],
+      });
+      checkResetAllFiltersWorksAcrossTabs({
+        autoApplyFilters: false,
+      });
     });
   });
 
-  describe("resetting to default value", () => {});
+  describe("resetting to default value", () => {
+    it("works across all tabs with 'auto-apply filters' on", () => {
+      createDashboardWithParameterInEachTab({
+        autoApplyFilters: true,
+        parameters: [PARAMETER_A_DEFAULT_VALUE, PARAMETER_B_DEFAULT_VALUE],
+      });
+      checkResetAllFiltersToDefaultWorksAcrossTabs({ autoApplyFilters: true });
+    });
+
+    it("works across all tabs with 'auto-apply filters' off", () => {
+      createDashboardWithParameterInEachTab({
+        autoApplyFilters: false,
+        parameters: [PARAMETER_A_DEFAULT_VALUE, PARAMETER_B_DEFAULT_VALUE],
+      });
+      checkResetAllFiltersToDefaultWorksAcrossTabs({ autoApplyFilters: false });
+    });
+  });
 });
 
 function createDashboardWithParameters(
@@ -808,14 +846,16 @@ function checkParameterSidebarDefaultValue<T = string>({
   });
 }
 
-function checkResetAllFiltersWorksAcrossTabs({
+function createDashboardWithParameterInEachTab({
   autoApplyFilters,
+  parameters: [parameterA, parameterB],
 }: {
   autoApplyFilters: boolean;
+  parameters: [UiParameter, UiParameter];
 }) {
   createDashboardWithTabs({
     tabs: [TAB_A, TAB_B],
-    parameters: [PARAMETER_A, PARAMETER_B],
+    parameters: [parameterA, parameterB],
     auto_apply_filters: autoApplyFilters,
     dashcards: [
       {
@@ -828,7 +868,7 @@ function checkResetAllFiltersWorksAcrossTabs({
         card_id: ORDERS_QUESTION_ID,
         parameter_mappings: [
           {
-            parameter_id: PARAMETER_A.id,
+            parameter_id: parameterA.id,
             card_id: ORDERS_QUESTION_ID,
             target: ["dimension", ORDERS_CREATED_AT_FIELD],
           },
@@ -844,7 +884,7 @@ function checkResetAllFiltersWorksAcrossTabs({
         card_id: ORDERS_COUNT_QUESTION_ID,
         parameter_mappings: [
           {
-            parameter_id: PARAMETER_B.id,
+            parameter_id: parameterB.id,
             card_id: ORDERS_COUNT_QUESTION_ID,
             target: ["dimension", ORDERS_CREATED_AT_FIELD],
           },
@@ -852,7 +892,13 @@ function checkResetAllFiltersWorksAcrossTabs({
       },
     ],
   }).then(dashboard => visitDashboard(dashboard.id));
+}
 
+function checkResetAllFiltersWorksAcrossTabs({
+  autoApplyFilters,
+}: {
+  autoApplyFilters: boolean;
+}) {
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
   getDashboardCard(0).findByText("37.65").should("be.visible");
@@ -890,6 +936,51 @@ function checkResetAllFiltersWorksAcrossTabs({
   checkResetAllFiltersHidden();
   filter(PARAMETER_A.name).should("have.text", PARAMETER_A.name);
   getDashboardCard(0).findByText("37.65").should("be.visible");
+  getDashboardCard(0).findByText("116.01").should("not.exist");
+}
+
+function checkResetAllFiltersToDefaultWorksAcrossTabs({
+  autoApplyFilters,
+}: {
+  autoApplyFilters: boolean;
+}) {
+  checkResetAllFiltersHidden();
+  filter(PARAMETER_A.name).should("have.text", "January 5, 2023");
+  getDashboardCard(0).findByText("73.99").should("be.visible");
+  getDashboardCard(0).findByText("116.01").should("not.exist");
+
+  updateDateFilter(PARAMETER_A.name, "01/01/2024");
+  filter(PARAMETER_A.name).should("have.text", "January 1, 2024");
+  if (!autoApplyFilters) {
+    cy.button("Apply").click();
+  }
+  checkResetAllFiltersShown();
+  getDashboardCard(0).findByText("116.01").should("be.visible");
+  getDashboardCard(0).findByText("73.99").should("not.exist");
+
+  cy.findAllByTestId("tab-button-input-wrapper").eq(1).click();
+  checkResetAllFiltersShown();
+  filter(PARAMETER_B.name).should("have.text", "January 5, 2023");
+  getDashboardCard(0).findByText("4").should("be.visible");
+
+  updateDateFilter(PARAMETER_B.name, "01/01/2023");
+  if (!autoApplyFilters) {
+    cy.button("Apply").click();
+  }
+  checkResetAllFiltersShown();
+  filter(PARAMETER_B.name).should("have.text", "January 1, 2023");
+  getDashboardCard(0).findByText("5").should("be.visible");
+
+  cy.button("Move, trash, and more…").click();
+  popover().findByText("Reset all filters").click();
+  checkResetAllFiltersHidden();
+  filter(PARAMETER_B.name).should("have.text", "January 5, 2023");
+  getDashboardCard(0).findByText("4").should("be.visible");
+
+  cy.findAllByTestId("tab-button-input-wrapper").eq(0).click();
+  checkResetAllFiltersHidden();
+  filter(PARAMETER_A.name).should("have.text", "January 5, 2023");
+  getDashboardCard(0).findByText("73.99").should("be.visible");
   getDashboardCard(0).findByText("116.01").should("not.exist");
 }
 
