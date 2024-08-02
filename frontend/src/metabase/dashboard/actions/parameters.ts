@@ -463,7 +463,6 @@ export const resetParameters = createThunkAction(
       return {
         id: parameter.id,
         value: isValueEmpty ? PULSE_PARAM_EMPTY : newValue,
-        isDraft: false,
       };
     });
   },
