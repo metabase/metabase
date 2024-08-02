@@ -75,8 +75,6 @@ export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
   ${props => props.hovered && collectionDragAndDropHoverStyle}
 `;
 
-export const CollectionLinkRoot = styled.div``;
-
 const itemContentStyle = css`
   display: flex;
   align-items: center;
