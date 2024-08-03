@@ -76,3 +76,8 @@ export function checkFilterListSourceHasValue({ values }) {
     cy.icon("close").click();
   });
 }
+
+export function setConnectedFieldSource(table, field) {
+  popover().findByText(table).click();
+  popover().findByText(field).click();
+}

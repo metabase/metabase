@@ -17,6 +17,7 @@ import {
   multiAutocompleteInput,
   multiAutocompleteValue,
   checkFilterListSourceHasValue,
+  setConnectedFieldSource,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -839,7 +840,7 @@ describe("scenarios > filters > sql filters > values source > number parameter",
     SQLFilter.runQuery("cardQuery");
   });
 
-  it("should clear the static-list values when changing the template tag type and restore them when changing the type back", () => {
+  it("should clear the value type and config when changing the template tag type and restore them when changing the type back", () => {
     openNativeEditor();
     SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
     SQLFilter.openTypePickerFromDefaultFilterType();
@@ -852,10 +853,19 @@ describe("scenarios > filters > sql filters > values source > number parameter",
 
     SQLFilter.openTypePickerFromSelectedFilterType("Text");
     SQLFilter.chooseType("Number");
+
+    cy.get("[data-checked='true']").should("have.text", "Input box");
+
+    setSearchBoxFilterType();
     checkFilterListSourceHasValue({ values: [] });
 
     SQLFilter.openTypePickerFromSelectedFilterType("Number");
+    SQLFilter.chooseType("Field Filter");
+    setConnectedFieldSource("Orders", "Total");
+
+    SQLFilter.openTypePickerFromSelectedFilterType("Number");
     SQLFilter.chooseType("Text");
+    cy.get("[data-checked='true']").should("have.text", "Search box");
     checkFilterListSourceHasValue({ values: ["Foo", "Bar"] });
   });
 });

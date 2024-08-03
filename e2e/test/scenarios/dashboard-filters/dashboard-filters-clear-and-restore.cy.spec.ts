@@ -9,6 +9,7 @@ import {
   setFilterListSource,
   sidebar,
   checkFilterListSourceHasValue,
+  modal,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -50,6 +51,9 @@ describe("dashboard filters values source config clearing and restoring", () => 
       editFilterType("Text or Category", "Is");
       checkFilterListSourceHasValue({ values: [] });
 
+      mapFilterToQuestion("Email");
+      setFilterSourceFromConnectedFields();
+
       editFilterType("Number", "Equal to");
       checkFilterListSourceHasValue({
         values: [["10", "Ten"], ["20", "Twenty"], "30"],
@@ -57,6 +61,14 @@ describe("dashboard filters values source config clearing and restoring", () => 
     });
   });
 });
+
+function setFilterSourceFromConnectedFields() {
+  sidebar().findByText("Edit").click();
+  modal().within(() => {
+    cy.findByText("From connected fields").click();
+    cy.button("Done").click();
+  });
+}
 
 const mapFilterToQuestion = (column = "Quantity") => {
   cy.findByText("Select…").click();
