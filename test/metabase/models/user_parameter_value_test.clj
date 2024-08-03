@@ -14,7 +14,9 @@
                            (->> param-name
                                 (t2/select-one :model/UserParameterValue :user_id user-id :parameter_id)
                                 :value))
-          value!         (fn value! [v] (upv/upsert! user-id dashboard-id param-name v))]
+          value!         (fn value!
+                           ([v] (value! v nil))
+                           ([v default] (upv/upsert! user-id dashboard-id {:id param-name :value v :default default})))]
       (try
         ;; UserParameterValue stores `:user_id`, `:parameter_id`, and `:value`
         ;; The value is looked up per user and param-id, and is stored as a string in the app db.
@@ -40,5 +42,14 @@
               (value! nil)
               (is (= original-count (count (t2/select :model/UserParameterValue))))
               (is (= nil (value-fn))))))
+        (testing "Parameters with default values can store `nil` (#46368)"
+          (testing (format "Upsert creates new user parameter value entry if the param_id user_id pair doesn't exist")
+            (value! 10 5)
+            (is (= (inc original-count) (t2/count :model/UserParameterValue)))
+            (is (= 10 (value-fn))))
+          (testing "Upsert deletes user parameter value entry if value is `nil` only when there is no default value."
+            (value! nil 5)
+            (is (= (inc original-count) (count (t2/select :model/UserParameterValue))))
+            (is (= nil (value-fn)))))
         (finally
           (t2/delete! :model/UserParameterValue :parameter_id param-name))))))
