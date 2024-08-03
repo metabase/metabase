@@ -104,28 +104,26 @@ describe("Static Embed Setup phase - EE, with token", () => {
         );
       });
 
-      if (resourceType === "question") {
-        it('should render "Download data" control', async () => {
-          await setup({
-            props: {
-              resourceType,
-              resource: getMockResource(resourceType, true),
-            },
-            activeTab: "Look and Feel",
-            hasEnterprisePlugins: true,
-            tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
-          });
-
-          expect(screen.getByText("Download data")).toBeVisible();
-          expect(screen.getByLabelText("Download data")).toBeChecked();
-
-          await userEvent.click(screen.getByLabelText("Download data"));
-
-          expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-            `downloads=false`,
-          );
+      it('should render "Download buttons" control', async () => {
+        await setup({
+          props: {
+            resourceType,
+            resource: getMockResource(resourceType, true),
+          },
+          activeTab: "Look and Feel",
+          hasEnterprisePlugins: true,
+          tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
-      }
+
+        expect(screen.getByText("Download buttons")).toBeVisible();
+        expect(screen.getByLabelText("Download buttons")).toBeChecked();
+
+        await userEvent.click(screen.getByLabelText("Download buttons"));
+
+        expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
+          `downloads=false`,
+        );
+      });
     });
   });
 });

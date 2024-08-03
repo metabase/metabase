@@ -182,6 +182,20 @@ NullDimension.args = {
   renderingContext,
 };
 
+export const NumDecimalPlacesChart = Template.bind({});
+NumDecimalPlacesChart.args = {
+  rawSeries: data.numDecimalPlacesChart as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const NumDecimalPlacesLegend = Template.bind({});
+NumDecimalPlacesLegend.args = {
+  rawSeries: data.numDecimalPlacesLegend as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const UnaggregatedDimension = Template.bind({});
 UnaggregatedDimension.args = {
   rawSeries: data.unaggregatedDimension as any,

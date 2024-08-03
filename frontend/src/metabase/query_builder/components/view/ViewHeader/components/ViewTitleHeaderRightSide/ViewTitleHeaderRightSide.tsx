@@ -137,6 +137,7 @@ export function ViewTitleHeaderRightSide({
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
+  const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
@@ -181,6 +182,7 @@ export function ViewTitleHeaderRightSide({
       {QuestionNotebookButton.shouldRender({
         question,
         isActionListVisible,
+        isBrandNew,
       }) && (
         <QuestionNotebookButton
           isShowingNotebook={isShowingNotebook}

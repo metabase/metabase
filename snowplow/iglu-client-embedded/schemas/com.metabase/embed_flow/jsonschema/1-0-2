@@ -1,0 +1,212 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "User interactions with public links, static embedding, and public embedding",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "embed_flow",
+    "format": "jsonschema",
+    "version": "1-0-1"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "type": "string",
+      "enum": [
+        "static_embed_discarded",
+        "static_embed_published",
+        "static_embed_unpublished",
+        "static_embed_code_copied",
+        "public_link_copied",
+        "public_embed_code_copied",
+        "public_link_removed"
+      ],
+      "description": "The type of event being recorded."
+    },
+    "artifact": {
+      "type": "string",
+      "enum": [
+        "dashboard",
+        "question"
+      ],
+      "description": "The type of artifact involved in the event (either a dashboard or a question)."
+    },
+    "new_embed": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Indicates if the embed is new."
+    },
+    "params": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Parameters related to the artifact.",
+      "properties": {
+        "locked": {
+          "type": "integer",
+          "description": "Number of locked parameters in the artifact.",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "editable": {
+          "type": "integer",
+          "description": "Number of editable parameters in the artifact.",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "disabled": {
+          "type": "integer",
+          "description": "Number of disabled parameters in the artifact.",
+          "minimum": 0,
+          "maximum": 2147483647
+        }
+      }
+    },
+    "first_published_at": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "description": "The timestamp when the artifact was first published."
+    },
+    "language": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "The backend or view language of the artifact.",
+      "maxLength": 1024
+    },
+    "location": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "code_overview",
+        "code_params",
+        "code_appearance"
+      ],
+      "description": "The location in the code where the event is triggered."
+    },
+    "code": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "backend",
+        "view"
+      ],
+      "description": "Type of the language of the artifact where the event is triggered."
+    },
+    "appearance": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "The appearance settings of the artifact.",
+      "properties": {
+        "title": {
+          "type": "boolean",
+          "description": "Indicates if the title is visible."
+        },
+        "border": {
+          "type": "boolean",
+          "description": "Indicates if the border is visible."
+        },
+        "theme": {
+          "type": [
+            "string"
+          ],
+          "enum": [
+            "light",
+            "night",
+            "transparent"
+          ],
+          "description": "The theme of the artifact's appearance."
+        },
+        "font": {
+          "type": "string",
+          "enum": [
+            "instance",
+            "custom"
+          ],
+          "description": "The font type used in the artifact."
+        },
+        "hide_download_button": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Indicates if the download button is hidden. It will be null on OSS instance since it's not supported."
+        },
+        "downloads": {
+          "type": [
+            "boolean",
+            "null"
+          ],
+          "description": "Indicates if downloads are enabled, it will be null on OSS as they can't disable them"
+        }
+      }
+    },
+    "format": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "html",
+        "csv",
+        "xlsx",
+        "json",
+        null
+      ],
+      "description": "The format of the public link."
+    },
+    "source": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "public-embed",
+        "public-share"
+      ],
+      "description": "Location where the public link is copied from"
+    },
+    "time_since_creation": {
+      "description": "Number of seconds from the creation of the artifact until the event is triggered.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "time_since_initial_publication": {
+      "description": "Number of seconds from the initial publication of the artifact until the event is triggered.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "is_example_dashboard": {
+      "type": [
+        "boolean",
+        "null"
+      ],
+      "description": "Indicates if the dashboard is the example dashboard linked in the embedding homepage."
+    }
+  },
+  "required": [
+    "event",
+    "artifact"
+  ],
+  "additionalProperties": false
+}

@@ -197,6 +197,13 @@ function ExplicitSize<T extends BaseInnerProps>({
         const element = this._getElement();
         if (element) {
           const { width, height } = element.getBoundingClientRect();
+
+          if (!width && !height) {
+            // cypress raises lots of errors in timeline trying to call setState
+            // on the unmounted element, so we're just ignoring
+            return;
+          }
+
           if (this.state.width !== width || this.state.height !== height) {
             this.setState({ width, height }, () =>
               this.props?.onUpdateSize?.(),

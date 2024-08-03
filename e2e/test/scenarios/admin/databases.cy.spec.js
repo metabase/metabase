@@ -15,6 +15,7 @@ import {
   isEE,
   setTokenFeatures,
   modal,
+  tooltip,
 } from "e2e/support/helpers";
 import { createSegment } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
@@ -148,6 +149,21 @@ describe("admin > database > add", () => {
           cy.findByLabelText(
             "Never, I'll do this manually if I need to",
           ).should("have.attr", "aria-selected", "true");
+
+          // make sure tooltips behave as expected
+          cy.findByLabelText("Host").parent().icon("info").realHover();
+        });
+
+        tooltip()
+          .findByText(/your databases ip address/i)
+          .should("be.visible");
+
+        cy.findByTestId("database-form").within(() => {
+          cy.findByLabelText("Port")
+            .parent()
+            .within(() => {
+              cy.icon("info").should("not.exist");
+            });
 
           // make sure fields needed to connect to the database are properly trimmed (metabase#12972)
           typeAndBlurUsingLabel("Display name", "QA Postgres12");

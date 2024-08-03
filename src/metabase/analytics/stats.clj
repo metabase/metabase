@@ -362,16 +362,21 @@
 
 ;;; Execution Metrics
 
-(defn summarize-executions
+(defn- summarize-executions
   "Summarize `executions`, by incrementing approriate counts in a summary map."
   ([]
-   (summarize-executions (t2/reducible-select [:model/QueryExecution :executor_id :running_time :error])))
+   (summarize-executions (t2/reducible-query {:select [:executor_id :running_time [[:case
+                                                                                    [:= :error nil ] false
+                                                                                    [:= :error "" ] false
+                                                                                    :else true] :has_error]]
+                                              :from   [:query_execution]})))
   ([executions]
    (reduce summarize-executions {:executions 0, :by_status {}, :num_per_user {}, :num_by_latency {}} executions))
   ([summary execution]
    (-> summary
        (update :executions u/safe-inc)
-       (update-in [:by_status (if (:error execution)
+       ;; MYSQL is returning true as 1, false as 0! what!
+       (update-in [:by_status (if (#{1 true} (:has_error execution))
                                 "failed"
                                 "completed")] u/safe-inc)
        (update-in [:num_per_user (:executor_id execution)] u/safe-inc)

@@ -11,6 +11,10 @@ on:
       commit:
         description: "A full-length commit SHA-1 hash"
         required: true
+      auto:
+        description: 'auto-patch release DO NOT SET MANUALLY'
+        type: boolean
+        default: false
 
 jobs:
   release-artifact:
@@ -284,6 +288,30 @@ jobs:
       - name: Wait for Metabase to start
         run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
         timeout-minutes: 3
+
+  trigger-auto-publish:
+    if: ${{ inputs.auto }}
+    needs: [run-sanity-check, check-uberjar-health, verify-docker-pull]
+    permissions:
+      actions: write
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: trigger auto publish
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'release.yml',
+              ref: '${{ github.ref }}',
+              inputs: {
+                commit: '${{ inputs.commit }}',
+                version: '${{ inputs.version }}',
+                auto: true,
+              }
+            });
 
   tests-complete-message:
     if: always()

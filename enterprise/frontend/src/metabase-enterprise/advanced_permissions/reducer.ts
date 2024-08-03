@@ -8,6 +8,7 @@ import {
   UPDATE_DATA_PERMISSION,
 } from "metabase/admin/permissions/permissions";
 import {
+  DataPermission,
   DataPermissionValue,
   type EntityId,
 } from "metabase/admin/permissions/types";
@@ -69,11 +70,13 @@ export const advancedPermissionsSlice = createSlice({
           return state;
         }
 
-        state.impersonations = state.impersonations.filter(
-          impersonation =>
-            impersonation.group_id !== payload.groupId &&
-            impersonation.db_id !== payload.entityId.databaseId,
-        );
+        if (payload?.permissionInfo?.permission === DataPermission.VIEW_DATA) {
+          state.impersonations = state.impersonations.filter(
+            impersonation =>
+              impersonation.group_id !== payload.groupId &&
+              impersonation.db_id !== payload.entityId.databaseId,
+          );
+        }
         return state;
       });
   },

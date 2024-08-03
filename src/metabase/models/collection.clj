@@ -344,10 +344,18 @@
         has-root-permission? (or (contains? permissions-set "/") (contains? ids-with-perm "root"))
         root-map (when has-root-permission?
                    {"root" collection.root/root-collection})
+        ;; block an audit collection IF:
+        ;; - audit isn't enabled, OR
+        ;; - we're looking for writable collections
+        ;; Otherwise, normal read/write permissions apply
+        block-for-audit? #(and (audit/is-collection-id-audit? %)
+                               (or (not (premium-features/enable-audit-app?))
+                                   (= read-or-write :write)))
         has-permission? (fn [[id _]]
-                          (if (contains? permissions-set "/")
-                            true
-                            (contains? ids-with-perm id)))]
+                          (and
+                           (not (block-for-audit? id))
+                           (or (contains? permissions-set "/")
+                               (contains? ids-with-perm id))))]
     (->> collection-id->collection
          (filter has-permission?)
          (merge root-map))))

@@ -276,8 +276,8 @@ export const topHeaderCellSizeAndPositionGetter = (
 
 export const getWidthForRange = (
   widths: CustomColumnWidth,
-  start: number,
-  end: number,
+  start?: number,
+  end?: number,
 ) => {
   let total = 0;
   for (let i = start ?? 0; i < (end ?? Object.keys(widths).length); i++) {
