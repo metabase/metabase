@@ -1,8 +1,8 @@
 (ns metabase.query-processor.context.default
   (:require
    [clojure.core.async :as a]
-   [metabase.config :as config]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.query-processor.context :as qp.context]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.util :as u]
@@ -11,13 +11,7 @@
 
 (def query-timeout-ms
   "Maximum amount of time to wait for a running query to complete before throwing an Exception."
-  ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
-  ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
-  ;; code
-  (u/minutes->ms
-   (if config/is-prod?
-     20
-     3)))
+  (u/minutes->ms (driver.u/db-query-timeout-minutes)))
 
 (defn- default-reducedf [reduced-result context]
   (qp.context/resultf reduced-result context))
