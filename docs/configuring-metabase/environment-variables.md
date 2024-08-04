@@ -1703,6 +1703,15 @@ Default: `null`
 
 The port for [MB_DB_HOST](#mb_db_host).
 
+
+### `MB_DB_QUERY_TIMEOUT_MINUTES`
+
+Type: integer<br>
+Default: `180`
+
+Timeout in minutes for query execution, both Metabase application database and data connections. In case you're execute a query and run into a timeout, you might consider increasing this value.
+
+
 ### `MB_DB_TYPE`
 
 Type: string (`"h2"`, `"postgres"`, `"mysql"`)<br>
