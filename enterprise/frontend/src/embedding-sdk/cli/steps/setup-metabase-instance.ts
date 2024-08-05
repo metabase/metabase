@@ -1,7 +1,6 @@
 import { exec as execCallback } from "child_process";
 
 import toggle from "inquirer-toggle";
-import fetch from "node-fetch";
 import ora from "ora";
 import { promisify } from "util";
 
@@ -90,7 +89,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
           headers: { "content-type": "application/json" },
           signal: AbortSignal.timeout(2500),
         }),
-      { retries: 20, delay: 100 },
+      { retries: 20, delay: 1000 },
     );
 
     if (!res.ok) {

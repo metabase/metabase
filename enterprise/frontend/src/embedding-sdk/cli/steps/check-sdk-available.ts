@@ -8,11 +8,11 @@ import type { CliStepMethod } from "../types/cli";
 
 export const checkSdkAvailable: CliStepMethod = async state => {
   const spinner = ora("Checking if SDK is installed…").start();
-  const sdkDep = await getPackageVersion(SDK_PACKAGE_NAME);
+  const sdkVersion = await getPackageVersion(SDK_PACKAGE_NAME);
 
   // skip install step if we already have the SDK installed
-  if (sdkDep) {
-    spinner.succeed(`SDK v${sdkDep} found`);
+  if (sdkVersion) {
+    spinner.succeed(`SDK v${sdkVersion} found`);
     return [
       {
         type: "success",

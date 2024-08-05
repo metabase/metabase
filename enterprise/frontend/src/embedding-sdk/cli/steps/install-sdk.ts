@@ -13,7 +13,7 @@ import {
   printSuccess,
 } from "embedding-sdk/cli/utils/print";
 
-export const getInstallCommand = async (packageName: string) => {
+const getInstallCommand = async (packageName: string) => {
   const manager = await detect();
 
   // Construct the command to install the package
@@ -38,7 +38,7 @@ export const getInstallCommand = async (packageName: string) => {
   return installCmd;
 };
 
-export async function installPackage(packageName: string) {
+const installPackage = async (packageName: string) => {
   let spinner;
   try {
     const command = await getInstallCommand(packageName);
@@ -58,7 +58,7 @@ export async function installPackage(packageName: string) {
       console.error(`Failed to install package: ${errorMessage}`);
     }
   }
-}
+};
 
 export const installSdk: CliStepMethod = async state => {
   const shouldStart = await toggle({

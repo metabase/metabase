@@ -1,4 +1,3 @@
-import fetch from "node-fetch";
 import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
