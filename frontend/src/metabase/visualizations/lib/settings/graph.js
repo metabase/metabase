@@ -144,7 +144,7 @@ export const GRAPH_DATA_SETTINGS = {
     widget: "fields",
     isValid: (series, vizSettings) =>
       getAreDimensionsAndMetricsValid(series, vizSettings),
-    getDefault: series => getDefaultMetrics(series),
+    getDefault: (series, vizSettings) => getDefaultMetrics(series, vizSettings),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings, _onChange, extra) => {
       const options = data.cols
