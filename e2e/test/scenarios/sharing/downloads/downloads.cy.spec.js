@@ -325,7 +325,7 @@ describe("scenarios > dashboard > download pdf", () => {
       visitDashboard(dashboard.id);
     });
 
-    cy.findByLabelText("dashboard-menu-button").click();
+    cy.findByLabelText("Move, trash, and more…").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Export as PDF").click();
@@ -352,7 +352,7 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);
-      cy.findByLabelText("dashboard-menu-button").click();
+      cy.findByLabelText("Move, trash, and more…").click();
 
       popover().findByText("Export as PDF").click();
 

@@ -339,7 +339,7 @@ describe("question and dashboard links", () => {
     it("should show a analytics link for dashboards", () => {
       visitDashboard(ORDERS_DASHBOARD_ID);
       cy.intercept("GET", "/api/collection/**").as("collection");
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").click();
 
       cy.wait("@collection");
@@ -374,7 +374,7 @@ describe("question and dashboard links", () => {
 
       visitDashboard(ORDERS_DASHBOARD_ID);
 
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").should("not.exist");
     });
   });
@@ -394,7 +394,7 @@ describe("question and dashboard links", () => {
 
       visitDashboard(ORDERS_DASHBOARD_ID);
 
-      cy.button("dashboard-menu-button").click();
+      cy.button("Move, trash, and more…").click();
       popover().findByText("Usage insights").should("not.exist");
     });
   });
