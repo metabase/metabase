@@ -44,26 +44,26 @@ export async function addDatabaseConnection(options: Options) {
     headers: { "content-type": "application/json", cookie },
   });
 
-  if (!res.ok) {
-    let errorText = await res.text();
+  await propagateError(res);
 
-    try {
-      errorText = JSON.parse(errorText).message;
-    } catch (err) {}
-
-    throw new Error(errorText);
-  }
-
-  const successState = await res.json();
-  console.log(JSON.stringify(successState, null, 2));
-
-  // TODO: update the database ID to be the one returned by the API
-  const databaseId = 2;
+  const { id: databaseId } = await res.json();
 
   // Synchronize the database schema
   res = await fetch(`${instanceUrl}/api/database/${databaseId}/sync_schema`, {
     method: "POST",
-    body: JSON.stringify({}),
     headers: { "content-type": "application/json", cookie },
   });
+
+  await propagateError(res);
 }
+
+// Propagate the error from the API to the CLI.
+const propagateError = async (res: Response) => {
+  let errorText = await res.text();
+
+  try {
+    errorText = JSON.parse(errorText).message;
+  } catch (err) {}
+
+  throw new Error(errorText);
+};
