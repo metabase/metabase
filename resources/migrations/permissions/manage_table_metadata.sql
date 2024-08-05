@@ -46,7 +46,6 @@ WITH escaped_schema_table AS (
         mt.id AS table_id,
         mt.db_id,
         mt.schema,
-        REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/') AS escaped_schema,
         CONCAT('/data-model/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/') AS schema_path,
         CONCAT('/data-model/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/table/', mt.id, '/') AS table_path
     FROM metabase_table mt

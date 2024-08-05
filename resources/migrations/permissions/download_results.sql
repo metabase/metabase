@@ -53,15 +53,14 @@ WHERE pg.name != 'Administrators'
           ELSE FALSE
       END;
 
--- Insert table-level permissions only where no DB-level permissions exist
 ANALYZE data_permissions;
 
+-- Insert table-level permissions corresponding to the approrpiate permission paths
 WITH escaped_schema_table AS (
     SELECT
         mt.id AS table_id,
         mt.db_id,
         mt.schema,
-        REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/') AS escaped_schema,
         CONCAT('/download/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/') AS download_schema_path,
         CONCAT('/download/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/table/', mt.id, '/') AS download_table_path,
         CONCAT('/download/limited/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\', '\\'), '/', '\/'), '/') AS limited_download_schema_path,

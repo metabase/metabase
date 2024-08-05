@@ -34,6 +34,7 @@
     <Logger name="org.quartz" level="INFO"/>
     <Logger name="liquibase" level="ERROR"/>
     <Logger name="net.snowflake.client.jdbc.SnowflakeConnectString" level="ERROR"/>
+
     <Root level="WARN">
       <AppenderRef ref="STDOUT"/>
     </Root>
