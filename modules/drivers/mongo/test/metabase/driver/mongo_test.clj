@@ -585,11 +585,11 @@
                            :fields [$id $name $bird_uuid]})))))
       (testing "can order by UUID (#46259)"
           (is (= [[3 nil]
-                  [1 (ObjectId. "012345678901234567890123")]
-                  [2 (ObjectId. "abcdefabcdefabcdefabcdef")]]
+                  [1 "11111111-1111-1111-1111-111111111111"]
+                  [2 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
                  (mt/rows (mt/run-mbql-query birds
-                            {:fields [$id $bird_id]
-                             :order-by [[:asc $bird_id]]}))))
+                            {:fields [$id $bird_uuid]
+                             :order-by [[:asc $bird_uuid]]}))))
           (is (= [[2 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
                   [1 "11111111-1111-1111-1111-111111111111"]
                   [3 nil]]
