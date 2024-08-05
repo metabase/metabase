@@ -14,6 +14,7 @@ import {
   checkIfReactProject,
   checkSdkAvailable,
   addDatabaseConnectionStep,
+  pickDatabaseTables,
 } from "./steps";
 import type { CliState } from "./types/cli";
 
@@ -32,6 +33,7 @@ export const CLI_STEPS = [
   { id: "setupMetabaseInstance", executeStep: setupMetabaseInstance },
   { id: "createApiKey", executeStep: createApiKey },
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
+  { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "generateCodeSample", executeStep: generateCodeSample },
 ] as const;
 

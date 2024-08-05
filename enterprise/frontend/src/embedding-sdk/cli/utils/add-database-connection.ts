@@ -1,3 +1,5 @@
+import { propagateErrorResponse } from "./propagate-error-response";
+
 interface Options {
   name: string;
   engine: string;
@@ -44,7 +46,7 @@ export async function addDatabaseConnection(options: Options) {
     headers: { "content-type": "application/json", cookie },
   });
 
-  await propagateError(res);
+  await propagateErrorResponse(res);
 
   const { id: databaseId } = await res.json();
 
@@ -54,20 +56,7 @@ export async function addDatabaseConnection(options: Options) {
     headers: { "content-type": "application/json", cookie },
   });
 
-  await propagateError(res);
+  await propagateErrorResponse(res);
+
+  return Number(databaseId);
 }
-
-// Propagate the error from the API to the CLI.
-const propagateError = async (res: Response) => {
-  if (res.ok) {
-    return;
-  }
-
-  let errorText = await res.text();
-
-  try {
-    errorText = JSON.parse(errorText).message;
-  } catch (err) {}
-
-  throw new Error(errorText);
-};

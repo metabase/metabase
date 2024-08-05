@@ -10,6 +10,7 @@ export type CliState = Partial<{
   password: string;
   token: string;
   settings: Settings;
+  databaseId: number;
 }>;
 
 export type CliError = {

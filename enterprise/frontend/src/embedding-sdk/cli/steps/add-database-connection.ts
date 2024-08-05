@@ -12,7 +12,7 @@ import { fetchInstanceSettings } from "../utils/fetch-instance-settings";
 
 export const addDatabaseConnectionStep: CliStepMethod = async state => {
   const settings = await fetchInstanceSettings({
-    instanceUrl: state.instanceUrl ?? "http://localhost:3366",
+    instanceUrl: state.instanceUrl ?? "",
   });
 
   const hasDatabase = await toggle({
@@ -45,7 +45,7 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
 
       spinner.start();
 
-      await addDatabaseConnection({
+      const databaseId = await addDatabaseConnection({
         name: engineName,
         engine: engineKey,
         connection,
@@ -56,15 +56,13 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
 
       spinner.succeed();
 
-      break;
+      return [{ type: "done" }, { ...state, settings, databaseId }];
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
 
       spinner.fail(`Cannot connect to the database. Reason: ${reason}`);
     }
   }
-
-  return [{ type: "done" }, { ...state, settings }];
 };
 
 const getEngineChoices = (settings: Settings) =>
