@@ -454,15 +454,18 @@
      :stats stats}))
 
 (defn- check-filetype [file]
-  (let [extension (file-extension file)
-        mime-type (file-mime-type file)]
-    (when-not (and (contains? allowed-extensions extension)
-                   (contains? allowed-mime-types mime-type))
+  (let [extension (file-extension file)]
+    (when-not (contains? allowed-extensions extension)
       (throw (ex-info (tru "Unsupported File Type")
-                      ;; Unsupported Media Type
-                      {:status-code    415
-                       :file-extension extension
-                       :mime-type      mime-type})))))
+                      {:status-code    415 ; Unsupported Media Type
+                       :file-extension extension})))
+    ;; This might be expensive to compute, hence having this as a second case.
+    (let [mime-type (file-mime-type file)]
+      (when-not (contains? allowed-mime-types mime-type)
+        (throw (ex-info (tru "Unsupported File Type")
+                        {:status-code    415 ; Unsupported Media Type
+                         :file-extension extension
+                         :mime-type      mime-type}))))))
 
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
