@@ -94,7 +94,7 @@ describe("issue 35954", () => {
           cy.log("Give it a value and make sure that the filer applies");
           filterWidget().click();
           popover().within(() => {
-            cy.findByPlaceholderText("Enter a number").type(3).blur();
+            cy.findByText("3").click();
             cy.button("Add filter").click();
           });
           assertFilterIsApplied();

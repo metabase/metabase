@@ -322,6 +322,8 @@ export const setParameterType = createThunkAction(
         );
       }
 
+      restoreValueConfigIfNeeded(getState, dispatch, parameterId, sectionId);
+
       return { id: parameterId, type };
     },
 );
@@ -375,6 +377,55 @@ function restoreParameterMappingsIfNeeded(
       setParameterMapping(parameterId, Number(dashcardId), card_id, target),
     );
   });
+
+  return true;
+}
+
+function restoreValueConfigIfNeeded(
+  getState: GetState,
+  dispatch: Dispatch,
+  parameterId: ParameterId,
+  sectionId: string,
+): boolean {
+  const dashboardBeforeEditing = getDashboardBeforeEditing(getState());
+  if (!dashboardBeforeEditing) {
+    return false;
+  }
+
+  const parametersBeforeEditing = dashboardBeforeEditing.parameters;
+  const parameterToRestore = parametersBeforeEditing?.find(
+    ({ id }) => id === parameterId,
+  );
+
+  if (!parameterToRestore) {
+    return false;
+  }
+
+  if (sectionId !== parameterToRestore.sectionId) {
+    return false;
+  }
+
+  if (parameterToRestore.values_source_config) {
+    dispatch(
+      setParameterSourceConfig(
+        parameterId,
+        parameterToRestore.values_source_config,
+      ),
+    );
+  }
+  if (parameterToRestore.values_source_type) {
+    dispatch(
+      setParameterSourceType(
+        parameterId,
+        parameterToRestore.values_source_type,
+      ),
+    );
+  }
+  if (parameterToRestore.values_query_type) {
+    dispatch(
+      setParameterQueryType(parameterId, parameterToRestore.values_query_type),
+    );
+  }
 
   return true;
 }

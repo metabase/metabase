@@ -1,8 +1,5 @@
 import { isFieldFilterUiParameter } from "metabase-lib/v1/parameters/utils/parameter-fields";
-import {
-  getParameterSubType,
-  isNumberParameter,
-} from "metabase-lib/v1/parameters/utils/parameter-type";
+import { isNumberParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import type { Parameter } from "metabase-types/api";
 
 export function shouldUsePlainInput(parameter: Parameter) {
@@ -11,11 +8,13 @@ export function shouldUsePlainInput(parameter: Parameter) {
     return false;
   }
 
-  // This is current behavior, although for number/= we MIGHT
-  // allow picking multiple values, so it should eventually take arity into account
-  if (isNumberParameter(parameter)) {
-    const subtype = getParameterSubType(parameter);
-    return subtype === "=";
+  if (
+    isNumberParameter(parameter) &&
+    ((parameter.values_query_type !== "list" &&
+      parameter.values_query_type !== "search") ||
+      !parameter.values_source_config)
+  ) {
+    return true;
   }
 
   // This means "string" + "input box" is selected
@@ -37,12 +36,18 @@ export function shouldUseListPicker(parameter: Parameter): boolean {
     return false;
   }
 
-  return (
-    parameter.type === "category" &&
-    (parameter.values_query_type === "list" ||
-      parameter.values_query_type === "search") &&
-    parameter.values_source_config !== undefined
-  );
+  if (
+    parameter.values_query_type !== "list" &&
+    parameter.values_query_type !== "search"
+  ) {
+    return false;
+  }
+
+  if (parameter.type === "category" || isNumberParameter(parameter)) {
+    return parameter.values_source_config !== undefined;
+  }
+
+  return false;
 }
 
 export function isStaticListParam(parameter: Parameter) {
