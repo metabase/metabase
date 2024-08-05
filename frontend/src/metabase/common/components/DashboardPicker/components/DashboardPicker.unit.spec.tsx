@@ -4,6 +4,7 @@ import fetchMock from "fetch-mock";
 import {
   setupCollectionItemsEndpoint,
   setupRecentViewsAndSelectionsEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
 import {
   mockGetBoundingClientRect,
@@ -167,6 +168,7 @@ const commonSetup = () => {
   setupRecentViewsAndSelectionsEndpoints([]);
   mockGetBoundingClientRect();
   mockScrollBy();
+  setupSearchEndpoints([]);
 
   const allItems = flattenCollectionTree(collectionTree).map(
     createMockCollectionItem,

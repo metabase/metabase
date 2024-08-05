@@ -84,7 +84,7 @@ const groupTableAccessPolicies = handleActions(
           return state;
         }
 
-        const { entityId, metadata, groupId } = payload;
+        const { entityId, metadata, groupId, value, permissionInfo } = payload;
 
         // if user is unsandboxing a specific table,
         // remove the specific table's sandbox data
@@ -95,9 +95,11 @@ const groupTableAccessPolicies = handleActions(
           });
           const isTableSandboxed = key in state;
           const isUnsandboxingTable =
-            isTableSandboxed && payload.value !== DataPermissionValue.SANDBOXED;
+            isTableSandboxed &&
+            permissionInfo.permission === DataPermission.VIEW_DATA &&
+            value !== DataPermissionValue.SANDBOXED;
 
-          if (isTableSandboxed && isUnsandboxingTable) {
+          if (isUnsandboxingTable) {
             return _.omit(state, key);
           } else {
             return state;

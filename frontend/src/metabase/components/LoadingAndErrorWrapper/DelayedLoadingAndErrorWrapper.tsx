@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
 
-import { Transition } from "metabase/ui";
-
 import LoadingAndErrorWrapper from "./LoadingAndErrorWrapper";
 
 export type LoadingAndErrorWrapperProps = {
@@ -49,29 +47,27 @@ export const DelayedLoadingAndErrorWrapper = ({
     return () => clearTimeout(timeout);
   }, [delay]);
 
-  if (!loading && !error) {
-    return <>{children}</>;
+  // Handle error condition
+  if (error) {
+    return <LoadingAndErrorWrapper error={error} {...props} />;
   }
-  if (!showWrapper) {
-    // make tests aware that things are loading
-    return <span data-testid="loading-indicator" />;
+
+  // Handle loading condition
+  if (loading) {
+    if (!showWrapper) {
+      // Don't show the wrapper yet, but make tests aware that things are loading
+      return <span data-testid="loading-indicator" />;
+    }
+    if (loader) {
+      return loader;
+    }
+    return (
+      <LoadingAndErrorWrapper error={error} loading={loading} {...props}>
+        {children}
+      </LoadingAndErrorWrapper>
+    );
   }
-  return (
-    <Transition
-      mounted={!!(error || loading)}
-      transition="fade"
-      duration={200}
-      timingFunction="ease"
-    >
-      {styles => (
-        <div style={styles}>
-          {loader ?? (
-            <LoadingAndErrorWrapper error={error} loading={loading} {...props}>
-              {children}
-            </LoadingAndErrorWrapper>
-          )}
-        </div>
-      )}
-    </Transition>
-  );
+
+  // Happy path
+  return <>{children}</>;
 };

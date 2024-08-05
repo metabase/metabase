@@ -85,7 +85,8 @@ export function PieChart(props: VisualizationProps) {
         : formatters.formatDimension(s.data.key);
 
       const percent =
-        settings["pie.percent_visibility"] === "legend"
+        settings["pie.percent_visibility"] === "legend" ||
+        settings["pie.percent_visibility"] === "both"
           ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
           : undefined;
 

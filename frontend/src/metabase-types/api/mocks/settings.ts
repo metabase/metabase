@@ -160,7 +160,7 @@ export const createMockSettings = (
   "email-configured?": false,
   "email-smtp-host": null,
   "email-smtp-port": null,
-  "email-smtp-security": "None",
+  "email-smtp-security": "none",
   "email-smtp-username": null,
   "email-smtp-password": null,
   "embedding-app-origin": "",
