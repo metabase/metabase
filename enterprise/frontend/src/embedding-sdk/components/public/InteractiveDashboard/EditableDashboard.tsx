@@ -1,142 +1,104 @@
-import type { Query } from "history";
-import type React from "react";
-import { connect, type ConnectedProps } from "react-redux";
-import _ from "underscore";
-
 import type { SdkPluginsConfig } from "embedding-sdk";
-import * as dashboardActions from "metabase/dashboard/actions";
-import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
+import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
-  getClickBehaviorSidebarDashcard,
-  getDashboardBeforeEditing,
-  getDashboardComplete,
-  getDocumentTitle,
-  getFavicon,
-  getIsAdditionalInfoVisible,
-  getIsAddParameterPopoverOpen,
-  getIsDashCardsLoadingComplete,
-  getIsDashCardsRunning,
-  getIsDirty,
-  getIsEditing,
-  getIsEditingParameter,
-  getIsHeaderVisible,
-  getIsNavigatingBackToDashboard,
-  getIsSharing,
-  getLoadingStartTime,
-  getParameterValues,
-  getSelectedTabId,
-  getSidebar,
-  getSlowCards,
-} from "metabase/dashboard/selectors";
-import type {
-  DashboardFullscreenControls,
-  DashboardRefreshPeriodControls,
-} from "metabase/dashboard/types";
+  type SdkDashboardDisplayProps,
+  useSdkDashboardParams,
+} from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
+import { useSdkSelector } from "embedding-sdk/store";
+import {
+  DASHBOARD_EDITING_ACTIONS,
+  SDK_DASHBOARD_VIEW_ACTIONS,
+} from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
+import { getIsEditing } from "metabase/dashboard/selectors";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
-import { useDashboardLoadHandlers } from "metabase/public/containers/PublicOrEmbeddedDashboard/use-dashboard-load-handlers";
-import { closeNavbar, setErrorPage } from "metabase/redux/app";
-import { getIsNavbarOpen } from "metabase/selectors/app";
-import {
-  canManageSubscriptions,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
-import type { DashboardId } from "metabase-types/api";
-import type { State } from "metabase-types/store";
+import { Box } from "metabase/ui";
 
-const mapStateToProps = (state: State) => {
-  return {
-    canManageSubscriptions: canManageSubscriptions(state),
-    isAdmin: getUserIsAdmin(state),
-    isNavbarOpen: getIsNavbarOpen(state),
-    isEditing: getIsEditing(state),
-    isSharing: getIsSharing(state),
-    dashboardBeforeEditing: getDashboardBeforeEditing(state),
-    isEditingParameter: getIsEditingParameter(state),
-    isDirty: getIsDirty(state),
-    dashboard: getDashboardComplete(state),
-    slowCards: getSlowCards(state),
-    parameterValues: getParameterValues(state),
-    loadingStartTime: getLoadingStartTime(state),
-    clickBehaviorSidebarDashcard: getClickBehaviorSidebarDashcard(state),
-    isAddParameterPopoverOpen: getIsAddParameterPopoverOpen(state),
-    sidebar: getSidebar(state),
-    pageFavicon: getFavicon(state),
-    documentTitle: getDocumentTitle(state),
-    isRunning: getIsDashCardsRunning(state),
-    isLoadingComplete: getIsDashCardsLoadingComplete(state),
-    isHeaderVisible: getIsHeaderVisible(state),
-    isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
-    selectedTabId: getSelectedTabId(state),
-    isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
-  };
-};
+import { EditableDashboardView } from "./EditableDashboardView";
+import { InteractiveDashboardProvider } from "./context";
+import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
-const mapDispatchToProps = {
-  ...dashboardActions,
-  closeNavbar,
-  setErrorPage,
-};
-
-const connector = connect(mapStateToProps, mapDispatchToProps);
-type ReduxProps = ConnectedProps<typeof connector>;
-
-type InteractiveDashboardProps = {
-  dashboardId: DashboardId;
-  initialParameterValues: Query;
-
-  downloadsEnabled?: boolean;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
-
+type EditableDashboardProps = {
   questionHeight?: number;
   plugins?: SdkPluginsConfig;
   className?: string;
-} & DashboardFullscreenControls &
-  DashboardRefreshPeriodControls &
+} & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
 const EditableDashboardInner = ({
   dashboardId,
-  dashboard,
-  initialParameterValues,
-  refreshPeriod,
-  onRefreshPeriodChange,
-  setRefreshElapsedHook,
-  isFullscreen,
-  onFullscreenChange,
-  isEditing,
-  navigateToNewCardFromDashboard,
-  downloadsEnabled,
+  initialParameterValues = {},
+  withDownloads = true,
+  questionHeight,
+  plugins,
   onLoad,
   onLoadWithoutCards,
-  ...restProps
-}: InteractiveDashboardProps & ReduxProps) => {
-  useDashboardLoadHandlers({ dashboard, onLoad, onLoadWithoutCards });
+  className,
+}: EditableDashboardProps) => {
+  const {
+    ref,
+    isFullscreen,
+    onFullscreenChange,
+    refreshPeriod,
+    onRefreshPeriodChange,
+    setRefreshElapsedHook,
+  } = useSdkDashboardParams({
+    dashboardId,
+    withDownloads,
+    withTitle: true,
+    hiddenParameters: undefined,
+    initialParameterValues,
+  });
+
+  const {
+    adhocQuestionUrl,
+    onNavigateBackToDashboard,
+    onEditQuestion,
+    onNavigateToNewCardFromDashboard,
+  } = useCommonDashboardParams({
+    dashboardId,
+  });
+
+  const isEditing = useSdkSelector(getIsEditing);
+  const dashboardActions = isEditing
+    ? DASHBOARD_EDITING_ACTIONS
+    : SDK_DASHBOARD_VIEW_ACTIONS;
 
   return (
-    <Dashboard
-      dashboardId={dashboardId}
-      dashboard={dashboard}
-      parameterQueryParams={initialParameterValues}
-      refreshPeriod={refreshPeriod}
-      onRefreshPeriodChange={onRefreshPeriodChange}
-      setRefreshElapsedHook={setRefreshElapsedHook}
-      isNightMode={false}
-      onNightModeChange={_.noop}
-      hasNightModeToggle={false}
-      isFullscreen={isFullscreen}
-      onFullscreenChange={onFullscreenChange}
-      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-      isEditing={isEditing}
-      downloadsEnabled={downloadsEnabled}
-      onSetErrorPage={console.error}
-      {...restProps}
-    />
+    <Box w="100%" h="100%" ref={ref} className={className}>
+      {adhocQuestionUrl ? (
+        <InteractiveAdHocQuestion
+          questionPath={adhocQuestionUrl}
+          withTitle
+          height={questionHeight}
+          plugins={plugins}
+          onNavigateBack={onNavigateBackToDashboard}
+        />
+      ) : (
+        <InteractiveDashboardProvider
+          plugins={plugins}
+          onEditQuestion={onEditQuestion}
+          dashboardActions={dashboardActions}
+        >
+          <EditableDashboardView
+            dashboardId={dashboardId}
+            parameterQueryParams={initialParameterValues}
+            refreshPeriod={refreshPeriod}
+            onRefreshPeriodChange={onRefreshPeriodChange}
+            setRefreshElapsedHook={setRefreshElapsedHook}
+            isFullscreen={isFullscreen}
+            onFullscreenChange={onFullscreenChange}
+            navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
+            downloadsEnabled={withDownloads}
+            onLoad={onLoad}
+            onLoadWithoutCards={onLoadWithoutCards}
+          />
+        </InteractiveDashboardProvider>
+      )}
+    </Box>
   );
 };
 
-export const EditableDashboard = connector(
+export const EditableDashboard = withPublicComponentWrapper(
   EditableDashboardInner,
-) as React.FC<InteractiveDashboardProps>;
+);

@@ -13,7 +13,7 @@ import {
   type SetDashboardAttributesOpts,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
-import { useDashboardScroll } from "metabase/dashboard/components/Dashboard/use-dashboard-scroll";
+import { useHasDashboardScroll } from "metabase/dashboard/components/Dashboard/use-has-dashboard-scroll";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import type {
   DashboardDisplayOptionControls,
@@ -22,7 +22,8 @@ import type {
 } from "metabase/dashboard/types";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import { useDispatch } from "metabase/lib/redux";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type {
   CardId,
   Dashboard as IDashboard,
@@ -203,7 +204,8 @@ function Dashboard(props: DashboardProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  const hasScroll = useDashboardScroll({ isInitialized });
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const hasScroll = useHasDashboardScroll({ isInitialized, isEmbeddingSdk });
 
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);

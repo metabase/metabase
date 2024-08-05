@@ -2,14 +2,14 @@ import { useEffect, useState } from "react";
 
 import { getMainElement } from "metabase/lib/dom";
 
-export const useDashboardScroll = ({
+export const useHasDashboardScroll = ({
   isInitialized,
-  isSdk,
+  isEmbeddingSdk,
 }: {
   isInitialized: boolean;
-  isSdk?: boolean;
+  isEmbeddingSdk?: boolean;
 }) => {
-  const mainElement = !isSdk ? getMainElement() : undefined;
+  const mainElement = !isEmbeddingSdk ? getMainElement() : undefined;
   const [hasScroll, setHasScroll] = useState(
     mainElement ? mainElement.scrollTop > 0 : false,
   );
@@ -19,7 +19,7 @@ export const useDashboardScroll = ({
       return;
     }
 
-    const node = getMainElement();
+    const node = !isEmbeddingSdk ? getMainElement() : undefined;
 
     const handleScroll = (event: any) => {
       setHasScroll(event.target.scrollTop > 0);
@@ -28,7 +28,7 @@ export const useDashboardScroll = ({
     node?.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => node?.removeEventListener("scroll", handleScroll);
-  }, [isInitialized]);
+  }, [isEmbeddingSdk, isInitialized]);
 
   return hasScroll;
 };
