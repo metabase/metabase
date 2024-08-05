@@ -38,7 +38,8 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2])
   (:import
-   (java.io File)))
+   (java.io File)
+   (org.apache.tika Tika)))
 
 (set! *warn-on-reflection* true)
 
@@ -240,6 +241,21 @@
    (reduce max 0 data-row-column-counts)
    header-column-count])
 
+(def ^:private allowed-extensions #{nil "csv" "tsv" "txt"})
+
+(def ^:private allowed-mime-types #{"text/csv" "text/tab-separated-values" "text/plain"})
+
+(def ^:private ^Tika tika (Tika.))
+
+(defn- file-extension [filename]
+  (-> filename (str/split #"\.") rest last))
+
+(defn- allowed-extension? [^File file]
+  (-> file .getName file-extension allowed-extensions boolean))
+
+(defn- allowed-mime-type? [^File file]
+  (contains? allowed-mime-types (.detect tika file)))
+
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
   Our heuristic is to use the separator that gives us the most number of columns.
@@ -259,8 +275,11 @@
 
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
-  [file]
-  (let [s (infer-separator file)]
+  [^File file]
+  (let [extension (file-extension (.getName file))
+        s         (if (= "tsv" extension)
+                    \t
+                    (infer-separator file))]
     (fn [stream]
       (csv/read-csv stream :separator s))))
 
@@ -438,6 +457,13 @@
     {:table table
      :stats stats}))
 
+(defn- check-filetype [file]
+  (when-not (and (allowed-extension? file)
+                 (allowed-mime-type? file))
+    (throw (ex-info (tru "Unsupported File Type")
+                    ;; Unsupported Media Type
+                    {:status-code 415}))))
+
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
 
@@ -471,6 +497,7 @@
   (let [database (or (t2/select-one Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
+    (check-filetype file)
     (check-can-create-upload database schema-name)
     (collection/check-write-perms-for-collection collection-id)
     (try
