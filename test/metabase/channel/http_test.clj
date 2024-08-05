@@ -142,16 +142,16 @@
         (is (true? (can-connect?* get-302-redirect-200))))
       (testing "failed to connect with a 302 that redirects to 400"
         (is (= {:request-status 400
-                :request-body   "\"Bad request\""}
+                :request-body   "Bad request"}
                (exception-data (can-connect?* get-302-redirect-400)))))
       (testing "failed to conenct to a 400"
         (is (= {:request-status 400
-                :request-body   "\"Bad request\""}
+                :request-body   "Bad request"}
                (exception-data (can-connect?* get-400)))))
       (is (=? {:request-status 500
                ;; not sure why it's returns a response map is nil body
                ;; looks like a jetty bug: https://stackoverflow.com/q/46299061
-               #_:request-body   #_"\"Internal server error\""}
+               #_:request-body   #_"Internal server error"}
              (exception-data (can-connect?* get-500)))))))
 
 (deftest ^:parallel can-connect-header-auth-test
@@ -170,7 +170,7 @@
 
     (testing "fail to connect with header auth"
       (is (= {:request-status 401
-              :request-body   "\"Unauthorized\""}
+              :request-body   "Unauthorized"}
              (exception-data (can-connect? {:url         (str url "/user")
                                             :method      "get"
                                             :auth-method "header"
@@ -193,7 +193,7 @@
                                               :password "secretpassword"}}))))
     (testing "fail to connect with query-param auth"
       (is (= {:request-status 401
-              :request-body   "\"Unauthorized\""}
+              :request-body   "Unauthorized"}
              (exception-data (can-connect? {:url         (str url "/user")
                                             :method      "get"
                                             :auth-method "query-param"
@@ -216,7 +216,7 @@
                                 :auth-info   {:token "SECRET_TOKEN"}}))))
     (testing "fail to connect with request-body auth"
       (is (= {:request-status 401
-              :request-body   "\"Unauthorized\""}
+              :request-body   "Unauthorized"}
              (exception-data (can-connect? {:url         (str url "/user")
                                             :method      "post"
                                             :auth-method "request-body"
@@ -231,7 +231,7 @@
            (exception-data (can-connect? {:url "https://www.secret_service.xyz"}))))
 
     (with-server [url [get-400]]
-      (is (= {:request-body   "\"Bad request\""
+      (is (= {:request-body   "Bad request"
               :request-status 400}
              (exception-data (can-connect? {:url         (str url (:path get-400))
                                             :method      "get"
