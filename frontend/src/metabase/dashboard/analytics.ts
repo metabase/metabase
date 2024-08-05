@@ -3,7 +3,7 @@ import type { DashboardId, DashboardWidth } from "metabase-types/api";
 
 import type { SectionId } from "./sections";
 
-const DASHBOARD_SCHEMA_VERSION = "1-1-4";
+const DASHBOARD_SCHEMA_VERSION = "1-1-5";
 
 export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
@@ -12,10 +12,27 @@ export const trackAutoApplyFiltersDisabled = (dashboardId: DashboardId) => {
   });
 };
 
-export const trackExportDashboardToPDF = (dashboardId: DashboardId) => {
+export type DashboardAccessedVia =
+  | "internal"
+  | "public-link"
+  | "static-embed"
+  | "interactive-iframe-embed"
+  | "sdk-embed";
+
+export const trackExportDashboardToPDF = ({
+  dashboardId,
+  dashboardAccessedVia,
+}: {
+  dashboardId?: DashboardId;
+  dashboardAccessedVia: DashboardAccessedVia;
+}) => {
   trackSchemaEvent("dashboard", DASHBOARD_SCHEMA_VERSION, {
     event: "dashboard_pdf_exported",
-    dashboard_id: dashboardId,
+    // We made dashboard_id optional because we don't want to send
+    // UUIDs or JWTs when in public or static embed scenarios.
+    // Because the field is still required in the snowplow table we send 0.
+    dashboard_id: typeof dashboardId === "number" ? dashboardId : 0,
+    dashboard_accessed_via: dashboardAccessedVia,
   });
 };
 
