@@ -109,6 +109,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
           { name: t`Off`, value: "off" },
           { name: t`In legend`, value: "legend" },
           { name: t`On the chart`, value: "inside" },
+          { name: t`Both`, value: "both" },
         ],
       },
     },
