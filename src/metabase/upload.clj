@@ -497,8 +497,8 @@
   (let [database (or (t2/select-one Database :id db-id)
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
-    (check-filetype file)
     (check-can-create-upload database schema-name)
+    (check-filetype file)
     (collection/check-write-perms-for-collection collection-id)
     (try
       (let [timer             (u/start-timer)
@@ -828,8 +828,8 @@
   (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
         database (table/database table)
         replace? (= ::replace action)]
-    (check-filetype file)
     (check-can-update database table)
+    (check-filetype file)
     (update-with-csv! database table file :replace-rows? replace?)))
 
 ;;; +--------------------------------
