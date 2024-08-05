@@ -9,3 +9,4 @@ export * from "./show-metabase-cli-title";
 export * from "./start-local-metabase-container";
 export * from "./check-if-react-project";
 export * from "./check-sdk-available";
+export * from "./add-database-connection";

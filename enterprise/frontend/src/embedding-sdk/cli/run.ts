@@ -13,6 +13,7 @@ import {
   startLocalMetabaseContainer,
   checkIfReactProject,
   checkSdkAvailable,
+  addDatabaseConnectionStep,
 } from "./steps";
 import type { CliState } from "./types/cli";
 
@@ -30,6 +31,7 @@ export const CLI_STEPS = [
   { id: "pollMetabaseInstance", executeStep: pollMetabaseInstance },
   { id: "setupMetabaseInstance", executeStep: setupMetabaseInstance },
   { id: "createApiKey", executeStep: createApiKey },
+  { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "generateCodeSample", executeStep: generateCodeSample },
 ] as const;
 
