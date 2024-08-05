@@ -828,6 +828,7 @@
   (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
         database (table/database table)
         replace? (= ::replace action)]
+    (check-filetype file)
     (check-can-update database table)
     (update-with-csv! database table file :replace-rows? replace?)))
 
