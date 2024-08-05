@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 
 import {
@@ -95,6 +96,21 @@ const defaultConfig = {
       removeDirectory,
     });
 
+    // this is an official workaround to keep recordings of the failed specs only
+    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
+    on("after:spec", (spec, results) => {
+      if (results && results.video) {
+        // Do we have failures for any retry attempts?
+        const failures = results.tests.some(test =>
+          test.attempts.some(attempt => attempt.state === "failed"),
+        );
+        if (!failures) {
+          // delete the video if the spec passed and no tests retried
+          fs.unlinkSync(results.video);
+        }
+      }
+    });
+
     /********************************************************************
      **                          CONFIG                                **
      ********************************************************************/
@@ -134,6 +150,9 @@ const defaultConfig = {
   specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
   viewportHeight: 800,
   viewportWidth: 1280,
+  // enable video recording in run mode
+  video: true,
+  videoCompression: true,
 };
 
 const mainConfig = {
