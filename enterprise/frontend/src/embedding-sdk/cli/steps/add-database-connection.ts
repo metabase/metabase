@@ -1,5 +1,6 @@
 import { select } from "@inquirer/prompts";
 import toggle from "inquirer-toggle";
+import ora from "ora";
 
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import type { Settings } from "metabase-types/api/settings";
@@ -8,7 +9,6 @@ import { CLI_SHOWN_DB_ENGINES } from "../constants/database";
 import { addDatabaseConnection } from "../utils/add-database-connection";
 import { askForDatabaseConnectionInfo } from "../utils/ask-for-db-connection-info";
 import { fetchInstanceSettings } from "../utils/fetch-instance-settings";
-import { printError } from "../utils/print";
 
 export const addDatabaseConnectionStep: CliStepMethod = async state => {
   const settings = await fetchInstanceSettings({
@@ -35,11 +35,15 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
     const engine = settings.engines[engineKey];
     const engineName = engine["driver-name"];
 
+    const spinner = ora("Adding database connection…");
+
     try {
       const connection = await askForDatabaseConnectionInfo({
         engine,
         engineKey,
       });
+
+      spinner.start();
 
       await addDatabaseConnection({
         name: engineName,
@@ -50,11 +54,13 @@ export const addDatabaseConnectionStep: CliStepMethod = async state => {
         instanceUrl: state.instanceUrl ?? "",
       });
 
+      spinner.succeed();
+
       break;
     } catch (error) {
       const reason = error instanceof Error ? error.message : String(error);
 
-      printError(`Cannot connect to the database. Reason: ${reason}`);
+      spinner.fail(`Cannot connect to the database. Reason: ${reason}`);
     }
   }
 

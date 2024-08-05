@@ -59,6 +59,10 @@ export async function addDatabaseConnection(options: Options) {
 
 // Propagate the error from the API to the CLI.
 const propagateError = async (res: Response) => {
+  if (res.ok) {
+    return;
+  }
+
   let errorText = await res.text();
 
   try {
