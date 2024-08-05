@@ -2,21 +2,15 @@ body {
   background-color: transparent;
 }
 
-.NoBackground {
-  --mb-color-embed-bg-color-override: transparent;
-}
-
-.EmbedFrame {
+[data-metabase-theme="light"][data-metabase-theme="light"] {
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
   --mb-color-text-tertiary: var(--mb-color-text-light);
-  --mb-color-embed-filter-bg-color: var(--mb-color-bg-white);
+}
 
+.EmbedFrame {
   color: var(--mb-color-text-primary);
-  background-color: var(
-    --mb-color-embed-bg-color-override,
-    var(--mb-color-bg-dashboard)
-  );
+  background-color: var(--mb-color-bg-dashboard);
 }
 /* A temporary solution until we migrated all colors in visualization to use semantic colors
    e.g. `text-primary`, `text-secondary`, `text-tertiary`. */
@@ -27,16 +21,10 @@ body {
 .EmbedFrameHeader,
 .EmbedFrameFooter {
   color: var(--mb-color-text-primary);
-  background-color: var(
-    --mb-color-embed-bg-color-override,
-    var(--mb-color-bg-dashboard)
-  );
+  background-color: var(--mb-color-bg-dashboard);
 }
 
-.ThemeNight.EmbedFrame,
-/* this is to make it work when exporting to pdfs,
-where the EmbedFrame is not part of the exported dom */
-.ThemeNight.EmbedFrame .WithThemeBackground {
+[data-metabase-theme="night"][data-metabase-theme="night"] {
   --mb-color-text-primary: color-mix(
     in srgb,
     var(--mb-color-text-white) 90%,
@@ -52,47 +40,57 @@ where the EmbedFrame is not part of the exported dom */
     var(--mb-color-text-white) 45%,
     transparent
   );
-  --mb-color-embed-filter-bg-color: var(--mb-color-bg-black);
+  --mb-color-text-selected: var(--mb-base-color-brand-30);
   --mb-color-border: var(--mb-color-text-medium);
+  --mb-color-bg-dashboard: var(--mb-color-bg-black);
+  --mb-color-background: var(--mb-color-bg-black);
+  --mb-color-background-selected: var(--mb-base-color-brand-70);
+  --mb-color-background-disabled: var(--mb-base-color-gray-70);
+  --mb-color-background-brand: var(--mb-base-color-brand-60);
 
-  background-color: var(
-    --mb-color-embed-bg-color-override,
-    var(--mb-color-bg-black)
-  );
-  border-color: var(--mb-color-bg-dark);
+  .EmbedFrame,
+    /* this is to make it work when exporting to pdfs,
+  where the EmbedFrame is not part of the exported dom */
+      .WithThemeBackground {
+    background-color: var(--mb-color-bg-dashboard);
+    border-color: var(--mb-color-bg-dark);
+  }
+
+  .EmbedFrameHeader,
+  .EmbedFrameFooter {
+    background-color: var(--mb-color-bg-dashboard);
+    border-color: var(--mb-color-bg-dark);
+  }
+
+  .EmbedFrame .fullscreenNightText {
+    transition: color 1s linear;
+  }
+
+  .EmbedFrame svg text {
+    stroke: none !important;
+  }
+
+  .EmbedFrame .DashCard .Card {
+    background-color: var(--mb-color-bg-black);
+    border: 1px solid var(--mb-color-border);
+  }
 }
 
-.ThemeNight .EmbedFrameHeader,
-.ThemeNight .EmbedFrameFooter {
-  background-color: var(
-    --mb-color-embed-bg-color-override,
-    var(--mb-color-bg-black)
-  );
-  border-color: var(--mb-color-bg-dark);
+.NoBackground {
+  --mb-color-bg-dashboard: transparent;
 }
 
-.ThemeNight.EmbedFrame .fullscreenNightText {
-  transition: color 1s linear;
-}
+[data-metabase-theme="transparent"][data-metabase-theme="transparent"] {
+  .EmbedFrame {
+    background-color: transparent;
 
-.ThemeNight.EmbedFrame svg text {
-  stroke: none !important;
-}
+    .DashCard .Card {
+      background-color: transparent;
+    }
+  }
 
-.ThemeNight.EmbedFrame .DashCard .Card {
-  background-color: var(--mb-color-bg-black);
-  border: 1px solid var(--mb-color-border);
-}
-
-.ThemeTransparent.EmbedFrame {
-  background-color: transparent;
-}
-
-.ThemeTransparent .EmbedFrameHeader,
-.ThemeTransparent .EmbedFrameFooter {
-  background-color: transparent;
-}
-
-.ThemeTransparent.EmbedFrame .DashCard .Card {
-  background-color: transparent;
+  .EmbedFrameHeader,
+  .EmbedFrameFooter {
+    background-color: transparent;
+  }
 }
