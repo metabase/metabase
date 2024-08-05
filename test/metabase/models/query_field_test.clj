@@ -59,7 +59,8 @@
   [card-id query]
   (if (string? query)
     (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
-    (t2/update! :model/Card card-id {:dataset_query query})))
+    (t2/update! :model/Card card-id {:dataset_query query}))
+  (query-analysis/analyze-card! card-id))
 
 ;;;;
 ;;;; Actual tests
