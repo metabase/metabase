@@ -11,6 +11,7 @@ import {
   PLUGIN_REDUCERS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES,
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_POST_ACTIONS,
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_GROUP_ROUTES,
   PLUGIN_DATA_PERMISSIONS,
@@ -40,11 +41,26 @@ const BLOCK_PERMISSION_OPTION = {
   iconColor: "danger",
 };
 
+const NO_ACCESS_OPTION = {
+  label: t`No access`,
+  value: DataPermissionValue.BLOCKED,
+  icon: "close",
+  iconColor: "danger",
+};
+
 if (hasPremiumFeature("advanced_permissions")) {
-  const addSelectedAdvancedPermission = (options, value) => {
+  const addSelectedAdvancedPermission = subject => (options, value) => {
     switch (value) {
       case BLOCK_PERMISSION_OPTION.value:
-        return [...options, BLOCK_PERMISSION_OPTION];
+        if (subject === "fields") {
+          return options.map(option =>
+            option.value === DataPermissionValue.BLOCKED
+              ? BLOCK_PERMISSION_OPTION
+              : option,
+          );
+        } else {
+          return [...options, BLOCK_PERMISSION_OPTION];
+        }
       case IMPERSONATED_PERMISSION_OPTION.value:
         return [...options, IMPERSONATED_PERMISSION_OPTION];
     }
@@ -53,9 +69,9 @@ if (hasPremiumFeature("advanced_permissions")) {
   };
 
   PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions =
-    addSelectedAdvancedPermission;
+    addSelectedAdvancedPermission("fields");
   PLUGIN_ADVANCED_PERMISSIONS.addSchemaPermissionOptions =
-    addSelectedAdvancedPermission;
+    addSelectedAdvancedPermission("tables");
   PLUGIN_ADVANCED_PERMISSIONS.addDatabasePermissionOptions = (
     options,
     database,
@@ -66,6 +82,10 @@ if (hasPremiumFeature("advanced_permissions")) {
       : []),
     BLOCK_PERMISSION_OPTION,
   ];
+
+  if (hasPremiumFeature("sandboxes")) {
+    PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_OPTIONS.push(NO_ACCESS_OPTION);
+  }
 
   PLUGIN_ADMIN_PERMISSIONS_DATABASE_ROUTES.push(
     <ModalRoute
@@ -97,13 +117,24 @@ if (hasPremiumFeature("advanced_permissions")) {
     return null;
   };
 
-  PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled = (value, subject) => {
-    return (
-      ["tables", "fields"].includes(subject) &&
-      [DataPermissionValue.BLOCKED, DataPermissionValue.IMPERSONATED].includes(
-        value,
-      )
-    );
+  PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled = (
+    value,
+    subject,
+    parentValue,
+  ) => {
+    if (subject === "tables") {
+      return (
+        value === DataPermissionValue.BLOCKED ||
+        value === DataPermissionValue.IMPERSONATED
+      );
+    } else if (subject === "fields") {
+      return (
+        value === DataPermissionValue.IMPERSONATED ||
+        parentValue === DataPermissionValue.BLOCKED
+      );
+    } else {
+      return false;
+    }
   };
 
   PLUGIN_ADVANCED_PERMISSIONS.isRestrictivePermission = value => {

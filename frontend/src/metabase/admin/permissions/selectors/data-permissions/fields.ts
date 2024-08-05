@@ -29,6 +29,7 @@ import {
   getPermissionWarningModal,
   getRevokingAccessToAllTablesWarningModal,
   getWillRevokeNativeAccessWarningModal,
+  getNoAccessTablePermissionDoesNotApplyToNativeQueriesWarning,
 } from "../confirmations";
 
 const buildAccessPermission = (
@@ -60,6 +61,13 @@ const buildAccessPermission = (
     DataPermission.VIEW_DATA,
   );
 
+  const schemaValue = getTablesPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
   const warning = getPermissionWarning(
     value,
     defaultGroupValue,
@@ -86,6 +94,7 @@ const buildAccessPermission = (
       entityId,
       newValue,
     ),
+    getNoAccessTablePermissionDoesNotApplyToNativeQueriesWarning(newValue),
   ];
 
   const options = PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(
@@ -99,12 +108,11 @@ const buildAccessPermission = (
   );
   const isDisabled =
     isAdmin ||
-    (!isAdmin &&
-      (options.length <= 1 ||
-        PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
-          value,
-          "fields",
-        )));
+    PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
+      value,
+      "fields",
+      schemaValue,
+    );
 
   return {
     permission: DataPermission.VIEW_DATA,
