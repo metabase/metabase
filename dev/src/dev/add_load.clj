@@ -1,63 +1,78 @@
 (ns src.dev.add-load
-  (:require [clojure.string :as str]
-            [clojure.walk :as walk]
-            [metabase-enterprise.serialization.cmd :as cmd]
-            [metabase.test :as mt]))
+  (:require [clojure.walk :as walk]
+            [dev.with-perm :as perm]
+            [metabase.util.malli :as mu]))
 
-(defn unwrap [data]
-  (vec (mapcat
-        #(cond
-           (keyword? (first %))
-           [%]
-           (number? (first %))
-           (repeat (first %) (second %))
-           :else (throw (ex-info "Invalid data" {})))
-        data)))
+(defn- extract-bindings [bindings inserted]
+  (update-vals bindings #(get inserted %)))
 
-(defn undata [data]
-  (vec (flatten
-        (walk/postwalk
-         (fn [x] (if (and (keyword? x)
-                         (str/starts-with? (name x) "?"))
-                  (symbol (subs (name x) 1))
-                  x))
-         data))))
+(defn- fill-attrs [ids attrs]
+  (walk/postwalk
+   (fn [x] (if-let [value (get ids x)] value x))
+   attrs))
 
-(defn find-collection-ids [script]
-  (let [ids (atom [])]
-    (walk/prewalk
-     (fn [x]
-       (if (and (keyword? x) (str/starts-with? (name x) "?"))
-         (swap! ids conj (symbol (subs (name x) 1)))
-         x))
-     script)
-    (vec (distinct @ids))))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;; PUBLIC API ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(mu/defn from-script
+  "Takes a script and inserts the entities into the database. Returns a map of the ids of the entities inserted.
 
-(defmacro load-up [script]
-  `(do (mt/with-temp ~(undata (unwrap #_{:clj-kondo/ignore [:discouraged-var]}
-                                      (eval script)))
-         (cmd/v2-dump! "output_" {:collection-ids ~(find-collection-ids
-                                                    #_{:clj-kondo/ignore [:discouraged-var]}
-                                                    (eval script))}))
-       (cmd/v2-load! "output_" {:backfill? false})))
+  The script is similar to the one used by [[mt/with-temp]], but instead of code to be executed, it contains the
+  entities to be inserted, and values to be bound _as data_. The entities are inserted in the order they appear in the
+  script, and their bound values are saved in a map.
 
-;; Load scenarios cases look like this
-  (def one-coll-with-300-cards [[:model/Collection {:?coll-id :id} {}]
-                                [300 [:model/Card {} {:collection_id :?coll-id}]]])
+  Example:
 
-(comment
+  - Bind the coll-id, kind of like with-temp:
+  ```clojure
+  (from-script [[:model/Collection {:?/coll-id :id} {}]])
+  ;;=> {:coll-id 407}
+  ```
 
-  (time (load-up one-coll-with-300-cards))
-  ;; 300 cards in 1 collection takes about 15 seconds
+  - Insert a card and have it reference the collection:
+  ```clojure
+  (from-script
+    [[:model/Collection {:?/coll-id :id} {}]
+     [:model/Collection {:?/coll-id-two :id} {}]
+     [:model/Card {:?/card-id :id
+                   :?/entity_id :entity-id}]])
+  ;;=> {:coll-id 408, :coll-id-two 409, :card-id 9550, :entity-id \"BZiPJnAlnm69pUvP7rCXY\"}
+  ```
 
+  Because the script itself is just data, we can use it as an api for inserting generated load-testing data.
 
-  ;; Caveat, this blows the stack at 400+ entities being inserted, I think due to how with-temp is implemented. To do
-  ;; more, we could switch it to using a loop instead of straight recursion.
+  - Example with n cards that keep track of their card and entity ids.
 
+  ```clojure
+  (defn two-collections-and-n-cards [n]
+    (reduce into
+            [[:model/Collection {:?/coll-id :id} {}]
+             [:model/Collection {:?/coll-id-two :id} {}]]
+            (vec (for [i (range 1 (inc n))]
+                   [[:model/Card
+                     {(keyword \"?\" (str \"card-id-\" i)) :id
+                      (keyword \"?\" (str \"entity-id-\" i)) :entity_id}
+                     {:collection_id :?/coll-id}]]))))
 
-  ;; This is a rough sketch of how this could/should work. I wasn't really interested in performance, or cleanliness,
-  ;; but this DOES work, and the data-oriented syntax is way easier to generate programatically than the
-  ;; code-oriented syntax. In other words, we can write scripts taht create values like what's in `one-coll-with-300-cards`.
+  (from-script (two-collections-and-n-cards 5))
+  ;;=>
+  {:coll-id 452
+   :coll-id-two 453
 
-  )
+   :card-id-1 36667
+   :entity-id-1 \"f7H5BjF5F2Y-doCek40-1\"
+   :card-id-2 36668
+   :entity-id-2 \"-1y3Rc3HmBomcVfzt7wyk\"
+   :card-id-3 36669
+   :entity-id-3 \"Xqj0Q3O0mNtCkIEq4Mr6b\"
+   :card-id-4 36670
+   :entity-id-4 \"Pd9ZsZNI0YbnEj8M4TOFp\"}
+  ```"
+  [script :- [:sequential [:tuple :keyword :map :map]]]
+  (let [ids (atom {})]
+    (doseq [[modelable bindings attrs] script]
+      (let [inserted (perm/with-perm modelable (fill-attrs @ids attrs))]
+        (swap! ids merge (extract-bindings bindings inserted))
+        inserted))
+    (update-keys @ids (comp keyword name))))
