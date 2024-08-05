@@ -14,7 +14,6 @@ import { TextWidget } from "metabase/components/TextWidget";
 import { Sortable } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
-import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import { NumberInputWidget } from "metabase/parameters/components/widgets/NumberInputWidget";
 import { StringInputWidget } from "metabase/parameters/components/widgets/StringInputWidget";
 import {
@@ -39,6 +38,7 @@ import {
 
 import S from "./ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "./ParameterValueWidgetTrigger";
+import { WidgetStatus } from "./WidgetStatus";
 import ParameterFieldWidget from "./widgets/ParameterFieldWidget/ParameterFieldWidget";
 
 class ParameterValueWidget extends Component {
@@ -91,7 +91,7 @@ class ParameterValueWidget extends Component {
     const { required, default: defaultValue } = this.props.parameter;
     const { value } = this.props;
 
-    if (required && defaultValue && !value) {
+    if (required && defaultValue != null && !value) {
       this.props.setValue(defaultValue);
     }
   }
@@ -118,45 +118,88 @@ class ParameterValueWidget extends Component {
 
     if (!icon) {
       // This is required to keep input width constant
-      return <WidgetStatusIcon name="empty" />;
+      return <WidgetStatus className={S.widgetStatus} status="none" />;
     }
 
     return icon;
   }
 
   getOptionalActionIcon() {
-    if (this.props.value != null) {
+    const { parameter, value, setParameterValueToDefault, setValue } =
+      this.props;
+    const { isFocused } = this.state;
+    const { default: defaultValue } = parameter;
+    const hasValue = !parameterHasNoDisplayValue(value);
+    const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
+    const fieldHasValueOrFocus = parameter.value != null || isFocused;
+
+    if (
+      hasDefaultValue &&
+      !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
+    ) {
       return (
-        <WidgetStatusIcon
-          name="close"
-          onClick={() => this.props.setValue(null)}
+        <WidgetStatus
+          className={S.widgetStatus}
+          highlighted={fieldHasValueOrFocus}
+          status="reset"
+          onClick={() => setParameterValueToDefault?.(parameter.id)}
         />
       );
     }
 
-    if (!hasNoPopover(this.props.parameter)) {
+    if (hasValue) {
       return (
-        <WidgetStatusIcon
-          name="chevrondown"
-          size={this.props.mimicMantine ? 16 : undefined}
+        <WidgetStatus
+          className={S.widgetStatus}
+          highlighted={fieldHasValueOrFocus}
+          status="clear"
+          onClick={() => {
+            setValue(null);
+            close();
+          }}
         />
       );
+    }
+
+    if (!hasNoPopover(parameter)) {
+      return <WidgetStatus className={S.widgetStatus} status="empty" />;
     }
   }
 
   getRequiredActionIcon() {
-    const { required, default: defaultValue } = this.props.parameter;
-    const { value, setParameterValueToDefault = () => {} } = this.props;
+    const { parameter, value, setParameterValueToDefault, setValue } =
+      this.props;
+    const { isFocused } = this.state;
+    const { required, default: defaultValue } = parameter;
+    const hasValue = !parameterHasNoDisplayValue(value);
+    const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
+    const fieldHasValueOrFocus = parameter.value != null || isFocused;
 
     if (
       required &&
-      defaultValue &&
+      hasDefaultValue &&
       !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
-        <WidgetStatusIcon
-          name="time_history"
-          onClick={() => setParameterValueToDefault(this.props.parameter.id)}
+        <WidgetStatus
+          className={S.widgetStatus}
+          highlighted={fieldHasValueOrFocus}
+          status="reset"
+          onClick={() => setParameterValueToDefault?.(parameter.id)}
+        />
+      );
+    }
+
+    if (required && !hasDefaultValue && hasValue) {
+      return (
+        <WidgetStatus
+          className={S.widgetStatus}
+          highlighted={fieldHasValueOrFocus}
+          status="clear"
+          onClick={() => {
+            setValue(null);
+            close();
+          }}
         />
       );
     }
@@ -196,6 +239,7 @@ class ParameterValueWidget extends Component {
       return this.wrapSortable(
         <ParameterValueWidgetTrigger
           className={cx(S.noPopover, className)}
+          ariaLabel={parameter.name}
           hasValue={hasValue}
         >
           {showTypeIcon && (

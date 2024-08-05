@@ -12,7 +12,6 @@ export const SettingLabel = styled.label`
 `;
 
 export const SettingLabelError = styled.span`
-  margin: 0 0.5rem;
   color: ${color("error")};
 `;
 
