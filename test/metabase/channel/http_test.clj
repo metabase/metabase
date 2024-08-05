@@ -48,8 +48,7 @@
   (fn [req]
     (-> req
         (m/update-existing :body #(-> % slurp (json/parse-string true)))
-        handler
-        (m/update-existing :body json/generate-string))))
+        handler)))
 
 (def middlewares [json-mw wrap-params])
 
@@ -64,7 +63,10 @@
       (finally
         (.stop server)))))
 
-(defn- make-route
+(defn make-route
+  "Create a route to be used with [[with-server]].
+
+  (make-route :get \"/test\" (fn [req] {:status 200 :body \"Hello, world!\"}))"
   [method path handler]
   {:path  path
    :route (compojure/make-route method path handler)})

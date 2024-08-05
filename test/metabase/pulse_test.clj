@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.channel.http-test :as channel.http-test]
    [metabase.email :as email]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -910,3 +911,36 @@
                  (pulse.test-util/with-captured-channel-send-messages!
                    (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id)))
                  count))))))))
+
+(deftest alert-send-to-channel-e2e-test
+  (testing "Send alert to http channel works e2e"
+    (let [requests (atom [])
+          endpoint (channel.http-test/make-route
+                    :post "/test"
+                    (fn [req]
+                      (swap! requests conj req)))]
+      (channel.http-test/with-server [url [endpoint]]
+        (mt/with-temp
+          [:model/Card         card           {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+           :model/Channel      channel        {:type    :channel/http
+                                               :details {:url         (str url "/test")
+                                                         :auth-method :none}}
+           :model/Pulse        {pulse-id :id} {:name "Test Pulse"
+                                               :alert_condition "rows"}
+           :model/PulseCard    _              {:pulse_id pulse-id
+                                               :card_id  (:id card)}
+           :model/PulseChannel _              {:pulse_id pulse-id
+                                               :channel_type "http"
+                                               :channel_id   (:id channel)}]
+          (metabase.pulse/send-pulse! (t2/select-one :model/Pulse pulse-id))
+          (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
+                          :alert_creator_name "Rasta Toucan"
+                          :alert_id           pulse-id
+                          :data               {:question_id   (:id card)
+                                               :question_name (mt/malli=? string?)
+                                               :question_url  (mt/malli=? string?)
+                                               :raw_data      {:cols ["count"], :rows [[18760]]},
+                                               :type          "question"
+                                               :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
+                          :type               "alert"}}
+                  (first @requests))))))))
