@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || github.env.DEFAULT_VERSION }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || env.DEFAULT_VERSION }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
