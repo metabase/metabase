@@ -26,10 +26,6 @@ export const useCommonDashboardParams = ({
 
   const previousDashboardId = usePrevious(dashboardId);
 
-  useUnmount(() => {
-    dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
-  });
-
   useEffect(() => {
     if (previousDashboardId && dashboardId !== previousDashboardId) {
       dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
@@ -37,40 +33,47 @@ export const useCommonDashboardParams = ({
     }
   }, [dashboardId, dispatch, previousDashboardId]);
 
-  const handleNavigateToNewCardFromDashboard = ({
-    nextCard,
-    previousCard,
-    dashcard,
-    objectId,
-  }: NavigateToNewCardFromDashboardOpts) => {
-    const state = store.getState();
-    const metadata = getMetadata(state);
-    const { dashboards, parameterValues } = state.dashboard;
-    const dashboard = dashboards[dashboardId];
+  useUnmount(() => {
+    dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
+  });
 
-    if (dashboard) {
-      const url = getNewCardUrl({
-        metadata,
-        dashboard,
-        parameterValues,
-        nextCard,
-        previousCard,
-        dashcard: dashcard as QuestionDashboardCard,
-        objectId,
-      });
+  const handleNavigateToNewCardFromDashboard = useCallback(
+    ({
+      nextCard,
+      previousCard,
+      dashcard,
+      objectId,
+    }: NavigateToNewCardFromDashboardOpts) => {
+      const state = store.getState();
+      const metadata = getMetadata(state);
+      const { dashboards, parameterValues } = state.dashboard;
+      const dashboard = dashboards[dashboardId];
 
-      if (url) {
-        dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
-        setAdhocQuestionUrl(url);
+      if (dashboard) {
+        const url = getNewCardUrl({
+          metadata,
+          dashboard,
+          parameterValues,
+          nextCard,
+          previousCard,
+          dashcard: dashcard as QuestionDashboardCard,
+          objectId,
+        });
+
+        if (url) {
+          dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
+          setAdhocQuestionUrl(url);
+        }
       }
-    }
-  };
+    },
+    [dashboardId, dispatch, store],
+  );
 
-  const handleNavigateBackToDashboard = () => {
+  const handleNavigateBackToDashboard = useCallback(() => {
     dispatch(navigateBackToDashboard(dashboardId)); // set global state for cases when navigate back from question with empty results
 
     setAdhocQuestionUrl(null);
-  };
+  }, [dashboardId, dispatch]);
 
   const onEditQuestion = useCallback(
     (question: Question) => {
