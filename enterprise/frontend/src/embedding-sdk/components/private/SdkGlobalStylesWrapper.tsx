@@ -1,5 +1,6 @@
-import { css } from "@emotion/react";
+import { Global, css } from "@emotion/react";
 import styled from "@emotion/styled";
+import { useMantineTheme } from "@mantine/core";
 import type { HTMLAttributes } from "react";
 
 import { rootStyle } from "metabase/css/core/base.styled";
@@ -18,13 +19,16 @@ export function SdkGlobalStylesWrapper({
   ...divProps
 }: SdkContentWrapperProps & HTMLAttributes<HTMLDivElement>) {
   const fontFiles = useSelector(getFontFiles);
-
+  const theme = useMantineTheme();
   return (
-    <SdkGlobalStylesInner
-      baseUrl={baseUrl}
-      fontFiles={fontFiles}
-      {...divProps}
-    />
+    <>
+      <SdkGlobalStylesInner
+        baseUrl={baseUrl}
+        fontFiles={fontFiles}
+        {...divProps}
+      />
+      <Global styles={getMetabaseCssVariables(theme)} />
+    </>
   );
 }
 
@@ -34,8 +38,6 @@ const SdkGlobalStylesInner = styled.div<
   }
 >`
   font-size: ${({ theme }) => theme.other.fontSize};
-
-  ${({ theme }) => getMetabaseCssVariables(theme)}
 
   ${rootStyle}
 

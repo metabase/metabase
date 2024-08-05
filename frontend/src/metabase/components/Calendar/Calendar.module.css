@@ -18,7 +18,7 @@
 }
 
 .CalendarDayNames {
-  opacity: 0.12;
+  color: var(--mb-color-text-tertiary);
 }
 
 .CalendarDay,
@@ -38,7 +38,6 @@
 
 .CalendarDayName {
   cursor: inherit;
-  color: inherit !important;
 }
 
 .CalendarDayThisMonth {

@@ -3,7 +3,7 @@
   --mb-color-background: var(--mb-color-bg-light);
   /* SVG logo */
   --mb-color-logo-text: #5a6072;
-  --mb-color-logo-primary: var(--mb-base-color-blue);
+  --mb-color-logo-primary: var(--mb-base-color-blue-40);
   --mb-color-logo-secondary: #c2daf0;
 
   display: flex;

@@ -7,6 +7,8 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/v1/parameters/constants";
 
+import DateRelativeWidgetStyle from "./DateRelativeWidget.module.css";
+
 type Shortcut = {
   name: string;
   operator: string | string[];
@@ -107,6 +109,7 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
                   CS.textNormal,
                   CS.textCentered,
                   CS.full,
+                  DateRelativeWidgetStyle.shortcut,
                 )}
                 onClick={() => this.onSetShortcut(s)}
               >
@@ -117,24 +120,18 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
         </section>
         {Object.keys(RELATIVE_SHORTCUTS).map(sectionName => (
           <section key={sectionName}>
-            <div
+            <fieldset
               className={cx(
-                CS.borderBottom,
                 CS.textUppercase,
                 CS.flex,
                 CS.layoutCentered,
-                CS.mb2,
+                DateRelativeWidgetStyle.sectionLine,
               )}
             >
-              <h6
-                style={{
-                  top: "6px",
-                }}
-                className={cx(CS.px2, CS.bgWhite, CS.relative)}
-              >
+              <legend className={DateRelativeWidgetStyle.sectionLabel}>
                 {sectionName}
-              </h6>
-            </div>
+              </legend>
+            </fieldset>
             <div className={CS.flex}>
               {RELATIVE_SHORTCUTS[sectionName].map((s, index) => (
                 <button
