@@ -198,16 +198,18 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "Bassett",
-      otherValue: "{backspace}Thomson",
+      otherValue: "Thomson",
       otherValueFormatted: "Thomson",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().findByRole("textbox").invoke("val", "");
+        popover().findByRole("textbox").type(value).blur();
         popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().findByRole("textbox").invoke("val", "");
+        popover().findByRole("textbox").type(value).blur();
         popover().button("Update filter").click();
       },
     });
@@ -247,12 +249,12 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "Washington",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("searchbox").focus().type(value).blur();
+        popover().findByRole("textbox").focus().type(value).blur();
         popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().findByRole("textbox").clear().type(value).blur();
         popover().button("Update filter").click();
       },
     });
@@ -295,12 +297,12 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "2",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("searchbox").focus().type(value).blur();
+        popover().findByRole("textbox").focus().type(value).blur();
         popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().findByRole("textbox").clear().type(value).blur();
         popover().button("Update filter").click();
       },
     });
@@ -340,12 +342,12 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "3",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("searchbox").focus().type(value).blur();
+        popover().findByRole("textbox").focus().type(value).blur();
         popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().findByRole("textbox").clear().type(value).blur();
         popover().button("Update filter").click();
       },
     });
@@ -470,16 +472,18 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
 
     checkDashboardParameters({
       defaultValueFormatted: "Gizmo",
-      otherValue: "{backspace}Gadget,",
+      otherValue: "Gadget",
       otherValueFormatted: "Gadget",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("combobox").type(value);
+        popover().findByRole("textbox").invoke("val", "");
+        popover().findByRole("textbox").type(value).blur();
         popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("combobox").type(value);
+        popover().findByRole("textbox").invoke("val", "");
+        popover().findByRole("textbox").type(value).blur();
         popover().button("Update filter").click();
       },
     });
@@ -519,12 +523,14 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       otherValueFormatted: "2 selections",
       setValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("combobox").type(value);
+        popover().findByRole("textbox").invoke("val", "");
+        popover().findByRole("textbox").type(value).blur();
         popover().button("Add filter").click();
       },
       updateValue: (label, value) => {
         filter(label).click();
-        popover().findByRole("combobox").type(value);
+        popover().findByRole("textbox").invoke("val", "");
+        popover().findByRole("textbox").type(value).blur();
         popover().button("Update filter").click();
       },
     });
