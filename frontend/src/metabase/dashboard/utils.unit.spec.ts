@@ -1,24 +1,26 @@
 import type { Location } from "history";
 
 import {
+  canResetFilter,
+  createTabSlug,
   fetchDataOrError,
   getCurrentTabDashboardCards,
   getDashcardResultsError,
   getVisibleCardIds,
   hasDatabaseActionsEnabled,
   isDashcardLoading,
-  syncParametersAndEmbeddingParams,
   parseTabSlug,
-  createTabSlug,
+  syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
+import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockDashboard,
-  createMockVirtualDashCard,
   createMockDashboardCard,
   createMockDatabase,
   createMockDataset,
   createMockDatasetData,
+  createMockVirtualDashCard,
 } from "metabase-types/api/mocks";
 import { createMockLocation } from "metabase-types/store/mocks";
 
@@ -373,5 +375,80 @@ describe("Dashboard utils", () => {
       expect(createTabSlug({ id: 1, name: "" })).toEqual("");
       expect(createTabSlug({ id: 1, name: undefined })).toEqual("");
     });
+  });
+
+  describe("canResetFilter", () => {
+    function getEmptyDefaultValueCases({
+      default: defaultValue,
+    }: {
+      default: unknown;
+    }) {
+      return [
+        { default: defaultValue, value: null, expected: false },
+        { default: defaultValue, value: undefined, expected: false },
+        { default: defaultValue, value: "", expected: false },
+        { default: defaultValue, value: [], expected: false },
+        { default: defaultValue, value: "a", expected: true },
+        { default: defaultValue, value: 0, expected: true },
+        { default: defaultValue, value: ["a"], expected: true },
+        { default: defaultValue, value: [0], expected: true },
+      ];
+    }
+
+    it.each<{ default: unknown; value: unknown; expected: boolean }>([
+      ...getEmptyDefaultValueCases({ default: null }),
+      ...getEmptyDefaultValueCases({ default: undefined }),
+      ...getEmptyDefaultValueCases({ default: "" }),
+      ...getEmptyDefaultValueCases({ default: [] }),
+
+      { default: "a", value: null, expected: true },
+      { default: "a", value: undefined, expected: true },
+      { default: "a", value: "", expected: true },
+      { default: "a", value: [], expected: true },
+      { default: "a", value: "a", expected: false },
+      { default: "a", value: "b", expected: true },
+      { default: "a", value: 0, expected: true },
+      { default: "a", value: ["a"], expected: false }, // interesting case
+      { default: "a", value: [0], expected: true },
+
+      { default: 0, value: null, expected: true },
+      { default: 0, value: undefined, expected: true },
+      { default: 0, value: "", expected: true },
+      { default: 0, value: [], expected: true },
+      { default: 0, value: "a", expected: true },
+      { default: 0, value: 0, expected: false },
+      { default: 0, value: 1, expected: true },
+      { default: 0, value: ["a"], expected: true },
+      { default: 0, value: [0], expected: false }, // interesting case
+
+      { default: ["a"], value: null, expected: true },
+      { default: ["a"], value: undefined, expected: true },
+      { default: ["a"], value: "", expected: true },
+      { default: ["a"], value: [], expected: true },
+      { default: ["a"], value: "a", expected: false }, // interesting case
+      { default: ["a"], value: "b", expected: true },
+      { default: ["a"], value: 0, expected: true },
+      { default: ["a"], value: ["a"], expected: false },
+      { default: ["a"], value: ["b"], expected: true },
+      { default: ["a"], value: [0], expected: true },
+
+      { default: [1, 0], value: [0, 1], expected: false }, // order is not important
+      { default: [1, 0], value: [0, 1, 2], expected: true },
+      { default: [1, 0], value: [0], expected: true },
+
+      { default: ["a", "b"], value: ["b", "a"], expected: false }, // order is not important
+      { default: ["a", "b"], value: ["b", "a", "c"], expected: true },
+      { default: ["a", "b"], value: ["b"], expected: true },
+    ])(
+      "default = `$default` | value = `$value` | expected = `$expected`",
+      ({ default: defaultValue, value, expected }) => {
+        const parameter = createMockUiParameter({
+          default: defaultValue,
+          value,
+        });
+
+        expect(canResetFilter(parameter)).toBe(expected);
+      },
+    );
   });
 });

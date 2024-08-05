@@ -11,6 +11,7 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import * as Urls from "metabase/lib/urls";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -19,8 +20,8 @@ import { getIsWebApp } from "metabase/selectors/web-app";
 import { mergeSettings } from "metabase/visualizations/lib/settings";
 import Question from "metabase-lib/v1/Question";
 import {
-  getParameterValuesBySlug,
   getValuePopulatedParameters as _getValuePopulatedParameters,
+  getParameterValuesBySlug,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
@@ -41,6 +42,8 @@ import type {
 
 import { getNewCardUrl } from "./actions/getNewCardUrl";
 import {
+  canResetFilter,
+  getMappedParametersIds,
   hasDatabaseActionsEnabled,
   isQuestionCard,
   isQuestionDashCard,
@@ -573,6 +576,23 @@ export const getCurrentTabDashcards = createSelector(
 );
 
 export const getHiddenParameterSlugs = createSelector(
+  [getDashboardComplete, getParameters, getIsEditing],
+  (dashboard, parameters, isEditing) => {
+    if (isEditing || !dashboard) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const parameterIds = getMappedParametersIds(dashboard.dashcards);
+    const hiddenParameters = parameters.filter(
+      parameter => !parameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(parameter => parameter.slug).join(",");
+  },
+);
+
+export const getTabHiddenParameterSlugs = createSelector(
   [getParameters, getCurrentTabDashcards, getIsEditing],
   (parameters, currentTabDashcards, isEditing) => {
     if (isEditing) {
@@ -580,10 +600,7 @@ export const getHiddenParameterSlugs = createSelector(
       return undefined;
     }
 
-    const currentTabParameterIds = currentTabDashcards.flatMap(
-      (dc: DashboardCard) =>
-        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
-    );
+    const currentTabParameterIds = getMappedParametersIds(currentTabDashcards);
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
     );
@@ -649,4 +666,19 @@ export const getHasModelActionsEnabled = createSelector(
 
     return hasModelActionsEnabled;
   },
+);
+
+export const getVisibleValuePopulatedParameters = createSelector(
+  [getValuePopulatedParameters, getHiddenParameterSlugs],
+  getVisibleParameters,
+);
+
+export const getFiltersToReset = createSelector(
+  [getVisibleValuePopulatedParameters],
+  parameters => parameters.filter(canResetFilter),
+);
+
+export const getCanResetFilters = createSelector(
+  [getFiltersToReset],
+  filtersToReset => filtersToReset.length > 0,
 );
