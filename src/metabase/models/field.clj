@@ -399,13 +399,14 @@
       true  (disj this))))
 
 (defmethod serdes/make-spec "Field" [_model-name opts]
-  {:copy      [:active :base_type :caveats :coercion_strategy :created_at :custom_position :database_indexed
+  {:copy      [:active :base_type :caveats :coercion_strategy :custom_position :database_indexed
                :database_is_auto_increment :database_partitioned :database_position :database_required :database_type
                :description :display_name :effective_type :has_field_values :is_defective_duplicate :json_unfolding
                :name :nfc_path :points_of_interest :position :preview_display :semantic_type :settings
                :unique_field_helper :visibility_type]
    :skip      [:fingerprint :fingerprint_version :last_analyzed]
-   :transform {:table_id           (serdes/fk :model/Table)
+   :transform {:created_at        (serdes/date)
+               :table_id           (serdes/fk :model/Table)
                :fk_target_field_id (serdes/fk :model/Field)
                :parent_id          (serdes/fk :model/Field)
                :dimensions         (serdes/nested :model/Dimension :field_id opts)}})

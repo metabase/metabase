@@ -1539,8 +1539,18 @@
                     (when-not (every? #(t2/instance-of? model %) data)
                       (assert false
                               (format "Nested data is expected to be a %s, not %s" model (t2/model (first data)))))
-                    (->> (sort-by sorter data)
-                         (mapv #(extract-one model-name opts %))))
+                    ;; `nil? data` check is for `extract-one` case in tests; make sure to add empty vectors in
+                    ;; `extract-query` implementations for nested collections
+                    (try
+                      (->> (or data (when (nil? data)
+                                      (t2/select model backward-fk (:id *current*))))
+                           (sort-by sorter)
+                           (mapv #(extract-one model-name opts %)))
+                      (catch Exception e
+                        (throw (ex-info (format "Error exporting nested %s" model)
+                                        {:model     model
+                                         :parent-id (:id *current*)}
+                                        e)))))
      :import      (fn [lst]
                     (let [parent-id (:id *current*)
                           loaded    (for [[idx ingested] (map-indexed vector lst)
