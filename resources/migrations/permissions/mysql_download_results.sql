@@ -68,7 +68,6 @@ WITH escaped_schema_table AS (
       CONCAT('/download/limited/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\\', '\\\\'), '/', '\\/'), '/table/', mt.id, '/') AS limited_download_table_path
     FROM metabase_table mt
 )
-INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT
     p.group_id,
     'perms/download-results' AS perm_type,
