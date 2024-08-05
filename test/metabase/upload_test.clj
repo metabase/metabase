@@ -1165,7 +1165,8 @@
 (defn- write-empty-gzip
   "Writes the data for an empty gzip file"
   [^java.io.File file]
-  (let [jpg-bytes (byte-array
+  (with-open [out (FileOutputStream. file)]
+      (.write out (byte-array
                    [0x1F 0x8B ; GZIP magic number
                     0x08      ; Compression method (deflate)
                     0         ; Flags
@@ -1175,10 +1176,7 @@
                     0x03 0    ; Compressed data (empty block)
                     0 0 0 0   ; CRC32
                     0 0 0 0   ; Input size
-                    ])]
-    (with-open [out (FileOutputStream. file)]
-      (.write out jpg-bytes))
-    file))
+                    ]))))
 
 (deftest ^:mb/once create-csv-upload!-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
