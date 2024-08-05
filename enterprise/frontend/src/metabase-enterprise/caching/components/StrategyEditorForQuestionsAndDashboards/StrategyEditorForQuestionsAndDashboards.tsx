@@ -244,7 +244,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       direction="row"
       justify="space-between"
       onKeyDown={e => {
-        if (e.key === "Escape") {
+        if (e.key === "Escape" && !e.ctrlKey && !e.metaKey) {
           closeForm();
         }
       }}
