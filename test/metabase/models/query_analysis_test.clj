@@ -59,7 +59,9 @@
   [card-id query]
   (if (string? query)
     (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
-    (t2/update! :model/Card card-id {:dataset_query query})))
+    (t2/update! :model/Card card-id {:dataset_query query}))
+  ;; TODO remove this hack, adjusting the queue design to handle unsaved cards #45460
+  (query-analysis/analyze-card! card-id))
 
 ;;;;
 ;;;; Actual tests
