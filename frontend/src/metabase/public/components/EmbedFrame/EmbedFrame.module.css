@@ -40,11 +40,13 @@ body {
     var(--mb-color-text-white) 45%,
     transparent
   );
-  --mb-color-text-selected: var(--mb-base-color-brand-30);
+  --mb-color-text-selected: var(--mb-base-color-white);
+  --mb-color-text-hover: var(--mb-base-color-brand-30);
   --mb-color-border: var(--mb-color-text-medium);
   --mb-color-bg-dashboard: var(--mb-color-bg-black);
   --mb-color-background: var(--mb-color-bg-black);
-  --mb-color-background-selected: var(--mb-base-color-brand-70);
+  --mb-color-background-selected: var(--mb-base-color-brand-60);
+  --mb-color-background-hover: var(--mb-base-color-brand-70);
   --mb-color-background-disabled: var(--mb-base-color-gray-70);
   --mb-color-background-brand: var(--mb-base-color-brand-60);
 
