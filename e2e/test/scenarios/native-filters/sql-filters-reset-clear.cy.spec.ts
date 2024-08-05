@@ -211,11 +211,11 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: value => {
-        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().findByRole("textbox").clear().type(value).blur();
         popover().button("Add filter").click();
       },
       updateValue: value => {
-        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().findByRole("textbox").clear().type(value).blur();
         popover().button("Update filter").click();
       },
     });
@@ -225,7 +225,7 @@ describe("scenarios > filters > sql filters > reset & clear", () => {
       otherValue: "{backspace}Gadget",
       otherValueFormatted: "Gadget",
       setValue: value => {
-        popover().findByRole("searchbox").clear().type(value).blur();
+        popover().findByRole("textbox").clear().type(value).blur();
         popover().button("Add filter").click();
       },
     });
