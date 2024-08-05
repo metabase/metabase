@@ -66,8 +66,6 @@ WHERE
       )
   );
 
-ANALYZE data_permissions;
-
 INSERT INTO
   data_permissions (
     group_id,
@@ -99,8 +97,6 @@ WHERE
      AND dp1.table_id = dp.table_id
      AND dp1.perm_value = 'legacy-no-self-service'
   );
-
-ANALYZE data_permissions;
 
 -- If all tables in a DB have the same view-data permission, insert a DB-level view-data permission instead
 INSERT INTO
@@ -138,8 +134,6 @@ SELECT
   cp.common_value
 FROM
   ConsistentPermissions cp;
-
-ANALYZE data_permissions;
 
 -- Insert DB-level view data permissions for all groups & DBs that don't have
 -- table-level permissions set.

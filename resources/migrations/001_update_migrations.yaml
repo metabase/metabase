@@ -6870,8 +6870,12 @@ databaseChangeLog:
       runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_data_access.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -6908,8 +6912,12 @@ databaseChangeLog:
       runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_download_results.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -6933,8 +6941,12 @@ databaseChangeLog:
       runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_manage_table_metadata.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
