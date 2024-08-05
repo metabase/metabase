@@ -55,13 +55,13 @@ body {
   where the EmbedFrame is not part of the exported dom */
       .WithThemeBackground {
     background-color: var(--mb-color-bg-dashboard);
-    border-color: var(--mb-color-bg-dark);
+    border-color: var(--mb-color-border);
   }
 
   .EmbedFrameHeader,
   .EmbedFrameFooter {
     background-color: var(--mb-color-bg-dashboard);
-    border-color: var(--mb-color-bg-dark);
+    border-color: var(--mb-color-border);
   }
 
   .EmbedFrame .fullscreenNightText {
