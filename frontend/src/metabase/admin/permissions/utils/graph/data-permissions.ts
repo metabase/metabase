@@ -21,7 +21,12 @@ import type {
   SchemaEntityId,
   TableEntityId,
 } from "../../types";
-import { DataPermission, DataPermissionValue } from "../../types";
+import {
+  DataPermission,
+  DataPermissionValue,
+  isDatabaseEntityId,
+  isTableEntityId,
+} from "../../types";
 
 export const isRestrictivePermission = (value: DataPermissionValue) =>
   value === DataPermissionValue.NO ||
@@ -334,6 +339,7 @@ export function restrictNativeQueryPermissionsIfNeeded(
   const isMakingGranularCreateQueriesChange =
     permission === DataPermission.CREATE_QUERIES &&
     value !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+    // value !== DataPermissionValue.BLOCKED &&
     (entityId.tableId != null || entityId.schemaName != null) &&
     currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
 
@@ -369,23 +375,33 @@ export function restrictNativeQueryPermissionsIfNeeded(
   return permissions;
 }
 
-export function downgradeNativePermissionsIfNeeded(
+function downgradeNativePermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
-  { databaseId }: DatabaseEntityId,
+  entityId: EntityId,
   value: DataPermissionValue,
 ) {
   // remove query creation permissions if view permission is getting restricted
   if (
-    isRestrictivePermission(value) ||
-    value === DataPermissionValue.LEGACY_NO_SELF_SERVICE
+    isDatabaseEntityId(entityId) &&
+    (isRestrictivePermission(value) ||
+      value === DataPermissionValue.LEGACY_NO_SELF_SERVICE)
   ) {
     return updatePermission(
       permissions,
       groupId,
-      databaseId,
+      entityId.databaseId,
       DataPermission.CREATE_QUERIES,
       [],
+      DataPermissionValue.NO,
+    );
+  } else if (isTableEntityId(entityId) && isRestrictivePermission(value)) {
+    return updatePermission(
+      permissions,
+      groupId,
+      entityId.databaseId,
+      DataPermission.CREATE_QUERIES,
+      [entityId.schemaName || "", entityId.tableId],
       DataPermissionValue.NO,
     );
   } else {
@@ -444,7 +460,6 @@ export function inferAndUpdateEntityPermissions(
   entityId: EntityId,
   database: Database,
   permission: DataPermission,
-  downgradeNative?: boolean,
 ) {
   const { databaseId } = entityId;
   const schemaName = (entityId as SchemaEntityId).schemaName ?? "";
@@ -465,7 +480,6 @@ export function inferAndUpdateEntityPermissions(
       tablesPermissionValue,
       database,
       permission,
-      downgradeNative,
     );
   }
 
@@ -485,17 +499,14 @@ export function inferAndUpdateEntityPermissions(
       schemasPermissionValue,
       database,
       permission,
-      downgradeNative,
     );
 
-    if (downgradeNative) {
-      permissions = downgradeNativePermissionsIfNeeded(
-        permissions,
-        groupId,
-        { databaseId },
-        schemasPermissionValue,
-      );
-    }
+    permissions = downgradeNativePermissionsIfNeeded(
+      permissions,
+      groupId,
+      entityId,
+      schemasPermissionValue,
+    );
   }
 
   return permissions;
@@ -508,7 +519,6 @@ export function updateFieldsPermission(
   value: any,
   database: Database,
   permission: DataPermission,
-  downgradeNative?: boolean,
 ) {
   const { databaseId, tableId } = entityId;
   const schemaName = entityId.schemaName || "";
@@ -520,7 +530,6 @@ export function updateFieldsPermission(
     DataPermissionValue.CONTROLLED,
     database,
     permission,
-    downgradeNative,
   );
   permissions = updatePermission(
     permissions,
@@ -528,6 +537,12 @@ export function updateFieldsPermission(
     databaseId,
     permission,
     [schemaName, tableId],
+    value,
+  );
+  permissions = downgradeNativePermissionsIfNeeded(
+    permissions,
+    groupId,
+    entityId,
     value,
   );
 
@@ -541,7 +556,6 @@ export function updateTablesPermission(
   value: any,
   database: Database,
   permission: DataPermission,
-  downgradeNative?: boolean,
 ) {
   const schema = database.schema(schemaName);
   const tableIds = schema?.getTables().map((t: Table) => t.id);
@@ -553,7 +567,6 @@ export function updateTablesPermission(
     DataPermissionValue.CONTROLLED,
     database,
     permission,
-    downgradeNative,
   );
   permissions = updatePermission(
     permissions,
@@ -575,7 +588,6 @@ export function updateSchemasPermission(
   value: DataPermissionValue,
   database: Database,
   permission: DataPermission,
-  downgradeNative?: boolean,
 ) {
   const schemaNames = database && database.schemaNames();
   const schemaNamesOrNoSchema =
@@ -585,14 +597,12 @@ export function updateSchemasPermission(
       ? schemaNames
       : [""];
 
-  if (downgradeNative) {
-    permissions = downgradeNativePermissionsIfNeeded(
-      permissions,
-      groupId,
-      { databaseId },
-      value,
-    );
-  }
+  permissions = downgradeNativePermissionsIfNeeded(
+    permissions,
+    groupId,
+    { databaseId },
+    value,
+  );
 
   return updatePermission(
     permissions,
