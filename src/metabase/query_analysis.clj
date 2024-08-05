@@ -203,7 +203,7 @@
   "Given a partial card or its id, ensure that we have all the fields required for analysis."
   [card-or-id]
   ;; If we don't know whether a card has been archived, give it the benefit of the doubt.
-  (if (and (map? card-or-id) (every? (partial contains? card-or-id) [:id :dataset_query]))
+  (if (every? #(some? (% card-or-id)) [:id :dataset_query])
     card-or-id
     ;; If we need to query the database though, find out for sure.
     (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
