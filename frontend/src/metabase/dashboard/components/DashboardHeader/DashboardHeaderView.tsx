@@ -6,11 +6,16 @@ import { t } from "ttag";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import EditBar from "metabase/components/EditBar";
 import CS from "metabase/css/core/index.css";
-import { updateDashboard } from "metabase/dashboard/actions";
+import {
+  applyDraftParameterValues,
+  resetParameters,
+  updateDashboard,
+} from "metabase/dashboard/actions";
 import { useSetDashboardAttributeHandler } from "metabase/dashboard/components/Dashboard/use-set-dashboard-attribute";
 import { DashboardHeaderButtonRow } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/DashboardHeaderButtonRow";
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import {
+  getCanResetFilters,
   getIsEditing,
   getIsHeaderVisible,
   getIsSidebarOpen,
@@ -80,9 +85,15 @@ export function DashboardHeaderView({
   const header = useRef<HTMLDivElement>(null);
   const dispatch = useDispatch();
 
+  const canResetFilters = useSelector(getCanResetFilters);
   const isSidebarOpen = useSelector(getIsSidebarOpen);
   const isDashboardHeaderVisible = useSelector(getIsHeaderVisible);
   const isAnalyticsDashboard = isInstanceAnalyticsCollection(collection);
+
+  const handleResetFilters = useCallback(async () => {
+    await dispatch(resetParameters());
+    await dispatch(applyDraftParameterValues());
+  }, [dispatch]);
 
   const _headerButtons = useMemo(
     () => (
@@ -91,6 +102,8 @@ export function DashboardHeaderView({
         isNavBarOpen={isNavBarOpen}
       >
         <DashboardHeaderButtonRow
+          canResetFilters={canResetFilters}
+          onResetFilters={handleResetFilters}
           refreshPeriod={refreshPeriod}
           onRefreshPeriodChange={onRefreshPeriodChange}
           setRefreshElapsedHook={setRefreshElapsedHook}
@@ -104,6 +117,8 @@ export function DashboardHeaderView({
       </HeaderButtonSection>
     ),
     [
+      canResetFilters,
+      handleResetFilters,
       hasNightModeToggle,
       isAnalyticsDashboard,
       isFullscreen,

@@ -266,7 +266,7 @@ export function toggleDashboardInfoSidebar() {
 }
 
 export function openDashboardMenu() {
-  dashboardHeader().findByLabelText("dashboard-menu-button").click();
+  dashboardHeader().findByLabelText("Move, trash, and more…").click();
 }
 
 export const dashboardHeader = () => {

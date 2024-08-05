@@ -27,7 +27,6 @@ export const ContainerLabel = styled.div<ContainerLabelProps>`
 `;
 
 export const ErrorSpan = styled.span`
-  margin: 0 0.5rem;
   color: var(--mb-color-error);
 `;
 
