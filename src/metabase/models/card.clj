@@ -135,11 +135,12 @@
 
 (defn- source-card-id
   [query]
-  (let [query-type (lib/normalized-query-type query)]
-    (case query-type
-      :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
-      :mbql/query (-> query lib/normalize lib.util/source-card-id)
-      nil)))
+  (when (map? query)
+    (let [query-type (lib/normalized-query-type query)]
+      (case query-type
+        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :mbql/query (-> query lib/normalize lib.util/source-card-id)
+        nil))))
 
 (defn- card->integer-table-ids
   "Return integer source table ids for card's :dataset_query."
@@ -843,7 +844,7 @@
   [_model-name]
   {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
           :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
-   :skip [ ;; always instance-specific
+   :skip [;; always instance-specific
           :id :updated_at
           ;; cache invalidation is instance-specific
           :cache_invalidated_at
@@ -858,6 +859,8 @@
                              #(serdes/*import-fk-keyed* % 'Database :name)]
     :table_id               [serdes/*export-table-fk*
                              serdes/*import-table-fk*]
+    :source_card_id         [#(serdes/*export-fk* % :model/Card)
+                             #(serdes/*import-fk* % :model/Card)]
     :collection_id          [#(serdes/*export-fk* % 'Collection)
                              #(serdes/*import-fk* % 'Collection)]
     :creator_id             [serdes/*export-user*
@@ -877,13 +880,14 @@
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id visualization_settings]}]
+           result_metadata table_id source_card_id visualization_settings]}]
   (set
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
     [[{:model "Database" :id database_id}]]
     (when table_id #{(serdes/table->path table_id)})
+    (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (result-metadata-deps result_metadata)
     (serdes/mbql-deps dataset_query)
