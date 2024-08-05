@@ -135,14 +135,6 @@
     "@loki/create-async-callback": "^0.35.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
     "@sinonjs/fake-timers": "^9.1.2",
-    "@storybook/addon-a11y": "^6.5.16",
-    "@storybook/addon-actions": "6.5.16",
-    "@storybook/addon-essentials": "6.5.16",
-    "@storybook/addon-links": "6.5.16",
-    "@storybook/blocks": "^7.0.18",
-    "@storybook/builder-webpack5": "6.5.16",
-    "@storybook/manager-webpack5": "6.5.16",
-    "@storybook/react": "6.5.16",
     "@svgr/webpack": "^8.0.1",
     "@swc/core": "^1.7.0",
     "@swc/plugin-emotion": "^3.0.10",
@@ -319,7 +311,7 @@
     "build-embedding-sdk-cli:watch": "yarn build-embedding-sdk-cli --watch",
     "build-hot": "rm -f target/cljs_dev/cljs.core.js && yarn concurrently -n 'cljs,js' -c 'yellow,green' 'yarn build-hot:cljs' 'yarn build-hot:js-wait'",
     "build-hot:cljs": "yarn && shadow-cljs watch app",
-    "build-hot:js": "yarn && NODE_OPTIONS=--max-old-space-size=8196 WEBPACK_BUNDLE=hot webpack serve --host 0.0.0.0",
+    "build-hot:js": "NODE_OPTIONS=--max-old-space-size=8196 WEBPACK_BUNDLE=hot webpack serve --host 0.0.0.0",
     "build-hot:js-wait": "yarn wait:cljs; yarn build-hot:js",
     "build-pure:cljs": "yarn clean-dev:cljs && shadow-cljs compile app",
     "build-release": "yarn build-release:cljs && yarn build-release:js",
@@ -431,5 +423,16 @@
   },
   "browserslist": [
     "defaults"
+  ],
+  "trustedDependencies": [
+    "@swc/core",
+    "aws-sdk",
+    "core-js",
+    "core-js-pure",
+    "cypress",
+    "deasync",
+    "esbuild",
+    "fsevents",
+    "postinstall-postinstall"
   ]
 }
