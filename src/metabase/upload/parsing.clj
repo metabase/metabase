@@ -6,7 +6,7 @@
    [metabase.util.i18n :refer [tru]])
   (:import
    (java.text NumberFormat ParsePosition)
-   (java.time LocalDate OffsetDateTime)
+   (java.time DateTimeException LocalDate OffsetDateTime)
    (java.time.format DateTimeFormatter DateTimeFormatterBuilder ResolverStyle)
    (java.util Locale)))
 
@@ -146,7 +146,7 @@
     (catch Exception _
       (try
         (OffsetDateTime/parse s auxillary-offset-datetime-formatter)
-        (catch Exception _
+        (catch DateTimeException _
           (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable zoned datetime" s))))))))
 
 (defn- remove-currency-signs
