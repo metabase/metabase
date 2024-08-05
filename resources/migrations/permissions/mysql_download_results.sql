@@ -59,7 +59,7 @@ ANALYZE TABLE data_permissions;
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 WITH escaped_schema_table AS (
     SELECT
-      mt.id,
+      mt.id AS table_id,
       mt.db_id,
       mt.schema,
       CONCAT('/download/db/', mt.db_id, '/schema/', REPLACE(REPLACE(mt.schema, '\\', '\\\\'), '/', '\\/'), '/') AS download_schema_path,
