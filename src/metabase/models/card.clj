@@ -507,6 +507,8 @@
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
+      ;; TODO: should be done in after-update
+      ;; has to place it here because changes is not available in after-update hook see toucan2#129
       (when (contains? changes :dataset_query)
         (query-analysis/analyze-async! id))
       (when (:parameters changes)
@@ -560,12 +562,6 @@
       populate-query-fields
       maybe-populate-initially-published-at
       (dissoc :id)))
-
-(t2/define-after-update :model/Card
-  [card]
-  (u/prog1 card
-    (when (contains? (t2/changes card) :dataset_query)
-      (query-analysis/analyze-async! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
