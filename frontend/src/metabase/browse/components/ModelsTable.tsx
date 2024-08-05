@@ -1,8 +1,8 @@
 import {
-  type PropsWithChildren,
   useEffect,
   useState,
   type CSSProperties,
+  type PropsWithChildren,
 } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
@@ -32,9 +32,9 @@ import * as Urls from "metabase/lib/urls";
 import {
   Flex,
   Icon,
-  type IconProps,
-  type IconName,
   Skeleton,
+  type IconName,
+  type IconProps,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
