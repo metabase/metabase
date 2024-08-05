@@ -1,13 +1,22 @@
 import { useLayoutEffect, useState } from "react";
 import { useDebounce } from "react-use";
-import { t } from "ttag";
+import { msgid, ngettext, t } from "ttag";
 
 import { useSearchQuery } from "metabase/api";
+import type { PrototypeState } from "metabase/common/components/DataPicker";
 import EmptyState from "metabase/components/EmptyState";
 import { VirtualizedList } from "metabase/components/VirtualizedList";
 import { NoObjectError } from "metabase/components/errors/NoObjectError";
 import { trackSearchClick } from "metabase/search/analytics";
-import { Box, Flex, Icon, Stack, Tabs, TextInput } from "metabase/ui";
+import {
+  Box,
+  Flex,
+  Icon,
+  SegmentedControl,
+  Stack,
+  Tabs,
+  TextInput,
+} from "metabase/ui";
 import type {
   SearchModel,
   SearchRequest,
@@ -86,48 +95,87 @@ export const EntityPickerSearchResults = <
   searchResults: SearchResult[] | null;
   onItemSelect: (item: Item) => void;
   selectedItem: Item | null;
+  prototypeState?: PrototypeState;
 }) => {
+  const [searchScope, setSearchScope] = useState<
+    "*" | "collection" | "database" | "schema"
+  >("*");
+  const scopeName = "Growth"; // TODO
+  const scopeValue = "collection"; // TODO
+
   if (!searchResults) {
     return <DelayedLoadingSpinner text={t`Loading…`} />;
   }
 
   return (
     <Box h="100%" bg="bg-light">
-      {searchResults.length > 0 ? (
-        <Stack h="100%" bg="bg-light">
-          <VirtualizedList
-            Wrapper={({ children, ...props }) => (
-              <Box p="xl" {...props}>
-                <ChunkyList>{children}</ChunkyList>
-              </Box>
-            )}
-          >
-            {searchResults?.map((item, index) => (
-              <ResultItem
-                key={item.model + item.id}
-                item={item}
-                onClick={() => {
-                  trackSearchClick("item", index, "entity-picker");
-                  onItemSelect(item as unknown as Item);
-                }}
-                isSelected={
-                  selectedItem?.id === item.id &&
-                  selectedItem?.model === item.model
-                }
-                isLast={index === searchResults.length - 1}
-              />
-            ))}
-          </VirtualizedList>
-        </Stack>
-      ) : (
-        <Flex direction="column" justify="center" h="100%">
-          <EmptyState
-            title={t`Didn't find anything`}
-            message={t`There weren't any results for your search.`}
-            illustrationElement={<NoObjectError mb="-1.5rem" />}
-          />
-        </Flex>
-      )}
+      <Stack
+        spacing="xl"
+        pos="relative"
+        h="100%"
+        style={{ overflow: "hidden" }}
+      >
+        {searchResults.length > 0 && (
+          <Flex justify="space-between" p="xl" pb={0}>
+            <div>
+              {scopeName && (
+                <SegmentedControl
+                  data={[
+                    { label: "Everywhere", value: "*" },
+                    { label: `“${scopeName}”`, value: scopeValue },
+                  ]}
+                  value={searchScope}
+                  onChange={value => setSearchScope(value as any)}
+                />
+              )}
+            </div>
+
+            <div>
+              {ngettext(
+                msgid`${searchResults.length} result`,
+                `${searchResults.length} results`,
+                searchResults.length,
+              )}
+            </div>
+          </Flex>
+        )}
+
+        {searchResults.length > 0 ? (
+          <Stack h="100%" bg="bg-light">
+            <VirtualizedList
+              Wrapper={({ children, ...props }) => (
+                <Box p="xl" pt={0} pos="relative" h="100%" {...props}>
+                  <ChunkyList>{children}</ChunkyList>
+                </Box>
+              )}
+            >
+              {searchResults?.map((item, index) => (
+                <ResultItem
+                  key={item.model + item.id}
+                  item={item}
+                  onClick={() => {
+                    trackSearchClick("item", index, "entity-picker");
+                    onItemSelect(item as unknown as Item);
+                  }}
+                  isSelected={
+                    selectedItem?.id === item.id &&
+                    selectedItem?.model === item.model
+                  }
+                  isLast={index === searchResults.length - 1}
+                />
+              ))}
+            </VirtualizedList>
+          </Stack>
+        ) : (
+          <Flex direction="column" justify="center" h="100%">
+            <EmptyState
+              title={t`Didn't find anything`}
+              message={t`There weren't any results for your search.`}
+              illustrationElement={<NoObjectError mb="-1.5rem" />}
+            />
+          </Flex>
+        )}
+      </Stack>
     </Box>
   );
 };

@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -18,6 +18,7 @@ import { useAvailableData } from "../hooks";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
+  NotebookDataPickerFolderItem,
   NotebookDataPickerValueItem,
 } from "../types";
 import {
@@ -49,6 +50,31 @@ const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
 const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
 
+export type PrototypeState = Record<
+  DataPickerValue["model"],
+  {
+    lastFolder?: NotebookDataPickerFolderItem;
+  }
+> & {
+  lastTab?: string;
+};
+
+const initialPrototypeState: PrototypeState = {
+  lastTab: undefined,
+  card: {
+    lastFolder: undefined,
+  },
+  dataset: {
+    lastFolder: undefined,
+  },
+  metric: {
+    lastFolder: undefined,
+  },
+  table: {
+    lastFolder: undefined,
+  },
+};
+
 const options: DataPickerModalOptions = {
   ...defaultOptions,
   hasConfirmButtons: false,
@@ -65,6 +91,7 @@ export const DataPickerModal = ({
   onChange,
   onClose,
 }: Props) => {
+  const [prototypeState, setPrototypeState] = useState(initialPrototypeState);
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
   const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
     databaseId,
@@ -113,8 +140,22 @@ export const DataPickerModal = ({
     [onChange, onClose],
   );
 
+  const [currentTab, setCurrentTab] = useState<string>();
+
   const handleCardChange = useCallback(
     (item: QuestionPickerItem) => {
+      if (["collection"].includes(item.model)) {
+        setPrototypeState(state => ({
+          ...state,
+          [item.model]: {
+            // @ts-expect-error ...
+            ...state[item.model],
+            lastFolder: item,
+          },
+          lastTab: currentTab,
+        }));
+      }
+
       if (!isValidValueItem(item.model)) {
         return;
       }
@@ -122,7 +163,7 @@ export const DataPickerModal = ({
       onChange(getQuestionVirtualTableId(item.id));
       onClose();
     },
-    [onChange, onClose],
+    [onChange, onClose, currentTab],
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
@@ -204,6 +245,8 @@ export const DataPickerModal = ({
       title={title}
       onClose={onClose}
       onItemSelect={handleChange}
+      onTabChange={setCurrentTab}
+      prototypeState={prototypeState}
     />
   );
 };

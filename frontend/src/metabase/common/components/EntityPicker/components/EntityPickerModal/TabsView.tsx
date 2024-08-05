@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
+import type { PrototypeState } from "metabase/common/components/DataPicker";
 import { Icon, Tabs } from "metabase/ui";
 import type {
+  SearchRequest,
   SearchResult,
   SearchResultId,
-  SearchRequest,
 } from "metabase-types/api";
 
 import type { EntityTab, TypeWithModel } from "../../types";
@@ -53,6 +54,8 @@ export const TabsView = <
   initialValue,
   defaultToRecentTab,
   setShowActionButtons,
+  onTabChange,
+  prototypeState,
 }: {
   tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
@@ -63,6 +66,8 @@ export const TabsView = <
   searchParams?: Partial<SearchRequest>;
   defaultToRecentTab: boolean;
   setShowActionButtons: (showActionButtons: boolean) => void;
+  onTabChange: (tab: string) => void;
+  prototypeState?: PrototypeState;
 }) => {
   const hasSearchTab = !!searchQuery;
   const hasRecentsTab = tabs.some(tab => tab.model === "recents");
@@ -79,6 +84,10 @@ export const TabsView = <
   );
 
   const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+
+  useEffect(() => {
+    onTabChange(selectedTab);
+  }, [onTabChange, selectedTab]);
 
   useEffect(() => {
     // when the searchQuery changes, switch to the search tab
@@ -161,6 +170,7 @@ export const TabsView = <
             searchResults={searchResults}
             onItemSelect={onItemSelect}
             selectedItem={selectedItem}
+            prototypeState={prototypeState}
           />
         </Tabs.Panel>
       )}

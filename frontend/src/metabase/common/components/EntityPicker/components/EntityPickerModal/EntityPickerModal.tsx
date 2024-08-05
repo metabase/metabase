@@ -3,7 +3,8 @@ import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useLogRecentItemMutation, useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery, useLogRecentItemMutation } from "metabase/api";
+import type { PrototypeState } from "metabase/common/components/DataPicker";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
@@ -69,6 +70,8 @@ export interface EntityPickerModalProps<Model extends string, Item> {
    * with the same model as the initialValue. Defaults to true.
    */
   defaultToRecentTab?: boolean;
+  onTabChange: (tab: string) => void;
+  prototypeState?: PrototypeState;
 }
 
 export function EntityPickerModal<
@@ -91,6 +94,8 @@ export function EntityPickerModal<
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
+  onTabChange,
+  prototypeState,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
@@ -237,6 +242,8 @@ export function EntityPickerModal<
                 initialValue={initialValue}
                 defaultToRecentTab={defaultToRecentTab}
                 setShowActionButtons={setShowActionButtons}
+                onTabChange={onTabChange}
+                prototypeState={prototypeState}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>
