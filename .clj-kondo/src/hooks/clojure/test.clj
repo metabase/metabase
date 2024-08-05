@@ -106,6 +106,7 @@
      clojure.core.async/take!
      clojure.core.async/to-chan!
      clojure.core.async/to-chan!!
+     metabase.channel.core/send!
      metabase.driver.sql-jdbc.execute/execute-prepared-statement!
      metabase.pulse/send-pulse!
      metabase.query-processor.store/store-database!

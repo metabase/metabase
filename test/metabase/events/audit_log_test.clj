@@ -527,3 +527,37 @@
                 :topic    :password-reset-successful
                 :model    "User"}
                (mt/latest-audit-log-entry :password-reset-successful (mt/user->id :rasta))))))))
+
+(deftest create-channel-event-test
+  (mt/with-current-user (mt/user->id :rasta)
+    (mt/with-temp [:model/Channel channel {:name    "Test channel"
+                                           :type    "channel/metabase-test"
+                                           :details {:return-type  "return-value"
+                                                     :return-value true}}]
+      (testing :event/channel-create
+        (is (= {:object channel}
+               (events/publish-event! :event/channel-create {:object channel})))
+        (is (= {:model_id (:id channel)
+                :user_id  (mt/user->id :rasta)
+                :details  {:id          (:id channel)
+                           :name        "Test channel"
+                           :description nil
+                           :type        "channel/metabase-test"
+                           :active      true}
+                :topic    :channel-create
+                :model    "Channel"}
+               (mt/latest-audit-log-entry :channel-create (:id channel)))))
+
+      (testing :event/channel-update
+        (events/publish-event! :event/channel-update {:object          (assoc channel
+                                                                              :details {:new-detail true}
+                                                                              :name "New Name")
+                                                      :previous-object channel})
+
+        (is (= {:model_id (:id channel)
+                :user_id  (mt/user->id :rasta)
+                :details  {:previous {:name "Test channel"}
+                           :new      {:name "New Name"}}
+                :topic    :channel-update
+                :model    "Channel"}
+               (mt/latest-audit-log-entry :channel-update (:id channel))))))))

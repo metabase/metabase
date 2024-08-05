@@ -5,7 +5,8 @@
   ["Database"
    "Field"
    "Segment"
-   "Table"])
+   "Table"
+   "Channel"])
 
 (def content
   "Content model types"

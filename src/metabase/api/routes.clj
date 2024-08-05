@@ -10,6 +10,7 @@
    [metabase.api.bookmark :as api.bookmark]
    [metabase.api.cache :as api.cache]
    [metabase.api.card :as api.card]
+   [metabase.api.channel :as api.channel]
    [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api :refer [defroutes context]]
@@ -109,6 +110,7 @@
   (context "/card"                 [] (+auth api.card/routes))
   (context "/cloud-migration"      [] (+auth api.cloud-migration/routes))
   (context "/collection"           [] (+auth api.collection/routes))
+  (context "/channel"              [] (+auth api.channel/routes))
   (context "/dashboard"            [] (+auth api.dashboard/routes))
   (context "/database"             [] (+auth api.database/routes))
   (context "/dataset"              [] (+auth api.dataset/routes))

@@ -47,7 +47,7 @@
     nil))
 
 (mu/defmethod channel/send! :channel/email
-  [_channel-type {:keys [subject recipients message-type message]} :- EmailMessage]
+  [_channel {:keys [subject recipients message-type message]} :- EmailMessage]
   (email/send-message-or-throw! {:subject      subject
                                  :recipients   recipients
                                  :message-type message-type
@@ -55,7 +55,7 @@
                                  :bcc?         (email/bcc-enabled?)}))
 
 (mu/defmethod channel/render-notification [:channel/email :notification/alert] :- [:sequential EmailMessage]
-  [_channel-type {:keys [card pulse payload channel]} recipients]
+  [_channel-type {:keys [card pulse payload pulse-channel]} recipients]
   (let [condition-kwd             (messages/pulse->alert-condition-kwd pulse)
         email-subject             (case condition-kwd
                                     :meets (trs "Alert: {0} has reached its goal" (:name card))
@@ -68,14 +68,14 @@
         email-to-users            (when (> (count user-emails) 0)
                                     (construct-pulse-email
                                      email-subject user-emails
-                                     (messages/render-alert-email timezone pulse channel
+                                     (messages/render-alert-email timezone pulse pulse-channel
                                                                   [payload]
                                                                   goal
                                                                   nil)))
         email-to-nonusers         (for [non-user-email non-user-emails]
                                     (construct-pulse-email
                                      email-subject [non-user-email]
-                                     (messages/render-alert-email timezone pulse channel
+                                     (messages/render-alert-email timezone pulse pulse-channel
                                                                   [payload]
                                                                   goal
                                                                   non-user-email)))]
@@ -86,7 +86,7 @@
 ;; ------------------------------------------------------------------------------------------------;;
 
 (mu/defmethod channel/render-notification [:channel/email :notification/dashboard-subscription] :- [:sequential EmailMessage]
-  [_channel-details {:keys [dashboard payload pulse]} recipients]
+  [_channel-type {:keys [dashboard payload pulse]} recipients]
   (let [{:keys [user-emails
                 non-user-emails]} (recipients->emails recipients)
         timezone                  (some->> payload (some :card) channel.shared/defaulted-timezone)
