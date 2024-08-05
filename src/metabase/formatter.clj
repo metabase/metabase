@@ -151,6 +151,11 @@
               decimal-digits (cond
                                decimals decimals ;; if user ever specifies # of decimals, use that
                                integral? 0
+                               scientific? (min 2 (max decimals-in-value
+                                                       ;; Scientific representation can introduce its own decimal
+                                                       ;; digits even in integer numbers. Count how many integer
+                                                       ;; digits are in the number (but limit to 2).
+                                                       (int (Math/log10 (abs scaled-value)))))
                                currency? (get-in currency/currency [currency :decimal_digits])
                                percent?  (min 2 decimals-in-value) ;; 5.5432 -> %554.32
                                :else (if (>= (abs scaled-value) 1)
