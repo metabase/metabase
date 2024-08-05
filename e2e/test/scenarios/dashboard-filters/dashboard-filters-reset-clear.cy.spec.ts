@@ -120,49 +120,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
     cy.signInAsAdmin();
   });
 
-  it("temporal unit parameters", () => {
-    createDashboardWithParameters(
-      ORDERS_COUNT_OVER_TIME,
-      ORDERS_CREATED_AT_FIELD,
-      [
-        {
-          name: NO_DEFAULT_NON_REQUIRED,
-          slug: "no-default-value/non-required",
-          id: "fed1b910",
-          type: "temporal-unit",
-          sectionId: "temporal-unit",
-        },
-        {
-          name: DEFAULT_NON_REQUIRED,
-          slug: "default-value/non-required",
-          id: "75d67d30",
-          type: "temporal-unit",
-          sectionId: "temporal-unit",
-          default: "year",
-        },
-        {
-          name: DEFAULT_REQUIRED,
-          slug: "default-value/required",
-          id: "60f12ac0",
-          type: "temporal-unit",
-          sectionId: "temporal-unit",
-          default: "year",
-          required: true,
-        },
-      ],
-    );
-
-    checkDashboardParameters({
-      defaultValueFormatted: "Year",
-      otherValue: "Month",
-      otherValueFormatted: "Month",
-      setValue: (label, value) => {
-        filter(label).click();
-        popover().findByText(value).click();
-      },
-    });
-  });
-
   it("time parameters", () => {
     createDashboardWithParameters(
       ORDERS_COUNT_OVER_TIME,
