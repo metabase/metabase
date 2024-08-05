@@ -1,6 +1,6 @@
 import {
   getDashboardComplete,
-  getHiddenParameterSlugs,
+  getTabHiddenParameterSlugs,
   getIsEditing,
   getIsNightMode,
   getParameters,
@@ -28,7 +28,7 @@ export function DashboardParameterPanel({
 }: DashboardParameterPanelProps) {
   const dashboard = useSelector(getDashboardComplete);
   const parameters = useSelector(getParameters);
-  const hiddenParameterSlugs = useSelector(getHiddenParameterSlugs);
+  const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
   const isEditing = useSelector(getIsEditing);
   const isNightMode = useSelector(getIsNightMode);
   const visibleParameters = getVisibleParameters(

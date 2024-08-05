@@ -1,12 +1,45 @@
-import { render, screen, getByText, getByRole } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { setupParameterValuesEndpoints } from "__support__/server-mocks";
+import {
+  renderWithProviders,
+  screen,
+  getByRole,
+  getByText,
+} from "__support__/ui";
+import type { Parameter, ParameterValue } from "metabase-types/api";
 import { createMockParameter } from "metabase-types/api/mocks";
 
-import { NumberInputWidget } from "./NumberInputWidget";
+import {
+  NumberInputWidget,
+  type NumberInputWidgetProps,
+} from "./NumberInputWidget";
 
-const mockSetValue = jest.fn();
-const mockParameter = createMockParameter();
+type SetupOpts = Omit<NumberInputWidgetProps, "setValue"> & {
+  parameter?: Parameter;
+  values?: ParameterValue[];
+};
+
+const setup = ({
+  parameter = createMockParameter(),
+  values = [],
+  ...props
+}: SetupOpts) => {
+  setupParameterValuesEndpoints({
+    values,
+    has_more_values: false,
+  });
+
+  const setValue = jest.fn();
+
+  renderWithProviders(
+    <NumberInputWidget {...props} setValue={setValue} parameter={parameter} />,
+  );
+
+  return {
+    setValue,
+  };
+};
 
 describe("NumberInputWidget", () => {
   beforeEach(() => {
@@ -15,13 +48,7 @@ describe("NumberInputWidget", () => {
 
   describe("arity of 1", () => {
     it("should render an input populated with a value", () => {
-      render(
-        <NumberInputWidget
-          value={[123]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      setup({ value: [123] });
 
       const textbox = screen.getByRole("textbox");
       expect(textbox).toBeInTheDocument();
@@ -29,13 +56,7 @@ describe("NumberInputWidget", () => {
     });
 
     it("should render an empty input", () => {
-      render(
-        <NumberInputWidget
-          value={undefined}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      setup({ value: undefined });
 
       const textbox = screen.getByRole("textbox");
       expect(textbox).toBeInTheDocument();
@@ -43,13 +64,7 @@ describe("NumberInputWidget", () => {
     });
 
     it("should render a disabled update button, until the value is changed", async () => {
-      render(
-        <NumberInputWidget
-          value={[123]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      setup({ value: [123] });
 
       const button = screen.getByRole("button", { name: "Update filter" });
       expect(button).toBeInTheDocument();
@@ -60,49 +75,30 @@ describe("NumberInputWidget", () => {
     });
 
     it("should let you update the input with a new value", async () => {
-      render(
-        <NumberInputWidget
-          value={[123]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      const { setValue } = setup({ value: [123] });
 
       const textbox = screen.getByRole("textbox");
       await userEvent.type(textbox, "{backspace}{backspace}{backspace}");
       await userEvent.type(textbox, "456");
       const button = screen.getByRole("button", { name: "Update filter" });
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith([456]);
+      expect(setValue).toHaveBeenCalledWith([456]);
     });
 
     it("should let you update the input with an undefined value", async () => {
-      render(
-        <NumberInputWidget
-          value={[1]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      const { setValue } = setup({ value: [1] });
 
       const textbox = screen.getByRole("textbox");
       const button = screen.getByRole("button", { name: "Update filter" });
       await userEvent.type(textbox, "{backspace}");
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith(undefined);
+      expect(setValue).toHaveBeenCalledWith(undefined);
     });
   });
 
   describe("arity of 2", () => {
     it("should render an input populated with a value", () => {
-      render(
-        <NumberInputWidget
-          arity={2}
-          value={[123, 456]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      setup({ value: [123, 456], arity: 2 });
 
       const [textbox1, textbox2] = screen.getAllByRole("textbox");
       expect(textbox1).toBeInTheDocument();
@@ -113,14 +109,7 @@ describe("NumberInputWidget", () => {
     });
 
     it("should be invalid when one of the inputs is empty", async () => {
-      render(
-        <NumberInputWidget
-          arity={2}
-          value={[123, 456]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      setup({ value: [123, 456], arity: 2 });
 
       const [textbox1] = screen.getAllByRole("textbox");
       await userEvent.clear(textbox1);
@@ -129,14 +118,7 @@ describe("NumberInputWidget", () => {
     });
 
     it("should be settable", async () => {
-      render(
-        <NumberInputWidget
-          arity={2}
-          value={undefined}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      const { setValue } = setup({ value: undefined, arity: 2 });
 
       const [textbox1, textbox2] = screen.getAllByRole("textbox");
       await userEvent.type(textbox1, "1");
@@ -145,18 +127,11 @@ describe("NumberInputWidget", () => {
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);
 
-      expect(mockSetValue).toHaveBeenCalledWith([1, 2]);
+      expect(setValue).toHaveBeenCalledWith([1, 2]);
     });
 
     it("should be clearable by emptying all inputs", async () => {
-      render(
-        <NumberInputWidget
-          arity={2}
-          value={[123, 456]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      const { setValue } = setup({ value: [123, 456], arity: 2 });
 
       const [textbox1, textbox2] = screen.getAllByRole("textbox");
       await userEvent.clear(textbox1);
@@ -165,21 +140,14 @@ describe("NumberInputWidget", () => {
       const button = screen.getByRole("button", { name: "Update filter" });
       await userEvent.click(button);
 
-      expect(mockSetValue).toHaveBeenCalledWith(undefined);
+      expect(setValue).toHaveBeenCalledWith(undefined);
     });
   });
 
   describe("arity of n", () => {
     it("should render a multi autocomplete input", () => {
       const value = [1, 2, 3, 4];
-      render(
-        <NumberInputWidget
-          arity="n"
-          value={value}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      setup({ value, arity: "n" });
 
       const combobox = screen.getByRole("combobox");
 
@@ -190,14 +158,7 @@ describe("NumberInputWidget", () => {
     });
 
     it("should correctly parse number inputs", async () => {
-      render(
-        <NumberInputWidget
-          arity="n"
-          value={undefined}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      const { setValue } = setup({ value: undefined, arity: "n" });
 
       const combobox = screen.getByRole("combobox");
       const input = getInput(combobox);
@@ -209,18 +170,11 @@ describe("NumberInputWidget", () => {
 
       const button = screen.getByRole("button", { name: "Add filter" });
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith([456]);
+      expect(setValue).toHaveBeenCalledWith([123, 456]);
     });
 
     it("should be unsettable", async () => {
-      render(
-        <NumberInputWidget
-          arity="n"
-          value={[1, 2]}
-          setValue={mockSetValue}
-          parameter={mockParameter}
-        />,
-      );
+      const { setValue } = setup({ value: [1, 2], arity: "n" });
 
       const combobox = screen.getByRole("combobox");
       const input = getInput(combobox);
@@ -231,7 +185,61 @@ describe("NumberInputWidget", () => {
       const button = screen.getByRole("button", { name: "Update filter" });
 
       await userEvent.click(button);
-      expect(mockSetValue).toHaveBeenCalledWith(undefined);
+      expect(setValue).toHaveBeenCalledWith(undefined);
+    });
+
+    it("should render the correct label if the parameter has custom labels configured", async () => {
+      const values: ParameterValue[] = [["42", "Foo"], ["66", "Bar"], ["55"]];
+      const parameter = createMockParameter({
+        values_source_type: "static-list",
+        values_source_config: { values },
+      });
+
+      const { setValue } = setup({
+        value: [42, 55],
+        arity: "n",
+        parameter,
+        values,
+      });
+
+      const combobox = screen.getByRole("combobox");
+      const input = getInput(combobox);
+      await userEvent.type(input, "Ba", {
+        pointerEventsCheck: 0,
+      });
+
+      await userEvent.click(screen.getByText("Bar"));
+
+      const button = screen.getByRole("button", { name: "Update filter" });
+      await userEvent.click(button);
+
+      expect(setValue).toHaveBeenCalledWith([42, 55, 66]);
+    });
+
+    it("allow entering comma-separated value by label", async () => {
+      const values: ParameterValue[] = [["42", "Foo"], ["66", "Bar"], ["55"]];
+      const parameter = createMockParameter({
+        values_source_type: "static-list",
+        values_source_config: { values },
+      });
+
+      const { setValue } = setup({
+        value: [],
+        arity: "n",
+        parameter,
+        values,
+      });
+
+      const combobox = screen.getByRole("combobox");
+      const input = getInput(combobox);
+      await userEvent.type(input, "Foo,Bar,55,", {
+        pointerEventsCheck: 0,
+      });
+
+      const button = screen.getByRole("button", { name: "Add filter" });
+      await userEvent.click(button);
+
+      expect(setValue).toHaveBeenCalledWith([55]);
     });
   });
 });

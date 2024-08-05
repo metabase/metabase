@@ -11,7 +11,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'External') == false
+    if: github.event.pull_request.head.repo.full_name == github.repository
     name: Build Metabase Docker image
     timeout-minutes: 60
     permissions:

@@ -175,9 +175,30 @@ RelativeDateDimension.args = {
   renderingContext,
 };
 
+export const ShowPercentagesBoth = Template.bind({});
+ShowPercentagesBoth.args = {
+  rawSeries: data.showPercentagesBoth as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const NullDimension = Template.bind({});
 NullDimension.args = {
   rawSeries: data.nullDimension as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const NumDecimalPlacesChart = Template.bind({});
+NumDecimalPlacesChart.args = {
+  rawSeries: data.numDecimalPlacesChart as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const NumDecimalPlacesLegend = Template.bind({});
+NumDecimalPlacesLegend.args = {
+  rawSeries: data.numDecimalPlacesLegend as any,
   dashcardSettings: {},
   renderingContext,
 };

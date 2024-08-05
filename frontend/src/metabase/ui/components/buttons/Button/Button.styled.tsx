@@ -64,9 +64,9 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               backgroundColor: theme.fn.themeColor("bg-light"),
             },
             "&:disabled": {
-              color: theme.fn.themeColor("text-light"),
-              borderColor: theme.fn.themeColor("border"),
-              backgroundColor: theme.fn.themeColor("bg-light"),
+              color: "var(--mb-color-text-tertiary)",
+              borderColor: "var(--mb-color-border)",
+              backgroundColor: "var(--mb-color-background-disabled)",
             },
             "&[data-loading]": {
               [`& .${getStylesRef("leftIcon")}`]: {
@@ -83,16 +83,16 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
         return {
           root: {
             color: theme.white,
-            borderColor: primaryColor,
-            backgroundColor: primaryColor,
+            borderColor: "var(--mb-color-background-brand)",
+            backgroundColor: "var(--mb-color-background-brand)",
             "&:hover": {
               borderColor: hoverColor,
               backgroundColor: hoverColor,
             },
             "&:disabled": {
-              color: theme.fn.themeColor("text-light"),
-              borderColor: theme.fn.themeColor("border"),
-              backgroundColor: theme.fn.themeColor("bg-light"),
+              color: "var(--mb-color-text-tertiary)",
+              borderColor: "var(--mb-color-border)",
+              backgroundColor: "var(--mb-color-background-disabled)",
             },
             "&[data-loading]": {
               [`& .${getStylesRef("leftIcon")}`]: {
@@ -117,9 +117,9 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
               backgroundColor,
             },
             "&:disabled": {
-              color: theme.fn.themeColor("text-light"),
-              borderColor: theme.fn.themeColor("border"),
-              backgroundColor: theme.fn.themeColor("bg-light"),
+              color: "var(--mb-color-text-tertiary)",
+              borderColor: "var(--mb-color-border)",
+              backgroundColor: "var(--mb-color-background-disabled)",
             },
           },
         };

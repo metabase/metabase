@@ -134,7 +134,7 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(
     settings,
     "graph.metrics",
-    getDefaultMetrics(rawSeries),
+    getDefaultMetrics(rawSeries, settings),
     areDimensionsAndMetricsValid,
   );
 

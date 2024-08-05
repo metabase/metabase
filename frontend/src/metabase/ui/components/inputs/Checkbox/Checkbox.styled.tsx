@@ -25,13 +25,13 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
       root: {
         [`&:has(.${getStylesRef("input")}:disabled)`]: {
           [`.${getStylesRef("label")}`]: {
-            color: theme.fn.themeColor("text-light"),
+            color: "var(--mb-color-text-tertiary)",
           },
           [`.${getStylesRef("description")}`]: {
-            color: theme.fn.themeColor("text-light"),
+            color: "var(--mb-color-text-tertiary)",
           },
           [`.${getStylesRef("icon")}`]: {
-            color: theme.fn.themeColor("text-light"),
+            color: "var(--mb-color-text-tertiary)",
           },
         },
       },
@@ -46,30 +46,31 @@ export const getCheckboxOverrides = (): MantineThemeOverride["components"] => ({
         height: getSize({ size, sizes: SIZES }),
         cursor: "pointer",
         borderRadius: theme.radius.xs,
-        border: `1px solid ${theme.fn.themeColor("bg-dark")}`,
+        border: "1px solid var(--mb-color-text-secondary)",
+        backgroundColor: "var(--mb-color-background)",
 
         "&:checked": {
-          borderColor: theme.fn.themeColor("brand"),
-          backgroundColor: theme.fn.themeColor("brand"),
+          borderColor: "var(--mb-color-background-brand)",
+          backgroundColor: "var(--mb-color-background-brand)",
           [`.${getStylesRef("icon")}`]: {
             color: theme.white,
           },
         },
         "&:disabled": {
-          borderColor: theme.fn.themeColor("border"),
-          backgroundColor: theme.fn.themeColor("border"),
+          borderColor: "var(--mb-color-background-disabled)",
+          backgroundColor: "var(--mb-color-background-disabled)",
         },
       },
       label: {
         ref: getStylesRef("label"),
-        color: theme.fn.themeColor("text-dark"),
+        color: "var(--mb-color-text-primary)",
         fontSize: theme.fontSizes.md,
         lineHeight: theme.lineHeight,
         cursor: "pointer",
       },
       description: {
         ref: getStylesRef("description"),
-        color: theme.fn.themeColor("text-dark"),
+        color: "var(--mb-color-text-primary)",
         fontSize: theme.fontSizes.sm,
         lineHeight: theme.lineHeight,
         marginTop: theme.spacing.xs,
