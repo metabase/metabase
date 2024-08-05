@@ -317,5 +317,6 @@ export const translateConfigToAPI = (config: CacheConfig): CacheConfig =>
   translateConfig(config, "toAPI");
 
 export const getPerformanceTabName = (tabId: PerformanceTabId) =>
-  PLUGIN_CACHING.tabMetadata.find(({ key }) => key === `performance-${tabId}`)
-    ?.name;
+  PLUGIN_CACHING.getTabMetadata().find(
+    ({ key }) => key === `performance-${tabId}`,
+  )?.name;

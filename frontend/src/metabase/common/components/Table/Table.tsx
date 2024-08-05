@@ -1,4 +1,4 @@
-import type { PropsWithChildren, ReactNode } from "react";
+import type { ReactNode } from "react";
 import React from "react";
 
 import { Box, Flex, Icon } from "metabase/ui";
@@ -10,10 +10,12 @@ export type TableProps<Row extends BaseRow> = {
   columns: ColumnItem[];
   rows: Row[];
   rowRenderer: (row: Row) => ReactNode;
+  locale: string;
   formatValueForSorting?: (row: Row, columnName: string) => any;
   defaultSortColumn?: string;
   defaultSortDirection?: "asc" | "desc";
-  appendToBody?: ReactNode;
+  cols?: ReactNode;
+  ifEmpty?: ReactNode;
 } & React.HTMLAttributes<HTMLTableElement>;
 
 /**
@@ -22,10 +24,12 @@ export type TableProps<Row extends BaseRow> = {
  * @param props.columns - An array of objects with name and key properties
  * @param props.rows - An array of row objects, which at minimum need an id
  * @param props.rowRenderer - A function that takes a row object and returns a <tr> element
+ * @param props.locale - The locale to use for sorting
  * @param props.formatValueForSorting
  * @param props.defaultSortColumn
  * @param props.defaultSortDirection
- * @param props.appendToBody - Optional React node to append to the body of the table
+ * @param props.cols - Optional React node to render inside the <colgroup> element
+ * @param props.ifEmpty - Optional React node shown when there are no rows
  * @note All other props are passed to the <table> element
  */
 export function Table<Row extends BaseRow>({
@@ -35,10 +39,11 @@ export function Table<Row extends BaseRow>({
   formatValueForSorting = (row: Row, columnName: string) => row[columnName],
   defaultSortColumn,
   defaultSortDirection = "asc",
-  appendToBody,
-  children,
+  ifEmpty,
+  cols,
+  locale,
   ...tableProps
-}: PropsWithChildren<TableProps<Row>>) {
+}: TableProps<Row>) {
   const {
     sortedRows,
     sortColumn,
@@ -50,11 +55,12 @@ export function Table<Row extends BaseRow>({
     defaultSortColumn,
     defaultSortDirection,
     formatValueForSorting,
+    locale,
   });
 
   return (
     <table {...tableProps}>
-      {children}
+      <colgroup>{cols}</colgroup>
       <thead>
         <tr>
           {columns.map(column => (
@@ -73,12 +79,13 @@ export function Table<Row extends BaseRow>({
         </tr>
       </thead>
       <tbody>
-        {sortedRows.map((row, index) => (
-          <React.Fragment key={String(row.id) || index}>
-            {rowRenderer(row)}
-          </React.Fragment>
-        ))}
-        {appendToBody}
+        {sortedRows.length
+          ? sortedRows.map((row, index) => (
+              <React.Fragment key={String(row.id) || index}>
+                {rowRenderer(row)}
+              </React.Fragment>
+            ))
+          : ifEmpty}
       </tbody>
     </table>
   );

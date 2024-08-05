@@ -36,5 +36,5 @@ if (hasPremiumFeature("cache_granular_controls")) {
     DashboardAndQuestionCachingTab;
   PLUGIN_CACHING.StrategyEditorForQuestionsAndDashboards =
     StrategyEditorForQuestionsAndDashboards;
-  PLUGIN_CACHING.tabMetadata = getEnterprisePerformanceTabMetadata();
+  PLUGIN_CACHING.getTabMetadata = getEnterprisePerformanceTabMetadata;
 }

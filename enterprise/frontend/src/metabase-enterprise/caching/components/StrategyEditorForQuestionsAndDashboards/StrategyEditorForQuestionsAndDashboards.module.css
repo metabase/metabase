@@ -16,6 +16,9 @@
   td {
     padding: 0.75rem;
   }
+  tbody > tr:hover {
+    background-color: var(--mb-color-brand-alpha-04) !important;
+  }
 }
 
 .StrategyFormPanel {

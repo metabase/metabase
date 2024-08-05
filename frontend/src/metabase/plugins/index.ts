@@ -397,7 +397,7 @@ export const PLUGIN_CACHING = {
   strategies: strategies,
   DashboardAndQuestionCachingTab: PluginPlaceholder as any,
   StrategyEditorForQuestionsAndDashboards: PluginPlaceholder as any,
-  tabMetadata: getPerformanceTabMetadata(),
+  getTabMetadata: getPerformanceTabMetadata,
 };
 
 export const PLUGIN_REDUCERS: {

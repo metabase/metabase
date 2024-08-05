@@ -1,23 +1,22 @@
 import { useCallback, useMemo, useState } from "react";
 
-import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
-
 import type { BaseRow } from "./types";
 
-const compareNumbers = (a: number, b: number) => (a < b ? -1 : 1);
+const compareNumbers = (a: number, b: number) => a - b;
 
 export const useTableSorting = <Row extends BaseRow>({
   rows,
   defaultSortColumn,
   defaultSortDirection = "asc",
   formatValueForSorting,
+  locale,
 }: {
   rows: Row[];
   defaultSortColumn?: string;
   defaultSortDirection?: "asc" | "desc";
   formatValueForSorting: (row: Row, columnName: string) => any;
+  locale?: string;
 }) => {
-  const localeCode = useLocale();
   const [sortColumn, setSortColumn] = useState<string | undefined>(
     defaultSortColumn,
   );
@@ -27,8 +26,8 @@ export const useTableSorting = <Row extends BaseRow>({
 
   const compareStrings = useCallback(
     (a: string, b: string) =>
-      a.localeCompare(b, localeCode, { sensitivity: "base" }),
-    [localeCode],
+      a.localeCompare(b, locale, { sensitivity: "base" }),
+    [locale],
   );
 
   const sortedRows = useMemo(() => {
