@@ -238,8 +238,6 @@ WHERE
       AND dp.perm_type = 'perms/view-data'
   );
 
-ANALYZE data_permissions;
-
 -- Remove table-level view-data permissions for groups that have DB-level permissions set
 DELETE FROM data_permissions
 WHERE
