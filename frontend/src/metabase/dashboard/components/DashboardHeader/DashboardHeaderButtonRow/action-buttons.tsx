@@ -180,9 +180,19 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
     component: withRouter<HeaderButtonProps>(
-      ({ onFullscreenChange, isFullscreen, dashboard, canEdit, location }) => (
+      ({
+        canResetFilters,
+        onResetFilters,
+        onFullscreenChange,
+        isFullscreen,
+        dashboard,
+        canEdit,
+        location,
+      }) => (
         <DashboardActionMenu
           items={getExtraButtons({
+            canResetFilters,
+            onResetFilters,
             onFullscreenChange,
             isFullscreen,
             dashboard,

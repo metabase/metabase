@@ -1,7 +1,7 @@
 ---
 title: Parameters for static embeds
 redirect_from:
-- /docs/latest/embedding/signed-embedding-parameters
+  - /docs/latest/embedding/signed-embedding-parameters
 ---
 
 # Parameters for static embeds
@@ -126,11 +126,13 @@ Things to keep in mind if you need to make changes to your locked parameters.
 
 ### Include all locked parameters in your server code
 
-Once you publish a chart or dashboard with a locked parameter, you must include the name of the locked parameter in your server code. If you forget to do this, the logs will remind you with a message like this: `You must specify a value for :parameter in the JWT`.
+Once you publish a chart or dashboard with a locked parameter, you _must_ include the name of the locked parameter in your server code. If you exclude the parameter name, the logs will gently remind you: `You must specify a value for :parameter in the JWT`.
+
+If you don't want the locked filter to apply, you can pass an empty array, `[]`, as the value for the parameter in the JWT.
 
 ### Make sure the filter name matches the locked parameter name
 
-If you change the name of a query builder filter that's used as a locked parameter, make sure to update the parameter's name and value(s) in your server code as well. You don't have to do this if your locked parameter is connected to a [SQL variable](../questions/native-editor/sql-parameters.md).
+If you change the name of a query builder filter that's used as a locked parameter, make sure to update the parameter's name and value(s) in your server code as well. If your locked parameter is connected to a [SQL variable](../questions/native-editor/sql-parameters.md), you don't need to change the parameter's name and value(s).
 
 ### Multiple locked parameters or multiple values
 
@@ -159,7 +161,7 @@ You can preview appearance settings from your question or dashboard's [embedded 
 | `bordered`                                | true, false                                   |
 | `titled`                                  | true, false                                   |
 | `theme`                                   | null, transparent, night                      |
-| `refresh` (dashboard only)                                 | integer (seconds, e.g., `refresh=60`)         |
+| `refresh` (dashboard only)                | integer (seconds, e.g., `refresh=60`)         |
 | `font`\*                                  | [font name](../configuring-metabase/fonts.md) |
 | `hide_download_button`\* (questions only) | true, false                                   |
 
@@ -174,7 +176,6 @@ By default, Metabase will include a **Download** button on embedded questions. Y
 If the download button is missing when you expected it to be available, check that the URL in the `src` attribute for your iframe has the parameter `hide_download_button=false`.
 
 > Downloading results is available only for questions, not dashboards.
-
 
 ## Maximum request size
 

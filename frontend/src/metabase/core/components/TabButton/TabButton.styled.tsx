@@ -51,7 +51,9 @@ export const TabButtonRoot = styled.div<TabButtonProps>`
   height: 1.875rem;
   padding: 0.25rem;
   color: ${props =>
-    props.isSelected && !props.disabled ? color("brand") : color("text-dark")};
+    props.isSelected && !props.disabled
+      ? "var(--mb-color-brand)"
+      : "var(--mb-color-text-primary)"};
   opacity: ${props => (props.disabled ? 0.3 : 1)};
   font-size: 0.75rem;
   font-weight: 700;

@@ -98,6 +98,15 @@
                       (when (.exists dst)
                         (io/delete-file dst)))}))
 
+(defn- find-serialization-dir
+  "Find an actual top-level dir with serialization data inside, instead of picking up various .DS_Store and similar
+  things."
+  ^File [^File parent]
+  (->> (.listFiles parent)
+       (u/seek (fn [^File f]
+                 (and (.isDirectory f)
+                      (some v2.ingest/legal-top-level-paths (.list f)))))))
+
 (defn- unpack&import [^File file & [size]]
   (let [dst      (io/file parent-dir (u.random/random-name))
         log-file (io/file dst "import.log")
@@ -106,9 +115,14 @@
                                                     {:additive *additive-logging*})]
                    (try                 ; try/catch inside logging to log errors
                      (log/infof "Serdes import, size %s" size)
-                     (let [path (u.compress/untgz file dst)]
+                     (let [cnt  (u.compress/untgz file dst)
+                           path (find-serialization-dir dst)]
+                       (when-not path
+                         (throw (ex-info "No source dir detected" {:dst   (.getPath dst)
+                                                                   :count cnt})))
+                       (log/infof "In total %s entries unpacked, detected source dir: %s" cnt (.getName path))
                        (serdes/with-cache
-                         (-> (v2.ingest/ingest-yaml (.getPath (io/file dst path)))
+                         (-> (v2.ingest/ingest-yaml (.getPath path))
                              (v2.load/load-metabase!))))
                      (catch Exception e
                        (reset! err e)

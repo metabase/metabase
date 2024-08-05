@@ -10,7 +10,6 @@
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.core :as lib]
    [metabase.lib.util :as lib.util]
-   [metabase.models.query-field :as query-field]
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis.native-query-analyzer :as nqa]
    [metabase.query-analysis.native-query-analyzer.replacement :as nqa.replacement]
@@ -114,7 +113,7 @@
      :query      (explicit-references (mbql.u/referenced-field-ids query))
      :mbql/query (explicit-references (lib.util/referenced-field-ids query)))))
 
-(defn update-query-analysis-for-card!
+(defn- update-query-analysis-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
 
   Returns `nil` (and logs the error) if there was a parse error.
@@ -122,15 +121,32 @@
   [{card-id :id, query :dataset_query}]
   (let [query-type (lib/normalized-query-type query)]
     (when (enabled-type? query-type)
-      (let [references       (query-references query query-type)
-            reference->row   (fn [{:keys [table column field-id explicit-reference]}]
-                               {:card_id            card-id
-                                :table              table
-                                :column             column
-                                :field_id           field-id
-                                :explicit_reference explicit-reference})
-            query-field-rows (map reference->row (:fields references))]
-        (query-field/update-query-fields-for-card! card-id query-field-rows)))))
+      (t2/with-transaction [_conn]
+        (let [analysis-id      (t2/insert-returning-pk! :model/QueryAnalysis {:card_id card-id})
+              references       (query-references query query-type)
+              table->row       (fn [{:keys [schema table table-id]}]
+                                 {:card_id     card-id
+                                  :analysis_id analysis-id
+                                  :schema      schema
+                                  :table       table
+                                  :table_id    table-id})
+              field->row       (fn [{:keys [schema table column table-id field-id explicit-reference]}]
+                                 {:card_id            card-id
+                                  :analysis_id        analysis-id
+                                  :schema             schema
+                                  :table              table
+                                  :column             column
+                                  :table_id           table-id
+                                  :field_id           field-id
+                                  :explicit_reference explicit-reference})
+              query-field-rows (map field->row (:fields references))
+              query-table-rows (map table->row (:tables references))]
+          (t2/insert! :model/QueryField query-field-rows)
+          (t2/insert! :model/QueryTable query-table-rows)
+          (t2/delete! :model/QueryAnalysis
+                      {:where [:and
+                               [:= :card_id card-id]
+                               [:not= :id analysis-id]]}))))))
 
 (defn- replaced-inner-query-for-native-card
   "Substitute new references for certain fields and tables, based upon the given mappings."

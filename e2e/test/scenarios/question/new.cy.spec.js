@@ -28,6 +28,8 @@ import {
   tableHeaderClick,
   onlyOnOSS,
   createQuestion,
+  openNotebook,
+  notebookButton,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -96,11 +98,17 @@ describe("scenarios > question > new", () => {
         cy.findByText("Orders, Count").click();
       });
 
+      cy.log("toggle notebook button should be hidden for brand new questions");
+      notebookButton().should("not.exist");
+
       visualize();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("18,760");
       // should reopen saved question picker after returning back to editor mode
-      cy.icon("notebook").click();
+      openNotebook();
+
+      notebookButton().should("be.visible");
+
       cy.findByTestId("data-step-cell").contains("Orders, Count").click();
       entityPickerModal().within(() => {
         // It is now possible to choose another saved question

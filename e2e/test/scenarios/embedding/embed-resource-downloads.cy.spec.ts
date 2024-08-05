@@ -3,10 +3,13 @@ import {
   ORDERS_DASHBOARD_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  describeEE,
+  describeWithSnowplowEE,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   getDashboardCardMenu,
   main,
   popover,
+  resetSnowplow,
   restore,
   setTokenFeatures,
   showDashboardCardActions,
@@ -17,10 +20,11 @@ import {
  *  Unless the product changes, these should test the same things as `public-resource-downloads.cy.spec.ts`
  */
 
-describeEE(
+describeWithSnowplowEE(
   "Static embed dashboards/questions downloads (results and export as pdf)",
   () => {
     beforeEach(() => {
+      resetSnowplow();
       cy.deleteDownloadsFolder();
     });
 
@@ -36,6 +40,10 @@ describeEE(
         setTokenFeatures("all");
 
         cy.signOut();
+      });
+
+      afterEach(() => {
+        expectNoBadSnowplowEvents();
       });
 
       it("#downloads=false should disable both PDF downloads and dashcard results downloads", () => {
@@ -76,6 +84,12 @@ describeEE(
         cy.get("header").findByText("Export as PDF").click();
 
         cy.verifyDownload("Orders in a dashboard.pdf");
+
+        expectGoodSnowplowEvent({
+          event: "dashboard_pdf_exported",
+          dashboard_id: 0,
+          dashboard_accessed_via: "static-embed",
+        });
       });
 
       it("should be able to download a static embedded dashcard as CSV", () => {
@@ -99,6 +113,13 @@ describeEE(
         popover().findByText(".csv").click();
 
         cy.verifyDownload(".csv", { contains: true });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "dashcard",
+          accessed_via: "static-embed",
+          export_type: "csv",
+        });
       });
     });
 
@@ -153,6 +174,13 @@ describeEE(
         popover().findByText(".png").click();
 
         cy.verifyDownload(".png", { contains: true });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "question",
+          accessed_via: "static-embed",
+          export_type: "png",
+        });
       });
 
       it("should be able to download a static embedded card as CSV", () => {
@@ -175,6 +203,13 @@ describeEE(
         popover().findByText(".csv").click();
 
         cy.verifyDownload(".csv", { contains: true });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "question",
+          accessed_via: "static-embed",
+          export_type: "csv",
+        });
       });
     });
   },

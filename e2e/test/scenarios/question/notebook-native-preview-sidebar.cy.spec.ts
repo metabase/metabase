@@ -106,8 +106,8 @@ describe("scenarios > question > notebook > native query preview sidebar", () =>
     cy.signIn("nosql");
     openReviewsTable({ mode: "notebook" });
     cy.findByTestId("qb-header-action-panel")
-      .find(".Icon")
-      .should("have.length", 1);
+      .findByLabelText(/view the sql/i)
+      .should("not.exist");
     cy.findByLabelText("View the SQL").should("not.exist");
     cy.findByTestId("native-query-preview-sidebar").should("not.exist");
     cy.get("code").should("not.exist");
