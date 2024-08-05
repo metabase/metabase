@@ -4,10 +4,7 @@ import { t } from "ttag";
 import AccordionList from "metabase/core/components/AccordionList";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import {
-  CompareAggregations,
-  getOffsetPeriod,
-} from "metabase/query_builder/components/CompareAggregations";
+import { CompareAggregations } from "metabase/query_builder/components/CompareAggregations";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { getQuestion } from "metabase/query_builder/selectors";
@@ -50,9 +47,11 @@ type MetricListItem = Lib.MetricDisplayInfo & {
 };
 
 type CompareListItem = {
-  type: "compare";
-  displayName: string;
+  key: "compare";
+  type: "action";
+  name: string;
   selected?: boolean;
+  items: [];
 };
 
 type ListItem = OperatorListItem | MetricListItem | CompareListItem;
@@ -117,7 +116,7 @@ export function AggregationPicker({
     const isMetricBased = Lib.isMetricBased(query, stageIndex);
     const compareItem = getCompareListItem(query, stageIndex, aggregations);
 
-    if ((compareItem || operators.length > 0) && !isMetricBased) {
+    if (operators.length > 0 && !isMetricBased) {
       const operatorItems = operators.map(operator =>
         getOperatorListItem(query, stageIndex, operator),
       );
@@ -125,7 +124,7 @@ export function AggregationPicker({
       sections.push({
         key: "operators",
         name: t`Basic Metrics`,
-        items: compareItem ? [compareItem, ...operatorItems] : operatorItems,
+        items: operatorItems,
         icon: "table2",
       });
     }
@@ -139,6 +138,10 @@ export function AggregationPicker({
         ),
         icon: "metric",
       });
+    }
+
+    if (compareItem) {
+      sections.push(compareItem);
     }
 
     if (hasExpressionInput && canUseExpressions) {
@@ -218,11 +221,9 @@ export function AggregationPicker({
         handleOperatorSelect(item);
       } else if (item.type === "metric") {
         handleMetricSelect(item);
-      } else if (item.type === "compare") {
-        handleCompareSelect();
       }
     },
-    [handleOperatorSelect, handleMetricSelect, handleCompareSelect],
+    [handleOperatorSelect, handleMetricSelect],
   );
 
   const handleSectionChange = useCallback(
@@ -230,8 +231,11 @@ export function AggregationPicker({
       if (section.key === "custom-expression") {
         openExpressionEditor();
       }
+      if (section.key === "compare") {
+        handleCompareSelect();
+      }
     },
-    [openExpressionEditor],
+    [openExpressionEditor, handleCompareSelect],
   );
 
   const handleClauseChange = useCallback(
@@ -429,21 +433,12 @@ function getCompareListItem(
     return undefined;
   }
 
-  const period = getOffsetPeriod(query, stageIndex);
-
-  if (aggregations.length > 1) {
-    return {
-      type: "compare",
-      displayName: t`Compare to previous ${period} ...`,
-    };
-  }
-
-  const [aggregation] = aggregations;
-  const info = Lib.displayInfo(query, stageIndex, aggregation);
-
   return {
-    type: "compare",
-    displayName: t`Compare “${info.displayName}” to previous ${period} ...`,
+    type: "action",
+    key: "compare",
+    name: t`Compare to the past`,
+    icon: "lines",
+    items: [],
   };
 }
 
