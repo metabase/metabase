@@ -12,15 +12,12 @@ on:
     - cron: '15 * * * *' # hourly
   pull_request: # FIXME FOR TESTING ONLY
 
-env:
-  DEFAULT_VERSION: 50
-
 jobs:
   update-release-log:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || env.DEFAULT_VERSION }}
+      VERSION: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.version || 50 }} # Update this for the next major release
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
