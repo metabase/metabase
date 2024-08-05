@@ -1855,6 +1855,7 @@ describe("issue 25374", () => {
     cy.location("search").should("eq", "?num=1%2C2%2C3");
   });
 });
+
 describe("issue 25908", () => {
   const questionDetails = {
     name: "25908",
