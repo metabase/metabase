@@ -675,7 +675,7 @@ describeEE("formatting > sandboxes", () => {
           );
         });
 
-        it("simple sandboxing should work (metabase#14629)", () => {
+        it.only("simple sandboxing should work (metabase#14629)", () => {
           cy.updatePermissionsGraph({
             [COLLECTION_GROUP]: {
               [SAMPLE_DB_ID]: {
@@ -705,6 +705,12 @@ describeEE("formatting > sandboxes", () => {
           // Title of the first order for User ID = 1
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
           cy.findByText("Awesome Concrete Shoes");
+
+          cy.signOut();
+          cy.signInAsAdmin();
+          cy.visit(
+            "/admin/permissions/data/group/3/database/1/schema/PUBLIC/5/segmented",
+          );
         });
       },
     );

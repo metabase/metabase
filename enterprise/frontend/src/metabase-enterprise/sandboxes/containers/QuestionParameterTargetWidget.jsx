@@ -11,6 +11,8 @@ class QuestionParameterTargetWidget extends Component {
     const mappingOptions = question
       ? getParameterMappingOptions(question, null, question.card())
       : [];
+    console.log("props", this.props);
+    console.log({ mappingOptions });
     return <ParameterTargetWidget {...props} mappingOptions={mappingOptions} />;
   }
 }
