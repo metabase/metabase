@@ -69,3 +69,7 @@
   font-weight: bold;
   color: var(--mb-color-text-medium);
 }
+
+.widgetStatus {
+  flex: 0 0 auto;
+}

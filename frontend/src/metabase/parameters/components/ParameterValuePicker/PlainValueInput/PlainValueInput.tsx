@@ -1,4 +1,5 @@
 import type { ChangeEvent } from "react";
+import { t } from "ttag";
 
 import { TextInput } from "metabase/ui";
 
@@ -23,7 +24,11 @@ export function PlainValueInput(props: PlainValueInputProps) {
   };
 
   const icon = value ? (
-    <PickerIcon name="close" onClick={() => onChange(null)} />
+    <PickerIcon
+      aria-label={t`Clear`}
+      name="close"
+      onClick={() => onChange(null)}
+    />
   ) : null;
 
   return (
