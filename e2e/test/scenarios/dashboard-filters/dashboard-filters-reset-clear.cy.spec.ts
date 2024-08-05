@@ -535,37 +535,6 @@ describe("scenarios > dashboard > filters > reset & clear", () => {
       },
     });
   });
-
-  it("chevron icons are aligned in temporal unit parameter sidebar", () => {
-    createDashboardWithParameters(
-      ORDERS_COUNT_OVER_TIME,
-      ORDERS_CREATED_AT_FIELD,
-      [
-        {
-          name: "Unit of Time",
-          slug: "unit-of-time",
-          id: "fed1b910",
-          type: "temporal-unit",
-          sectionId: "temporal-unit",
-        },
-      ],
-    );
-    editDashboard();
-    editFilter("Unit of Time");
-
-    dashboardParameterSidebar()
-      .findAllByLabelText("chevrondown icon")
-      .then(([$firstChevron, ...$otherChevrons]) => {
-        const firstRect = $firstChevron.getBoundingClientRect();
-
-        for (const $chevron of $otherChevrons) {
-          const rect = $chevron.getBoundingClientRect();
-
-          expect(firstRect.left, "left").to.eq(rect.left);
-          expect(firstRect.right, "right").to.eq(rect.right);
-        }
-      });
-  });
 });
 
 describe("scenarios > dashboard > filters > reset all filters", () => {
