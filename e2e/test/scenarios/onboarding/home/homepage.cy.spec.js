@@ -468,9 +468,7 @@ describe("scenarios > home > custom homepage", () => {
     it("should show the default homepage if the dashboard was archived (#31599)", () => {
       // Archive dashboard
       visitDashboard(ORDERS_DASHBOARD_ID);
-      dashboardHeader().within(() => {
-        cy.findByLabelText("dashboard-menu-button").click();
-      });
+      dashboardHeader().findByLabelText("Move, trash, and more…").click();
       popover().within(() => {
         cy.findByText("Archive").click();
       });

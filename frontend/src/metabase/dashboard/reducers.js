@@ -42,6 +42,7 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
+  RESET_PARAMETERS,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
@@ -371,6 +372,14 @@ const parameterValues = handleActions(
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
     },
+    [RESET_PARAMETERS]: {
+      next: (state, { payload: parameters }) => {
+        return parameters.reduce(
+          (result, parameter) => assoc(result, parameter.id, parameter.value),
+          state ?? {},
+        );
+      },
+    },
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),
     },
@@ -400,6 +409,14 @@ const draftParameterValues = handleActions(
     },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
+    },
+    [RESET_PARAMETERS]: {
+      next: (state, { payload: parameters }) => {
+        return parameters.reduce(
+          (result, parameter) => assoc(result, parameter.id, parameter.value),
+          state ?? {},
+        );
+      },
     },
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),

@@ -1,9 +1,9 @@
 import {
   getDashboardComplete,
-  getHiddenParameterSlugs,
   getIsEditing,
   getIsNightMode,
   getParameters,
+  getTabHiddenParameterSlugs,
 } from "metabase/dashboard/selectors";
 import { isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
@@ -28,7 +28,7 @@ export function DashboardParameterPanel({
 }: DashboardParameterPanelProps) {
   const dashboard = useSelector(getDashboardComplete);
   const parameters = useSelector(getParameters);
-  const hiddenParameterSlugs = useSelector(getHiddenParameterSlugs);
+  const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
   const isEditing = useSelector(getIsEditing);
   const isNightMode = useSelector(getIsNightMode);
   const visibleParameters = getVisibleParameters(

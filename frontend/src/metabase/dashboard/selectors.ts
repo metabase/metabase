@@ -10,20 +10,24 @@ import {
 import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { getDashboardUiParameters } from "metabase/parameters/utils/dashboards";
 import { getParameterMappingOptions as _getParameterMappingOptions } from "metabase/parameters/utils/mapping-options";
+import { getVisibleParameters } from "metabase/parameters/utils/ui";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
 import { getEmbedOptions, getIsEmbedded } from "metabase/selectors/embed";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
-import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  getParameterValuesBySlug,
+  getValuePopulatedParameters as _getValuePopulatedParameters,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Card,
   CardId,
-  DashboardId,
-  DashCardId,
-  DashboardCard,
-  DashboardParameterMapping,
-  ParameterId,
   Dashboard,
+  DashboardCard,
+  DashboardId,
+  DashboardParameterMapping,
+  DashCardId,
+  ParameterId,
 } from "metabase-types/api";
 import type {
   ClickBehaviorSidebarState,
@@ -32,7 +36,12 @@ import type {
   StoreDashboard,
 } from "metabase-types/store";
 
-import { isQuestionCard, isQuestionDashCard } from "./utils";
+import {
+  canResetFilter,
+  getMappedParametersIds,
+  isQuestionCard,
+  isQuestionDashCard,
+} from "./utils";
 
 type SidebarState = State["dashboard"]["sidebar"];
 
@@ -375,6 +384,21 @@ export const getParameters = createSelector(
   },
 );
 
+export const getValuePopulatedParameters = createSelector(
+  [
+    getParameters,
+    getParameterValues,
+    getDraftParameterValues,
+    getIsAutoApplyFilters,
+  ],
+  (parameters, parameterValues, draftParameterValues, isAutoApplyFilters) => {
+    return _getValuePopulatedParameters({
+      parameters,
+      values: isAutoApplyFilters ? parameterValues : draftParameterValues,
+    });
+  },
+);
+
 export const getMissingRequiredParameters = createSelector(
   [getParameters],
   parameters =>
@@ -470,6 +494,23 @@ export const getCurrentTabDashcards = createSelector(
 );
 
 export const getHiddenParameterSlugs = createSelector(
+  [getDashboardComplete, getParameters, getIsEditing],
+  (dashboard, parameters, isEditing) => {
+    if (isEditing || !dashboard) {
+      // All filters should be visible in edit mode
+      return undefined;
+    }
+
+    const parameterIds = getMappedParametersIds(dashboard.dashcards);
+    const hiddenParameters = parameters.filter(
+      parameter => !parameterIds.includes(parameter.id),
+    );
+
+    return hiddenParameters.map(parameter => parameter.slug).join(",");
+  },
+);
+
+export const getTabHiddenParameterSlugs = createSelector(
   [getParameters, getCurrentTabDashcards, getIsEditing],
   (parameters, currentTabDashcards, isEditing) => {
     if (isEditing) {
@@ -477,10 +518,7 @@ export const getHiddenParameterSlugs = createSelector(
       return undefined;
     }
 
-    const currentTabParameterIds = currentTabDashcards.flatMap(
-      (dc: DashboardCard) =>
-        dc.parameter_mappings?.map(pm => pm.parameter_id) ?? [],
-    );
+    const currentTabParameterIds = getMappedParametersIds(currentTabDashcards);
     const hiddenParameters = parameters.filter(
       parameter => !currentTabParameterIds.includes(parameter.id),
     );
@@ -529,4 +567,19 @@ export const getDisplayTheme = (state: State) => state.dashboard.theme;
 export const getIsNightMode = createSelector(
   [getDisplayTheme],
   theme => theme === "night",
+);
+
+export const getVisibleValuePopulatedParameters = createSelector(
+  [getValuePopulatedParameters, getHiddenParameterSlugs],
+  getVisibleParameters,
+);
+
+export const getFiltersToReset = createSelector(
+  [getVisibleValuePopulatedParameters],
+  parameters => parameters.filter(canResetFilter),
+);
+
+export const getCanResetFilters = createSelector(
+  [getFiltersToReset],
+  filtersToReset => filtersToReset.length > 0,
 );

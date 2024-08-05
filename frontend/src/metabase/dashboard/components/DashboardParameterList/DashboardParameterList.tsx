@@ -8,12 +8,12 @@ import {
   getDashboardComplete,
   getDraftParameterValues,
   getEditingParameter,
-  getHiddenParameterSlugs,
   getIsAutoApplyFilters,
   getIsEditing,
   getIsNightMode,
   getParameters,
   getParameterValues,
+  getTabHiddenParameterSlugs,
 } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import SyncedParametersList from "metabase/parameters/components/SyncedParametersList";
@@ -31,7 +31,7 @@ export function DashboardParameterList({
   const parameterValues = useSelector(getParameterValues);
   const draftParameterValues = useSelector(getDraftParameterValues);
   const editingParameter = useSelector(getEditingParameter);
-  const hiddenParameterSlugs = useSelector(getHiddenParameterSlugs);
+  const hiddenParameterSlugs = useSelector(getTabHiddenParameterSlugs);
   const isEditing = useSelector(getIsEditing);
   const isAutoApplyFilters = useSelector(getIsAutoApplyFilters);
   const isNightMode = useSelector(getIsNightMode);
