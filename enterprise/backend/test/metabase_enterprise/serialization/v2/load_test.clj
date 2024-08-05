@@ -1218,39 +1218,47 @@
                                      (is (= 1 (count (:errors report))))
                                      (is (= 3 (count (:seen report)))))))))))))))
 
-(deftest database-test
-  (mt/with-empty-h2-app-db
-    (ts/with-temp-dpc [Database   _ {:name    "My Database"
-                                     :details {:some "secret"}}]
-      (testing "without :include-database-secrets"
-        (let [extracted (vec (serdes.extract/extract {:no-settings true}))
-              dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
-          (is (= 1 (count dbs)))
-          (is (not-any? :details dbs))
-          (testing "loading still works even if there are no details"
-            (t2/delete! Database)
-            (is (= nil
-                   (t2/select-one-fn :details Database)))
-            (serdes.load/load-metabase! (ingestion-in-memory extracted))
-            (is (= {}
-                   (t2/select-one-fn :details Database)))
-            (testing "If we did not export details - it won't override existing data"
-              (t2/update! Database {:details {:other "secret"}})
-              (serdes.load/load-metabase! (ingestion-in-memory extracted))
-              (is (= {:other "secret"}
-                     (t2/select-one-fn :details Database))))))))
+(deftest with-dbs-works-as-expected-test
+  (ts/with-dbs [source-db dest-db]
+    (ts/with-db source-db
+      (mt/with-temp
+        [:model/Card _ {:name "MY CARD"}]
+        (testing "card is available in the source db"
+          (is (some? (t2/select-one :model/Card :name "MY CARD"))))
+        (ts/with-db dest-db
+          (testing "card should not be available in the dest db"
+           (is (nil? (t2/select-one :model/Card :name "MY CARD")))))))))
 
-    ;; deleting to really check what's going on: `t2/with-dbs` is not giving correct results
-    (t2/delete! Database)
-    (ts/with-temp-dpc [Database   _ {:name    "My Database"
-                                     :details {:some "secret"}}]
-      (testing "with :include-database-secrets"
-        (let [extracted (vec (serdes.extract/extract {:no-settings true :include-database-secrets true}))
-              dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
-          (is (= 1 (count dbs)))
-          (is (every? :details dbs))
-          (testing "Details are imported if provided"
-            (t2/delete! Database)
-            (serdes.load/load-metabase! (ingestion-in-memory extracted))
-            (is (= (:details (first dbs))
-                   (t2/select-one-fn :details Database)))))))))
+(deftest database-test
+  (ts/with-dbs [source-db dest-db]
+    (ts/with-db source-db
+      (mt/with-temp [Database   _ {:name    "My Database"
+                                   :details {:some "secret"}}]
+        (testing "without :include-database-secrets"
+          (let [extracted (vec (serdes.extract/extract {:no-settings true}))
+                dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
+            (is (= 1 (count dbs)))
+            (is (not-any? :details dbs))
+            (ts/with-db dest-db
+              (testing "loading still works even if there are no details"
+                (serdes.load/load-metabase! (ingestion-in-memory extracted))
+                (is (= {}
+                       (t2/select-one-fn :details Database)))
+                (testing "If we did not export details - it won't override existing data"
+                  (t2/update! Database {:details {:other "secret"}})
+                  (serdes.load/load-metabase! (ingestion-in-memory extracted))
+                  (is (= {:other "secret"}
+                         (t2/select-one-fn :details Database)))))))))
+
+      (mt/with-temp [Database   _ {:name    "My Database"
+                                   :details {:some "secret"}}]
+        (testing "with :include-database-secrets"
+          (let [extracted (vec (serdes.extract/extract {:no-settings true :include-database-secrets true}))
+                dbs       (filterv #(= "Database" (:model (last (serdes/path %)))) extracted)]
+            (is (= 1 (count dbs)))
+            (is (every? :details dbs))
+            (ts/with-db dest-db
+              (testing "Details are imported if provided"
+                (serdes.load/load-metabase! (ingestion-in-memory extracted))
+                (is (= (:details (first dbs))
+                       (t2/select-one-fn :details Database)))))))))))
