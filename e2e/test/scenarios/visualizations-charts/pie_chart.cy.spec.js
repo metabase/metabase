@@ -85,6 +85,39 @@ describe("scenarios > visualizations > pie chart", () => {
       cy.findByText("TOTAL").should("be.visible");
     });
   });
+
+  it("should truncate the center dimension label if it overflows", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        type: "query",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            category_foo: [
+              "concat",
+              ["field", PRODUCTS.CATEGORY, null],
+              " the quick brown fox jumps over the lazy dog",
+            ],
+          },
+          aggregation: [["count"]],
+          breakout: [["expression", "category_foo"]],
+        },
+        database: SAMPLE_DB_ID,
+      },
+      display: "pie",
+    });
+
+    // Ensure chart renders before hovering the legend item
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("TOTAL");
+    });
+
+    cy.findAllByTestId("legend-item").eq(0).realHover();
+
+    cy.findByTestId("query-visualization-root").within(() => {
+      cy.findByText("DOOHICKEY THE QUICK BROWN FOX J…");
+    });
+  });
 });
 
 function ensurePieChartRendered(rows, totalValue) {
