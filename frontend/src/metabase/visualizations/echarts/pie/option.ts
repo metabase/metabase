@@ -167,7 +167,11 @@ export function getPieChartOption(
 
   // "Show percentages: On the chart" setting
   const formatSlicePercent = (key: PieSliceData["key"]) => {
-    if (settings["pie.percent_visibility"] !== "inside") {
+    if (
+      settings["pie.percent_visibility"] == null ||
+      settings["pie.percent_visibility"] === "off" ||
+      settings["pie.percent_visibility"] === "legend"
+    ) {
       return " ";
     }
 

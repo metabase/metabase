@@ -21,10 +21,13 @@ import missingLabelLargeSlice38424 from "./missing-label-large-slice-38424.json"
 import mixedPostiiveNegative from "./mixed-positive-negative.json";
 import noSingleColumnLegend45149 from "./no-single-column-legend-45149.json";
 import nullDimension from "./null-dimension.json";
+import numDecimalPlacesChart from "./num-decimal-places-chart.json";
+import numDecimalPlacesLegend from "./num-decimal-places-legend.json";
 import numericDimension from "./numeric-dimension.json";
 import numericSQLColumnCrashes28568 from "./numeric-sql-column-crashes-28568.json";
 import percentagesOnChartBooleanDimensionCrashes44085 from "./percentages-on-chart-boolean-dimension-crashes-44085.json";
 import relativeDateDimension from "./relative-date-dimension.json";
+import showPercentagesBoth from "./show-percentages-both.json";
 import showPercentagesOff from "./show-percentages-off.json";
 import showPercentagesOnChartDense from "./show-percentages-on-chart-dense.json";
 import showPercentagesOnChart from "./show-percentages-on-chart.json";
@@ -44,6 +47,7 @@ export const data = {
   smallMinimumSlicePercentage,
   largeMinimumSlicePercentage,
   zeroMinimumSlicePercentage,
+  showPercentagesBoth,
   showPercentagesOff,
   showPercentagesOnChart,
   showPercentagesOnChartDense,
@@ -57,6 +61,8 @@ export const data = {
   dateDimension,
   relativeDateDimension,
   nullDimension,
+  numDecimalPlacesChart,
+  numDecimalPlacesLegend,
   unaggregatedDimension,
   singleDimension,
   longDimensionName,

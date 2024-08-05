@@ -243,3 +243,12 @@ export function isValidCollectionId(
   const id = canonicalCollectionId(collectionId);
   return id === null || typeof id === "number";
 }
+
+export const getCollectionName = (
+  collection: Pick<Collection, "id" | "name">,
+) => {
+  if (isRootCollection(collection)) {
+    return t`Our analytics`;
+  }
+  return collection?.name || t`Untitled collection`;
+};

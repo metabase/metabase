@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Tooltip, Icon, ActionIcon } from "metabase/ui";
+import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
@@ -21,34 +21,32 @@ export function QuestionNotebookButton({
   setQueryBuilderMode,
 }: QuestionNotebookButtonProps) {
   return (
-    <Tooltip
-      label={isShowingNotebook ? t`Hide editor` : t`Show editor`}
-      data-placement="top"
-      position="top"
+    <Button
+      data-testid="notebook-button"
+      onClick={() =>
+        setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
+      }
     >
-      <ActionIcon
-        color="brand"
-        size="2rem"
-        variant={isShowingNotebook ? "filled" : "viewHeader"}
-        onClick={() =>
-          setQueryBuilderMode(isShowingNotebook ? "view" : "notebook")
-        }
-      >
-        <Icon size={14} name="notebook" />
-      </ActionIcon>
-    </Tooltip>
+      {isShowingNotebook ? t`Show Visualization` : t`Show Editor`}
+    </Button>
   );
 }
 
 QuestionNotebookButton.shouldRender = ({
   question,
   isActionListVisible,
+  isBrandNew = false,
 }: {
   question: Question;
   isActionListVisible: boolean;
+  isBrandNew?: boolean;
 }) => {
   const { isEditable, isNative } = Lib.queryDisplayInfo(question.query());
   return (
-    !isNative && isEditable && isActionListVisible && !question.isArchived()
+    !isNative &&
+    isEditable &&
+    isActionListVisible &&
+    !question.isArchived() &&
+    !isBrandNew
   );
 };

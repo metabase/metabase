@@ -39,19 +39,25 @@ export function getPieChartFormatters(
       ...metricColSettings,
     });
 
-  const formatPercent = (value: unknown, location: "legend" | "chart") =>
-    renderingContext.formatValue(value, {
-      column: metricColSettings.column,
-      number_separators: metricColSettings.number_separators as string,
-      number_style: "percent",
-      decimals: computeMaxDecimalsForValues(
+  const formatPercent = (value: unknown, location: "legend" | "chart") => {
+    let decimals = settings["pie.decimal_places"];
+    if (decimals == null) {
+      decimals = computeMaxDecimalsForValues(
         chartModel.slices.map(s => s.data.normalizedPercentage),
         {
           style: "percent",
           maximumSignificantDigits: location === "legend" ? 3 : 2,
         },
-      ),
+      );
+    }
+
+    return renderingContext.formatValue(value, {
+      column: metricColSettings.column,
+      number_separators: metricColSettings.number_separators as string,
+      number_style: "percent",
+      decimals,
     });
+  };
 
   return { formatDimension, formatMetric, formatPercent };
 }

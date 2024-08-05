@@ -253,24 +253,6 @@ describeEE("scenarios > admin > permissions > view data > granular", () => {
 });
 
 describeEE("scenarios > admin > permissions > view data > impersonated", () => {
-  function savePermissions() {
-    cy.findByTestId("edit-bar").button("Save changes").click();
-    cy.findByRole("dialog").findByText("Yes").click();
-    cy.findByTestId("edit-bar").should("not.exist");
-  }
-
-  function selectImpersonatedAttribute(attribute) {
-    cy.findByRole("dialog").within(() => {
-      cy.findByTestId("select-button").click();
-    });
-
-    popover().findByText(attribute).click();
-  }
-
-  function saveImpersonationSettings() {
-    cy.findByRole("dialog").findByText("Save").click();
-  }
-
   beforeEach(() => {
     restore("postgres-12");
     createTestRoles({ type: "postgres" });
@@ -757,6 +739,101 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
   });
 });
 
+describeEE(
+  "scenarios > admin > permissions > view data > reproductions",
+  () => {
+    it("should allow you to sandbox view permissions and also edit the create queries permissions and saving should persist both (metabase#46450)", () => {
+      restore();
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+
+      cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+      cy.get("a").contains("Sample Database").click();
+
+      modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
+
+      modal().within(() => {
+        cy.findByText("Grant sandboxed access to this table");
+        cy.button("Save").should("be.disabled");
+        cy.findByText("Pick a column").click();
+      });
+
+      popover().findByText("User ID").click();
+      modal().findByText("Pick a user attribute").click();
+      popover().findByText("attr_uid").click();
+      modal().button("Save").click();
+
+      modifyPermission(
+        "Orders",
+        NATIVE_QUERIES_PERMISSION_INDEX,
+        "Query builder only",
+      );
+
+      savePermissions();
+
+      cy.wait("@saveGraph").then(({ response }) => {
+        expect(response.statusCode).to.equal(200);
+      });
+
+      assertPermissionForItem(
+        "Orders",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Sandboxed",
+      );
+      assertPermissionForItem(
+        "Orders",
+        NATIVE_QUERIES_PERMISSION_INDEX,
+        "Query builder only",
+      );
+    });
+
+    it("should allow you to impersonate view permissions and also edit the create queries permissions and saving should persist both (metabase#46450)", () => {
+      restore("postgres-12");
+      createTestRoles({ type: "postgres" });
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+
+      cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
+
+      cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
+
+      // Set impersonated access on Postgres database
+      modifyPermission(
+        "QA Postgres12",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Impersonated",
+      );
+
+      selectImpersonatedAttribute("role");
+      saveImpersonationSettings();
+
+      modifyPermission(
+        "QA Postgres12",
+        NATIVE_QUERIES_PERMISSION_INDEX,
+        "Query builder only",
+      );
+
+      savePermissions();
+
+      cy.wait("@saveGraph").then(({ response }) => {
+        expect(response.statusCode).to.equal(200);
+      });
+
+      assertPermissionForItem(
+        "QA Postgres12",
+        DATA_ACCESS_PERMISSION_INDEX,
+        "Impersonated",
+      );
+      assertPermissionForItem(
+        "QA Postgres12",
+        NATIVE_QUERIES_PERMISSION_INDEX,
+        "Query builder only",
+      );
+    });
+  },
+);
 describeEE("scenarios > admin > permissions > view data > unrestricted", () => {
   beforeEach(() => {
     restore();
@@ -796,3 +873,21 @@ describeEE("scenarios > admin > permissions > view data > unrestricted", () => {
     });
   });
 });
+
+function savePermissions() {
+  cy.findByTestId("edit-bar").button("Save changes").click();
+  cy.findByRole("dialog").findByText("Yes").click();
+  cy.findByTestId("edit-bar").should("not.exist");
+}
+
+function selectImpersonatedAttribute(attribute) {
+  cy.findByRole("dialog").within(() => {
+    cy.findByTestId("select-button").click();
+  });
+
+  popover().findByText(attribute).click();
+}
+
+function saveImpersonationSettings() {
+  cy.findByRole("dialog").findByText("Save").click();
+}

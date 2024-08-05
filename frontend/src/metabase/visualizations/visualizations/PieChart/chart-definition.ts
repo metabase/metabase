@@ -109,8 +109,22 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
           { name: t`Off`, value: "off" },
           { name: t`In legend`, value: "legend" },
           { name: t`On the chart`, value: "inside" },
+          { name: t`Both`, value: "both" },
         ],
       },
+    },
+    "pie.decimal_places": {
+      section: t`Display`,
+      title: t`Number of decimal places`,
+      widget: "number",
+      props: {
+        placeholder: t`Auto`,
+        options: { isInteger: true, isNonNegative: true },
+      },
+      getHidden: (_, settings) =>
+        settings["pie.percent_visibility"] == null ||
+        settings["pie.percent_visibility"] === "off",
+      readDependencies: ["pie.percent_visibility"],
     },
     "pie.slice_threshold": {
       section: t`Display`,
