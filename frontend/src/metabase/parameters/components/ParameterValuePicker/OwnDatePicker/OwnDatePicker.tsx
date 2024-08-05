@@ -1,5 +1,6 @@
 import { useClickOutside } from "@mantine/hooks";
 import { useState } from "react";
+import { t } from "ttag";
 
 import { DateAllOptionsWidget } from "metabase/components/DateAllOptionsWidget";
 import { DateMonthYearWidget } from "metabase/components/DateMonthYearWidget";
@@ -39,6 +40,7 @@ export function OwnDatePicker(props: OwnDatePickerProps) {
 
   const icon = value ? (
     <PickerIcon
+      aria-label={t`Clear`}
       name="close"
       onClick={() => {
         onChange(null);

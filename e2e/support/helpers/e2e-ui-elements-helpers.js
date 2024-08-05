@@ -133,7 +133,7 @@ export function clearFilterWidget(index = 0) {
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  return filterWidget().eq(index).icon("time_history").click();
+  return filterWidget().eq(index).icon("revert").click();
 }
 
 export function setFilterWidgetValue(
