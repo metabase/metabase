@@ -247,14 +247,11 @@
 
 (def ^:private ^Tika tika (Tika.))
 
-(defn- file-extension [filename]
-  (-> filename (str/split #"\.") rest last))
+(defn- file-extension [^File file]
+  (-> file .getName (str/split #"\.") rest last))
 
-(defn- allowed-extension? [^File file]
-  (-> file .getName file-extension allowed-extensions boolean))
-
-(defn- allowed-mime-type? [^File file]
-  (contains? allowed-mime-types (.detect tika file)))
+(defn- file-mime-type [^File file]
+  (.detect tika file))
 
 (defn- infer-separator
   "Guess at what symbol is being used as a separator in the given CSV-like file.
@@ -276,10 +273,9 @@
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
   [^File file]
-  (let [extension (file-extension (.getName file))
-        s         (if (= "tsv" extension)
-                    \t
-                    (infer-separator file))]
+  (let [s (if (= "tsv" (file-extension file))
+            \t
+            (infer-separator file))]
     (fn [stream]
       (csv/read-csv stream :separator s))))
 
@@ -458,11 +454,15 @@
      :stats stats}))
 
 (defn- check-filetype [file]
-  (when-not (and (allowed-extension? file)
-                 (allowed-mime-type? file))
-    (throw (ex-info (tru "Unsupported File Type")
-                    ;; Unsupported Media Type
-                    {:status-code 415}))))
+  (let [extension (file-extension file)
+        mime-type (file-mime-type file)]
+    (when-not (and (contains? allowed-extensions extension)
+                   (contains? allowed-mime-types mime-type))
+      (throw (ex-info (tru "Unsupported File Type")
+                      ;; Unsupported Media Type
+                      {:status-code    415
+                       :file-extension extension
+                       :mime-type      mime-type})))))
 
 (mu/defn create-csv-upload!
   "Main entry point for CSV uploading.
