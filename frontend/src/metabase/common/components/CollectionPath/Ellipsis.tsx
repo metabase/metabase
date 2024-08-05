@@ -6,7 +6,7 @@ import { Text } from "metabase/ui";
 
 import type { RefProp } from "../types";
 
-import { EllipsisAndSeparator } from "./CollectionBreadcrumbsWithTooltip.styled";
+import { EllipsisAndSeparator } from "./CollectionPath.styled";
 import { PathSeparator } from "./PathSeparator";
 type EllipsisProps = {
   includeSep?: boolean;

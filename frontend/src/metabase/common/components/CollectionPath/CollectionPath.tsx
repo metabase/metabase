@@ -16,16 +16,17 @@ import {
   CollectionLink,
   CollectionsIcon,
   InitialEllipsis,
-} from "./CollectionBreadcrumbsWithTooltip.styled";
+} from "./CollectionPath.styled";
 import { Ellipsis } from "./Ellipsis";
 import { PathSeparator } from "./PathSeparator";
 import { getBreadcrumbMaxWidths, getCollectionPathString } from "./utils";
 
-export const CollectionBreadcrumbsWithTooltip = ({
+export const CollectionPath = ({
   collection,
   containerName,
 }: {
   collection: CollectionEssentials;
+  /** Must be a valid css identifier. "a_b" is a valid value, but "a.b" is not */
   containerName: string;
 }) => {
   const collections = (

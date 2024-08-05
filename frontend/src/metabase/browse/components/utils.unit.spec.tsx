@@ -4,37 +4,7 @@ import { SortDirection } from "metabase-types/api/sorting";
 import { createMockModelResult } from "../test-utils";
 import type { ModelResult } from "../types";
 
-import {
-  getCollectionPathString,
-  sortModels,
-  getMaxRecentModelCount,
-} from "./utils";
-
-describe("getCollectionPathString", () => {
-  it("should return path for collection without ancestors", () => {
-    const collection = createMockCollection({
-      id: 0,
-      name: "Documents",
-      effective_ancestors: [],
-    });
-    const pathString = getCollectionPathString(collection);
-    expect(pathString).toBe("Documents");
-  });
-
-  it("should return path for collection with multiple ancestors", () => {
-    const ancestors = [
-      createMockCollection({ name: "Home" }),
-      createMockCollection({ name: "User" }),
-      createMockCollection({ name: "Files" }),
-    ];
-    const collection = createMockCollection({
-      name: "Documents",
-      effective_ancestors: ancestors,
-    });
-    const pathString = getCollectionPathString(collection);
-    expect(pathString).toBe("Home / User / Files / Documents");
-  });
-});
+import { sortModels, getMaxRecentModelCount } from "./utils";
 
 describe("sortModels", () => {
   let id = 0;

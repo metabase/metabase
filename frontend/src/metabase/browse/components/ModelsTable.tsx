@@ -8,6 +8,11 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
+import {
+  CollectionPath,
+  SimpleCollectionDisplay,
+} from "metabase/common/components/CollectionPath/CollectionPath";
+import { CollectionsIcon } from "metabase/common/components/CollectionPath/CollectionPath.styled";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
@@ -38,11 +43,6 @@ import { trackModelClick } from "../analytics";
 import type { ModelResult } from "../types";
 import { getIcon } from "../utils";
 
-import {
-  CollectionBreadcrumbsWithTooltip,
-  SimpleCollectionDisplay,
-} from "./CollectionBreadcrumbsWithTooltip";
-import { CollectionsIcon } from "./CollectionBreadcrumbsWithTooltip.styled";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import {
   ModelCell,
@@ -243,7 +243,7 @@ const TBodyRow = ({
         {simpleDisplay ? (
           <SimpleCollectionDisplay collection={model.collection} />
         ) : (
-          <CollectionBreadcrumbsWithTooltip
+          <CollectionPath
             containerName={containerName}
             collection={model.collection}
           />

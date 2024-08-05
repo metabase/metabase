@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import type { RefProp } from "metabase/browse/types";
+import type { RefProp } from "metabase/common/components/types";
 import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { Box, type BoxProps } from "metabase/ui";
 
