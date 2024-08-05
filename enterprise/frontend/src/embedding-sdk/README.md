@@ -86,7 +86,7 @@ java -jar metabase.jar
 You can then use the API key to authenticate with Metabase in your application. Here's an example of how you can
 authenticate with the API key:
 
-``` 
+```
 const metabaseConfig = {
     ...
     apiKey: "YOUR_API_KEY"
@@ -1010,6 +1010,22 @@ For security issues, please follow the instructions for responsible
 disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#reporting-a-vulnerability).
 
 # Development
+
+## Storybook
+
+You can use storybook to run SDK components during local development.
+
+When you have Metabase instance running:
+```bash
+yarn storybook-embedding-sdk
+```
+
+
+### Initial configuration
+1. Set JWT secret to be "`0000000000000000000000000000000000000000000000000000000000000000`" in Admin > Authentication > JWT > String used by the JWT signing key
+1. Make sure "User Provisioning" setting is set to "`on`".
+1. Set Authorized Origins to "`*`" in Admin > Embedding > Interactive embedding
+
 
 ## Building locally
 
