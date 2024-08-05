@@ -5,7 +5,6 @@
    [compojure.core :refer [GET POST PUT]]
    [medley.core :as m]
    [metabase.api.common :as api]
-   [metabase.db.query :as mdb.query]
    [metabase.driver.h2 :as h2]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -470,33 +469,6 @@
                                        (assoc field :semantic_type nil)
                                        field))))
 
-(defn fetch-card-query-metadata
-  "Return metadata for the 'virtual' table for a Card."
-  [id]
-  (let [{:keys [database_id] :as card} (api/check-404
-                                        (t2/select-one [Card :id :dataset_query :result_metadata :name :description
-                                                        :collection_id :database_id :type]
-                                                       :id id))
-        moderated-status              (->> (mdb.query/query {:select   [:status]
-                                                             :from     [:moderation_review]
-                                                             :where    [:and
-                                                                        [:= :moderated_item_type "card"]
-                                                                        [:= :moderated_item_id id]
-                                                                        [:= :most_recent true]]
-                                                             :order-by [[:id :desc]]
-                                                             :limit    1}
-                                                            :id id)
-                                           first :status)
-        db (t2/select-one Database :id database_id)
-        ;; a native model can have columns with keys as semantic types only if a user configured them
-        trust-semantic-keys? (and (= (:type card) :model)
-                                  (= (-> card :dataset_query :type) :native))]
-    (-> (assoc card :moderated_status moderated-status)
-        api/read-check
-        (card->virtual-table :include-fields? true)
-        (assoc-dimension-options db)
-        (remove-nested-pk-fk-semantic-types {:trust-semantic-keys? trust-semantic-keys?}))))
-
 (defn batch-fetch-card-query-metadatas
   "Return metadata for the 'virtual' tables for a Cards.
   Unreadable cards are silently skipped."
@@ -549,7 +521,7 @@
   "Return metadata for the 'virtual' table for a Card."
   [id]
   {id ms/PositiveInt}
-  (fetch-card-query-metadata id))
+  (first (batch-fetch-card-query-metadatas [id])))
 
 (api/defendpoint GET "/card__:id/fks"
   "Return FK info for the 'virtual' table for a Card. This is always empty, so this endpoint

@@ -8874,6 +8874,19 @@ databaseChangeLog:
             nullable: true
             deleteCascade: true
 
+  - changeSet:
+      id: v51.2024-08-05T16:00:02
+      author: metamben
+      comment: Index report_card.source_card_id
+      rollback: # not necessary, will be removed with the table
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_source_card_id
+            columns:
+              column:
+                name: source_card_id
+
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

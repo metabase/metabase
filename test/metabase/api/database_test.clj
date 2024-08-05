@@ -1711,6 +1711,14 @@
                      Card       card-1 (assoc (card-with-native-query "Card 1")
                                               :collection_id (:id coll)
                                               :type :model)
+                     Card       metric {:type :metric
+                                        :name "Metric"
+                                        :database_id (mt/id)
+                                        :collection_id (:id coll)
+                                        :dataset_query {:type :query
+                                                        :database (mt/id)
+                                                        :query {:source-table (str "card__" (:id card-1))
+                                                                :aggregation [[:count]]}}}
                      Card       card-2 (assoc (card-with-native-query "Card 2")
                                               :type :model)
                      Card       _card-3 (assoc (card-with-native-query "error")
@@ -1721,16 +1729,22 @@
           (is (=? {:status "completed"}
                   (mt/user-http-request :crowberto :post 202 (format "card/%d/query" (u/the-id card))))))
         (testing "Should be able to get datasets in a specific collection"
-          (is (= [{:id               (format "card__%d" (:id card-1))
-                   :db_id            (mt/id)
-                   :metrics          nil
-                   :moderated_status nil
-                   :display_name     "Card 1"
-                   :schema           "My Collection"
-                   :description      nil
-                   :type             "model"}]
-                 (mt/user-http-request :lucky :get 200
-                                       (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
+          (is (=? [{:id               (format "card__%d" (:id card-1))
+                    :db_id            (mt/id)
+                    :metrics          [{:id             (:id metric)
+                                        :name           "Metric"
+                                        :type           "metric"
+                                        :source_card_id (:id card-1)
+                                        :database_id    (mt/id)}]
+                    :display_name     "Card 1"
+                    :schema           "My Collection"
+                    :type             "model"}
+                   {:id           (format "card__%d" (:id metric))
+                    :db_id        (mt/id)
+                    :display_name "Metric"
+                    :schema       "My Collection"}]
+                  (mt/user-http-request :lucky :get 200
+                                        (format "database/%d/datasets/%s" lib.schema.id/saved-questions-virtual-database-id "My Collection")))))
 
         (testing "Should be able to get datasets in the root collection"
           (let [response (mt/user-http-request :lucky :get 200
