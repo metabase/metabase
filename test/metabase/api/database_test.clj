@@ -133,6 +133,7 @@
     :display_name     (:name card)
     :schema           "Everything else"
     :moderated_status nil
+    :metrics          nil
     :description      nil
     :type             "question"}
    kvs))
@@ -1668,6 +1669,7 @@
         (testing "Should be able to get saved questions in a specific collection"
           (is (= [{:id               (format "card__%d" (:id card-1))
                    :db_id            (mt/id)
+                   :metrics          nil
                    :moderated_status nil
                    :display_name     "Card 1"
                    :schema           "My Collection"
@@ -1694,6 +1696,7 @@
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
                             :display_name     "Card 2"
+                            :metrics          nil
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
                             :description      nil
@@ -1720,6 +1723,7 @@
         (testing "Should be able to get datasets in a specific collection"
           (is (= [{:id               (format "card__%d" (:id card-1))
                    :db_id            (mt/id)
+                   :metrics          nil
                    :moderated_status nil
                    :display_name     "Card 1"
                    :schema           "My Collection"
@@ -1745,6 +1749,7 @@
                            {:id               (format "card__%d" (:id card-2))
                             :db_id            (mt/id)
                             :display_name     "Card 2"
+                            :metrics          nil
                             :moderated_status nil
                             :schema           (api.table/root-collection-schema-name)
                             :description      nil

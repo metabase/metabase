@@ -658,6 +658,7 @@
                   :id                card-virtual-table-id
                   :type              "question"
                   :moderated_status  nil
+                  :metrics           nil
                   :description       nil
                   :dimension_options (default-dimension-options)
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
@@ -719,6 +720,7 @@
                     :type              "question"
                     :description       nil
                     :moderated_status  nil
+                    :metrics           nil
                     :dimension_options (default-dimension-options)
                     :fields            [{:name                     "NAME"
                                          :display_name             "NAME"
