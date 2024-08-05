@@ -1,3 +1,5 @@
+import { match } from "ts-pattern";
+
 import { nonUserFacingLabels, hiddenLabels } from "./constants";
 import { getMilestoneIssues, isLatestRelease, hasBeenReleased } from "./github";
 import type { Issue, ReleaseProps } from "./types";
@@ -118,97 +120,97 @@ enum ProductCategory {
   other = "Other",
 }
 
-const getIssueType = (issue: Issue): IssueType => {
-  if (isNonUserFacingIssue(issue)) return IssueType.underTheHoodIssues;
-  if (isAlreadyFixedIssue(issue)) return IssueType.alreadyFixedIssues;
-  if (isBugIssue(issue)) return IssueType.bugFixes;
-  return IssueType.enhancements;
+type CategoryIssueMap = Record<Partial<ProductCategory>, Issue[]>;
+
+type IssueMap = {
+  [IssueType.bugFixes]: CategoryIssueMap;
+  [IssueType.enhancements]: CategoryIssueMap;
+  [IssueType.alreadyFixedIssues]: CategoryIssueMap;
+  [IssueType.underTheHoodIssues]: CategoryIssueMap;
 };
 
-const addIssueToCategory = (
-  issueMap: Record<IssueType, Partial<Record<ProductCategory, Issue[]>>>,
-  issue: Issue,
-  issueType: IssueType,
-  productCategory: ProductCategory,
-) => {
-  if (!issueMap[issueType][productCategory]) {
-    issueMap[issueType][productCategory] = [];
-  }
-  issueMap[issueType][productCategory]!.push(issue);
+const getIssueType = (issue: Issue): IssueType => {
+  return match(issue)
+    .when(isNonUserFacingIssue, () => IssueType.underTheHoodIssues)
+    .when(isAlreadyFixedIssue, () => IssueType.alreadyFixedIssues)
+    .when(isBugIssue, () => IssueType.bugFixes)
+    .otherwise(() => IssueType.enhancements);
 };
 
 const getLabels = (issue: Issue): string[] => {
   if (typeof issue.labels === "string") {
-    return [issue.labels];
+    return issue.labels.split(",");
   }
   return issue.labels.map(label => label.name || "");
 };
 
-const hasCategory = (labels: string[], category: string): boolean => {
-  return labels.some(label => label.includes(category));
+const hasCategory = (issue: Issue, categoryName: ProductCategory): boolean => {
+  const labels = getLabels(issue);
+  return labels.some(label => label.includes(categoryName));
 };
 
 export const getProductCategory = (issue: Issue): ProductCategory => {
-  const labels = getLabels(issue);
+  const category = Object.values(ProductCategory).find(categoryName =>
+    hasCategory(issue, categoryName)
+  );
 
-  if (hasCategory(labels, "Administration"))
-    return ProductCategory.administration;
-  if (hasCategory(labels, "Database")) return ProductCategory.database;
-  if (hasCategory(labels, "Embedding")) return ProductCategory.embedding;
-  if (hasCategory(labels, "Operation")) return ProductCategory.operation;
-  if (hasCategory(labels, "Organization")) return ProductCategory.organization;
-  if (hasCategory(labels, "Querying")) return ProductCategory.querying;
-  if (hasCategory(labels, "Reporting")) return ProductCategory.reporting;
-  if (hasCategory(labels, "Visualization"))
-    return ProductCategory.visualization;
-
-  return ProductCategory.other;
+  return category ?? ProductCategory.other;
 };
 
 // Format issues for a single product category
-const formatCategoryIssues = (category: string, issues: Issue[]): string => {
-  return `**${category}**\n\n${issues.map(formatIssue).join("\n")}`;
+const formatIssueCategory = (categoryName: ProductCategory, issues: Issue[]): string => {
+  return `**${categoryName}**\n\n${issues.map(formatIssue).join("\n")}`;
 };
 
 // We want to alphabetize the issues by product category, with "Other" (uncategorized) issues as the caboose
-const sortCategories = (categories: ProductCategory[]): ProductCategory[] => {
+const sortCategories = (categories: ProductCategory[]) => {
   const uncategorizedIssues = categories.filter(
     category => category === ProductCategory.other,
   );
-  return categories
+  const sortedCategories = categories
     .filter(cat => cat !== ProductCategory.other)
-    .sort((a, b) => a.localeCompare(b))
-    .concat(uncategorizedIssues);
+    .sort((a, b) => a.localeCompare(b));
+
+  return [
+    ...sortedCategories,
+    ...uncategorizedIssues,
+  ];
 };
 
 // For each issue category ("Enhancements", "Bug Fixes", etc.), we want to group issues by product category
-const groupIssuesByProductCategory = (issues: Record<string, Issue[]>) => {
+const formatIssues = (issueMap: CategoryIssueMap): string => {
   const categories = sortCategories(
-    Object.keys(issues).map(key => key as ProductCategory),
+    Object.keys(issueMap) as ProductCategory[],
   );
 
   return categories
-    .map(category => formatCategoryIssues(category, issues[category]))
+    .map(categoryName => formatIssueCategory(categoryName, issueMap[categoryName]))
     .join("\n\n");
 };
 
 export const categorizeIssues = (issues: Issue[]) => {
-  const issueMap = {
-    [IssueType.bugFixes]: {},
-    [IssueType.enhancements]: {},
-    [IssueType.alreadyFixedIssues]: {},
-    [IssueType.underTheHoodIssues]: {},
-  };
-
-  issues
+  return issues
     .filter(issue => !isHiddenIssue(issue))
-    .forEach(issue => {
+    .reduce((issueMap: IssueMap, issue: Issue) => {
       const issueType = getIssueType(issue);
       const productCategory = getProductCategory(issue);
-      addIssueToCategory(issueMap, issue, issueType, productCategory);
-    });
 
-  return issueMap;
+      return {
+        ...issueMap,
+        [issueType]: {
+          ...issueMap[issueType],
+          [productCategory]: [
+            ...issueMap[issueType][productCategory] ?? [],
+            issue,
+          ],
+        },
+      };
+    }, {
+      [IssueType.bugFixes]: {},
+      [IssueType.enhancements]: {},
+      [IssueType.alreadyFixedIssues]: {},
+      [IssueType.underTheHoodIssues]: {},
+    } as IssueMap);
 };
 
 export const generateReleaseNotes = ({
@@ -225,19 +227,19 @@ export const generateReleaseNotes = ({
   return releaseTemplate
     .replace(
       "{{enhancements}}",
-      groupIssuesByProductCategory(issuesByType.enhancements) ?? "",
+      formatIssues(issuesByType.enhancements),
     )
     .replace(
       "{{bug-fixes}}",
-      groupIssuesByProductCategory(issuesByType.bugFixes) ?? "",
+      formatIssues(issuesByType.bugFixes),
     )
     .replace(
       "{{already-fixed}}",
-      groupIssuesByProductCategory(issuesByType.alreadyFixedIssues) ?? "",
+      formatIssues(issuesByType.alreadyFixedIssues),
     )
     .replace(
       "{{under-the-hood}}",
-      groupIssuesByProductCategory(issuesByType.underTheHoodIssues) ?? "",
+      formatIssues(issuesByType.underTheHoodIssues),
     )
     .replace("{{docker-tag}}", getDockerTag(version))
     .replace("{{download-url}}", getDownloadUrl(version))
