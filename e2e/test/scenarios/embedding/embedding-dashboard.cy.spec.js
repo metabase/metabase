@@ -28,6 +28,8 @@ import {
   assertEmbeddingParameter,
   multiAutocompleteInput,
   dismissDownloadStatus,
+  createDashboardWithTabs,
+  createQuestion,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -688,6 +690,132 @@ describeEE("scenarios > embedding > dashboard appearance", () => {
     }).then(({ body: { dashboard_id } }) => {
       visitDashboard(dashboard_id);
     });
+
+    cy.intercept(
+      "GET",
+      "api/preview_embed/dashboard/*",
+      cy.spy().as("previewEmbedSpy"),
+    ).as("previewEmbed");
+
+    openStaticEmbeddingModal({
+      activeTab: "parameters",
+      previewMode: "preview",
+      // EE users don't have to accept terms
+      acceptTerms: false,
+    });
+
+    cy.wait("@previewEmbed");
+
+    modal().within(() => {
+      cy.findByRole("tab", { name: "Look and Feel" }).click();
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard theme");
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("light"); // default value
+        });
+
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Dark").click({ force: true });
+      cy.wait(1000);
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .invoke("attr", "data-embed-theme")
+        .then(embedTheme => {
+          expect(embedTheme).to.eq("night");
+        });
+
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard title");
+      getIframeBody().findByText(dashboardDetails.name).should("exist");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Dashboard title").click({ force: true });
+      getIframeBody().findByText(dashboardDetails.name).should("not.exist");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert dashboard border");
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.css", "border-top-width", "1px");
+      // We're getting an input element which is 0x0 in size
+      cy.findByLabelText("Dashboard border").click({ force: true });
+      getIframeBody()
+        .findByTestId("embed-frame")
+        .should("have.css", "border-top-width", "0px");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+
+      cy.log("Assert font");
+      getIframeBody().should("have.css", "font-family", "Lato, sans-serif");
+      cy.findByLabelText("Font").click();
+    });
+
+    // Since the select popover is rendered outside of the modal, we need to exit the modal context first.
+    popover().findByText("Oswald").click();
+    modal().within(() => {
+      getIframeBody().should("have.css", "font-family", "Oswald, sans-serif");
+      cy.get("@previewEmbedSpy").should("have.callCount", 1);
+    });
+  });
+
+  it("should not rerender the static dashboard with tabs preview unnecessarily (metabase#46378)", () => {
+    const textFilter = createMockParameter({
+      id: "3",
+      name: "Text filter",
+      slug: "filter-text",
+      type: "string/contains",
+      sectionId: "string",
+    });
+
+    const TAB_1 = { id: "11", name: "Tab 1" };
+    const TAB_2 = { id: "12", name: "Tab 2" };
+
+    const dashboardDetails = {
+      name: "dashboard name",
+      enable_embedding: true,
+      embedding_params: {
+        /**
+         * Make sure the parameter is shown in embed preview, because it previously
+         * caused the iframe to rerender even when only the hash part of the embed
+         * preview URL is changed.
+         *
+         * @see useSyncedQueryString in frontend/src/metabase/hooks/use-synced-query-string.ts
+         */
+        [textFilter.slug]: "enabled",
+      },
+      parameters: [textFilter],
+      tabs: [TAB_1, TAB_2],
+    };
+
+    const questionDetails = {
+      name: "Orders",
+      query: {
+        "source-table": ORDERS_ID,
+      },
+    };
+    createQuestion(questionDetails)
+      .then(({ body: { id: card_id } }) => {
+        createDashboardWithTabs({
+          ...dashboardDetails,
+          dashcards: [
+            {
+              id: -1,
+              card_id,
+              dashboard_tab_id: TAB_1.id,
+              row: 0,
+              col: 0,
+              size_x: 8,
+              size_y: 12,
+            },
+          ],
+        });
+      })
+      .then(dashboard => {
+        visitDashboard(dashboard.id);
+      });
 
     cy.intercept(
       "GET",

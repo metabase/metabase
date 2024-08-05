@@ -311,7 +311,7 @@ function isTextWidget(parameter: UiParameter) {
   return parameter.hasVariableTemplateTagTarget && !canQuery;
 }
 
-function wrapArray(value: any): any[] {
+function wrapArray<T>(value: T | T[]): T[] {
   if (Array.isArray(value)) {
     return value;
   }
