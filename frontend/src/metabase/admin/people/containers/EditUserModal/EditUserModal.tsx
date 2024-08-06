@@ -8,7 +8,7 @@ import Users from "metabase/entities/users";
 import { useDispatch } from "metabase/lib/redux";
 import type { User as UserType } from "metabase-types/api";
 
-import { UserForm } from "../forms/UserForm";
+import { UserForm } from "../../forms/UserForm";
 
 interface EditUserModalProps {
   onClose: () => void;

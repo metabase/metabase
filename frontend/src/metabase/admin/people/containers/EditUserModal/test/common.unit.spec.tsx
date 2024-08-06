@@ -1,35 +1,8 @@
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 
-import { setupUserEndpoints } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
-import type { UserInfo, UserListResult } from "metabase-types/api";
-import { createMockUserInfo } from "metabase-types/api/mocks";
-
-import { EditUserModal } from "./EditUserModal";
-
-const defaultUser = createMockUserInfo({
-  id: 97,
-  first_name: "Ash",
-  last_name: "Ketchum",
-  email: "pikachuboy97@example.com",
-});
-
-const setup = ({ userData }: { userData: UserInfo }) => {
-  setupUserEndpoints(userData as unknown as UserListResult);
-  fetchMock.get("path:/api/permissions/group", []);
-  fetchMock.get("path:/api/permissions/membership", {});
-
-  // setupPermissionsGraphEndpoints([]);
-  const onCloseSpy = jest.fn();
-  renderWithProviders(
-    <EditUserModal
-      params={{ userId: String(userData.id) }}
-      onClose={onCloseSpy}
-    />,
-  );
-  return { onCloseSpy };
-};
+import { setup, defaultUser } from "./setup";
 
 describe("Edit user modal", () => {
   it("should populate existing data", async () => {
@@ -76,12 +49,12 @@ describe("Edit user modal", () => {
   describe("users with empty name fields (metabase#46446)", () => {
     it("can update the first name of a user with no last name", async () => {
       setup({
-        userData: createMockUserInfo({
+        userData: {
           id: 11,
           first_name: "Prince",
           last_name: null,
           email: "name@example.com",
-        }),
+        },
       });
 
       const firstNameField = await screen.findByLabelText("First name");
@@ -105,12 +78,12 @@ describe("Edit user modal", () => {
 
     it("can update the email of a user with no name", async () => {
       setup({
-        userData: createMockUserInfo({
+        userData: {
           id: 11,
           first_name: null,
           last_name: null,
           email: "neo@example.com",
-        }),
+        },
       });
 
       const emailField = await screen.findByLabelText("Email *");
@@ -134,12 +107,12 @@ describe("Edit user modal", () => {
 
     it("can remove a user's name", async () => {
       setup({
-        userData: createMockUserInfo({
+        userData: {
           id: 11,
           first_name: "Simon",
           last_name: "Garfunkel",
           email: "s+g@example.com",
-        }),
+        },
       });
 
       const firstNameField = await screen.findByLabelText("First name");
