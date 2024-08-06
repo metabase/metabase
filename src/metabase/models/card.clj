@@ -570,7 +570,7 @@
       ;; TODO: should be done in after-update
       ;; has to place it here because changes is not available in after-update hook see toucan2#129
       (when (contains? changes :dataset_query)
-        (query-analysis/analyze-async! id))
+       (query-field/update-query-fields-for-card! changes))
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
