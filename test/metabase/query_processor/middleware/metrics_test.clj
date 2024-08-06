@@ -268,6 +268,110 @@
                                          #(= #{:lib/type :qp/stage-had-source-card :source-query/model?} (set (keys %)))]}]}]}
             (adjust query)))))
 
+(defn- model-based-metric-question
+  [mp model-query agg-col-fn]
+  (let [model {:lib/type :metadata/card
+               :id (fresh-card-id mp)
+               :database-id (meta/id)
+               :name "Mock Model"
+               :type :model
+               :dataset-query model-query}
+        model-mp (lib/composed-metadata-provider
+                  mp
+                  (lib.tu/mock-metadata-provider
+                   {:cards [model]}))
+        metric-query (as-> (lib/query model-mp model) $q
+                       (lib/aggregate $q (lib/avg (m/find-first agg-col-fn (-> (lib/visible-columns $q)
+                                                                               #_(doto tap>))))))
+        metric {:lib/type :metadata/card
+                :id (fresh-card-id model-mp)
+                :database-id (meta/id)
+                :name "Mock Metric"
+                :type :metric
+                :dataset-query metric-query}
+        metric-mp (lib/composed-metadata-provider
+                   model-mp
+                   (lib.tu/mock-metadata-provider
+                    {:cards [metric]}))]
+    (-> (lib/query metric-mp model)
+        (lib/aggregate (lib.metadata/metric metric-mp (:id metric))))))
+
+(deftest ^:parallel metric-question-on-custom-column-model-test
+  (let [mp meta/metadata-provider
+        query (as-> (lib/query mp (meta/table-metadata :orders)) $q
+                (lib/expression $q "foobar" (lib/+ (meta/field-metadata :orders :discount) 1))
+                (lib/with-fields $q (filter (comp #{"foobar"} :name) (lib/returned-columns $q))))
+        question (model-based-metric-question mp query (comp #{"foobar"} :name))]
+    (is (=? {:stages
+               [{:source-table (meta/id :orders)
+                 :expressions [[:+ {:lib/expression-name "foobar"} [:field {} (meta/id :orders :discount)] 1]]
+                 :fields [[:expression {} "foobar"]]}
+                {:lib/type :mbql.stage/mbql,
+                 :aggregation [[:avg {:name "Mock Metric"} [:field {} "foobar"]]]}]}
+              (adjust question)))))
+
+(deftest ^:parallel metric-question-on-aggregate-column-model-test
+  (let [mp meta/metadata-provider
+        query (as-> (lib/query mp (meta/table-metadata :orders)) $q
+                (lib/aggregate $q (lib/sum (meta/field-metadata :orders :discount))))
+        question (model-based-metric-question mp query (comp #{"sum"} :name))]
+    (is (=? {:stages
+             [{:source-table (meta/id :orders)
+               :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
+              {:lib/type :mbql.stage/mbql,
+               :aggregation [[:avg {:name "Mock Metric"} [:field {} "sum"]]]}]}
+            (adjust question)))))
+
+(deftest ^:parallel metric-question-on-model-based-on-model-test
+  (let [mp meta/metadata-provider
+        model-query (-> (lib/query mp (meta/table-metadata :orders))
+                        (lib/filter (lib/> (meta/field-metadata :orders :discount) 3)))
+        model {:lib/type :metadata/card
+               :id (fresh-card-id mp)
+               :database-id (meta/id)
+               :name "Base Mock Model"
+               :type :model
+               :dataset-query model-query}
+        model-mp (lib/composed-metadata-provider
+                  mp
+                  (lib.tu/mock-metadata-provider
+                   {:cards [model]}))
+        question (model-based-metric-question model-mp
+                                              (lib/query model-mp (lib.metadata/card model-mp (:id model)))
+                                              (comp #{"QUANTITY"} :name))]
+    (testing (str (dissoc question :lib/metadata))
+      (is (=? {:stages
+               [{:source-table (meta/id :orders)
+                 :filters [[:> {} [:field {} (meta/id :orders :discount)] 3]]}
+                {}
+                {:aggregation [[:avg {:name "Mock Metric"} [:field {} "QUANTITY"]]]}]}
+              (adjust question))))))
+
+(deftest ^:parallel metric-question-on-multi-stage-model-test
+  (let [mp meta/metadata-provider
+        sum-pred (comp #{"sum"} :name)
+        query (as-> (lib/query mp (meta/table-metadata :orders)) $q
+                (lib/aggregate $q (lib/sum (meta/field-metadata :orders :discount)))
+                (lib/append-stage $q)
+                (lib/filter $q (lib/> (m/find-first sum-pred (lib/visible-columns $q)) 2)))
+        question (model-based-metric-question mp query sum-pred)]
+    (is (=? {:stages
+             [{:source-table (meta/id :orders)
+               :aggregation [[:sum {} [:field {} (meta/id :orders :discount)]]]}
+              {:filters [[:> {} [:field {} "sum"] 2]]}
+              {:aggregation [[:avg {:name "Mock Metric"} [:field {} "sum"]]]}]}
+            (adjust question)))))
+
+(deftest ^:parallel metric-question-on-native-model-test
+  (let [mp meta/metadata-provider
+        sum-pred (comp #{"sum"} :name)
+        query lib.tu/native-query
+        question (model-based-metric-question mp query sum-pred)]
+    (is (=? {:stages
+             [{:lib/type :mbql.stage/native,
+               :native "SELECT whatever"}
+              {:aggregation [[:avg {:name "Mock Metric"} [:field {} "sum"]]]}]}
+            (adjust question)))))
 
 (deftest ^:parallel maintain-aggregation-refs-test
   (testing "the aggregation that replaces a :metric ref should keep the :metric's :lib/uuid, so :aggregation refs pointing to it are still valid"

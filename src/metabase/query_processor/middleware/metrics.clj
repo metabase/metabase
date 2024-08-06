@@ -213,7 +213,9 @@
       (let [new-stages (update-metric-transition-stages query path expanded-stages idx metric-metadata)]
         (recur (assoc-in query (conj path :stages) new-stages) path new-stages))
 
-      (:source-table first-stage)
+      (or (:source-table first-stage)
+          (and (:native first-stage)
+               (:qp/stage-is-from-source-card first-stage)))
       (splice-compatible-metrics query path expanded-stages)
 
       :else
