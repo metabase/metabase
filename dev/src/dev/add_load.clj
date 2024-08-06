@@ -3,10 +3,22 @@
             [dev.with-perm :as perm]
             [metabase.util.malli :as mu]))
 
-(defn- extract-bindings [bindings inserted]
-  (update-vals bindings #(get inserted %)))
+(def ^:private logical-kw
+  "A keyword that starts with a question mark, used to track values created by from-script."
+  [:and :keyword [:fn #(= "?"(namespace %))]])
 
-(defn- fill-attrs [ids attrs]
+(mu/defn- extract-bindings
+  "Extracts the bindings from the script and inserts the values into the ids map. This is the data oriented equivalent
+  of let."
+  [bindings :- [:or :map logical-kw] inserted]
+  (cond (map? bindings)
+        (update-vals bindings #(get inserted %))
+        (and (keyword? bindings) (= "?" (namespace bindings)))
+        {bindings inserted}))
+
+(mu/defn- fill-attrs
+  "Data oriented value resolution used to add attributes to a model from the [[attrs]] map."
+  [ids :- :map attrs :- :map]
   (walk/postwalk
    (fn [x] (if-let [value (get ids x)] value x))
    attrs))
@@ -28,6 +40,28 @@
   ```clojure
   (from-script [[:model/Collection {:?/coll-id :id} {}]])
   ;;=> {:coll-id 407}
+  ```
+
+    - Bind the entire collection:
+  ```clojure
+  (from-script [[:model/Collection :?/my-coll {}]])
+  ;;=> {:my-coll (toucan2.instance/instance
+                  :model/Collection
+                  {:authority_level nil,
+                   :description nil,
+                   :archived false,
+                   :slug \"matrfcjkeesgtgspbbej\",
+                   :archive_operation_id nil,
+                   :name \"MATRFCJKEESGTGSPBBEJ\",
+                   :personal_owner_id nil,
+                   :type nil,
+                   :is_sample false,
+                   :id 456,
+                   :archived_directly nil,
+                   :entity_id \"VYHXF-EitdLBqGkFUdl4s\",
+                   :location \"/\",
+                   :namespace nil,
+                   :created_at #t \"2024-08-06T15:26:27.515507Z\"})}
   ```
 
   - Insert a card and have it reference the collection:
@@ -69,7 +103,7 @@
    :card-id-4 36670
    :entity-id-4 \"Pd9ZsZNI0YbnEj8M4TOFp\"}
   ```"
-  [script :- [:sequential [:tuple :keyword :map :map]]]
+  [script :- [:sequential [:tuple :keyword [:or :map logical-kw] :map]]]
   (let [ids (atom {})]
     (doseq [[modelable bindings attrs] script]
       (let [inserted (perm/with-perm modelable (fill-attrs @ids attrs))]
