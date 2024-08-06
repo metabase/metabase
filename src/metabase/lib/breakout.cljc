@@ -75,33 +75,24 @@
 
   ([query        :- ::lib.schema/query
     stage-number :- :int]
-   (breakoutable-columns query stage-number nil))
-
-  ([query             :- ::lib.schema/query
-    stage-number      :- :int
-    breakout-position :- [:maybe :int]]
-   (let [columns (let [stage   (lib.util/query-stage query stage-number)
-                       options {:include-implicitly-joinable-for-source-card? false}]
-                   (lib.metadata.calculation/visible-columns query stage-number stage options))]
-     (when (seq columns)
-       (let [existing-breakouts         (breakouts query stage-number)
-             column->breakout-positions (group-by
-                                         (fn [position]
-                                           (lib.equality/find-matching-column query
-                                                                              stage-number
-                                                                              (get existing-breakouts position)
-                                                                              columns))
-                                         (range (count existing-breakouts)))]
-         (mapv #(let [positions  (column->breakout-positions %)
-                      a-breakout (when (some #{breakout-position} positions)
-                                   (get existing-breakouts breakout-position))
-                      binning    (when a-breakout (lib.binning/binning a-breakout))
-                      bucket     (when a-breakout (lib.temporal-bucket/temporal-bucket a-breakout))]
-                 (cond-> (assoc % :lib/hide-bin-bucket? true)
-                   binning   (lib.binning/with-binning binning)
-                   bucket    (lib.temporal-bucket/with-temporal-bucket (:unit bucket))
-                   positions (assoc :breakout-positions positions)))
-               columns))))))
+   (let [cols (let [stage   (lib.util/query-stage query stage-number)
+                    options {:include-implicitly-joinable-for-source-card? false}]
+                (lib.metadata.calculation/visible-columns query stage-number stage options))]
+     (when (seq cols)
+       (let [matching (into {} (keep-indexed (fn [index a-breakout]
+                                               (when-let [col (lib.equality/find-matching-column
+                                                               query stage-number a-breakout cols
+                                                               {:generous? true})]
+                                                 [col [index a-breakout]]))
+                                             (or (breakouts query stage-number) [])))]
+         (mapv #(let [[pos a-breakout] (matching %)
+                      binning (lib.binning/binning a-breakout)
+                      {:keys [unit]} (lib.temporal-bucket/temporal-bucket a-breakout)]
+                  (cond-> (assoc % :lib/hide-bin-bucket? true)
+                    binning (lib.binning/with-binning binning)
+                    unit (lib.temporal-bucket/with-temporal-bucket unit)
+                    pos (assoc :breakout-positions [pos])))
+               cols))))))
 
 (mu/defn existing-breakouts :- [:maybe [:sequential {:min 1} ::lib.schema.ref/ref]]
   "Returns existing breakouts (as MBQL expressions) for `column` in a stage if there are any. Returns `nil` if there

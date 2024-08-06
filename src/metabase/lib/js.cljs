@@ -459,12 +459,12 @@
   > **Code health:** Healthy
 
   Caches the result on the query by stage."
-  [a-query stage-number breakout-position]
+  [a-query stage-number]
   ;; Attaches the cached columns directly to this query, in case it gets called again.
   (lib.cache/side-channel-cache
-    (keyword "breakoutable-columns" (str "stage-" stage-number "-" breakout-position)) a-query
+    (keyword "breakoutable-columns" (str "stage-" stage-number)) a-query
     (fn [_]
-      (to-array (lib.core/breakoutable-columns a-query stage-number breakout-position)))))
+      (to-array (lib.core/breakoutable-columns a-query stage-number)))))
 
 (defn ^:export breakouts
   "Get the list of breakout clauses in `a-query` at the given `stage-number`, as a JS array of opaque values.
