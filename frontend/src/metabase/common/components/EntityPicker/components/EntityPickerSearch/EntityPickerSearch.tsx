@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import { useDebounce } from "react-use";
 import { msgid, ngettext, t } from "ttag";
 
@@ -82,7 +82,6 @@ export function EntityPickerSearchInput({
     />
   );
 }
-
 export const EntityPickerSearchResults = <
   Id extends SearchResultId,
   Model extends string,
@@ -137,7 +136,7 @@ export const EntityPickerSearchResults = <
         h="100%"
         style={{ overflow: "hidden" }}
       >
-        {searchResults.length > 0 && (
+        {allSearchResults.length > 0 && (
           <Flex justify="space-between" p="xl" pb={0}>
             <div>
               {scopeName && (
