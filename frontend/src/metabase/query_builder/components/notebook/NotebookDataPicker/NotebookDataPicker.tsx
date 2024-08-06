@@ -58,12 +58,9 @@ export function NotebookDataPicker({
     [query, stageIndex, table],
   );
 
-  const pickerInfo = useMemo(
-    () => table && Lib.pickerInfo(query, table),
-    [query, table],
-  );
-
   const getUrl = () => {
+    const pickerInfo = table && Lib.pickerInfo(query, table);
+
     if (!pickerInfo || !tableInfo) {
       return;
     }
