@@ -1,7 +1,9 @@
 import { forwardRef, isValidElement } from "react";
+import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { Icon } from "metabase/ui";
+import { METAKEY } from "metabase/lib/browser";
+import { Icon, Tooltip } from "metabase/ui";
 
 import type { BorderSide } from "./NotebookCell.styled";
 import {
@@ -62,16 +64,18 @@ export const NotebookCellItem = forwardRef<
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
       ref={ref}
     >
-      <NotebookCellItemContentContainer
-        inactive={inactive}
-        disabled={disabled}
-        readOnly={readOnly}
-        color={color}
-        roundedCorners={mainContentRoundedCorners}
-        style={containerStyle}
-      >
-        {children}
-      </NotebookCellItemContentContainer>
+      <Tooltip label={t`${METAKEY}+click to open in new tab`}>
+        <NotebookCellItemContentContainer
+          inactive={inactive}
+          disabled={disabled}
+          readOnly={readOnly}
+          color={color}
+          roundedCorners={mainContentRoundedCorners}
+          style={containerStyle}
+        >
+          {children}
+        </NotebookCellItemContentContainer>
+      </Tooltip>
       {hasRightSide && (
         <NotebookCellItemContentContainer
           inactive={inactive}
