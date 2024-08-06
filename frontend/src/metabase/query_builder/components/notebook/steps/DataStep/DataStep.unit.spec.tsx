@@ -329,5 +329,18 @@ describe("DataStep", () => {
       expect(mockWindowOpen).toHaveBeenCalledTimes(1);
       mockWindowOpen.mockClear();
     });
+
+    it('regular click should open the "Pick your starting data" modal', async () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+
+      fireEvent.click(dataSource);
+
+      expect(
+        await screen.findByTestId("entity-picker-modal"),
+      ).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
+    });
   });
 });
