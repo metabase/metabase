@@ -9,7 +9,6 @@ import { TimeseriesBucketPicker } from "./TimeseriesBucketPicker";
 import { TimeseriesFilterPicker } from "./TimeseriesFilterPicker";
 import {
   findBreakoutClause,
-  findBreakoutColumn,
   findFilterClause,
   findFilterColumn,
 } from "./utils";
