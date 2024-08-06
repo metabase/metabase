@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect } from "react";
 
 import type { PrototypeState } from "metabase/common/components/DataPicker";
 import { Icon, Tabs } from "metabase/ui";
@@ -14,7 +14,7 @@ import {
   EntityPickerSearchTab,
 } from "../EntityPickerSearch";
 
-const computeInitialTab = <
+export const computeInitialTab = <
   Item extends TypeWithModel<SearchResultId, Model>,
   Model extends string,
 >({
@@ -51,10 +51,13 @@ export const TabsView = <
   searchQuery,
   searchResults,
   selectedItem,
-  initialValue,
-  defaultToRecentTab,
+  // initialValue,
+  // defaultToRecentTab,
   setShowActionButtons,
   prototypeState,
+  // onTabChange,
+  selectedTab,
+  setSelectedTab,
 }: {
   tabs: EntityTab<Model>[];
   onItemSelect: (item: Item) => void;
@@ -66,31 +69,37 @@ export const TabsView = <
   defaultToRecentTab: boolean;
   setShowActionButtons: (showActionButtons: boolean) => void;
   prototypeState?: PrototypeState;
+  selectedTab: string;
+  setSelectedTab: (tab: string) => void;
 }) => {
   const hasSearchTab = !!searchQuery;
-  const hasRecentsTab = tabs.some(tab => tab.model === "recents");
+  // const hasRecentsTab = tabs.some(tab => tab.model === "recents");
 
-  const defaultTab = useMemo(
-    () =>
-      computeInitialTab({
-        initialValue,
-        tabs,
-        hasRecents: hasRecentsTab,
-        defaultToRecentTab,
-      }),
-    [initialValue, tabs, hasRecentsTab, defaultToRecentTab],
-  );
+  // const defaultTab = useMemo(
+  //   () =>
+  //     computeInitialTab({
+  //       initialValue,
+  //       tabs,
+  //       hasRecents: hasRecentsTab,
+  //       defaultToRecentTab,
+  //     }),
+  //   [initialValue, tabs, hasRecentsTab, defaultToRecentTab],
+  // );
 
-  const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+  // const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
 
-  useEffect(() => {
-    // when the searchQuery changes, switch to the search tab
-    if (searchQuery) {
-      setSelectedTab("search");
-    } else {
-      setSelectedTab(defaultTab.model);
-    }
-  }, [searchQuery, defaultTab.model]);
+  // useEffect(() => {
+  //   onTabChange(selectedTab);
+  // }, [selectedTab, onTabChange]);
+
+  // useEffect(() => {
+  //   // when the searchQuery changes, switch to the search tab
+  //   if (searchQuery) {
+  //     setSelectedTab("search");
+  //   } else {
+  //     setSelectedTab(defaultTab.model);
+  //   }
+  // }, [searchQuery, defaultTab.model]);
 
   useEffect(() => {
     // we don't want to show bonus actions on recents or search tabs

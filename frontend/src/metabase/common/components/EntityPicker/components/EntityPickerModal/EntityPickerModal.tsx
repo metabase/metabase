@@ -32,7 +32,7 @@ import {
   ModalContent,
   SinglePickerView,
 } from "./EntityPickerModal.styled";
-import { TabsView } from "./TabsView";
+import { computeInitialTab, TabsView } from "./TabsView";
 
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
@@ -169,6 +169,38 @@ export function EntityPickerModal<
 
   const hasTabs = tabs.length > 1 || searchQuery;
 
+  const handleTabChange = (tab: string) => {
+    if (tab !== "search") {
+      setSearchQuery("");
+    }
+
+    setSelectedTab(tab);
+  };
+
+  const hasRecentsTab = tabs.some(tab => tab.model === "recents");
+  const defaultTab = useMemo(
+    () =>
+      computeInitialTab({
+        initialValue,
+        tabs,
+        hasRecents: hasRecentsTab,
+        defaultToRecentTab,
+      }),
+    [initialValue, tabs, hasRecentsTab, defaultToRecentTab],
+  );
+  const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+
+  const handleSearchQueryChange = (query: string) => {
+    setSearchQuery(query);
+
+    // when the searchQuery changes, switch to the search tab
+    if (query) {
+      setSelectedTab("search");
+    } else {
+      setSelectedTab(defaultTab.model);
+    }
+  };
+
   const handleConfirm = useCallback(() => {
     if (onConfirm) {
       onConfirm();
@@ -220,7 +252,7 @@ export function EntityPickerModal<
                 models={tabModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
+                setSearchQuery={handleSearchQueryChange}
                 searchFilter={searchResultFilter}
                 searchParams={searchParams}
               />
@@ -241,6 +273,8 @@ export function EntityPickerModal<
                 defaultToRecentTab={defaultToRecentTab}
                 setShowActionButtons={setShowActionButtons}
                 prototypeState={prototypeState}
+                selectedTab={selectedTab}
+                setSelectedTab={handleTabChange}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>
