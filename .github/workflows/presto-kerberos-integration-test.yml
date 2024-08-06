@@ -53,12 +53,11 @@ jobs:
           path: presto-kerberos-docker
       - name: Bring up Presto+Kerberos cluster
         run: cd presto-kerberos-docker && docker compose up -d && cd ..
-      - name: Set docker-compose alias
+      - name: Run Presto test query from command line (sanity check)
         run: |
           shopt -s expand_aliases
           echo 'alias docker-compose="docker compose"' >> ~/.bashrc
-      - name: Run Presto test query from command line (sanity check)
-        run: cd presto-kerberos-docker && ./test.sh && cd ..
+          cd presto-kerberos-docker && ./test.sh && cd ..
       # Since we are managing the Docker containers from the GitHub action container, we need to copy all the
       # relevant resources now, into the resources dir for later consumption by the app
       - name: Copy Presto SSL keystore to resources
