@@ -51,6 +51,7 @@ type CompareListItem = {
   type: "action";
   name: string;
   selected?: boolean;
+  icon: string;
   items: [];
 };
 
