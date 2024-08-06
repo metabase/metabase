@@ -15,20 +15,20 @@ export type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 
 export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
-  ColorName
+  ColorName[]
 > = {
-  brand: "brand",
-  border: "border",
-  filter: "filter",
-  summarize: "summarize",
-  "text-primary": "text-dark",
-  "text-secondary": "text-medium",
-  "text-tertiary": "text-light",
-  background: "bg-white",
-  "background-hover": "bg-light",
-  shadow: "shadow",
-  positive: "success",
-  negative: "danger",
+  brand: ["brand"],
+  border: ["border"],
+  filter: ["filter"],
+  summarize: ["summarize"],
+  "text-primary": ["text-dark"],
+  "text-secondary": ["text-medium"],
+  "text-tertiary": ["text-light"],
+  background: ["bg-white"],
+  "background-hover": ["bg-light"],
+  shadow: ["shadow"],
+  positive: ["success"],
+  negative: ["danger"],
 
   // positive: "success",
   // negative: "danger",
@@ -54,10 +54,15 @@ export function getEmbeddingColorPalette(
 
   const mappedSdkColors = Object.fromEntries(
     Object.entries(sdkColors)
-      .map(([key, value]) => [
-        SDK_TO_MAIN_APP_COLORS_MAPPING[key as MappableSdkColor],
-        value,
-      ])
+      .flatMap(([key, value]) => {
+        const themeColorNames =
+          SDK_TO_MAIN_APP_COLORS_MAPPING[key as MappableSdkColor];
+        if (themeColorNames) {
+          return themeColorNames.map(mappedColor => [mappedColor, value]);
+        } else {
+          return [];
+        }
+      })
       .filter(([mappedKey]) => mappedKey),
   );
 
