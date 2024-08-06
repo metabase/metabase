@@ -145,7 +145,7 @@
           bucket  (lib.temporal-bucket/temporal-bucket breakout-ref)]
       (cond-> column
         binning (lib.binning/with-binning binning)
-        bucket  (lib.temporal-bucket/with-temporal-bucket (:unit bucket))))))
+        bucket  (lib.temporal-bucket/with-temporal-bucket bucket)))))
 
 (mu/defn remove-all-breakouts :- ::lib.schema/query
   "Remove all breakouts from a query stage."
