@@ -4,7 +4,7 @@ import type { TemporalUnit } from "metabase-types/api";
 import { displayInfo } from "./metadata";
 import type { Bucket, ColumnMetadata, Clause, Query } from "./types";
 
-export function temporalBucket(clause: Clause): Bucket | null {
+export function temporalBucket(clause: Clause | ColumnMetadata): Bucket | null {
   return ML.temporal_bucket(clause);
 }
 
