@@ -8,8 +8,6 @@ import { css, Global } from "@emotion/react";
 import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 
-const isEmbeddingSDK = process.env.IS_EMBEDDING_SDK === "true";
-
 export const parameters = {
   actions: { argTypesRegex: "^on[A-Z].*" },
   controls: {
@@ -18,7 +16,6 @@ export const parameters = {
       date: /Date$/,
     },
   },
-  layout: isEmbeddingSDK ? "fullscreen" : undefined,
 };
 
 const globalStyles = css`

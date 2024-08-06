@@ -86,7 +86,7 @@ java -jar metabase.jar
 You can then use the API key to authenticate with Metabase in your application. Here's an example of how you can
 authenticate with the API key:
 
-``` 
+```
 const metabaseConfig = {
     ...
     apiKey: "YOUR_API_KEY"
@@ -97,11 +97,11 @@ const metabaseConfig = {
 ### JWT Authentication
 
 1. Go to Admin settings > Authentication > JWT
-    1. Set JWT Identity Provider URI to your JWT endpoint
-    1. Generate JWT signing key and take note of this value. You will need it later.
+   1. Set JWT Identity Provider URI to your JWT endpoint
+   1. Generate JWT signing key and take note of this value. You will need it later.
 1. Go to Admin settings > Embedding
-    1. Enable embedding if not already enabled
-    1. Inside interactive embedding, set Authorized Origins to your application URL, e.g. `http://localhost:9090`
+   1. Enable embedding if not already enabled
+   1. Inside interactive embedding, set Authorized Origins to your application URL, e.g. `http://localhost:9090`
 
 ## Authenticate users from your back-end
 
@@ -235,7 +235,7 @@ const theme = {
 
 export default function App() {
   return (
-    <MetabaseProvider config={config} theme={theme}>
+    <MetabaseProvider config={config} theme={theme} className="optional-class">
       Hello World!
     </MetabaseProvider>
   );
@@ -272,7 +272,7 @@ the [SQL parameters](https://www.metabase.com/docs/v0.50/questions/native-editor
 documentation for more information.
 
 ```jsx
-<StaticQuestion questionId={questionId} parameterValues={{product_id: 50}} />
+<StaticQuestion questionId={questionId} parameterValues={{ product_id: 50 }} />
 ```
 
 ### Embedding an interactive question (with drill-down)
@@ -352,7 +352,7 @@ To customize the layout, use namespaced components within the `InteractiveQuesti
 These components are available via the `InteractiveQuestion` namespace (i.e. `<InteractiveQuestion.ComponentName />`)
 
 | Component               | Info                                                                                                                         |
-|-------------------------|------------------------------------------------------------------------------------------------------------------------------|
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
 | `BackButton`            | The back button, which provides `back` functionality for the InteractiveDashboard                                            |
 | `FilterBar`             | The row of badges that contains the current filters that are applied to the question                                         |
 | `Filter`                | The Filter pane containing all possible filters                                                                              |
@@ -784,7 +784,7 @@ const plugins = {
       customItems: [],
     },
   },
-}
+};
 ```
 
 and can be used in the InteractiveDashboard like this:
@@ -811,11 +811,11 @@ dashcard menu, set `withEditLink` to `false`.
 const plugins = {
   dashboard: {
     dashcardMenu: {
-       withDownloads: false,
-       withEditLink: false,
-       customItems: [],
-    }
-  }
+      withDownloads: false,
+      withEditLink: false,
+      customItems: [],
+    },
+  },
 };
 ```
 
@@ -912,10 +912,10 @@ This is useful if you want to completely hide Metabase components when the user 
 This hook can only be used within components wrapped by `MetabaseProvider`.
 
 ```jsx
-const auth = useMetabaseAuthStatus()
+const auth = useMetabaseAuthStatus();
 
 if (auth.status === "error") {
-  return <div>Failed to authenticate: {auth.error.message}</div>
+  return <div>Failed to authenticate: {auth.error.message}</div>;
 }
 
 if (auth.status === "success") {
@@ -990,12 +990,12 @@ const config = { fetchRefreshToken };
 # Known limitations
 
 - The Metabase Embedding SDK does not support server-side rendering (SSR) at the moment.
-    - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components
-      are rendered on the client side.
-    - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component
-      on Remix.
+  - If you are using a framework with SSR support such as Next.js or Remix, you have to ensure that the SDK components
+    are rendered on the client side.
+  - For example, you can apply the `"use client"` directive on Next.js or use the `remix-utils/ClientOnly` component
+    on Remix.
 - Embedding multiple instances of interactive dashboards on the same page are not supported.
-    - Please use static dashboards if you need to embed multiple dashboards on the same page.
+  - Please use static dashboards if you need to embed multiple dashboards on the same page.
 
 # Feedback
 

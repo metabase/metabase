@@ -9,6 +9,9 @@ const DASHBOARD_ID = (window as any).DASHBOARD_ID || "1";
 export default {
   title: "EmbeddingSDK/StaticDashboard",
   component: StaticDashboard,
+  parameters: {
+    layout: "fullscreen",
+  },
 };
 
 const Template: ComponentStory<typeof StaticDashboard> = args => {
