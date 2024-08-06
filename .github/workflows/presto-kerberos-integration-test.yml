@@ -52,7 +52,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           path: presto-kerberos-docker
       - name: Bring up Presto+Kerberos cluster
-        run: cd presto-kerberos-docker && docker-compose up -d && cd ..
+        run: cd presto-kerberos-docker && docker compose up -d && cd ..
       - name: Run Presto test query from command line (sanity check)
         run: cd presto-kerberos-docker && ./test.sh && cd ..
       # Since we are managing the Docker containers from the GitHub action container, we need to copy all the
