@@ -21,12 +21,7 @@ import type {
   SchemaEntityId,
   TableEntityId,
 } from "../../types";
-import {
-  DataPermission,
-  DataPermissionValue,
-  isDatabaseEntityId,
-  isTableEntityId,
-} from "../../types";
+import { DataPermission, DataPermissionValue } from "../../types";
 
 export const isRestrictivePermission = (value: DataPermissionValue) =>
   value === DataPermissionValue.NO ||
@@ -318,6 +313,7 @@ export function hasPermissionValueInEntityGraphs(
   });
 }
 
+// TODO: update comment
 // Ideally this would live in downgradeNativePermissionsIfNeeded, but originally that function was
 // created to only be called if a view permission was changing. there needs to be some reworking
 // in some of the setter methods to make sure the downgrading will always happen at the appropriate time
@@ -339,12 +335,10 @@ export function restrictNativeQueryPermissionsIfNeeded(
   const isMakingGranularCreateQueriesChange =
     permission === DataPermission.CREATE_QUERIES &&
     value !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    // value !== DataPermissionValue.BLOCKED &&
     (entityId.tableId != null || entityId.schemaName != null) &&
     currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
 
-  const shouldDowngradeNative =
-    isMakingGranularCreateQueriesChange ||
+  const shouldRestrictForSomeReason =
     PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions(
       permissions,
       groupId,
@@ -354,7 +348,11 @@ export function restrictNativeQueryPermissionsIfNeeded(
       database,
     );
 
-  if (shouldDowngradeNative) {
+  const shouldRestrictNative =
+    isMakingGranularCreateQueriesChange || shouldRestrictForSomeReason;
+
+  if (shouldRestrictNative) {
+    // TODO: could this be shortened to just a single updateSchemasPermission call?
     const schemaNames = (database && database.schemaNames()) ?? [null];
 
     schemaNames.forEach(schemaName => {
@@ -372,22 +370,13 @@ export function restrictNativeQueryPermissionsIfNeeded(
     });
   }
 
-  return permissions;
-}
-
-function downgradeNativePermissionsIfNeeded(
-  permissions: GroupsPermissions,
-  groupId: number,
-  entityId: EntityId,
-  value: DataPermissionValue,
-) {
-  // remove query creation permissions if view permission is getting restricted
   if (
-    isDatabaseEntityId(entityId) &&
+    entityId.tableId == null &&
+    entityId.schemaName == null &&
     (isRestrictivePermission(value) ||
       value === DataPermissionValue.LEGACY_NO_SELF_SERVICE)
   ) {
-    return updatePermission(
+    permissions = updatePermission(
       permissions,
       groupId,
       entityId.databaseId,
@@ -395,18 +384,22 @@ function downgradeNativePermissionsIfNeeded(
       [],
       DataPermissionValue.NO,
     );
-  } else if (isTableEntityId(entityId) && isRestrictivePermission(value)) {
-    return updatePermission(
+  } else if (
+    entityId.tableId != null &&
+    entityId.schemaName != null &&
+    isRestrictivePermission(value)
+  ) {
+    permissions = updateFieldsPermission(
       permissions,
       groupId,
-      entityId.databaseId,
-      DataPermission.CREATE_QUERIES,
-      [entityId.schemaName || "", entityId.tableId],
+      entityId as any,
       DataPermissionValue.NO,
+      database,
+      DataPermission.CREATE_QUERIES,
     );
-  } else {
-    return permissions;
   }
+
+  return permissions;
 }
 
 const metadataTableToTableEntityId = (table: Table) => ({
@@ -500,13 +493,6 @@ export function inferAndUpdateEntityPermissions(
       database,
       permission,
     );
-
-    permissions = downgradeNativePermissionsIfNeeded(
-      permissions,
-      groupId,
-      entityId,
-      schemasPermissionValue,
-    );
   }
 
   return permissions;
@@ -539,13 +525,6 @@ export function updateFieldsPermission(
     [schemaName, tableId],
     value,
   );
-  permissions = downgradeNativePermissionsIfNeeded(
-    permissions,
-    groupId,
-    entityId,
-    value,
-  );
-
   return permissions;
 }
 
@@ -596,13 +575,6 @@ export function updateSchemasPermission(
     !(schemaNames.length === 1 && schemaNames[0] === null)
       ? schemaNames
       : [""];
-
-  permissions = downgradeNativePermissionsIfNeeded(
-    permissions,
-    groupId,
-    { databaseId },
-    value,
-  );
 
   return updatePermission(
     permissions,

@@ -53,7 +53,7 @@ export function PermissionsTable({
       onChange(entity, permission, value, toggleState);
 
     const confirmations =
-      permission.confirmations?.(value).filter(Boolean) || [];
+      permission.confirmations?.(value, entity).filter(Boolean) || [];
 
     if (confirmations.length > 0) {
       setConfirmations(confirmations);

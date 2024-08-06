@@ -7,6 +7,7 @@ import type {
 import {
   DataPermission,
   DataPermissionValue,
+  isTableEntityId,
 } from "metabase/admin/permissions/types";
 import {
   getSchemasPermission,
@@ -31,7 +32,9 @@ export function shouldRestrictNativeQueryPermissions(
   );
 
   return (
-    value === DataPermissionValue.SANDBOXED &&
+    isTableEntityId(entityId) &&
+    (value === DataPermissionValue.SANDBOXED ||
+      value === DataPermissionValue.BLOCKED) &&
     currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
   );
 }

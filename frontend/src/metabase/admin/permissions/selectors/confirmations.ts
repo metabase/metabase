@@ -1,6 +1,7 @@
 import { t, c } from "ttag";
 import _ from "underscore";
 
+import { DATA_PERMISSION_OPTIONS } from "metabase/admin/permissions/constants/data-permissions";
 import {
   isSchemaEntityId,
   isTableEntityId,
@@ -102,6 +103,7 @@ export function getPermissionWarningModal(
   defaultGroup: Group,
   groupId: Group["id"],
   descendingPermissions?: DataPermissionValue[],
+  entity?: any,
 ) {
   const permissionWarning = getPermissionWarning(
     value,
@@ -111,17 +113,20 @@ export function getPermissionWarningModal(
     groupId,
     descendingPermissions,
   );
+
+  // TODO: improve
+  const defaultGroupValueLabel =
+    Object.values(DATA_PERMISSION_OPTIONS)?.find(
+      perm => perm.value === defaultGroupValue,
+    )?.label ?? defaultGroupValue;
+
+  const entityLabel = entity?.name ? `“${entity.name}”` : "TODO";
+
   if (permissionWarning) {
     return {
-      title:
-        (value === DataPermissionValue.CONTROLLED ? t`Limit` : t`Revoke`) +
-        " " +
-        t`access even though "${defaultGroup.name}" has greater access?`,
+      title: t`WARNING: The ${defaultGroup.name} group currently has “${defaultGroupValueLabel}” access on ${entityLabel}, which will override this setting.`,
       message: permissionWarning,
-      confirmButtonText:
-        value === DataPermissionValue.CONTROLLED
-          ? t`Limit access`
-          : t`Revoke access`,
+      confirmButtonText: t`Continue anyway`,
       cancelButtonText: t`Cancel`,
     };
   }
