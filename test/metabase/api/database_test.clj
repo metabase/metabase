@@ -2137,3 +2137,28 @@
                                           :id db-id))))
             (testing "it's okay to unpersist even though the database is not persisted"
               (mt/user-http-request :crowberto :post 204 (str "database/" db-id "/unpersist")))))))))
+
+(deftest sensitive-data-exception-test
+  (t2.with-temp/with-temp [:model/Database {did :id} {:details {:conn-uri "can contain sensitive data"}}
+                           :model/Table    {tid :id} {:db_id did}]
+    (testing "`:conn-uri` is available in GET /database/:id API call"
+      (is (= "can contain sensitive data"
+             (get-in (mt/user-http-request :crowberto :get 200
+                                           (str "database/" did))
+                     [:details :conn-uri]))))
+    (testing "`:conn-uri` is available in PUT /database/:id API call"
+      (is (= "can contain sensitive data"
+             (get-in (mt/user-http-request :crowberto :put 200
+                                           (str "database/" did)
+                                           (t2/select-one :model/Database :id did))
+                     [:details :conn-uri]))))
+    (testing "`:conn-uri` is redacted from GET database/ API call"
+      (is (= "**MetabasePass**"
+             (some #(when (= did (:id %)) (get-in % [:details :conn-uri]))
+                   (:data (mt/user-http-request :crowberto :get 200
+                                                "database/"))))))
+    (testing "`:conn-uri` is redacted from hydrated database data"
+      (is (= "**MetabasePass**"
+             (get-in (mt/user-http-request :crowberto :get 200
+                                           (str "table/" tid))
+                     [:db :details :conn-uri]))))))

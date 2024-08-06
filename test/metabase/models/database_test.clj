@@ -113,7 +113,7 @@
                         :details     {:additional-options            nil
                                       :ssl                           false
                                       :password                      "Password1234"
-                                      :conn-uri                     "can contain sensitive data"
+                                      :conn-uri                      "can contain sensitive data"
                                       :tunnel-host                   "localhost"
                                       :port                          5432
                                       :dbname                        "mydb"
