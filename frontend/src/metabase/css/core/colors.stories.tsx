@@ -39,9 +39,13 @@ const COLOR_NAMES = [
   "--mb-color-background-disabled",
   "--mb-color-background-inverse",
   "--mb-color-background-brand",
-  // other colors
+  // other colors from css-variables.ts
   "--mb-color-brand-alpha-04",
   "--mb-color-brand-alpha-88",
+  "--mb-color-border-alpha-30",
+  "--mb-color-text-white-alpha-85",
+  "--mb-color-bg-black-alpha-60",
+  "--mb-color-bg-white-alpha-15",
 ];
 
 export function Default() {
