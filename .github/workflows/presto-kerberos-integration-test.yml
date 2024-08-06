@@ -57,10 +57,7 @@ jobs:
       - name: Setup Docker Compose Alias
         run: echo "alias docker-compose=docker compose" >> $GITHUB_ENV
       - name: Run Presto test query from command line (sanity check)
-        run: |
-          shopt -s expand_aliases
-          alias docker-compose="docker compose"
-          cd presto-kerberos-docker && ./test.sh && cd ..
+        run: cd presto-kerberos-docker && ./test.sh && cd ..
       # Since we are managing the Docker containers from the GitHub action container, we need to copy all the
       # relevant resources now, into the resources dir for later consumption by the app
       - name: Copy Presto SSL keystore to resources
