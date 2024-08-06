@@ -122,6 +122,14 @@ export const DataPermissionsHelp = () => {
                 name={t`Sandboxed (Pro)`}
                 description={t`Let's you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
               />
+
+              <PermissionHelpDescription
+                hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
+                icon="close"
+                iconColor="danger"
+                name={t`No access (Pro)`}
+                description={t`The group cannot view any data from that table for questions built using the query builder. “No Access” does not apply to native queries.`}
+              />
             </Stack>
           </Accordion.Panel>
         </Accordion.Item>
