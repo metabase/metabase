@@ -45,11 +45,11 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
     --mb-color-bg-dark: ${theme.fn.themeColor("bg-dark")};
     --mb-color-brand: ${theme.fn.themeColor("brand")};
 
-    --mb-color-brand-light: color-mix(in srgb, var(--mb-color-brand) 4%, #fff);
+    --mb-color-brand-light: color-mix(in srgb, var(--mb-color-brand), #fff 80%);
     --mb-color-brand-lighter: color-mix(
       in srgb,
-      var(--mb-color-brand) 10%,
-      #fff
+      var(--mb-color-brand),
+      #fff 90%
     );
     --mb-color-brand-alpha-04: color-mix(
       in srgb,
