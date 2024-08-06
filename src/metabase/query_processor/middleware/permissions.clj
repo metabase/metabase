@@ -90,9 +90,7 @@
         card-id
         (do
           (check-card-read-perms database-id card-id)
-          ;; FIXME we shouldn't need to do this condition, just check the data perms.
-          ;; this is saying: do i have `view-data` and `create-query` permissions? If not,
-          ;; check if I have `view-data` and then we're good.
+
           (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
             (throw (query-perms/perms-exception required-perms))))
 
