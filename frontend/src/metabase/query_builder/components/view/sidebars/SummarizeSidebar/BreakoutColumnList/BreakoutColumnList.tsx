@@ -249,7 +249,10 @@ function isPinnedColumn(
   column: Lib.ColumnMetadata,
 ): boolean {
   const { breakoutPositions = [] } = Lib.displayInfo(query, stageIndex, column);
-  return breakoutPositions.every(breakoutIndex =>
-    pinnedBreakoutIndexes.includes(breakoutIndex),
+  return (
+    breakoutPositions.length > 0 &&
+    breakoutPositions.every(breakoutIndex =>
+      pinnedBreakoutIndexes.includes(breakoutIndex),
+    )
   );
 }
