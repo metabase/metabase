@@ -54,9 +54,6 @@ jobs:
       - name: Bring up Presto+Kerberos cluster
         run: cd presto-kerberos-docker && docker compose up -d && cd ..
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v2
-
       # Create docker-compose wrapper script
       - name: Setup Docker Compose Wrapper
         run: |
