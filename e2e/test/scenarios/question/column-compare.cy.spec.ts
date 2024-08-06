@@ -154,7 +154,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       );
 
       verifySummarizeText({
-        itemName: "Compare “Count” to previous period ...",
+        itemName: "Compare to the past",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
@@ -172,7 +172,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       verifyNotebookText({
-        itemName: "Compare “Count” to previous period ...",
+        itemName: "Compare to the past",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
       });
@@ -213,7 +213,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       );
 
       verifySummarizeText({
-        itemName: "Compare “Count” to previous months ...",
+        itemName: "Compare to the past",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
@@ -234,7 +234,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       verifyNotebookText({
-        itemName: "Compare “Count” to previous months ...",
+        itemName: "Compare to the past",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
       });
@@ -265,6 +265,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
+
+      visualize();
       verifyColumns([
         "Count (previous month)",
         "Count (vs previous month)",
@@ -279,7 +281,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       );
 
       verifySummarizeText({
-        itemName: "Compare “Count” to previous period ...",
+        itemName: "Compare to the past",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
@@ -300,7 +302,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       verifyNotebookText({
-        itemName: "Compare “Count” to previous period ...",
+        itemName: "Compare to the past",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
       });
@@ -331,6 +333,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
+
+      visualize();
       verifyColumns([
         "Count (previous period)",
         "Count (vs previous period)",
@@ -344,14 +348,11 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
-        itemName: "Compare “Count” to previous rows ...",
-        step2Title: "Compare “Count” to previous rows",
-        offsetHelp: "rows above based on “Category”",
-      });
+      cy.button("Summarize").click();
+      rightSidebar().button("Add aggregation").click();
+      verifyNoColumnCompareShortcut();
 
       tableHeaderClick("Category");
-      verifyNoColumnCompareShortcut();
 
       verifyColumnDrillText({
         itemName: "Compare “Count” to previous rows",
@@ -359,14 +360,14 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "rows above based on “Category”",
       });
 
+      openNotebook();
+      cy.button("Summarize").click();
+      verifyNoColumnCompareShortcut();
+      cy.realPress("Escape");
+
+      openVisualization();
       verifyPlusButtonText({
         itemName: "Compare “Count” to previous rows",
-        step2Title: "Compare “Count” to previous rows",
-        offsetHelp: "rows above based on “Category”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare “Count” to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
         offsetHelp: "rows above based on “Category”",
       });
@@ -376,13 +377,20 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
 
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
-          event: "column_compare_via_shortcut",
+          event: "column_compare_via_plus_modal",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
       });
 
+      verifyColumns([
+        "Count (previous value)",
+        "Count (vs previous value)",
+        "Count (% vs previous value)",
+      ]);
+
+      openEditor();
       verifyAggregations([
         {
           name: "Count (previous value)",
@@ -397,11 +405,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
-      verifyColumns([
-        "Count (previous value)",
-        "Count (vs previous value)",
-        "Count (% vs previous value)",
-      ]);
     });
   });
 
@@ -413,7 +416,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       );
 
       verifySummarizeText({
-        itemName: "Compare to previous period ...",
+        itemName: "Compare to the past",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
@@ -433,7 +436,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       verifyNotebookText({
-        itemName: "Compare to previous period ...",
+        itemName: "Compare to the past",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on grouping",
@@ -475,7 +478,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       );
 
       verifySummarizeText({
-        itemName: "Compare to previous months ...",
+        itemName: "Compare to the past",
         step1Title: "Compare one of these to the previous months",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
@@ -498,7 +501,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       verifyNotebookText({
-        itemName: "Compare to previous months ...",
+        itemName: "Compare to the past",
         step1Title: "Compare one of these to the previous months",
         step2Title: "Compare “Count” to previous months",
         offsetHelp: "months ago based on “Created At”",
@@ -530,6 +533,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
+
+      visualize();
       verifyColumns([
         "Count (previous month)",
         "Count (vs previous month)",
@@ -544,7 +549,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       );
 
       verifySummarizeText({
-        itemName: "Compare to previous period ...",
+        itemName: "Compare to the past",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
@@ -567,7 +572,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       });
 
       verifyNotebookText({
-        itemName: "Compare to previous period ...",
+        itemName: "Compare to the past",
         step1Title: "Compare one of these to the previous period",
         step2Title: "Compare “Count” to previous period",
         offsetHelp: "periods ago based on “Created At”",
@@ -599,6 +604,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
+
+      visualize();
       verifyColumns([
         "Count (previous period)",
         "Count (vs previous period)",
@@ -612,12 +619,9 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
-        itemName: "Compare to previous rows ...",
-        step2Title: "Compare “Count” to previous rows",
-        step1Title: "Compare one of these to the previous rows",
-        offsetHelp: "rows above based on “Category”",
-      });
+      cy.button("Summarize").click();
+      rightSidebar().button("Add aggregation").click();
+      verifyNoColumnCompareShortcut();
 
       tableHeaderClick("Category");
       verifyNoColumnCompareShortcut();
@@ -628,15 +632,14 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         offsetHelp: "rows above based on “Category”",
       });
 
+      openNotebook();
+      cy.button("Summarize").click();
+      verifyNoColumnCompareShortcut();
+      cy.realPress("Escape");
+
+      openVisualization();
       verifyPlusButtonText({
         itemName: "Compare to previous rows",
-        step2Title: "Compare “Count” to previous rows",
-        step1Title: "Compare one of these to the previous rows",
-        offsetHelp: "rows above based on “Category”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to previous rows ...",
         step2Title: "Compare “Count” to previous rows",
         step1Title: "Compare one of these to the previous rows",
         offsetHelp: "rows above based on “Category”",
@@ -647,13 +650,20 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
 
       cy.get("@questionId").then(questionId => {
         expectGoodSnowplowEvent({
-          event: "column_compare_via_shortcut",
+          event: "column_compare_via_plus_modal",
           custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
           database_id: SAMPLE_DB_ID,
           question_id: questionId,
         });
       });
 
+      verifyColumns([
+        "Count (previous value)",
+        "Count (vs previous value)",
+        "Count (% vs previous value)",
+      ]);
+
+      openEditor();
       verifyAggregations([
         {
           name: "Count (previous value)",
@@ -667,11 +677,6 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           name: "Count (% vs previous value)",
           expression: "Count / Offset(Count, -1) - 1",
         },
-      ]);
-      verifyColumns([
-        "Count (previous value)",
-        "Count (vs previous value)",
-        "Count (% vs previous value)",
       ]);
     });
   });
@@ -785,8 +790,6 @@ function verifyAggregations(results: AggregationResult[]) {
 }
 
 function verifyColumns(names: string[]) {
-  visualize();
-
   for (const name of names) {
     cy.findAllByTestId("header-cell").contains(name).should("be.visible");
   }
@@ -804,4 +807,12 @@ function verifyBreakoutRequiredError() {
       "Window function requires either breakouts or order by in the query",
     )
     .should("be.visible");
+}
+
+function openEditor() {
+  cy.button("Show Editor").click();
+}
+
+function openVisualization() {
+  cy.button("Show Visualization").click();
 }
