@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useState } from "react";
 import { useDebounce } from "react-use";
 import { msgid, ngettext, t } from "ttag";
 
@@ -88,24 +88,46 @@ export const EntityPickerSearchResults = <
   Model extends string,
   Item extends TypeWithModel<Id, Model>,
 >({
-  searchResults,
+  searchResults: allSearchResults,
   onItemSelect,
   selectedItem,
+  prototypeState,
 }: {
   searchResults: SearchResult[] | null;
   onItemSelect: (item: Item) => void;
   selectedItem: Item | null;
   prototypeState?: PrototypeState;
 }) => {
-  const [searchScope, setSearchScope] = useState<
-    "*" | "collection" | "database" | "schema"
-  >("*");
-  const scopeName = "Growth"; // TODO
-  const scopeValue = "collection"; // TODO
+  const lastFolder = prototypeState?.lastFolder;
+  const scopeName = prototypeState?.lastFolder?.name;
+  const scopeValue = prototypeState?.lastFolder?.id;
+  const [searchScope, setSearchScope] = useState<"*" | "scope">(
+    scopeValue ? "scope" : "*",
+  );
 
-  if (!searchResults) {
+  if (!allSearchResults) {
     return <DelayedLoadingSpinner text={t`Loading…`} />;
   }
+
+  const searchResults = allSearchResults.filter(result => {
+    if (searchScope === "*" || !lastFolder) {
+      return true;
+    }
+
+    if (lastFolder.model === "database") {
+      return result.model === "table" && result.database_id === lastFolder.id;
+    }
+
+    if (lastFolder.model === "schema") {
+      return result.model === "table" && result.table_schema === lastFolder.id;
+    }
+
+    if (lastFolder.model === "collection") {
+      return result.collection?.id === lastFolder.id;
+    }
+
+    return true;
+  });
 
   return (
     <Box h="100%" bg="bg-light">
@@ -122,7 +144,7 @@ export const EntityPickerSearchResults = <
                 <SegmentedControl
                   data={[
                     { label: "Everywhere", value: "*" },
-                    { label: `“${scopeName}”`, value: scopeValue },
+                    { label: `“${scopeName}”`, value: "scope" },
                   ]}
                   value={searchScope}
                   onChange={value => setSearchScope(value as any)}

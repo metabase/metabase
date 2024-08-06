@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -50,29 +50,14 @@ const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
 const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
 
-export type PrototypeState = Record<
-  DataPickerValue["model"],
-  {
-    lastFolder?: NotebookDataPickerFolderItem;
-  }
-> & {
+export type PrototypeState = {
+  lastFolder?: NotebookDataPickerFolderItem;
   lastTab?: string;
 };
 
 const initialPrototypeState: PrototypeState = {
   lastTab: undefined,
-  card: {
-    lastFolder: undefined,
-  },
-  dataset: {
-    lastFolder: undefined,
-  },
-  metric: {
-    lastFolder: undefined,
-  },
-  table: {
-    lastFolder: undefined,
-  },
+  lastFolder: undefined,
 };
 
 const options: DataPickerModalOptions = {
@@ -142,16 +127,20 @@ export const DataPickerModal = ({
 
   const [currentTab, setCurrentTab] = useState<string>();
 
+  useEffect(() => {
+    // if (currentTab !== 'search'){
+    //   setPrototypeState(state => ({
+    //     ...state,
+    //     lastTab: currentTab,
+    //   }));
+    // }
+  }, [currentTab]);
+
   const handleCardChange = useCallback(
     (item: QuestionPickerItem) => {
-      if (["collection"].includes(item.model)) {
+      if (item.model === "collection") {
         setPrototypeState(state => ({
-          ...state,
-          [item.model]: {
-            // @ts-expect-error ...
-            ...state[item.model],
-            lastFolder: item,
-          },
+          lastFolder: item,
           lastTab: currentTab,
         }));
       }
