@@ -1,9 +1,8 @@
+import { t } from "ttag";
+
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
-import {
-  CompareAggregations,
-  getTitle,
-} from "metabase/query_builder/components/CompareAggregations";
+import { CompareAggregations } from "metabase/query_builder/components/CompareAggregations";
 import { trackColumnCompareViaColumnHeader } from "metabase/querying/analytics";
 import type {
   ClickActionPopoverProps,
@@ -14,7 +13,11 @@ import * as Lib from "metabase-lib";
 export const compareAggregationsDrill: Drill<
   Lib.CompareAggregationsDrillThruInfo
 > = ({ drill, question, query, stageIndex, clicked }) => {
-  if (!clicked.column) {
+  const aggregations = Lib.aggregations(query, stageIndex);
+  if (
+    !clicked.column ||
+    !canAddTemporalCompareAggregation(query, stageIndex, aggregations)
+  ) {
     return [];
   }
 
@@ -60,7 +63,7 @@ export const compareAggregationsDrill: Drill<
   return [
     {
       name: "compare-aggregations",
-      title: getTitle(query, stageIndex, aggregation),
+      title: t`Compare to the past`,
       section: "compare-aggregations",
       icon: "lines",
       buttonType: "horizontal",
@@ -68,3 +71,27 @@ export const compareAggregationsDrill: Drill<
     },
   ];
 };
+
+function canAddTemporalCompareAggregation(
+  query: Lib.Query,
+  stageIndex: number,
+  aggregations: Lib.AggregationClause[],
+): boolean {
+  if (aggregations.length === 0) {
+    // Hide the "Compare to the past" option if there are no aggregations
+    return false;
+  }
+
+  const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
+  const hasAtLeastOneTemporalBreakoutColumn = breakoutableColumns.some(column =>
+    Lib.isTemporal(column),
+  );
+
+  if (!hasAtLeastOneTemporalBreakoutColumn) {
+    // Hide the "Compare to the past" option if there are no
+    // temporal columns to break out on
+    return false;
+  }
+
+  return true;
+}
