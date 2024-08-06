@@ -1164,7 +1164,7 @@
 
 (defn- write-empty-gzip
   "Writes the data for an empty gzip file"
-  [^java.io.File file]
+  [^File file]
   (with-open [out (FileOutputStream. file)]
       (.write out (byte-array
                    [0x1F 0x8B ; GZIP magic number
@@ -1176,7 +1176,8 @@
                     0x03 0    ; Compressed data (empty block)
                     0 0 0 0   ; CRC32
                     0 0 0 0   ; Input size
-                    ]))))
+                    ]))
+      file))
 
 (deftest ^:mb/once create-csv-upload!-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -1224,7 +1225,6 @@
              (do-with-uploaded-example-csv!
               {:file (write-empty-gzip (tmp-file "sneaky" ".csv"))}
               identity)))))))
-
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
