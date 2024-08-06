@@ -1,9 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import {
+  getParameterColumns,
   getParameterTargetField,
-  isParameterVariableTarget,
   getTemplateTagFromTarget,
+  isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
 import type { ParameterDimensionTarget } from "metabase-types/api";
 import {
@@ -12,6 +15,7 @@ import {
 } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
+  createSavedStructuredCard,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -131,6 +135,25 @@ describe("parameters/utils/targets", () => {
           id: PRODUCTS.CATEGORY,
         }),
       );
+    });
+  });
+
+  describe("getParameterColumns", () => {
+    it("works", () => {
+      const card = createSavedStructuredCard();
+      const question = new Question(card, metadata);
+      const { query, stageIndex, columns } = getParameterColumns(question);
+      const columnsInfos = columns.map(column => {
+        return Lib.displayInfo(query, stageIndex, column);
+      });
+
+      expect(columnsInfos).toHaveLength(30);
+      expect(columnsInfos[0]).toMatchObject({
+        displayName: "Created At",
+        table: {
+          displayName: "Orders",
+        },
+      });
     });
   });
 });
