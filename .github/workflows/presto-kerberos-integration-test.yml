@@ -54,6 +54,9 @@ jobs:
       - name: Bring up Presto+Kerberos cluster
         run: cd presto-kerberos-docker && docker compose up -d && cd ..
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
        # Create symbolic link for docker-compose
       - name: Setup Docker Compose Symlink
         run: sudo ln -s $(which docker) /usr/local/bin/docker-compose
