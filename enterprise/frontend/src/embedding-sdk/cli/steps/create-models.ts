@@ -4,7 +4,7 @@ import type { CliStepMethod } from "../types/cli";
 import { createModelFromTable } from "../utils/create-model-from-table";
 
 export const createModels: CliStepMethod = async state => {
-  const { instanceUrl = "", databaseId, cookie = "", tableIds = [] } = state;
+  const { instanceUrl = "", databaseId, cookie = "", tables = [] } = state;
 
   if (databaseId === undefined) {
     return [{ type: "error", message: "No database selected." }, state];
@@ -15,12 +15,12 @@ export const createModels: CliStepMethod = async state => {
   try {
     // Create a model for each table
     await Promise.all(
-      tableIds.map(tableId =>
+      tables.map(table =>
         createModelFromTable({
-          instanceUrl,
+          table,
           databaseId,
-          tableId,
           cookie,
+          instanceUrl,
         }),
       ),
     );

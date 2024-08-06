@@ -1,5 +1,5 @@
 import type { CLI_STEPS } from "embedding-sdk/cli/run";
-import type { Settings } from "metabase-types/api";
+import type { Settings, Table } from "metabase-types/api";
 
 export type CliState = Partial<{
   port: number;
@@ -11,7 +11,7 @@ export type CliState = Partial<{
   token: string;
   settings: Settings;
   databaseId: number;
-  tableIds: number[];
+  tables: Table[];
 }>;
 
 export type CliError = {

@@ -10,4 +10,4 @@ export * from "./start-local-metabase-container";
 export * from "./check-if-react-project";
 export * from "./check-sdk-available";
 export * from "./add-database-connection";
-export * from "./pick-db-tables";
+export * from "./pick-database-tables";

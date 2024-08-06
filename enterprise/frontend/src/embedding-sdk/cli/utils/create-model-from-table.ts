@@ -3,7 +3,7 @@ import type { Table } from "metabase-types/api";
 import { propagateErrorResponse } from "./propagate-error-response";
 
 interface Options {
-  tableId: number;
+  table: Table;
   databaseId: number;
 
   cookie: string;
@@ -11,12 +11,12 @@ interface Options {
 }
 
 export async function createModelFromTable(options: Options) {
-  const { instanceUrl, databaseId, tableId, cookie = "" } = options;
+  const { databaseId, table, instanceUrl, cookie = "" } = options;
 
   const datasetQuery = {
     type: "query",
     database: databaseId,
-    query: { "source-table": tableId },
+    query: { "source-table": table.id },
   };
 
   // Generate the query metadata
@@ -29,21 +29,23 @@ export async function createModelFromTable(options: Options) {
   await propagateErrorResponse(res);
 
   const { tables } = (await res.json()) as { tables: Table[] };
-  const [{ display_name: displayName }] = tables;
 
-  // Create a new card
+  if (tables.length === 0) {
+    throw new Error(`Cannot find table "${table.name}" in database.`);
+  }
+
+  // Create a new model
   res = await fetch(`${instanceUrl}/api/card`, {
     method: "POST",
     headers: { "content-type": "application/json", cookie },
     body: JSON.stringify({
-      name: displayName,
+      name: table.display_name,
       type: "model",
       display: "table",
-      collection_id: null,
       result_metadata: null,
+      collection_id: null,
       collection_position: 1,
       visualization_settings: {},
-      database_id: databaseId,
       dataset_query: datasetQuery,
       description: `A model created via the embedding sdk's CLI`,
     }),
@@ -53,17 +55,5 @@ export async function createModelFromTable(options: Options) {
 
   const { id: cardId } = (await res.json()) as { id: number };
 
-  // Create a new dataset
-  res = await fetch(`${instanceUrl}/api/dataset`, {
-    method: "POST",
-    headers: { "content-type": "application/json", cookie },
-    body: JSON.stringify({
-      type: "query",
-      database: databaseId,
-      query: { "source-table": `card__${cardId}` },
-      parameters: [],
-    }),
-  });
-
-  await propagateErrorResponse(res);
+  return { tableId: table.id, cardId };
 }
