@@ -10,8 +10,12 @@ export function findBreakoutColumn(
       return false;
     }
 
-    const { breakoutPosition } = Lib.displayInfo(query, stageIndex, column);
-    return breakoutPosition != null;
+    const { breakoutPositions = [] } = Lib.displayInfo(
+      query,
+      stageIndex,
+      column,
+    );
+    return breakoutPositions.length > 0;
   });
 }
 
@@ -49,10 +53,12 @@ export function findBreakoutClause(
   breakoutColumn: Lib.ColumnMetadata,
 ): Lib.BreakoutClause | undefined {
   const breakouts = Lib.breakouts(query, stageIndex);
-  const { breakoutPosition } = Lib.displayInfo(
+  const { breakoutPositions = [] } = Lib.displayInfo(
     query,
     stageIndex,
     breakoutColumn,
   );
-  return breakoutPosition != null ? breakouts[breakoutPosition] : undefined;
+  return breakoutPositions.length > 0
+    ? breakouts[breakoutPositions[0]]
+    : undefined;
 }
