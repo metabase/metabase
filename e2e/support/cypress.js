@@ -53,6 +53,8 @@ Cypress.on("test:after:run", (test, runnable) => {
   Cypress.Mochawesome = undefined;
 });
 
+// required for cypress-terminal-report to be able to find logs after the test
+// is finished
 Cypress.Commands.add("addTestContext", context => {
   if (!Cypress.Mochawesome) {
     Cypress.Mochawesome = createMochawesomeObject();
