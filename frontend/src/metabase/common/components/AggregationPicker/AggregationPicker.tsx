@@ -355,7 +355,7 @@ function ColumnPickerHeader({
 }
 
 function renderItemName(item: ListItem) {
-  return item.displayName;
+  return "displayName" in item ? item.displayName : undefined;
 }
 
 function omitItemDescription() {
@@ -431,6 +431,33 @@ function getCompareListItem(
   aggregations: Lib.AggregationClause[],
 ): CompareListItem | undefined {
   if (aggregations.length === 0) {
+    // Hide the "Compare to the past" option if there are no aggregations
+    return undefined;
+  }
+
+  const firstBreakout = Lib.breakouts(query, stageIndex)[0];
+  if (firstBreakout) {
+    const firstBreakoutColumn = Lib.breakoutColumn(
+      query,
+      stageIndex,
+      firstBreakout,
+    );
+
+    if (!Lib.isTemporal(firstBreakoutColumn)) {
+      // Hide the "Compare to the past option if there is a breakout but it is not
+      // on a temporal column
+      return undefined;
+    }
+  }
+
+  const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
+  const hasAtLeastOneTemporalBreakoutColumn = breakoutableColumns.some(column =>
+    Lib.isTemporal(column),
+  );
+
+  if (!hasAtLeastOneTemporalBreakoutColumn) {
+    // Hide the "Compare to the past" option if there are no
+    // temporal columns to break out on
     return undefined;
   }
 
