@@ -55,7 +55,7 @@
 
 (def ^:private TablePerms
   [:or
-   [:enum :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no]
+   [:enum :all :segmented :none :full :limited :unrestricted :legacy-no-self-service :sandboxed :query-builder :no :blocked]
    [:map
     [:read {:optional true} [:enum :all :none]]
     [:query {:optional true} [:enum :all :none :segmented]]]])

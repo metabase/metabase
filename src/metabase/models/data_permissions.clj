@@ -739,9 +739,6 @@
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
                     {perm-type (Permissions perm-type)})))
   (let [values (set (vals table-perms))]
-    (when (values :blocked)
-      (throw (ex-info (tru "Block permissions must be set at the database-level only.")
-                      {})))
     ;; if `table-perms` is empty, there's nothing to do
     (when (seq table-perms)
       (t2/with-transaction [_conn]
