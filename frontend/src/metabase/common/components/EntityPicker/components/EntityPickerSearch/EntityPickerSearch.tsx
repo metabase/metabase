@@ -96,9 +96,9 @@ export const EntityPickerSearchResults = <
   searchResults: SearchResult[] | null;
   onItemSelect: (item: Item) => void;
   selectedItem: Item | null;
-  prototypeState: PrototypeState;
+  prototypeState?: PrototypeState;
 }) => {
-  const lastFolder = prototypeState.lastTab
+  const lastFolder = prototypeState?.lastTab
     ? prototypeState[prototypeState.lastTab]
     : undefined;
   const scopeName = lastFolder?.name;
