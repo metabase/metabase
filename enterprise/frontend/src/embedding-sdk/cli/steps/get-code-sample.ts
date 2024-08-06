@@ -1,7 +1,6 @@
 import clipboard from "clipboardy";
 import toggle from "inquirer-toggle";
 
-import { getCodeSample } from "embedding-sdk/cli/constants/code-sample";
 import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
 import {
   printEmptyLines,
@@ -25,7 +24,7 @@ export const generateCodeSample: CliStepMethod = async state => {
     "API key generated successfully. Here's a code sample to embed the Metabase SDK in your React application:",
   );
 
-  const codeSample = getCodeSample(state.instanceUrl, state.apiKey);
+  const codeSample = "";
   printEmptyLines();
   printInfo(codeSample.trim());
   printEmptyLines();
