@@ -410,10 +410,10 @@
   Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
   an API response!
 
-  Then, connection uri is a special case of sensitive field. It should be sent only in API responses of /database...
+  Then, connection uri is a special case of sensitive field. It should be sent only in API responses of /database/:id
   endpoints, to enable editing. Otherwise it should be treated as secret, as it can contain eg. password. That is
   handled in [[redact-sensitive-fields]] by processing exceptions from sensitive fields. Those are added in API's
-  [[metabase.api.database/get-database]].
+  [[metabase.api.database/add-conn-uri-sensitive-exception]] in endpoints' code.
 
   Also remove settings that the User doesn't have read perms for."
   [db json-generator]
