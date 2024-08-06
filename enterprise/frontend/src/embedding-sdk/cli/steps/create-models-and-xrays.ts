@@ -1,9 +1,11 @@
 import ora from "ora";
 
+import { createXrayDashboardFromModel } from "embedding-sdk/cli/utils/xray-models";
+
 import type { CliStepMethod } from "../types/cli";
 import { createModelFromTable } from "../utils/create-model-from-table";
 
-export const createModels: CliStepMethod = async state => {
+export const createModelsAndXrays: CliStepMethod = async state => {
   const { instanceUrl = "", databaseId, cookie = "", tables = [] } = state;
 
   if (databaseId === undefined) {
@@ -14,7 +16,7 @@ export const createModels: CliStepMethod = async state => {
 
   try {
     // Create a model for each table
-    await Promise.all(
+    const modelIds = await Promise.all(
       tables.map(table =>
         createModelFromTable({
           table,
@@ -25,7 +27,21 @@ export const createModels: CliStepMethod = async state => {
       ),
     );
 
+    spinner.start("X-raying your data to create dashboards...");
+
+    const dashboardIds = await Promise.all(
+      modelIds.map(modelId =>
+        createXrayDashboardFromModel({
+          modelId,
+          instanceUrl,
+          cookie,
+        }),
+      ),
+    );
+
     spinner.succeed();
+
+    return [{ type: "done" }, { ...state, dashboardIds }];
   } catch (error) {
     spinner.fail();
 
@@ -34,6 +50,4 @@ export const createModels: CliStepMethod = async state => {
 
     return [{ type: "error", message }, state];
   }
-
-  return [{ type: "done" }, state];
 };

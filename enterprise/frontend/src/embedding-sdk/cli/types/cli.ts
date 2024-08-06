@@ -1,5 +1,5 @@
 import type { CLI_STEPS } from "embedding-sdk/cli/run";
-import type { Settings, Table } from "metabase-types/api";
+import type { DashboardId, Settings, Table } from "metabase-types/api";
 
 export type CliState = Partial<{
   port: number;
@@ -9,9 +9,16 @@ export type CliState = Partial<{
   email: string;
   password: string;
   token: string;
-  settings: Settings;
   databaseId: number;
+
+  /** Metabase instance settings */
+  settings: Settings;
+
+  /** Database tables selected by the user */
   tables: Table[];
+
+  /** IDs of auto-generated dashboards */
+  dashboardIds: DashboardId[];
 }>;
 
 export type CliError = {

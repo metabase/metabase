@@ -53,7 +53,7 @@ export async function createModelFromTable(options: Options) {
 
   await propagateErrorResponse(res);
 
-  const { id: cardId } = (await res.json()) as { id: number };
+  const { id: modelId } = (await res.json()) as { id: number };
 
-  return { tableId: table.id, cardId };
+  return modelId;
 }
