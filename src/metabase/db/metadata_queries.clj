@@ -15,6 +15,33 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
+(def max-length 10000)
+
+(defn- distinct-field-values-rff
+  [metadata]
+  (let [row-count  (volatile! 0)
+        rows       (volatile! (transient []))
+        total-char (volatile! 0)]
+    (fn default-rf
+      ([]
+       {:data metadata})
+
+      ([result]
+       {:pre [(map? (unreduced result))]}
+       ;; if the result is a clojure.lang.Reduced, unwrap it so we always get back the standard-format map
+       (-> (unreduced result)
+           (assoc :row_count @row-count
+                  :status :completed)
+           (assoc-in [:data :rows] (persistent! @rows))))
+
+      ([result row]
+       (vswap! row-count inc)
+       (vswap! rows conj! row)
+       (vswap! total-char + (reduce + (map count row)))
+       (if (>= @total-char max-length)
+         (reduced result)
+         result)))))
+
 (defn- qp-query
   [db-id mbql-query]
   {:pre [(integer? db-id)]}
@@ -23,7 +50,8 @@
          {:type       :query
           :database   db-id
           :query      mbql-query
-          :middleware {:disable-remaps? true}}))
+          :middleware {:disable-remaps? true}}
+         distinct-field-values-rff))
       :data
       :rows))
 
@@ -108,6 +136,10 @@
   ([field max-results :- ms/PositiveInt]
    (field-query field {:breakout [[:field (u/the-id field) nil]]
                        :limit    (min max-results absolute-max-distinct-values-limit)})))
+
+#_(def field (t2/select-one :model/Field 94))
+
+#_(field-distinct-values field 10)
 
 ;; I'm not sure whether this field-distinct-values and field-distinct-values belong to this namespace
 ;; maybe it's better to keep this in metabase.models.field or metabase.models.field-values
