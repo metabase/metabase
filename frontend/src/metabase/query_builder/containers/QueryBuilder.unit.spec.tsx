@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { MockCall } from "fetch-mock";
 import fetchMock from "fetch-mock";
+import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
   screen,
@@ -28,6 +29,7 @@ registerVisualizations();
 describe("QueryBuilder", () => {
   afterEach(() => {
     jest.resetAllMocks();
+    setupJestCanvasMock();
   });
 
   describe("rendering", () => {

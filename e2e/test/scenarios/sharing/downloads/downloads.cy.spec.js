@@ -5,31 +5,32 @@ import {
   ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  downloadAndAssert,
-  startNewQuestion,
-  visualize,
-  visitDashboard,
-  popover,
-  assertSheetRowsCount,
-  filterWidget,
-  saveDashboard,
-  getDashboardCardMenu,
-  describeWithSnowplow,
-  expectGoodSnowplowEvent,
-  expectNoBadSnowplowEvents,
-  resetSnowplow,
-  enableTracking,
   addOrUpdateDashboardCard,
+  assertSheetRowsCount,
   createQuestion,
-  queryBuilderMain,
+  describeWithSnowplow,
+  downloadAndAssert,
   editDashboard,
-  setFilter,
+  enableTracking,
   entityPickerModal,
   entityPickerModalTab,
-  showDashboardCardActions,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
+  filterWidget,
   getDashboardCard,
+  getDashboardCardMenu,
   multiAutocompleteInput,
+  popover,
+  queryBuilderMain,
+  resetSnowplow,
+  restore,
+  saveDashboard,
+  setFilter,
+  showDashboardCardActions,
+  startNewQuestion,
+  visitDashboard,
+  visualize,
+  dismissDownloadStatus,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -65,21 +66,32 @@ describe("scenarios > question > download", () => {
     cy.signInAsAdmin();
   });
 
-  testCases.forEach(fileType => {
-    it(`downloads ${fileType} file`, () => {
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Saved questions").click();
-        cy.findByText("Orders, Count").click();
-      });
+  describeWithSnowplow("[snowplow]", () => {
+    testCases.forEach(fileType => {
+      it(`downloads ${fileType} file`, () => {
+        startNewQuestion();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Saved questions").click();
+          cy.findByText("Orders, Count").click();
+        });
 
-      visualize();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.contains("18,760");
+        visualize();
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+        cy.contains("18,760");
 
-      downloadAndAssert({ fileType }, sheet => {
-        expect(sheet["A1"].v).to.eq("Count");
-        expect(sheet["A2"].v).to.eq(18760);
+        downloadAndAssert({ fileType }, sheet => {
+          expect(sheet["A1"].v).to.eq("Count");
+          expect(sheet["A2"].v).to.eq(18760);
+        });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "ad-hoc-question",
+          accessed_via: "internal",
+          export_type: fileType,
+        });
+
+        dismissDownloadStatus();
       });
     });
   });
@@ -124,6 +136,8 @@ describe("scenarios > question > download", () => {
         },
       );
 
+      dismissDownloadStatus();
+
       downloadAndAssert(
         {
           ...opts,
@@ -148,6 +162,8 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
+      dismissDownloadStatus();
+
       editDashboard();
 
       setFilter("ID");
@@ -171,6 +187,8 @@ describe("scenarios > question > download", () => {
       });
 
       assertOrdersExport(1);
+
+      dismissDownloadStatus();
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -244,6 +262,8 @@ describe("scenarios > question > download", () => {
                 assertSheetRowsCount(1)(sheet);
               },
             );
+
+            dismissDownloadStatus();
           });
         });
       });
@@ -317,7 +337,7 @@ describe("scenarios > dashboard > download pdf", () => {
       visitDashboard(dashboard.id);
     });
 
-    cy.findByLabelText("dashboard-menu-button").click();
+    cy.findByLabelText("Move, trash, and more…").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Export as PDF").click();
@@ -326,7 +346,7 @@ describe("scenarios > dashboard > download pdf", () => {
   });
 });
 
-describeWithSnowplow("scenarios > dashboard > download pdf", () => {
+describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
   beforeEach(() => {
     restore();
     resetSnowplow();
@@ -344,14 +364,40 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);
-      cy.findByLabelText("dashboard-menu-button").click();
+      cy.findByLabelText("Move, trash, and more…").click();
 
       popover().findByText("Export as PDF").click();
 
       expectGoodSnowplowEvent({
         event: "dashboard_pdf_exported",
         dashboard_id: dashboard.id,
+        dashboard_accessed_via: "internal",
       });
+    });
+  });
+
+  it("should send the `download_results_clicked` event when downloading dashcards results", () => {
+    cy.createDashboardWithQuestions({
+      dashboardName: "saving pngs dashboard",
+      questions: [canSavePngQuestion, cannotSavePngQuestion],
+    }).then(({ dashboard }) => {
+      visitDashboard(dashboard.id);
+    });
+
+    showDashboardCardActions(0);
+    getDashboardCard(0).findByText("Created At").should("be.visible");
+    getDashboardCardMenu(0).click();
+
+    popover().within(() => {
+      cy.findByText("Download results").click();
+      cy.findByText(".png").click();
+    });
+
+    expectGoodSnowplowEvent({
+      event: "download_results_clicked",
+      resource_type: "dashcard",
+      accessed_via: "internal",
+      export_type: "png",
     });
   });
 });

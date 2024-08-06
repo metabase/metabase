@@ -202,7 +202,6 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const {
     hasNightModeToggle,
-    hideParameters,
     isFullscreen,
     isNightMode,
     onNightModeChange,
@@ -217,7 +216,6 @@ const DashboardApp = (props: DashboardAppProps) => {
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
-      {/* @ts-expect-error - types coming from thunks are not correct*/}
       <Dashboard
         location={location}
         dashboardId={dashboardId}
@@ -225,7 +223,6 @@ const DashboardApp = (props: DashboardAppProps) => {
         addCardOnLoad={addCardOnLoad}
         isFullscreen={isFullscreen}
         refreshPeriod={refreshPeriod}
-        hideParameters={hideParameters}
         isNightMode={isNightMode}
         hasNightModeToggle={hasNightModeToggle}
         setRefreshElapsedHook={setRefreshElapsedHook}

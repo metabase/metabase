@@ -5,11 +5,10 @@ import { Component } from "react";
 import ReactDOM from "react-dom";
 import _ from "underscore";
 
+import { waitTimeContext } from "metabase/context/wait-time";
 import CS from "metabase/css/core/index.css";
 import { isCypressActive } from "metabase/env";
 import resizeObserver from "metabase/lib/resize-observer";
-
-import { explicitSizeRefreshModeContext } from "./context";
 
 const WAIT_TIME = 300;
 
@@ -51,7 +50,7 @@ function ExplicitSize<T extends BaseInnerProps>({
     const displayName = ComposedComponent.displayName || ComposedComponent.name;
 
     class WrappedComponent extends Component<T> {
-      static contextType = explicitSizeRefreshModeContext;
+      static contextType = waitTimeContext;
 
       static displayName = `ExplicitSize[${displayName}]`;
 
@@ -75,8 +74,8 @@ function ExplicitSize<T extends BaseInnerProps>({
         };
 
         this._printMediaQuery = window.matchMedia && window.matchMedia("print");
-        if (this.context) {
-          this._refreshMode = this.context as RefreshMode;
+        if (this.context === 0) {
+          this._refreshMode = "none";
         } else {
           this._refreshMode =
             typeof refreshMode === "string" ? refreshMode : "throttle";
@@ -197,6 +196,13 @@ function ExplicitSize<T extends BaseInnerProps>({
         const element = this._getElement();
         if (element) {
           const { width, height } = element.getBoundingClientRect();
+
+          if (!width && !height) {
+            // cypress raises lots of errors in timeline trying to call setState
+            // on the unmounted element, so we're just ignoring
+            return;
+          }
+
           if (this.state.width !== width || this.state.height !== height) {
             this.setState({ width, height }, () =>
               this.props?.onUpdateSize?.(),

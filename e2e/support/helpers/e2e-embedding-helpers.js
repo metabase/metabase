@@ -38,7 +38,7 @@ import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
  */
 export function visitEmbeddedPage(
   payload,
-  { setFilters = {}, hideFilters = [], pageStyle = {} } = {},
+  { setFilters = {}, hideFilters = [], pageStyle = {}, onBeforeLoad } = {},
 ) {
   const jwtSignLocation = "e2e/support/external/e2e-jwt-sign.js";
 
@@ -63,6 +63,7 @@ export function visitEmbeddedPage(
       url: urlRoot,
       qs: setFilters,
       onBeforeLoad: window => {
+        onBeforeLoad?.(window);
         if (urlHash) {
           window.location.hash = urlHash;
         }

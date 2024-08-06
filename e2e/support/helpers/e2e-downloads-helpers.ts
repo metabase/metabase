@@ -166,3 +166,14 @@ function getEndpoint({
     method: "POST",
   };
 }
+
+export function dismissDownloadStatus() {
+  cy.findByTestId("status-root-container").within(() => {
+    cy.findByRole("status").within(() => {
+      cy.findAllByText("Download completed");
+      cy.findByLabelText("Dismiss").click();
+    });
+
+    cy.findByRole("status").should("not.exist");
+  });
+}

@@ -192,7 +192,7 @@
   (testing "GET /api/database/:id"
     (testing "Invalid `?include` should return an error"
       (is (= {:errors          {:include "nullable enum of tables, tables.fields"},
-              :specific-errors {:include ["should be either tables or tables.fields, received: \"schemas\""]}}
+              :specific-errors {:include ["should be either \"tables\" or \"tables.fields\", received: \"schemas\""]}}
              (mt/user-http-request :lucky :get 400 (format "database/%d?include=schemas" (mt/id))))))))
 
 (deftest get-database-legacy-no-self-service-test

@@ -7,6 +7,8 @@
    [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
    [metabase.task :as task]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (org.quartz DisallowConcurrentExecution)))
@@ -35,6 +37,7 @@
   ([]
    (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
   ([analyze-fn]
+   ;; TODO once we are storing the hash of the query used for analysis, we'll be able to filter this properly.
    (let [cards (t2/reducible-select [:model/Card :id])]
      (run! analyze-fn cards))))
 
@@ -57,7 +60,10 @@
    (sweep-query-analysis-loop! (not @has-run?))
    (reset! has-run? true))
   ([first-time?]
-   (sweep-query-analysis-loop! first-time? query-analysis/analyze-sync!))
+   (sweep-query-analysis-loop! first-time?
+                               (fn [card-or-id]
+                                 (log/infof "Queueing card %s for query analysis" (u/the-id card-or-id))
+                                 (query-analysis/analyze-sync! card-or-id))))
   ([first-time? analyze-fn]
    ;; prioritize cards that are missing analysis
    (analyze-cards-without-query-fields! analyze-fn)

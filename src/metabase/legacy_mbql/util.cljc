@@ -800,15 +800,17 @@
 (defn matching-locations
   "Find the forms matching pred, returns a list of tuples of location (as used in get-in) and the match."
   [form pred]
-  (loop [stack [[[] form]], matches []]
+  ;; Surprisingly enough, a list works better as a stack here than a vector.
+  (loop [stack (list [[] form]), matches []]
     (if-let [[loc form :as top] (peek stack)]
       (let [stack (pop stack)
-            onto-stack #(into stack (map (fn [[k v]] [(conj loc k) v])) %)]
+            map-onto-stack #(transduce (map (fn [[k v]] [(conj loc k) v])) conj stack %)
+            seq-onto-stack #(transduce (map-indexed (fn [i v] [(conj loc i) v])) conj stack %)]
         (cond
-          (pred form)        (recur stack                                  (conj matches top))
-          (map? form)        (recur (onto-stack form)                      matches)
-          (sequential? form) (recur (onto-stack (map-indexed vector form)) matches)
-          :else              (recur stack                                  matches)))
+          (pred form)        (recur stack                 (conj matches top))
+          (map? form)        (recur (map-onto-stack form) matches)
+          (sequential? form) (recur (seq-onto-stack form) matches)
+          :else              (recur stack                 matches)))
       matches)))
 
 (defn wrap-field-id-if-needed

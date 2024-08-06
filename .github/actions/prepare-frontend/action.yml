@@ -11,6 +11,7 @@ runs:
       with:
         node-version: ${{ inputs.node-version }} # this overrides, if present
         node-version-file: ".nvmrc"
+
     - name: Check to see if dependencies should be cached
       if: ${{ contains(github.event.head_commit.message, '[ci nocache]') }}
       run: |
@@ -23,11 +24,30 @@ runs:
       with:
         path: ~/.m2
         key: ${{ runner.os }}-cljs-${{ hashFiles('**/shadow-cljs.edn') }}
+
     - name: Get node_modules cache
       uses: actions/cache@v4
+      id: node-modules-cache
       if: ${{ !contains(github.event.head_commit.message, '[ci nocache]') }}
       with:
         path: node_modules
         key: ${{ runner.os }}-node-modules-${{ hashFiles('**/yarn.lock', '**/patches/*.patch') }}
+
+    - name: Get yarn cache directory path
+      id: yarn-cache-dir-path
+      if: steps.node-modules-cache.outputs.cache-hit != 'true'
+      run: echo "dir=$(yarn cache dir)" >> $GITHUB_OUTPUT
+      shell: bash
+
+    - uses: actions/cache@v4
+      if: steps.node-modules-cache.outputs.cache-hit != 'true'
+      with:
+        path: ${{ steps.yarn-cache-dir-path.outputs.dir }}
+        # if global cache is used, we don't care if it's the latest or not
+        # current github actions settings will invalidate saved cache after
+        # a week or so, new cache will be fresh we'll not need to spend time
+        # on it's saving for a specific hash of yarn.lock
+        key: ${{ runner.os }}-yarn-
+
     - run: yarn install --frozen-lockfile --prefer-offline
       shell: bash

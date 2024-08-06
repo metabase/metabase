@@ -64,12 +64,12 @@
   [field-metadata :- TableMetadataFieldWithOptionalID
    other-metadata :- [:set TableMetadataFieldWithOptionalID]]
   (let [field-meta-canonical (canonical-name field-metadata)
-        matches (keep
-                  (fn [other-field-metadata]
-                    (when (= field-meta-canonical
-                             (canonical-name other-field-metadata))
-                      other-field-metadata))
-                  other-metadata)]
+        matches (into [] (keep
+                          (fn [other-field-metadata]
+                            (when (= field-meta-canonical
+                                     (canonical-name other-field-metadata))
+                              other-field-metadata)))
+                      other-metadata)]
     (case (count matches)
       0
       nil

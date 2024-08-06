@@ -1,13 +1,13 @@
 import type * as React from "react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useContext } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import EmptyState from "metabase/components/EmptyState";
+import { waitTimeContext } from "metabase/context/wait-time";
 import type { InputProps } from "metabase/core/components/Input";
 import Input from "metabase/core/components/Input";
 import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
 import type { RowValue } from "metabase-types/api";
 
 import {
@@ -63,7 +63,8 @@ const SingleSelectListField = ({
   }, [augmentedOptions.length]);
 
   const [filter, setFilter] = useState("");
-  const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
+  const waitTime = useContext(waitTimeContext);
+  const debouncedFilter = useDebouncedValue(filter, waitTime);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -138,7 +139,9 @@ const SingleSelectListField = ({
             <OptionItem
               data-testid={`${option[0]}-filter-value`}
               selectedColor={
-                checkedColor ?? isDashboardFilter ? "brand" : "filter"
+                checkedColor ?? isDashboardFilter
+                  ? "var(--mb-color-background-brand)"
+                  : "var(--mb-color-filter)"
               }
               selected={selectedValue === option[0]}
               onClick={() => onClickOption(option[0])}

@@ -4,21 +4,25 @@ import type { DASHBOARD_ACTION } from "metabase/dashboard/components/DashboardHe
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedNightModeControls,
+  DashboardNightModeControls,
 } from "metabase/dashboard/types";
 import type { Collection, Dashboard } from "metabase-types/api";
 
 export type DashboardActionKey = keyof typeof DASHBOARD_ACTION;
 
 export type DashboardHeaderButtonRowProps = {
+  canResetFilters: boolean;
+  onResetFilters: () => void;
   collection?: Collection;
   isPublic?: boolean;
   isAnalyticsDashboard?: boolean;
 } & DashboardRefreshPeriodControls &
   DashboardFullscreenControls &
-  EmbedNightModeControls;
+  DashboardNightModeControls;
 
 export type HeaderButtonProps = {
+  canResetFilters: boolean;
+  onResetFilters: () => void;
   isEditing: boolean;
   canEdit: boolean;
   hasModelActionsEnabled: boolean;

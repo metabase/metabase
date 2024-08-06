@@ -1,3 +1,4 @@
+import type { DashboardNightModeControls } from "metabase/dashboard/types/display-options";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
 type EmbedBackground = boolean;
@@ -28,16 +29,10 @@ type EmbedFontControls = {
   setFont: (font: EmbedFont) => void;
 };
 
-export type EmbedNightModeControls = {
-  hasNightModeToggle: boolean;
-  onNightModeChange: (isNightMode: boolean) => void;
-  isNightMode: boolean;
-};
-
 export type EmbedThemeControls = {
   theme: DisplayTheme;
   setTheme: (theme: DisplayTheme) => void;
-} & EmbedNightModeControls;
+} & DashboardNightModeControls;
 
 export type EmbedDisplayParams = {
   background: EmbedBackground;

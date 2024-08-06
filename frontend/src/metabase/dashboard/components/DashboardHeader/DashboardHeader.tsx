@@ -20,7 +20,7 @@ import {
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedNightModeControls,
+  DashboardNightModeControls,
 } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
@@ -40,7 +40,7 @@ export type DashboardHeaderProps = {
   isAdditionalInfoVisible: boolean;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
-  EmbedNightModeControls;
+  DashboardNightModeControls;
 
 export const DashboardHeaderInner = ({
   dashboard,

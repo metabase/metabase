@@ -14,7 +14,7 @@ describe("DashboardHeader", () => {
     });
 
     await userEvent.click(
-      await screen.findByLabelText("dashboard-menu-button"),
+      await screen.findByLabelText("Move, trash, and more…"),
     );
     await screen.findByRole("dialog");
 
@@ -30,7 +30,7 @@ describe("DashboardHeader", () => {
     });
 
     await userEvent.click(
-      await screen.findByLabelText("dashboard-menu-button"),
+      await screen.findByLabelText("Move, trash, and more…"),
     );
     await screen.findByRole("dialog");
 
