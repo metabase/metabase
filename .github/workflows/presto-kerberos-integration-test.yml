@@ -61,7 +61,6 @@ jobs:
           echo 'docker compose "$@"' >> /usr/local/bin/docker-compose
           sudo chmod +x /usr/local/bin/docker-compose
 
-
       - name: Run Presto test query from command line (sanity check)
         run: cd presto-kerberos-docker && ./test.sh && cd ..
       # Since we are managing the Docker containers from the GitHub action container, we need to copy all the
@@ -85,10 +84,10 @@ jobs:
         run: cd mba-src && sudo ln -s $(pwd)/src/main.clj /usr/local/bin/mba && chmod +x /usr/local/bin/mba && cd ..
       - name: Ensure mba
         run: which mba
+      - name: debug
+        run: docker network rm example.com
       - name: Run Metabase via MBA
         run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com up
-      - name: debug
-        run: docker network ls
       - name: Run test script in MBA instance
         run: >
           mba --mb . --data-db postgres-data -n example.com \
