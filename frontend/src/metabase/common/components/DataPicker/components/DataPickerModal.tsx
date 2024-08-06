@@ -184,9 +184,11 @@ export const DataPickerModal = ({
           value={isTableItem(value) ? value : undefined}
           onChange={handleChange}
           onFolderSelect={folder => {
-            setPrototypeState({
-              lastFolder: folder,
-            });
+            if (folder.id) {
+              setPrototypeState({
+                lastFolder: folder,
+              });
+            }
           }}
         />
       ),
