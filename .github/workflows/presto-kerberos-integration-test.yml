@@ -84,11 +84,9 @@ jobs:
         run: cd mba-src && sudo ln -s $(pwd)/src/main.clj /usr/local/bin/mba && chmod +x /usr/local/bin/mba && cd ..
       - name: Ensure mba
         run: which mba
-      - name: debug
-        run: docker network rm example.com
       - name: Run Metabase via MBA
-        run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com up
+        run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example1.com up
       - name: Run test script in MBA instance
         run: >
-          mba --mb . --data-db postgres-data -n example.com \
+          mba --mb . --data-db postgres-data -n example1.com \
            run .github/scripts/run-presto-kerberos-integration-test.sh
