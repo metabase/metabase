@@ -369,15 +369,20 @@
   {:arglists '([model-name opts instance])}
   (fn [model-name _opts _instance] model-name))
 
-(defn- log-and-extract-one
+(defn log-and-extract-one
+  "Extracts a single entity; will replace `extract-one` as public interface once overrides are gone."
   [model opts instance]
   (log/infof "Extracting %s %s" model (:id instance))
   (try
     (extract-one model opts instance)
     (catch Exception e
-      (if (:skip (ex-data e))
-        (log/warnf "Skipping %s %s because of an error extracting it: %s %s"
-                   model (:id instance) (.getMessage e) (dissoc (ex-data e) :skip))
+      (if (or (:skip (ex-data e))
+              (:skip-errors opts))
+        (do
+          (log/warnf "Skipping %s %s because of an error extracting it: %s %s"
+                     model (:id instance) (.getMessage e) (dissoc (ex-data e) :skip))
+          ;; return error as an entity so it can be used in the report
+          e)
         (throw (ex-info (format "Exception extracting %s %s" model (:id instance))
                         {:model     model
                          :id        (:id instance)

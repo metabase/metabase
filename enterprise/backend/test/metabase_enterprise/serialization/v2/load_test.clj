@@ -32,7 +32,7 @@
        set))
 
 (defn- ingestion-in-memory [extractions]
-  (let [mapped (into {} (for [entity (into [] extractions)]
+  (let [mapped (into {} (for [entity (vec extractions)]
                           [(no-labels (serdes/path entity))
                            entity]))]
     (reify
@@ -1179,3 +1179,45 @@
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc2))))
           (is (= (:id dash1)
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))))))
+
+(deftest skip-errors-test
+  (let [change-ser    (fn [ser changes]
+                        (vec (for [entity ser
+                                   :let   [change (get changes (:entity_id entity))]]
+                               (if change
+                                 (merge entity change)
+                                 entity))))
+        logs-contain? (fn [msg-re logs]
+                        (some #(re-find msg-re %)
+                              (->> logs
+                                   (map (fn [[_log-level _error message]] message))
+                                   (into #{}))))]
+    (mt/with-empty-h2-app-db
+      (mt/with-temp [Collection coll {:name "coll"}
+                     Card       c1   {:name "card1" :collection_id (:id coll)}
+                     Card       c2   {:name "card2" :collection_id (:id coll)}
+                     Card       _c3  {:name "card3" :collection_id (:id coll)}]
+        (testing "It's possible to skip a few errors during extract"
+          (let [extract-one serdes/extract-one]
+            (with-redefs [serdes/extract-one (fn [model-name opts instance]
+                                               (if (= (:entity_id instance) (:entity_id c1))
+                                                 (throw (ex-info "Skip me" {}))
+                                                 (extract-one model-name opts instance)))]
+              (is (logs-contain? #"Skipping \w+ \d+ because of an error extracting it"
+                                 (mt/with-log-messages-for-level ['metabase.models.serialization :warn]
+                                   (let [ser            (vec (serdes.extract/extract {:no-settings   true
+                                                                                      :no-data-model true
+                                                                                      :skip-errors   true}))
+                                         {errors true
+                                          others false} (group-by #(instance? Exception %) ser)]
+                                     (is (= 1 (count errors)))
+                                     (is (= 3 (count others))))))))))
+        (testing "It's possible to skip a few errors during load"
+          (let [ser     (vec (serdes.extract/extract {:no-settings   true
+                                                      :no-data-model true}))
+                changed (change-ser ser {(:entity_id c2) {:collection_id "does-not-exist"}})]
+            (is (logs-contain? #"Skipping deserialization error"
+                               (mt/with-log-messages-for-level ['metabase-enterprise :warn]
+                                 (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:skip-errors true})]
+                                   (is (= 1 (count (:errors report))))
+                                   (is (= 3 (count (:seen report))))))))))))))

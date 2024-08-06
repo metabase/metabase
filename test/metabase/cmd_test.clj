@@ -30,7 +30,10 @@
    (fn []
      (testing "with no options"
        (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {})
-              (cmd/import "/path/")))))))
+              (cmd/import "/path/"))))
+     (testing "with options"
+       (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {:skip-errors true})
+              (cmd/import "/path/" "--skip-errors")))))))
 
 (deftest dump-command-test
   (do-with-captured-call-enterprise-calls!
@@ -69,4 +72,7 @@
        {:no-settings true}
 
        ["--no-data-model"]
-       {:no-data-model true}))))
+       {:no-data-model true}
+
+       ["--skip-errors"]
+       {:skip-errors true}))))
