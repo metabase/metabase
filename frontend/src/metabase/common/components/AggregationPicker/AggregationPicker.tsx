@@ -46,16 +46,7 @@ type MetricListItem = Lib.MetricDisplayInfo & {
   selected: boolean;
 };
 
-type CompareListItem = {
-  key: "compare";
-  type: "action";
-  name: string;
-  selected?: boolean;
-  icon: string;
-  items: [];
-};
-
-type ListItem = OperatorListItem | MetricListItem | CompareListItem;
+type ListItem = OperatorListItem | MetricListItem;
 
 type Section = {
   name?: string;
@@ -115,7 +106,6 @@ export function AggregationPicker({
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
     const isMetricBased = Lib.isMetricBased(query, stageIndex);
-    const compareItem = getCompareListItem(query, stageIndex, aggregations);
 
     if (operators.length > 0 && !isMetricBased) {
       const operatorItems = operators.map(operator =>
@@ -141,8 +131,14 @@ export function AggregationPicker({
       });
     }
 
-    if (compareItem) {
-      sections.push(compareItem);
+    if (canAddTemporalCompareAggregation(query, stageIndex, aggregations)) {
+      sections.push({
+        type: "action",
+        key: "compare",
+        name: t`Compare to the past`,
+        icon: "lines",
+        items: [],
+      });
     }
 
     if (hasExpressionInput && canUseExpressions) {
@@ -425,29 +421,14 @@ function getMetricListItem(
   };
 }
 
-function getCompareListItem(
+function canAddTemporalCompareAggregation(
   query: Lib.Query,
   stageIndex: number,
   aggregations: Lib.AggregationClause[],
-): CompareListItem | undefined {
+): boolean {
   if (aggregations.length === 0) {
     // Hide the "Compare to the past" option if there are no aggregations
-    return undefined;
-  }
-
-  const firstBreakout = Lib.breakouts(query, stageIndex)[0];
-  if (firstBreakout) {
-    const firstBreakoutColumn = Lib.breakoutColumn(
-      query,
-      stageIndex,
-      firstBreakout,
-    );
-
-    if (!Lib.isTemporal(firstBreakoutColumn)) {
-      // Hide the "Compare to the past option if there is a breakout but it is not
-      // on a temporal column
-      return undefined;
-    }
+    return false;
   }
 
   const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
@@ -458,16 +439,10 @@ function getCompareListItem(
   if (!hasAtLeastOneTemporalBreakoutColumn) {
     // Hide the "Compare to the past" option if there are no
     // temporal columns to break out on
-    return undefined;
+    return false;
   }
 
-  return {
-    type: "action",
-    key: "compare",
-    name: t`Compare to the past`,
-    icon: "lines",
-    items: [],
-  };
+  return true;
 }
 
 function checkIsColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
