@@ -125,6 +125,7 @@ function TimeseriesControls({
             query={query}
             stageIndex={stageIndex}
             column={breakoutColumn}
+            breakout={breakout}
             onChange={handleBreakoutChange}
           />
         </>
