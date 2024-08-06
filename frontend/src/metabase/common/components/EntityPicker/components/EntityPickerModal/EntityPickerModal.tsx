@@ -70,7 +70,6 @@ export interface EntityPickerModalProps<Model extends string, Item> {
    * with the same model as the initialValue. Defaults to true.
    */
   defaultToRecentTab?: boolean;
-  onTabChange: (tab: string) => void;
   prototypeState?: PrototypeState;
 }
 
@@ -94,7 +93,6 @@ export function EntityPickerModal<
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
-  onTabChange,
   prototypeState,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
@@ -242,7 +240,6 @@ export function EntityPickerModal<
                 initialValue={initialValue}
                 defaultToRecentTab={defaultToRecentTab}
                 setShowActionButtons={setShowActionButtons}
-                onTabChange={onTabChange}
                 prototypeState={prototypeState}
               />
             ) : (

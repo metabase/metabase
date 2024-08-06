@@ -54,7 +54,6 @@ export const TabsView = <
   initialValue,
   defaultToRecentTab,
   setShowActionButtons,
-  onTabChange,
   prototypeState,
 }: {
   tabs: EntityTab<Model>[];
@@ -66,7 +65,6 @@ export const TabsView = <
   searchParams?: Partial<SearchRequest>;
   defaultToRecentTab: boolean;
   setShowActionButtons: (showActionButtons: boolean) => void;
-  onTabChange: (tab: string) => void;
   prototypeState?: PrototypeState;
 }) => {
   const hasSearchTab = !!searchQuery;
@@ -84,10 +82,6 @@ export const TabsView = <
   );
 
   const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
-
-  useEffect(() => {
-    onTabChange(selectedTab);
-  }, [onTabChange, selectedTab]);
 
   useEffect(() => {
     // when the searchQuery changes, switch to the search tab

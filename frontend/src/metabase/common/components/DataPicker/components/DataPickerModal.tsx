@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -52,11 +52,9 @@ const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
 
 export type PrototypeState = {
   lastFolder?: NotebookDataPickerFolderItem;
-  lastTab?: string;
 };
 
 const initialPrototypeState: PrototypeState = {
-  lastTab: undefined,
   lastFolder: undefined,
 };
 
@@ -125,24 +123,12 @@ export const DataPickerModal = ({
     [onChange, onClose],
   );
 
-  const [currentTab, setCurrentTab] = useState<string>();
-
-  useEffect(() => {
-    // if (currentTab !== 'search'){
-    //   setPrototypeState(state => ({
-    //     ...state,
-    //     lastTab: currentTab,
-    //   }));
-    // }
-  }, [currentTab]);
-
   const handleCardChange = useCallback(
     (item: QuestionPickerItem) => {
       if (item.model === "collection") {
-        setPrototypeState(state => ({
-          lastFolder: item,
-          lastTab: currentTab,
-        }));
+        setPrototypeState({
+          lastFolder: item as unknown as any,
+        });
       }
 
       if (!isValidValueItem(item.model)) {
@@ -152,7 +138,7 @@ export const DataPickerModal = ({
       onChange(getQuestionVirtualTableId(item.id));
       onClose();
     },
-    [onChange, onClose, currentTab],
+    [onChange, onClose],
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
@@ -234,7 +220,6 @@ export const DataPickerModal = ({
       title={title}
       onClose={onClose}
       onItemSelect={handleChange}
-      onTabChange={setCurrentTab}
       prototypeState={prototypeState}
     />
   );
