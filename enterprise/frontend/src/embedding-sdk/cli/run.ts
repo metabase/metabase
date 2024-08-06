@@ -1,7 +1,4 @@
-import { ANONYMOUS_TRACKING_INFO } from "embedding-sdk/cli/constants/messages";
-import { createModelsAndXrays } from "embedding-sdk/cli/steps/create-models-and-xrays";
-import { printEmptyLines, printInfo } from "embedding-sdk/cli/utils/print";
-
+import { METABASE_INSTANCE_SETUP_COMPLETE_MESSAGE } from "./constants/messages";
 import {
   addEmbeddingToken,
   checkIsDockerRunning,
@@ -16,8 +13,10 @@ import {
   checkSdkAvailable,
   addDatabaseConnectionStep,
   pickDatabaseTables,
+  createModelsAndXrays,
 } from "./steps";
 import type { CliState } from "./types/cli";
+import { printEmptyLines, printInfo } from "./utils/print";
 
 export const CLI_STEPS = [
   { id: "showMetabaseCliTitle", executeStep: showMetabaseCliTitle },
@@ -58,16 +57,14 @@ export async function runCli() {
     state = nextState;
   }
 
-  printEmptyLines(2);
-  console.log(ANONYMOUS_TRACKING_INFO);
+  console.log(METABASE_INSTANCE_SETUP_COMPLETE_MESSAGE);
 
   if (!state.token) {
-    printEmptyLines(2);
-    printInfo(
-      "Don't forget to add your premium token to your Metabase instance in the admin settings!",
+    console.log(
+      "  Don't forget to add your premium token to your Metabase instance in the admin settings!",
     );
   }
 
-  printEmptyLines(2);
+  printEmptyLines(1);
   printInfo("All done! 🚀 You can now embed Metabase into your React app.");
 }

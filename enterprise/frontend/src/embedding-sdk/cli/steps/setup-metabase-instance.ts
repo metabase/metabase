@@ -178,11 +178,6 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
 
     spinner.succeed();
 
-    printInfo(
-      "Metabase instance setup complete. You can find your login credentials at METABASE_LOGIN.json",
-    );
-    console.log("Don't forget to put this file in your .gitignore.");
-
     return [
       {
         type: "success",

@@ -1,6 +1,7 @@
 import ora from "ora";
 
 import { createXrayDashboardFromModel } from "embedding-sdk/cli/utils/xray-models";
+import type { DashboardId } from "metabase-types/api";
 
 import type { CliStepMethod } from "../types/cli";
 import { createModelFromTable } from "../utils/create-model-from-table";
@@ -29,15 +30,19 @@ export const createModelsAndXrays: CliStepMethod = async state => {
 
     spinner.start("X-raying your data to create dashboards...");
 
-    const dashboardIds = await Promise.all(
-      modelIds.map(modelId =>
-        createXrayDashboardFromModel({
-          modelId,
-          instanceUrl,
-          cookie,
-        }),
-      ),
-    );
+    const dashboardIds: DashboardId[] = [];
+
+    // We one generate dashboard at a time to prevent multiple
+    // "Automatically Generated Dashboards" collection from being created.
+    for (const modelId of modelIds) {
+      const dashboardId = await createXrayDashboardFromModel({
+        modelId,
+        instanceUrl,
+        cookie,
+      });
+
+      dashboardIds.push(dashboardId);
+    }
 
     spinner.succeed();
 
