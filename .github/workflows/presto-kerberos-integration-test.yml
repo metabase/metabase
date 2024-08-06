@@ -87,6 +87,8 @@ jobs:
         run: which mba
       - name: Run Metabase via MBA
         run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com up
+      - name: debug
+        run: docker network ls
       - name: Run test script in MBA instance
         run: >
           mba --mb . --data-db postgres-data -n example.com \
