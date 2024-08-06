@@ -109,11 +109,8 @@
                #"Permission type :perms/create-queries cannot be set to :invalid"
                (data-perms/set-table-permissions! group-id :perms/create-queries {table-id-1 :invalid}))))
 
-        (testing "A table-level permission cannot be set to :block"
-          (is (thrown-with-msg?
-               ExceptionInfo
-               #"Block permissions must be set at the database-level only."
-               (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked}))))
+        (testing "A table-level permission can be set to :block"
+          (is (= nil (data-perms/set-table-permissions! group-id :perms/view-data {table-id-1 :blocked}))))
 
         (testing "Table-level permissions can only be set in bulk for tables in the same database"
           (is (thrown-with-msg?
