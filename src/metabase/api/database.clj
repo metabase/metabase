@@ -65,7 +65,7 @@
    (deferred-tru "value must be a valid database engine.")))
 
 (defn- add-conn-uri-sensitive-exception
-  "Add radction exception for `:conn-uri` detail, which is handled in `mi/to-json :model/Database` implementation."
+  "Add redaction exception for `:conn-uri` detail, which is handled in `mi/to-json :model/Database` implementation."
   [db]
   (update db :details vary-meta assoc :sensitive-exceptions #{:conn-uri}))
 
