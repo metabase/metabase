@@ -85,7 +85,11 @@ export const TablePicker = ({
 
   const handleFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerFolderItem }) => {
-      onFolderSelect(folder);
+      if (folder.model === "schema" && schemas?.length === 1) {
+        // onFolderSelect(selectedDbItem);
+      } else {
+        onFolderSelect(folder);
+      }
 
       if (folder.model === "database") {
         if (dbId === folder.id) {
