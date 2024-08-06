@@ -12,14 +12,11 @@ export default {
   parameters: {
     layout: "fullscreen",
   },
+  decorators: [CommonStoryWrapper],
 };
 
 const Template: ComponentStory<typeof StaticDashboard> = args => {
-  return (
-    <CommonStoryWrapper>
-      <StaticDashboard {...args} />
-    </CommonStoryWrapper>
-  );
+  return <StaticDashboard {...args} />;
 };
 
 export const Default = Template.bind({});

@@ -1,4 +1,3 @@
-import cx from "classnames";
 import type { JSX } from "react";
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
 import { t } from "ttag";
@@ -43,7 +42,6 @@ import {
 
 type DashboardHeaderViewProps = {
   editingTitle?: string;
-  editingSubtitle?: string;
   editingButtons?: JSX.Element[];
   editWarning?: string;
   dashboard: Dashboard;
@@ -57,7 +55,6 @@ type DashboardHeaderViewProps = {
 
 export function DashboardHeaderView({
   editingTitle = "",
-  editingSubtitle = "",
   editingButtons = [],
   editWarning,
   dashboard,
@@ -143,13 +140,7 @@ export function DashboardHeaderView({
 
   return (
     <div>
-      {isEditing && (
-        <EditBar
-          title={editingTitle}
-          subtitle={editingSubtitle}
-          buttons={editingButtons}
-        />
-      )}
+      {isEditing && <EditBar title={editingTitle} buttons={editingButtons} />}
       {editWarning && (
         <EditWarning className={CS.wrapper}>
           <span>{editWarning}</span>
@@ -161,7 +152,7 @@ export function DashboardHeaderView({
       >
         {isDashboardHeaderVisible && (
           <HeaderRow
-            className={cx("QueryBuilder-section", CS.wrapper)}
+            className={CS.wrapper}
             data-testid="dashboard-header"
             ref={header}
           >

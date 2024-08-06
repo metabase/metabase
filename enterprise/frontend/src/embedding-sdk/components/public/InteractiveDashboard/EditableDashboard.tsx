@@ -65,7 +65,13 @@ const EditableDashboardInner = ({
     : SDK_DASHBOARD_VIEW_ACTIONS;
 
   return (
-    <Box w="100%" h="100%" ref={ref} className={className}>
+    <Box
+      w="100%"
+      h="100%"
+      ref={ref}
+      bg="var(--mb-color-bg-dashboard)"
+      className={className}
+    >
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}

@@ -1,5 +1,5 @@
+import type { Story } from "@storybook/react";
 import * as jose from "jose";
-import type { PropsWithChildren } from "react";
 
 import { MetabaseProvider, type SDKConfig } from "embedding-sdk";
 
@@ -38,6 +38,8 @@ const DEFAULT_CONFIG: SDKConfig = {
   },
 };
 
-export const CommonStoryWrapper = ({ children }: PropsWithChildren) => (
-  <MetabaseProvider config={DEFAULT_CONFIG}>{children}</MetabaseProvider>
+export const CommonStoryWrapper = (Story: Story) => (
+  <MetabaseProvider config={DEFAULT_CONFIG}>
+    <Story />
+  </MetabaseProvider>
 );

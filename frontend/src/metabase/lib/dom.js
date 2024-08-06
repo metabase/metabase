@@ -1,7 +1,7 @@
 import querystring from "querystring";
 import _ from "underscore";
 
-import { isCypressActive } from "metabase/env";
+import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
 // IE doesn't support scrollX/scrollY:
@@ -14,7 +14,7 @@ export const getScrollY = () =>
 // Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
 export const isWithinIframe = function () {
   try {
-    if (isCypressActive) {
+    if (isCypressActive || isStorybookActive) {
       return false;
     }
 

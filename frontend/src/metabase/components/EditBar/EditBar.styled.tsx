@@ -36,18 +36,11 @@ export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
 
 export const EditIcon = styled(Icon)`
   color: var(--mb-color-text-white);
-  margin-right: 0.5rem;
 `;
 
 export const Title = styled.span`
   color: var(--mb-color-text-white);
   font-weight: 700;
-`;
-
-export const Subtitle = styled.span`
-  color: ${() => alpha(color("text-white"), 0.5)};
-  margin-left: 0.5rem;
-  margin-right: 0.5rem;
 `;
 
 export const ButtonsContainer = styled.div`
