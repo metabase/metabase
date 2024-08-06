@@ -44,15 +44,12 @@ export const getTitle = (
   stageIndex: number,
   aggregation?: Lib.AggregationClause | Lib.ExpressionClause,
 ): string => {
-  const period = getOffsetPeriod(query, stageIndex);
-
   if (!aggregation) {
-    return t`Compare one of these to the previous ${period}`;
+    return t`Compare one of these to the past`;
   }
 
   const info = Lib.displayInfo(query, stageIndex, aggregation);
-
-  return t`Compare “${info.displayName}” to previous ${period}`;
+  return t`Compare “${info.displayName}” to the past`;
 };
 
 export const getAggregations = (
