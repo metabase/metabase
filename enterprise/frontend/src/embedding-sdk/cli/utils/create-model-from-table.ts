@@ -20,7 +20,7 @@ export async function createModelFromTable(options: Options) {
   };
 
   // Generate the query metadata
-  let res = await fetch(`${instanceUrl}/api/database/query_metadata`, {
+  let res = await fetch(`${instanceUrl}/api/dataset/query_metadata`, {
     method: "POST",
     headers: { "content-type": "application/json", cookie },
     body: JSON.stringify(datasetQuery),
@@ -45,6 +45,7 @@ export async function createModelFromTable(options: Options) {
       visualization_settings: {},
       database_id: databaseId,
       dataset_query: datasetQuery,
+      description: `A model created via the embedding sdk's CLI`,
     }),
   });
 
@@ -63,4 +64,6 @@ export async function createModelFromTable(options: Options) {
       parameters: [],
     }),
   });
+
+  await propagateErrorResponse(res);
 }

@@ -7,7 +7,11 @@ export const propagateErrorResponse = async (res: Response) => {
   let errorText = await res.text();
 
   try {
-    errorText = JSON.parse(errorText).message;
+    const error = JSON.parse(errorText);
+
+    if (error.message) {
+      errorText = error.message;
+    }
   } catch (err) {}
 
   throw new Error(errorText);

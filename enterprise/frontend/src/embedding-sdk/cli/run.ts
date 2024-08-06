@@ -1,4 +1,5 @@
 import { ANONYMOUS_TRACKING_INFO } from "embedding-sdk/cli/constants/messages";
+import { createModels } from "embedding-sdk/cli/steps/create-models";
 import { printEmptyLines, printInfo } from "embedding-sdk/cli/utils/print";
 
 import {
@@ -34,6 +35,7 @@ export const CLI_STEPS = [
   { id: "createApiKey", executeStep: createApiKey },
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
+  { id: "createModels", executeStep: createModels },
   { id: "generateCodeSample", executeStep: generateCodeSample },
 ] as const;
 
