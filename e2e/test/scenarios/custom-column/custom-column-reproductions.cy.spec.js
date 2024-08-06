@@ -318,7 +318,8 @@ describe("issue 18747", () => {
   function addValueToParameterFilter() {
     filterWidget().click();
     popover().within(() => {
-      multiAutocompleteInput().type("14");
+      cy.findByRole("textbox").type("14");
+      cy.findByText("14").click();
       cy.button("Add filter").click();
     });
   }
@@ -393,7 +394,7 @@ describe("issue 18814", () => {
   });
 
   it("should be able to use a custom column in aggregation for a nested query (metabase#18814)", () => {
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.icon("sum").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -617,7 +618,7 @@ describe("issue 20229", () => {
     ccAssertion();
 
     // Switch to the notebook view to deselect at least one column
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.findAllByTestId("fields-picker").click();
     popover().within(() => {
@@ -652,7 +653,7 @@ describe("issue 21135", () => {
     restore();
     cy.signInAsAdmin();
     cy.createQuestion(questionDetails, { visitQuestion: true });
-    cy.icon("notebook").click();
+    openNotebook();
   });
 
   it("should handle cc with the same name as the table column (metabase#21135)", () => {

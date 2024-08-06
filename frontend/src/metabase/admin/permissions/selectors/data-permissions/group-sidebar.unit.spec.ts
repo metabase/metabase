@@ -105,14 +105,14 @@ describe("getGroupsDataPermissionEditor", () => {
         iconColor: "success",
       },
       {
-        label: `Granular`,
-        value: DataPermissionValue.CONTROLLED,
+        label: `Query builder only`,
+        value: DataPermissionValue.QUERY_BUILDER,
         icon: "permissions_limited",
         iconColor: "warning",
       },
       {
-        label: `Query builder only`,
-        value: DataPermissionValue.QUERY_BUILDER,
+        label: `Granular`,
+        value: DataPermissionValue.CONTROLLED,
         icon: "permissions_limited",
         iconColor: "warning",
       },

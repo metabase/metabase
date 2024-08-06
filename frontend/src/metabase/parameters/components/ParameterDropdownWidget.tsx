@@ -114,7 +114,7 @@ export const ParameterDropdownWidget = ({
     );
   }
 
-  if (isNumberParameter(parameter)) {
+  if (isNumberParameter(parameter) && getQueryType(parameter) !== "list") {
     const arity = getNumberParameterArity(parameter);
 
     return (

@@ -1,0 +1,18 @@
+.shortcut:hover {
+  color: var(--mb-color-text-selected);
+  background-color: var(--mb-color-background-selected);
+}
+
+.sectionLine {
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--mb-color-border);
+  margin-bottom: 0.5rem;
+}
+
+.sectionLabel {
+  padding: 0.3rem 1rem;
+  margin: auto;
+  font-size: 0.625rem;
+  font-weight: 700;
+}

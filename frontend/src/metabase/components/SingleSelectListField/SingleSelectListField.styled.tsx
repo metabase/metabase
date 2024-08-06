@@ -1,7 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const EmptyStateContainer = styled.div`
   padding: 2rem 2rem 0 2rem;
 `;
@@ -42,12 +40,20 @@ export const OptionItem = styled.div<OptionItemProps>`
   padding: 0.5rem 0.6rem;
   width: 100%;
   background-color: ${props =>
-    props.selected ? color(props.selectedColor) : color("bg-white")};
+    props.selected ? props.selectedColor : "var(--mb-color-background)"};
   color: ${props =>
-    props.selected ? color("text-white") : "var(--mb-color-text-dark)"};
+    props.selected
+      ? "var(--mb-color-text-white)"
+      : "var(--mb-color-text-primary)"};
 
   &:hover {
     background-color: ${props =>
-      props.selected ? color(props.selectedColor) : "var(--mb-color-bg-light)"};
+      props.selected
+        ? props.selectedColor
+        : "var(--mb-color-background-selected)"};
+    color: ${props =>
+      props.selected
+        ? "var(--mb-color-text-white)"
+        : "var(--mb-color-text-selected)"};
   }
 `;

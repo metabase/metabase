@@ -409,39 +409,40 @@
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{id :id, :as changes}]
-  (let [parameter-cards   (t2/select ParameterCard :card_id id)]
-    (doseq [[[po-type po-id] param-cards]
-            (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
-      (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
-            {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
-            affected-param-ids-set (cond
-                                     ;; update all parameters that use this card as source
-                                     (:archived changes)
-                                     (set (map :parameter_id param-cards))
+  (when (some #{:archived :result_metadata} (keys changes))
+    (let [parameter-cards (t2/select ParameterCard :card_id id)]
+      (doseq [[[po-type po-id] param-cards]
+              (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
+        (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
+              {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
+              affected-param-ids-set (cond
+                                      ;; update all parameters that use this card as source
+                                      (:archived changes)
+                                      (set (map :parameter_id param-cards))
 
-                                     ;; update only parameters that have value_field no longer in this card
-                                     (:result_metadata changes)
-                                     (let [param-id->parameter (m/index-by :id parameters)]
-                                       (->> param-cards
-                                            (filter (fn [param-card]
-                                                      ;; if cant find the value-field in result_metadata, then we should
-                                                      ;; remove it
-                                                      (nil? (qp.util/field->field-info
+                                      ;; update only parameters that have value_field no longer in this card
+                                      (:result_metadata changes)
+                                      (let [param-id->parameter (m/index-by :id parameters)]
+                                        (->> param-cards
+                                             (filter (fn [param-card]
+                                                       ;; if cant find the value-field in result_metadata, then we should
+                                                       ;; remove it
+                                                       (nil? (qp.util/field->field-info
                                                               (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
                                                               (:result_metadata changes)))))
-                                            (map :parameter_id)
-                                            set))
+                                             (map :parameter_id)
+                                             set))
 
-                                     :else #{})
-            new-parameters (map (fn [parameter]
-                                  (if (affected-param-ids-set (:id parameter))
-                                    (-> parameter
-                                        (assoc :values_source_type nil)
-                                        (dissoc :values_source_config))
-                                    parameter))
-                                parameters)]
-        (when-not (= parameters new-parameters)
-          (t2/update! model po-id {:parameters new-parameters}))))))
+                                      :else #{})
+              new-parameters (map (fn [parameter]
+                                    (if (affected-param-ids-set (:id parameter))
+                                      (-> parameter
+                                          (assoc :values_source_type nil)
+                                          (dissoc :values_source_config))
+                                      parameter))
+                                  parameters)]
+          (when-not (= parameters new-parameters)
+            (t2/update! model po-id {:parameters new-parameters})))))))
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
@@ -506,6 +507,10 @@
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
+      ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
+      ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
+      (when (contains? changes :dataset_query)
+        (query-analysis/analyze-async! changes))
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
@@ -557,12 +562,6 @@
       populate-query-fields
       maybe-populate-initially-published-at
       (dissoc :id)))
-
-(t2/define-after-update :model/Card
-  [card]
-  (u/prog1 card
-    (when (contains? (t2/changes card) :dataset_query)
-      (query-analysis/analyze-async! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card

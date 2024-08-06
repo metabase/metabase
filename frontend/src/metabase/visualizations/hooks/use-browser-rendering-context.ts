@@ -26,11 +26,11 @@ export const useBrowserRenderingContext = (
   const isNightMode = useSelector(getIsNightMode);
 
   return useMemo(() => {
-    const style = getVisualizationTheme(
-      theme.other,
+    const style = getVisualizationTheme({
+      theme: theme.other,
       isDashboard,
-      isNightMode && isFullscreen,
-    );
+      isNightMode: isNightMode && isFullscreen,
+    });
 
     return {
       getColor: name => color(name, palette),

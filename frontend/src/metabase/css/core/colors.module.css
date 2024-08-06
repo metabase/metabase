@@ -7,8 +7,7 @@
  */
 :root {
   /* Semantic colors */
-  --mb-color-text-white: var(--mb-base-color-white);
-  --mb-color-brand: var(--mb-base-color-blue);
+  --mb-color-brand: var(--mb-base-color-blue-40);
   --mb-color-brand-light: #f9fbfc;
   --mb-color-brand-lighter: #eef6fc;
   --mb-color-success: #84bb4c;
@@ -18,7 +17,7 @@
   --mb-color-text-dark: #4c5773;
   --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
-  --mb-color-bg-black: #2e353b;
+  --mb-color-bg-black: var(--mb-base-color-gray-80);
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
   --mb-color-bg-light: #f9fbfc;
@@ -33,6 +32,14 @@
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
   --mb-color-text-tertiary: var(--mb-color-text-light);
+  --mb-color-text-selected: var(--mb-base-color-brand-40);
+  --mb-color-text-brand: var(--mb-base-color-brand-40);
+  --mb-color-text-white: var(--mb-base-color-white);
+  --mb-color-background: var(--mb-base-color-white);
+  --mb-color-background-selected: var(--mb-base-color-brand-10);
+  --mb-color-background-disabled: var(--mb-color-bg-light);
+  --mb-color-background-inverse: var(--mb-color-bg-black);
+  --mb-color-background-brand: var(--mb-base-color-brand-40);
 
   /**
     * Base colors
@@ -58,7 +65,39 @@
     * <Component someColorProp="var(--mb-base-color-white)" />
     */
   --mb-base-color-white: #fff;
-  --mb-base-color-blue: #509ee3;
+
+  /* Brand */
+  --mb-base-color-brand-70: color-mix(
+    in srgb,
+    var(--mb-color-brand),
+    black 50%
+  );
+  --mb-base-color-brand-60: color-mix(
+    in srgb,
+    var(--mb-color-brand),
+    black 25%
+  );
+  /*   brand */
+  --mb-base-color-brand-40: var(--mb-color-brand);
+  --mb-base-color-brand-30: color-mix(
+    in srgb,
+    var(--mb-color-brand),
+    white 45%
+  );
+  --mb-base-color-brand-10: color-mix(
+    in srgb,
+    var(--mb-color-brand),
+    white 90%
+  );
+
+  /* Blue */
+  /*   brand */
+  --mb-base-color-blue-40: #509ee3;
+
+  /* Gray */
+  /*   bg-black */
+  --mb-base-color-gray-80: #2e353b;
+  --mb-base-color-gray-70: hsl(208deg, 12%, 30%);
 }
 
 .textDefault {

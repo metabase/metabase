@@ -1,11 +1,14 @@
 (ns metabase.util.queue-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer [deftest is testing]]
    [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.queue :as queue]))
 
 (set! *warn-on-reflection* true)
+
+(def ^:private timeout-ms 5000)
 
 (defn- simulate-queue! [queue &
                         {:keys [realtime-threads realtime-events backfill-events]
@@ -22,7 +25,7 @@
                               nil   (swap! skipped inc)))))
         background-fn (fn []
                         (doseq [e backfill-events]
-                          (queue/blocking-put! queue 1000 {:thread "back", :payload e})))
+                          (queue/blocking-put! queue timeout-ms {:thread "back", :payload e})))
         run!          (fn [f]
                         (future (f)))]
 
@@ -35,8 +38,8 @@
       (try
         (while true
           ;; Stop the consumer once we are sure that there are no more events coming.
-          (u/with-timeout 100
-            (vswap! processed conj (:payload (queue/blocking-take! queue 1000)))
+          (u/with-timeout timeout-ms
+            (vswap! processed conj (:payload (queue/blocking-take! queue timeout-ms)))
             ;; Sleep to provide some backpressure
             (Thread/sleep 1)))
         (assert false "this is never reached")
@@ -71,8 +74,12 @@
       (testing "Some items are dropped"
         (is (pos? dropped)))
 
-      (testing "Every item is processed"
-        (is (= (set (concat backfill-events realtime-events)) (set processed))))
+      (let [expected-events  (set (concat backfill-events realtime-events))
+            processed-events (set processed)]
+        (testing "All expected events are processed"
+          (is (zero? (count (set/difference expected-events processed-events)))))
+        (testing "There are no unexpected events processed"
+          (is (zero? (count (set/difference processed-events expected-events))))))
 
       (testing "The realtime events are processed in order"
         (mt/ordered-subset? realtime-events processed))))
