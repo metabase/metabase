@@ -9,7 +9,11 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.util.match :as lib.util.match]
+   [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util :as qp.util]
+   [metabase.query-processor.util.temporal-bucket :as qp.u.temporal-bucket]
+   [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
 (set! *warn-on-reflection* true)
@@ -90,9 +94,15 @@
 
 (defn- update-breakout-unit
   [query
-   {[_dimension [_field target-field-id {:keys [temporal-unit]}]] :target
+   {[_dimension [_tag target-field-id {:keys [temporal-unit]}  :as field]] :target
     :keys [value] :as _param}]
-  (let [new-unit (keyword value)]
+  (let [new-unit (keyword value)
+        base-type (qp.util/field->base-type query field)]
+    (when-not (qp.u.temporal-bucket/compatible-temporal-unit? base-type new-unit)
+      (throw (ex-info (tru "This chart can not be broken out by the selected unit of time: {0}." value)
+                      {:type        qp.error-type/invalid-query
+                       :base-type   base-type
+                       :unit        new-unit})))
     (lib.util.match/replace-in
       query [:query :breakout]
       [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]

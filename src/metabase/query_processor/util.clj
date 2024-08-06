@@ -10,8 +10,10 @@
    [metabase.driver :as driver]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.convert :as lib.convert]
+   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.query-processor.schema :as qp.schema]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.malli :as mu]))
 
@@ -227,3 +229,16 @@
   "Returns `true` if query is an internal query."
   [{query-type :type} :- ::qp.schema/qp]
   (= :internal (keyword query-type)))
+
+(defn field->base-type
+  "Return base-type for a `field` clause. Field is expected to appear in the top level of the `_legacy-query`,
+  ie. not in its source query or source queries of its joins."
+  [{source-metadatas :source-metadata :as _legacy-query} [_tag id-or-name opts :as _field]]
+  (or (:base-type opts)
+      (when (integer? id-or-name)
+        (:base-type (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
+      (when (string? id-or-name)
+        (some (fn [{:keys [name base_type] :as _source-metadata}]
+                (when (= name id-or-name)
+                  base_type))
+              source-metadatas))))
