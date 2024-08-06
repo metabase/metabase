@@ -140,7 +140,7 @@ export const EntityPickerSearchResults = <
         style={{ overflow: "hidden" }}
       >
         {allSearchResults.length > 0 && (
-          <Flex justify="space-between" p="xl" pb={0}>
+          <Flex align="center" justify="space-between" p="xl" pb={0}>
             <Flex align="center">
               {scopeName && (
                 <>
