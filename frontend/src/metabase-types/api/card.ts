@@ -142,6 +142,8 @@ export type VisualizationSettings = {
 
   // Table
   "table.columns"?: TableColumnOrderSetting[];
+  // Keys here can be modern (returned by `getColumnKey`) or legacy (`getLegacyColumnKey`).
+  // Use `getColumnSettings` which checks for both keys.
   column_settings?: Record<string, ColumnSettings>;
 
   // X-axis

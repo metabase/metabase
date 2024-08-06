@@ -14,15 +14,13 @@ import type {
   VisualizationSettings,
 } from "metabase-types/api";
 
-export const getColumnKey = (
-  column: Pick<DatasetColumn, "name" | "field_ref">,
-) => {
+export type DatasetColumnReference = Pick<DatasetColumn, "name" | "field_ref">;
+
+export const getColumnKey = (column: DatasetColumnReference) => {
   return JSON.stringify(["name", column.name]);
 };
 
-export const getLegacyColumnKey = (
-  column: Pick<DatasetColumn, "name" | "field_ref">,
-) => {
+export const getLegacyColumnKey = (column: DatasetColumnReference) => {
   let fieldRef = column.field_ref;
 
   if (!fieldRef) {
@@ -64,14 +62,18 @@ export const getColumnNameFromKey = (key: string) => {
 
 export const getColumnSettings = (
   settings: VisualizationSettings | null | undefined,
-  column: Pick<DatasetColumn, "name" | "field_ref">,
+  column: DatasetColumnReference,
 ) => {
   return getObjectColumnSettings(settings?.column_settings, column);
 };
 
+// Gets the corresponding viz settings for the column. We check for both
+// legacy and modern keys because not all viz settings have been migrated.
+// To be extra safe and maintain backward compatibility, we check for the
+// legacy key first.
 export const getObjectColumnSettings = (
   settings: Record<string, ColumnSettings> | null | undefined,
-  column: Pick<DatasetColumn, "name" | "field_ref">,
+  column: DatasetColumnReference,
 ) => {
   return (
     settings?.[getLegacyColumnKey(column)] ?? settings?.[getColumnKey(column)]
