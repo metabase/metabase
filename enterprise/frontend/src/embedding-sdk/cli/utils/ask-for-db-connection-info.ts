@@ -2,6 +2,7 @@ import fs from "fs/promises";
 
 import { input, number, password, select } from "@inquirer/prompts";
 import chalk from "chalk";
+import { EventEmitter } from "events";
 import fileSelector from "inquirer-file-selector";
 import toggle from "inquirer-toggle";
 import { match } from "ts-pattern";
@@ -14,6 +15,10 @@ interface Options {
   engine: Engine;
   engineKey: string;
 }
+
+// FIXME: a bug in the @inquirer/prompts library caused the prompt's listeners to not be cleaned up.
+//        We can remove this once https://github.com/SBoudrias/Inquirer.js/pull/1499 is released.
+EventEmitter.defaultMaxListeners = 500;
 
 export async function askForDatabaseConnectionInfo(options: Options) {
   const { engine, engineKey } = options;
@@ -50,36 +55,7 @@ export async function askForDatabaseConnectionInfo(options: Options) {
       console.log(`  ${chalk.gray(helperText)}`);
     }
 
-    const value = await match(field.type)
-      .with("boolean", () =>
-        toggle({ message, default: Boolean(field.default) }),
-      )
-      .with("password", () =>
-        password({
-          message,
-          mask: true,
-        }),
-      )
-      .with("integer", () =>
-        number({
-          message,
-          required: field.required ?? false,
-          ...getIntegerFieldDefault(field, engineKey),
-        }),
-      )
-      .with("textFile", async () => {
-        const path = await fileSelector({ message });
-
-        return fs.readFile(path, "utf-8");
-      })
-      .with("section", () => askSectionChoice(field))
-      .otherwise(() =>
-        input({
-          message,
-          required: field.required ?? false,
-          ...(!!field.default && { default: String(field.default) }),
-        }),
-      );
+    const value = await askForConnectionValue(field, message, engineKey);
 
     if (value !== undefined) {
       connection[field.name] = value;
@@ -88,6 +64,35 @@ export async function askForDatabaseConnectionInfo(options: Options) {
 
   return connection;
 }
+
+const askForConnectionValue = (
+  field: EngineField,
+  message: string,
+  engine: string,
+) =>
+  match(field.type)
+    .with("boolean", () => toggle({ message, default: Boolean(field.default) }))
+    .with("password", () => password({ message, mask: true }))
+    .with("integer", () =>
+      number({
+        message,
+        required: field.required ?? false,
+        ...getIntegerFieldDefault(field, engine),
+      }),
+    )
+    .with("textFile", async () => {
+      const path = await fileSelector({ message });
+
+      return fs.readFile(path, "utf-8");
+    })
+    .with("section", () => askSectionChoice(field))
+    .otherwise(() =>
+      input({
+        message,
+        required: field.required ?? false,
+        ...(!!field.default && { default: String(field.default) }),
+      }),
+    );
 
 const getIntegerFieldDefault = (field: EngineField, engine: string) => {
   if (field.default) {
