@@ -57,9 +57,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
 
-       # Create symbolic link for docker-compose
-      - name: Setup Docker Compose Symlink
-        run: sudo ln -s $(which docker) /usr/local/bin/docker-compose
+      # Create docker-compose wrapper script
+      - name: Setup Docker Compose Wrapper
+        run: |
+          echo '#!/bin/bash' > /usr/local/bin/docker-compose
+          echo 'docker compose "$@"' >> /usr/local/bin/docker-compose
+          sudo chmod +x /usr/local/bin/docker-compose
+
 
       - name: Run Presto test query from command line (sanity check)
         run: cd presto-kerberos-docker && ./test.sh && cd ..
