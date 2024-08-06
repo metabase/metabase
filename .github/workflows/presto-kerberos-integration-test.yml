@@ -55,7 +55,7 @@ jobs:
         run: cd presto-kerberos-docker && docker compose up -d && cd ..
 
       - name: Setup Docker Compose Symlink
-        run: sudo ln -s $(which docker) /usr/local/bin/docker-composee=docker compose" >> $GITHUB_ENV
+        run: sudo ln -s $(which docker) /usr/local/bin/docker-compose=docker compose" >> $GITHUB_ENV
 
       - name: Run Presto test query from command line (sanity check)
         run: cd presto-kerberos-docker && ./test.sh && cd ..
