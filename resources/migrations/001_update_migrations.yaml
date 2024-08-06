@@ -8879,6 +8879,11 @@ databaseChangeLog:
       author: metamben
       comment: Index report_card.source_card_id
       rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_source_card_id
       changes:
         - createIndex:
             tableName: report_card
