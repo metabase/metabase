@@ -104,9 +104,9 @@ const BreakoutPopover = ({
   onClose,
 }: BreakoutPopoverProps) => {
   const columnGroups = useMemo(() => {
-    const columns = Lib.breakoutableColumns(query, stageIndex);
+    const columns = Lib.breakoutableColumns(query, stageIndex, breakoutIndex);
     return Lib.groupColumns(columns);
-  }, [query, stageIndex]);
+  }, [query, stageIndex, breakoutIndex]);
 
   return (
     <QueryColumnPicker

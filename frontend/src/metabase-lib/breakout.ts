@@ -6,8 +6,9 @@ import type { BreakoutClause, ColumnMetadata, Query } from "./types";
 export function breakoutableColumns(
   query: Query,
   stageIndex: number,
+  breakoutIndex?: number,
 ): ColumnMetadata[] {
-  return ML.breakoutable_columns(query, stageIndex);
+  return ML.breakoutable_columns(query, stageIndex, breakoutIndex);
 }
 
 export function breakouts(query: Query, stageIndex: number): BreakoutClause[] {

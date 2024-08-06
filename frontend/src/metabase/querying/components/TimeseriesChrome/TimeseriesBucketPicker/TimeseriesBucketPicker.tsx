@@ -11,7 +11,7 @@ interface TimeseriesBucketPickerProps {
   query: Lib.Query;
   stageIndex: number;
   column: Lib.ColumnMetadata;
-  breakout: Lib.BreakoutClause | undefined;
+  breakout: Lib.BreakoutClause;
   onChange: (newColumn: Lib.ColumnMetadata) => void;
 }
 
@@ -25,7 +25,7 @@ export function TimeseriesBucketPicker({
   const [isOpened, setIsOpened] = useState(false);
 
   const bucketInfo = useMemo(() => {
-    const bucket = breakout ? Lib.temporalBucket(breakout) : undefined;
+    const bucket = Lib.temporalBucket(breakout);
     return bucket ? Lib.displayInfo(query, stageIndex, bucket) : undefined;
   }, [query, stageIndex, breakout]);
 

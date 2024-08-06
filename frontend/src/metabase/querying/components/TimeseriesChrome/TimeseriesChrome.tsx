@@ -55,15 +55,14 @@ function TimeseriesControls({
   stageIndex,
   onChange,
 }: TimeseriesControlsProps) {
-  const breakoutColumn = useMemo(
-    () => findBreakoutColumn(query, stageIndex),
+  const breakout = useMemo(
+    () => findBreakoutClause(query, stageIndex),
     [query, stageIndex],
   );
 
-  const breakout = useMemo(
-    () =>
-      breakoutColumn && findBreakoutClause(query, stageIndex, breakoutColumn),
-    [query, stageIndex, breakoutColumn],
+  const breakoutColumn = useMemo(
+    () => breakout && Lib.breakoutColumn(query, stageIndex, breakout),
+    [query, stageIndex, breakout],
   );
 
   const isTemporalBucketable = useMemo(
@@ -99,7 +98,7 @@ function TimeseriesControls({
     }
   };
 
-  if (!breakoutColumn || !filterColumn) {
+  if (!breakout || !breakoutColumn || !filterColumn) {
     return null;
   }
 
