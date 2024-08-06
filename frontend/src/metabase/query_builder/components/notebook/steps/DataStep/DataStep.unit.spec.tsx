@@ -330,7 +330,7 @@ describe("DataStep", () => {
       mockWindowOpen.mockClear();
     });
 
-    it('regular click should open the "Pick your starting data" modal', async () => {
+    it("regular click should open the entity picker", async () => {
       const { mockWindowOpen } = setup();
 
       const dataSource = screen.getByText("Orders");
