@@ -1295,12 +1295,6 @@
     (driver/insert-into! driver db-id schema+table-name insert-col-names rows)
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
 
-(defmacro maybe-apply-macro
-  [flag macro-fn & body]
-  `(if ~flag
-     (~macro-fn ~@body)
-     ~@body))
-
 (defn catch-ex-info* [f]
   (try
     (f)
