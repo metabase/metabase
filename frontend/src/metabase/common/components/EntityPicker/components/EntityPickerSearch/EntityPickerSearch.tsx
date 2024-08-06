@@ -15,6 +15,7 @@ import {
   SegmentedControl,
   Stack,
   Tabs,
+  Text,
   TextInput,
 } from "metabase/ui";
 import type {
@@ -138,18 +139,23 @@ export const EntityPickerSearchResults = <
       >
         {allSearchResults.length > 0 && (
           <Flex justify="space-between" p="xl" pb={0}>
-            <div>
+            <Flex align="center">
               {scopeName && (
-                <SegmentedControl
-                  data={[
-                    { label: "Everywhere", value: "*" },
-                    { label: `“${scopeName}”`, value: "scope" },
-                  ]}
-                  value={searchScope}
-                  onChange={value => setSearchScope(value as any)}
-                />
+                <>
+                  <Text mr={12} weight="bold">
+                    Search:
+                  </Text>
+                  <SegmentedControl
+                    data={[
+                      { label: "Everywhere", value: "*" },
+                      { label: `“${scopeName}”`, value: "scope" },
+                    ]}
+                    value={searchScope}
+                    onChange={value => setSearchScope(value as any)}
+                  />
+                </>
               )}
-            </div>
+            </Flex>
 
             <div>
               {ngettext(
