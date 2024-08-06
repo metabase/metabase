@@ -24,7 +24,7 @@ import {
 import { getSettingDefinitionsForColumn } from "metabase/visualizations/lib/settings/column";
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
 import { getSettingsWidgetsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   SectionContainer,
