@@ -96,11 +96,13 @@ export const EntityPickerSearchResults = <
   searchResults: SearchResult[] | null;
   onItemSelect: (item: Item) => void;
   selectedItem: Item | null;
-  prototypeState?: PrototypeState;
+  prototypeState: PrototypeState;
 }) => {
-  const lastFolder = prototypeState?.lastFolder;
-  const scopeName = prototypeState?.lastFolder?.name;
-  const scopeValue = prototypeState?.lastFolder?.id;
+  const lastFolder = prototypeState.lastTab
+    ? prototypeState[prototypeState.lastTab]
+    : undefined;
+  const scopeName = lastFolder?.name;
+  const scopeValue = lastFolder?.id;
   const [searchScope, setSearchScope] = useState<"*" | "scope">(
     scopeValue ? "scope" : "*",
   );

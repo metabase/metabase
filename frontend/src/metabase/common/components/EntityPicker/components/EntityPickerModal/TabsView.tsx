@@ -68,7 +68,7 @@ export const TabsView = <
   searchParams?: Partial<SearchRequest>;
   defaultToRecentTab: boolean;
   setShowActionButtons: (showActionButtons: boolean) => void;
-  prototypeState?: PrototypeState;
+  prototypeState: PrototypeState;
   selectedTab: string;
   setSelectedTab: (tab: string) => void;
 }) => {

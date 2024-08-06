@@ -1,5 +1,5 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
@@ -71,6 +71,7 @@ export interface EntityPickerModalProps<Model extends string, Item> {
    */
   defaultToRecentTab?: boolean;
   prototypeState?: PrototypeState;
+  onTabChange?: (tab: string) => void;
 }
 
 export function EntityPickerModal<
@@ -94,6 +95,7 @@ export function EntityPickerModal<
   searchParams,
   defaultToRecentTab = true,
   prototypeState,
+  onTabChange,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
@@ -189,6 +191,10 @@ export function EntityPickerModal<
     [initialValue, tabs, hasRecentsTab, defaultToRecentTab],
   );
   const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+
+  useEffect(() => {
+    onTabChange?.(selectedTab);
+  }, [onTabChange, selectedTab]);
 
   const handleSearchQueryChange = (query: string) => {
     setSearchQuery(query);

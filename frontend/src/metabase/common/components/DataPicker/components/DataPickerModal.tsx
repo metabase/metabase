@@ -50,12 +50,31 @@ const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
 const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
 
-export type PrototypeState = {
-  lastFolder?: NotebookDataPickerFolderItem;
+export type PrototypeState = Record<
+  "dataset" | "metric" | "table" | "card",
+  NotebookDataPickerFolderItem | undefined
+> & {
+  lastTab: "dataset" | "metric" | "card" | "table" | undefined;
 };
 
 const initialPrototypeState: PrototypeState = {
-  lastFolder: undefined,
+  dataset: {
+    name: "Our analytics",
+    id: "root",
+    model: "collection",
+  },
+  table: undefined,
+  card: {
+    name: "Our analytics",
+    id: "root",
+    model: "collection",
+  },
+  metric: {
+    name: "Our analytics",
+    id: "root",
+    model: "collection",
+  },
+  lastTab: undefined,
 };
 
 const options: DataPickerModalOptions = {
@@ -123,12 +142,20 @@ export const DataPickerModal = ({
     [onChange, onClose],
   );
 
+  const [selectedTab, setSelectedTab] = useState<string>();
+
   const handleCardChange = useCallback(
     (item: QuestionPickerItem) => {
-      if (item.model === "collection") {
-        setPrototypeState({
-          lastFolder: item as unknown as any,
-        });
+      if (
+        item.model === "collection" &&
+        selectedTab &&
+        ["dataset", "metric", "card", "table"].includes(selectedTab)
+      ) {
+        setPrototypeState(state => ({
+          ...state,
+          [selectedTab as "dataset" | "metric" | "card" | "table"]:
+            item as unknown as any,
+        }));
       }
 
       if (!isValidValueItem(item.model)) {
@@ -138,7 +165,7 @@ export const DataPickerModal = ({
       onChange(getQuestionVirtualTableId(item.id));
       onClose();
     },
-    [onChange, onClose],
+    [onChange, onClose, selectedTab],
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
@@ -185,9 +212,10 @@ export const DataPickerModal = ({
           onChange={handleChange}
           onFolderSelect={folder => {
             if (folder.id) {
-              setPrototypeState({
-                lastFolder: folder,
-              });
+              setPrototypeState(state => ({
+                ...state,
+                table: folder,
+              }));
             }
           }}
         />
@@ -228,6 +256,23 @@ export const DataPickerModal = ({
       onClose={onClose}
       onItemSelect={handleChange}
       prototypeState={prototypeState}
+      onTabChange={tab => {
+        setSelectedTab(tab);
+
+        if (["dataset", "metric", "card", "table"].includes(tab)) {
+          setPrototypeState(state => ({
+            ...state,
+            lastTab: tab as "dataset" | "metric" | "card" | "table",
+          }));
+        }
+
+        if (tab === "recents") {
+          setPrototypeState(state => ({
+            ...state,
+            lastTab: undefined,
+          }));
+        }
+      }}
     />
   );
 };
