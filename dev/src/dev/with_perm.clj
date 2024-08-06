@@ -2,6 +2,7 @@
   (:require
    [methodical.core :as m]
    [toucan2.insert :as insert]
+   [clojure.spec.alpha :as s]
    [toucan2.model :as model]
    [toucan2.tools.with-temp :as t2.with-temp]
    [toucan2.types :as types]
