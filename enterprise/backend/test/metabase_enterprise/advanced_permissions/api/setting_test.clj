@@ -114,8 +114,9 @@
        user  [group]]
       (letfn [(get-geojson [user status]
                 (testing (format "get geojson with %s user" (mt/user-descriptor user))
-                  (mt/user-http-request user :get status "geojson"
-                                        :url geojson-test/test-geojson-url)))]
+                  (geojson-test/with-geojson-mocks
+                    (mt/user-http-request user :get status "geojson"
+                                          :url geojson-test/test-geojson-url))))]
 
         (testing "if `advanced-permissions` is disabled, require admins"
           (mt/with-premium-features #{}

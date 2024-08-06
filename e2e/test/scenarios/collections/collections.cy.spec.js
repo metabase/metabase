@@ -28,6 +28,9 @@ import {
   openCollectionMenu,
   createQuestion,
   entityPickerModalItem,
+  createCollection,
+  openCollectionItemMenu,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
@@ -702,7 +705,6 @@ describe("scenarios > collection defaults", () => {
 
           entityPickerModal().within(() => {
             cy.log("should disable all moving collections");
-            cy.findByRole("tab", { name: /Collections/ }).click();
             findPickerItem("First collection").should("have.attr", "disabled");
             findPickerItem("Another collection").should(
               "have.attr",
@@ -713,6 +715,72 @@ describe("scenarios > collection defaults", () => {
               "data-active",
               "true",
             );
+          });
+        });
+
+        it("moving collections should disable moving into any of the moving collections in recents or search (metabase#45248)", () => {
+          createCollection({ name: "Outer collection 1" }).then(
+            ({ body: { id: parentCollectionId } }) => {
+              cy.wrap(parentCollectionId).as("outerCollectionId");
+              createCollection({
+                name: "Inner collection 1",
+                parent_id: parentCollectionId,
+              }).then(({ body: { id: innerCollectionId } }) => {
+                cy.wrap(innerCollectionId).as("innerCollectionId");
+              });
+              createCollection({
+                name: "Inner collection 2",
+                parent_id: parentCollectionId,
+              });
+            },
+          );
+          createCollection({ name: "Outer collection 2" });
+
+          // modify the inner collection so that it shows up in recents
+          cy.get("@innerCollectionId").then(innerCollectionId => {
+            cy.request("PUT", `/api/collection/${innerCollectionId}`, {
+              name: "Inner collection 1 - modified",
+            });
+          });
+          cy.visit("/collection/root");
+
+          cy.log("single move");
+
+          cy.findByTestId("collection-table").within(() => {
+            openCollectionItemMenu("Outer collection 1");
+          });
+
+          popover().findByText("Move").click();
+
+          entityPickerModal().within(() => {
+            entityPickerModalTab("Recents").should(
+              "have.attr",
+              "data-active",
+              "true",
+            );
+
+            cy.findByText(/inner collection/).should("not.exist");
+
+            cy.button("Cancel").click();
+          });
+
+          cy.log("bulk move");
+
+          cy.findByTestId("collection-table").within(() => {
+            selectItemUsingCheckbox("Orders");
+            selectItemUsingCheckbox("Outer collection 1");
+          });
+
+          cy.findByTestId("toast-card").button("Move").click();
+
+          entityPickerModal().within(() => {
+            entityPickerModalTab("Recents").should(
+              "have.attr",
+              "data-active",
+              "true",
+            );
+
+            cy.findByText(/inner collection/).should("not.exist");
           });
         });
       });

@@ -27,6 +27,7 @@ import {
   setFilter,
   entityPickerModal,
   entityPickerModalTab,
+  dismissDownloadStatus,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -78,6 +79,8 @@ describe("scenarios > question > download", () => {
         expect(sheet["A1"].v).to.eq("Count");
         expect(sheet["A2"].v).to.eq(18760);
       });
+
+      dismissDownloadStatus();
     });
   });
 
@@ -121,6 +124,8 @@ describe("scenarios > question > download", () => {
         },
       );
 
+      dismissDownloadStatus();
+
       downloadAndAssert(
         {
           ...opts,
@@ -145,6 +150,8 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
+      dismissDownloadStatus();
+
       editDashboard();
 
       setFilter("ID");
@@ -168,6 +175,8 @@ describe("scenarios > question > download", () => {
       });
 
       assertOrdersExport(1);
+
+      dismissDownloadStatus();
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -241,6 +250,8 @@ describe("scenarios > question > download", () => {
                 assertSheetRowsCount(1)(sheet);
               },
             );
+
+            dismissDownloadStatus();
           });
         });
       });
@@ -314,7 +325,7 @@ describe("scenarios > dashboard > download pdf", () => {
       visitDashboard(dashboard.id);
     });
 
-    cy.findByLabelText("dashboard-menu-button").click();
+    cy.findByLabelText("Move, trash, and more…").click();
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Export as PDF").click();
@@ -341,7 +352,7 @@ describeWithSnowplow("scenarios > dashboard > download pdf", () => {
       questions: [canSavePngQuestion, cannotSavePngQuestion],
     }).then(({ dashboard }) => {
       visitDashboard(dashboard.id);
-      cy.findByLabelText("dashboard-menu-button").click();
+      cy.findByLabelText("Move, trash, and more…").click();
 
       popover().findByText("Export as PDF").click();
 

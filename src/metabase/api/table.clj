@@ -355,13 +355,10 @@
                              :db
                              [:fields [:target :has_field_values] :has_field_values :dimensions :name_field]
                              :segments
-                             :metrics)
-          dbs    (when (seq tables)
-                   (t2/select-pk->fn identity Database :id [:in (into #{} (map :db_id) tables)]))]
+                             :metrics)]
       (for [table tables]
         (-> table
             (m/dissoc-in [:db :details])
-            (assoc-dimension-options (-> table :db_id dbs))
             format-fields-for-response
             fix-schema
             (update :fields #(remove (comp #{:hidden :sensitive} :visibility_type) %)))))))

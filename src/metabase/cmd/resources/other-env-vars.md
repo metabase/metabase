@@ -1,4 +1,3 @@
-## Other environment variables
 
 The following environment variables can only be set via the environment. They cannot be set by the configuration file.
 

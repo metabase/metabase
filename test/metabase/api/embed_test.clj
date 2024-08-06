@@ -483,9 +483,9 @@
       (testing "if the param is locked"
         (t2.with-temp/with-temp
           [Card card (assoc (card-with-date-field-filter-default) :embedding_params {:date :locked})]
-          (testing "an empty value should apply if provided as nil in the JWT params"
-            (is (= [[1000]]
-                   (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date nil}})))))
+          (testing "an empty value with `nil` as the param's value is invalid and should result in an error"
+            (is (= "You must specify a value for :date in the JWT."
+                   (client/client :get 400 (card-query-url card "" {:params {:date nil}}))))
             (testing "check this is different to when a non-nil value is provided"
               (is (= [[138]]
                      (mt/rows (client/client :get 202 (card-query-url card "" {:params {:date "Q2-2014"}})))))))
@@ -925,9 +925,9 @@
                     (client/client :get 400 (str (dashcard-url dashcard) "?date=")))))))
        (testing "if the param is locked"
          (mt/with-temp-vals-in-db Dashboard (u/the-id dashboard) {:embedding_params {:date "locked"}}
-           (testing "an empty value should apply if provided as nil in the JWT params"
-             (is (= [[1000]]
-                    (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date nil}})))))
+           (testing "an empty value specified as `nil` is invalid and should result in an error"
+             (is (= "You must specify a value for :date in the JWT."
+                    (client/client :get 400 (dashcard-url dashcard {:params {:date nil}}))))
              (testing "check this is different to when a non-nil value is provided"
                (is (= [[138]]
                       (mt/rows (client/client :get 202 (dashcard-url dashcard {:params {:date "Q2-2014"}})))))))
@@ -1665,3 +1665,73 @@
                            (format "embed/dashboard/%s/dashcard/%s/card/%s/%s?format_rows=%s"
                                    (dash-token dashboard-id) dashcard-id card-id (name export-format) apply-formatting?))
                           ((get output-helper export-format))))))))))))
+
+(deftest filter-linked-to-locked-filter-test
+  (testing "Filter linked to locked filter works in various common configurations."
+    (mt/dataset test-data
+      (with-embedding-enabled-and-new-secret-key
+        (t2.with-temp/with-temp [Card {card-id :id} {:enable_embedding true
+                                                     :display          :table
+                                                     :dataset_query    {:database (mt/id)
+                                                                        :type     :query
+                                                                        :query    {:source-table (mt/id :products)}}}
+                                 Dashboard {dashboard-id :id} {:enable_embedding true
+                                                               :parameters
+                                                               [{:name      "Category"
+                                                                 :slug      "category"
+                                                                 :id        "ad5f614b"
+                                                                 :type      :string/=
+                                                                 :sectionId "string"}
+                                                                {:name                "Title"
+                                                                 :slug                "title"
+                                                                 :id                  "7ef6f58c"
+                                                                 :type                :string/=
+                                                                 :sectionId           "string"
+                                                                 :filteringParameters ["ad5f614b"]}]
+                                                               :embedding_params {:category "locked"
+                                                                                  :title    "enabled"}}
+                                 DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                                  :card_id      card-id
+                                                                  :parameter_mappings
+                                                                  [{:parameter_id "ad5f614b"
+                                                                    :card_id      card-id
+                                                                    :target       [:dimension [:field (mt/id :products :category) {:base-type :type/Text}]]}
+                                                                   {:parameter_id "7ef6f58c"
+                                                                    :card_id      card-id
+                                                                    :target       [:dimension [:field (mt/id :products :title) {:base-type :type/Text}]]}]}]
+          (doseq [{:keys [test-str params]}
+                  [{:test-str "Locked filter is not set in the token, so requests should fail."
+                    :params   {}}
+                   {:test-str "Locked filter is set to `nil` in the token, so requests should fail."
+                    :params   {:category nil}}]]
+            (testing test-str
+              (let [token (dash-token dashboard-id {:params params})]
+                (is (= "You must specify a value for :category in the JWT."
+                       (mt/user-http-request :crowberto :get 400
+                                             (format "embed/dashboard/%s/dashcard/%s/card/%s" token dashcard-id card-id))))
+                (is (= "You must specify a value for :category in the JWT."
+                       (mt/user-http-request :crowberto :get 400
+                                             (format "embed/dashboard/%s/params/%s/values" token "7ef6f58c")))))))
+          (doseq [{:keys [test-str params expected-row-count expected-values-count]}
+                  [{:test-str              "Locked filter is set to a list of values in the token."
+                    :params                {:category ["Widget"]}
+                    :expected-row-count    54
+                    :expected-values-count 54}
+                   {:test-str              "Locked filter is set to an empty list in the token."
+                    :params                {:category []}
+                    :expected-row-count    200
+                    :expected-values-count 199}]]
+            (testing test-str
+              (let [token        (dash-token dashboard-id {:params params})
+                    row-count    (-> (mt/user-http-request :crowberto :get 202
+                                                           (format "embed/dashboard/%s/dashcard/%s/card/%s" token dashcard-id card-id))
+                                     (get-in [:data :rows])
+                                     count)
+                    values-count (-> (mt/user-http-request :crowberto :get 200
+                                                           (format "embed/dashboard/%s/params/%s/values" token "7ef6f58c"))
+                                     :values
+                                     count)]
+                (testing "query has the expected results"
+                  (is (= expected-row-count row-count)))
+                (testing "the correct amount of filter values are returned"
+                  (is (= expected-values-count values-count)))))))))))

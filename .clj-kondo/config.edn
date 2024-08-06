@@ -270,6 +270,7 @@
     metabase.api                   :any
     metabase.async                 :any
     metabase.audit                 :any
+    metabase.auth-provider         #{metabase.util}
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.config                #{metabase.plugins}
@@ -608,7 +609,9 @@
     toucan.models                                                 models}}}
 
  :lint-as
- {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
+ {cljs.cache/defcache                                                                  clojure.core/deftype
+  clojure.core.cache/defcache                                                          clojure.core/deftype
+  clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                              clojure.test/deftest
   clojurewerkz.quartzite.jobs/defjob                                                   clojure.core/defn
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
@@ -792,8 +795,10 @@
    clojurewerkz.quartzite.schedule.simple/schedule                              macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                        macros.quartz/build-trigger
    metabase-enterprise.sandbox.test-util/with-gtaps!                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                   macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
    metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.test/with-gtaps-for-user!                                macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!  macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy

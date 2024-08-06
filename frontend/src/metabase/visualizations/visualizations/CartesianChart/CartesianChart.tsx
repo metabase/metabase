@@ -100,7 +100,9 @@ function _CartesianChart(props: VisualizationProps) {
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
-          onSelectTitle={canSelectTitle ? onOpenQuestion : undefined}
+          onSelectTitle={
+            canSelectTitle ? () => onOpenQuestion(card.id) : undefined
+          }
           width={outerWidth}
         />
       )}

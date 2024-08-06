@@ -108,7 +108,7 @@
                 _        (*page-callback*)
                 new-page (.getNextPage page)]
             (log/trace "BigQuery: New page returned")
-            (recur new-page (values-iterator page) acc (inc n)))
+            (recur new-page (values-iterator new-page) acc (inc n)))
 
           ;; All pages exhausted, so just return.
           ;; Make sure to close the cancel-chan as well, to prevent thread leaks in execute-bigquery.

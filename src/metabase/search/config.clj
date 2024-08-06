@@ -112,7 +112,8 @@
     [:offset-int                          {:optional true} ms/Int]
     [:search-native-query                 {:optional true} true?]
     ;; true to search for verified items only, nil will return all items
-    [:verified                            {:optional true} true?]]))
+    [:verified                            {:optional true} true?]
+    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]]))
 
 (def all-search-columns
   "All columns that will appear in the search results, and the types of those columns. The generated search query is a

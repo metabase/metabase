@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -106,9 +107,25 @@
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
 (defmethod driver/describe-database :redshift
- [_driver database]
+  [driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
-  {:tables (into #{} (describe-database-tables database))})
+  ;;
+  ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
+  ;; fix #45874
+  (try
+    (u/auto-retry (if config/is-prod? 2 5)
+      (try
+        {:tables (into #{} (describe-database-tables database))}
+        (catch Throwable e
+          ;; during test/REPL runs, wait a second before throwing the exception, that way when we do our retry there is
+          ;; a better chance of it succeeding.
+          (when-not config/is-prod?
+            (Thread/sleep 1000))
+          (throw e))))
+    (catch Throwable e
+      (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
+                      {}
+                      e)))))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]

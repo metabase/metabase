@@ -10,6 +10,7 @@ export * from "./constants";
 export * from "./dashboard";
 export * from "./database";
 export * from "./dataset";
+export * from "./email";
 export * from "./field";
 export * from "./group";
 export * from "./impersonation";

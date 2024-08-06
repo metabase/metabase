@@ -7,10 +7,8 @@
   Essentially, this is a translation layer between the graph used by the v1 permissions schema and the v2 permissions
   schema."
   (:require
-   [clojure.data :as data]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.api.permission-graph :as api.permission-graph]
    [metabase.audit :as audit]
    [metabase.models.data-permissions :as data-perms]
@@ -21,7 +19,6 @@
     :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
@@ -109,7 +106,7 @@
 
 (defn- rename-perm
   "Transforms a 'leaf' value with db-level or table-level perms in the data permissions graph into an API-style data permissions value.
-  There's some tricks in here that ellide table-level and table-level permissions values that are the most-permissive setting."
+  There's some tricks in here that ellide schema-level and table-level permissions values that are the most-permissive setting."
   [perm-map]
   (let [granular-keys [:perms/download-results :perms/manage-table-metadata
                        :perms/view-data :perms/create-queries]]
@@ -162,7 +159,7 @@
          (into {}))
     m))
 
-(mu/defn api-graph :- api.permission-graph/StrictData
+(mu/defn api-graph :- api.permission-graph/DataPermissionsGraph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
@@ -364,8 +361,8 @@
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
   change these permissions implicitly via collection permissions."
-  [changes]
-  (let [changes-ids (->> changes
+  [group-updates]
+  (let [changes-ids (->> group-updates
                          vals
                          (map keys)
                          (apply concat))]
@@ -373,41 +370,6 @@
       (throw (ex-info (tru
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))
-
-(defn log-permissions-changes
-  "Log changes to the permissions graph."
-  [old new]
-  (log/debug "Changing permissions"
-             "\n FROM:" (u/pprint-to-str :magenta old)
-             "\n TO:"   (u/pprint-to-str :blue new)))
-
-(defn check-revision-numbers
-  "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
-  make sure people don't submit a new graph based on something out of date, which would otherwise stomp over changes
-  made in the interim. Return a 409 (Conflict) if the numbers don't match up."
-  [old-graph new-graph]
-  (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (tru
-                      (str "Looks like someone else edited the permissions and your data is out of date. "
-                           "Please fetch new data and try again."))
-                    {:status-code 409}))))
-
-(defn save-perms-revision!
-  "Save changes made to permission graph for logging/auditing purposes.
-  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
-  *  `model`   -- revision model, should be one of
-                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision]
-  *  `before`  -- the graph before the changes
-  *  `changes` -- set of changes applied in this revision."
-  [model current-revision before changes]
-  (when api/*current-user-id*
-    (first (t2/insert-returning-instances! model
-                                           ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
-                                           ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-                                           :id      (inc current-revision)
-                                           :before  before
-                                           :after   changes
-                                           :user_id api/*current-user-id*))))
 
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly."
@@ -427,23 +389,16 @@
    (update-data-perms-graph!* (assoc-in (-> api-graph :groups) ks new-value))))
 
 (mu/defn update-data-perms-graph!
-  "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally validates the revision number,
-   logs the changes, and ensures impersonations and sandboxes are consistent."
-  ([new-graph :- api.permission-graph/StrictData]
-   (let [group-ids (-> new-graph :groups keys)
-         old-graph (api-graph {:group-ids group-ids})
-         [old new] (data/diff (:groups old-graph) (:groups new-graph))
-         old       (or old {})
-         new       (or new {})]
-     (when (or (seq old) (seq new))
-       (log-permissions-changes old new)
-       (check-revision-numbers old-graph new-graph)
-       (check-audit-db-permissions new)
+  "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally ensures
+  impersonations and sandboxes are consistent if necessary."
+  ([graph-updates :- api.permission-graph/DataPermissionsGraph]
+   (when (seq graph-updates)
+     (let [group-updates (:groups graph-updates)]
+       (check-audit-db-permissions group-updates)
        (t2/with-transaction [_conn]
-         (update-data-perms-graph!* new)
-         (save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
-         (delete-impersonations-if-needed-after-permissions-change! new)
-         (delete-gtaps-if-needed-after-permissions-change! new)))))
+         (update-data-perms-graph!* group-updates)
+         (delete-impersonations-if-needed-after-permissions-change! group-updates)
+         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

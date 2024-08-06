@@ -61,6 +61,7 @@ const MetadataHeader = ({
 
   return (
     <div
+      data-testid="admin-metadata-header"
       className={cx(
         "MetadataEditor-header",
         CS.flex,

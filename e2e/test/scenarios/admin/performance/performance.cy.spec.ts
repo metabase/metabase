@@ -1,46 +1,17 @@
 import { describeEE, restore, setTokenFeatures } from "e2e/support/helpers";
 
-const save = ({ expectedRoute = "@putCacheConfig" } = {}) => {
-  cy.log("Save the caching strategy form");
-  cy.button(/Save/).click();
-  cy.wait(expectedRoute);
-};
-
-const launchFormForItem = (itemName: string, currentStrategy: string) => {
-  cy.visit("/admin");
-  cy.findByRole("link", { name: "Performance" }).click();
-  cy.findByRole("tab", { name: "Database caching settings" }).click();
-  cy.log(`Open strategy form for ${itemName}`);
-  formLauncher(itemName, "currently", currentStrategy).click();
-};
-
-const main = () => cy.findByRole("main", { name: "Database caching settings" });
-
-const form = () => cy.findByLabelText("Select the cache invalidation policy");
-
-const radio = (name: RegExp) => form().findByRole("radio", { name });
-
-const durationRadioButton = () => radio(/Duration/);
-const adaptiveRadioButton = () => radio(/Adaptive/);
-const scheduleRadioButton = () => radio(/Schedule/);
-const dontCacheResultsRadioButton = () => radio(/Don.t cache results/);
-const useDefaultRadioButton = () => radio(/Use default/);
-
-const formLauncher = (
-  itemName: string,
-  preface: string,
-  strategyLabel: string,
-) => {
-  main().should("exist");
-  cy.log(
-    `Finding strategy for launcher for regex: Edit.*${itemName}.*${preface}.*${strategyLabel}`,
-  );
-  const launcher = main().findByLabelText(
-    new RegExp(`Edit.*${itemName}.*${preface}.*${strategyLabel}`),
-  );
-  launcher.should("exist");
-  return launcher;
-};
+import {
+  adaptiveRadioButton,
+  dontCacheResultsRadioButton,
+  formLauncher,
+  durationRadioButton,
+  useDefaultRadioButton,
+  scheduleRadioButton,
+  cacheStrategyForm,
+  openStrategyFormForDatabaseOrDefaultPolicy,
+  saveCacheStrategyForm,
+  cacheStrategyRadioButton,
+} from "./helpers/e2e-strategy-form-helpers";
 
 // NOTE: These tests just check that the form can be saved. They do not test
 // whether the cache is actually invalidated at the specified times.
@@ -86,36 +57,35 @@ describe("scenarios > admin > performance", { tags: "@OSS" }, () => {
   });
 
   it("there are two policy options for the default policy, Adaptive and Don't cache results", () => {
-    form().findAllByRole("radio").should("have.length", 2);
+    cacheStrategyForm().findAllByRole("radio").should("have.length", 2);
     adaptiveRadioButton().should("exist");
     dontCacheResultsRadioButton().should("exist");
   });
 
   it("can set default policy to Don't cache results", () => {
+    const model = "root";
     cy.log("Set default policy to Adaptive first");
     adaptiveRadioButton().click();
-    save();
+    saveCacheStrategyForm({ strategyType: "ttl", model });
     adaptiveRadioButton().should("be.checked");
 
     cy.log("Then set default policy to Don't cache results");
     dontCacheResultsRadioButton().click();
-    save({
-      expectedRoute: "@deleteCacheConfig",
-    });
+    saveCacheStrategyForm({ strategyType: "nocache", model });
     dontCacheResultsRadioButton().should("be.checked");
   });
 
   describe("adaptive strategy", () => {
     it("can set default policy to adaptive", () => {
       adaptiveRadioButton().click();
-      save();
+      saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
       adaptiveRadioButton().should("be.checked");
     });
 
     it("can configure a minimum query duration for the default adaptive policy", () => {
       adaptiveRadioButton().click();
       cy.findByLabelText(/Minimum query duration/).type("1000");
-      save();
+      saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
       adaptiveRadioButton().should("be.checked");
       cy.findByLabelText(/Minimum query duration/).should("have.value", "1000");
     });
@@ -123,7 +93,7 @@ describe("scenarios > admin > performance", { tags: "@OSS" }, () => {
     it("can configure a multiplier for the default adaptive policy", () => {
       adaptiveRadioButton().click();
       cy.findByLabelText(/Multiplier/).type("3");
-      save();
+      saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
       adaptiveRadioButton().should("be.checked");
       cy.findByLabelText(/Multiplier/).should("have.value", "3");
     });
@@ -132,7 +102,7 @@ describe("scenarios > admin > performance", { tags: "@OSS" }, () => {
       adaptiveRadioButton().click();
       cy.findByLabelText(/Minimum query duration/).type("1234");
       cy.findByLabelText(/Multiplier/).type("4");
-      save();
+      saveCacheStrategyForm({ strategyType: "ttl", model: "root" });
       adaptiveRadioButton().should("be.checked");
       cy.findByLabelText(/Minimum query duration/).should("have.value", "1234");
       cy.findByLabelText(/Multiplier/).should("have.value", "4");
@@ -169,11 +139,11 @@ describeEE("EE", () => {
   };
 
   it("can call cache invalidation endpoint for Sample Database", () => {
-    launchFormForItem("default policy", "No caching");
+    openStrategyFormForDatabaseOrDefaultPolicy("default policy", "No caching");
     cy.log('A "Clear cache" button is not present for the default policy');
     cy.button(/Clear cache/).should("not.exist");
 
-    launchFormForItem("Sample Database", "No caching");
+    openStrategyFormForDatabaseOrDefaultPolicy("Sample Database", "No caching");
     cy.log(
       'A "Clear cache" button is not yet present because the database does not use a cache',
     );
@@ -183,7 +153,7 @@ describeEE("EE", () => {
     durationRadioButton().click();
 
     cy.log("Save the caching strategy form");
-    save();
+    saveCacheStrategyForm({ strategyType: "duration", model: "database" });
 
     cy.log("Now there's a 'Clear cache' button. Click it");
     cy.button(/Clear cache/).click();
@@ -203,62 +173,60 @@ describeEE("EE", () => {
     const strategyAsString = strategy.toString().replace(/\//g, "");
     it(`can configure Sample Database to use a default policy of ${strategyAsString}`, () => {
       cy.log(`Set default policy to ${strategy}`);
-      launchFormForItem("default policy", "No caching");
-      radio(strategy).click();
-      save();
+      openStrategyFormForDatabaseOrDefaultPolicy(
+        "default policy",
+        "No caching",
+      );
+      cacheStrategyRadioButton(strategy).click();
+      saveCacheStrategyForm();
 
       cy.log("Open strategy form for Sample Database");
-      launchFormForItem("Sample Database", strategyAsString);
+      openStrategyFormForDatabaseOrDefaultPolicy(
+        "Sample Database",
+        strategyAsString,
+      );
 
       cy.log("Set Sample Database to Duration first");
       durationRadioButton().click();
-      save();
+      saveCacheStrategyForm({ strategyType: "duration", model: "database" });
       formLauncher("Sample Database", "currently", "Duration");
 
       cy.log("Then configure Sample Database to use the default policy");
       useDefaultRadioButton().click();
-      save({ expectedRoute: "@deleteCacheConfig" });
+      saveCacheStrategyForm({ strategyType: "inherit", model: "database" });
       formLauncher("Sample Database", "currently inheriting", strategyAsString);
     });
   });
 
   ["default policy", "Sample Database"].forEach(itemName => {
+    const model = itemName === "default policy" ? "root" : "database";
     const expectedNumberOfOptions = itemName === "default policy" ? 4 : 5;
     it(`there are ${expectedNumberOfOptions} policy options for ${itemName}`, () => {
-      launchFormForItem(itemName, "No caching");
-      form()
+      openStrategyFormForDatabaseOrDefaultPolicy(itemName, "No caching");
+      cacheStrategyForm()
         .findAllByRole("radio")
         .should("have.length", expectedNumberOfOptions);
     });
 
     it(`can set ${itemName} to Don't cache results`, () => {
-      launchFormForItem(itemName, "No caching");
+      openStrategyFormForDatabaseOrDefaultPolicy(itemName, "No caching");
       cy.log(`Set ${itemName} to Duration first`);
       durationRadioButton().click();
-      save();
+      saveCacheStrategyForm({ strategyType: "duration", model });
       formLauncher(itemName, "currently", "Duration");
 
       cy.log(`Then set ${itemName} to Don't cache results`);
       dontCacheResultsRadioButton().click();
-      // When the default policy is set to "Don't cache results", we delete the
-      // policy, but when a database's policy is set to "Don't cache results",
-      // we set its policy to "nocache". When a database's policy is set to
-      // "Use default", then we delete its policy.
-      save({
-        expectedRoute:
-          itemName === "default policy"
-            ? "@deleteCacheConfig"
-            : "@putCacheConfig",
-      });
+      saveCacheStrategyForm({ strategyType: "nocache", model });
       formLauncher(itemName, "currently", "No caching");
       checkInheritanceIfNeeded(itemName, "No caching");
     });
 
     it(`can set ${itemName} to a duration-based cache invalidation policy`, () => {
-      launchFormForItem(itemName, "No caching");
+      openStrategyFormForDatabaseOrDefaultPolicy(itemName, "No caching");
       cy.log(`Set ${itemName} to Duration`);
       durationRadioButton().click();
-      save();
+      saveCacheStrategyForm({ strategyType: "duration", model });
       cy.log(`${itemName} is now set to Duration`);
       formLauncher(itemName, "currently", "Duration");
       checkInheritanceIfNeeded(itemName, "Duration");
@@ -266,19 +234,19 @@ describeEE("EE", () => {
 
     describe("adaptive strategy", () => {
       beforeEach(() => {
-        launchFormForItem(itemName, "No caching");
+        openStrategyFormForDatabaseOrDefaultPolicy(itemName, "No caching");
         adaptiveRadioButton().click();
       });
 
       it(`can set ${itemName} to adaptive`, () => {
-        save();
+        saveCacheStrategyForm({ strategyType: "ttl", model });
         formLauncher(itemName, "currently", "Adaptive");
         checkInheritanceIfNeeded(itemName, "Adaptive");
       });
 
       it(`can configure a minimum query duration for ${itemName}'s adaptive policy`, () => {
         cy.findByLabelText(/Minimum query duration/).type("1000");
-        save();
+        saveCacheStrategyForm({ strategyType: "ttl", model });
         formLauncher(itemName, "currently", "Adaptive");
         cy.findByLabelText(/Minimum query duration/).should(
           "have.value",
@@ -288,7 +256,7 @@ describeEE("EE", () => {
 
       it(`can configure a multiplier for ${itemName}'s adaptive policy`, () => {
         cy.findByLabelText(/Multiplier/).type("3");
-        save();
+        saveCacheStrategyForm({ strategyType: "ttl", model });
         formLauncher(itemName, "currently", "Adaptive");
         cy.findByLabelText(/Multiplier/).should("have.value", "3");
       });
@@ -296,7 +264,7 @@ describeEE("EE", () => {
       it(`can configure both a minimum query duration and a multiplier for ${itemName}'s adaptive policy`, () => {
         cy.findByLabelText(/Minimum query duration/).type("1234");
         cy.findByLabelText(/Multiplier/).type("4");
-        save();
+        saveCacheStrategyForm({ strategyType: "ttl", model });
         formLauncher(itemName, "currently", "Adaptive");
         cy.findByLabelText(/Minimum query duration/).should(
           "have.value",
@@ -330,7 +298,7 @@ describeEE("EE", () => {
 
       it(`can save a new hourly schedule policy for ${itemName}`, () => {
         selectScheduleType("hourly");
-        save();
+        saveCacheStrategyForm({ strategyType: "schedule", model });
         formLauncher(itemName, "currently", "Scheduled: hourly");
       });
 
@@ -342,17 +310,12 @@ describeEE("EE", () => {
             cy.findAllByRole("searchbox").eq(1).click();
             cy.findByRole("listbox").findByText(`${time}:00`).click();
             cy.findByLabelText(amPm).next().click();
-            save();
+            saveCacheStrategyForm({ strategyType: "schedule", model });
             formLauncher("Sample Database", "currently", "Scheduled: daily");
 
             // reset for next iteration of loop
             dontCacheResultsRadioButton().click();
-            save({
-              expectedRoute:
-                itemName === "default policy"
-                  ? "@deleteCacheConfig"
-                  : "@putCacheConfig",
-            });
+            saveCacheStrategyForm({ strategyType: "nocache", model });
             scheduleRadioButton().click();
           });
         });
@@ -376,7 +339,7 @@ describeEE("EE", () => {
           const [hour, amPm] = time.split(" ");
           cy.findByRole("listbox").findByText(hour).click();
           cy.findByLabelText(amPm).next().click();
-          save();
+          saveCacheStrategyForm({ strategyType: "schedule", model });
           formLauncher(itemName, "currently", "Scheduled: weekly");
           cy.findAllByRole("searchbox").then(searchBoxes => {
             const values = Cypress._.map(
@@ -389,12 +352,7 @@ describeEE("EE", () => {
 
           // reset for next iteration of loop
           dontCacheResultsRadioButton().click();
-          save({
-            expectedRoute:
-              itemName === "default policy"
-                ? "@deleteCacheConfig"
-                : "@putCacheConfig",
-          });
+          saveCacheStrategyForm({ strategyType: "nocache", model });
           scheduleRadioButton().click();
         });
       });

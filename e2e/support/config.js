@@ -1,3 +1,6 @@
+import fs from "node:fs";
+import path from "node:path";
+
 import * as dbTasks from "./db_tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
@@ -22,6 +25,23 @@ const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 
+// docs say that tsconfig paths should handle aliases, but they don't
+const assetsResolverPlugin = {
+  name: "assetsResolver",
+  setup(build) {
+    // Redirect all paths starting with "assets/" to "resources/"
+    build.onResolve({ filter: /^assets\// }, args => {
+      return {
+        path: path.join(
+          __dirname,
+          "../../resources/frontend_client/app",
+          args.path,
+        ),
+      };
+    });
+  },
+};
+
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
   setupNodeEvents(on, config) {
@@ -37,7 +57,7 @@ const defaultConfig = {
         loader: {
           ".svg": "text",
         },
-        plugins: [NodeModulesPolyfillPlugin()],
+        plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
         sourcemap: "inline",
       }),
     );
@@ -75,6 +95,21 @@ const defaultConfig = {
       ...dbTasks,
       ...verifyDownloadTasks,
       removeDirectory,
+    });
+
+    // this is an official workaround to keep recordings of the failed specs only
+    // https://docs.cypress.io/guides/guides/screenshots-and-videos#Delete-videos-for-specs-without-failing-or-retried-tests
+    on("after:spec", (spec, results) => {
+      if (results && results.video) {
+        // Do we have failures for any retry attempts?
+        const failures = results.tests.some(test =>
+          test.attempts.some(attempt => attempt.state === "failed"),
+        );
+        if (!failures) {
+          // delete the video if the spec passed and no tests retried
+          fs.unlinkSync(results.video);
+        }
+      }
     });
 
     /********************************************************************
@@ -116,6 +151,9 @@ const defaultConfig = {
   specPattern: "e2e/test/**/*.cy.spec.{js,ts}",
   viewportHeight: 800,
   viewportWidth: 1280,
+  // enable video recording in run mode
+  video: true,
+  videoCompression: true,
 };
 
 const mainConfig = {

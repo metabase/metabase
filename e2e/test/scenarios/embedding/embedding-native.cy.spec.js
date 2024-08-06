@@ -33,6 +33,7 @@ describe("scenarios > embedding > native questions", () => {
       }
 
       cy.createNativeQuestion(details, {
+        wrapId: true,
         visitQuestion: true,
       });
 
@@ -81,7 +82,14 @@ describe("scenarios > embedding > native questions", () => {
         assert.deepEqual(actual, expected);
       });
 
-      visitIframe();
+      cy.get("@questionId").then(questionId => {
+        const payload = {
+          resource: { question: questionId },
+          params: { total: [] },
+        };
+
+        visitEmbeddedPage(payload);
+      });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Organic");
@@ -318,11 +326,10 @@ describe("scenarios > embedding > native questions with default parameters", () 
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-  });
 
-  it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
     cy.createNativeQuestion(questionDetailsWithDefaults, {
       visitQuestion: true,
+      wrapId: true,
     });
 
     openStaticEmbeddingModal({ activeTab: "parameters" });
@@ -336,9 +343,17 @@ describe("scenarios > embedding > native questions with default parameters", () 
         name: "enabled",
       });
     });
+  });
 
-    visitIframe();
+  it("card parameter defaults should apply for disabled parameters, but not for editable or locked parameters", () => {
+    cy.get("@questionId").then(questionId => {
+      const payload = {
+        resource: { question: questionId },
+        params: { source: [] },
+      };
 
+      visitEmbeddedPage(payload);
+    });
     // Remove default filter value
     clearFilterWidget();
     // The ID default (1, 2) should apply, because it is disabled.
@@ -346,6 +361,22 @@ describe("scenarios > embedding > native questions with default parameters", () 
     // The Source default ('Facebook') should not apply because the param is locked but the value is unset
     // If either the Name or Source default applied the result would be 0.
     cy.findByTestId("scalar-value").invoke("text").should("eq", "2");
+  });
+
+  it("locked parameters require a value to be specified in the JWT", () => {
+    cy.get("@questionId").then(questionId => {
+      const payload = {
+        resource: { question: questionId },
+        params: { source: null },
+      };
+
+      visitEmbeddedPage(payload);
+    });
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("You must specify a value for :source in the JWT.").should(
+      "be.visible",
+    );
   });
 });
 

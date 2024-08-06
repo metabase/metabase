@@ -9,11 +9,11 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
-   [metabase.models.data-permissions.graph :as data-perms.graph]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group
     :as perms-group
     :refer [PermissionsGroup]]
+   [metabase.permissions.util :as perms.u]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
@@ -195,7 +195,7 @@
          new-perms          (into {} (for [[group-id collection-id->perms] new-perms]
                                        [group-id (select-keys collection-id->perms (keys (get old-perms group-id)))]))
          [diff-old changes] (data/diff old-perms new-perms)]
-     (data-perms.graph/check-revision-numbers old-graph new-graph)
+     (perms.u/check-revision-numbers old-graph new-graph)
      (when (seq changes)
        (let [revision-id (t2/with-transaction [_conn]
                            (doseq [[group-id changes] changes]
@@ -203,5 +203,5 @@
                              (update-group-permissions! collection-namespace group-id changes))
                            (:id (create-perms-revision! (:revision old-graph))))]
          ;; The graph is updated infrequently, but `diff-old` and `old-graph` can get huge on larger instances.
-         (data-perms.graph/log-permissions-changes diff-old changes)
+         (perms.u/log-permissions-changes diff-old changes)
          (fill-revision-details! revision-id (assoc old-graph :namespace collection-namespace) changes))))))

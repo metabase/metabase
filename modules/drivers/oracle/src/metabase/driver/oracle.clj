@@ -60,7 +60,7 @@
     [#"BLOB"        :type/*]
     [#"RAW"         :type/*]
     [#"CHAR"        :type/Text]
-    [#"CLOB"        :type/Text]
+    [#"CLOB"        :type/OracleCLOB]
     [#"DATE"        :type/Date]
     [#"DOUBLE"      :type/Float]
     ;; Expression filter type

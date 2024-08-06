@@ -1090,3 +1090,53 @@ describe("issue 12368", () => {
     });
   });
 });
+
+describe("issue 32718", () => {
+  const questionDetails = {
+    display: "table",
+    query: {
+      "source-table": PRODUCTS_ID,
+      fields: [
+        ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+        ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+      ],
+      limit: 1,
+    },
+    visualization_settings: {
+      "table.columns": [
+        { name: "ID", enabled: true },
+        { name: "EAN", enabled: false },
+        { name: "CATEGORY", enabled: true },
+        { name: "CREATED_AT", enabled: true },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${PRODUCTS.CATEGORY}`, {
+      visibility_type: "details-only",
+    });
+  });
+
+  it("should honor visibility_type of the field when the question has viz settings (metabase#32718)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    tableInteractive().within(() => {
+      cy.findByText("ID").should("be.visible");
+      cy.findByText("Ean").should("not.exist");
+      cy.findByText("Category").should("not.exist");
+      cy.findByText("Created At").should("be.visible");
+    });
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("Detail-button").click();
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("ID").should("be.visible");
+      cy.findByText("Ean").should("not.exist");
+      cy.findByText("Category").should("be.visible");
+      cy.findByText("Created At").should("be.visible");
+    });
+  });
+});

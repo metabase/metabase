@@ -1,5 +1,6 @@
 import { useCallback, useRef } from "react";
 import { useUnmount } from "react-use";
+import { t } from "ttag";
 import { useDebouncedCallback } from "use-debounce";
 
 import { Select, Loader } from "metabase/ui";
@@ -49,7 +50,7 @@ export function ListPicker(props: ListPickerProps) {
       <Loader size="xs" />
     </div>
   ) : value ? (
-    <PickerIcon name="close" onClick={onClear} />
+    <PickerIcon aria-label={t`Clear`} name="close" onClick={onClear} />
   ) : null;
 
   const debouncedOnSearch = useDebouncedCallback(

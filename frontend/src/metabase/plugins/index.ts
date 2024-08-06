@@ -368,6 +368,7 @@ export const PLUGIN_CACHING = {
   isEnabled: () => false,
   hasQuestionCacheSection: (_question: Question) => false,
   canOverrideRootStrategy: false,
+  /** Metadata describing the different kinds of strategies */
   strategies: strategies,
 };
 

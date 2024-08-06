@@ -560,7 +560,8 @@
            :cards dashcards)))
 
 (def ^:private ^:const ^Long max-related 8)
-(def ^:private ^:const ^Long max-cards 30)
+(def ^:private ^:const ^Long max-cards 15)
+(def ^:private ^:const ^Long max-cards-total 30)
 
 (defn ->related-entity
   "Turn `entity` into an entry in `:related.`"
@@ -876,7 +877,8 @@
                                                :dashboard-templates-prefix ["table"]})
                                             opts)]
                            (automagic-dashboard root'))
-                         (let [root'     (merge root
+                         (let [opts      (assoc opts :show max-cards-total)
+                               root'     (merge root
                                                 (when cell-query
                                                   {:url cell-url})
                                                 opts)

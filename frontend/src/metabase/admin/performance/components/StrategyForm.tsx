@@ -1,7 +1,7 @@
 import { useFormikContext } from "formik";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { t } from "ttag";
+import { c, t } from "ttag";
 import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
@@ -45,6 +45,7 @@ import {
   getLabelString,
   cronToScheduleSettings,
   scheduleSettingsToCron,
+  getStrategyValidationSchema,
 } from "../utils";
 
 import {
@@ -344,8 +345,9 @@ const ScheduleStrategyFormFields = () => {
       schedule={schedule}
       scheduleOptions={["hourly", "daily", "weekly", "monthly"]}
       onScheduleChange={onScheduleChange}
-      verb={t`Invalidate`}
+      verb={c("A verb in the imperative mood").t`Invalidate`}
       timezone={timezone}
+      aria-label={t`Describe how often the cache should be invalidated`}
     />
   );
 };
@@ -418,13 +420,19 @@ const StrategySelector = ({
       >
         <Stack mt="md" spacing="md">
           {_.map(availableStrategies, (option, name) => {
-            const optionLabelParts = getLabelString(option.label, model).split(
-              ":",
-            );
+            const labelString = getLabelString(option.label, model);
+            /** Special colon sometimes used in Asian languages */
+            const wideColon = "：";
+            const colon = labelString.includes(wideColon) ? wideColon : ":";
+            const optionLabelParts = labelString.split(colon);
             const optionLabelFormatted = (
               <>
                 <strong>{optionLabelParts[0]}</strong>
-                {optionLabelParts[1] ? <>: {optionLabelParts[1]}</> : null}
+                {optionLabelParts[1] ? (
+                  <>
+                    {colon} {optionLabelParts[1]}
+                  </>
+                ) : null}
               </>
             );
             return (
@@ -434,6 +442,12 @@ const StrategySelector = ({
                 label={optionLabelFormatted}
                 autoFocus={values.type === name}
                 role="radio"
+                styles={{
+                  label: {
+                    paddingLeft: undefined,
+                    paddingInlineStart: ".5rem",
+                  },
+                }}
               />
             );
           })}
@@ -494,9 +508,10 @@ const getDefaultValueForField = (
   strategyType: StrategyType,
   fieldName?: string,
 ) => {
-  return fieldName
-    ? PLUGIN_CACHING.strategies[strategyType].validateWith.cast({})[fieldName]
-    : "";
+  const schema = getStrategyValidationSchema(
+    PLUGIN_CACHING.strategies[strategyType],
+  );
+  return fieldName ? schema.cast({})[fieldName] : "";
 };
 
 const MultiplierFieldSubtitle = () => (

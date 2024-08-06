@@ -24,15 +24,16 @@ export const AdminNavbarRoot = styled.nav`
 
 export const AdminNavbarItems = styled.ul`
   display: flex;
-  flex: 1 0 auto;
-  margin-right: auto;
-  margin-left: 2rem;
+  flex-grow: 0;
+  min-width: 0;
 `;
 
 export const MobileHide = styled.div`
   display: flex;
-  flex: 1 0 auto;
   align-items: center;
+  min-width: 0;
+  flex-grow: 1;
+  padding-inline-start: 2rem;
   ${breakpointMaxMedium} {
     display: none;
   }
@@ -47,8 +48,8 @@ export const AdminMobileNavbar = styled.div`
 `;
 
 export const AdminMobileNavBarItems = styled.ul`
-  position: fixed;
   display: flex;
+  position: fixed;
   flex-direction: column;
   text-align: right;
   padding: 1rem;
@@ -57,6 +58,8 @@ export const AdminMobileNavBarItems = styled.ul`
   top: ${ADMIN_NAVBAR_HEIGHT};
   right: 0;
   background: ${color("admin-navbar")};
+  max-height: calc(100vh - ${ADMIN_NAVBAR_HEIGHT});
+  overflow-y: auto;
 `;
 
 export const AdminExitLink = styled(Link)`
@@ -69,6 +72,7 @@ export const AdminExitLink = styled(Link)`
   color: ${color("white")};
   white-space: nowrap;
   text-align: center;
+  margin-inline-start: auto;
 
   &:hover {
     color: ${color("white")};

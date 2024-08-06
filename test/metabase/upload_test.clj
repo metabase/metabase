@@ -390,7 +390,7 @@
                         upload/max-bytes (constantly max-bytes)]
             (doseq [c ["a" "出"]]
               (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
-                    char-size            (count (.getBytes c "UTF-8"))]
+                    char-size            (count (.getBytes ^String c "UTF-8"))]
                 (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
                   (testing "The card name should be truncated to max bytes with UTF-8 encoding"
                     (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
