@@ -507,10 +507,10 @@
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
-      ;; TODO: should be done in after-update
-      ;; has to place it here because changes is not available in after-update hook see toucan2#129
+      ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
+      ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
       (when (contains? changes :dataset_query)
-        (query-analysis/analyze-async! id))
+        (query-analysis/analyze-async! changes))
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
