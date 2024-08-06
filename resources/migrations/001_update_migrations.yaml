@@ -8841,6 +8841,58 @@ databaseChangeLog:
             columnName: table
             remarks: This value is null if the field does not exist, and macaw could not determine the table
 
+  - changeSet:
+      id: v51.2024-08-05T16:00:00
+      author: metamben
+      comment: Add source card reference to report_card to support metrics based models and questions
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: source_card_id
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: source_card_id
+                  remarks: The ID of the model or question this card is based on
+                  type: int
+
+  - changeSet:
+      id: v51.2024-08-05T16:00:01
+      author: metamben
+      comment: Add FK constraint to report_card.source_card_id
+      preConditions:
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: source_card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+            nullable: true
+            deleteCascade: true
+
+  - changeSet:
+      id: v51.2024-08-05T16:00:02
+      author: metamben
+      comment: Index report_card.source_card_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_source_card_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_source_card_id
+            columns:
+              column:
+                name: source_card_id
+
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################
