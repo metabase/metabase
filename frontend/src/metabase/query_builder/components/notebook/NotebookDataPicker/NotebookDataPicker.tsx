@@ -7,7 +7,6 @@ import {
 } from "metabase/common/components/DataPicker";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
-import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
@@ -16,6 +15,8 @@ import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell } from "../NotebookCell";
+
+import { getUrl } from "./utils";
 
 interface NotebookDataPickerProps {
   title: string;
@@ -58,27 +59,6 @@ export function NotebookDataPicker({
     [query, stageIndex, table],
   );
 
-  const getUrl = () => {
-    const pickerInfo = table && Lib.pickerInfo(query, table);
-
-    if (!pickerInfo || !tableInfo) {
-      return;
-    }
-
-    const { isModel, cardId, tableId, databaseId } = pickerInfo;
-
-    if (cardId) {
-      const payload = {
-        id: cardId,
-        name: tableInfo.displayName,
-      };
-
-      return isModel ? Urls.model(payload) : Urls.question(payload);
-    } else {
-      return Urls.tableRowsQuery(databaseId, tableId);
-    }
-  };
-
   const handleChange = async (tableId: TableId) => {
     await dispatch(loadMetadataForTable(tableId));
     const metadata = getMetadata(store.getState());
@@ -95,7 +75,7 @@ export function NotebookDataPicker({
     const openInNewTab = (link: string) => window.open(link, "_blank");
 
     if (isCtrlOrMetaClick || isMiddleClick) {
-      const url = getUrl();
+      const url = getUrl({ query, table, stageIndex });
 
       if (!url) {
         return;
