@@ -1,7 +1,6 @@
 (ns metabase.lib.breakout
   (:require
    [clojure.string :as str]
-   [metabase.lib.binning :as lib.binning]
    [metabase.lib.equality :as lib.equality]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.ref :as lib.ref]
@@ -79,19 +78,17 @@
                     options {:include-implicitly-joinable-for-source-card? false}]
                 (lib.metadata.calculation/visible-columns query stage-number stage options))]
      (when (seq cols)
-       (let [matching (into {} (keep-indexed (fn [index a-breakout]
-                                               (when-let [col (lib.equality/find-matching-column
-                                                               query stage-number a-breakout cols
-                                                               {:generous? true})]
-                                                 [col [index a-breakout]]))
-                                             (or (breakouts query stage-number) [])))]
-         (mapv #(let [[pos a-breakout] (matching %)
-                      binning (lib.binning/binning a-breakout)
-                      {:keys [unit]} (lib.temporal-bucket/temporal-bucket a-breakout)]
-                  (cond-> (assoc % :lib/hide-bin-bucket? true)
-                    binning (lib.binning/with-binning binning)
-                    unit (lib.temporal-bucket/with-temporal-bucket unit)
-                    pos (assoc :breakout-position pos)))
+       (let [existing-breakouts (breakouts query stage-number)
+             matching (group-by
+                       (fn [breakout-pos]
+                         (lib.equality/find-matching-column query
+                                                            stage-number
+                                                            (get existing-breakouts breakout-pos)
+                                                            cols))
+                       (range (count existing-breakouts)))]
+         (mapv #(let [positions (matching %)]
+                  (cond-> %
+                    positions (assoc :breakout-positions positions)))
                cols))))))
 
 (mu/defn existing-breakouts :- [:maybe [:sequential {:min 1} ::lib.schema.ref/ref]]
