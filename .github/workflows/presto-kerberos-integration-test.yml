@@ -54,8 +54,9 @@ jobs:
       - name: Bring up Presto+Kerberos cluster
         run: cd presto-kerberos-docker && docker compose up -d && cd ..
 
-      - name: Setup Docker Compose Alias
-        run: echo "alias docker-compose=docker compose" >> $GITHUB_ENV
+      - name: Setup Docker Compose Symlink
+        run: sudo ln -s $(which docker) /usr/local/bin/docker-composee=docker compose" >> $GITHUB_ENV
+
       - name: Run Presto test query from command line (sanity check)
         run: cd presto-kerberos-docker && ./test.sh && cd ..
       # Since we are managing the Docker containers from the GitHub action container, we need to copy all the
