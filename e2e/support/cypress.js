@@ -103,7 +103,7 @@ const options = {
   collectTypes: [
     "cons:log",
     "cons:info",
-    // 'cons:warn', - disabled by intension because of noise from mbql
+    // 'cons:warn', - intentionally disabled because of noise from mbql
     "cons:error",
     "cy:log",
     "cy:xhr",
