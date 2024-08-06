@@ -6,11 +6,11 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.db.connection :as mdb.connection]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
    [metabase.models.setting :as setting]
-   [metabase.query-processor.context.default :as context.default]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
@@ -95,12 +95,12 @@ For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_ap
   "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
   will kill connections that time out, but in practice it seems that connections disappear into the ether every once
   in a while; rather than exhaust the connection pool, let's be extra safe. This should be the same as the query
-  timeout in [[metabase.query-processor.context.default/query-timeout-ms]] by default."
+  timeout in [[driver.u/db-query-timeout-minutes]] by default."
   :visibility :internal
   :type       :integer
   :getter     (fn []
                 (or (setting/get-value-of-type :integer :jdbc-data-warehouse-unreturned-connection-timeout-seconds)
-                    (long (/ context.default/query-timeout-ms 1000))))
+                    (long (u/minutes->seconds (driver.u/db-query-timeout-minutes)))))
   :setter     :none)
 
 (defmethod data-warehouse-connection-pool-properties :default
