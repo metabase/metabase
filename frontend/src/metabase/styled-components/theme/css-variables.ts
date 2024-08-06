@@ -110,7 +110,7 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
  * These CSS variables are NOT part of the core design system colors.
  * Do NOT add them to [palette.ts] and [colors.ts].
  *
- * Keep in sync with [GlobalStyles.tsx] and [.storybook/preview-head.html].
+ * Keep in sync with [GlobalStyles.tsx].
  * Refer to DEFAULT_METABASE_COMPONENT_THEME for their defaults.
  **/
 export function getThemeSpecificCssVariables(theme: MantineTheme) {

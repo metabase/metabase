@@ -11,7 +11,6 @@ export const ACCENT_COUNT = 8;
 // frontend/src/metabase/css/core/colors.module.css
 // frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
 // frontend/src/metabase/styled-components/theme/css-variables.ts
-// .storybook/preview-head.html
 export const colors = {
   brand: "#509EE3",
   summarize: "#88BF4D",
