@@ -166,6 +166,8 @@ const setup = ({
       path="*"
       component={() => (
         <DashboardHeaderButtonRow
+          canResetFilters
+          onResetFilters={jest.fn()}
           refreshPeriod={null}
           onRefreshPeriodChange={jest.fn()}
           setRefreshElapsedHook={jest.fn()}

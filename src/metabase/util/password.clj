@@ -88,6 +88,13 @@
        (or (= (config/config-kw :mb-password-complexity) :weak)
            (is-uncommon? password))))
 
+(def ^:private default-bcrypt-work-factor
+  "Default work factor used for hashing passwords with BCrypt. Intentionally minimal for tests to reduce testing time."
+  (if config/is-test?
+    ;; 4 is the minimum supported value by jbcrypt library.
+    4
+    10))
+
 ;; copied from cemerick.friend.credentials EPL v1.0 license
 (defn hash-bcrypt
   "Hashes a given plaintext password using bcrypt and an optional
@@ -97,7 +104,7 @@
   [password & {:keys [work-factor]}]
   (BCrypt/hashpw password (if work-factor
                             (BCrypt/gensalt work-factor)
-                            (BCrypt/gensalt))))
+                            (BCrypt/gensalt default-bcrypt-work-factor))))
 
 (defn bcrypt-verify
   "Returns true if the plaintext [password] corresponds to [hash],

@@ -1011,6 +1011,22 @@ disclosure [here](https://github.com/metabase/metabase/blob/master/SECURITY.md#r
 
 # Development
 
+## Storybook
+
+You can use storybook to run SDK components during local development.
+
+When you have Metabase instance running:
+```bash
+yarn storybook-embedding-sdk
+```
+
+
+### Initial configuration
+1. Set JWT secret to be "`0000000000000000000000000000000000000000000000000000000000000000`" in Admin > Authentication > JWT > String used by the JWT signing key
+1. Make sure "User Provisioning" setting is set to "`on`".
+1. Set Authorized Origins to "`*`" in Admin > Embedding > Interactive embedding
+
+
 ## Building locally
 
 First you need to build the Metabase Embedding SDK for React locally:

@@ -577,7 +577,30 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   describe("dashboards", () => {
-    beforeEach(() => {
+    it("should be scrollable even when tiny (metabase#24678)", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 3,
+          size_y: 3,
+        },
+      }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
+
+      dashboardCards()
+        .eq(0)
+        .within(() => {
+          cy.findByText("Doohickey").scrollIntoView().should("be.visible");
+        });
+    });
+
+    it("should allow filtering drill through (metabase#14632) (metabase#14465)", () => {
       cy.createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
@@ -592,13 +615,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           size_y: 8,
         },
       }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
-    });
 
-    it("should display a pivot table on a dashboard (metabase#14465)", () => {
-      assertOnPivotFields();
-    });
-
-    it("should allow filtering drill through (metabase#14632)", () => {
       assertOnPivotFields();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Google").click(); // open drill-through menu
