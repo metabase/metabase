@@ -16,7 +16,7 @@ import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell } from "../NotebookCell";
 
-import { getUrl } from "./utils";
+import { getUrl, openInNewTab } from "./utils";
 
 interface NotebookDataPickerProps {
   title: string;
@@ -71,15 +71,21 @@ export function NotebookDataPicker({
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isCtrlOrMetaClick =
       (event.ctrlKey || event.metaKey) && event.button === 0;
-    const isMiddleClick = event.button === 1;
-    const openInNewTab = (link: string) => window.open(link, "_blank");
 
-    if (isCtrlOrMetaClick || isMiddleClick) {
+    if (isCtrlOrMetaClick) {
       const url = getUrl({ query, table, stageIndex });
 
-      if (!url) {
-        return;
-      }
+      openInNewTab(url);
+    } else {
+      setIsOpen(true);
+    }
+  };
+
+  const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const isMiddleClick = event.button === 1;
+
+    if (isMiddleClick) {
+      const url = getUrl({ query, table, stageIndex });
 
       openInNewTab(url);
     } else {
@@ -96,6 +102,7 @@ export function NotebookDataPicker({
         p={NotebookCell.CONTAINER_PADDING}
         disabled={isDisabled}
         onClick={handleClick}
+        onAuxClick={handleAuxClick}
       >
         <Group spacing="xs">
           {tableInfo && <Icon name={getTableIcon(tableInfo)} />}

@@ -7,7 +7,11 @@ type Props = {
   stageIndex: number;
 };
 
-export const getUrl = ({ query, table, stageIndex }: Props) => {
+export const getUrl = ({
+  query,
+  table,
+  stageIndex,
+}: Props): string | undefined => {
   if (!table) {
     return;
   }
@@ -31,4 +35,12 @@ export const getUrl = ({ query, table, stageIndex }: Props) => {
   } else {
     return Urls.tableRowsQuery(databaseId, tableId);
   }
+};
+
+export const openInNewTab = (link?: string) => {
+  if (!link) {
+    return;
+  }
+
+  window.open(link, "_blank");
 };
