@@ -202,8 +202,10 @@
 (defn ->analyzable
   "Given a partial card or its id, ensure that we have all the fields required for analysis."
   [card-or-id]
-  (if (and (map? card-or-id) (every? (partial contains? card-or-id) [:id :archived :dataset_query]))
+  ;; If we don't know whether a card has been archived, give it the benefit of the doubt.
+  (if (every? #(some? (% card-or-id)) [:id :dataset_query])
     card-or-id
+    ;; If we need to query the database though, find out for sure.
     (t2/select-one [:model/Card :id :archived :dataset_query] (u/the-id card-or-id))))
 
 (defn analyze-card!
@@ -218,13 +220,13 @@
       (when (and card (not (:archived card)))
         (update-query-analysis-for-card! card))))
 
-(defn next-card-id!
+(defn next-card-or-id!
   "Get the id of the next card id to be analyzed. May block indefinitely, relies on producer.
   Should only be called from [[metabase.task.analyze-queries]]."
   ([]
-   (next-card-id! worker-queue))
+   (next-card-or-id! worker-queue))
   ([queue]
-   (next-card-id! queue Long/MAX_VALUE))
+   (next-card-or-id! queue Long/MAX_VALUE))
   ([queue timeout]
    (queue/blocking-take! queue timeout)))
 
@@ -232,8 +234,8 @@
   "Indirection used to modify the execution strategy for analysis in dev and tests."
   [offer-fn! card-or-id]
   (case (execution)
-    ::immediate (analyze-card! (u/the-id card-or-id))
-    ::queued    (offer-fn! (u/the-id card-or-id))
+    ::immediate (analyze-card! card-or-id)
+    ::queued    (offer-fn! card-or-id)
     ::disabled  nil))
 
 (defn analyze-async!

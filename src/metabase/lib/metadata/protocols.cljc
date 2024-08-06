@@ -62,7 +62,8 @@
 (defn metadata-provider?
   "Whether `x` is a valid [[MetadataProvider]]."
   [x]
-  (satisfies? MetadataProvider x))
+  #?(:clj (extends? MetadataProvider (class x))
+     :cljs (satisfies? MetadataProvider x)))
 
 (mr/def ::metadata-provider
   "Schema for something that satisfies the [[metabase.lib.metadata.protocols/MetadataProvider]] protocol."
@@ -159,7 +160,8 @@
 (defn cached-metadata-provider?
   "Whether `x` is a valid [[CachedMetadataProvider]]."
   [x]
-  (satisfies? CachedMetadataProvider x))
+   #?(:clj (extends? CachedMetadataProvider (class x))
+      :cljs (satisfies? CachedMetadataProvider x)))
 
 (mr/def ::cached-metadata-provider
   [:fn

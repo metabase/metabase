@@ -106,10 +106,12 @@
   "For ref validation purposes we should ignore `:joins` and any namespaced keys that might be used to record additional
   info e.g. `:lib/metadata`."
   [stage]
-  (select-keys stage (into []
-                           (comp (filter simple-keyword?)
-                                 (remove (partial = :joins)))
-                           (keys stage))))
+  (reduce-kv (fn [acc k _]
+               (if (or (qualified-keyword? k)
+                       (= k :joins))
+                 (dissoc acc k)
+                 acc))
+             stage stage))
 
 (defn- expression-ref-errors-for-stage [stage]
   (let [expression-names (into #{} (map (comp :lib/expression-name second)) (:expressions stage))]
