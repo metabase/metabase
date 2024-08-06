@@ -3,10 +3,7 @@ import { t } from "ttag";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls } from "metabase/query_builder/actions";
-import {
-  CompareAggregations,
-  getOffsetPeriod,
-} from "metabase/query_builder/components/CompareAggregations";
+import { CompareAggregations } from "metabase/query_builder/components/CompareAggregations";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaPlusModal } from "metabase/querying/analytics";
 import type { LegacyDrill } from "metabase/visualizations/types";
@@ -27,15 +24,12 @@ export const CompareAggregationsAction: LegacyDrill = ({
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
     !isEditable ||
-    aggregations.length === 0
+    !canAddTemporalCompareAggregation(query, stageIndex, aggregations)
   ) {
     return [];
   }
 
-  const title =
-    aggregations.length === 1
-      ? getTitle(query, stageIndex, aggregations[0])
-      : getTitle(query, stageIndex);
+  const title = t`Compare to the past`;
 
   const Popover = ({
     onChangeCardAndRun,
@@ -90,18 +84,26 @@ export const CompareAggregationsAction: LegacyDrill = ({
   ];
 };
 
-export const getTitle = (
+function canAddTemporalCompareAggregation(
   query: Lib.Query,
   stageIndex: number,
-  aggregation?: Lib.AggregationClause | Lib.ExpressionClause,
-): string => {
-  const period = getOffsetPeriod(query, stageIndex);
-
-  if (!aggregation) {
-    return t`Compare to previous ${period}`;
+  aggregations: Lib.AggregationClause[],
+): boolean {
+  if (aggregations.length === 0) {
+    // Hide the "Compare to the past" option if there are no aggregations
+    return false;
   }
 
-  const info = Lib.displayInfo(query, stageIndex, aggregation);
+  const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
+  const hasAtLeastOneTemporalBreakoutColumn = breakoutableColumns.some(column =>
+    Lib.isTemporal(column),
+  );
 
-  return t`Compare “${info.displayName}” to previous ${period}`;
-};
+  if (!hasAtLeastOneTemporalBreakoutColumn) {
+    // Hide the "Compare to the past" option if there are no
+    // temporal columns to break out on
+    return false;
+  }
+
+  return true;
+}
