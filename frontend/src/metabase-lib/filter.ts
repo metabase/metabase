@@ -347,12 +347,19 @@ export function relativeDateFilterClause({
     );
   }
 
-  return expressionClause("relative-time-interval", [
-    columnWithoutBucket,
-    value,
-    bucket,
-    offsetValue,
-    offsetBucket,
+  return expressionClause("between", [
+    expressionClause("+", [
+      columnWithoutBucket,
+      expressionClause("interval", [-offsetValue, offsetBucket]),
+    ]),
+    expressionClause("relative-datetime", [
+      value !== "current" && value < 0 ? value : 0,
+      bucket,
+    ]),
+    expressionClause("relative-datetime", [
+      value !== "current" && value > 0 ? value : 0,
+      bucket,
+    ]),
   ]);
 }
 
@@ -364,8 +371,7 @@ export function relativeDateFilterParts(
   const filterParts = expressionParts(query, stageIndex, filterClause);
   return (
     relativeDateFilterPartsWithoutOffset(filterParts) ??
-    relativeDateFilterPartsWithOffset(filterParts) ??
-    relativeDateFilterPartsRelativeTimeInterval(filterParts)
+    relativeDateFilterPartsWithOffset(filterParts)
   );
 }
 
@@ -810,47 +816,6 @@ function relativeDateFilterPartsWithOffset({
     bucket: startBucket,
     offsetValue: offsetValue * -1,
     offsetBucket,
-    options,
-  };
-}
-
-function relativeDateFilterPartsRelativeTimeInterval({
-  operator,
-  args,
-  options,
-}: ExpressionParts): RelativeDateFilterParts | null {
-  if (operator !== "relative-time-interval" || args.length !== 5) {
-    return null;
-  }
-
-  const [column, value, bucket, offsetValue, offsetBucket] = args;
-
-  if (!isColumnMetadata(column) || !isTemporal(column)) {
-    return null;
-  }
-
-  if (
-    !isNumberLiteral(value) ||
-    !isStringLiteral(bucket) ||
-    !isRelativeDateBucket(bucket)
-  ) {
-    return null;
-  }
-
-  if (
-    !isNumberLiteral(offsetValue) ||
-    !isStringLiteral(offsetBucket) ||
-    !isRelativeDateBucket(offsetBucket)
-  ) {
-    return null;
-  }
-
-  return {
-    column,
-    bucket,
-    value,
-    offsetBucket,
-    offsetValue,
     options,
   };
 }

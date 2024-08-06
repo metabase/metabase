@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 
+import { getCollectionName } from "metabase/collections/utils";
 import { ResponsiveContainer } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { useAreAnyTruncated } from "metabase/hooks/use-is-truncated";
@@ -7,8 +8,6 @@ import resizeObserver from "metabase/lib/resize-observer";
 import * as Urls from "metabase/lib/urls";
 import { Flex, Tooltip } from "metabase/ui";
 import type { CollectionEssentials } from "metabase-types/api";
-
-import { getCollectionName } from "../utils";
 
 import {
   Breadcrumb,

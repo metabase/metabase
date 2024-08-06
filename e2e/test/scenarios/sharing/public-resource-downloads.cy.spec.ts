@@ -5,11 +5,14 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   assertNotEmptyObject,
-  describeEE,
+  describeWithSnowplowEE,
   downloadAndAssert,
+  expectGoodSnowplowEvent,
+  expectNoBadSnowplowEvents,
   getDashboardCardMenu,
   main,
   popover,
+  resetSnowplow,
   restore,
   setTokenFeatures,
   showDashboardCardActions,
@@ -19,10 +22,11 @@ import {
  *  Unless the product changes, these should test the same things as `embed-resource-downloads.cy.spec.ts`
  */
 
-describeEE(
+describeWithSnowplowEE(
   "Public dashboards/questions downloads (results and export as pdf)",
   () => {
     beforeEach(() => {
+      resetSnowplow();
       cy.deleteDownloadsFolder();
     });
 
@@ -50,6 +54,10 @@ describeEE(
         cy.signOut();
       });
 
+      afterEach(() => {
+        expectNoBadSnowplowEvents();
+      });
+
       it("#downloads=false should disable both PDF downloads and dashcard results downloads", () => {
         cy.visit(`${publicLink}#downloads=false`);
         waitLoading();
@@ -68,6 +76,12 @@ describeEE(
         cy.get("header").findByText("Export as PDF").click();
 
         cy.verifyDownload("Orders in a dashboard.pdf");
+
+        expectGoodSnowplowEvent({
+          event: "dashboard_pdf_exported",
+          dashboard_id: 0,
+          dashboard_accessed_via: "public-link",
+        });
       });
 
       it("should be able to download a public dashcard as CSV", () => {
@@ -88,6 +102,13 @@ describeEE(
           },
           assertNotEmptyObject,
         );
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "dashcard",
+          accessed_via: "public-link",
+          export_type: "csv",
+        });
       });
     });
 
@@ -129,6 +150,13 @@ describeEE(
         popover().findByText(".png").click();
 
         cy.verifyDownload(".png", { contains: true });
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "question",
+          accessed_via: "public-link",
+          export_type: "png",
+        });
       });
 
       it("should be able to download a public card as CSV", () => {
@@ -148,6 +176,13 @@ describeEE(
           },
           assertNotEmptyObject,
         );
+
+        expectGoodSnowplowEvent({
+          event: "download_results_clicked",
+          resource_type: "question",
+          accessed_via: "public-link",
+          export_type: "csv",
+        });
       });
     });
   },

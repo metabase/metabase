@@ -8566,6 +8566,281 @@ databaseChangeLog:
             columnName: field_id
             remarks: This value is null if the field does not exist, or is created within a model
 
+  - changeSet:
+      id: v51.2024-07-26T11:56:27
+      author: crisptrutski
+      comment: Add `table_id` column to query fields
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_field
+              columnName: table_id
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: table_id
+                  type: int
+                  remarks: track the table directly, in case the field does not exist
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-29T09:22:12
+      author: crisptrutski
+      comment: Add the query_analysis table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - tableExists:
+              tableName: query_analysis
+      changes:
+        - createTable:
+            tableName: query_analysis
+            remarks: Parent node for query analysis records
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_analysis_card_id
+                    deleteCascade: true
+              - column:
+                  remarks: The timestamp of when the analysis was created
+                  name: created_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The timestamp of when the analysis was updated
+                  name: updated_at
+                  type: ${timestamp_type}
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-29T09:23:12
+      author: crisptrutski
+      comment: Index query_analysis.card_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_analysis
+            indexName: idx_query_analysis_card_id
+            columns:
+              column:
+                name: card_id
+
+  - changeSet:
+      id: v51.2024-07-29T09:24:13
+      author: crisptrutski
+      comment: Add the query_table join table
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - tableExists:
+              tableName: query_table
+      changes:
+        - createTable:
+            tableName: query_table
+            remarks: Tables used by a card's query
+            columns:
+              - column:
+                  name: id
+                  remarks: PK
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  name: card_id
+                  remarks: referenced card
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: report_card
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_card_id
+                    deleteCascade: true
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_analysis_id
+                    deleteCascade: true
+              - column:
+                  name: table_id
+                  remarks: referenced field
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: metabase_table
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_table_table_id
+                    deleteCascade: true
+              - column:
+                  name: schema
+                  type: varchar(254) # matching metabase_table.schema
+                  remarks: name of the schema of the table being referenced
+                  constraints:
+                    nullable: true
+              - column:
+                  name: table
+                  type: varchar(254) # matching metabase_table.name
+                  remarks: name of the table or card being referenced
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-29T09:25:13
+      author: crisptrutski
+      comment: Index query_table.card_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table
+            indexName: idx_query_table_card_id
+            columns:
+              column:
+                name: card_id
+
+  - changeSet:
+      id: v51.2024-07-29T09:25:14
+      author: crisptrutski
+      comment: Index query_table.analysis_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table
+            indexName: idx_query_table_analysis_id
+            columns:
+              column:
+                name: analysis_id
+
+  - changeSet:
+      id: v51.2024-07-29T09:25:15
+      author: crisptrutski
+      comment: Index query_table.table_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_table
+            indexName: idx_query_table_table_id
+            columns:
+              column:
+                name: table_id
+
+  - changeSet:
+      id: v51.2024-07-29T10:03:27
+      author: crisptrutski
+      comment: Wipe stale query fields, so we can add new non-nullable columns
+      rollback: # none, entries will be recreated by sweeper
+      changes:
+        - delete:
+            tableName: query_field
+            remarks: remove stale analysis, so the new fields can be non-nullable
+
+  - changeSet:
+      id: v51.2024-07-29T10:04:13
+      author: crisptrutski
+      comment: Put Query Fields under a parent Query Analysis record
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_field
+              columnName: analysis_id
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: analysis_id
+                  remarks: round of analysis
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: query_analysis
+                    referencedColumnNames: id
+                    foreignKeyName: fk_query_field_analysis_id
+                    deleteCascade: true
+                    deleteCascadeForce: true # its safe as we have truncated the table
+      rollback:
+        - dropForeignKeyConstraint:
+            baseTableName: query_field
+            constraintName: fk_query_field_analysis_id
+        - dropColumn:
+            tableName: query_field
+            columnName: analysis_id
+
+  - changeSet:
+      id: v51.2024-07-29T11:25:13
+      author: crisptrutski
+      comment: Index query_field.analysis_id
+      rollback: # not necessary, will be removed with the table
+      preConditions: # linter made me add this
+      changes:
+        - createIndex:
+            tableName: query_field
+            indexName: idx_query_field_analysis_id
+            columns:
+              column:
+                name: analysis_id
+
+  - changeSet:
+      id: v51.2024-08-02T11:56:27
+      author: crisptrutski
+      comment: Add `schema` column to query fields
+      preConditions:
+        - not:
+            - columnExists:
+                tableName: query_field
+                columnName: schema
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: schema
+                  type: varchar(254) # matching metabase_table.schema
+                  remarks: name of the schema of the table being referenced
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-08-02T12:02:21
+      author: crisptrutski
+      comment: Make `table` nullable on query fields
+      changes:
+        - dropNotNullConstraint:
+            tableName: query_field
+            columnDataType: varchar(254) # matching metabase_table.name
+            columnName: table
+            remarks: This value is null if the field does not exist, and macaw could not determine the table
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

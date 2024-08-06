@@ -32,7 +32,7 @@ export const createModelsAndXrays: CliStepMethod = async state => {
 
     const dashboardIds: DashboardId[] = [];
 
-    // We one generate dashboard at a time to prevent multiple
+    // We create dashboard sequentially to prevent multiple
     // "Automatically Generated Dashboards" collection from being created.
     for (const modelId of modelIds) {
       const dashboardId = await createXrayDashboardFromModel({

@@ -10,6 +10,8 @@
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.parameter :as lib.schema.parameter]
    [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.shared.util.time :as shared.ut]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu])
@@ -467,6 +469,65 @@
          (throw (ex-info (tru "Don''t know how to parse date param ''{0}'' — invalid format" date-string)
                          {:param date-string
                           :type  qp.error-type/invalid-parameter}))))))
+
+(defn- date-str->qp-aware-offset-dt
+  "Generate offset datetime from `date-str` with respect to qp's `results-timezone`."
+  [date-str]
+  (when date-str
+    (let [[y M d h m s] (shared.ut/yyyyMMddhhmmss->parts date-str)]
+      (try (.toOffsetDateTime (t/zoned-date-time y M d h m s 0 (t/zone-id (qp.timezone/results-timezone-id))))
+           (catch Throwable _
+             (t/offset-date-time y M d h m s 0 (t/zone-offset (qp.timezone/results-timezone-id))))))))
+
+(defn- date-str->unit-fn
+  "Return appropriate function for interval end adjustments in [[exclusive-datetime-range-end]]."
+  [date-str]
+  (when date-str
+    (if (re-matches shared.ut/local-date-regex date-str)
+      t/days
+      t/minutes)))
+
+(defn- exclusive-datetime-range-end
+  "Transform `end-dt` OffsetDateTime to appropriate range end.
+
+  Context. Datetime range is required for `FieldFilter`s on `:type/DateTime` fields (see the
+  [[metabase.driver.sql.parameters.substitution/field-filter->replacement-snippet-info]]) instead of _Date Range_
+  available from [[date-string->range]].
+
+  [[date-string->range]] returns interval of dates. [[date-str->datetime-range]] modifies the interval to consist
+  of datetimes. By adding 0 temporal padding the end interval has to be adjusted."
+  [end-dt unit-fn]
+  (when (and end-dt unit-fn)
+    (t/+ end-dt (unit-fn 1))))
+
+(defn- fallback-raw-range
+  "Try to extract date time value if [[date-string->range]] fails."
+  [date-str]
+  (let [date-str (first (re-find #"\d+-\d+-\d+T?(\d?+)?(:\d+)?(:\d+)?" date-str))]
+    {:start date-str
+     :end   date-str}))
+
+(mu/defn date-str->datetime-range :- DateStringRange
+  "Generate range from `date-range-str`.
+
+  First [[date-string->range]] generates range for dates (inclusive by default). Operating on that range,
+  this function:
+  1. converts dates to OffsetDateTime, respecting qp's timezone, adding zero temporal padding,
+  2. updates range to correct _end-exclusive datetime_*
+  3. formats the range.
+
+  This function is meant to be used for generating inclusive intervals for `:type/DateTime` field filters.
+
+  * End-exclusive gte lt filters are generated for `:type/DateTime` fields."
+  [raw-date-str]
+  (let [;; `raw-date-str` is sanitized in case it contains millis and timezone which are incompatible
+        ;; with [[date-string->range]]. `substitute-field-filter-test` expects that to happen.
+        range-raw (try (date-string->range raw-date-str)
+                       (catch Throwable _
+                         (fallback-raw-range raw-date-str)))]
+    (-> (update-vals range-raw date-str->qp-aware-offset-dt)
+        (update :end exclusive-datetime-range-end (date-str->unit-fn (:end range-raw)))
+        format-date-range)))
 
 (mu/defn date-string->filter :- mbql.s/Filter
   "Takes a string description of a *date* (not datetime) range such as 'lastmonth' or '2016-07-15~2016-08-6' and

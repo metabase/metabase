@@ -8,7 +8,6 @@ import CS from "metabase/css/core/index.css";
 import FormattedParameterValue from "metabase/parameters/components/FormattedParameterValue";
 import S from "metabase/parameters/components/ParameterValueWidget.module.css";
 import { ParameterValueWidgetTrigger } from "metabase/parameters/components/ParameterValueWidgetTrigger";
-import { WidgetStatusIcon } from "metabase/parameters/components/WidgetStatusIcon";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
 import { Box, Icon, Popover, type PopoverProps } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
@@ -22,6 +21,7 @@ import {
 import type { Dashboard, ParameterId } from "metabase-types/api";
 
 import { ParameterDropdownWidget } from "./ParameterDropdownWidget";
+import { WidgetStatus } from "./WidgetStatus";
 
 export type ParameterValueWidgetProps = {
   parameter: UiParameter;
@@ -68,6 +68,8 @@ export const ParameterValueWidget = ({
   const [isFocused, setIsFocused] = useState(false);
 
   const hasValue = !parameterHasNoDisplayValue(value);
+  const hasDefaultValue = !parameterHasNoDisplayValue(parameter.default);
+  const fieldHasValueOrFocus = parameter.value != null || isFocused;
   const noPopover = hasNoPopover(parameter);
   const parameterTypeIcon = getParameterIconName(parameter);
   const showTypeIcon = !isEditing && !hasValue && !isFocused;
@@ -75,10 +77,28 @@ export const ParameterValueWidget = ({
   const [isOpen, { close, toggle }] = useDisclosure();
 
   const getOptionalActionIcon = () => {
-    if (value != null) {
+    const { default: defaultValue } = parameter;
+
+    if (
+      hasDefaultValue &&
+      !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
+    ) {
       return (
-        <WidgetStatusIcon
-          name="close"
+        <WidgetStatus
+          className={S.widgetStatus}
+          highlighted={fieldHasValueOrFocus}
+          status="reset"
+          onClick={() => setParameterValueToDefault?.(parameter.id)}
+        />
+      );
+    }
+
+    if (hasValue) {
+      return (
+        <WidgetStatus
+          className={S.widgetStatus}
+          highlighted={fieldHasValueOrFocus}
+          status="clear"
           onClick={() => {
             setValue(null);
             close();
@@ -88,12 +108,7 @@ export const ParameterValueWidget = ({
     }
 
     if (!hasNoPopover(parameter)) {
-      return (
-        <WidgetStatusIcon
-          name="chevrondown"
-          size={mimicMantine ? 16 : undefined}
-        />
-      );
+      return <WidgetStatus className={S.widgetStatus} status="empty" />;
     }
   };
 
@@ -102,13 +117,29 @@ export const ParameterValueWidget = ({
 
     if (
       required &&
-      defaultValue &&
+      hasDefaultValue &&
       !areParameterValuesIdentical(wrapArray(value), wrapArray(defaultValue))
     ) {
       return (
-        <WidgetStatusIcon
-          name="time_history"
+        <WidgetStatus
+          className={S.widgetStatus}
+          highlighted={fieldHasValueOrFocus}
+          status="reset"
           onClick={() => setParameterValueToDefault?.(parameter.id)}
+        />
+      );
+    }
+
+    if (required && !hasDefaultValue && hasValue) {
+      return (
+        <WidgetStatus
+          className={S.widgetStatus}
+          highlighted={fieldHasValueOrFocus}
+          status="clear"
+          onClick={() => {
+            setValue(null);
+            close();
+          }}
         />
       );
     }
@@ -126,7 +157,7 @@ export const ParameterValueWidget = ({
 
     if (!icon) {
       // This is required to keep input width constant
-      return <WidgetStatusIcon name="empty" />;
+      return <WidgetStatus className={S.widgetStatus} status="none" />;
     }
 
     return icon;
@@ -135,7 +166,7 @@ export const ParameterValueWidget = ({
   const resetToDefault = () => {
     const { required, default: defaultValue } = parameter;
 
-    if (required && defaultValue && !value) {
+    if (required && defaultValue != null && !value) {
       setValue(defaultValue);
     }
   };
@@ -159,6 +190,7 @@ export const ParameterValueWidget = ({
       >
         <ParameterValueWidgetTrigger
           className={cx(S.noPopover, className)}
+          ariaLabel={parameter.name}
           hasValue={hasValue}
         >
           {showTypeIcon && (
@@ -279,7 +311,7 @@ function isTextWidget(parameter: UiParameter) {
   return parameter.hasVariableTemplateTagTarget && !canQuery;
 }
 
-function wrapArray(value: any): any[] {
+function wrapArray<T>(value: T | T[]): T[] {
   if (Array.isArray(value)) {
     return value;
   }
