@@ -90,14 +90,17 @@
         card-id
         (do
           (check-card-read-perms database-id card-id)
-          (when-not (query-perms/check-data-perms outer-query required-perms :throw-exceptions? false)
-            (check-block-permissions outer-query)))
+          ;; FIXME we shouldn't need to do this condition, just check the data perms.
+          ;; this is saying: do i have `view-data` and `create-query` permissions? If not,
+          ;; check if I have `view-data` and then we're good.
+          (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+            (throw (query-perms/perms-exception required-perms))))
 
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
         *param-values-query*
-        (when-not (query-perms/check-data-perms outer-query required-perms :throw-exceptions? false)
-          (check-block-permissions outer-query))
+        (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
+          (throw (query-perms/perms-exception required-perms)))
 
         :else
         (do

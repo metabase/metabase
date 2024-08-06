@@ -186,12 +186,11 @@
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm gtap-perms db-id]
   (or
-      (data-perms/at-least-as-permissive? perm-type
-                                          (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
-                                          required-perm)
-      (when gtap-perms
-       (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))
-      (throw (perms-exception {db-id {perm-type required-perm}}))))
+   (data-perms/at-least-as-permissive? perm-type
+                                       (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
+                                       required-perm)
+   (when gtap-perms
+     (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
 
 (defn check-table-level-perms
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. This can be satisfied via
@@ -199,24 +198,46 @@
   row-level-restrictions QP middleware when sandboxing is in effect. Throws an exception if the permission check fails;
   else returns `true`."
   [perm-type table-id->required-perm gtap-table-perms db-id]
-  (if table-id->required-perm
-    (doseq [[table-id required-perm] table-id->required-perm]
-      (or
-       (data-perms/user-has-permission-for-table?
-        api/*current-user-id*
-        perm-type
-        required-perm
-        db-id
-        table-id)
-       (when-let [gtap-perm (if (keyword? gtap-table-perms)
-                              ;; gtap-table-perms can be a keyword representing the DB permission...
-                              gtap-table-perms
-                              ;; ...or a map from table IDs to table permissions
-                              (get gtap-table-perms table-id))]
-         (data-perms/at-least-as-permissive? perm-type
-                                             gtap-perm
-                                             required-perm))
-       (throw (perms-exception {db-id {perm-type {table-id required-perm}}}))))
+  (let [table-id->has-required-perms?
+        (into {}
+              (for [[table-id required-perm] table-id->required-perm]
+                [table-id
+                 (boolean
+                  (or
+                   (data-perms/user-has-permission-for-table?
+                    api/*current-user-id*
+                    perm-type
+                    required-perm
+                    db-id
+                    table-id)
+                   (when-let [gtap-perm (if (keyword? gtap-table-perms)
+                                          ;; gtap-table-perms can be a keyword representing the DB permission...
+                                          gtap-table-perms
+                                          ;; ...or a map from table IDs to table permissions
+                                          (get gtap-table-perms table-id))]
+                     (data-perms/at-least-as-permissive? perm-type
+                                                         gtap-perm
+                                                         required-perm))))]))]
+    (every? true? (vals table-id->has-required-perms?))))
+
+(defn has-perm-for-query? [{{gtap-perms :gtaps} ::perms, db-id :database
+                            :as _query}
+                           perm-type
+                           required-perms]
+  (if-let [db-or-table-perms (perm-type required-perms)]
+    (cond
+      (keyword? db-or-table-perms)
+      (check-db-level-perms perm-type db-or-table-perms (perm-type gtap-perms) db-id)
+
+      (map? db-or-table-perms)
+      (check-table-level-perms perm-type
+                               db-or-table-perms
+                               (perm-type gtap-perms)
+                               db-id)
+
+      :else
+      (throw (ex-info (tru "Invalid required permissions")
+                      required-perms)))
     true))
 
 (defn check-data-perms
@@ -225,8 +246,9 @@
   `throw-exceptions?` to `false`).
 
   If the [:gtap ::perms] path is present in the query, these perms are implicitly granted to the current user."
-  [{{gtap-perms :gtaps} ::perms, db-id :database} required-perms & {:keys [throw-exceptions?]
-                                                                    :or   {throw-exceptions? true}}]
+  [{{gtap-perms :gtaps} ::perms, :as query}
+   required-perms & {:keys [throw-exceptions?]
+                     :or   {throw-exceptions? true}}]
   (try
     ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]
@@ -236,23 +258,8 @@
 
     ;; Check view-data and create-queries permissions, for individual tables or the entire DB
     (doseq [perm-type [:perms/view-data :perms/create-queries]]
-      (when-let [db-or-table-perms (perm-type required-perms)]
-        ;; In practice, `view-data` will be defined at the table-level, and `create-queries` will either be table-level
-        ;; or :query-builder-and-native for the entire DB. But we should enforce whatever `required-perms` are provided,
-        ;; in case that ever changes.
-        (cond
-          (keyword? db-or-table-perms)
-          (check-db-level-perms perm-type db-or-table-perms (perm-type gtap-perms) db-id)
-
-          (map? db-or-table-perms)
-          (check-table-level-perms perm-type
-                                   db-or-table-perms
-                                   (perm-type gtap-perms)
-                                   db-id)
-
-          :else
-          (throw (ex-info (tru "Invalid required permissions")
-                          required-perms)))))
+      (when-not (has-perm-for-query? query perm-type required-perms)
+        (throw (perms-exception required-perms))))
 
     true
     (catch clojure.lang.ExceptionInfo e

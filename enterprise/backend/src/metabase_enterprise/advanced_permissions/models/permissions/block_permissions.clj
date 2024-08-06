@@ -15,8 +15,8 @@
   :feature :advanced-permissions
   [{database-id :database :as query}]
   (or
-   (not= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
-   (let [table-ids (query-perms/query->source-table-ids query)]
+   #_(not= :blocked (data-perms/full-db-permission-for-user api/*current-user-id* :perms/view-data database-id))
+   (let [table-ids #p (query-perms/query->source-table-ids query)]
      (= #{:unrestricted}
         (set
          (map (partial data-perms/table-permission-for-user api/*current-user-id* :perms/view-data database-id)
