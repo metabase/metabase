@@ -21,13 +21,30 @@
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.test :as mt])
   (:import
-   (org.apache.poi.xssf.usermodel XSSFSheet)))
+   (org.apache.poi.xssf.usermodel XSSFSheet)
+   (org.apache.poi.ss.usermodel DataFormatter)))
+
+(def ^:private cell-formatter (DataFormatter.))
+(defn- read-cell-with-formatting
+  [c]
+  (.formatCellValue cell-formatter c))
+
+(defn- read-xlsx
+  [result]
+  (with-open [in (io/input-stream result)]
+    (->> (spreadsheet/load-workbook in)
+         (spreadsheet/select-sheet "Query result")
+         (spreadsheet/row-seq)
+         (mapv (fn [r]
+                 (->>  (spreadsheet/cell-seq r)
+                       (mapv read-cell-with-formatting)))))))
 
 (defn- process-results
   [export-format results]
   (when (seq results)
     (case export-format
-      :csv (csv/read-csv results))))
+      :csv  (csv/read-csv results)
+      :xlsx (read-xlsx results))))
 
 (defn- card-download
   [{:keys [id] :as _card} export-format format-rows?]
@@ -633,3 +650,27 @@
                     :dashcard-download ["Subtotal (CAD)" "0.38"]}
                    {:card-download     (mapv #(nth % 3) (take 2 card-result))
                     :dashcard-download (mapv #(nth % 3) (take 2 dashcard-result))}))))))))
+
+(deftest column-settings-on-aggregated-columns-test
+  (testing "Column settings on aggregated columns are applied"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card  {:display                :table
+                                        :type                   :model
+                                        :dataset_query          {:database (mt/id)
+                                                                 :type     :query
+                                                                 :query    {:source-table (mt/id :products)
+                                                                            :aggregation  [[:sum [:field (mt/id :products :price) {:base-type :type/Float}]]]
+                                                                            :breakout     [[:field (mt/id :products :category) {:base-type :type/Text}]]
+                                                                            :limit        10}}
+                                        :visualization_settings {:column_settings
+                                                                 {"[\"name\",\"sum\"]"
+                                                                  {:number_style       "currency"
+                                                                   :currency           "CAD"
+                                                                   :currency_style     "name"
+                                                                   :currency_in_header false}}}}]
+        (testing "for csv"
+          (is (= "2,185.89 Canadian dollars"
+                 (-> (card-download card :csv true) second second))))
+        (testing "for xlsx (#43039)"
+          (is (= "2,185.89 Canadian dollars"
+                 (-> (card-download card :xlsx true) second second))))))))

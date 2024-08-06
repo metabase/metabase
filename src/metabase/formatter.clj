@@ -89,6 +89,9 @@
                           "metabase.shared.models.visualization-settings"
                           (name k)))))
 
+;; TODO: use `metabase.query-processor.streaming.common/viz-settings-for-col` here, it's
+;; doing the same thing (unifying global settings, column settings, and viz-settings for the column.
+;; perhaps that implementation needs to move here, or to a new `metabase.formatter.common` or something?
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
