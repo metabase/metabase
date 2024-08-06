@@ -17,7 +17,7 @@
   You generally shouldn't use this outside of this namespace unless you have a really good reason to do so! Make sure
   you used namespaced keys if you are using it elsewhere."
   [k schema value-thunk]
-  (or (get-in @cache [k schema])
+  (or (get (get @cache k) schema) ; get-in is terribly inefficient
       (let [v (value-thunk)]
         (swap! cache assoc-in [k schema] v)
         v)))
