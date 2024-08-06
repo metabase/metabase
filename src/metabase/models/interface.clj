@@ -705,6 +705,7 @@
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
 
 (mu/defn instances-with-hydrated-data
+  ;; TODO: this example is wrong, we don't get a vector of tables
   "Helper function to write batched hydrations.
   Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
 

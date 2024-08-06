@@ -8,6 +8,7 @@
    [metabase.lib.metric :as lib.metric]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.test-util.metadata-providers.mock :as providers.mock]
    [metabase.lib.util :as lib.util]))
 
 #?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
@@ -210,6 +211,23 @@
                     :aggregation-position 0}]
                   (map #(lib/display-info query-with-metric %)
                        metrics)))))))
+  (testing "Metrics based on cards are available"
+    (let [metric {:name "Metrics"
+                  :id 2
+                  :type :metric
+                  :database-id (meta/id)
+                  :source-card-id 1
+                  :dataset-query {:database (meta/id)
+                                  :type :query
+                                  :query {:source-table "card__1"
+                                          :aggregation [[:count]]}}}
+          mp (lib/composed-metadata-provider
+              lib.tu/metadata-provider-with-model
+              (providers.mock/mock-metadata-provider
+               {:cards [metric]}))]
+      (is (=? [(assoc metric :lib/type :metadata/metric)]
+              (-> (lib/query mp (lib.metadata/card lib.tu/metadata-provider-with-model 1))
+                  lib/available-metrics)))))
   (testing "query with different Table -- don't return Metrics"
     (is (nil? (lib.metric/available-metrics (lib/query metadata-provider (meta/table-metadata :orders))))))
   (testing "for subsequent stages -- don't return Metrics (#37173)"
