@@ -146,6 +146,66 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
     });
   });
 
+  describe("no temporal columns", () => {
+    beforeEach(() => {
+      cy.request("PUT", `/api/field/${PRODUCTS.CREATED_AT}`, {
+        base_type: "type/Text",
+      });
+    });
+
+    it("no breakout", () => {
+      createQuestion(
+        { query: QUERY_NO_AGGREGATION },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
+      cy.log("chill mode - summarize sidebar");
+      cy.button("Summarize").click();
+      rightSidebar().button("Count").icon("close").click();
+      rightSidebar().button("Add aggregation").click();
+      verifyNoColumnCompareShortcut();
+
+      cy.log("chill mode - column drill");
+      tableHeaderClick("Title");
+      verifyNoColumnCompareShortcut();
+
+      cy.log("chill mode - plus button");
+      cy.button("Add column").click();
+      verifyNoColumnCompareShortcut();
+
+      cy.log("notebook editor");
+      openNotebook();
+      cy.button("Summarize").click();
+      verifyNoColumnCompareShortcut();
+    });
+
+    it("one breakout", () => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
+      cy.log("chill mode - summarize sidebar");
+      cy.button("Summarize").click();
+      rightSidebar().button("Count").icon("close").click();
+      rightSidebar().button("Add aggregation").click();
+      verifyNoColumnCompareShortcut();
+
+      cy.log("chill mode - column drill");
+      tableHeaderClick("Category");
+      verifyNoColumnCompareShortcut();
+
+      cy.log("chill mode - plus button");
+      cy.button("Add column").click();
+      verifyNoColumnCompareShortcut();
+
+      cy.log("notebook editor");
+      openNotebook();
+      cy.button("Summarize").click();
+      verifyNoColumnCompareShortcut();
+    });
+  });
+
   describe("single aggregation", () => {
     it("no breakout", () => {
       createQuestion(
