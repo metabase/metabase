@@ -113,7 +113,7 @@
      :query      (explicit-references (mbql.u/referenced-field-ids query))
      :mbql/query (explicit-references (lib.util/referenced-field-ids query)))))
 
-(defn update-query-analysis-for-card!
+(defn- update-query-analysis-for-card!
   "Clears QueryFields associated with this card and creates fresh, up-to-date-ones.
 
   Returns `nil` (and logs the error) if there was a parse error.
@@ -130,9 +130,10 @@
                                   :schema      schema
                                   :table       table
                                   :table_id    table-id})
-              field->row       (fn [{:keys [table column table-id field-id explicit-reference]}]
+              field->row       (fn [{:keys [schema table column table-id field-id explicit-reference]}]
                                  {:card_id            card-id
                                   :analysis_id        analysis-id
+                                  :schema             schema
                                   :table              table
                                   :column             column
                                   :table_id           table-id

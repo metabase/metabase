@@ -1,4 +1,4 @@
-(ns metabase.models.query-field-test
+(ns metabase.models.query-analysis-test
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
@@ -59,7 +59,9 @@
   [card-id query]
   (if (string? query)
     (t2/update! :model/Card card-id {:dataset_query (mt/native-query {:query query})})
-    (t2/update! :model/Card card-id {:dataset_query query})))
+    (t2/update! :model/Card card-id {:dataset_query query}))
+  ;; TODO remove this hack, adjusting the queue design to handle unsaved cards #45460
+  (query-analysis/analyze-card! card-id))
 
 ;;;;
 ;;;; Actual tests
@@ -190,11 +192,10 @@
 (deftest no-column-test
   (with-test-setup
     (let [qt {:card_id  card-id
-              :schema   nil
+              :schema   "public"
               :table    "orders"
               :table_id table-id}]
       (testing "simple select count(*)"
         (trigger-parse! card-id "select count(*) from orders")
         (is (empty? (query-fields-for-card card-id)))
-        (is (= #{qt}
-               (query-tables-for-card card-id)))))))
+        (is (= #{qt} (query-tables-for-card card-id)))))))
