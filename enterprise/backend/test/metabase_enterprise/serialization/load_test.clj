@@ -424,3 +424,15 @@
   (let [parameters [{:values_source_config {:card_id "foo"}}]]
     (with-redefs [load/fully-qualified-name->card-id {"foo" 1}]
       (is (= [1] (mapv (comp :card_id :values_source_config) (#'load/resolve-dashboard-parameters parameters)))))))
+
+(deftest with-dbs-works-as-expected-test
+  (ts/with-dbs [source-db dest-db]
+    (ts/with-db source-db
+      (mt/with-temp
+        [:model/Card _ {:name "MY CARD"}]
+        (testing "card is available in the source db"
+          (is (some? (t2/select-one :model/Card :name "MY CARD"))))
+        (ts/with-db dest-db
+          (testing "card should not be available in the dest db"
+           ;; FAIL, select is returning a Card
+           (is (nil? (t2/select-one :model/Card :name "MY CARD")))))))))

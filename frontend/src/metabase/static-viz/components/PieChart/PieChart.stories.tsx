@@ -175,6 +175,13 @@ RelativeDateDimension.args = {
   renderingContext,
 };
 
+export const ShowPercentagesBoth = Template.bind({});
+ShowPercentagesBoth.args = {
+  rawSeries: data.showPercentagesBoth as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const NullDimension = Template.bind({});
 NullDimension.args = {
   rawSeries: data.nullDimension as any,

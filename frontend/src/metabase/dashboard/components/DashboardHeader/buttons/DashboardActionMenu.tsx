@@ -16,7 +16,7 @@ import type { Dashboard } from "metabase-types/api";
 export const DashboardActionMenu = (props: { items: any[] }) => (
   <EntityMenu
     key="dashboard-action-menu-button"
-    triggerAriaLabel="dashboard-menu-button"
+    triggerAriaLabel={t`Move, trash, and more…`}
     items={props.items}
     triggerIcon="ellipsis"
     tooltip={t`Move, trash, and more…`}
@@ -26,17 +26,29 @@ export const DashboardActionMenu = (props: { items: any[] }) => (
 );
 
 export const getExtraButtons = ({
+  canResetFilters,
+  onResetFilters,
   onFullscreenChange,
   isFullscreen,
   dashboard,
   canEdit,
   pathname,
 }: DashboardFullscreenControls & {
+  canResetFilters: boolean;
+  onResetFilters: () => void;
   dashboard: Dashboard;
   canEdit: boolean;
   pathname: string;
 }) => {
   const extraButtons = [];
+
+  if (canResetFilters) {
+    extraButtons.push({
+      title: t`Reset all filters`,
+      icon: "revert",
+      action: () => onResetFilters(),
+    });
+  }
 
   extraButtons.push({
     title: t`Enter fullscreen`,
