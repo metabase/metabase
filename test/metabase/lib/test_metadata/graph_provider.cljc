@@ -74,7 +74,8 @@
   (metadatas-for-table [_this metadata-type table-id]
     (graph-metadatas-for-table metadata-graph metadata-type table-id))
   (metadatas-for-card [_this _metadata-type _card-id]
-    (throw (ex-info "metadatas-for-card is not implemented for the simple graph metadata provider" {})))
+    ;; not implemented for the simple graph metadata provider
+    nil)
   (setting [_this setting-key]
     (graph-setting metadata-graph setting-key))
 
