@@ -347,7 +347,7 @@
 ;;; Execution Metrics
 
 (defn- execution-metrics-sql []
-  (let [thirty-days-ago (str "cast('" (t/minus (t/offset-date-time) (t/days 30)) "' AS TIMESTAMP)")]
+  (let [thirty-days-ago (str "CAST('" (t/minus (t/offset-date-time) (t/days 30)) "' AS TIMESTAMP)")]
     (str/join
      "\n"
      ["WITH user_executions AS ("
