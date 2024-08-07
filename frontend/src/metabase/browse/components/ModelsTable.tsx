@@ -95,7 +95,7 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
   }, [isLargeDataset, showLoading, sortedModels]);
 
   return (
-    <Table>
+    <Table aria-label={t`Table of models`}>
       <colgroup>
         {/* <col> for Name column */}
         <ModelNameColumn containerName={itemsTableContainerName} />

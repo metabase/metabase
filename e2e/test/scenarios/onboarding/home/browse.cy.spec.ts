@@ -74,11 +74,7 @@ describeWithSnowplow("scenarios > browse", () => {
     cy.go("back");
     cy.findByRole("heading", { name: "Sample Database" }).click();
     cy.findByRole("heading", { name: "Products" }).click();
-    cy.findByRole(
-      "gridcell",
-      { name: "Rustic Paper Wallet" },
-      { timeout: 10000 },
-    );
+    cy.findByRole("gridcell", { name: "Rustic Paper Wallet" });
   });
 
   it("on an open-source instance, the Browse models page has no controls for setting filters", () => {
@@ -97,15 +93,66 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
     restore();
     cy.signInAsAdmin();
     enableTracking();
+    setTokenFeatures("all");
+    cy.intercept("PUT", "/api/setting/browse-filter-only-verified-models").as(
+      "updateFilter",
+    );
+    cy.intercept("POST", "/api/moderation-review").as("updateVerification");
   });
+  const openFilterPopover = () =>
+    cy.findByRole("button", { name: /filter icon/i }).click();
+  const toggle = () =>
+    cy.findByRole("switch", { name: /Show verified models only/ });
+
+  const recentsGrid = () => cy.findByRole("grid", { name: "Recents" });
+  const modelsTable = () => cy.findByRole("table", { name: "Table of models" });
+  const productsModel = () =>
+    modelsTable().findByRole("heading", { name: "Products Model" });
+  const recentProductsModel = () => recentsGrid().findByText("Products Model");
+  const ordersModel = () =>
+    modelsTable().findByRole("heading", { name: "Orders Model" });
+  const recentOrdersModel = () => recentsGrid().findByText("Orders Model");
+  const productsModelRow = () =>
+    modelsTable().findByRole("row", { name: /Products Model/i });
+  const ordersModelRow = () =>
+    modelsTable().findByRole("row", { name: /Orders Model/i });
+  const filterButton = () =>
+    cy
+      .findByTestId("browse-models-header")
+      .findByRole("button", { name: /filter icon/i });
+
+  const setVerification = (linkSelector: RegExp | string) => {
+    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByRole("dialog", {
+      name: /ellipsis icon/i,
+    })
+      .findByText(linkSelector)
+      .click();
+  };
+  const verifyModel = () => {
+    setVerification(/Verify this model/);
+    cy.wait("@updateVerification");
+  };
+  const unverifyModel = () => {
+    setVerification(/Remove verification/);
+    cy.wait("@updateVerification");
+  };
+
+  const toggleVerificationFilter = () => {
+    openFilterPopover();
+    toggle().next("label").click();
+    cy.wait("@updateFilter");
+  };
+
+  const browseModels = () => {
+    cy.visit("/");
+
+    navigationSidebar()
+      .findByRole("listitem", { name: "Browse models" })
+      .click();
+  };
 
   it("/browse/models allows models to be filtered, on an enterprise instance", () => {
-    const openFilterPopover = () =>
-      cy.findByRole("button", { name: /filter icon/i }).click();
-    const toggle = () =>
-      cy.findByRole("switch", { name: /Show verified models only/ });
-    setTokenFeatures("all");
-
     cy.log('Create a "Products" model');
     cy.createQuestion({
       name: "Products Model",
@@ -116,19 +163,9 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
       type: "model",
     });
 
-    cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse models" }).click();
+    browseModels();
 
-    const productsModel = () =>
-      cy.findByRole("heading", { name: "Products Model" });
-    const ordersModel = () =>
-      cy.findByRole("heading", { name: "Orders Model" });
-    const productsModelRow = () =>
-      cy.findByRole("row", { name: /Products Model/i });
-    const ordersModelRow = () =>
-      cy.findByRole("row", { name: /Orders Model/i });
-
-    cy.log("Cells for the Products and Orders models exist");
+    cy.log("Cells for the Products and Orders models exist in the table");
     productsModel().should("exist");
     ordersModel().should("exist");
 
@@ -148,19 +185,17 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
     });
 
     cy.log("There are no verified models, so the filter toggle is not visible");
-    cy.findByRole("button", { name: /filter icon/i }).should("not.exist");
+    filterButton().should("not.exist");
 
     cy.log("Verify the Orders Model");
-    cy.findByRole("heading", { name: "Orders Model" }).click();
-    cy.findByLabelText("Move, archive, and more...").click();
-    cy.findByRole("dialog", {
-      name: /ellipsis icon/i,
-    })
-      .findByText(/Verify this model/)
-      .click();
+    verifyModel();
 
-    cy.visit("/");
-    cy.findByRole("listitem", { name: "Browse models" }).click();
+    browseModels();
+
+    cy.log("Filter on verified models is enabled by default");
+    cy.findByTestId("browse-models-header")
+      .findByTestId("filter-dot")
+      .should("be.visible");
 
     cy.log(
       "The Products Model does not appear in the table, since it's not verified",
@@ -177,14 +212,43 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
     });
 
     cy.log("The filter toggle is now visible");
-    cy.findByRole("button", { name: /filter icon/i }).should("be.visible");
+    filterButton().should("be.visible");
+
+    cy.log("Unverify the orders model");
+    cy.findByRole("heading", { name: "Orders Model" }).click();
+    unverifyModel();
+
+    browseModels();
+
+    cy.log("Visit the products model");
+    cy.findByRole("heading", { name: "Products Model" }).click();
+
+    browseModels();
+
+    cy.log("The filter toggle is not visible");
+    filterButton().should("not.exist");
+
+    cy.log(
+      "The verified filter, though still active, is not applied if there are no verified models",
+    );
+    cy.log("Both models are in the table - no filter is applied here");
+    ordersModel().should("exist");
+    productsModel().should("exist");
+    cy.log("Both models are in the recents grid - no filter is applied here");
+    recentOrdersModel().should("exist");
+    recentProductsModel().should("exist");
+
+    cy.log("Verify the Orders Model");
+    modelsTable().findByText("Orders Model").click();
+    verifyModel();
+
+    browseModels();
 
     cy.log("There are no icons in the table representing unverified models");
-    cy.findByRole("table").icon("model").should("not.exist");
+    modelsTable().icon("model").should("not.exist");
 
     cy.log("Show all models");
-    openFilterPopover();
-    toggle().next("label").click();
+    toggleVerificationFilter();
 
     cy.log("The Products and Orders models now both exist in the table");
     productsModel().should("exist");

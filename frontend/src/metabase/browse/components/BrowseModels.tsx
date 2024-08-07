@@ -5,7 +5,6 @@ import NoResults from "assets/img/no_results.svg";
 import { useListRecentItemsQuery } from "metabase/api";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { color } from "metabase/lib/colors";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -52,12 +51,14 @@ export const BrowseModels = () => {
   );
 
   const { filteredModels } = useMemo(() => {
-    // If no models are verified, don't filter them
-    const filteredModels = doVerifiedModelsExist
-      ? filterModels(models, actualModelFilters, availableModelFilters)
-      : models;
+    const filteredModels = filterModels(
+      models,
+      // If no models are verified, don't filter them
+      doVerifiedModelsExist ? actualModelFilters : {},
+      availableModelFilters,
+    );
     return { filteredModels };
-  }, [actualModelFilters, doVerifiedModelsExist, models]);
+  }, [actualModelFilters, models, doVerifiedModelsExist]);
 
   const recentModelsResult = useListRecentItemsQuery(undefined, {
     refetchOnMountOrArgChange: true,
@@ -67,10 +68,11 @@ export const BrowseModels = () => {
     () =>
       filterModels(
         recentModelsResult.data?.filter(isRecentModel),
-        actualModelFilters,
+        // If no models are verified, don't filter them
+        doVerifiedModelsExist ? actualModelFilters : {},
         availableModelFilters,
       ),
-    [recentModelsResult.data, actualModelFilters],
+    [recentModelsResult.data, actualModelFilters, doVerifiedModelsExist],
   );
 
   const recentModels = useMemo(() => {
@@ -80,7 +82,7 @@ export const BrowseModels = () => {
 
   return (
     <BrowseContainer>
-      <BrowseHeader>
+      <BrowseHeader role="heading" data-testid="browse-models-header">
         <BrowseSection>
           <Flex
             w="100%"
@@ -91,7 +93,7 @@ export const BrowseModels = () => {
           >
             <Title order={1} color="text-dark">
               <Group spacing="sm">
-                <Icon size={24} color={color("brand")} name="model" />
+                <Icon size={24} color={"var(--mb-color-brand)"} name="model" />
                 {t`Models`}
               </Group>
             </Title>
