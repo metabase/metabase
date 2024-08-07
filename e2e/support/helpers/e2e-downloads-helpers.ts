@@ -169,14 +169,11 @@ function getEndpoint({
 
 export function dismissDownloadStatus() {
   cy.findByTestId("status-root-container").within(() => {
-    cy.findAllByRole("status").then($el => {
-      if ($el.length > 0) {
-        cy.wrap($el).within(() => {
-          cy.findAllByText("Download completed");
-          cy.findByLabelText("Dismiss").click();
-        });
-      }
+    cy.findByRole("status").within(() => {
+      cy.findAllByText("Download completed");
+      cy.findByLabelText("Dismiss").click();
     });
+
     cy.findByRole("status").should("not.exist");
   });
 }
