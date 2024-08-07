@@ -1,5 +1,6 @@
 import { DashboardSharingEmbeddingModal } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
+import { Box } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { Dashboard } from "metabase-types/api";
 
@@ -7,6 +8,8 @@ import {
   QuestionPublicLinkPopover,
   DashboardPublicLinkPopover,
 } from "../PublicLinkPopover";
+
+const MenuTarget = () => <Box h="2rem" />;
 
 type BaseSharingModalProps = {
   onClose: () => void;
@@ -46,7 +49,7 @@ export const SharingModals = ({
     return (
       <QuestionPublicLinkPopover
         question={question}
-        target={<span />}
+        target={<MenuTarget />}
         onClose={onClose}
         isOpen
       />
@@ -57,7 +60,7 @@ export const SharingModals = ({
     return (
       <DashboardPublicLinkPopover
         dashboard={dashboard}
-        target={<span />}
+        target={<MenuTarget />}
         onClose={onClose}
         isOpen
       />

@@ -14,8 +14,6 @@ export function EmbedMenuItem({ onClick }: { onClick: () => void }) {
     return null;
   }
 
-  // TODO: prompt to save before embedding
-
   return (
     <Menu.Item
       data-testid="embed-menu-embed-modal-item"
