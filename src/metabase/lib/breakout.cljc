@@ -23,19 +23,6 @@
                         (for [breakout breakouts]
                           (lib.metadata.calculation/display-name query stage-number breakout :long))))))
 
-(mu/defn breakout :- ::lib.schema/query
-  "Add a new breakout on an expression, presumably a Field reference."
-  ([query expr]
-   (breakout query -1 expr))
-
-  ([query        :- ::lib.schema/query
-    stage-number :- :int
-    expr         :- some?]
-   (let [expr (lib.ref/ref (if (fn? expr)
-                             (expr query stage-number)
-                             expr))]
-     (lib.util/add-summary-clause query stage-number :breakout expr))))
-
 (mu/defn breakouts :- [:maybe [:sequential ::lib.schema.expression/expression]]
   "Return the current breakouts"
   ([query]
@@ -54,6 +41,23 @@
             (mapv (fn [field-ref]
                     (-> (lib.metadata.calculation/metadata query stage-number field-ref)
                         (assoc :lib/source :source/breakouts)))))))
+
+(mu/defn breakout :- ::lib.schema/query
+  "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."
+  ([query expr]
+   (breakout query -1 expr))
+
+  ([query        :- ::lib.schema/query
+     stage-number :- :int
+     expr         :- some?]
+   (let [expr (lib.ref/ref (if (fn? expr)
+                             (expr query stage-number)
+                             expr))
+         existing-breakouts (breakouts query stage-number)
+         existing-breakout? (and (seq existing-breakouts) (some #(lib.equality/= % expr) existing-breakouts))]
+     (if existing-breakout?
+       query
+       (lib.util/add-summary-clause query stage-number :breakout expr)))))
 
 (mu/defn breakoutable-columns :- [:sequential ::lib.schema.metadata/column]
   "Get column metadata for all the columns that can be broken out by in

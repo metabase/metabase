@@ -78,7 +78,11 @@
   [:ref ::ref/ref])
 
 (mr/def ::breakouts
-  [:sequential {:min 1} ::breakout])
+  [:and
+   [:sequential {:min 1} ::breakout]
+   [:fn
+    {:error/message "Breakouts must be distinct"}
+    #'lib.schema.util/distinct-refs?]])
 
 (mr/def ::fields
   [:and
