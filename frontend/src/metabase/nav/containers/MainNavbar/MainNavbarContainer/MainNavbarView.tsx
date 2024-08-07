@@ -121,18 +121,10 @@ function MainNavbarView({
     ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
 
-  const [collectionsWithoutTrash, trashCollection] = useMemo(() => {
-    let trashCollection;
-    const collectionsWithoutTrash = [];
-    for (const c of collections) {
-      if (c.type === "trash") {
-        trashCollection = c;
-      } else {
-        collectionsWithoutTrash.push(c);
-      }
-    }
-    return [collectionsWithoutTrash, trashCollection];
-  }, [collections]);
+  const [trashCollection, collectionsWithoutTrash] = useMemo(
+    () => _.partition(collections, c => c.type === "trash"),
+    [collections],
+  );
 
   return (
     <SidebarContentRoot>
