@@ -1,7 +1,9 @@
+import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { formatValue } from "metabase/lib/formatting";
+import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import {
   ChartSettingsError,
   MinRowsError,
@@ -16,13 +18,17 @@ import {
   getDefaultPercentVisibility,
   getDefaultShowLegend,
   getDefaultSliceThreshold,
+  getSortedRows,
 } from "metabase/visualizations/shared/settings/pie";
 import { getDefaultShowTotal } from "metabase/visualizations/shared/settings/waterfall";
 import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import type { VisualizationDefinition } from "metabase/visualizations/types";
+import type {
+  VisualizationDefinition,
+  VisualizationSettingsDefinitions,
+} from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
 
 export const PIE_CHART_DEFINITION: VisualizationDefinition = {
@@ -79,6 +85,53 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       title: t`Dimension`,
       showColumnSetting: true,
     }),
+    "pie.rows": {
+      section: t`Data`,
+      widget: ChartSettingOrderedSimple,
+      // TODO re-use in static viz
+      getValue: (
+        [
+          {
+            data: { cols, rows },
+          },
+        ],
+        settings,
+      ) => {
+        const savedPieRows = settings["pie.rows"];
+        if (savedPieRows != null) {
+          // TODO merge saved and new rows from query
+          return savedPieRows;
+        }
+
+        const dimensionIndex = cols.findIndex(
+          col => col.name === settings["pie.dimension"],
+        );
+        const metricIndex = cols.findIndex(
+          col => col.name === settings["pie.metric"],
+        );
+        const sortedRows = getSortedRows(rows, metricIndex);
+
+        return sortedRows.map(row => {
+          const dimensionValue = String(row[dimensionIndex]);
+          if (!settings["pie.colors"]) {
+            throw Error("missing `pie.colors` setting");
+          }
+          // older viz settings can have hsl values that need to be converted since
+          // batik does not support hsl
+          const color = Color(
+            settings["pie.colors"][String(dimensionValue)],
+          ).hex();
+
+          return {
+            key: dimensionValue,
+            name: dimensionValue, // TODO implement renaming
+            color,
+          };
+        });
+      },
+
+      readDependencies: ["pie.dimension", "pie.metric", "pie.colors"],
+    },
     ...metricSetting("pie.metric", {
       section: t`Data`,
       title: t`Measure`,
@@ -195,5 +248,5 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       },
       readDependencies: ["pie._dimensionIndex"],
     },
-  },
+  } as VisualizationSettingsDefinitions,
 };

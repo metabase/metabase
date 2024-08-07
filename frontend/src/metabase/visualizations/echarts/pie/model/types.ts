@@ -2,6 +2,12 @@ import type { PieArcDatum } from "d3";
 
 import type { ColumnDescriptor } from "metabase/visualizations/lib/graph/columns";
 
+export interface PieRow {
+  key: string;
+  name: string;
+  color: string;
+}
+
 export interface PieColumnDescriptors {
   metricDesc: ColumnDescriptor;
   dimensionDesc: ColumnDescriptor;

@@ -1,10 +1,10 @@
-import Color from "color";
 import { pie } from "d3";
 import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { checkNotNull } from "metabase/lib/types";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { pieNegativesWarning } from "metabase/visualizations/lib/warnings";
 import type {
   ComputedVisualizationSettings,
@@ -55,21 +55,6 @@ function getColDescs(
   };
 }
 
-export function getRowValues(row: RowValue[], colDescs: PieColumnDescriptors) {
-  const { dimensionDesc, metricDesc } = colDescs;
-
-  const dimensionValue = row[dimensionDesc.index];
-
-  const metricValue = row[metricDesc.index] ?? 0;
-  if (typeof metricValue !== "number") {
-    throw new Error(
-      `Pie chart metric value (${metricValue}) should be a number`,
-    );
-  }
-
-  return { dimensionValue, metricValue };
-}
-
 export function getPieChartModel(
   rawSeries: RawSeries,
   settings: ComputedVisualizationSettings,
@@ -78,20 +63,48 @@ export function getPieChartModel(
 ): PieChartModel {
   const [
     {
-      data: { rows },
+      data: { rows: dataRows },
     },
   ] = rawSeries;
   const colDescs = getColDescs(rawSeries, settings);
 
+  const rowValuesByKey = new Map<string, [RowValue, number]>();
+  dataRows.map(row =>
+    rowValuesByKey.set(String(row[colDescs.dimensionDesc.index]), [
+      // We need to use the preserve dimension value from the results, rather
+      // than just using the key from the `pie.rows` setting, because if the
+      // dimension is a number then its type needs to be preserved. Binned
+      // dimension values will not be formatted correctly if they are cast to
+      // strings.
+      row[colDescs.dimensionDesc.index],
+      getNumberOr(row[colDescs.metricDesc.index], 0),
+    ]),
+  );
+
+  const pieRows = settings["pie.rows"];
+  if (pieRows == null) {
+    throw Error("missing `pie.rows` setting");
+  }
+
+  const pieRowsWithValues = pieRows.map(pieRow => {
+    const values = rowValuesByKey.get(pieRow.key);
+    if (values === undefined) {
+      throw Error(`No row values found for key ${pieRow.key}`);
+    }
+
+    return {
+      ...pieRow,
+      dimensionValue: values[0],
+      metricValue: values[1],
+    };
+  });
+
   // We allow negative values if every single metric value is negative or 0
   // (`isNonPositive` = true). If the values are mixed between positives and
   // negatives, we'll simply ignore the negatives in all calculations.
-  const isNonPositive = rows.every(
-    row => getRowValues(row, colDescs).metricValue <= 0,
-  );
+  const isNonPositive = pieRowsWithValues.every(row => row.metricValue <= 0);
 
-  const total = rows.reduce((currTotal, row) => {
-    const metricValue = getRowValues(row, colDescs).metricValue;
+  const total = pieRowsWithValues.reduce((currTotal, { metricValue }) => {
     if (!isNonPositive && metricValue < 0) {
       showWarning?.(pieNegativesWarning().text);
       return currTotal;
@@ -100,17 +113,8 @@ export function getPieChartModel(
     return currTotal + metricValue;
   }, 0);
 
-  const [slices, others] = _.chain(rows)
-    .map((row, index): PieSliceData => {
-      const { dimensionValue, metricValue } = getRowValues(row, colDescs);
-
-      if (!settings["pie.colors"]) {
-        throw Error("missing `pie.colors` setting");
-      }
-      // older viz settings can have hsl values that need to be converted since
-      // batik does not support hsl
-      const color = Color(settings["pie.colors"][String(dimensionValue)]).hex();
-
+  const [slices, others] = _.chain(pieRowsWithValues)
+    .map(({ dimensionValue, metricValue, color }, index): PieSliceData => {
       let key: string | number;
       if (dimensionValue == null) {
         key = NULL_DISPLAY_VALUE;

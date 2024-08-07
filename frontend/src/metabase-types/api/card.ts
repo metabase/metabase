@@ -1,4 +1,5 @@
 import type { EmbeddingParameters } from "metabase/public/lib/types";
+import type { PieRow } from "metabase/visualizations/echarts/pie/model/types";
 
 import type { Collection, CollectionId } from "./collection";
 import type { DashCardId, DashboardId } from "./dashboard";
@@ -204,6 +205,7 @@ export type VisualizationSettings = {
 
   // Pie Settings
   "pie.dimension"?: string;
+  "pie.rows"?: PieRow[];
   "pie.metric"?: string;
   "pie.show_legend"?: boolean;
   "pie.show_total"?: boolean;
