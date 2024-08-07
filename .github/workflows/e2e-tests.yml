@@ -93,6 +93,7 @@ jobs:
         uses: ./.github/actions/prepare-frontend
         with:
           node-version: '${{ needs.get-build-requirements.outputs.node_version }}'
+          ignore-optional-dependencies: true
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
