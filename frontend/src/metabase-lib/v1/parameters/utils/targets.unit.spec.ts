@@ -182,13 +182,11 @@ describe("parameters/utils/targets", () => {
           question,
           parameter,
         );
-
-        expect(columns).toHaveLength(30);
-
         const columnsInfos = columns.map(column => {
           return Lib.displayInfo(query, stageIndex, column);
         });
 
+        expect(columns).toHaveLength(30);
         expect(columnsInfos[0]).toMatchObject({
           table: { displayName: "Orders" },
           longDisplayName: "Created At",
@@ -216,13 +214,11 @@ describe("parameters/utils/targets", () => {
           question,
           parameter,
         );
-
-        expect(columns).toHaveLength(30);
-
         const columnsInfos = columns.map(column => {
           return Lib.displayInfo(query, stageIndex, column);
         });
 
+        expect(columns).toHaveLength(30);
         expect(columnsInfos[0]).toMatchObject({
           table: { displayName: "Orders" },
           longDisplayName: "Created At",
@@ -284,13 +280,11 @@ describe("parameters/utils/targets", () => {
           question,
           parameter,
         );
-
-        expect(columns).toHaveLength(1);
-
         const columnsInfos = columns.map(column => {
           return Lib.displayInfo(query, stageIndex, column);
         });
 
+        expect(columns).toHaveLength(1);
         expect(columnsInfos[0]).toMatchObject({
           table: { displayName: "Orders" },
           longDisplayName: "Created At",
@@ -314,13 +308,11 @@ describe("parameters/utils/targets", () => {
           question,
           parameter,
         );
-
-        expect(columns).toHaveLength(2);
-
         const columnsInfos = columns.map(column => {
           return Lib.displayInfo(query, stageIndex, column);
         });
 
+        expect(columns).toHaveLength(2);
         expect(columnsInfos[0]).toMatchObject({
           table: { displayName: "Orders" },
           longDisplayName: "Created At",
@@ -328,6 +320,40 @@ describe("parameters/utils/targets", () => {
         expect(columnsInfos[1]).toMatchObject({
           table: { displayName: "Products" },
           longDisplayName: "Product → Created At",
+        });
+      });
+    });
+
+    describe("date parameter", () => {
+      const parameter = createDateParameter();
+
+      it("question - returns date columns from source table and implicitly joinable tables", () => {
+        const card = createSavedStructuredCard();
+        const question = new Question(card, metadata);
+        const { query, stageIndex, columns } = getParameterColumns(
+          question,
+          parameter,
+        );
+        const columnsInfos = columns.map(column => {
+          return Lib.displayInfo(query, stageIndex, column);
+        });
+
+        expect(columns).toHaveLength(4);
+        expect(columnsInfos[0]).toMatchObject({
+          table: { displayName: "Orders" },
+          longDisplayName: "Created At",
+        });
+        expect(columnsInfos[1]).toMatchObject({
+          table: { displayName: "Products" },
+          longDisplayName: "Product → Created At",
+        });
+        expect(columnsInfos[2]).toMatchObject({
+          table: { displayName: "People" },
+          longDisplayName: "User → Birth Date",
+        });
+        expect(columnsInfos[3]).toMatchObject({
+          table: { displayName: "People" },
+          longDisplayName: "User → Created At",
         });
       });
     });
@@ -341,5 +367,15 @@ function createUnitOfTimeParameter() {
     id: "49358513",
     type: "temporal-unit",
     sectionId: "temporal-unit",
+  });
+}
+
+function createDateParameter() {
+  return createMockParameter({
+    name: "Date",
+    slug: "date",
+    id: "57ab6554",
+    type: "date/all-options",
+    sectionId: "date",
   });
 }
