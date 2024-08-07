@@ -153,7 +153,7 @@ function setup({
     : baseOperators;
 
   const onSelect = jest.fn();
-  const onAdd = jest.fn();
+  const updateQuery = jest.fn();
 
   renderWithProviders(
     <AggregationPicker
@@ -162,7 +162,7 @@ function setup({
       stageIndex={stageIndex}
       operators={operators}
       hasExpressionInput={hasExpressionInput}
-      onAdd={onAdd}
+      updateQuery={updateQuery}
       onSelect={onSelect}
     />,
     { storeInitialState: state },
@@ -183,7 +183,7 @@ function setup({
     query,
     stageIndex,
     getRecentClauseInfo,
-    onAdd,
+    updateQuery,
     onSelect,
   };
 }
@@ -398,15 +398,17 @@ describe("AggregationPicker", () => {
       ).toBeInTheDocument();
     });
 
-    it("calls 'onAdd' on submit", async () => {
-      const { onAdd } = setup({ query: createQueryWithCountAggregation() });
+    it("calls 'updateQuery' on submit", async () => {
+      const { updateQuery } = setup({
+        query: createQueryWithCountAggregation(),
+      });
 
       await userEvent.click(
         screen.getByText("Compare “Count” to previous period ..."),
       );
       await userEvent.click(screen.getByText("Done"));
 
-      expect(onAdd).toHaveBeenCalled();
+      expect(updateQuery).toHaveBeenCalled();
     });
 
     it("does not call 'onSelect' on submit", async () => {

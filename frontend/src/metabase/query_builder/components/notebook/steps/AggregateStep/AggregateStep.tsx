@@ -80,6 +80,7 @@ export function AggregateStep({
           onAddAggregations={handleAddAggregations}
           onUpdateAggregation={handleUpdateAggregation}
           onClose={onClose}
+          updateQuery={updateQuery}
         />
       )}
       onReorder={handleReorderAggregation}
@@ -102,6 +103,7 @@ interface AggregationPopoverProps {
   clauseIndex?: number;
 
   onClose: () => void;
+  updateQuery: (query: Lib.Query) => void;
 }
 
 function AggregationPopover({
@@ -112,6 +114,7 @@ function AggregationPopover({
   onAddAggregations,
   onUpdateAggregation,
   onClose,
+  updateQuery,
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
 
@@ -129,7 +132,6 @@ function AggregationPopover({
       clause={clause}
       clauseIndex={clauseIndex}
       operators={operators}
-      onAdd={onAddAggregations}
       onSelect={aggregation => {
         if (isUpdate) {
           onUpdateAggregation(clause, aggregation);
@@ -138,6 +140,7 @@ function AggregationPopover({
         }
       }}
       onClose={onClose}
+      updateQuery={updateQuery}
     />
   );
 }

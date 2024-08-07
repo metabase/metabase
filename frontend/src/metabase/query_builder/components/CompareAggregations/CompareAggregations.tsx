@@ -20,7 +20,7 @@ interface Props {
   query: Lib.Query;
   stageIndex: number;
   onClose: () => void;
-  onSubmit: (query: Lib.Query, aggregations: Lib.expressionClause[]) => void;
+  onSubmit: (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => void;
 }
 
 const DEFAULT_OFFSET = 1;

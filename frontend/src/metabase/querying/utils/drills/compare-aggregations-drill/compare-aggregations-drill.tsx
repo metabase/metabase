@@ -32,13 +32,7 @@ export const compareAggregationsDrill: Drill<
         query={query}
         stageIndex={stageIndex}
         onClose={onClose}
-        onSubmit={aggregations => {
-          const nextQuery = aggregations.reduce(
-            (query, aggregation) =>
-              Lib.aggregate(query, stageIndex, aggregation),
-            query,
-          );
-
+        onSubmit={(nextQuery, aggregations) => {
           const nextQuestion = question.setQuery(nextQuery);
           const nextCard = nextQuestion.card();
 

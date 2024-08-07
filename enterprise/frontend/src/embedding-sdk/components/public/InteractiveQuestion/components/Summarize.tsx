@@ -79,6 +79,7 @@ const SummarizeInner = ({
           onAddAggregations={handleAddAggregations}
           onUpdateAggregation={handleUpdateAggregation}
           onRemoveAggregation={handleRemoveAggregation}
+          updateQuery={onQueryChange}
         />
         <Divider my="lg" />
         {hasAggregations && (

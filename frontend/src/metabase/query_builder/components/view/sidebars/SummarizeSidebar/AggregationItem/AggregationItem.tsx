@@ -12,9 +12,9 @@ interface AggregationItemProps {
   stageIndex: number;
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
-  onAdd: (aggregations: Lib.Aggregable[]) => void;
   onUpdate: (nextAggregation: Lib.Aggregable) => void;
   onRemove: () => void;
+  updateQuery: (query: Lib.Query) => void;
 }
 
 export function AggregationItem({
@@ -22,9 +22,9 @@ export function AggregationItem({
   stageIndex,
   aggregation,
   aggregationIndex,
-  onAdd,
   onUpdate,
   onRemove,
+  updateQuery,
 }: AggregationItemProps) {
   const [isOpened, setIsOpened] = useState(false);
   const { displayName } = Lib.displayInfo(query, stageIndex, aggregation);
@@ -54,11 +54,11 @@ export function AggregationItem({
           clauseIndex={aggregationIndex}
           operators={operators}
           hasExpressionInput={false}
-          onAdd={onAdd}
           onSelect={nextAggregation => {
             onUpdate(nextAggregation);
             setIsOpened(false);
           }}
+          updateQuery={updateQuery}
         />
       </Popover.Dropdown>
     </Popover>
