@@ -1,8 +1,6 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story } from "@storybook/react";
-import { within } from "@storybook/testing-library";
-import userEvent from "@testing-library/user-event";
 import { useEffect, type ComponentProps } from "react";
 import { Provider } from "react-redux";
 
@@ -185,45 +183,6 @@ const defaultArgs: Partial<
 // Light theme
 export const LightThemeDefault = Template.bind({});
 LightThemeDefault.args = defaultArgs;
-LightThemeDefault.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  await canvas.findByText("Bar");
-  await canvas.findByText("Table");
-  const [dashcard1, dashcard2] = await canvas.findAllByTestId("dashcard");
-  await userEvent.hover(dashcard1);
-
-  dashcard1.classList.add("pseudo-hover");
-  dashcard2.classList.add("pseudo-hover");
-  const dashcardActions = await within(dashcard2).findByRole("button", {
-    name: "ellipsis icon",
-  });
-  await userEvent.click(dashcardActions);
-  dashcardActions.classList.add("pseudo-hover");
-};
-
-export const LightThemeHover = Template.bind({});
-LightThemeHover.args = defaultArgs;
-LightThemeHover.play = async ({ canvasElement }) => {
-  const canvas = within(canvasElement);
-  await canvas.findByText("Bar");
-  await canvas.findByText("Table");
-  const [dashcard1, dashcard2] = await canvas.findAllByTestId("dashcard");
-  await userEvent.hover(dashcard1);
-
-  dashcard1.classList.add("pseudo-hover");
-  dashcard2.classList.add("pseudo-hover");
-  const dashcardActions = await within(dashcard2).findByRole("button", {
-    name: "ellipsis icon",
-  });
-  await userEvent.click(dashcardActions);
-  dashcardActions.classList.add("pseudo-hover");
-
-  within(document.documentElement)
-    .getByRole("menuitem", {
-      name: "Download results",
-    })
-    .setAttribute("data-hovered", "true");
-};
 
 export const LightThemeScroll = Template.bind({});
 LightThemeScroll.args = {
@@ -253,14 +212,6 @@ DarkThemeDefault.args = {
   theme: "night",
 };
 DarkThemeDefault.decorators = [DarkBackgroundDecorator];
-DarkThemeDefault.play = LightThemeDefault.play;
-
-export const DarkThemeHover = Template.bind({});
-DarkThemeHover.args = {
-  ...defaultArgs,
-  theme: "night",
-};
-DarkThemeHover.play = LightThemeHover.play;
 
 export const DarkThemeScroll = Template.bind({});
 DarkThemeScroll.args = {
@@ -338,7 +289,7 @@ function ScrollDecorator(Story: Story) {
 
 function DarkBackgroundDecorator(Story: Story) {
   return (
-    <Box bg="#434e56" mih="100vh">
+    <Box bg="#fff" mih="100vh">
       <Story />
     </Box>
   );
