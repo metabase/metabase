@@ -98,6 +98,7 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
       "updateFilter",
     );
     cy.intercept("POST", "/api/moderation-review").as("updateVerification");
+    cy.intercept("GET", "/api/card/*").as("question");
   });
   const openFilterPopover = () =>
     cy.findByRole("button", { name: /filter icon/i }).click();
@@ -215,6 +216,7 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
     cy.log("Visit Model 1");
     cy.findByRole("heading", { name: "Model 1" }).click();
+    cy.findByLabelText("Move, archive, and more...");
 
     browseModels();
 
@@ -225,11 +227,11 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
       "The verified filter, though still active, is not applied if there are no verified models",
     );
     cy.log("Both models are in the table - no filter is applied here");
-    model2().should("exist");
-    model1().should("exist");
+    model1().should("be.visible");
+    model2().should("be.visible");
     cy.log("Both models are in the recents grid - no filter is applied here");
-    recentModel2().should("exist");
-    recentModel1().should("exist");
+    recentModel1().should("be.visible");
+    recentModel2().should("be.visible");
 
     cy.log("Verify Model 2");
     modelsTable().findByText("Model 2").click();
