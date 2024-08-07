@@ -276,6 +276,52 @@
            (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] :current :week]))
         "keywords like `:current` should work correctly"))
 
+(t/deftest ^:parallel desugar-relative-time-interval-negative-test
+  (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
+    (let [value           -10
+          bucket          :day
+          offset-value    -8
+          offset-bucket   :week
+          exp-offset [:interval offset-value offset-bucket]]
+      (t/testing "expression reference is transformed correctly"
+        (let [expr-ref [:expression "cc"]]
+          (t/is (= [:and
+                    [:>= expr-ref [:+ [:relative-datetime value bucket] exp-offset]]
+                    [:<  expr-ref [:+ [:relative-datetime 0     bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval expr-ref value bucket offset-value offset-bucket])))))
+      (t/testing "field reference is transformed correctly"
+        (let [field-ref [:field 100 nil]
+              exp-field-ref (update field-ref 2 assoc :temporal-unit :default)]
+          (t/is (= [:and
+                    [:>= exp-field-ref [:+ [:relative-datetime value bucket] exp-offset]]
+                    [:<  exp-field-ref [:+ [:relative-datetime 0     bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval exp-field-ref value bucket offset-value offset-bucket]))))))))
+
+(t/deftest ^:parallel desugar-relative-time-interval-positive-test
+  (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
+    (let [value           10
+          bucket          :day
+          offset-value    8
+          offset-bucket   :week
+          exp-offset [:interval offset-value offset-bucket]]
+      (t/testing "expression reference is transformed correctly"
+        (let [expr-ref [:expression "cc"]]
+          (t/is (= [:and
+                    [:>= expr-ref [:+ [:relative-datetime 1           bucket] exp-offset]]
+                    [:<  expr-ref [:+ [:relative-datetime (inc value) bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval expr-ref value bucket offset-value offset-bucket])))))
+      (t/testing "field reference is transformed correctly"
+        (let [field-ref [:field 100 nil]
+              exp-field-ref (update field-ref 2 assoc :temporal-unit :default)]
+          (t/is (= [:and
+                    [:>= exp-field-ref [:+ [:relative-datetime 1           bucket] exp-offset]]
+                    [:<  exp-field-ref [:+ [:relative-datetime (inc value) bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval exp-field-ref value bucket offset-value offset-bucket]))))))))
+
 (t/deftest ^:parallel desugar-relative-datetime-with-current-test
   (t/testing "when comparing `:relative-datetime`to `:field`, it should take the temporal unit of the `:field`"
     (t/is (= [:=

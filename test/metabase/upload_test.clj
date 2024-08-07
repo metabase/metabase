@@ -34,7 +34,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
-   (java.io File)))
+   (java.io ByteArrayInputStream File)))
 
 (set! *warn-on-reflection* true)
 
@@ -366,7 +366,7 @@
        (finally
          ;; I'm experimenting with disabling this, it seems preposterous that this would actually cause test flakes --
          ;; Cam
-         (do #_when #_(not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
+         (when true #_(not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
            (driver/drop-table! driver/*driver*
                                (:db_id table)
                                (#'upload/table-identifier table))))))
@@ -565,24 +565,68 @@
             (is (= (rows-with-auto-pk [["a,b,c" "d"]])
                    (rows-for-table table)))))))))
 
+(defn reusable-string-reader
+  "Because life is too short for zillions of temp files."
+  [^String s]
+  (let [bytes (.getBytes s "UTF-8")]
+    (reify
+      io/IOFactory
+      (make-input-stream [_ _opts]
+        (ByteArrayInputStream. bytes))
+      (make-reader [this opts]
+        (io/reader (io/make-input-stream this opts))))))
+
+(defn- infer-separator [rows]
+  (#'upload/infer-separator (reusable-string-reader (str/join "\n" rows))))
+
 (deftest infer-separator-test
   (testing "doesn't error when checking alternative separators (#44034)"
-    (let [file (csv-file-with ["\"c1\",\"c2\""
-                               "\"a,b,c\",\"d\""])]
-      (is (= \, (#'upload/infer-separator file)))))
+    (let [rows ["\"c1\",\"c2\""
+                "\"a,b,c\",\"d\""]]
+      (is (= \, (infer-separator rows)))))
   (doseq [[separator lines] example-files]
     (testing (str "inferring " separator)
-      (let [f (csv-file-with lines)
-            s ({:tab \tab :semi-colon \; :comma \,} separator)]
-        (is (= s (#'upload/infer-separator f))))))
+      (let [s ({:tab \tab :semi-colon \; :comma \,} separator)]
+        (is (= s (infer-separator lines))))))
   ;; it's actually decently hard to make it not stumble on comma or semicolon. The strategy here is that the data
   ;; column count is greater than the header column count regardless of the separators we choose
   (let [lines [","
                ",,,;;;\t\t"]]
-    (testing "throws an error if there's no clear winner"
-      (let [f (csv-file-with lines)]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unable to recognise file separator"
-                              (#'upload/infer-separator f)))))))
+    (testing "will defer data width errors to insertion time if other separators are degenerate"
+      (is (= \, (infer-separator lines))))))
+
+(deftest infer-separator-priority-test
+  (testing "Multiple header columns"
+    ;; Despite inconsistent counts, we pick \;
+    (is (= \; (infer-separator ["a;b" "1"]))))
+  (testing "Consistent column counts"
+    ;; despite more data columns for the other separators, we pick \;
+    (is (= \; (infer-separator ["a;b,c\td"
+                                "1;2,3,4\t5\t6"]))))
+  (testing "Headers for every column"
+    ;; despite more data columns for other separators, we pick \;
+    (is (= \; (infer-separator ["a,b;c\td"
+                                "1,2,3;4\t5"]))))
+  (testing "Greatest number of data columns"
+    ;; despite more headers for \, we pick \;
+    (is (= \; (infer-separator ["a;b;c;d,e,f,g,h\ti\tj"
+                                "1;2;3,4\t5"]))))
+  (testing "Greatest number of header columns"
+    (is (= \; (infer-separator ["a,b;c;d\te"]))))
+  (testing "Precedence"
+    (is (= \, (infer-separator [])))
+    (is (= \; (infer-separator ["a\tb;c"
+                                "1\t2;3"])))))
+
+(deftest infer-separator-multiline-test
+  (testing "it picks the only viable separator forced by a quote"
+    (is (= \; (infer-separator ["name, first;surname"
+                                "bond, james;bond"
+                                "\"semi;\";colon"]))))
+  (testing "it considers consistency across the split count"
+    (is (= \; (infer-separator ["product name; amount, in dollars"
+                                "blunderbuss;  1,000"
+                                "cyberwagon;   1,000,000"])))))
 
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
