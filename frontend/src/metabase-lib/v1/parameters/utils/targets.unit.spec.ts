@@ -139,7 +139,7 @@ describe("parameters/utils/targets", () => {
   });
 
   describe("getParameterColumns", () => {
-    it("works", () => {
+    it("returns columns from source table and tables related by FKs", () => {
       const card = createSavedStructuredCard();
       const question = new Question(card, metadata);
       const { query, stageIndex, columns } = getParameterColumns(question);
@@ -149,10 +149,16 @@ describe("parameters/utils/targets", () => {
 
       expect(columnsInfos).toHaveLength(30);
       expect(columnsInfos[0]).toMatchObject({
-        displayName: "Created At",
-        table: {
-          displayName: "Orders",
-        },
+        table: { displayName: "Orders" },
+        longDisplayName: "Created At",
+      });
+      expect(columnsInfos[9]).toMatchObject({
+        table: { displayName: "Products" },
+        longDisplayName: "Product → Category",
+      });
+      expect(columnsInfos[17]).toMatchObject({
+        table: { displayName: "People" },
+        longDisplayName: "User → Address",
       });
     });
   });
