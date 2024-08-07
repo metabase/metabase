@@ -158,10 +158,10 @@
      (comp (map (partial mi/do-after-select Card))
            (filter card-can-be-used-as-source-query?)
            xform)
-     (completing conj #(t2/hydrate % :collection))
+     (completing conj #(t2/hydrate % :collection :metrics))
      []
      (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
-                                     :result_metadata :type
+                                     :result_metadata :type :source_card_id
                                      [{:select   [:status]
                                        :from     [:moderation_review]
                                        :where    [:and

@@ -404,13 +404,13 @@ result_metadata:
   visibility_type: normal
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
-    : column_title: Question
+    '["name","name"]':
+      column_title: Question
       link_text: ''
       link_url: /question/{{card_id}}
       view_as: link
-    ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
-    : column_title: Creator
+    '["name","full_name"]':
+      column_title: Creator
   table.cell_column: card_id
   table.columns:
   - enabled: true
@@ -422,7 +422,6 @@ visualization_settings:
       - name
     - base-type: type/Text
       join-alias: Content - Card Qualified
-    key: '["ref",["field",921,{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
     name: name
   - enabled: true
     fieldRef:
@@ -433,7 +432,6 @@ visualization_settings:
       - full_name
     - base-type: type/Text
       join-alias: People - Creator
-    key: '["ref",["field",1377,{"base-type":"type/Text","join-alias":"People - Creator"}]]'
     name: full_name
   - enabled: true
     fieldRef:
@@ -443,7 +441,6 @@ visualization_settings:
       - v_alerts
       - created_at
     - temporal-unit: default
-    key: '["ref",["field",1370,null]]'
     name: created_at
   - enabled: true
     fieldRef:
@@ -453,7 +450,6 @@ visualization_settings:
       - v_alerts
       - updated_at
     - temporal-unit: default
-    key: '["ref",["field",1361,null]]'
     name: updated_at
   - enabled: false
     fieldRef:
@@ -463,7 +459,6 @@ visualization_settings:
       - v_alerts
       - creator_id
     - null
-    key: '["ref",["field",1373,null]]'
     name: creator_id
   - enabled: false
     fieldRef:
@@ -473,7 +468,6 @@ visualization_settings:
       - v_alerts
       - card_id
     - null
-    key: '["ref",["field",1374,null]]'
     name: card_id
   - enabled: true
     fieldRef:
@@ -483,7 +477,6 @@ visualization_settings:
       - v_alerts
       - alert_condition
     - null
-    key: '["ref",["field",1369,null]]'
     name: alert_condition
   - enabled: true
     fieldRef:
@@ -493,7 +486,6 @@ visualization_settings:
       - v_alerts
       - schedule_type
     - null
-    key: '["ref",["field",1367,null]]'
     name: schedule_type
   - enabled: true
     fieldRef:
@@ -503,7 +495,6 @@ visualization_settings:
       - v_alerts
       - schedule_day
     - null
-    key: '["ref",["field",1363,null]]'
     name: schedule_day
   - enabled: true
     fieldRef:
@@ -513,7 +504,6 @@ visualization_settings:
       - v_alerts
       - schedule_hour
     - null
-    key: '["ref",["field",1372,null]]'
     name: schedule_hour
   - enabled: true
     fieldRef:
@@ -523,7 +513,6 @@ visualization_settings:
       - v_alerts
       - recipient_type
     - null
-    key: '["ref",["field",1368,null]]'
     name: recipient_type
   - enabled: true
     fieldRef:
@@ -533,7 +522,6 @@ visualization_settings:
       - v_alerts
       - recipients
     - null
-    key: '["ref",["field",1362,null]]'
     name: recipients
   - enabled: true
     fieldRef:
@@ -543,7 +531,6 @@ visualization_settings:
       - v_alerts
       - recipient_external
     - null
-    key: '["ref",["field",1365,null]]'
     name: recipient_external
   table.pivot_column: schedule_day
 serdes/meta:
