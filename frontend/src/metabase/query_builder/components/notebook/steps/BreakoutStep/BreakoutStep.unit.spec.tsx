@@ -104,15 +104,15 @@ describe("BreakoutStep", () => {
     expect(listItem).toHaveAttribute("aria-selected", "true");
   });
 
-  it("shouldn't show already used columns when adding a new breakout", async () => {
+  it("should show already used columns when adding a new breakout", async () => {
     const { query, columnInfo } = createQueryWithBreakout();
     setup(createMockNotebookStep({ query }));
 
     await userEvent.click(getIcon("add"));
 
     expect(
-      screen.queryByRole("option", { name: columnInfo.displayName }),
-    ).not.toBeInTheDocument();
+      screen.getByRole("option", { name: columnInfo.displayName }),
+    ).toBeInTheDocument();
   });
 
   it("should add a breakout", async () => {
