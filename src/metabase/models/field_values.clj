@@ -367,10 +367,9 @@
             (assoc-in [:data :rows] (persistent! @rows))))
 
        ([result row]
-        (assert (and (= 1 (count row))
-                     (string? (first row))))
+        (assert (= 1 (count row)))
         (vswap! total-char + (count (first row)))
-        (if (>= @total-char max-char-len)
+        (if (> @total-char max-char-len)
           (reduced (assoc result ::reached-char-len-limit true))
           (do
            (offer-row row)
