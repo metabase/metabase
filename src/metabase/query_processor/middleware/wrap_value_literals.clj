@@ -50,26 +50,26 @@
        {:unit :default}))))
 
 (defn- str-id-field->type-info
-  "Return _type info_ for a field with `field-name`, presumably from source query model.
-
-  Idea is, that if field has a string id, it may come from a model. If it _comes_ from a model, the model has to be
-  a source query. Hence the query with source model contains `:source-metadata` those could be mapped to `field-name`.
-
-  Returns `nil` when no matching field is found in `source-metadatas`."
-  [field-name source-metadatas]
+  "Return _type info_ for `_field` with string `field-name`, coming from the source query or joins."
+  [[_tag field-name {:keys [join-alias] :as _opts} :as _field] inner-query]
   (when (string? field-name)
-    (some (fn [{:keys [name] :as source-metadata}]
-            (when (= name field-name)
-              (select-keys source-metadata [:base_type :effective_type :database_type])))
-          source-metadatas)))
+    ;; Use corresponding source-metadata from joins or `inner-query`.
+    (let [source-metadatas (if join-alias
+                             (some #(when (= join-alias (:alias %))
+                                      (:source-metadata %))
+                                   (:joins inner-query))
+                             (:source-metadata inner-query))]
+      (some #(when (= (:name %) field-name)
+               (select-keys % [:base_type :effective_type :database_type]))
+            source-metadatas))))
 
-(defmethod type-info :field [[_ id-or-name opts]]
+(defmethod type-info :field [[_ id-or-name opts :as field]]
   (merge
    ;; With Mlv2 queries, this could be combined with `:expression` below and use the column from the
    ;; query rather than metadata/field
    (if (integer? id-or-name)
      (type-info (lib.metadata/field (qp.store/metadata-provider) id-or-name))
-     (str-id-field->type-info id-or-name (:source-metadata *inner-query*)))
+     (str-id-field->type-info field *inner-query*))
    (when (:temporal-unit opts)
      {:unit (:temporal-unit opts)})
    (when (:base-type opts)

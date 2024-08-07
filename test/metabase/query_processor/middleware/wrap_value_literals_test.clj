@@ -304,16 +304,34 @@
                      wrap-value-literals
                      (lib/query query))))))))
 
-(deftest ^:parallel model-with-enum-field-expression-test
+(deftest ^:parallel model-source-type-info-test
   (testing "type info is added to fields coming from model source query (#46059)"
     ;; Basically, this checks whether the [[metabase.query-processor.middleware.wrap-value-literals/type-info]] :field
-    ;; adds options to values in expressions, where other arg if field clause with name instead of int id.
+    ;; adds options to values in expressions, where other arg is field clause with name instead of int id.
     (toucan2.with-temp/with-temp [:model/Card {id :id} {:dataset_query (mt/mbql-query venues)
                                                         :type          :model}]
       (let [query (mt/mbql-query
                    venues
                    {:source-table (str "card__" id)
                     :filter [:= [:field "ID" {:base-type :type/Integer}] 1]})
+            preprocessed (qp.preprocess/preprocess query)]
+        ;; [:query :filter 2 2 :database_type] points to wrapped value's options
+        (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
+
+(deftest ^:parallel model-join-type-info-test
+  (testing "type info is added to fields coming from join"
+    ;; Basically, this checks whether the [[metabase.query-processor.middleware.wrap-value-literals/type-info]] :field
+    ;; adds options to values in expressions, where other arg is field clause with name instead of int id.
+    (toucan2.with-temp/with-temp [:model/Card {id :id} {:dataset_query (mt/mbql-query venues)
+                                                        :type          :model}]
+      (let [query (mt/mbql-query
+                   venues
+                   {:filter [:= [:field "ID" {:base-type :type/Integer :join-alias "x"}] 1]
+                    :joins [{:alias "x"
+                             :condition [:=
+                                         $id
+                                         [:field "ID" {:base-type :type/Integer :join-alias "x"}]]
+                             :source-table (str "card__" id)}]})
             preprocessed (qp.preprocess/preprocess query)]
         ;; [:query :filter 2 2 :database_type] points to wrapped value's options
         (is (= "BIGINT" (get-in preprocessed [:query :filter 2 2 :database_type])))))))
