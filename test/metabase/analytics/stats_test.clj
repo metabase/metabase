@@ -87,23 +87,6 @@
     "250+"    251
     "250+"    5000))
 
-(deftest ^:parallel bin-large-number-test
-  (are [expected n] (= expected
-                       (#'stats/bin-large-number n))
-    "0"          0
-    "1-10"       1
-    "1-10"       10
-    "11-50"      11
-    "11-50"      50
-    "51-250"     51
-    "51-250"     250
-    "251-1000"   251
-    "251-1000"   1000
-    "1001-10000" 1001
-    "1001-10000" 10000
-    "10000+"     10001
-    "10000+"     100000))
-
 (deftest anonymous-usage-stats-test
   (with-redefs [email/email-configured? (constantly false)
                 slack/slack-configured? (constantly false)]
@@ -195,7 +178,20 @@
            (into #{} (map #(contains? system-stats %) [:java_version :java_runtime_name :max_memory]))))
       "Spot checking a few system stats to ensure conversion from property names and presence in the anonymous-usage-stats"))
 
-(def ^:private large-histogram (partial #'stats/histogram #'stats/bin-large-number))
+(defn- bin-large-number
+  "Return large bin number. Assumes positive inputs."
+  [x]
+  (cond
+    (= 0 x)           "0"
+    (< x 1)           "< 1"
+    (<= 1 x 10)       "1-10"
+    (<= 11 x 50)      "11-50"
+    (<= 51 x 250)     "51-250"
+    (<= 251 x 1000)   "251-1000"
+    (<= 1001 x 10000) "1001-10000"
+    (> x 10000)       "10000+"))
+
+(def ^:private large-histogram (partial #'stats/histogram bin-large-number))
 
 (defn- old-execution-metrics []
   (let [executions (t2/select [QueryExecution :executor_id :running_time :error])]
@@ -206,7 +202,7 @@
                                       "completed")))
      :num_per_user   (large-histogram executions :executor_id)
      :num_by_latency (frequencies (for [{latency :running_time} executions]
-                                    (#'stats/bin-large-number (/ latency 1000))))}))
+                                    (bin-large-number (/ latency 1000))))}))
 
 (def query-execution-defaults
   {:hash         (qp.util/query-hash {})
