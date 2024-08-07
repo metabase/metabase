@@ -106,16 +106,12 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
   const recentsGrid = () => cy.findByRole("grid", { name: "Recents" });
   const modelsTable = () => cy.findByRole("table", { name: "Table of models" });
-  const productsModel = () =>
-    modelsTable().findByRole("heading", { name: "Products Model" });
-  const recentProductsModel = () => recentsGrid().findByText("Products Model");
-  const ordersModel = () =>
-    modelsTable().findByRole("heading", { name: "Orders Model" });
-  const recentOrdersModel = () => recentsGrid().findByText("Orders Model");
-  const productsModelRow = () =>
-    modelsTable().findByRole("row", { name: /Products Model/i });
-  const ordersModelRow = () =>
-    modelsTable().findByRole("row", { name: /Orders Model/i });
+  const model1 = () => modelsTable().findByRole("heading", { name: "Model 1" });
+  const recentModel1 = () => recentsGrid().findByText("Model 1");
+  const model2 = () => modelsTable().findByRole("heading", { name: "Model 2" });
+  const recentModel2 = () => recentsGrid().findByText("Model 2");
+  const model1Row = () => modelsTable().findByRole("row", { name: /Model 1/i });
+  const model2Row = () => modelsTable().findByRole("row", { name: /Model 2/i });
   const filterButton = () =>
     cy
       .findByTestId("browse-models-header")
@@ -153,33 +149,33 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
   };
 
   it("/browse/models allows models to be filtered, on an enterprise instance", () => {
-    cy.log('Create a "Products" model');
-    cy.createQuestion({
-      name: "Products Model",
-      query: {
-        "source-table": PRODUCTS_ID,
-        limit: 10,
-      },
-      type: "model",
+    cy.log(
+      "Create several models - enough that we can see recently viewed models",
+    );
+    Array.from({ length: 10 }).forEach((_, i) => {
+      cy.createQuestion({
+        name: `Model ${i}`,
+        query: {
+          "source-table": PRODUCTS_ID,
+          limit: 10,
+        },
+        type: "model",
+      });
     });
 
     browseModels();
 
-    cy.log("Cells for the Products and Orders models exist in the table");
-    productsModel().should("exist");
-    ordersModel().should("exist");
+    cy.log("Cells for both models exist in the table");
+    model1().should("exist");
+    model2().should("exist");
 
-    cy.log(
-      "In the Browse models table, the Products Model is marked as unverified",
-    );
-    productsModelRow().within(() => {
+    cy.log("In the Browse models table, model 1 is marked as unverified");
+    model1Row().within(() => {
       cy.icon("model").should("exist");
       cy.icon("model_with_badge").should("not.exist");
     });
-    cy.log(
-      "In the Browse models table, the Orders Model is marked as unverified",
-    );
-    ordersModelRow().within(() => {
+    cy.log("In the Browse models table, model 2 is marked as unverified");
+    model2Row().within(() => {
       cy.icon("model").should("exist");
       cy.icon("model_with_badge").should("not.exist");
     });
@@ -187,7 +183,8 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
     cy.log("There are no verified models, so the filter toggle is not visible");
     filterButton().should("not.exist");
 
-    cy.log("Verify the Orders Model");
+    cy.log("Verify Model 2");
+    cy.findByRole("heading", { name: "Model 2" }).click();
     verifyModel();
 
     browseModels();
@@ -197,16 +194,12 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
       .findByTestId("filter-dot")
       .should("be.visible");
 
-    cy.log(
-      "The Products Model does not appear in the table, since it's not verified",
-    );
-    productsModel().should("not.exist");
+    cy.log("Model 1 does not appear in the table, since it's not verified");
+    model1().should("not.exist");
 
-    cy.log("The Orders Model appears in the table");
-    ordersModel().should("exist");
-
-    cy.log("The Orders Model now appears in the table as verified");
-    ordersModelRow().within(() => {
+    cy.log("Model 2 now appears in the table as verified");
+    model2().should("exist");
+    model2Row().within(() => {
       cy.icon("model").should("not.exist");
       cy.icon("model_with_badge").should("exist");
     });
@@ -214,14 +207,14 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
     cy.log("The filter toggle is now visible");
     filterButton().should("be.visible");
 
-    cy.log("Unverify the orders model");
-    cy.findByRole("heading", { name: "Orders Model" }).click();
+    cy.log("Unverify Model 2");
+    cy.findByRole("heading", { name: "Model 2" }).click();
     unverifyModel();
 
     browseModels();
 
-    cy.log("Visit the products model");
-    cy.findByRole("heading", { name: "Products Model" }).click();
+    cy.log("Visit Model 1");
+    cy.findByRole("heading", { name: "Model 1" }).click();
 
     browseModels();
 
@@ -232,14 +225,14 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
       "The verified filter, though still active, is not applied if there are no verified models",
     );
     cy.log("Both models are in the table - no filter is applied here");
-    ordersModel().should("exist");
-    productsModel().should("exist");
+    model2().should("exist");
+    model1().should("exist");
     cy.log("Both models are in the recents grid - no filter is applied here");
-    recentOrdersModel().should("exist");
-    recentProductsModel().should("exist");
+    recentModel2().should("exist");
+    recentModel1().should("exist");
 
-    cy.log("Verify the Orders Model");
-    modelsTable().findByText("Orders Model").click();
+    cy.log("Verify Model 2");
+    modelsTable().findByText("Model 2").click();
     verifyModel();
 
     browseModels();
@@ -250,12 +243,12 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
     cy.log("Show all models");
     toggleVerificationFilter();
 
-    cy.log("The Products and Orders models now both exist in the table");
-    productsModel().should("exist");
-    ordersModel().should("exist");
+    cy.log("Both models now both exist in the table");
+    model1().should("exist");
+    model2().should("exist");
 
-    cy.log("The Products Model appears as unverified");
-    productsModelRow().within(() => {
+    cy.log("Model 1 appears as unverified");
+    model1Row().within(() => {
       cy.icon("model").should("exist");
       cy.icon("model_with_badge").should("not.exist");
     });
