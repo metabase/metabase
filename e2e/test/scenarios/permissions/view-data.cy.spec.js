@@ -112,7 +112,7 @@ describeEE("scenarios > admin > permissions > view data > granular", () => {
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
     );
 
-    cy.findByText("Grant sandboxed access to this table");
+    cy.findByText("Restrict access to this table");
     cy.button("Save").should("be.disabled");
 
     cy.findByText("Pick a column").click();
@@ -586,7 +586,7 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Grant sandboxed access to this table");
+    cy.findByText("Restrict access to this table");
     cy.button("Save").should("be.disabled");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -628,11 +628,11 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}/segmented/group/${ALL_USERS_GROUP}`,
     );
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Grant sandboxed access to this table");
+    cy.findByText("Restrict access to this table");
 
     cy.button("Save").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Grant sandboxed access to this table").should("not.exist");
+    cy.findByText("Restrict access to this table").should("not.exist");
 
     cy.button("Save changes").click();
 
@@ -665,7 +665,7 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
     );
     modal().within(() => {
-      cy.findByText("Grant sandboxed access to this table");
+      cy.findByText("Restrict access to this table");
       cy.button("Save").should("be.disabled");
       cy.findByText("Pick a column").click();
     });
@@ -705,7 +705,7 @@ describeEE("scenarios > admin > permissions > view data > sandboxed", () => {
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
     );
 
-    modal().findByText("Grant sandboxed access to this table");
+    modal().findByText("Restrict access to this table");
 
     cy.button("Save").click();
 
@@ -755,7 +755,7 @@ describeEE(
       modifyPermission("Orders", DATA_ACCESS_PERMISSION_INDEX, "Sandboxed");
 
       modal().within(() => {
-        cy.findByText("Grant sandboxed access to this table");
+        cy.findByText("Restrict access to this table");
         cy.button("Save").should("be.disabled");
         cy.findByText("Pick a column").click();
       });
