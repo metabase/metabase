@@ -86,7 +86,7 @@ type EditableDashboardViewProps = {
   parameterQueryParams: Query;
 
   downloadsEnabled?: boolean;
-  navigateToNewCardFromDashboard?: (
+  onNavigateToNewCardFromDashboard: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
 
@@ -101,6 +101,7 @@ const EditableDashboardViewInner = ({
   dashboard,
   onLoad,
   onLoadWithoutCards,
+  onNavigateToNewCardFromDashboard,
   ...restProps
 }: EditableDashboardViewProps & ReduxProps) => {
   useDashboardLoadHandlers({ dashboard, onLoad, onLoadWithoutCards });
@@ -113,6 +114,7 @@ const EditableDashboardViewInner = ({
       hasNightModeToggle={false}
       onSetErrorPage={console.error}
       {...restProps}
+      navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
     />
   );
 };
