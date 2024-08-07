@@ -4,7 +4,10 @@ import { t } from "ttag";
 import AccordionList from "metabase/core/components/AccordionList";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import { CompareAggregations } from "metabase/query_builder/components/CompareAggregations";
+import {
+  canAddTemporalCompareAggregation,
+  CompareAggregations,
+} from "metabase/query_builder/components/CompareAggregations";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
 import { getQuestion } from "metabase/query_builder/selectors";
@@ -419,30 +422,6 @@ function getMetricListItem(
     selected:
       clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
   };
-}
-
-function canAddTemporalCompareAggregation(
-  query: Lib.Query,
-  stageIndex: number,
-  aggregations: Lib.AggregationClause[],
-): boolean {
-  if (aggregations.length === 0) {
-    // Hide the "Compare to the past" option if there are no aggregations
-    return false;
-  }
-
-  const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
-  const hasAtLeastOneTemporalBreakoutColumn = breakoutableColumns.some(column =>
-    Lib.isTemporal(column),
-  );
-
-  if (!hasAtLeastOneTemporalBreakoutColumn) {
-    // Hide the "Compare to the past" option if there are no
-    // temporal columns to break out on
-    return false;
-  }
-
-  return true;
 }
 
 function checkIsColumnSelected(columnInfo: Lib.ColumnDisplayInfo) {
