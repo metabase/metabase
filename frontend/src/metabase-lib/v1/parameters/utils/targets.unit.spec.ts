@@ -540,7 +540,13 @@ function createCountField() {
   });
 }
 
-function createModel(opts?: Partial<StructuredCard>) {
+function createModel(opts: Partial<StructuredCard>) {
+  if (!("result_metadata" in opts)) {
+    throw new Error(
+      "result_metadata needs to be passed, otherwise test setup would be incorrect",
+    );
+  }
+
   const card = createStructuredModelCard(opts);
   const metadata = createMockMetadata({
     databases: [sampleDb, savedQuestionsDb],
