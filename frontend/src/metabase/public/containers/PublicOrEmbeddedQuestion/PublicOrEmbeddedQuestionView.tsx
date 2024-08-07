@@ -21,23 +21,7 @@ import type {
   DatasetQuery,
 } from "metabase-types/api";
 
-export function PublicOrEmbeddedQuestionView({
-  card,
-  metadata,
-  result,
-  uuid,
-  token,
-  getParameters,
-  parameterValues,
-  setParameterValue,
-  setParameterValueToDefault,
-  bordered,
-  hide_parameters,
-  theme,
-  titled,
-  setCard,
-  downloadsEnabled,
-}: {
+interface PublicOrEmbeddedQuestionViewProps {
   initialized: boolean;
   card: Card<DatasetQuery> | null;
   metadata: Metadata;
@@ -54,7 +38,25 @@ export function PublicOrEmbeddedQuestionView({
   titled: boolean;
   setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
   downloadsEnabled: boolean;
-}) {
+}
+
+export function PublicOrEmbeddedQuestionView({
+  card,
+  metadata,
+  result,
+  uuid,
+  token,
+  getParameters,
+  parameterValues,
+  setParameterValue,
+  setParameterValueToDefault,
+  bordered,
+  hide_parameters,
+  theme,
+  titled,
+  setCard,
+  downloadsEnabled,
+}: PublicOrEmbeddedQuestionViewProps) {
   const question = new Question(card, metadata);
   const actionButtons = result && downloadsEnabled && (
     <QueryDownloadWidget
