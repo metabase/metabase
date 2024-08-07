@@ -490,20 +490,42 @@ describe("parameters/utils/targets", () => {
     describe("date parameter", () => {
       const parameter = createDateParameter();
 
-      it("question - returns date columns from source table and implicitly joinable tables", () => {
-        const question = createQuestion();
-        const { query, stageIndex, columns } = getParameterColumns(
-          question,
-          parameter,
-        );
-        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+      describe("question", () => {
+        it("returns date columns from source table and implicitly joinable tables", () => {
+          const question = createQuestion();
+          const { query, stageIndex, columns } = getParameterColumns(
+            question,
+            parameter,
+          );
+          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
-        expect(columnsInfos).toEqual([
-          ["Orders", "Created At"],
-          ["Products", "Product → Created At"],
-          ["People", "User → Birth Date"],
-          ["People", "User → Created At"],
-        ]);
+          expect(columnsInfos).toEqual([
+            ["Orders", "Created At"],
+            ["Products", "Product → Created At"],
+            ["People", "User → Birth Date"],
+            ["People", "User → Created At"],
+          ]);
+        });
+      });
+
+      describe("model", () => {
+        it("returns date columns from source table and implicitly joinable tables", () => {
+          const question = createModel({
+            result_metadata: createOrdersTable().fields,
+          });
+          const { query, stageIndex, columns } = getParameterColumns(
+            question,
+            parameter,
+          );
+          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+
+          expect(columnsInfos).toEqual([
+            ["Question", "Created At"],
+            ["People", "User → Birth Date"],
+            ["People", "User → Created At"],
+            ["Products", "Product → Created At"],
+          ]);
+        });
       });
     });
   });
