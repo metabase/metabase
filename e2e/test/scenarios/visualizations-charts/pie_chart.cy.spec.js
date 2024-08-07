@@ -7,6 +7,7 @@ import {
   tableHeaderClick,
   pieSlices,
   leftSidebar,
+  ensureEchartsContainerHasSvg,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -108,6 +109,7 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     // Ensure chart renders before hovering the legend item
+    ensureEchartsContainerHasSvg();
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("TOTAL");
     });
