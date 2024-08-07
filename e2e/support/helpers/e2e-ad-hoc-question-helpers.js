@@ -108,7 +108,7 @@ export function startNewNativeModel(config) {
  * Visit any valid query in an ad-hoc manner.
  *
  * @param {object} question
- * @param {{callback: function, mode: (undefined|"notebook")}} config
+ * @param {{callback?: function, mode: (undefined|"notebook")}} config
  */
 export function visitQuestionAdhoc(
   question,
