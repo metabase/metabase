@@ -48,10 +48,18 @@ export function NumberFingerprint({
  * @param num - a number value from the type/Number fingerprint; might not be a number
  * @returns - a tuple, [isFormattedNumber, formattedNumber]
  */
-function roundNumber(num: number | null | undefined): [boolean, string] {
-  if (num == null) {
+function roundNumber(num: unknown): [boolean, string] {
+  if (!isNumber(num)) {
     return [false, ""];
   }
 
-  return [true, Number.isInteger(num) ? num.toString() : num.toFixed(2)];
+  if (Number.isInteger(num)) {
+    return [true, num.toString()];
+  }
+
+  return [true, num.toFixed(2)];
+}
+
+function isNumber(num: unknown): num is number {
+  return typeof num === "number" && Number.isFinite(num) && !Number.isNaN(num);
 }
