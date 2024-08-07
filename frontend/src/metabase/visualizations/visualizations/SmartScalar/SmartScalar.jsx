@@ -258,10 +258,7 @@ function PreviousValueComparison({
       return comparisonDescStr;
     }
 
-    const descColor =
-      isNightMode || inTooltip
-        ? lighten(theme.fn.themeColor("text-medium"), 0.45)
-        : "text-light";
+    const descColor = "var(--mb-color-text-tertiary)";
 
     if (isEmpty(comparisonDescStr)) {
       return (
@@ -316,10 +313,7 @@ function PreviousValueComparison({
       return null;
     }
 
-    const detailColor =
-      isNightMode || inTooltip
-        ? lighten(theme.fn.themeColor("text-light"), 0.25)
-        : "text-medium";
+    const detailColor = "var(--mb-color-text-secondary)";
 
     return (
       <Title order={4} c={detailColor} style={{ whiteSpace: "pre" }}>

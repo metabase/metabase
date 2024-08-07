@@ -24,7 +24,8 @@ body {
   background-color: var(--mb-color-bg-dashboard);
 }
 
-[data-metabase-theme="night"][data-metabase-theme="night"] {
+[data-metabase-theme="night"][data-metabase-theme="night"],
+[role="tooltip"] {
   --mb-color-text-primary: color-mix(
     in srgb,
     var(--mb-color-text-white) 90%,
@@ -40,6 +41,9 @@ body {
     var(--mb-color-text-white) 45%,
     transparent
   );
+}
+
+[data-metabase-theme="night"][data-metabase-theme="night"] {
   --mb-color-text-selected: var(--mb-base-color-white);
   --mb-color-text-hover: var(--mb-base-color-brand-30);
   --mb-color-border: var(--mb-color-text-medium);

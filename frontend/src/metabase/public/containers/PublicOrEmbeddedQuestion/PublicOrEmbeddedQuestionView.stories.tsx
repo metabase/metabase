@@ -8,7 +8,11 @@ import { Provider } from "react-redux";
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
-import { NumberColumn, StringColumn } from "__support__/visualizations";
+import {
+  DateTimeColumn,
+  NumberColumn,
+  StringColumn,
+} from "__support__/visualizations";
 import { waitTimeContext } from "metabase/context/wait-time";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
@@ -192,3 +196,50 @@ PivotTableDarkTheme.args = {
   theme: "night",
 };
 PivotTableDarkTheme.play = PivotTableLightTheme.play;
+
+// Smart scalar
+
+// Light theme
+export const SmartScalarLightTheme = Template.bind({});
+SmartScalarLightTheme.args = {
+  ...defaultArgs,
+  card: createMockCard({
+    id: getNextId(),
+    display: "smartscalar",
+    visualization_settings: {
+      "graph.dimensions": ["timestamp"],
+      "graph.metrics": ["count"],
+    },
+  }),
+  result: createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn(DateTimeColumn({ name: "Timestamp" })),
+        createMockColumn(NumberColumn({ name: "Count" })),
+      ],
+      insights: [
+        {
+          "previous-value": 150,
+          unit: "week",
+          offset: -199100,
+          "last-change": 0.4666666666666667,
+          col: "count",
+          slope: 10,
+          "last-value": 220,
+          "best-fit": ["+", -199100, ["*", 10, "x"]],
+        },
+      ],
+      rows: [
+        ["2024-07-21T00:00:00Z", 150],
+        ["2024-07-28T00:00:00Z", 220],
+      ],
+    }),
+  }),
+};
+
+// Dark theme
+export const SmartScalarDarkTheme = Template.bind({});
+SmartScalarDarkTheme.args = {
+  ...SmartScalarLightTheme.args,
+  theme: "night",
+};
