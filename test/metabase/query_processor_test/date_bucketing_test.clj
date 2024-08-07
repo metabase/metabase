@@ -883,10 +883,10 @@
                 :breakout    [!year.date]}))))))
 
 ;; RELATIVE DATES
-(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds]
+(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds intervalCount]
   pretty/PrettyPrintable
   (pretty [_]
-    (list 'TimestampDatasetDef. intervalSeconds)))
+    (list 'TimestampDatasetDef. intervalSeconds intervalCount)))
 
 (defn- driver->current-datetime-base-type
   "Returns the :base-type of the \"current timestamp\" HoneySQL form defined by the driver `d`. Relies upon the driver
@@ -899,9 +899,10 @@
 
 (defmethod mt/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
-  (let [interval-seconds (.intervalSeconds this)]
+  (let [interval-seconds (.intervalSeconds this)
+        intervalCount    (.intervalCount this)]
     (mt/dataset-definition
-     (str "interval_" interval-seconds)
+     (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)))
      ["checkins"
       [{:field-name "timestamp"
         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
@@ -923,11 +924,17 @@
                                                               (* i interval-seconds)
                                                               :second))
                           (u.date/add :second (* i interval-seconds)))
-                 (assert <>))])
-            (range -15 15))])))
+                        (assert <>))])
+            (let [shift (quot intervalCount 2)
+                  lower-bound (- shift)
+                  upper-bound (- intervalCount shift)]
+              (range lower-bound upper-bound)))])))
 
-(defn- dataset-def-with-timestamps [interval-seconds]
-  (TimestampDatasetDef. interval-seconds))
+(defn- dataset-def-with-timestamps
+  ([interval-seconds]
+   (dataset-def-with-timestamps interval-seconds 30))
+  ([interval-seconds interval-count]
+   (TimestampDatasetDef. interval-seconds interval-count)))
 
 (def ^:private checkins:4-per-minute
   "Dynamically generated dataset with 30 checkins spaced 15 seconds apart, from 3 mins 45 seconds ago to 3 minutes 30
@@ -942,6 +949,10 @@
 (def ^:private checkins:1-per-day
   "Dynamically generated dataset with 30 checkins spaced 24 hours apart, from 15 days ago to 14 days in the future."
   (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
+
+(def ^:private checkins:1-per-day:60
+  "Dynamically generated dataset with 60 checkins spaced 24 hours apart, from 30 days ago to 29 days in the future."
+  (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60)) 60))
 
 (defn- checkins-db-is-old?
   "Determine whether we need to recreate one of the dynamically-generated datasets above, if the data has grown a little
@@ -1051,6 +1062,28 @@
                                                 :current :week))))]
         (is (= 7
                (count (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel relative-time-interval-test
+  (mt/test-drivers
+   (disj (mt/normal-drivers-with-feature :date-arithmetics) :athena)
+   ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
+   (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
+     (mt/dataset checkins:1-per-day:60
+      (is (= 7
+             (ffirst
+              (mt/formatted-rows
+               [int]
+               (mt/run-mbql-query
+                checkins
+                {:aggregation [[:count]]
+                 :filter      [:relative-time-interval $timestamp -1 :week -1 :week]})))
+             (ffirst
+              (mt/formatted-rows
+               [int]
+               (mt/run-mbql-query
+                checkins
+                {:aggregation [[:count]]
+                 :filter      [:relative-time-interval $timestamp -1 :week 0 :week]})))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
 ;; reflects the units the results are in. eg when we breakout by one unit and filter by another, make sure the results
@@ -1406,6 +1439,30 @@
           (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
                  (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
                  (get-in (qp/process-query query) [:data :native_form]))))))))
+
+(deftest filter-by-expression-relative-time-interval-test
+  (testing "Datetime expressions can filter to a date range"
+    (mt/test-drivers
+     (disj (mt/normal-drivers-with-feature :date-arithmetics) :athena)
+     (mt/dataset checkins:1-per-day:60
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
+                    (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
+                                                                  (lib/visible-columns $q)))
+                    (lib/filter $q (lib/relative-time-interval
+                                    (lib/expression-ref $q "customdate") -1 :week -1 :week)))
+            mbql-query (mt/mbql-query
+                        checkins
+                        {:expressions {"customdate" $timestamp}
+                         :filter [:relative-time-interval
+                                  [:expression "customdate" {:base-type :type/DateTime}] -1 :week -1 :week]})
+            processed  (qp/process-query query)
+            mbql-processed (qp/process-query mbql-query)]
+        (is (= 7 (count (mt/rows processed))))
+        (is (= 7 (count (mt/rows mbql-processed))))
+        (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
+               (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
+               (get-in (qp/process-query query) [:data :native_form]))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
 (deftest june-31st-test
