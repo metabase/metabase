@@ -59,7 +59,9 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
 
   await fs.writeFile(`${path}/index.js`, exportIndexContent);
 
-  printSuccess(`Generated example React components files in "${path}"`);
+  printSuccess(
+    `Generated example React components files in "${path}". You can import the <AnalyticsPage /> component in your React app from this path.`,
+  );
 
   return [{ type: "done" }, state];
 };
