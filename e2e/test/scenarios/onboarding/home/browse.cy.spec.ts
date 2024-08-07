@@ -118,7 +118,7 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
       .findByRole("button", { name: /filter icon/i });
 
   const setVerification = (linkSelector: RegExp | string) => {
-    cy.findByLabelText("Move, trash, and more...").click();
+    cy.findByLabelText("Move, archive, and more...").click();
     cy.findByRole("dialog", {
       name: /ellipsis icon/i,
     })
