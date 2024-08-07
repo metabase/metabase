@@ -43,6 +43,19 @@ export function withDefaultTemporalBucket(
   return defaultBucket ? withTemporalBucket(column, defaultBucket) : column;
 }
 
+export function defaultTemporalBucket(
+  query: Query,
+  stageIndex: number,
+  column: ColumnMetadata,
+): Bucket | null {
+  const buckets = availableTemporalBuckets(query, stageIndex, column);
+  const defaultBucket = buckets.find(
+    bucket => displayInfo(query, stageIndex, bucket).default,
+  );
+
+  return defaultBucket ?? buckets[0] ?? null;
+}
+
 type IntervalAmount = number | "current" | "next" | "last";
 
 export function describeTemporalInterval(
