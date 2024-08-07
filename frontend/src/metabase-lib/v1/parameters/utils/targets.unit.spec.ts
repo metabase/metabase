@@ -2,6 +2,7 @@ import { createMockMetadata } from "__support__/metadata";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
+import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   getParameterColumns,
   getParameterTargetField,
@@ -11,24 +12,28 @@ import {
 import type { ParameterDimensionTarget } from "metabase-types/api";
 import {
   createMockParameter,
+  createMockSavedQuestionsDatabase,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   createSavedStructuredCard,
+  createStructuredModelCard,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
 
+const savedQuestionsDb = createMockSavedQuestionsDatabase();
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase(), savedQuestionsDb],
+});
+
+const db = metadata.database(SAMPLE_DB_ID) as Database;
+
 describe("parameters/utils/targets", () => {
-  const metadata = createMockMetadata({
-    databases: [createSampleDatabase()],
-  });
-
-  const db = metadata.database(SAMPLE_DB_ID) as Database;
-
   describe("isDimensionTarget", () => {
     it("should return false for non-dimension targets", () => {
       expect(isDimensionTarget(["variable", ["template-tag", "foo"]])).toBe(
@@ -139,7 +144,7 @@ describe("parameters/utils/targets", () => {
   });
 
   describe("getParameterColumns", () => {
-    it("returns columns from source table and tables related by FKs", () => {
+    it("question - returns columns from source table and implicitly joinable tables", () => {
       const card = createSavedStructuredCard();
       const question = new Question(card, metadata);
       const { query, stageIndex, columns } = getParameterColumns(question);
@@ -148,6 +153,36 @@ describe("parameters/utils/targets", () => {
       });
 
       expect(columnsInfos).toHaveLength(30);
+      expect(columnsInfos[0]).toMatchObject({
+        table: { displayName: "Orders" },
+        longDisplayName: "Created At",
+      });
+      expect(columnsInfos[9]).toMatchObject({
+        table: { displayName: "Products" },
+        longDisplayName: "Product → Category",
+      });
+      expect(columnsInfos[17]).toMatchObject({
+        table: { displayName: "People" },
+        longDisplayName: "User → Address",
+      });
+    });
+
+    it("model - returns columns from source table and implicitly joinable tables", () => {
+      const card = createStructuredModelCard();
+      const metadata = createMockMetadata({
+        databases: [createSampleDatabase(), savedQuestionsDb],
+        tables: [convertSavedQuestionToVirtualTable(card)],
+        questions: [card],
+      });
+      const question = new Question(card, metadata);
+      const { query, stageIndex, columns } = getParameterColumns(question);
+      const columnsInfos = columns.map(column => {
+        return Lib.displayInfo(query, stageIndex, column);
+      });
+
+      // TODO: columnsInfos length is 0
+      expect(columnsInfos).toHaveLength(30);
+      // TODO: update assertions
       expect(columnsInfos[0]).toMatchObject({
         table: { displayName: "Orders" },
         longDisplayName: "Created At",
