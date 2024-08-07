@@ -1,9 +1,11 @@
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { isNumber } from "metabase/lib/types";
 import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
+import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
+import { unaggregatedDataWarningPie } from "metabase/visualizations/lib/warnings";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
-import type { RawSeries, RowValues } from "metabase-types/api";
+import type { DatasetColumn, RawSeries, RowValues } from "metabase-types/api";
 
 export const getDefaultShowLegend = () => true;
 
@@ -17,6 +19,8 @@ export function getAggregatedRows(
   rows: RowValues[],
   dimensionIndex: number,
   metricIndex: number,
+  showWarning?: ShowWarning,
+  dimensionColumn?: DatasetColumn,
 ) {
   const dimensionToMetricValues = new Map<string, number>();
   rows.forEach(row => {
@@ -53,6 +57,14 @@ export function getAggregatedRows(
 
     aggregatedRows.push(newRow);
   });
+
+  if (showWarning != null && aggregatedRows.length < rows.length) {
+    if (dimensionColumn == null) {
+      throw Error("Missing `dimensionColumn`");
+    }
+
+    showWarning?.(unaggregatedDataWarningPie(dimensionColumn).text);
+  }
 
   return aggregatedRows;
 }

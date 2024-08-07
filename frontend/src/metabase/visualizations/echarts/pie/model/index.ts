@@ -6,7 +6,7 @@ import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { checkNotNull } from "metabase/lib/types";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { pieNegativesWarning } from "metabase/visualizations/lib/warnings";
-import { getSortedAggregatedRows } from "metabase/visualizations/shared/settings/pie";
+import { getAggregatedRows } from "metabase/visualizations/shared/settings/pie";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -69,10 +69,12 @@ export function getPieChartModel(
   ] = rawSeries;
   const colDescs = getColDescs(rawSeries, settings);
 
-  const aggregatedRows = getSortedAggregatedRows(
+  const aggregatedRows = getAggregatedRows(
     dataRows,
     colDescs.dimensionDesc.index,
     colDescs.metricDesc.index,
+    showWarning,
+    colDescs.dimensionDesc.column,
   );
 
   const rowValuesByKey = new Map<string, [RowValue, number]>();
