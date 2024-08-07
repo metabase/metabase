@@ -209,7 +209,12 @@ export function EntityPickerModal<
     >
       <Modal.Overlay />
       <ModalContent h="100%">
-        <Modal.Header px="1.5rem" pt="1rem" pb={hasTabs ? "1rem" : "1.5rem"}>
+        <Modal.Header
+          px="1.5rem"
+          pt="1rem"
+          pb={hasTabs ? "1rem" : "1.5rem"}
+          bg="var(--mb-color-background)"
+        >
           <GrowFlex justify="space-between">
             <Modal.Title lh="2.5rem">{title}</Modal.Title>
             {hydratedOptions.showSearch && (

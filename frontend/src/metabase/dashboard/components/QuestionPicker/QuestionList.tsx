@@ -8,7 +8,9 @@ import type { BaseSelectListItemProps } from "metabase/components/SelectList/Bas
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
+import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type {
   CollectionId,
   SearchRequest,
@@ -44,6 +46,8 @@ export function QuestionList({
   hasCollections,
   showOnlyPublicCollections,
 }: QuestionListProps) {
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 
@@ -73,7 +77,9 @@ export function QuestionList({
 
     return {
       ...baseQuery,
-      models: ["card", "dataset", "metric"],
+      models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+        ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
+        : ["card", "dataset", "metric"],
       offset: queryOffset,
       limit: DEFAULT_SEARCH_LIMIT,
     };

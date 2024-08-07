@@ -35,7 +35,7 @@
   --mb-color-text-selected: var(--mb-base-color-brand-40);
   --mb-color-text-brand: var(--mb-base-color-brand-40);
   --mb-color-text-white: var(--mb-base-color-white);
-  --mb-color-background: var(--mb-base-color-white);
+  --mb-color-background: var(--mb-color-bg-white);
   --mb-color-background-selected: var(--mb-base-color-brand-10);
   --mb-color-background-disabled: var(--mb-color-bg-light);
   --mb-color-background-inverse: var(--mb-color-bg-black);
