@@ -13,6 +13,7 @@ import type {
   Card,
   FieldReference,
   ParameterDimensionTarget,
+  StructuredDatasetQuery,
 } from "metabase-types/api";
 import {
   createMockParameter,
@@ -32,6 +33,8 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
+
+type StructuredCard = Card<StructuredDatasetQuery>;
 
 const sampleDb = createSampleDatabase();
 const savedQuestionsDb = createMockSavedQuestionsDatabase();
@@ -198,200 +201,192 @@ describe("parameters/utils/targets", () => {
     describe("no parameter", () => {
       const parameter = undefined;
 
-      it("question - returns columns from source table and implicitly joinable tables", () => {
-        const card = createSavedStructuredCard();
-        const question = new Question(card, metadata);
-        const { query, stageIndex, columns } = getParameterColumns(
-          question,
-          parameter,
-        );
-        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+      describe("question", () => {
+        it("returns columns from source table and implicitly joinable tables", () => {
+          const question = createQuestion();
+          const { query, stageIndex, columns } = getParameterColumns(
+            question,
+            parameter,
+          );
+          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
-        expect(columnsInfos).toEqual([
-          ["Orders", "Created At"],
-          ["Orders", "Discount"],
-          ["Orders", "ID"],
-          ["Orders", "Product ID"],
-          ["Orders", "Quantity"],
-          ["Orders", "Subtotal"],
-          ["Orders", "Tax"],
-          ["Orders", "Total"],
-          ["Orders", "User ID"],
-          ["Products", "Product → Category"],
-          ["Products", "Product → Created At"],
-          ["Products", "Product → Ean"],
-          ["Products", "Product → ID"],
-          ["Products", "Product → Price"],
-          ["Products", "Product → Rating"],
-          ["Products", "Product → Title"],
-          ["Products", "Product → Vendor"],
-          ["People", "User → Address"],
-          ["People", "User → Birth Date"],
-          ["People", "User → City"],
-          ["People", "User → Created At"],
-          ["People", "User → Email"],
-          ["People", "User → ID"],
-          ["People", "User → Latitude"],
-          ["People", "User → Longitude"],
-          ["People", "User → Name"],
-          ["People", "User → Password"],
-          ["People", "User → Source"],
-          ["People", "User → State"],
-          ["People", "User → Zip"],
-        ]);
+          expect(columnsInfos).toEqual([
+            ["Orders", "Created At"],
+            ["Orders", "Discount"],
+            ["Orders", "ID"],
+            ["Orders", "Product ID"],
+            ["Orders", "Quantity"],
+            ["Orders", "Subtotal"],
+            ["Orders", "Tax"],
+            ["Orders", "Total"],
+            ["Orders", "User ID"],
+            ["Products", "Product → Category"],
+            ["Products", "Product → Created At"],
+            ["Products", "Product → Ean"],
+            ["Products", "Product → ID"],
+            ["Products", "Product → Price"],
+            ["Products", "Product → Rating"],
+            ["Products", "Product → Title"],
+            ["Products", "Product → Vendor"],
+            ["People", "User → Address"],
+            ["People", "User → Birth Date"],
+            ["People", "User → City"],
+            ["People", "User → Created At"],
+            ["People", "User → Email"],
+            ["People", "User → ID"],
+            ["People", "User → Latitude"],
+            ["People", "User → Longitude"],
+            ["People", "User → Name"],
+            ["People", "User → Password"],
+            ["People", "User → Source"],
+            ["People", "User → State"],
+            ["People", "User → Zip"],
+          ]);
+        });
       });
 
-      it("model - returns columns from source table and implicitly joinable tables", () => {
-        const card = createStructuredModelCard({
-          result_metadata: createOrdersTable().fields,
-        });
-        const metadata = createMockMetadata({
-          databases: [sampleDb, savedQuestionsDb],
-          tables: [getModelVirtualTable(card)],
-          questions: [card],
-        });
-        const question = new Question(card, metadata);
-        const { query, stageIndex, columns } = getParameterColumns(
-          question,
-          parameter,
-        );
-        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+      describe("model", () => {
+        it("returns columns from source table and implicitly joinable tables", () => {
+          const question = createModel();
+          const { query, stageIndex, columns } = getParameterColumns(
+            question,
+            parameter,
+          );
+          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
-        expect(columnsInfos).toEqual([
-          ["Question", "ID"],
-          ["Question", "User ID"],
-          ["Question", "Product ID"],
-          ["Question", "Subtotal"],
-          ["Question", "Tax"],
-          ["Question", "Total"],
-          ["Question", "Discount"],
-          ["Question", "Created At"],
-          ["Question", "Quantity"],
-          ["People", "User → Address"],
-          ["People", "User → Birth Date"],
-          ["People", "User → City"],
-          ["People", "User → Created At"],
-          ["People", "User → Email"],
-          ["People", "User → ID"],
-          ["People", "User → Latitude"],
-          ["People", "User → Longitude"],
-          ["People", "User → Name"],
-          ["People", "User → Password"],
-          ["People", "User → Source"],
-          ["People", "User → State"],
-          ["People", "User → Zip"],
-          ["Products", "Product → Category"],
-          ["Products", "Product → Created At"],
-          ["Products", "Product → Ean"],
-          ["Products", "Product → ID"],
-          ["Products", "Product → Price"],
-          ["Products", "Product → Rating"],
-          ["Products", "Product → Title"],
-          ["Products", "Product → Vendor"],
-        ]);
+          expect(columnsInfos).toEqual([
+            ["Question", "ID"],
+            ["Question", "User ID"],
+            ["Question", "Product ID"],
+            ["Question", "Subtotal"],
+            ["Question", "Tax"],
+            ["Question", "Total"],
+            ["Question", "Discount"],
+            ["Question", "Created At"],
+            ["Question", "Quantity"],
+            ["People", "User → Address"],
+            ["People", "User → Birth Date"],
+            ["People", "User → City"],
+            ["People", "User → Created At"],
+            ["People", "User → Email"],
+            ["People", "User → ID"],
+            ["People", "User → Latitude"],
+            ["People", "User → Longitude"],
+            ["People", "User → Name"],
+            ["People", "User → Password"],
+            ["People", "User → Source"],
+            ["People", "User → State"],
+            ["People", "User → Zip"],
+            ["Products", "Product → Category"],
+            ["Products", "Product → Created At"],
+            ["Products", "Product → Ean"],
+            ["Products", "Product → ID"],
+            ["Products", "Product → Price"],
+            ["Products", "Product → Rating"],
+            ["Products", "Product → Title"],
+            ["Products", "Product → Vendor"],
+          ]);
+        });
       });
     });
 
     describe("unit of time parameter", () => {
       const parameter = createUnitOfTimeParameter();
 
-      it("no breakouts - returns no columns", () => {
-        const card = createSavedStructuredCard();
-        const question = new Question(card, metadata);
-        const { columns } = getParameterColumns(question, parameter);
+      describe("question", () => {
+        it("no breakouts - returns no columns", () => {
+          const question = createQuestion();
+          const { columns } = getParameterColumns(question, parameter);
 
-        expect(columns).toHaveLength(0);
-      });
-
-      it("non-date breakout - returns no columns", () => {
-        const card = createSavedStructuredCard({
-          dataset_query: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-              breakout: [ordersQuantityField],
-            },
-          },
+          expect(columns).toHaveLength(0);
         });
-        const question = new Question(card, metadata);
-        const { columns } = getParameterColumns(question, parameter);
 
-        expect(columns).toHaveLength(0);
-      });
-
-      it("1 date breakout - returns 1 date column", () => {
-        const card = createSavedStructuredCard({
-          dataset_query: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-              breakout: [ordersCreatedAtField],
-            },
-          },
-        });
-        const question = new Question(card, metadata);
-        const { query, stageIndex, columns } = getParameterColumns(
-          question,
-          parameter,
-        );
-        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
-
-        expect(columnsInfos).toEqual([["Orders", "Created At"]]);
-      });
-
-      it("2 date breakouts - returns 2 date columns", () => {
-        const card = createSavedStructuredCard({
-          dataset_query: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              "source-table": ORDERS_ID,
-              aggregation: [["count"]],
-              breakout: [ordersCreatedAtField, productsCreatedAtField],
-            },
-          },
-        });
-        const question = new Question(card, metadata);
-        const { query, stageIndex, columns } = getParameterColumns(
-          question,
-          parameter,
-        );
-        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
-
-        expect(columnsInfos).toEqual([
-          ["Orders", "Created At"],
-          ["Products", "Product → Created At"],
-        ]);
-      });
-
-      it("date breakouts in multiple stages - returns date column from the last stage only", () => {
-        const card = createSavedStructuredCard({
-          dataset_query: {
-            type: "query",
-            database: SAMPLE_DB_ID,
-            query: {
-              aggregation: [["count"]],
-              breakout: [ordersCreatedAtYearField],
-              "source-query": {
+        it("non-date breakout - returns no columns", () => {
+          const question = createQuestion({
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
                 "source-table": ORDERS_ID,
                 aggregation: [["count"]],
-                breakout: [ordersCreatedAtMonthField],
+                breakout: [ordersQuantityField],
               },
             },
-          },
-        });
-        const question = new Question(card, metadata);
-        const { query, stageIndex, columns } = getParameterColumns(
-          question,
-          parameter,
-        );
-        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          });
+          const { columns } = getParameterColumns(question, parameter);
 
-        expect(columnsInfos).toEqual([["Orders", "Created At: Month"]]);
+          expect(columns).toHaveLength(0);
+        });
+
+        it("1 date breakout - returns 1 date column", () => {
+          const question = createQuestion({
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [["count"]],
+                breakout: [ordersCreatedAtField],
+              },
+            },
+          });
+          const { query, stageIndex, columns } = getParameterColumns(
+            question,
+            parameter,
+          );
+          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+
+          expect(columnsInfos).toEqual([["Orders", "Created At"]]);
+        });
+
+        it("2 date breakouts - returns 2 date columns", () => {
+          const question = createQuestion({
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [["count"]],
+                breakout: [ordersCreatedAtField, productsCreatedAtField],
+              },
+            },
+          });
+          const { query, stageIndex, columns } = getParameterColumns(
+            question,
+            parameter,
+          );
+          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+
+          expect(columnsInfos).toEqual([
+            ["Orders", "Created At"],
+            ["Products", "Product → Created At"],
+          ]);
+        });
+
+        it("date breakouts in multiple stages - returns date column from the last stage only", () => {
+          const question = createQuestion({
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                aggregation: [["count"]],
+                breakout: [ordersCreatedAtYearField],
+                "source-query": {
+                  "source-table": ORDERS_ID,
+                  aggregation: [["count"]],
+                  breakout: [ordersCreatedAtMonthField],
+                },
+              },
+            },
+          });
+          const { query, stageIndex, columns } = getParameterColumns(
+            question,
+            parameter,
+          );
+          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+
+          expect(columnsInfos).toEqual([["Orders", "Created At: Month"]]);
+        });
       });
     });
 
@@ -399,8 +394,7 @@ describe("parameters/utils/targets", () => {
       const parameter = createDateParameter();
 
       it("question - returns date columns from source table and implicitly joinable tables", () => {
-        const card = createSavedStructuredCard();
-        const question = new Question(card, metadata);
+        const question = createQuestion();
         const { query, stageIndex, columns } = getParameterColumns(
           question,
           parameter,
@@ -436,6 +430,26 @@ function createDateParameter() {
     type: "date/all-options",
     sectionId: "date",
   });
+}
+
+function createQuestion(opts?: Partial<StructuredCard>) {
+  const card = createSavedStructuredCard(opts);
+
+  return new Question(card, metadata);
+}
+
+function createModel(opts?: Partial<StructuredCard>) {
+  const card = createStructuredModelCard({
+    result_metadata: createOrdersTable().fields,
+    ...opts,
+  });
+  const metadata = createMockMetadata({
+    databases: [sampleDb, savedQuestionsDb],
+    tables: [getModelVirtualTable(card)],
+    questions: [card],
+  });
+
+  return new Question(card, metadata);
 }
 
 function getModelVirtualTable(card: Card) {
