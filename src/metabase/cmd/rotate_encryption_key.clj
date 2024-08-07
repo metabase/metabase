@@ -16,12 +16,12 @@
     (log/warnf "Database not found. Metabase will create a new database at %s and proceeed encrypting." "2")
     (mdb/setup-db! :create-sample-content? true))
   (log/infof "Connected to: %s | %s" (mdb/db-type) (mdb/db-file))
-  (let [make-encrypt-fn  (fn [maybe-encrypt-fn]
+  (let [make-encrypt-fn  (fn [encrypt-fn]
                            (if to-key
-                             (partial maybe-encrypt-fn (encryption/validate-and-hash-secret-key to-key))
+                             (partial encrypt-fn (encryption/validate-and-hash-secret-key to-key))
                              identity))
-        encrypt-str-fn   (make-encrypt-fn encryption/maybe-encrypt)
-        encrypt-bytes-fn (make-encrypt-fn encryption/maybe-encrypt-bytes)]
+        encrypt-str-fn   (make-encrypt-fn encryption/encrypt)
+        encrypt-bytes-fn (make-encrypt-fn encryption/encrypt-bytes)]
     (t2/with-transaction [t-conn {:datasource (mdb/data-source)}]
       (doseq [[id details] (t2/select-pk->fn :details Database)]
         (when (encryption/possibly-encrypted-string? details)

@@ -134,7 +134,7 @@
             (is (= "en"
                    (i18n.impl/site-locale-from-setting)))
             ;; rotate the encryption key, which will trigger an error being logged
-            ;; in [[metabase.util.encryption/maybe-decrypt]]... this will cause a Stack Overflow if `log/error` tries to
+            ;; in [[metabase.util.encryption/decrypt]]... this will cause a Stack Overflow if `log/error` tries to
             ;; access `:site-locale` recursively to log the message.
             (encryption-test/with-secret-key "secret_key__2"
               (testing "low-level functions should return the encrypted String since we can't successfully decrypt it"

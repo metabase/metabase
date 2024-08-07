@@ -1539,14 +1539,14 @@
     ;; use a raw query to use `:for :update`
     (t2/with-transaction [_conn]
       (when-let [v (t2/select-one-fn :value :setting :key (setting-name setting) {:for :update})]
-        (when (not= (encryption/maybe-decrypt v) v)
+        (when (not= (encryption/decrypt v) v)
           ;; similarly, use `:setting` vs `:model/Setting` here to ensure the update is actually run even though Toucan
           ;; thinks nothing has changed
-          (t2/update! :setting :key (setting-name setting) {:value (encryption/maybe-decrypt v)}))))))
+          (t2/update! :setting :key (setting-name setting) {:value (encryption/decrypt v)}))))))
 
-(defn- maybe-encrypt [setting-model]
+(defn- encrypt [setting-model]
   ;; In tests, sometimes we need to insert/update settings that don't have definitions in the code and therefore can't
-  ;; be resolved. Fall back to maybe-encrypting these.
+  ;; be resolved. Fall back to encrypting these.
   (let [resolved (try (resolve-setting (:key setting-model))
                       (catch clojure.lang.ExceptionInfo e
                         (when (not (::unknown-setting-error (ex-data e)))
@@ -1554,16 +1554,16 @@
     (cond-> setting-model
       (or (nil? resolved)
           (not (prohibits-encryption? resolved)))
-      (update :value encryption/maybe-encrypt))))
+      (update :value encryption/encrypt))))
 
 (t2/define-before-update :model/Setting
   [setting]
-  (maybe-encrypt setting))
+  (encrypt setting))
 
 (t2/define-before-insert :model/Setting
   [setting]
-  (maybe-encrypt setting))
+  (encrypt setting))
 
 (t2/define-after-select :model/Setting
   [setting]
-  (update setting :value encryption/maybe-decrypt))
+  (update setting :value encryption/decrypt))
