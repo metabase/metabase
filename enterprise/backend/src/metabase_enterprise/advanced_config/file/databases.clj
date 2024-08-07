@@ -44,7 +44,7 @@
                         {:database-name (:name database)})))
       (when-let [existing-database-id (t2/select-one-pk Database :engine (:engine database), :name (:name database))]
         (log/info (u/format-color :blue "Deleting Database %s %s" (:engine database) (pr-str (:name database))))
-        (t2/delete! Database :id existing-database-id)))
+        (t2/delete! Database existing-database-id)))
     (do
       ;; assert that we are able to connect to this Database. Otherwise, throw an Exception.
       (driver.u/can-connect-with-details? (keyword (:engine database)) (:details database) :throw-exceptions)
