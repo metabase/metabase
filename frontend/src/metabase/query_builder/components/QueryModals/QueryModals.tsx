@@ -16,7 +16,6 @@ import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/upd
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
 import NewDatasetModal from "metabase/query_builder/components/NewDatasetModal";
-import { QuestionEmbedWidget } from "metabase/query_builder/components/QuestionEmbedWidget";
 import { PreviewQueryModal } from "metabase/query_builder/components/view/PreviewQueryModal";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
@@ -262,8 +261,6 @@ export function QueryModals({
           <ArchiveQuestionModal question={question} onClose={onCloseModal} />
         </Modal>
       );
-    case MODAL_TYPES.EMBED:
-      return <QuestionEmbedWidget card={card} onClose={onCloseModal} />;
     case MODAL_TYPES.CLONE:
       return (
         <Modal onClose={onCloseModal}>

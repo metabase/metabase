@@ -68,13 +68,9 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "pencil",
     tooltip: "Edit dashboard",
   },
-  [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTION]: {
-    icon: "subscription",
-    tooltip: "Subscriptions",
-  },
-  [DASHBOARD_ACTION.DASHBOARD_EMBED_ACTION]: {
+  [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
     icon: "share",
-    tooltip: "Embedding",
+    tooltip: "Sharing",
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     icon: "clock",
@@ -276,8 +272,7 @@ describe("DashboardHeaderButtonRow", () => {
       await expectButtonsToBeInHeader({
         expectedButtons: [
           DASHBOARD_ACTION.EDIT_DASHBOARD,
-          DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTION,
-          DASHBOARD_ACTION.DASHBOARD_EMBED_ACTION,
+          DASHBOARD_ACTION.DASHBOARD_SHARING,
           DASHBOARD_ACTION.REFRESH_WIDGET,
           DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER,
           DASHBOARD_ACTION.DASHBOARD_BOOKMARK,
@@ -287,11 +282,9 @@ describe("DashboardHeaderButtonRow", () => {
       });
     });
 
-    it("should not show subscription button when user is not an admin", () => {
-      setup({ isEditing: false, isAdmin: false });
-      expectButtonsToBeInHeader({
-        expectedButtons: [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTION],
-      });
+    it("should show sharing button", () => {
+      setup({ isEditing: false });
+      expect(screen.getByTestId("sharing-menu-button")).toBeInTheDocument();
     });
 
     it("should not show editing-related buttons", () => {

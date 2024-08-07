@@ -23,6 +23,7 @@ import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { uploadFile } from "metabase/redux/uploads";
 import { getUserIsAdmin } from "metabase/selectors/user";
+import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
 import { Icon, Menu } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -275,6 +276,7 @@ export const QuestionActions = ({
   return (
     <>
       <QuestionActionsDivider />
+      <QuestionSharingMenu question={question} />
       {!question.isArchived() && (
         <ViewHeaderIconButtonContainer>
           <BookmarkToggle

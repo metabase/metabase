@@ -8,7 +8,7 @@ import {
   createMockState,
 } from "metabase-types/store/mocks";
 
-import { ResourceEmbedButton } from "./ResourceEmbedButton";
+import { ResourceEmbedButton } from "../../../../public/components/ResourceEmbedButton/ResourceEmbedButton";
 
 const setup = ({
   isPublicSharingEnabled = true,

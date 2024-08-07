@@ -1,10 +1,9 @@
 import { withRouter } from "react-router";
 
-import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
-import { Center, Divider } from "metabase/ui";
+import { DashboardSharingMenu } from "metabase/sharing/components/SharingMenu";
 
+import { RefreshWidgetButton } from "../../DashboardActions.styled";
 import { DashboardBookmark } from "../../DashboardBookmark";
-import { DashboardEmbedAction } from "../../DashboardEmbedAction";
 import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
 import {
   AddActionElementButton,
@@ -16,7 +15,6 @@ import {
   CopyAnalyticsDashboardButton,
   DashboardActionMenu,
   DashboardInfoButton,
-  DashboardSubscriptionButton,
   EditDashboardButton,
   ExportAsPdfButton,
   FullscreenAnalyticsDashboard,
@@ -42,8 +40,7 @@ export const DASHBOARD_ACTION = {
   EXTRA_EDIT_BUTTONS_MENU: "EXTRA_EDIT_BUTTONS_MENU",
   COPY_ANALYTICS_DASHBOARD: "COPY_ANALYTICS_DASHBOARD",
   EDIT_DASHBOARD: "EDIT_DASHBOARD",
-  DASHBOARD_SUBSCRIPTION: "DASHBOARD_SUBSCRIPTION",
-  DASHBOARD_EMBED_ACTION: "DASHBOARD_EMBED_ACTION",
+  DASHBOARD_SHARING: "DASHBOARD_SHARING",
   REFRESH_WIDGET: "REFRESH_WIDGET",
   NIGHT_MODE_TOGGLE: "NIGHT_MODE_TOGGLE",
   FULLSCREEN_TOGGLE: "FULLSCREEN_TOGGLE",
@@ -98,29 +95,9 @@ export const dashboardActionButtons: Record<
     enabled: ({ isFullscreen, isEditing, canEdit }) =>
       !isFullscreen && !isEditing && canEdit,
   },
-  [DASHBOARD_ACTION.DASHBOARD_SUBSCRIPTION]: {
-    component: DashboardSubscriptionButton,
-    enabled: ({
-      dashboard,
-      canManageSubscriptions,
-      formInput,
-      isAdmin,
-      isEditing,
-      isFullscreen,
-    }) =>
-      shouldRenderSubscriptionButton({
-        dashboard,
-        canManageSubscriptions,
-        formInput,
-        isAdmin,
-        isEditing,
-        isFullscreen,
-      }),
-  },
-  [DASHBOARD_ACTION.DASHBOARD_EMBED_ACTION]: {
-    component: DashboardEmbedAction,
-    enabled: ({ dashboard, isPublic }) =>
-      !isPublic && dashboard && !dashboard.archived,
+  [DASHBOARD_ACTION.DASHBOARD_SHARING]: {
+    component: DashboardSharingMenu,
+    enabled: ({ isEditing }) => !isEditing,
   },
   [DASHBOARD_ACTION.REFRESH_WIDGET]: {
     component: ({
