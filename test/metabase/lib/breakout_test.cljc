@@ -169,9 +169,9 @@
         (is (=? [{:display-name "ID"}
                  {:display-name "Name"}
                  {:display-name "Category ID"}
-                 {:display-name "Latitude", :breakout-position 1}
+                 {:display-name "Latitude", :breakout-positions [1]}
                  {:display-name "Longitude"}
-                 {:display-name "Price", :breakout-position 0}
+                 {:display-name "Price", :breakout-positions [0]}
                  {:display-name "ID"}
                  {:display-name "Name"}]
                 (lib/breakoutable-columns query)))))))
@@ -335,11 +335,11 @@
                {:display-name "Category ID", :lib/source :source/table-defaults}
                {:display-name "Latitude",    :lib/source :source/table-defaults}
                {:display-name "Longitude",   :lib/source :source/table-defaults}
-               {:display-name "Price"        :lib/source :source/table-defaults, :breakout-position 1}
+               {:display-name "Price"        :lib/source :source/table-defaults, :breakout-positions [1]}
                {:display-name "ID",          :lib/source :source/implicitly-joinable}
-               {:display-name "Name",        :lib/source :source/implicitly-joinable, :breakout-position 0}]
+               {:display-name "Name",        :lib/source :source/implicitly-joinable, :breakout-positions [0]}]
               breakoutables'))
-      (is (= 2 (count (filter :breakout-position breakoutables'))))
+      (is (= 2 (count (filter :breakout-positions breakoutables'))))
       (is (=? [{:table {:name "VENUES", :display-name "Venues", :is-source-table true}
                 :semantic-type :type/PK
                 :name "ID"
@@ -394,7 +394,7 @@
                 :is-from-previous-stage false
                 :is-calculated false
                 :is-implicitly-joinable false
-                :breakout-position 1}
+                :breakout-positions [1]}
                {:table {:name "CATEGORIES", :display-name "Categories", :is-source-table false}
                 :semantic-type :type/PK
                 :name "ID"
@@ -413,7 +413,7 @@
                 :is-from-previous-stage false
                 :is-calculated false
                 :is-implicitly-joinable true
-                :breakout-position 0}]
+                :breakout-positions [0]}]
               (map #(lib/display-info query' %) breakoutables'))))))
 
 (deftest ^:parallel breakoutable-columns-with-source-card-e2e-test
@@ -530,8 +530,8 @@
                         (lib/breakout field-ref))]
           (is (= [field-ref]
                  (lib/breakouts query)))
-          (is (=? {:name              "NAME"
-                   :breakout-position 0}
+          (is (=? {:name               "NAME"
+                   :breakout-positions [0]}
                   (m/find-first #(= (:id %) (meta/id :categories :name))
                                 (lib/breakoutable-columns query)))))))))
 
@@ -558,8 +558,8 @@
 
 (deftest ^:parallel legacy-query-with-broken-breakout-breakoutable-columns-test
   (testing "Handle busted references to joined Fields in broken breakouts from broken drill-thrus (#31482)"
-    (is (=? {:display-name      "Products → Category"
-             :breakout-position 0}
+    (is (=? {:display-name       "Products → Category"
+             :breakout-positions [0]}
             (m/find-first #(= (:id %) (meta/id :products :category))
                           (lib/breakoutable-columns (legacy-query-with-broken-breakout)))))))
 

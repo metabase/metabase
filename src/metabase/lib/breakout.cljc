@@ -85,7 +85,8 @@
                                            (lib.equality/find-matching-column query
                                                                               stage-number
                                                                               (get existing-breakouts position)
-                                                                              columns))
+                                                                              columns
+                                                                              {:generous? true}))
                                          (range (count existing-breakouts)))]
          (mapv #(let [positions  (column->breakout-positions %)]
                  (cond-> (assoc % :lib/hide-bin-bucket? true)
@@ -139,8 +140,9 @@
   [query        :- ::lib.schema/query
    stage-number :- :int
    breakout-ref :- ::lib.schema.ref/ref]
-  (when-let [column (->> (breakoutable-columns query stage-number)
-                         (lib.equality/find-matching-column breakout-ref))]
+  (when-let [column (lib.equality/find-matching-column breakout-ref
+                                                       (breakoutable-columns query stage-number)
+                                                       {:generous? true})]
     (let [binning (lib.binning/binning breakout-ref)
           bucket  (lib.temporal-bucket/temporal-bucket breakout-ref)]
       (cond-> column
