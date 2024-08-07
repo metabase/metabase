@@ -88,10 +88,10 @@ visualization_settings:
     '["name","count"]':
       column_title: Count of questions
       show_mini_bar: true
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Dashboard Qualified"}]]'
-    : column_title: Question ID
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Dashboard Qualified"}]]'
-    : column_title: Dashboard name
+    '["name","entity_id"]':
+      column_title: Question ID
+    '["name","name"]':
+      column_title: Dashboard name
   table.cell_column: size_x
   table.pivot_column: dashboardtab_id
 serdes/meta:
