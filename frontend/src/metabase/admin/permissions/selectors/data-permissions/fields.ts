@@ -29,7 +29,6 @@ import {
   getPermissionWarningModal,
   getRevokingAccessToAllTablesWarningModal,
   getWillRevokeNativeAccessWarningModal,
-  getNoAccessTablePermissionDoesNotApplyToNativeQueriesWarning,
 } from "../confirmations";
 
 const buildAccessPermission = (
@@ -95,7 +94,6 @@ const buildAccessPermission = (
       entityId,
       newValue,
     ),
-    getNoAccessTablePermissionDoesNotApplyToNativeQueriesWarning(newValue),
   ];
 
   const options = PLUGIN_ADVANCED_PERMISSIONS.addTablePermissionOptions(

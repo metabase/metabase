@@ -248,17 +248,3 @@ export function getRevokingAccessToAllTablesWarningModal(
     }
   }
 }
-
-export function getNoAccessTablePermissionDoesNotApplyToNativeQueriesWarning(
-  newValue: DataPermissionValue,
-) {
-  if (newValue === DataPermissionValue.BLOCKED) {
-    return {
-      title: t`“No Access” does not apply to native queries`,
-      message: t`This control only applies to questions built using the query builder. To revoke access from native queries, set “View data” to “Blocked” at the database level.`,
-      confirmButtonText: t`Got it`,
-      confirmButtonPrimary: true,
-      cancelButtonText: null,
-    };
-  }
-}
