@@ -30,7 +30,6 @@ import {
   startNewQuestion,
   visitDashboard,
   visualize,
-  dismissDownloadStatus,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -90,8 +89,6 @@ describe("scenarios > question > download", () => {
           accessed_via: "internal",
           export_type: fileType,
         });
-
-        dismissDownloadStatus();
       });
     });
   });
@@ -135,8 +132,6 @@ describe("scenarios > question > download", () => {
           expect(sheet["A2"].v).to.eq("USD 39.72");
         },
       );
-
-      dismissDownloadStatus();
 
       downloadAndAssert(
         {
@@ -258,8 +253,6 @@ describe("scenarios > question > download", () => {
                 assertSheetRowsCount(1)(sheet);
               },
             );
-
-            dismissDownloadStatus();
           });
         });
       });
