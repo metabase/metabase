@@ -1,6 +1,19 @@
-import { createMockCollection } from "metabase-types/api/mocks";
+import { setupEnterprisePlugins } from "__support__/enterprise";
+import { mockSettings } from "__support__/settings";
+import { renderWithProviders } from "__support__/ui";
+import { createMockModelResult } from "metabase/browse/test-utils";
+import {
+  createMockCollection,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+import { createMockState } from "metabase-types/store/mocks";
 
-import { getCollectionType, getIcon, isRegularCollection } from "./utils";
+import {
+  filterOutItemsFromInstanceAnalytics,
+  getCollectionType,
+  getIcon,
+  isRegularCollection,
+} from "./utils";
 
 describe("Collections plugin utils", () => {
   const COLLECTION = {
@@ -90,6 +103,77 @@ describe("Collections plugin utils", () => {
           getIcon({ model: "dataset", moderated_status: "verified" }),
         ).toEqual({ name: "model_with_badge" });
       });
+    });
+  });
+
+  describe("filterOutItemsFromInstanceAnalytics", () => {
+    const state = createMockState({
+      settings: mockSettings({
+        "token-features": createMockTokenFeatures({
+          audit_app: true,
+        }),
+      }),
+    });
+    beforeEach(() => {
+      setupEnterprisePlugins();
+    });
+
+    it("should filter out items directly in an instance analytics collection", () => {
+      renderWithProviders(<></>, {
+        storeInitialState: state,
+      });
+      // Ids must be distinct because we cache based on id
+      const items = [
+        createMockModelResult({
+          id: 0,
+          name: "filter this out",
+          collection: createMockCollection({
+            id: 1,
+            type: "instance-analytics",
+          }),
+        }),
+        createMockModelResult({
+          id: 2,
+          name: "filter this out",
+          collection: createMockCollection({
+            id: 3,
+            effective_ancestors: [
+              createMockCollection({
+                id: 4,
+                type: "instance-analytics",
+              }),
+            ],
+          }),
+        }),
+        createMockModelResult({
+          id: 5,
+          name: "filter this out",
+          collection: createMockCollection({
+            id: 6,
+            effective_ancestors: [
+              createMockCollection({ id: 7 }),
+              createMockCollection({ id: 8, type: "instance-analytics" }),
+            ],
+          }),
+        }),
+        createMockModelResult({
+          id: 9,
+          name: "keep this",
+          collection: createMockCollection({ id: 10 }),
+        }),
+      ];
+
+      const result = filterOutItemsFromInstanceAnalytics(items);
+      expect(result).toHaveLength(1);
+      expect(result[0].name).toBe("keep this");
+    });
+
+    it("should handle empty input array", () => {
+      renderWithProviders(<></>, {
+        storeInitialState: state,
+      });
+      const result = filterOutItemsFromInstanceAnalytics([]);
+      expect(result).toEqual([]);
     });
   });
 });
