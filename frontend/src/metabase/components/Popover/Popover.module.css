@@ -23,6 +23,11 @@
   overflow: auto;
 }
 
+.PopoverBody > div:last-child {
+  /* allow the user to resize the popover when needed */
+  resize: horizontal;
+}
+
 /* Global classes from tippy.js */
 :global(.tippy-box),
 :global(.tippy-content) {
