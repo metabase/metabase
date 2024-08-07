@@ -9,8 +9,7 @@ on:
         type: number
         required: true
   schedule:
-    - cron: '15 * * * *' # hourly
-  pull_request: # FIXME FOR TESTING ONLY
+    - cron: '45 * * * *' # hourly
 
 jobs:
   update-release-log:
