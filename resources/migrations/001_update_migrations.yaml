@@ -8895,7 +8895,6 @@ databaseChangeLog:
 
   - changeSet:
       id: v51.2024-08-07T10:00:00
-      validCheckSum: ANY
       author: ranquild
       comment: Remove field refs from report_card.visualization_settings.column_settings
       changes:
@@ -8904,7 +8903,6 @@ databaseChangeLog:
 
   - changeSet:
       id: v51.2024-08-07T11:00:00
-      validCheckSum: ANY
       author: ranquild
       comment: Remove field refs from report_dashboardcard.visualization_settings.column_settings
       changes:
