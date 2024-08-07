@@ -1,7 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story } from "@storybook/react";
-import { within } from "@storybook/testing-library";
+import { userEvent, within } from "@storybook/testing-library";
 import { useEffect, type ComponentProps } from "react";
 import { Provider } from "react-redux";
 
@@ -243,3 +243,68 @@ SmartScalarDarkTheme.args = {
   ...SmartScalarLightTheme.args,
   theme: "night",
 };
+
+// Light theme tooltip
+export const SmartScalarLightThemeTooltip = Template.bind({});
+SmartScalarLightThemeTooltip.args = {
+  ...defaultArgs,
+  card: createMockCard({
+    id: getNextId(),
+    display: "smartscalar",
+    visualization_settings: {
+      "graph.dimensions": ["timestamp"],
+      "graph.metrics": ["count"],
+    },
+  }),
+  result: createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn(DateTimeColumn({ name: "Timestamp" })),
+        createMockColumn(NumberColumn({ name: "Count" })),
+      ],
+      insights: [
+        {
+          "previous-value": 150,
+          unit: "week",
+          offset: -199100,
+          "last-change": 0.4666666666666667,
+          col: "count",
+          slope: 10,
+          "last-value": 220,
+          "best-fit": ["+", -199100, ["*", 10, "x"]],
+        },
+      ],
+      rows: [
+        ["2024-07-21T00:00:00Z", 150],
+        ["2024-07-28T00:00:00Z", 220],
+      ],
+    }),
+  }),
+};
+SmartScalarLightThemeTooltip.decorators = [NarrowContainer];
+SmartScalarLightThemeTooltip.play = async ({ canvasElement }) => {
+  const value = "vs. July 21, 2024, 12:00 AM";
+  const valueElement = await within(canvasElement).findByText(value);
+  await userEvent.hover(valueElement);
+  const tooltip = document.documentElement.querySelector(
+    '[role="tooltip"]',
+  ) as HTMLElement;
+  await within(tooltip).findByText(`${value}:`);
+};
+
+// Dark theme tooltip
+export const SmartScalarDarkThemeTooltip = Template.bind({});
+SmartScalarDarkThemeTooltip.args = {
+  ...SmartScalarLightThemeTooltip.args,
+  theme: "night",
+};
+SmartScalarDarkThemeTooltip.decorators = [NarrowContainer];
+SmartScalarDarkThemeTooltip.play = SmartScalarLightThemeTooltip.play;
+
+function NarrowContainer(Story: Story) {
+  return (
+    <Box w="300px" h="250px" pos="relative">
+      <Story />
+    </Box>
+  );
+}

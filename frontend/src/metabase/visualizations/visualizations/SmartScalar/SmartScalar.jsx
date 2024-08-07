@@ -258,7 +258,7 @@ function PreviousValueComparison({
       return comparisonDescStr;
     }
 
-    const descColor = "var(--mb-color-text-tertiary)";
+    const descColor = "var(--mb-color-text-secondary)";
 
     if (isEmpty(comparisonDescStr)) {
       return (
