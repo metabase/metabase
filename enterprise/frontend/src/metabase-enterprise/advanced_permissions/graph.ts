@@ -7,8 +7,8 @@ import type {
 import {
   DataPermission,
   DataPermissionValue,
-  isTableEntityId,
 } from "metabase/admin/permissions/types";
+import { isTableEntityId } from "metabase/admin/permissions/utils/data-entity-id";
 import {
   getSchemasPermission,
   updateSchemasPermission,
@@ -64,7 +64,6 @@ export function upgradeViewPermissionsIfNeeded(
       DataPermissionValue.UNRESTRICTED,
       database,
       DataPermission.VIEW_DATA,
-      false,
     );
   }
 

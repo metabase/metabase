@@ -76,7 +76,7 @@ const buildAccessPermission = (
     groupId,
   );
 
-  const confirmations = (newValue: DataPermissionValue, entity: any) => [
+  const confirmations = (newValue: DataPermissionValue) => [
     getPermissionWarningModal(
       newValue,
       defaultGroupValue,
@@ -84,7 +84,6 @@ const buildAccessPermission = (
       defaultGroup,
       groupId,
       undefined,
-      entity,
     ),
     ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map(confirmation =>
       confirmation(permissions, groupId, entityId, newValue),

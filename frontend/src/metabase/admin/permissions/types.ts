@@ -39,20 +39,6 @@ export type EntityId = DatabaseEntityId &
 
 export type EntityWithGroupId = EntityId & { groupId: number };
 
-export const isDatabaseEntityId = (
-  entityId: EntityId,
-): entityId is DatabaseEntityId => !("schemaName" in entityId);
-
-export const isSchemaEntityId = (
-  entityId: EntityId,
-): entityId is SchemaEntityId =>
-  "schemaName" in entityId && !("tableId" in entityId);
-
-export const isTableEntityId = (
-  entityId: EntityId,
-): entityId is TableEntityId =>
-  "schemaName" in entityId && "tableId" in entityId;
-
 export enum DataPermission {
   VIEW_DATA = "view-data",
   CREATE_QUERIES = "create-queries",

@@ -53,6 +53,7 @@ if (hasPremiumFeature("advanced_permissions")) {
     switch (value) {
       case BLOCK_PERMISSION_OPTION.value:
         if (subject === "fields") {
+          // when parent is set to Blocked, replace No access option with Blocked
           return options.map(option =>
             option.value === DataPermissionValue.BLOCKED
               ? BLOCK_PERMISSION_OPTION
@@ -129,8 +130,8 @@ if (hasPremiumFeature("advanced_permissions")) {
       );
     } else if (subject === "fields") {
       return (
-        value === DataPermissionValue.IMPERSONATED ||
-        parentValue === DataPermissionValue.BLOCKED
+        parentValue === DataPermissionValue.BLOCKED ||
+        value === DataPermissionValue.IMPERSONATED
       );
     } else {
       return false;
