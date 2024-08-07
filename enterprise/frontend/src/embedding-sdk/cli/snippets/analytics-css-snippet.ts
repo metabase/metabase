@@ -16,12 +16,34 @@ export const ANALYTICS_CSS_SNIPPET = `
 .analytics-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  padding: 30px 0;
+  column-gap: 15px;
+}
+
+.analytics-header-right {
+  display: flex;
+  align-items: center;
   justify-content: flex-end;
   padding: 30px 0;
   column-gap: 15px;
 }
 
-.analytics-header > a {
+.analytics-header-right > a {
   color: #509EE3;
+}
+
+.dashboard-select {
+  background: transparent;
+  color: #509EE3;
+  border: none;
+  font-family: inherit;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.dashboard-select:focus {
+  outline: 1px solid #509EE3;
+  border-radius: 2px;
 }
 `.trim();

@@ -1,8 +1,8 @@
 import {
   getAnalyticsDashboardSnippet,
   getMetabaseProviderSnippet,
-  getAnalyticsPageSnippet,
   THEME_SWITCHER_SNIPPET,
+  ANALYTICS_PAGE_SNIPPET,
 } from "../snippets";
 import type { DashboardInfo } from "../types/dashboard";
 
@@ -12,18 +12,18 @@ interface Options {
   dashboards: DashboardInfo[];
 }
 
-export function getSampleComponents(options: Options) {
+export function getComponentSnippets(options: Options) {
   const { instanceUrl, apiKey, dashboards } = options;
 
-  const analyticsDashboardSnippet =
-    getAnalyticsDashboardSnippet(instanceUrl).trim();
+  const analyticsDashboardSnippet = getAnalyticsDashboardSnippet(
+    instanceUrl,
+    dashboards,
+  ).trim();
 
   const metabaseProviderSnippet = getMetabaseProviderSnippet(
     instanceUrl,
     apiKey,
   ).trim();
-
-  const analyticsPageSnippet = getAnalyticsPageSnippet(dashboards).trim();
 
   return [
     {
@@ -40,7 +40,7 @@ export function getSampleComponents(options: Options) {
     },
     {
       name: "analytics-page",
-      content: analyticsPageSnippet,
+      content: ANALYTICS_PAGE_SNIPPET.trim(),
     },
   ];
 }

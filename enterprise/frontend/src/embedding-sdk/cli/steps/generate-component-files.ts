@@ -4,7 +4,7 @@ import { input } from "@inquirer/prompts";
 
 import { ANALYTICS_CSS_SNIPPET } from "../snippets/analytics-css-snippet";
 import type { CliStepMethod } from "../types/cli";
-import { getSampleComponents } from "../utils/get-sample-components";
+import { getComponentSnippets } from "../utils/get-component-snippets";
 import { printError, printSuccess } from "../utils/print";
 
 export const generateReactComponentFiles: CliStepMethod = async state => {
@@ -37,7 +37,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
     }
   }
 
-  const sampleComponents = getSampleComponents({
+  const sampleComponents = getComponentSnippets({
     instanceUrl,
     apiKey,
     dashboards,
