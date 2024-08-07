@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 
+import installLogsPrinter from "cypress-terminal-report/src/installLogsPrinter";
+
 import {
   removeDirectory,
   verifyDownloadTasks,
@@ -46,10 +48,13 @@ const defaultConfig = {
   setupNodeEvents(on, config) {
     // `on` is used to hook into various events Cypress emits
     // `config` is the resolved Cypress config
+
+    // cypress-terminal-report
+    installLogsPrinter(on);
+
     /********************************************************************
      **                        PREPROCESSOR                            **
      ********************************************************************/
-
     on(
       "file:preprocessor",
       createBundler({
