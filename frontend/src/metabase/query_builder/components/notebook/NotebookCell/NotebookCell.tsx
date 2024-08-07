@@ -30,6 +30,7 @@ interface NotebookCellItemProps {
   onClick?: React.MouseEventHandler;
   "data-testid"?: string;
   ref?: React.Ref<HTMLDivElement>;
+  hasTooltip?: boolean;
 }
 
 export const NotebookCellItem = forwardRef<
@@ -45,6 +46,7 @@ export const NotebookCellItem = forwardRef<
     rightContainerStyle,
     children,
     readOnly,
+    hasTooltip,
     ...restProps
   },
   ref,
@@ -64,7 +66,10 @@ export const NotebookCellItem = forwardRef<
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
       ref={ref}
     >
-      <Tooltip label={t`${METAKEY}+click to open in new tab`}>
+      <Tooltip
+        label={t`${METAKEY}+click to open in new tab`}
+        hidden={!hasTooltip}
+      >
         <NotebookCellItemContentContainer
           inactive={inactive}
           disabled={disabled}
