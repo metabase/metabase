@@ -108,7 +108,7 @@
                           [:data_permissions :p] [:= :p.group_id :pg.id]]
                    :where [:= :pgm.user_id user-id]})
        (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
-                 (update-in m [user_id perm_type db_id] (fnil conj []) row))
+                 (update-in m [user_id perm_type db_id] u/conjv row))
                {})))
 
 (defn- relevant-permissions-for-user-perm-and-db

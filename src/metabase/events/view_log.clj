@@ -7,21 +7,54 @@
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
+   [metabase.util.grouper :as grouper]
    [metabase.util.log :as log]
    [methodical.core :as m]
    [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
-(defn increment-view-counts!
-  "Increments the view_count column for a model given a list of ids.
-   Assumes the model has one primary key `id`, and the column for the view count is named `view_count`"
-  [_model & _ids]
-  ;; Disable view_count updates to handle perf issues  (for now) (#44359)
-  #_
-  (when (seq ids)
-    (t2/query {:update (t2/table-name model)
-               :set    {:view_count [:+ :view_count [:inline 1]]}
-               :where  [:in :id ids]})))
+(defn- group-by-frequency
+  "Given a list of items, returns a map of frequencies to items.
+    (group-by-frequency [:a :a :b :b :c :c :c])
+    ;; => {2 [:a :b] 3 [:c]}"
+  [items]
+  (reduce (fn [acc [item cnt]]
+            (update acc cnt u/conjv item))
+          {}
+          (frequencies items)))
+
+(defn- increment-view-counts!*
+  [items]
+  (log/debugf "Increment view counts of %d items" (count items))
+  (try
+    (let [model->ids (reduce (fn [acc {:keys [id model]}]
+                               (update acc model conj id))
+                             {}
+                             items)]
+      (doseq [[model ids] model->ids]
+        (let [cnt->ids (group-by-frequency ids)]
+          (t2/query {:update (t2/table-name model)
+                     :set    {:view_count [:+ :view_count (into [:case]
+                                                                (mapcat (fn [[cnt ids]]
+                                                                          [[:in :id ids] cnt])
+                                                                        cnt->ids))]}
+                     :where  [:in :id (apply concat (vals cnt->ids))]}))))
+    (catch Exception e
+      (log/error e "Failed to increment view counts"))))
+
+(def ^:private increment-view-count-interval-seconds 20)
+
+(defonce ^:private
+  increase-view-count-queue
+  (delay (grouper/start!
+          increment-view-counts!*
+          :capacity 500
+          :interval (* increment-view-count-interval-seconds 1000))))
+
+(defn- increment-view-counts!
+  "Increment the view count of the given `model` and `model-id`."
+  [model model-id]
+  (grouper/submit! @increase-view-count-queue {:model model :id model-id}))
 
 (defn- record-views!
   "Simple base function for recording a view of a given `model` and `model-id` by a certain `user`."

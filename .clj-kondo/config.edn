@@ -115,6 +115,7 @@
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
    clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   grouper.core           {:message "Use metabase.util.grouper instead of grouper.core"}
    honeysql.core          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.format        {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.helpers       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
@@ -581,6 +582,7 @@
     metabase.util.encryption                                      encryption
     metabase.util.encryption-test                                 encryption-test
     metabase.util.files                                           u.files
+    metabase.util.grouper                                         grouper
     metabase.util.honey-sql-2                                     h2x
     metabase.util.i18n                                            i18n
     metabase.util.i18n.impl                                       i18n.impl
@@ -661,6 +663,7 @@
   metabase.test/with-temp-empty-app-db                                                 clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
+  metabase.test/with-grouper-batches!                                                  clojure.core/fn
   metabase.upload-test/with-upload-table!                                              clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
   metabase.util.malli.defn/defn                                                        schema.core/defn
