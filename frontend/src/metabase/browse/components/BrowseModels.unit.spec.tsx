@@ -332,4 +332,12 @@ describe("BrowseModels", () => {
       within(recentModelsGrid).queryByText("Model 5"),
     ).not.toBeInTheDocument();
   });
+
+  it("displays no recently viewed models when there are fewer than 9 models - but instance analytics models do not count", async () => {
+    setup(8);
+    const recentModelsGrid = screen.queryByRole("grid", {
+      name: /Recents/,
+    });
+    expect(recentModelsGrid).not.toBeInTheDocument();
+  });
 });

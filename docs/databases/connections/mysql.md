@@ -6,7 +6,7 @@ redirect_from:
 
 # MySQL
 
-> We recommend using MySQL version 8.0.33 or higher, though older versions may work. If you're using MariaDB: version 10.4 or higher.
+> We recommend using MySQL version 8.0.33 or higher.
 
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
@@ -89,7 +89,7 @@ A fingerprinting query examines the first 10,000 rows from each column and uses 
 
 ## Connecting to MySQL 8+ servers
 
-Metabase uses the MariaDB connector to connect to MariaDB and MySQL servers. The MariaDB connector does not currently support MySQL 8's default authentication plugin, so in order to connect, you'll need to change the plugin used by the Metabase user to
+Metabase uses the MariaDB connector to connect to MySQL servers. The MariaDB connector lacks support for MySQL 8's default authentication plugin. In order to connect, you'll need to change the plugin used by the Metabase user:
 
 ```
 mysql_native_password`: `ALTER USER 'metabase'@'%' IDENTIFIED WITH mysql_native_password BY 'thepassword';
@@ -142,8 +142,6 @@ DROP USER 'metabase'@'localhost';
 
 The problem is that, if the keys in the JSON vary record to record, the first five hundred rows may not capture all the keys used by JSON objects in that JSON field. To get Metabase to infer all the JSON keys, you'll need to add the additional keys to the JSON objects in the first five hundred rows.
 
-**This JSON "schema" inference doesn't work with MariaDB**, due to implementation differences between MySQL and MariaDB.
-
 ## Raising a MySQL Docker container of MySQL 8+
 
 If you are spinning up a new MySQL container, and:
@@ -176,6 +174,7 @@ mysql:
 
 ## Further reading
 
+- [MariaDB](./mariadb.md)
 - [Managing databases](../../databases/connecting.md)
 - [Metadata editing](../../data-modeling/metadata-editing.md)
 - [Models](../../data-modeling/models.md)

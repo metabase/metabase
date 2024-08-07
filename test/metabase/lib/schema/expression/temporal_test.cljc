@@ -75,7 +75,7 @@
                         (me/humanize (mc/explain ::temporal/timezone-id input)))
     "US/Pacific"  nil
     "US/Specific" ["invalid timezone ID: \"US/Specific\"" "timezone offset string literal"]
-    ""            ["should be at least 1 characters" "non-blank string" "invalid timezone ID: \"\"" "timezone offset string literal"]
+    ""            ["should be at least 1 character" "non-blank string" "invalid timezone ID: \"\"" "timezone offset string literal"]
     "  "          ["non-blank string" "invalid timezone ID: \"  \"" "timezone offset string literal"]
     nil           ["should be a string" "non-blank string" "invalid timezone ID: nil" "timezone offset string literal"]))
 
