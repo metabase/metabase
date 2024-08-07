@@ -1,10 +1,11 @@
+import { generateReactComponentFiles } from "embedding-sdk/cli/steps/generate-component-files";
+
 import { METABASE_INSTANCE_SETUP_COMPLETE_MESSAGE } from "./constants/messages";
 import {
   addEmbeddingToken,
   checkIsDockerRunning,
   createApiKey,
   generateCredentials,
-  generateCodeSample,
   pollMetabaseInstance,
   setupMetabaseInstance,
   showMetabaseCliTitle,
@@ -35,7 +36,10 @@ export const CLI_STEPS = [
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "createModelsAndXrays", executeStep: createModelsAndXrays },
-  { id: "generateCodeSample", executeStep: generateCodeSample },
+  {
+    id: "generateReactComponentFiles",
+    executeStep: generateReactComponentFiles,
+  },
 ] as const;
 
 export async function runCli() {
