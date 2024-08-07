@@ -106,7 +106,11 @@ const defaultConfig = {
         );
         if (!failures) {
           // delete the video if the spec passed and no tests retried
-          fs.unlinkSync(results.video);
+          try {
+            fs.unlinkSync(results.video);
+          } catch (e) {
+            console.error(`Failed to delete video: ${results.video}`);
+          }
         }
       }
     });
