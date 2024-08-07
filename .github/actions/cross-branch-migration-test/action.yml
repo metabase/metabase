@@ -15,7 +15,7 @@ runs:
     - name: Prepare backend environment
       uses: ./.github/actions/prepare-backend
       with:
-        m2-cache-key: cross-branch-migrations
+        m2-cache-key: uberjar
 
     - name: Run backend on base branch
       run: |

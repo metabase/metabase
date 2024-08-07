@@ -8,7 +8,6 @@ on:
   pull_request:
 
 jobs:
-
   test-build-scripts:
     runs-on: ubuntu-22.04
     steps:
@@ -17,7 +16,7 @@ jobs:
       timeout-minutes: 5
       uses: ./.github/actions/prepare-backend
       with:
-        m2-cache-key: 'build-scripts'
+        m2-cache-key: uberjar
 
     - name: Run build and release script tests
       run: clojure -X:dev:drivers:build:build-dev:build-test:ci
