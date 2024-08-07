@@ -19,7 +19,7 @@
     (let [normal-indexes           (->> indexes (filter #(= (:type %) :normal-column-index)) (map :value))
           nested-indexes           (->> indexes (filter #(= (:type %) :nested-column-index)) (map :value))
           normal-indexes-field-ids (when (seq normal-indexes)
-                                     (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id))
+                                     (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id :parent_id nil))
           nested-indexes-field-ids (remove nil? (map #(field/nested-field-names->field-id table-id %) nested-indexes))]
       (set (filter some? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 

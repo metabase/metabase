@@ -72,7 +72,7 @@ case(between(now, [Depart At], [Arrive By]), "Yes", "No")
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `datetimeSubtract`  |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `datetimeSubtract`  |
 | ----------------------- | -------------------- |
 | String                  | ❌                   |
 | Number                  | ❌                   |

@@ -22,19 +22,39 @@ import {
   isDate,
   isDateWithoutTime,
   isNumber,
-  isPercentage,
 } from "metabase-lib/v1/types/utils/isa";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import {
+  getColumnKey,
+  getObjectColumnSettings,
+} from "metabase-lib/v1/queries/utils/column-key";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
 } from "metabase-lib/v1/queries/utils/dataset";
 import { nestedSettings } from "./nested";
+import {
+  getDefaultCurrency,
+  getDefaultCurrencyInHeader,
+  getDefaultCurrencyStyle,
+  getDefaultNumberSeparators,
+  getDefaultNumberStyle,
+} from "metabase/visualizations/shared/settings/column";
 
 // HACK: cyclical dependency causing errors in unit tests
 // import { getVisualizationRaw } from "metabase/visualizations";
 function getVisualizationRaw(...args) {
   return require("metabase/visualizations").getVisualizationRaw(...args);
+}
+
+function getCurrency(currency, currencyStyle) {
+  return (0)
+    .toLocaleString("en", {
+      style: "currency",
+      currency: currency,
+      currencyDisplay: currencyStyle,
+    })
+    .replace(/0([.,]0+)?/, "")
+    .trim(); // strip off actual number
 }
 
 const DEFAULT_GET_COLUMNS = (series, vizSettings) =>
@@ -50,6 +70,7 @@ export function columnSettings({
     objectName: "column",
     getObjects: getColumns,
     getObjectKey: getColumnKey,
+    getObjectSettings: getObjectColumnSettings,
     getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,
@@ -244,17 +265,6 @@ export const DATE_COLUMN_SETTINGS = {
   },
 };
 
-function getCurrency(currency, currencyStyle) {
-  return (0)
-    .toLocaleString("en", {
-      style: "currency",
-      currency: currency,
-      currencyDisplay: currencyStyle,
-    })
-    .replace(/0([.,]0+)?/, "")
-    .trim(); // strip off actual number
-}
-
 export const NUMBER_COLUMN_SETTINGS = {
   number_style: {
     title: t`Style`,
@@ -267,17 +277,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: t`Currency`, value: "currency" },
       ],
     },
-    getDefault: (column, settings) => {
-      if (isCurrency(column) && settings["currency"]) {
-        return "currency";
-      }
-
-      if (isPercentage(column)) {
-        return "percent";
-      }
-
-      return "decimal";
-    },
+    getDefault: getDefaultNumberStyle,
     // hide this for currency
     getHidden: (column, settings) =>
       isCurrency(column) && settings["number_style"] === "currency",
@@ -295,7 +295,7 @@ export const NUMBER_COLUMN_SETTINGS = {
       searchProp: "name",
       searchCaseSensitive: false,
     },
-    default: "USD",
+    getDefault: getDefaultCurrency,
     getHidden: (column, settings) => settings["number_style"] !== "currency",
   },
   currency_style: {
@@ -327,12 +327,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         ],
       };
     },
-    getDefault: (column, settings) => {
-      const c = settings["currency"] || "USD";
-      return getCurrencySymbol(c) !== getCurrency(c, "code")
-        ? "symbol"
-        : "code";
-    },
+    getDefault: getDefaultCurrencyStyle,
     getHidden: (column, settings) => settings["number_style"] !== "currency",
     readDependencies: ["number_style"],
   },
@@ -345,7 +340,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: t`In every table cell`, value: false },
       ],
     },
-    default: true,
+    getDefault: getDefaultCurrencyInHeader,
     getHidden: (_column, settings, { series, forAdminSettings }) => {
       if (forAdminSettings === true) {
         return false;
@@ -371,7 +366,7 @@ export const NUMBER_COLUMN_SETTINGS = {
         { name: "100’000.00", value: ".’" },
       ],
     },
-    default: ".,",
+    getDefault: getDefaultNumberSeparators,
   },
   decimals: {
     title: t`Minimum number of decimal places`,

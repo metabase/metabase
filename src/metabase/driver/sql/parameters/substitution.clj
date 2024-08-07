@@ -21,7 +21,6 @@
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.wrap-value-literals :as qp.wrap-value-literals]
    [metabase.query-processor.util.add-alias-info :as add]
-   [metabase.shared.util.time :as shared.ut]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
@@ -30,7 +29,7 @@
    (clojure.lang IPersistentVector Keyword)
    (java.time.temporal Temporal)
    (java.util UUID)
-   (metabase.driver.common.parameters Date DateRange FieldFilter ReferencedCardQuery ReferencedQuerySnippet)))
+   (metabase.driver.common.parameters Date DateRange DateTimeRange FieldFilter ReferencedCardQuery ReferencedQuerySnippet)))
 
 ;;; ------------------------------------ ->prepared-substitution & default impls -------------------------------------
 
@@ -119,13 +118,7 @@
   (when (params.dates/date-type? param-type)
     (if-let [exclusion-type (params.dates/exclusion-date-type param-type value)]
       exclusion-type
-      (let [value* (if (params.dates/not-single-date-type? param-type)
-                     (let [param-range (params.dates/date-string->range value)]
-                       (or (:start param-range) (:end param-range))) ;; Before or after filters only have one of these
-                     value)]
-        (if (re-matches shared.ut/local-date-regex value*)
-          :day
-          :minute)))))
+      :default)))
 
 ;;; ------------------------------------------- ->replacement-snippet-info -------------------------------------------
 
@@ -140,7 +133,7 @@
 
     (->replacement-snippet-info :h2 \"ABC\") -> {:replacement-snippet \"?\", :prepared-statement-args \"ABC\"}"
   {:added "0.33.4" :arglists '([driver value])}
-  (fn [driver v] [(driver/the-initialized-driver driver) (class v)])
+  (fn [driver v & _args] [(driver/the-initialized-driver driver) (class v)])
   :hierarchy #'driver/hierarchy)
 
 (defn- create-replacement-snippet
@@ -220,6 +213,15 @@
       {:replacement-snippet     (format "BETWEEN %s AND %s" (:sql-string start) (:sql-string end))
        :prepared-statement-args (concat (:param-values start) (:param-values end))})))
 
+(defmethod ->replacement-snippet-info [:sql DateTimeRange]
+  [driver {:keys [start end]} & [field-identifier]]
+  (let [[start end] (map (fn [s]
+                           (->prepared-substitution driver (maybe-parse-temporal-literal s)))
+                         [start end])]
+    {:replacement-snippet     (format "%s >= %s AND %s < %s"
+                                      field-identifier (:sql-string start) field-identifier (:sql-string end))
+     :prepared-statement-args (concat (:param-values start) (:param-values end))}))
+
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
 
 (mu/defn- combine-replacement-snippet-maps :- ParamSnippetInfo
@@ -281,9 +283,20 @@
        (honeysql->replacement-snippet-info driver)
        :replacement-snippet))
 
+(defn- field-filter->replacement-snippet-for-datetime-field
+  "Generate replacement snippet for field filter on datetime field. For details on how range is generated see
+  the docstring of [[params.dates/date-str->datetime-range]]."
+  [driver {:keys [field] {:keys [value type]} :value :as _field-filter}]
+  (letfn [(->datetime-replacement-snippet-info
+            [range]
+            (->replacement-snippet-info driver range (field->identifier driver field type value)))]
+    (-> (params.dates/date-str->datetime-range value)
+        params/map->DateTimeRange
+        ->datetime-replacement-snippet-info)))
+
 (mu/defn- field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
-  [driver {{param-type :type, value :value, :as params} :value, field :field, :as _field-filter}]
+  [driver {{param-type :type, value :value, :as params} :value, field :field, :as field-filter}]
   (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))
   (letfn [(prepend-field [x]
             (update x :replacement-snippet
@@ -307,9 +320,15 @@
              ->honeysql
              (honeysql->replacement-snippet-info driver)))
 
+      ;; Special handling for `FieldFilter`s on `:type/DateTime` fields. DateTime range is always generated.
+      (and (params.dates/date-type? param-type)
+           (isa? ((some-fn :effective-type :base-type) field) :type/DateTime))
+      (field-filter->replacement-snippet-for-datetime-field driver field-filter)
+
       ;; convert other date to DateRange record types
       (params.dates/not-single-date-type? param-type) (prepend-field
                                                        (date-range-field-filter->replacement-snippet-info driver value))
+
       ;; convert all other dates to `= <date>`
       (params.dates/date-type? param-type)            (prepend-field
                                                        (field-filter->equals-clause-sql driver (params/map->Date {:s value})))

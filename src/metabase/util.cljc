@@ -1034,3 +1034,10 @@
      "Return how many milliseconds have elapsed since the given timer was started."
      [timer]
      (/ (- (System/nanoTime) timer) 1e6)))
+
+(defn index-by
+  "(index-by first second [[1 3] [1 4] [2 5]]) => {1 4, 2 5}"
+ ([kf coll]
+  (reduce (fn [acc v] (assoc acc (kf v) v)) {} coll))
+ ([kf vf coll]
+  (reduce (fn [acc v] (assoc acc (kf v) (vf v))) {} coll)))

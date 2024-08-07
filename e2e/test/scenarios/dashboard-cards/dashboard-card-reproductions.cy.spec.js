@@ -12,6 +12,7 @@ import {
   editDashboard,
   getDashboardCard,
   openNavigationSidebar,
+  pieSlices,
   popover,
   queryBuilderHeader,
   resetTestTable,
@@ -197,7 +198,7 @@ describe("issue 16334", () => {
     cy.contains("Started from 16334");
 
     // Make sure the original visualization didn't change
-    cy.findAllByTestId("slice");
+    pieSlices().should("have.length", 2);
 
     const getVisualizationSettings = targetId => ({
       column_settings: {

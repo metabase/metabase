@@ -130,6 +130,23 @@
         In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
         as the connections via tunnels have more overhead than connections without.")
 
+;; This is normally set via the env var `MB_DB_QUERY_TIMEOUT_MINUTES`
+(defsetting db-query-timeout-minutes
+  "By default, this is 20 minutes."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
+  ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
+  ;; code
+  :default    (if config/is-prod?
+                20
+                3)
+  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
+  If you have long-running queries, you might consider increasing this value.
+  Adjusting the timeout does not impact Metabase’s frontend.
+  Please be aware that other services (like Nginx) may still drop long-running queries.")
+
 (defn- connection-error? [^Throwable throwable]
   (and (some? throwable)
        (or (instance? java.net.ConnectException throwable)

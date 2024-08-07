@@ -1357,6 +1357,7 @@
                         (map :schema_name (jdbc/query conn-spec "SELECT schema_name from INFORMATION_SCHEMA.SCHEMATA;"))))
               (is (nil? (some (partial re-matches #"metabase_cache(.*)")
                               (driver/syncable-schemas driver/*driver* (mt/db))))))))))))
+
 (deftest table-privileges-test
   (mt/test-driver :postgres
     (testing "`table-privileges` should return the correct data for current_user and role privileges"
@@ -1370,6 +1371,9 @@
           (try
            (jdbc/execute! conn-spec (str
                                      "DROP SCHEMA IF EXISTS \"dotted.schema\" CASCADE;"
+                                     "DROP SCHEMA IF EXISTS \"doublequote\"\"schema\" CASCADE;"
+                                     "CREATE SCHEMA \"doublequote\"\"schema\";"
+                                     "CREATE TABLE \"doublequote\"\"schema\".\"doublequote\"\"table\" (id INTEGER);"
                                      "CREATE SCHEMA \"dotted.schema\";"
                                      "CREATE TABLE \"dotted.schema\".bar (id INTEGER);"
                                      "CREATE TABLE \"dotted.schema\".\"dotted.table\" (id INTEGER);"
@@ -1380,6 +1384,7 @@
                                      "CREATE MATERIALIZED VIEW \"dotted.schema\".\"dotted.materialized_view\" AS SELECT 'hello world';"
                                      "DROP ROLE IF EXISTS privilege_rows_test_example_role;"
                                      "CREATE ROLE privilege_rows_test_example_role WITH LOGIN;"
+                                     "GRANT SELECT ON \"doublequote\"\"schema\".\"doublequote\"\"table\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
                                      "GRANT UPDATE ON \"dotted.schema\".\"dotted.table\" TO privilege_rows_test_example_role;"
                                      "GRANT SELECT (id) ON \"dotted.schema\".\"dotted.partial_select\" TO privilege_rows_test_example_role;"
@@ -1391,30 +1396,39 @@
              (is (= #{}
                     (get-privileges))))
            (testing "with USAGE privileges, SELECT and UPDATE privileges are returned"
-             (jdbc/execute! conn-spec "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;")
-             (is (= (into #{}
-                          (map #(merge {:role   nil
-                                        :schema "dotted.schema"
-                                        :update false
-                                        :select false
-                                        :insert false
-                                        :delete false} %)
-                               [{:table  "dotted.materialized_view"
-                                 :select true}
-                                {:table "dotted.view"
-                                 :select true}
-                                {:table "dotted.table"
-                                 :select true
-                                 :update true}
-                                {:table "dotted.partial_select"
-                                 :select true}
-                                {:table "dotted.partial_update"
-                                 :update true}
-                                {:table "dotted.partial_insert"
-                                 :insert true}]))
+             (jdbc/execute! conn-spec (str "GRANT USAGE ON SCHEMA \"doublequote\"\"schema\" TO privilege_rows_test_example_role;"
+                                           "GRANT USAGE ON SCHEMA \"dotted.schema\" TO privilege_rows_test_example_role;"))
+             (is (= (-> #{{:role   nil,
+                           :schema "doublequote\"schema",
+                           :table  "doublequote\"table",
+                           :update false,
+                           :select true,
+                           :insert false,
+                           :delete false}}
+                          (into (map #(merge {:role   nil
+                                              :schema "dotted.schema"
+                                              :update false
+                                              :select false
+                                              :insert false
+                                              :delete false} %)
+                                     [{:table  "dotted.materialized_view"
+                                       :select true}
+                                      {:table "dotted.view"
+                                       :select true}
+                                      {:table "dotted.table"
+                                       :select true
+                                       :update true}
+                                      {:table "dotted.partial_select"
+                                       :select true}
+                                      {:table "dotted.partial_update"
+                                       :update true}
+                                      {:table "dotted.partial_insert"
+                                       :insert true}])))
                     (get-privileges))))
            (finally
-            (doseq [stmt ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
+            (doseq [stmt ["REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"doublequote\"\"schema\" FROM privilege_rows_test_example_role;"
+                          "REVOKE ALL PRIVILEGES ON SCHEMA \"doublequote\"\"schema\" FROM privilege_rows_test_example_role;"
+                          "REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
                           "REVOKE ALL PRIVILEGES ON SCHEMA \"dotted.schema\" FROM privilege_rows_test_example_role;"
                           "DROP ROLE privilege_rows_test_example_role;"]]
               (jdbc/execute! conn-spec stmt)))))))))

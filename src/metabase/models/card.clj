@@ -135,11 +135,12 @@
 
 (defn- source-card-id
   [query]
-  (let [query-type (lib/normalized-query-type query)]
-    (case query-type
-      :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
-      :mbql/query (-> query lib/normalize lib.util/source-card-id)
-      nil)))
+  (when (map? query)
+    (let [query-type (lib/normalized-query-type query)]
+      (case query-type
+        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :mbql/query (-> query lib/normalize lib.util/source-card-id)
+        nil))))
 
 (defn- card->integer-table-ids
   "Return integer source table ids for card's :dataset_query."
@@ -162,6 +163,7 @@
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
+  ;; TODO: for metrics, we can get (some-fn :source_model_id :source_question_id)
   (let [dataset-cards (filter (comp seq :dataset_query) cards)
         source-card-ids (into #{}
                               (keep (comp source-card-id :dataset_query))
@@ -235,6 +237,18 @@
          (into {}))
    :id))
 
+(methodical/defmethod t2/batched-hydrate [:model/Card :metrics]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(group-by :source_card_id
+              (t2/select :model/Card
+                         :source_card_id [:in (map :id cards)],
+                         :archived false,
+                         :type :metric,
+                         {:order-by [[:name :asc]]}))
+   :id))
+
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
 
@@ -265,10 +279,13 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn populate-query-fields
-  "Lift `database_id`, `table_id`, and `query_type` from query definition when inserting/updating a Card."
+  "Lift `database_id`, `table_id`, `query_type`, and `source_card_id` fields
+  from query definition when inserting/updating a Card."
   [{query :dataset_query, :as card}]
   (merge
    card
+   (when-let [source-id (source-card-id query)]
+     {:source_card_id source-id})
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
@@ -409,39 +426,40 @@
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{id :id, :as changes}]
-  (let [parameter-cards   (t2/select ParameterCard :card_id id)]
-    (doseq [[[po-type po-id] param-cards]
-            (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
-      (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
-            {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
-            affected-param-ids-set (cond
-                                     ;; update all parameters that use this card as source
-                                     (:archived changes)
-                                     (set (map :parameter_id param-cards))
+  (when (some #{:archived :result_metadata} (keys changes))
+    (let [parameter-cards (t2/select ParameterCard :card_id id)]
+      (doseq [[[po-type po-id] param-cards]
+              (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
+        (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
+              {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
+              affected-param-ids-set (cond
+                                      ;; update all parameters that use this card as source
+                                      (:archived changes)
+                                      (set (map :parameter_id param-cards))
 
-                                     ;; update only parameters that have value_field no longer in this card
-                                     (:result_metadata changes)
-                                     (let [param-id->parameter (m/index-by :id parameters)]
-                                       (->> param-cards
-                                            (filter (fn [param-card]
-                                                      ;; if cant find the value-field in result_metadata, then we should
-                                                      ;; remove it
-                                                      (nil? (qp.util/field->field-info
+                                      ;; update only parameters that have value_field no longer in this card
+                                      (:result_metadata changes)
+                                      (let [param-id->parameter (m/index-by :id parameters)]
+                                        (->> param-cards
+                                             (filter (fn [param-card]
+                                                       ;; if cant find the value-field in result_metadata, then we should
+                                                       ;; remove it
+                                                       (nil? (qp.util/field->field-info
                                                               (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
                                                               (:result_metadata changes)))))
-                                            (map :parameter_id)
-                                            set))
+                                             (map :parameter_id)
+                                             set))
 
-                                     :else #{})
-            new-parameters (map (fn [parameter]
-                                  (if (affected-param-ids-set (:id parameter))
-                                    (-> parameter
-                                        (assoc :values_source_type nil)
-                                        (dissoc :values_source_config))
-                                    parameter))
-                                parameters)]
-        (when-not (= parameters new-parameters)
-          (t2/update! model po-id {:parameters new-parameters}))))))
+                                      :else #{})
+              new-parameters (map (fn [parameter]
+                                    (if (affected-param-ids-set (:id parameter))
+                                      (-> parameter
+                                          (assoc :values_source_type nil)
+                                          (dissoc :values_source_config))
+                                      parameter))
+                                  parameters)]
+          (when-not (= parameters new-parameters)
+            (t2/update! model po-id {:parameters new-parameters})))))))
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
@@ -506,6 +524,10 @@
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
+      ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
+      ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
+      (when (contains? changes :dataset_query)
+        (query-analysis/analyze-async! changes))
       (when (:parameters changes)
         (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
@@ -515,8 +537,10 @@
 
 (t2/define-after-select :model/Card
   [card]
-  (public-settings/remove-public-uuid-if-public-sharing-is-disabled
-   (dissoc card :dataset_query_metrics_v2_migration_backup)))
+  (-> card
+      (dissoc :dataset_query_metrics_v2_migration_backup)
+      (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -557,12 +581,6 @@
       populate-query-fields
       maybe-populate-initially-published-at
       (dissoc :id)))
-
-(t2/define-after-update :model/Card
-  [card]
-  (u/prog1 card
-    (when (contains? (t2/changes card) :dataset_query)
-      (query-analysis/analyze-async! card))))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
 (t2/define-before-delete :model/Card
@@ -825,7 +843,7 @@
   [_model-name]
   {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
           :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
-   :skip [ ;; always instance-specific
+   :skip [;; always instance-specific
           :id :updated_at
           ;; cache invalidation is instance-specific
           :cache_invalidated_at
@@ -840,6 +858,8 @@
                              #(serdes/*import-fk-keyed* % 'Database :name)]
     :table_id               [serdes/*export-table-fk*
                              serdes/*import-table-fk*]
+    :source_card_id         [#(serdes/*export-fk* % :model/Card)
+                             #(serdes/*import-fk* % :model/Card)]
     :collection_id          [#(serdes/*export-fk* % 'Collection)
                              #(serdes/*import-fk* % 'Collection)]
     :creator_id             [serdes/*export-user*
@@ -859,13 +879,14 @@
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id visualization_settings]}]
+           result_metadata table_id source_card_id visualization_settings]}]
   (set
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
     [[{:model "Database" :id database_id}]]
     (when table_id #{(serdes/table->path table_id)})
+    (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (result-metadata-deps result_metadata)
     (serdes/mbql-deps dataset_query)

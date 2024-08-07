@@ -28,6 +28,7 @@ import {
   sidebar,
   saveDashboard,
   filterWidget,
+  openNotebook,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -61,7 +62,7 @@ describe("scenarios > dashboard > dashboard back navigation", () => {
     cy.findByTestId("dashcard").findByText("Orders").click();
     cy.wait("@cardQuery");
     cy.findByLabelText(backButtonLabel).should("be.visible");
-    cy.icon("notebook").click();
+    openNotebook();
     summarize({ mode: "notebook" });
     popover().findByText("Count of rows").click();
     cy.findByLabelText(backButtonLabel).should("be.visible");

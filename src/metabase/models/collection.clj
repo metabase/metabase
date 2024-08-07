@@ -344,28 +344,28 @@
         has-root-permission? (or (contains? permissions-set "/") (contains? ids-with-perm "root"))
         root-map (when has-root-permission?
                    {"root" collection.root/root-collection})
+        ;; block an audit collection IF:
+        ;; - audit isn't enabled, OR
+        ;; - we're looking for writable collections
+        ;; Otherwise, normal read/write permissions apply
+        block-for-audit? #(and (audit/is-collection-id-audit? %)
+                               (or (not (premium-features/enable-audit-app?))
+                                   (= read-or-write :write)))
         has-permission? (fn [[id _]]
-                          (if (contains? permissions-set "/")
-                            true
-                            (contains? ids-with-perm id)))]
+                          (and
+                           (not (block-for-audit? id))
+                           (or (contains? permissions-set "/")
+                               (contains? ids-with-perm id))))]
     (->> collection-id->collection
          (filter has-permission?)
          (merge root-map))))
 
-(def ^:private IncludeArchivedItems
-  [:enum :only :exclude :all])
-(def ^:private IncludeTrashCollection
-  [:boolean])
-(def ^:private ArchiveOperationId
-  [:maybe :string])
-(def ^:private PermissionLevel
-  [:enum :read :write])
 (def ^:private CollectionVisibilityConfig
   [:map
-   [:include-trash-collection? {:optional true} IncludeTrashCollection]
-   [:include-archived-items {:optional true} IncludeArchivedItems]
-   [:archive-operation-id {:optional true} ArchiveOperationId]
-   [:permission-level {:optional true} PermissionLevel]])
+   [:include-trash-collection? {:optional true} :boolean]
+   [:include-archived-items {:optional true} [:enum :only :exclude :all]]
+   [:archive-operation-id {:optional true} [:maybe :string]]
+   [:permission-level {:optional true} [:enum :read :write]]])
 
 (defn- should-remove-for-archived? [include-archived-items collection]
   (case include-archived-items
@@ -535,24 +535,35 @@
       :id [:in ancestor-ids]
       {:order-by [:location]})))
 
-(mi/define-simple-hydration-method ^:private ancestors
+(mi/define-simple-hydration-method ancestors
   :ancestors
   "Fetch ancestors (parent, grandparent, etc.) of a `collection`. These are returned in order starting with the
   highest-level (e.g. most distant) ancestor."
   [collection]
   (ancestors* collection))
 
-(mu/defn- effective-ancestors* :- [:sequential [:or RootCollection (ms/InstanceOf Collection)]]
-  [collection :- CollectionWithLocationAndIDOrRoot]
-  (if (collection.root/is-root-collection? collection)
+(mu/defn- effective-ancestors*
+  "Given a collection, return the effective ancestors of that collection.
+  Note that the map `(collection-id->collection)` is cached for the lifetime
+  of the request, so this will make at most one DB query per request regardless
+  of how many times it is called."
+  [collection :- [:maybe CollectionWithLocationOrRoot]]
+  (if (or (nil? collection)
+          (collection.root/is-root-collection? collection))
     []
-    (filter mi/can-read? (cons (root-collection-with-ui-details (:namespace collection)) (ancestors collection)))))
+    (some->> (effective-location-path collection)
+             location-path->ids
+             (map (collection-id->collection))
+             (map #(select-keys % [:name :id :personal_owner_id :type]))
+             (map #(t2/instance :model/Collection %))
+             (cons (root-collection-with-ui-details (:namespace collection)))
+             (filter mi/can-read?))))
 
-(mi/define-simple-hydration-method effective-ancestors
+(mi/define-batched-hydration-method effective-ancestors
   :effective_ancestors
-  "Fetch the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see. This is used
-  in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we have four
-  Collections, nested like:
+  "Efficiently hydrate the ancestors of a `collection`, filtering out any ones the current User isn't allowed to see.
+  This is used in the UI to power the 'breadcrumb' path to the location of a given Collection. For example, suppose we
+  have four Collections, nested like:
 
     A > B > C > D
 
@@ -566,8 +577,12 @@
 
   Thus the existence of C will be kept hidden from the current User, and for all intents and purposes the current User
   can effectively treat A as the parent of C."
-  [collection]
-  (effective-ancestors* collection))
+  [collections]
+  (map (fn [collection]
+         (assoc collection
+                :effective_ancestors
+                (effective-ancestors* collection)))
+       collections))
 
 (mu/defn- parent-id* :- [:maybe ms/PositiveInt]
   [{:keys [location]} :- CollectionWithLocationOrRoot]

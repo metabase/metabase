@@ -32,7 +32,7 @@ Requirements:
 
 * [Visual Studio Code](https://code.visualstudio.com/) (obviously)
 * [Docker](https://www.docker.com/)
-* [Remote - Containers extension](vscode:extension/ms-vscode-remote.remote-containers) for VS Code
+* [Remote - Containers extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-containers) for VS Code
 
 _Important_: Ensure that Docker is running properly and it can be used to download an image and launch a container, e.g. by running:
 

@@ -34,7 +34,7 @@ Aside from running faster, a small and focused dashboard is also easier for peop
 
 If you have a dashboard that many people check around the same time (e.g., at the start of the work day), you may end up with queued queries or saturated database connections. Caching allows you to prepare for peak traffic by running those slow queries once, ahead of time, so that the results are ready to go.
 
-Caching takes less effort because it doesn't involve any changes to your schemas or databases. If you're ready to invest more resources into the root cause of dashboard performance issues, check out this list of common [schema and database optimizations](https://metabase.com/learn/administration/making-dashboards-faster#organize-data-to-anticipate-common-questions).
+Caching takes less effort because it doesn't involve any changes to your schemas or databases. If you're ready to invest more resources into the root cause of dashboard performance issues, check out this list of common [schema and database optimizations](https://metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#organize-data-to-anticipate-common-questions).
 
 ## Embedded dashboard is slow compared to original dashboard
 

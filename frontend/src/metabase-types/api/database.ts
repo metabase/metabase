@@ -1,11 +1,11 @@
 import type { ScheduleSettings } from "./settings";
 import type { Table } from "./table";
 
-import type { ISO8601Time } from ".";
+import type { ISO8601Time, LongTaskStatus } from ".";
 
 export type DatabaseId = number;
 
-export type InitialSyncStatus = "incomplete" | "complete" | "aborted";
+export type InitialSyncStatus = LongTaskStatus;
 
 export type DatabaseSettings = {
   [key: string]: any;

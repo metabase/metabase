@@ -1,0 +1,91 @@
+name: Release 1b - Auto Patch
+run-name: Patch Release ${{ inputs.version }}
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Major Metabase version (e.g. 45, 52, 68)'
+        type: number
+        required: true
+  schedule:
+    - cron: '15 0 * * 2-6' # every weekday at 7/8:15 pm Eastern Time
+
+jobs:
+  auto-patch-trigger:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+      - name: Prepare build scripts
+        run: yarn --cwd release --frozen-lockfile && yarn --cwd release build
+      - name: Trigger auto-patch
+        uses: actions/github-script@v7
+        with:
+          script: | # js
+            const {
+              getLatestGreenCommit,
+              getNextPatchVersion,
+              hasCommitBeenReleased,
+            } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            // Don't forget to update this for the next major release 🤞
+            const AUTO_RELEASE_VERSIONS = [49, 50];
+
+            async function releasePatchFor(majorVersion) {
+              const nextPatch = await getNextPatchVersion({
+                github,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                majorVersion,
+              });
+
+              const goodCommit = await getLatestGreenCommit({
+                github,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                branch: `release-x.${majorVersion}.x`,
+              });
+
+              const hasBeenReleased = await hasCommitBeenReleased({
+                github,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: goodCommit,
+                majorVersion: Number(majorVersion),
+              });
+
+              if (nextPatch && goodCommit && !hasBeenReleased) {
+                await github.rest.actions.createWorkflowDispatch({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  workflow_id: 'tag-for-release.yml',
+                  ref: 'refs/heads/master',
+                  inputs: {
+                    commit: goodCommit,
+                    version: nextPatch,
+                    auto: true,
+                  }
+                });
+              } else {
+                console.log(
+                  { nextPatch, goodCommit, hasBeenReleased }
+                );
+                console.error(`No new patch version or no green commit found for v${majorVersion}`);
+              }
+            }
+
+            if (context.eventName === 'workflow_dispatch') {
+              const inputVersion = Number(context.payload.inputs.version);
+
+              if (typeof inputVersion !== 'number') {
+                console.log('Invalid version number', inputVersion);
+                throw new Error(`Invalid version number: ${inputVersion}`);
+              }
+
+              await releasePatchFor(inputVersion);
+            } else { // scheduled release of AUTO_RELEASE_VERSIONS
+              await Promise.all(AUTO_RELEASE_VERSIONS.map(releasePatchFor));
+            }

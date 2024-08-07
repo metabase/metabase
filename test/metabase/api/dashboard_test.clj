@@ -873,7 +873,7 @@
                    (t2/select-one-fn :width Dashboard :id (u/the-id dashboard)))))
 
           (testing "values that are not 'fixed' or 'full' error."
-            (is (= "should be either fixed or full, received: 1200"
+            (is (= "should be either \"fixed\" or \"full\", received: 1200"
                    (-> (mt/user-http-request :rasta :put 400 (str "dashboard/" (u/the-id dashboard)) {:width 1200})
                        :specific-errors
                        :dash-updates
