@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Stack } from "metabase/ui";
-import type * as Lib from "metabase-lib";
+import * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
@@ -13,14 +13,14 @@ import {
   ReferenceAggregationPicker,
 } from "./components";
 import type { ColumnType } from "./types";
-import { canSubmit, getAggregations, getTitle } from "./utils";
+import { canSubmit, getAggregations, getBreakout, getTitle } from "./utils";
 
 interface Props {
   aggregations: Lib.AggregationClause[];
   query: Lib.Query;
   stageIndex: number;
   onClose: () => void;
-  onSubmit: (aggregations: Lib.ExpressionClause[]) => void;
+  onSubmit: (query: Lib.Query, aggregations: Lib.expressionClause[]) => void;
 }
 
 const DEFAULT_OFFSET = 1;
@@ -39,6 +39,11 @@ export const CompareAggregations = ({
   const [aggregation, setAggregation] = useState<
     Lib.AggregationClause | Lib.ExpressionClause | undefined
   >(hasManyAggregations ? undefined : aggregations[0]);
+  const columnAndBucket = useMemo(
+    () => getBreakout(query, stageIndex),
+    [query, stageIndex],
+  );
+
   const [offset, setOffset] = useState<number | "">(DEFAULT_OFFSET);
   const [columns, setColumns] = useState<ColumnType[]>(DEFAULT_COLUMNS);
   const width = aggregation ? STEP_2_WIDTH : STEP_1_WIDTH;
@@ -67,7 +72,49 @@ export const CompareAggregations = ({
         columns,
         offset,
       );
-      onSubmit(aggregations);
+
+      if (!columnAndBucket) {
+        return;
+      }
+
+      let nextQuery = aggregations.reduce(
+        (query, aggregation) => Lib.aggregate(query, stageIndex, aggregation),
+        query,
+      );
+      let breakout = columnAndBucket.breakout;
+
+      const column = Lib.withTemporalBucket(
+        columnAndBucket.column,
+        columnAndBucket.bucket,
+      );
+
+      if (breakout) {
+        // replace the breakout
+        const breakoutIndex = Lib.breakouts(nextQuery, stageIndex).indexOf(
+          breakout,
+        );
+        nextQuery = Lib.replaceClause(nextQuery, stageIndex, breakout, column);
+        breakout = Lib.breakouts(nextQuery, stageIndex)[breakoutIndex];
+      } else {
+        // add the breakout
+        nextQuery = Lib.breakout(nextQuery, stageIndex, column);
+        breakout = Lib.breakouts(nextQuery, stageIndex).at(-1);
+      }
+
+      const breakouts = Lib.breakouts(nextQuery, stageIndex);
+      const firstBreakout = breakouts[0];
+
+      if (breakout && breakout !== firstBreakout) {
+        // move the breakout to the front
+        nextQuery = Lib.swapClauses(
+          nextQuery,
+          stageIndex,
+          firstBreakout,
+          breakout,
+        );
+      }
+
+      onSubmit(nextQuery, aggregations);
       onClose();
     }
   };
