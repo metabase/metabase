@@ -54,6 +54,24 @@ const ordersCreatedAtField: FieldReference = [
   },
 ];
 
+const ordersCreatedAtMonthField: FieldReference = [
+  "field",
+  ORDERS.CREATED_AT,
+  {
+    "base-type": "type/DateTime",
+    "temporal-unit": "month",
+  },
+];
+
+const ordersCreatedAtYearField: FieldReference = [
+  "field",
+  ORDERS.CREATED_AT,
+  {
+    "base-type": "type/DateTime",
+    "temporal-unit": "year",
+  },
+];
+
 const productsCreatedAtField: FieldReference = [
   "field",
   PRODUCTS.CREATED_AT,
@@ -320,6 +338,38 @@ describe("parameters/utils/targets", () => {
         expect(columnsInfos[1]).toMatchObject({
           table: { displayName: "Products" },
           longDisplayName: "Product → Created At",
+        });
+      });
+
+      it("date breakouts in multiple stages - returns date column from the last stage only", () => {
+        const card = createSavedStructuredCard({
+          dataset_query: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              aggregation: [["count"]],
+              breakout: [ordersCreatedAtYearField],
+              "source-query": {
+                "source-table": ORDERS_ID,
+                aggregation: [["count"]],
+                breakout: [ordersCreatedAtMonthField],
+              },
+            },
+          },
+        });
+        const question = new Question(card, metadata);
+        const { query, stageIndex, columns } = getParameterColumns(
+          question,
+          parameter,
+        );
+        const columnsInfos = columns.map(column => {
+          return Lib.displayInfo(query, stageIndex, column);
+        });
+
+        expect(columns).toHaveLength(1);
+        expect(columnsInfos[0]).toMatchObject({
+          table: { displayName: "Orders" },
+          longDisplayName: "Created At: Month",
         });
       });
     });
