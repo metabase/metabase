@@ -8,6 +8,7 @@ import { push } from "react-router-redux";
 import { t } from "ttag";
 
 import { getCollectionName } from "metabase/collections/utils";
+import { EllipsifiedPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedPath";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
@@ -30,19 +31,17 @@ import {
   type IconProps,
   type IconName,
   Skeleton,
+  FixedSizeIcon,
+  Box,
 } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
 import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
+import S from "./ModelsTable.module.css";
 
 import { trackModelClick } from "../analytics";
 import type { ModelResult } from "../types";
 import { getIcon } from "../utils";
 
-import {
-  CollectionBreadcrumbsWithTooltip,
-  SimpleCollectionDisplay,
-} from "./CollectionBreadcrumbsWithTooltip";
-import { CollectionsIcon } from "./CollectionBreadcrumbsWithTooltip.styled";
 import { EllipsifiedWithMarkdownTooltip } from "./EllipsifiedWithMarkdownTooltip";
 import {
   ModelCell,
@@ -50,7 +49,12 @@ import {
   ModelNameColumn,
   ModelTableRow,
 } from "./ModelsTable.styled";
-import { getModelDescription, sortModels } from "./utils";
+import {
+  getCollectionPathString,
+  getModelDescription,
+  sortModels,
+} from "./utils";
+import Link from "metabase/core/components/Link";
 
 export interface ModelsTableProps {
   models?: ModelResult[];
@@ -81,11 +85,9 @@ export const ModelsTable = ({
   models = [],
   skeleton = false,
 }: ModelsTableProps) => {
-  // for large datasets, we need to simplify the display to avoid performance issues
   const isLargeDataset = models.length > LARGE_DATASET_THRESHOLD;
 
-  const [showLoadingManyRows, setShowLoadingManyRows] =
-    useState(isLargeDataset);
+  const [showLoadingManyRows, setShowLoadingManyRows] = useState(false);
 
   const [sortingOptions, setSortingOptions] = useState<SortingOptions>(
     DEFAULT_SORTING_OPTIONS,
@@ -174,11 +176,7 @@ export const ModelsTable = ({
           </Repeat>
         ) : (
           sortedModels.map((model: ModelResult) => (
-            <TBodyRow
-              model={model}
-              key={`${model.model}-${model.id}`}
-              simpleDisplay={isLargeDataset}
-            />
+            <TBodyRow model={model} key={`${model.model}-${model.id}`} />
           ))
         )}
       </TBody>
@@ -188,15 +186,12 @@ export const ModelsTable = ({
 
 const TBodyRow = ({
   model,
-  simpleDisplay,
   skeleton,
 }: {
   model: ModelResult;
-  simpleDisplay: boolean;
   skeleton?: boolean;
 }) => {
   const icon = getIcon(model);
-  const containerName = `collections-path-for-${model.id}`;
   const dispatch = useDispatch();
   const { id, name } = model;
 
@@ -237,14 +232,27 @@ const TBodyRow = ({
         }`}
         {...collectionProps}
       >
-        {simpleDisplay ? (
-          <SimpleCollectionDisplay collection={model.collection} />
-        ) : (
-          <CollectionBreadcrumbsWithTooltip
-            containerName={containerName}
-            collection={model.collection}
-          />
-        )}
+        <Link
+          className={S.collectionLink}
+          to={Urls.collection(model.collection)}
+          onClick={e => e.stopPropagation()}
+        >
+          <Flex
+            gap="sm"
+            data-testid={`path-for-collection: ${model.collection.name}`}
+          >
+            <FixedSizeIcon name="folder" />
+            <Box w="calc(100% - 1.5rem)">
+              <EllipsifiedPath
+                tooltip={getCollectionPathString(model.collection)}
+                items={[
+                  ...(model.collection?.effective_ancestors || []),
+                  model.collection,
+                ].map(c => getCollectionName(c))}
+              />
+            </Box>
+          </Flex>
+        </Link>
       </ModelCell>
 
       {/* Description */}
@@ -330,8 +338,8 @@ const TBodyRowSkeleton = ({ style }: { style?: CSSProperties }) => {
 
       {/* Collection */}
       <ModelCell {...collectionProps}>
-        <Flex>
-          <CollectionsIcon name="folder" />
+        <Flex gap=".5rem">
+          <FixedSizeIcon name="folder" />
           <CellTextSkeleton />
         </Flex>
       </ModelCell>

@@ -1,0 +1,10 @@
+.collectionLink {
+  :hover {
+    &,
+    *,
+    *:before,
+    *:after {
+      color: var(--mb-color-brand) !important;
+    }
+  }
+}

@@ -304,9 +304,7 @@ describe("BrowseModels", () => {
     });
     expect(await within(modelsTable).findByText("Model 1")).toBeInTheDocument();
     expect(
-      await within(modelsTable).findAllByTestId(
-        "breadcrumbs-for-collection: Alpha",
-      ),
+      await within(modelsTable).findAllByTestId("path-for-collection: Alpha"),
     ).toHaveLength(3);
   });
 
