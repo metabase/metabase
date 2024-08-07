@@ -1,8 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
+import { createMockEntitiesState } from "__support__/store";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import { convertSavedQuestionToVirtualTable } from "metabase-lib/v1/metadata/utils/saved-questions";
+import {
+  convertSavedQuestionToVirtualTable,
+  getQuestionVirtualTableId,
+} from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   getParameterColumns,
   getParameterTargetField,
@@ -10,15 +14,20 @@ import {
   isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
 import type {
+  Card,
   FieldReference,
   ParameterDimensionTarget,
 } from "metabase-types/api";
 import {
   createMockParameter,
   createMockSavedQuestionsDatabase,
+  createMockTable,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
+  createOrdersTable,
+  createPeopleTable,
+  createProductsTable,
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
@@ -29,11 +38,14 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
+import { createMockState } from "metabase-types/store/mocks";
+import { getMetadata } from "metabase/selectors/metadata";
 
+const sampleDb = createSampleDatabase();
 const savedQuestionsDb = createMockSavedQuestionsDatabase();
 
 const metadata = createMockMetadata({
-  databases: [createSampleDatabase(), savedQuestionsDb],
+  databases: [sampleDb, savedQuestionsDb],
 });
 
 const db = metadata.database(SAMPLE_DB_ID) as Database;
@@ -192,63 +204,101 @@ describe("parameters/utils/targets", () => {
 
   describe("getParameterColumns", () => {
     describe("no parameter", () => {
+      const parameter = undefined;
+
       it("question - returns columns from source table and implicitly joinable tables", () => {
         const card = createSavedStructuredCard();
         const question = new Question(card, metadata);
-        const parameter = undefined;
         const { query, stageIndex, columns } = getParameterColumns(
           question,
           parameter,
         );
-        const columnsInfos = columns.map(column => {
-          return Lib.displayInfo(query, stageIndex, column);
-        });
+        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
         expect(columns).toHaveLength(30);
-        expect(columnsInfos[0]).toMatchObject({
-          table: { displayName: "Orders" },
-          longDisplayName: "Created At",
-        });
-        expect(columnsInfos[9]).toMatchObject({
-          table: { displayName: "Products" },
-          longDisplayName: "Product → Category",
-        });
-        expect(columnsInfos[17]).toMatchObject({
-          table: { displayName: "People" },
-          longDisplayName: "User → Address",
-        });
+        expect(columnsInfos).toEqual([
+          ["Orders", "Created At"],
+          ["Orders", "Discount"],
+          ["Orders", "ID"],
+          ["Orders", "Product ID"],
+          ["Orders", "Quantity"],
+          ["Orders", "Subtotal"],
+          ["Orders", "Tax"],
+          ["Orders", "Total"],
+          ["Orders", "User ID"],
+          ["Products", "Product → Category"],
+          ["Products", "Product → Created At"],
+          ["Products", "Product → Ean"],
+          ["Products", "Product → ID"],
+          ["Products", "Product → Price"],
+          ["Products", "Product → Rating"],
+          ["Products", "Product → Title"],
+          ["Products", "Product → Vendor"],
+          ["People", "User → Address"],
+          ["People", "User → Birth Date"],
+          ["People", "User → City"],
+          ["People", "User → Created At"],
+          ["People", "User → Email"],
+          ["People", "User → ID"],
+          ["People", "User → Latitude"],
+          ["People", "User → Longitude"],
+          ["People", "User → Name"],
+          ["People", "User → Password"],
+          ["People", "User → Source"],
+          ["People", "User → State"],
+          ["People", "User → Zip"],
+        ]);
       });
 
       it("model - returns columns from source table and implicitly joinable tables", () => {
-        const card = createStructuredModelCard();
+        const card = createStructuredModelCard({
+          result_metadata: createOrdersTable().fields,
+        });
         const metadata = createMockMetadata({
-          databases: [createSampleDatabase(), savedQuestionsDb],
-          tables: [convertSavedQuestionToVirtualTable(card)],
+          databases: [sampleDb, savedQuestionsDb],
+          tables: [getModelVirtualTable(card)],
           questions: [card],
         });
         const question = new Question(card, metadata);
-        const parameter = undefined;
         const { query, stageIndex, columns } = getParameterColumns(
           question,
           parameter,
         );
-        const columnsInfos = columns.map(column => {
-          return Lib.displayInfo(query, stageIndex, column);
-        });
+        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
         expect(columns).toHaveLength(30);
-        expect(columnsInfos[0]).toMatchObject({
-          table: { displayName: "Orders" },
-          longDisplayName: "Created At",
-        });
-        expect(columnsInfos[9]).toMatchObject({
-          table: { displayName: "Products" },
-          longDisplayName: "Product → Category",
-        });
-        expect(columnsInfos[17]).toMatchObject({
-          table: { displayName: "People" },
-          longDisplayName: "User → Address",
-        });
+        expect(columnsInfos).toEqual([
+          ["Question", "ID"],
+          ["Question", "User ID"],
+          ["Question", "Product ID"],
+          ["Question", "Subtotal"],
+          ["Question", "Tax"],
+          ["Question", "Total"],
+          ["Question", "Discount"],
+          ["Question", "Created At"],
+          ["Question", "Quantity"],
+          ["People", "User → Address"],
+          ["People", "User → Birth Date"],
+          ["People", "User → City"],
+          ["People", "User → Created At"],
+          ["People", "User → Email"],
+          ["People", "User → ID"],
+          ["People", "User → Latitude"],
+          ["People", "User → Longitude"],
+          ["People", "User → Name"],
+          ["People", "User → Password"],
+          ["People", "User → Source"],
+          ["People", "User → State"],
+          ["People", "User → Zip"],
+          ["Products", "Product → Category"],
+          ["Products", "Product → Created At"],
+          ["Products", "Product → Ean"],
+          ["Products", "Product → ID"],
+          ["Products", "Product → Price"],
+          ["Products", "Product → Rating"],
+          ["Products", "Product → Title"],
+          ["Products", "Product → Vendor"],
+        ]);
       });
     });
 
@@ -298,15 +348,10 @@ describe("parameters/utils/targets", () => {
           question,
           parameter,
         );
-        const columnsInfos = columns.map(column => {
-          return Lib.displayInfo(query, stageIndex, column);
-        });
+        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
         expect(columns).toHaveLength(1);
-        expect(columnsInfos[0]).toMatchObject({
-          table: { displayName: "Orders" },
-          longDisplayName: "Created At",
-        });
+        expect(columnsInfos).toEqual([["Orders", "Created At"]]);
       });
 
       it("2 date breakouts - returns 2 date columns", () => {
@@ -326,19 +371,13 @@ describe("parameters/utils/targets", () => {
           question,
           parameter,
         );
-        const columnsInfos = columns.map(column => {
-          return Lib.displayInfo(query, stageIndex, column);
-        });
+        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
         expect(columns).toHaveLength(2);
-        expect(columnsInfos[0]).toMatchObject({
-          table: { displayName: "Orders" },
-          longDisplayName: "Created At",
-        });
-        expect(columnsInfos[1]).toMatchObject({
-          table: { displayName: "Products" },
-          longDisplayName: "Product → Created At",
-        });
+        expect(columnsInfos).toEqual([
+          ["Orders", "Created At"],
+          ["Products", "Product → Created At"],
+        ]);
       });
 
       it("date breakouts in multiple stages - returns date column from the last stage only", () => {
@@ -362,15 +401,10 @@ describe("parameters/utils/targets", () => {
           question,
           parameter,
         );
-        const columnsInfos = columns.map(column => {
-          return Lib.displayInfo(query, stageIndex, column);
-        });
+        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
         expect(columns).toHaveLength(1);
-        expect(columnsInfos[0]).toMatchObject({
-          table: { displayName: "Orders" },
-          longDisplayName: "Created At: Month",
-        });
+        expect(columnsInfos).toEqual([["Orders", "Created At: Month"]]);
       });
     });
 
@@ -384,27 +418,15 @@ describe("parameters/utils/targets", () => {
           question,
           parameter,
         );
-        const columnsInfos = columns.map(column => {
-          return Lib.displayInfo(query, stageIndex, column);
-        });
+        const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
         expect(columns).toHaveLength(4);
-        expect(columnsInfos[0]).toMatchObject({
-          table: { displayName: "Orders" },
-          longDisplayName: "Created At",
-        });
-        expect(columnsInfos[1]).toMatchObject({
-          table: { displayName: "Products" },
-          longDisplayName: "Product → Created At",
-        });
-        expect(columnsInfos[2]).toMatchObject({
-          table: { displayName: "People" },
-          longDisplayName: "User → Birth Date",
-        });
-        expect(columnsInfos[3]).toMatchObject({
-          table: { displayName: "People" },
-          longDisplayName: "User → Created At",
-        });
+        expect(columnsInfos).toEqual([
+          ["Orders", "Created At"],
+          ["Products", "Product → Created At"],
+          ["People", "User → Birth Date"],
+          ["People", "User → Created At"],
+        ]);
       });
     });
   });
@@ -427,5 +449,26 @@ function createDateParameter() {
     id: "57ab6554",
     type: "date/all-options",
     sectionId: "date",
+  });
+}
+
+function getModelVirtualTable(card: Card) {
+  return createMockTable({
+    id: getQuestionVirtualTableId(card.id),
+    db_id: savedQuestionsDb.id,
+    name: card.name,
+    display_name: card.name,
+    fields: card.result_metadata,
+  });
+}
+
+function getColumnsInfos(
+  query: Lib.Query,
+  stageIndex: number,
+  columns: Lib.ColumnMetadata[],
+) {
+  return columns.map(column => {
+    const info = Lib.displayInfo(query, stageIndex, column);
+    return [info.table?.displayName, info.longDisplayName];
   });
 }
