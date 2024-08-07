@@ -713,14 +713,35 @@ export const getShouldShowUnsavedChangesWarning = createSelector(
  * Returns the card and query results data in a format that `Visualization.jsx` expects
  */
 export const getRawSeries = createSelector(
-  [getQuestion, getQueryResults, getLastRunDatasetQuery, getIsShowingRawTable],
-  (question, results, lastRunDatasetQuery, isShowingRawTable) => {
-    return createRawSeries({
+  [
+    getQuestion,
+    getFirstQueryResult,
+    getLastRunDatasetQuery,
+    getIsShowingRawTable,
+  ],
+  (question, queryResult, lastRunDatasetQuery, isShowingRawTable) => {
+    const rawSeries = createRawSeries({
       question,
-      queryResult: results?.[0],
+      queryResult,
       datasetQuery: lastRunDatasetQuery,
-      showRawTable: isShowingRawTable,
     });
+    if (isShowingRawTable && rawSeries?.length > 0) {
+      const [{ card, data }] = rawSeries;
+      return [
+        {
+          card: {
+            ...card,
+            display: "table",
+            visualization_settings: {
+              ...card.visualization_settings,
+              "table.pivot": false,
+            },
+          },
+          data,
+        },
+      ];
+    }
+    return rawSeries;
   },
 );
 
@@ -1103,7 +1124,16 @@ export function getEmbeddedParameterVisibility(state, slug) {
 }
 
 export const getSubmittableQuestion = (state, question) => {
-  const series = getTransformedSeries(state);
+  const rawSeries = createRawSeries({
+    question: getQuestion(state),
+    queryResult: getFirstQueryResult(state),
+    datasetQuery: getLastRunDatasetQuery(state),
+  });
+
+  const series = rawSeries
+    ? getVisualizationTransformed(extractRemappings(rawSeries)).series
+    : null;
+
   const resultsMetadata = getResultsMetadata(state);
   const isResultDirty = getIsResultDirty(state);
 

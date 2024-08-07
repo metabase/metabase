@@ -106,7 +106,9 @@ const defaultConfig = {
         );
         if (!failures) {
           // delete the video if the spec passed and no tests retried
-          fs.unlinkSync(results.video);
+          if (fs.existsSync(results.video)) {
+            fs.unlinkSync(results.video);
+          }
         }
       }
     });

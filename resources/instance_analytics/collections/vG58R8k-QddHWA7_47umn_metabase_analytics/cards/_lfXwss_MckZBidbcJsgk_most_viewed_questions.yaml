@@ -197,12 +197,12 @@ visualization_settings:
   column_settings:
     '["name","count"]':
       show_mini_bar: true
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Question ID
+    '["name","entity_id"]':
+      column_title: Question ID
       link_url: question/{{entity_id}}
       view_as: link
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Question name
+    '["name","name"]':
+      column_title: Question name
       link_text: ''
       link_url: question/{{entity_id}}
       view_as: link

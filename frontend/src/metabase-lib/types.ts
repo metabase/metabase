@@ -275,6 +275,7 @@ export type ExpressionOperatorName =
   | "concat"
   | "interval"
   | "time-interval"
+  | "relative-time-interval"
   | "relative-datetime"
   | "inside"
   | "segment"
