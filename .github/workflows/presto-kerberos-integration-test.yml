@@ -5,10 +5,10 @@ on:
   push:
     branches:
       - master
-      - 'release**'
-      - 'feature**'
+      - "release**"
+      - "feature**"
     tags:
-      - '**'
+      - "**"
 
 jobs:
   files-changed:
@@ -85,7 +85,7 @@ jobs:
       - name: Ensure mba
         run: which mba
       - name: Run Metabase via MBA
-        run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com --external up
+        run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com up
       - name: Run test script in MBA instance
         run: >
           mba --mb . --data-db postgres-data -n example.com \
