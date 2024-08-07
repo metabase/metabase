@@ -16,7 +16,11 @@
   [entity]
   (if (:dashcards entity)
     (dissoc entity :dashcards)
-    (throw (ex-info "No known references found when breaking circular dependency!" {:entity entity}))))
+    (throw (ex-info "No known references found when breaking circular dependency!"
+                    (let [model (t2/model entity)]
+                      {:entity     entity
+                       :model      (some-> model name)
+                       :table_name (some-> model t2/table-name)})))))
 
 (defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
@@ -30,7 +34,7 @@
                 (load-one! ctx dep)
                 (catch Exception e
                   (cond
-                    ;; It was missing but we found it locally, so just return the context.
+                    ;; It was missing, but we found it locally, so just return the context.
                     (and (= (:error (ex-data e)) ::not-found)
                          (serdes/load-find-local dep))
                     ctx
@@ -45,6 +49,14 @@
                     :else
                     (throw e)))))]
       (reduce loader ctx deps))))
+
+(defn- circular-dep-info [error-type expanding path]
+  (let [last-model (:model (last path))]
+    {:path       path
+     :deps-chain expanding
+     :model      (some-> last-model name)
+     :table_name (some-> last-model t2/table-name)
+     :error      error-type}))
 
 (defn- load-one!
   "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to
@@ -62,16 +74,14 @@
   [{:keys [expanding ingestion seen] :as ctx} path & [modfn]]
   (log/infof "Loading %s" (serdes/log-path-str path))
   (cond
-    (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path)) {:path path
-                                                                                         :error ::circular}))
-    (seen path) ctx ; Already been done, just skip it.
+    (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path))
+                                     (circular-dep-info ::circular expanding path)))
+    (seen path) ctx ; Already been done, can skip it.
     :else (let [ingested (try
                            (serdes.ingest/ingest-one ingestion path)
                            (catch Exception e
                              (throw (ex-info (format "Failed to read file for %s" (serdes/log-path-str path))
-                                             {:path       path
-                                              :deps-chain expanding
-                                              :error      ::not-found}
+                                             (circular-dep-info ::not-found expanding path)
                                              e))))
                 ingested (cond-> ingested
                            modfn modfn)
@@ -90,8 +100,7 @@
               ctx
               (catch Exception e
                 (throw (ex-info (format "Failed to load into database for %s" (pr-str path))
-                                {:path       path
-                                 :deps-chain expanding}
+                                (circular-dep-info ::load-failure expanding path)
                                 e)))))))
 
 (defn load-metabase!

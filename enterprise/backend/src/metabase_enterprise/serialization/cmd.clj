@@ -114,7 +114,7 @@
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]
             [:continue-on-error {:optional true} [:maybe :int]]]]
-  (let [start    (System/nanoTime)
+  (let [timer    (u/start-timer)
         err      (atom nil)
         report   (try
                    (v2-load-internal! path opts :token-check? true)
@@ -124,7 +124,7 @@
     (snowplow/track-event! ::snowplow/serialization nil
                            {:direction     "import"
                             :source        "cli"
-                            :duration_ms   (int (/ (- (System/nanoTime) start) 1e6))
+                            :duration_ms   (int (u/since-ms timer))
                             :models        (str/join "," imported)
                             :count         (if (contains? imported "Setting")
                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))

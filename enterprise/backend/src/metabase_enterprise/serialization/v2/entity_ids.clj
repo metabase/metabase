@@ -79,6 +79,7 @@
       (when-not (some? pk-value)
         (throw (ex-info (format "Missing value for primary key column %s" (pr-str primary-key))
                         {:model       (name model)
+                         :table_name  (t2/table-name model)
                          :instance    instance
                          :primary-key primary-key})))
       (let [new-hash (serdes/identity-hash instance)]
