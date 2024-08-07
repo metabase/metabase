@@ -42,6 +42,7 @@
     ;; Metabase has about them, including any stored credentials.  This is a config file flag instead of a CLI command,
     ;; so we can ensure the database stays deleted even after restoring backups.
     (let [magic-request (format "DELETE_WITH_DEPENDENTS:%s" (:name database))]
+      (log/info (u/format-color :blue "Deleting databases via the config file is an internal feature subject to breaking changes."))
       (when (not= magic-request (:delete database))
         (throw (ex-info (format "To delete database %s set `delete` to %s" (pr-str (:name database)) (pr-str magic-request))
                         {:database-name (:name database)})))
