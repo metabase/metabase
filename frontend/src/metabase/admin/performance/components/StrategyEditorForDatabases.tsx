@@ -40,12 +40,12 @@ const StrategyEditorForDatabases_Base = ({
     setTargetId,
   ] = useState<number | null>(null);
 
-  const configurableModels: CacheableModel[] = useMemo(() => {
-    const ret: CacheableModel[] = ["root"];
+  const cacheableModels: CacheableModel[] = useMemo(() => {
+    const cacheableModels: CacheableModel[] = ["root"];
     if (canOverrideRootStrategy) {
-      ret.push("database");
+      cacheableModels.push("database");
     }
-    return ret;
+    return cacheableModels;
   }, [canOverrideRootStrategy]);
 
   const {
@@ -55,7 +55,7 @@ const StrategyEditorForDatabases_Base = ({
     rootStrategyRecentlyOverridden,
     error: configsError,
     loading: areConfigsLoading,
-  } = useCacheConfigs({ configurableModels });
+  } = useCacheConfigs({ models: cacheableModels });
 
   const databasesResult = useListDatabasesQuery();
   const databases = databasesResult.data?.data ?? [];

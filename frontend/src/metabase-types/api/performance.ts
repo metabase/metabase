@@ -1,6 +1,13 @@
 /** 'Model' as in 'type of object' */
 export type CacheableModel = "root" | "database" | "dashboard" | "question";
 
+export const ALL_CACHEABLE_MODELS: CacheableModel[] = [
+  "root",
+  "database",
+  "dashboard",
+  "question",
+] as const;
+
 export type CacheStrategyType =
   | "nocache"
   | "ttl" // aka Adaptive

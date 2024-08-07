@@ -281,7 +281,11 @@ export const translateConfig = (
   config: CacheConfig,
   direction: "fromAPI" | "toAPI",
 ): CacheConfig => {
-  const translated: CacheConfig = { ...config };
+  const translated: CacheConfig = {
+    ...config,
+    // Clone the strategy to make it mutable
+    strategy: { ...config.strategy },
+  };
 
   // If strategy type is unsupported, use a fallback
   if (!isValidStrategyName(translated.strategy.type)) {

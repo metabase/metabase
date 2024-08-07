@@ -18,10 +18,10 @@ export const SidebarCacheSection = ({
   setPage,
 }: SidebarCacheSectionProps) => {
   const id = useMemo(() => getItemId(model, item), [model, item]);
-  const configurableModels = useMemo(() => [model], [model]);
+  const cacheableModels = useMemo(() => [model], [model]);
 
   const { configs, loading, error } = useCacheConfigs({
-    configurableModels,
+    models: cacheableModels,
     id,
   });
 

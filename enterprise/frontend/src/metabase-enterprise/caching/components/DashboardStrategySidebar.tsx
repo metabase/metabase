@@ -15,7 +15,7 @@ import type { CacheableModel, CacheStrategy } from "metabase-types/api";
 
 import { DashboardStrategySidebarBody } from "./DashboardStrategySidebar.styled";
 
-const configurableModels: CacheableModel[] = ["dashboard"];
+const cacheableModels: CacheableModel[] = ["dashboard"];
 
 const DashboardStrategySidebar_Base = ({
   dashboard,
@@ -31,7 +31,7 @@ const DashboardStrategySidebar_Base = ({
   }
   const dashboardId: number = dashboard.id;
   const { configs, setConfigs, loading, error } = useCacheConfigs({
-    configurableModels,
+    models: cacheableModels,
     id: dashboardId,
   });
 

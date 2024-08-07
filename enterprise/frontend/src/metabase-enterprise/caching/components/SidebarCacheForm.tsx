@@ -22,10 +22,10 @@ const SidebarCacheForm_Base = ({
   setPage,
   ...groupProps
 }: SidebarCacheFormProps) => {
-  const configurableModels = useMemo(() => [model], [model]);
+  const cacheableModels = useMemo(() => [model], [model]);
   const id: number = getItemId(model, item);
   const { configs, setConfigs, loading, error } = useCacheConfigs({
-    configurableModels,
+    models: cacheableModels,
     id,
   });
 

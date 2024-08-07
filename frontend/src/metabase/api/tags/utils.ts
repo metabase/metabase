@@ -36,6 +36,7 @@ import type {
   CardQueryMetadata,
   CardId,
   ModelIndex,
+  CacheConfig,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -204,6 +205,28 @@ export function provideModelIndexListTags(
     listTag("model-index"),
     ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
   ];
+}
+
+/** Cache configs do not have an id. They are identified by a model (such as
+ * 'question', 'dashboard', or 'database') and a model_id (the id of the
+ * question, dashboard, or database) */
+export const cacheIdTag = (
+  cacheConfig: Pick<CacheConfig, "model" | "model_id">,
+) => idTag("cache-config", `${cacheConfig.model},${cacheConfig.model_id}`);
+
+export function provideCacheConfigListTags(
+  cacheConfigs: CacheConfig[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("cache-config"),
+    ...cacheConfigs.flatMap(provideCacheConfigTags),
+  ];
+}
+
+export function provideCacheConfigTags(
+  cacheConfig: CacheConfig,
+): TagDescription<TagType>[] {
+  return [cacheIdTag(cacheConfig)];
 }
 
 export function provideDatabaseCandidateListTags(
