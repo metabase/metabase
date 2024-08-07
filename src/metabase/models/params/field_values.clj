@@ -80,7 +80,6 @@
             ;; we have a hard limit for how many values we want to store in FieldValues,
             ;; let's make sure we respect that limit here.
             ;; For a more detailed docs on this limt check out [[field-values/distinct-values]]
-            ;; FIX ME: this can OOM for text column if each value are too large. See #46411
             limited-values                   (field-values/take-by-length field-values/*total-max-length* values)]
         {:values          limited-values
          :has_more_values (or (> (count values)
