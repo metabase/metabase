@@ -26,11 +26,6 @@
     (is (= 1000
            (metadata-queries/field-count (t2/select-one Field :id (mt/id :checkins :venue_id)))))))
 
-(deftest field-distinct-values-test
-  (mt/test-drivers (metadata-queries-test-drivers)
-    (is (= [1 2 3 4 5 6 7 8 9 10 11 12 13 14 15]
-           (map (comp int first) (metadata-queries/field-distinct-values (t2/select-one Field :id (mt/id :checkins :user_id))))))))
-
 (deftest table-rows-sample-test
   (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (let [expected [["20th Century Cafe"]

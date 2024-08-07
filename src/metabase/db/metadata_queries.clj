@@ -15,45 +15,7 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-(def max-length 10000)
 
-(defn- distinct-field-values-rff
-  [metadata]
-  (let [row-count  (volatile! 0)
-        rows       (volatile! (transient []))
-        total-char (volatile! 0)]
-    (fn default-rf
-      ([]
-       {:data metadata})
-
-      ([result]
-       {:pre [(map? (unreduced result))]}
-       ;; if the result is a clojure.lang.Reduced, unwrap it so we always get back the standard-format map
-       (-> (unreduced result)
-           (assoc :row_count @row-count
-                  :status :completed)
-           (assoc-in [:data :rows] (persistent! @rows))))
-
-      ([result row]
-       (vswap! row-count inc)
-       (vswap! rows conj! row)
-       (vswap! total-char + (reduce + (map count row)))
-       (if (>= @total-char max-length)
-         (reduced result)
-         result)))))
-
-(defn- qp-query
-  [db-id mbql-query]
-  {:pre [(integer? db-id)]}
-  (-> (binding [qp.i/*disable-qp-logging* true]
-        (qp/process-query
-         {:type       :query
-          :database   db-id
-          :query      mbql-query
-          :middleware {:disable-remaps? true}}
-         distinct-field-values-rff))
-      :data
-      :rows))
 
 (defn- partition-field->filter-form
   "Given a partition field, returns the default value can be used to query."
@@ -100,46 +62,21 @@
       (assoc :source-table (:id table))
       add-required-filters-if-needed))
 
-(defn- field-query
-  [{table-id :table_id} mbql-query]
-  {:pre [(integer? table-id)]}
-  (let [table (t2/select-one :model/Table :id table-id)]
-    (qp-query (:db_id table)
-              (field-mbql-query table mbql-query))))
-
-(def ^Integer absolute-max-distinct-values-limit
-  "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
-  less values (at the time of this writing) get marked as `auto-list` Fields, meaning we save all their distinct
-  values in a FieldValues object, which powers a list widget in the FE when using the Field for filtering in the QB.
-  Admins can however manually mark any Field as `list`, which is effectively ordering Metabase to keep FieldValues for
-  the Field regardless of its cardinality.
-
-  Of course, if a User does something crazy, like mark a million-arity Field as List, we don't want Metabase to
-  explode trying to make their dreams a reality; we need some sort of hard limit to prevent catastrophes. So this
-  limit is effectively a safety to prevent Users from nuking their own instance for Fields that really shouldn't be
-  List Fields at all. For these very-high-cardinality Fields, we're effectively capping the number of
-  FieldValues that get could saved.
-
-  This number should be a balance of:
-
-  * Not being too low, which would definitely result in GitHub issues along the lines of 'My 500-distinct-value Field
-    that I marked as List is not showing all values in the List Widget'
-  * Not being too high, which would result in Metabase running out of memory dealing with too many values"
-  (int 1000))
-
-(mu/defn field-distinct-values :- [:sequential ms/NonRemappedFieldValue]
-  "Return the distinct values of `field`, each wrapped in a vector.
-   This is used to create a `FieldValues` object for `:type/Category` Fields."
-  ([field]
-   (field-distinct-values field absolute-max-distinct-values-limit))
-
-  ([field max-results :- ms/PositiveInt]
-   (field-query field {:breakout [[:field (u/the-id field) nil]]
-                       :limit    (min max-results absolute-max-distinct-values-limit)})))
-
-#_(def field (t2/select-one :model/Field 94))
-
-#_(field-distinct-values field 10)
+(defn field-query
+  "Docs."
+  ([field mbql-query]
+   (field-query field mbql-query nil))
+  ([{table-id :table_id} mbql-query rff]
+   {:pre [(integer? table-id)]}
+   (let [table      (t2/select-one :model/Table :id table-id)
+         mbql-query (field-mbql-query table mbql-query)]
+     (binding [qp.i/*disable-qp-logging* true]
+       (qp/process-query
+        {:type       :query
+         :database   (:db_id table)
+         :query      mbql-query
+         :middleware {:disable-remaps? true}}
+        rff)))))
 
 ;; I'm not sure whether this field-distinct-values and field-distinct-values belong to this namespace
 ;; maybe it's better to keep this in metabase.models.field or metabase.models.field-values
@@ -149,29 +86,30 @@
 
   Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
  [field search-field value limit]
- (field-query field {:filter   (when (some? value)
-                                 [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
-                     ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
-                     ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
-                     ;; identifiers/aliases
-                     :breakout (if (= (u/the-id field) (u/the-id search-field))
-                                 [[:field (u/the-id field) nil]]
-                                 [[:field (u/the-id field) nil]
-                                  [:field (u/the-id search-field) nil]])
-                     :limit    limit}))
+ (-> (field-query field {:filter   (when (some? value)
+                                     [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
+                         ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+                         ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+                         ;; identifiers/aliases
+                         :breakout (if (= (u/the-id field) (u/the-id search-field))
+                                     [[:field (u/the-id field) nil]]
+                                     [[:field (u/the-id field) nil]
+                                      [:field (u/the-id search-field) nil]])
+                         :limit    limit})
+     :data :rows))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."
   [field & [limit]]
   (-> (field-query field {:aggregation [[:distinct [:field (u/the-id field) nil]]]
                           :limit       limit})
-      first first int))
+      :data :rows first first int))
 
 (defn field-count
   "Return the count of `field`."
   [field]
   (-> (field-query field {:aggregation [[:count [:field (u/the-id field) nil]]]})
-      first first int))
+      :data :rows first first int))
 
 (def max-sample-rows
   "The maximum number of values we should return when using `table-rows-sample`. This many is probably fine for
