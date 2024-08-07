@@ -38,6 +38,9 @@
 (defn- init-from-config-file!
   [database]
   (if (contains? database :delete)
+    ;; Databases can be managed as a service by us.  When the service is canceled, we need to delete any information
+    ;; Metabase has about them, including any stored credentials.  This is a config file flag instead of a CLI command,
+    ;; so we can ensure the database stays deleted even after restoring backups.
     (let [magic-request (format "DELETE_WITH_DEPENDENTS:%s" (:name database))]
       (when (not= magic-request (:delete database))
         (throw (ex-info (format "To delete database %s set `delete` to %s" (pr-str (:name database)) (pr-str magic-request))
