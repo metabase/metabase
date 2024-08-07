@@ -1,6 +1,7 @@
 import { getColorsForValues } from "metabase/lib/colors/charts";
 import { isNumber } from "metabase/lib/types";
 import { SLICE_THRESHOLD } from "metabase/visualizations/echarts/pie/constants";
+import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import type { ComputedVisualizationSettings } from "metabase/visualizations/types";
 import type { RawSeries, RowValues } from "metabase-types/api";
 
@@ -12,8 +13,58 @@ export const getDefaultPercentVisibility = () => "legend";
 
 export const getDefaultSliceThreshold = () => SLICE_THRESHOLD * 100;
 
-export function getSortedRows(rows: RowValues[], metricIndex: number) {
-  return rows.sort((rowA, rowB) => {
+export function getAggregatedRows(
+  rows: RowValues[],
+  dimensionIndex: number,
+  metricIndex: number,
+) {
+  const dimensionToMetricValues = new Map<string, number>();
+  rows.forEach(row => {
+    const dimensionValue = String(row[dimensionIndex]);
+    const metricValue = getNumberOr(row[metricIndex], 0);
+
+    const existingMetricValue =
+      dimensionToMetricValues.get(dimensionValue) ?? 0;
+
+    dimensionToMetricValues.set(
+      dimensionValue,
+      metricValue + existingMetricValue,
+    );
+  });
+
+  const aggregatedRows: RowValues[] = [];
+  const seenDimensionValues = new Set<string>();
+
+  rows.forEach(row => {
+    const dimensionValue = String(row[dimensionIndex]);
+    if (seenDimensionValues.has(dimensionValue)) {
+      return;
+    }
+    seenDimensionValues.add(dimensionValue);
+
+    const metricValue = dimensionToMetricValues.get(dimensionValue);
+    if (metricValue === undefined) {
+      throw Error(
+        `No metric value found for dimension value ${dimensionValue}`,
+      );
+    }
+    const newRow = [...row];
+    newRow[metricIndex] = metricValue;
+
+    aggregatedRows.push(newRow);
+  });
+
+  return aggregatedRows;
+}
+
+export function getSortedAggregatedRows(
+  rows: RowValues[],
+  dimensionIndex: number,
+  metricIndex: number,
+) {
+  const aggregatedRows = getAggregatedRows(rows, dimensionIndex, metricIndex);
+
+  return aggregatedRows.sort((rowA, rowB) => {
     const valueA = rowA[metricIndex];
     const valueB = rowB[metricIndex];
 
@@ -46,7 +97,7 @@ export function getColors(
   const metricIndex = cols.findIndex(
     col => col.name === currentSettings["pie.metric"],
   );
-  const sortedRows = getSortedRows(rows, metricIndex);
+  const sortedRows = getSortedAggregatedRows(rows, dimensionIndex, metricIndex);
 
   const dimensionValues = sortedRows.map(r => String(r[dimensionIndex]));
 

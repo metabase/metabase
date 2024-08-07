@@ -18,7 +18,7 @@ import {
   getDefaultPercentVisibility,
   getDefaultShowLegend,
   getDefaultSliceThreshold,
-  getSortedRows,
+  getSortedAggregatedRows,
 } from "metabase/visualizations/shared/settings/pie";
 import { getDefaultShowTotal } from "metabase/visualizations/shared/settings/waterfall";
 import {
@@ -109,7 +109,11 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         const metricIndex = cols.findIndex(
           col => col.name === settings["pie.metric"],
         );
-        const sortedRows = getSortedRows(rows, metricIndex);
+        const sortedRows = getSortedAggregatedRows(
+          rows,
+          dimensionIndex,
+          metricIndex,
+        );
 
         return sortedRows.map(row => {
           const dimensionValue = String(row[dimensionIndex]);
@@ -118,9 +122,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
           }
           // older viz settings can have hsl values that need to be converted since
           // batik does not support hsl
-          const color = Color(
-            settings["pie.colors"][String(dimensionValue)],
-          ).hex();
+          const color = Color(settings["pie.colors"][dimensionValue]).hex();
 
           return {
             key: dimensionValue,

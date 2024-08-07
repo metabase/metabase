@@ -6,6 +6,7 @@ import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { checkNotNull } from "metabase/lib/types";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { pieNegativesWarning } from "metabase/visualizations/lib/warnings";
+import { getSortedAggregatedRows } from "metabase/visualizations/shared/settings/pie";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -68,8 +69,14 @@ export function getPieChartModel(
   ] = rawSeries;
   const colDescs = getColDescs(rawSeries, settings);
 
+  const aggregatedRows = getSortedAggregatedRows(
+    dataRows,
+    colDescs.dimensionDesc.index,
+    colDescs.metricDesc.index,
+  );
+
   const rowValuesByKey = new Map<string, [RowValue, number]>();
-  dataRows.map(row =>
+  aggregatedRows.map(row =>
     rowValuesByKey.set(String(row[colDescs.dimensionDesc.index]), [
       // We need to use the preserve dimension value from the results, rather
       // than just using the key from the `pie.rows` setting, because if the
