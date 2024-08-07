@@ -105,7 +105,7 @@
             :offset mw.offset-paging/*offset*})))
 
 (defn +check-setting
-  "Middleware that returns a 401 response if `request` has no associated `:metabase-user-id`."
+  "Middleware that gates this API behind the associated feature flag"
   [handler]
   (with-meta
    (fn [request respond raise]
