@@ -215,7 +215,6 @@ describe("parameters/utils/targets", () => {
         );
         const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
-        expect(columns).toHaveLength(30);
         expect(columnsInfos).toEqual([
           ["Orders", "Created At"],
           ["Orders", "Discount"],
@@ -266,7 +265,6 @@ describe("parameters/utils/targets", () => {
         );
         const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
-        expect(columns).toHaveLength(30);
         expect(columnsInfos).toEqual([
           ["Question", "ID"],
           ["Question", "User ID"],
@@ -350,7 +348,6 @@ describe("parameters/utils/targets", () => {
         );
         const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
-        expect(columns).toHaveLength(1);
         expect(columnsInfos).toEqual([["Orders", "Created At"]]);
       });
 
@@ -373,7 +370,6 @@ describe("parameters/utils/targets", () => {
         );
         const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
-        expect(columns).toHaveLength(2);
         expect(columnsInfos).toEqual([
           ["Orders", "Created At"],
           ["Products", "Product → Created At"],
@@ -403,7 +399,6 @@ describe("parameters/utils/targets", () => {
         );
         const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
-        expect(columns).toHaveLength(1);
         expect(columnsInfos).toEqual([["Orders", "Created At: Month"]]);
       });
     });
@@ -420,7 +415,6 @@ describe("parameters/utils/targets", () => {
         );
         const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
-        expect(columns).toHaveLength(4);
         expect(columnsInfos).toEqual([
           ["Orders", "Created At"],
           ["Products", "Product → Created At"],
