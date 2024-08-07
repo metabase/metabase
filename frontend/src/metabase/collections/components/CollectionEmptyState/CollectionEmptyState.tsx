@@ -75,8 +75,9 @@ const DefaultCollectionEmptyState = ({
   );
 };
 
-const CollectionEmptyIcon = (): JSX.Element => {
+export const CollectionEmptyIcon = (): JSX.Element => {
   const theme = useMantineTheme();
+
   return (
     <svg
       viewBox="0 0 117 94"

@@ -82,10 +82,10 @@
           (present-api-key (assoc api-key :unmasked_key unhashed-key)))))))
 
 (api/defendpoint GET "/count"
-  "Get the count of API keys in the DB"
+  "Get the count of API keys in the DB with the default scope."
   [:as _body]
   (api/check-superuser)
-  (t2/count :model/ApiKey))
+  (t2/count :model/ApiKey :scope nil))
 
 (api/defendpoint PUT "/:id"
   "Update an API key by changing its group and/or its name"
@@ -137,10 +137,10 @@
                             :masked_key (api-key/mask unhashed-key)))))
 
 (api/defendpoint GET "/"
-  "Get a list of API keys. Non-paginated."
+  "Get a list of API keys with the default scope. Non-paginated."
   []
   (api/check-superuser)
-  (let [api-keys (t2/hydrate (t2/select :model/ApiKey) :group :updated_by)]
+  (let [api-keys (t2/hydrate (t2/select :model/ApiKey :scope nil) :group :updated_by)]
     (map present-api-key api-keys)))
 
 (api/defendpoint DELETE "/:id"

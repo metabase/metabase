@@ -44,10 +44,7 @@ const config = {
     "<rootDir>/frontend/test/metabase-bootstrap.js",
     "<rootDir>/frontend/test/register-visualizations.js",
   ],
-  setupFilesAfterEnv: [
-    "@testing-library/jest-dom",
-    "<rootDir>/frontend/test/jest-setup-env.js",
-  ],
+  setupFilesAfterEnv: ["<rootDir>/frontend/test/jest-setup-env.js"],
   globals: {
     ace: {},
     ga: {},

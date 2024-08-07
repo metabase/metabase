@@ -3,7 +3,6 @@ import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/api";
 import { StyledTable } from "metabase/common/components/Table";
-import Breadcrumbs from "metabase/components/Breadcrumbs";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
@@ -11,6 +10,8 @@ import { formatDateTimeWithUnit } from "metabase/lib/formatting/date";
 import { Stack, Title, Text, Button, Group, Icon } from "metabase/ui";
 import { getThemeOverrides } from "metabase/ui/theme";
 import type { ApiKey } from "metabase-types/api";
+
+import { AuthTabs } from "../AuthTabs";
 
 import { CreateApiKeyModal } from "./CreateApiKeyModal";
 import { DeleteApiKeyModal } from "./DeleteApiKeyModal";
@@ -158,15 +159,10 @@ export const ManageApiKeys = () => {
         modal={modal}
         activeApiKey={activeApiKey}
       />
+      <AuthTabs activeKey="api-keys" />
       <Stack pl="md" spacing="lg">
-        <Breadcrumbs
-          crumbs={[
-            [t`Authentication`, "/admin/settings/authentication"],
-            [t`API Keys`],
-          ]}
-        />
         <Group
-          align="end"
+          align="start"
           position="apart"
           data-testid="api-keys-settings-header"
         >

@@ -140,10 +140,13 @@
       (some-> bar-width (render-bar normalized-zero))])])
 
 (defn render-table
-  "This function returns the HTML data structure for the pulse table. `color-selector` is a function that returns the
-  background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
-  display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
-  create. If `normalized-zero` is set (defaults to 0), render values less than it as negative"
+  "This function returns the HTML data structure for the pulse table.
+
+  `color-selector` is a function that returns the background color for a given cell.
+  `column-names-map` contains keys:
+    `:col-names`, which is the is display_names of the visible columns
+    `:cols-for-color-lookup`, is the original column names, which the color-selector requires for color lookup.
+  If `normalized-zero` is set (defaults to 0), render values less than it as negative"
   ([color-selector column-names-map contents]
    (render-table color-selector 0 column-names-map contents))
 

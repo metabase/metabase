@@ -7,6 +7,7 @@
    [metabase.models.cache-config :as cache-config]
    [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
    [metabase.util.i18n :refer [tru trun]]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
@@ -80,10 +81,12 @@
   [:as {{:strs [model collection id]
          :or   {model "root"}}
         :query-params}]
-  {model      (ms/QueryVectorOf cache-config/CachingModel)
-   ;; note that `nil` in `collection` means all configurations not scoped to any particular collection
-   collection [:maybe ms/PositiveInt]
-   id         [:maybe ms/PositiveInt]}
+  {model      (mu/with (ms/QueryVectorOf cache-config/CachingModel)
+                       {:description "Type of model"})
+   collection (mu/with [:maybe ms/PositiveInt]
+                       {:description "Collection id to filter results. Returns everything if not supplied."})
+   id         (mu/with [:maybe ms/PositiveInt]
+                       {:description "Model id to get configuration for."})}
   (when (and (not (premium-features/enable-cache-granular-controls?))
              (not= model ["root"]))
     (throw (premium-features/ee-feature-error (tru "Granular Caching"))))

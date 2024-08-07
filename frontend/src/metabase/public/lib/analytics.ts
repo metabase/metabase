@@ -9,7 +9,7 @@ import type {
 } from "./types";
 
 const SCHEMA_NAME = "embed_flow";
-const SCHEMA_VERSION = "1-0-1";
+const SCHEMA_VERSION = "1-0-2";
 
 // We changed the UI to `Look and Feel` now
 type Appearance = {
@@ -18,8 +18,7 @@ type Appearance = {
   bordered: boolean;
   theme: DisplayTheme;
   font: "instance" | "custom";
-  hide_download_button: boolean | null;
-  // TODO: implement `downloads` parameter in the analytics event
+  downloads: boolean | null;
 };
 
 export const trackStaticEmbedDiscarded = ({
@@ -116,8 +115,7 @@ function normalizeAppearance(
     bordered: displayOptions.bordered,
     theme: displayOptions.theme ?? "light",
     font: displayOptions.font ? "custom" : "instance",
-    // TODO: replace with `downloads` when it's implemented
-    hide_download_button: displayOptions.hide_download_button ?? null,
+    downloads: displayOptions.downloads,
   };
 }
 

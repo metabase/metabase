@@ -20,6 +20,7 @@ import {
   entityPickerModal,
   entityPickerModalTab,
   tableHeaderClick,
+  pieSliceWithColor,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -601,15 +602,16 @@ describe("scenarios > visualizations > drillthroughs > chart drill", () => {
       });
     });
 
-    cy.findByTestId("pie-chart")
-      .find("path")
+    pieSliceWithColor("#88BF4D")
       .first()
       .as("doohickeyChart")
       .trigger("mousemove");
+
     popover().within(() => {
       cy.findByText("Doohickey");
       cy.findByText("42");
     });
+
     cy.get("@doohickeyChart").click();
     cy.location("pathname").should("eq", "/question/42");
   });
