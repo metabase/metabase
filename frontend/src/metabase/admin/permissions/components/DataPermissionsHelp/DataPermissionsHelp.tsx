@@ -16,6 +16,7 @@ import {
   Text,
   Title,
   Icon,
+  List,
 } from "metabase/ui";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
@@ -128,7 +129,25 @@ export const DataPermissionsHelp = () => {
                 icon="close"
                 iconColor="danger"
                 name={t`No access (Pro)`}
-                description={t`The group cannot view any data from that table for questions built using the query builder. “No Access” does not apply to native queries.`}
+                description={
+                  <>
+                    <Text>{`The group can't view:`}</Text>
+                    <List mr="1rem">
+                      <List.Item>
+                        <Text>The table when browsing data.</Text>
+                      </List.Item>
+                      <List.Item>
+                        <Text>Query-builder questions using that table.</Text>
+                      </List.Item>
+                      <List.Item>
+                        <Text>
+                          ANY native questions querying the database, regardless
+                          of table.
+                        </Text>
+                      </List.Item>
+                    </List>
+                  </>
+                }
               />
             </Stack>
           </Accordion.Panel>
