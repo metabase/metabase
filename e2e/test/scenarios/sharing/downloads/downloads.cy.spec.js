@@ -162,8 +162,6 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
-      dismissDownloadStatus();
-
       editDashboard();
 
       setFilter("ID");
