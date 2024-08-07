@@ -588,6 +588,7 @@
   "This helper function exists to make testing the POST /api/table/:id/{action}-csv endpoints easier."
   [options :- [:map
                [:table-id ms/PositiveInt]
+               [:filename :string]
                [:file (ms/InstanceOfClass java.io.File)]
                [:action upload/update-action-schema]]]
   (try
@@ -607,6 +608,7 @@
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
   (update-csv! {:table-id id
+                :filename (get-in raw-params ["file" :filename])
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/append}))
 
@@ -615,6 +617,7 @@
   [id :as {raw-params :params}]
   {id ms/PositiveInt}
   (update-csv! {:table-id id
+                :filename (get-in raw-params ["file" :filename])
                 :file     (get-in raw-params ["file" :tempfile])
                 :action   ::upload/replace}))
 
