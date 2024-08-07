@@ -97,8 +97,8 @@
         ;; set when querying for field values of dashboard filters, which only require
         ;; collection perms for the dashboard and not ad-hoc query perms
         *param-values-query*
-        (when-not (query-perms/has-perm-for-query? outer-query :perms/view-data required-perms)
-          (throw (query-perms/perms-exception required-perms)))
+        (when-not (query-perms/check-data-perms outer-query required-perms :throw-exceptions? false)
+          (check-block-permissions outer-query))
 
         :else
         (do

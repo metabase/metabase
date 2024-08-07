@@ -186,11 +186,12 @@
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm gtap-perms db-id]
   (or
-   (data-perms/at-least-as-permissive? perm-type
-                                       (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
-                                       required-perm)
-   (when gtap-perms
-     (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
+      (data-perms/at-least-as-permissive? perm-type
+                                          (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
+                                          required-perm)
+      (when gtap-perms
+       (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))
+      (throw (perms-exception {db-id {perm-type required-perm}}))))
 
 (defn- has-perm-for-table?
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. This can be satisfied via
@@ -236,9 +237,8 @@
   `throw-exceptions?` to `false`).
 
   If the [:gtap ::perms] path is present in the query, these perms are implicitly granted to the current user."
-  [{{gtap-perms :gtaps} ::perms, :as query}
-   required-perms & {:keys [throw-exceptions?]
-                     :or   {throw-exceptions? true}}]
+  [{{gtap-perms :gtaps} ::perms, :as query} required-perms & {:keys [throw-exceptions?]
+                                                                    :or   {throw-exceptions? true}}]
   (try
     ;; Check any required v1 paths
     (when-let [paths (:paths required-perms)]
