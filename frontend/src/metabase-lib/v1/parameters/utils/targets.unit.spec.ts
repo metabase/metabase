@@ -239,10 +239,11 @@ describe("parameters/utils/targets", () => {
     });
 
     describe("unit of time parameter", () => {
+      const parameter = createUnitOfTimeParameter();
+
       it("no breakouts - returns no columns", () => {
         const card = createSavedStructuredCard();
         const question = new Question(card, metadata);
-        const parameter = createUnitOfTimeParameter();
         const { columns } = getParameterColumns(question, parameter);
 
         expect(columns).toHaveLength(0);
@@ -261,7 +262,6 @@ describe("parameters/utils/targets", () => {
           },
         });
         const question = new Question(card, metadata);
-        const parameter = createUnitOfTimeParameter();
         const { columns } = getParameterColumns(question, parameter);
 
         expect(columns).toHaveLength(0);
@@ -280,7 +280,6 @@ describe("parameters/utils/targets", () => {
           },
         });
         const question = new Question(card, metadata);
-        const parameter = createUnitOfTimeParameter();
         const { query, stageIndex, columns } = getParameterColumns(
           question,
           parameter,
@@ -311,7 +310,6 @@ describe("parameters/utils/targets", () => {
           },
         });
         const question = new Question(card, metadata);
-        const parameter = createUnitOfTimeParameter();
         const { query, stageIndex, columns } = getParameterColumns(
           question,
           parameter,
