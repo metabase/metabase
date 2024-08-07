@@ -91,42 +91,53 @@
     stage-path (lib.walk/query-for-path stage-path)
     stage-path :query))
 
+(defn- aggregation-stage-index
+  [stages]
+  (count (take-while :qp/stage-is-from-source-card stages)))
+
 (defn- include-implicit-joins
-  [query metric-query]
-  (let [metric-joins (lib/joins metric-query 0)
+  [query agg-stage-index metric-query]
+  (let [metric-joins (lib/joins metric-query -1)
         existing-joins (into #{}
                              (map (juxt :fk-field-id :alias))
-                             (lib/joins query 0))]
-    (reduce #(lib/join %1 0 %2)
+                             (lib/joins query agg-stage-index))]
+    (reduce #(lib/join %1 agg-stage-index %2)
             query
             (remove (comp existing-joins (juxt :fk-field-id :alias)) metric-joins))))
 
 (defn splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
-  (if-let [lookup (fetch-referenced-metrics query (:aggregation (first expanded-stages)))]
-    (let [temp-query (temp-query-at-stage-path query path)
-          unique-name-fn (lib.util/unique-name-generator
-                           (:lib/metadata query)
-                           (map
+  (let [agg-stage-index (aggregation-stage-index (:stages query))]
+    (if-let [lookup (->> expanded-stages
+                         (drop-while :qp/stage-is-from-source-card)
+                         first
+                         :aggregation
+                         (fetch-referenced-metrics query))]
+      (let [temp-query (temp-query-at-stage-path query path)
+            unique-name-fn (lib.util/unique-name-generator
+                            (:lib/metadata query)
+                            (map
                              (comp :lib/expression-name second)
                              (lib/expressions temp-query)))
-          new-query (reduce
-                      (fn [query [_metric-id {metric-query :query}]]
-                        (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
-                              (= 1 (lib/stage-count metric-query)))
-                          (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
-                            (as-> query $q
-                              (reduce expression-with-name-from-source $q (lib/expressions metric-query 0))
-                              (include-implicit-joins $q metric-query)
-                              (reduce #(lib/filter %1 0 %2) $q (lib/filters metric-query 0))
-                              (replace-metric-aggregation-refs $q 0 lookup)))
-                          (throw (ex-info "Incompatible metric" {:query query
-                                                                 :metric metric-query}))))
-                      temp-query
-                      lookup)]
-      (:stages new-query))
-    expanded-stages))
+            new-query (reduce
+                       (fn [query [_metric-id {metric-query :query}]]
+                         (if (and (= (lib.util/source-table-id query) (lib.util/source-table-id metric-query))
+                                  (or (= (lib/stage-count metric-query) 1)
+                                      (= (:qp/stage-had-source-card (last (:stages metric-query)))
+                                         (:qp/stage-had-source-card (lib.util/query-stage query agg-stage-index)))))
+                           (let [metric-query (update-metric-query-expression-names metric-query unique-name-fn)]
+                             (as-> query $q
+                               (reduce expression-with-name-from-source $q (lib/expressions metric-query -1))
+                               (include-implicit-joins $q agg-stage-index metric-query)
+                               (reduce #(lib/filter %1 agg-stage-index %2) $q (lib/filters metric-query -1))
+                               (replace-metric-aggregation-refs $q agg-stage-index lookup)))
+                           (throw (ex-info "Incompatible metric" {:query query
+                                                                  :metric metric-query}))))
+                       temp-query
+                       lookup)]
+        (:stages new-query))
+      expanded-stages)))
 
 (defn- find-metric-transition
   "Finds an unadjusted transition between a metric source-card and the next stage."
@@ -202,7 +213,9 @@
       (let [new-stages (update-metric-transition-stages query path expanded-stages idx metric-metadata)]
         (recur (assoc-in query (conj path :stages) new-stages) path new-stages))
 
-      (:source-table first-stage)
+      (or (:source-table first-stage)
+          (and (:native first-stage)
+               (:qp/stage-is-from-source-card first-stage)))
       (splice-compatible-metrics query path expanded-stages)
 
       :else

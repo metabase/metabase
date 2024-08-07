@@ -135,11 +135,12 @@
 
 (defn- source-card-id
   [query]
-  (let [query-type (lib/normalized-query-type query)]
-    (case query-type
-      :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
-      :mbql/query (-> query lib/normalize lib.util/source-card-id)
-      nil)))
+  (when (map? query)
+    (let [query-type (lib/normalized-query-type query)]
+      (case query-type
+        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :mbql/query (-> query lib/normalize lib.util/source-card-id)
+        nil))))
 
 (defn- card->integer-table-ids
   "Return integer source table ids for card's :dataset_query."
@@ -162,6 +163,7 @@
 (defn with-can-run-adhoc-query
   "Adds can_run_adhoc_query to each card."
   [cards]
+  ;; TODO: for metrics, we can get (some-fn :source_model_id :source_question_id)
   (let [dataset-cards (filter (comp seq :dataset_query) cards)
         source-card-ids (into #{}
                               (keep (comp source-card-id :dataset_query))
@@ -235,6 +237,18 @@
          (into {}))
    :id))
 
+(methodical/defmethod t2/batched-hydrate [:model/Card :metrics]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(group-by :source_card_id
+              (t2/select :model/Card
+                         :source_card_id [:in (map :id cards)],
+                         :archived false,
+                         :type :metric,
+                         {:order-by [[:name :asc]]}))
+   :id))
+
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
 
@@ -265,10 +279,13 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn populate-query-fields
-  "Lift `database_id`, `table_id`, and `query_type` from query definition when inserting/updating a Card."
+  "Lift `database_id`, `table_id`, `query_type`, and `source_card_id` fields
+  from query definition when inserting/updating a Card."
   [{query :dataset_query, :as card}]
   (merge
    card
+   (when-let [source-id (source-card-id query)]
+     {:source_card_id source-id})
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
@@ -520,8 +537,10 @@
 
 (t2/define-after-select :model/Card
   [card]
-  (public-settings/remove-public-uuid-if-public-sharing-is-disabled
-   (dissoc card :dataset_query_metrics_v2_migration_backup)))
+  (-> card
+      (dissoc :dataset_query_metrics_v2_migration_backup)
+      (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (t2/define-before-insert :model/Card
   [card]
@@ -824,7 +843,7 @@
   [_model-name]
   {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
           :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
-   :skip [ ;; always instance-specific
+   :skip [;; always instance-specific
           :id :updated_at
           ;; cache invalidation is instance-specific
           :cache_invalidated_at
@@ -839,6 +858,8 @@
                              #(serdes/*import-fk-keyed* % 'Database :name)]
     :table_id               [serdes/*export-table-fk*
                              serdes/*import-table-fk*]
+    :source_card_id         [#(serdes/*export-fk* % :model/Card)
+                             #(serdes/*import-fk* % :model/Card)]
     :collection_id          [#(serdes/*export-fk* % 'Collection)
                              #(serdes/*import-fk* % 'Collection)]
     :creator_id             [serdes/*export-user*
@@ -858,13 +879,14 @@
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id visualization_settings]}]
+           result_metadata table_id source_card_id visualization_settings]}]
   (set
    (concat
     (mapcat serdes/mbql-deps parameter_mappings)
     (serdes/parameters-deps parameters)
     [[{:model "Database" :id database_id}]]
     (when table_id #{(serdes/table->path table_id)})
+    (when source_card_id #{[{:model "Card" :id source_card_id}]})
     (when collection_id #{[{:model "Collection" :id collection_id}]})
     (result-metadata-deps result_metadata)
     (serdes/mbql-deps dataset_query)
