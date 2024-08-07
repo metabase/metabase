@@ -112,6 +112,18 @@
            [false [:ref ::expression/integer]]]
    #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
 
+(mbql-clause/define-mbql-clause :relative-time-interval :- :type/Boolean
+  [:tuple
+   [:= {:decode/normalize common/normalize-keyword} :relative-time-interval]
+   ;; `relative-time-interval` does not support options to eg. include/exclude start or end point. Only int values
+   ;; are allowed for intervals.
+   ::common/options
+   #_col           [:ref ::expression/temporal]
+   #_value         :int
+   #_bucket        [:ref ::temporal-bucketing/unit.date-time.interval]
+   #_offset-value  :int
+   #_offset-bucket [:ref ::temporal-bucketing/unit.date-time.interval]])
+
 ;; segments are guaranteed to return valid filter clauses and thus booleans, right?
 (mbql-clause/define-mbql-clause :segment :- :type/Boolean
   [:tuple

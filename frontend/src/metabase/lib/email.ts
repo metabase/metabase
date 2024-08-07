@@ -10,5 +10,5 @@ export function isEmail(email: string | undefined | null) {
 
 export function getEmailDomain(email: string) {
   const match = EMAIL_REGEX.exec(email);
-  return match && match.groups?.domain;
+  return match && match[5];
 }
