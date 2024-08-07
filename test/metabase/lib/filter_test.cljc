@@ -701,7 +701,11 @@
                                           (lib/expression-clause :interval [-1 :month] nil)] nil)
                   (lib/expression-clause :relative-datetime [0 :month] nil)
                   (lib/expression-clause :relative-datetime [1 :month] nil)],
-        :name "Created At is in the next month, starting 1 month from now"}])))
+        :name "Created At is in the next month, starting 1 month from now"}
+       {:clause [:relative-time-interval created-at 10 :week 10 :week]
+        :name "Created At is in the next 10 weeks, starting 10 weeks from now"}
+       {:clause [:relative-time-interval created-at -10 :week -10 :week]
+        :name "Created At is in the previous 10 weeks, starting 10 weeks ago"}])))
 
 (deftest ^:parallel specific-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]
