@@ -94,6 +94,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
 
     if (!res.ok) {
       const errorMessage = await res.text();
+      spinner.fail();
 
       // Error message: The /api/setup route can only be used to create the first user, however a user currently exists.
       if (errorMessage.includes("a user currently exists")) {
@@ -162,6 +163,7 @@ export const setupMetabaseInstance: CliStepMethod = async state => {
 
     if (!res.ok) {
       const errorMessage = await res.text();
+      spinner.fail();
 
       if (errorMessage.includes("Unauthenticated")) {
         return onInstanceConfigured();
