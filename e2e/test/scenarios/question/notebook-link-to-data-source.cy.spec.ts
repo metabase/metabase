@@ -621,6 +621,57 @@ describe("scenarios > notebook > link to data source", () => {
 
           // Raw table is dirty by default
           cy.findByTestId("qb-save-button").should("be.enabled");
+          cy.go("back");
+        })();
+
+        (function testNegativeCases() {
+          cy.log(
+            "Join type selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Change join type")
+            .click(clickConfig);
+          popover().should("contain", "Inner join");
+
+          cy.log(
+            "Pick columns selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Pick columns")
+            .click(clickConfig);
+          popover().should("contain", "Discount");
+
+          cy.log(
+            "Left column join condition selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Left column")
+            .click(clickConfig);
+          popover().should("contain", "Vendor");
+
+          cy.log(
+            "Operator selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Change operator")
+            .click(clickConfig);
+          popover().should("contain", ">=");
+
+          cy.log(
+            "Right column join condition selector behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Right column")
+            .click(clickConfig);
+          popover().should("contain", "Discount");
+
+          cy.log(
+            "New join condition button behaves the same regardless of the click keyboard modifiers",
+          );
+          getNotebookStep("join")
+            .findByLabelText("Add condition")
+            .click(clickConfig);
+          cy.findByTestId("new-join-condition").should("be.visible");
         })();
       });
     });
