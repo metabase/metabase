@@ -36,19 +36,16 @@ export const BrowseModels = () => {
 
   const modelsResult = useFetchModels({ model_ancestors: true });
 
-  const { allModels, doVerifiedModelsExist } = useMemo(() => {
-    const allModels =
+  const { models, doVerifiedModelsExist } = useMemo(() => {
+    const unfilteredModels =
       (modelsResult.data?.data as ModelResult[] | undefined) ?? [];
-    const doVerifiedModelsExist = allModels.some(
+    const doVerifiedModelsExist = unfilteredModels.some(
       model => model.moderated_status === "verified",
     );
-    return { allModels, doVerifiedModelsExist };
+    const models =
+      PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics(unfilteredModels);
+    return { models, doVerifiedModelsExist };
   }, [modelsResult]);
-
-  const models = useMemo(
-    () => PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics(allModels),
-    [allModels],
-  );
 
   const { filteredModels } = useMemo(() => {
     const filteredModels = filterModels(
@@ -76,9 +73,9 @@ export const BrowseModels = () => {
   );
 
   const recentModels = useMemo(() => {
-    const cap = getMaxRecentModelCount(allModels.length);
+    const cap = getMaxRecentModelCount(models.length);
     return filteredRecentModels.slice(0, cap);
-  }, [filteredRecentModels, allModels.length]);
+  }, [filteredRecentModels, models.length]);
 
   return (
     <BrowseContainer>
