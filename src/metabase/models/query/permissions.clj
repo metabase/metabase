@@ -220,6 +220,9 @@
   entire DB, false otherwise. Only throws if the permission format is incorrect."
   [{{gtap-perms :gtaps} ::perms, db-id :database :as _query} perm-type required-perms]
   (if-let [db-or-table-perms (perm-type required-perms)]
+    ;; In practice, `view-data` will be defined at the table-level, and `create-queries` will either be table-level
+    ;; or :query-builder-and-native for the entire DB. But we should enforce whatever `required-perms` are provided,
+    ;; in case that ever changes.
     (cond
       (keyword? db-or-table-perms)
       (has-perm-for-db? perm-type db-or-table-perms (perm-type gtap-perms) db-id)

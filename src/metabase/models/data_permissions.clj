@@ -726,7 +726,7 @@
   group and table, it will be updated to the new value.
 
   `table-perms` is a map from tables or table ID to the permission value for each table. All tables in the list must
-  belong to the same database.
+  belong to the same database, or this will throw.
 
   If this permission is currently set at the database-level, the database-level permission
   is removed and table-level rows are are added for all of its tables. Similarly, if setting a table-level permission to a value
