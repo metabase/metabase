@@ -97,10 +97,6 @@ const getColor = ({
   return color(theme.other.table.cell.textColor);
 };
 
-const getBorderColor = ({ isNightMode }: PivotTableCellProps) => {
-  return isNightMode ? alpha("bg-black", 0.8) : color("border");
-};
-
 export const PivotTableCell = styled.div<PivotTableCellProps>`
   flex: 1 0 auto;
   position: relative;
@@ -111,19 +107,19 @@ export const PivotTableCell = styled.div<PivotTableCellProps>`
   font-weight: ${props => (props.isBold ? "bold" : "normal")};
   cursor: ${props => (props.onClick ? "pointer" : "default")};
   color: ${getColor};
-  box-shadow: -1px 0 0 0 ${getBorderColor} inset;
+  box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
   border-bottom: 1px solid
     ${props =>
       props.isBorderedHeader
         ? "var(--mb-color-bg-dark)"
-        : getBorderColor(props)};
+        : "var(--mb-color-border)"};
   background-color: ${getCellBackgroundColor};
   ${props =>
     props.hasTopBorder &&
     css`
       /* compensate the top border */
       line-height: ${CELL_HEIGHT - 1}px;
-      border-top: 1px solid ${getBorderColor(props)};
+      border-top: 1px solid var(--mb-color-border) (props);
     `}
 
   &:hover {
@@ -138,7 +134,7 @@ interface PivotTableTopLeftCellsContainerProps {
 export const PivotTableTopLeftCellsContainer = styled.div<PivotTableTopLeftCellsContainerProps>`
   display: flex;
   align-items: flex-end;
-  box-shadow: -1px 0 0 0 ${getBorderColor} inset;
+  box-shadow: -1px 0 0 0 var(--mb-color-border) inset;
   background-color: ${props =>
     getCellBackgroundColor({
       isEmphasized: true,
@@ -160,7 +156,7 @@ export const PivotTableRoot = styled.div<PivotTableRootProps>`
   ${props =>
     props.isDashboard
       ? css`
-          border-top: 1px solid ${getBorderColor(props)};
+          border-top: 1px solid var(--mb-color-border) (props);
         `
       : null}
 `;

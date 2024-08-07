@@ -11,6 +11,9 @@ import { NumberColumn, StringColumn } from "__support__/visualizations";
 import { waitTimeContext } from "metabase/context/wait-time";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
+import { registerVisualization } from "metabase/visualizations";
+import PivotTable from "metabase/visualizations/visualizations/PivotTable";
+import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
 import {
   createMockCard,
   createMockColumn,
@@ -23,6 +26,9 @@ import {
 } from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedQuestionView } from "./PublicOrEmbeddedQuestionView";
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(PivotTable);
 
 export default {
   title: "embed/PublicOrEmbeddedQuestionView",
@@ -100,6 +106,7 @@ const defaultArgs: Partial<
   titled: true,
   bordered: true,
   getParameters: () => [],
+  setCard: () => {},
   result: createMockDataset({
     data: createMockDatasetData({
       cols: [
@@ -153,3 +160,30 @@ function LightBackgroundDecorator(Story: Story) {
     </Box>
   );
 }
+
+// Pivot table
+
+// Light theme
+export const PivotTableLightTheme = Template.bind({});
+PivotTableLightTheme.args = {
+  ...defaultArgs,
+  card: createMockCard({
+    id: getNextId(),
+    display: "pivot",
+    visualization_settings: PIVOT_TABLE_MOCK_DATA.settings,
+  }),
+  result: createMockDataset({
+    data: createMockDatasetData({
+      cols: PIVOT_TABLE_MOCK_DATA.cols,
+      rows: PIVOT_TABLE_MOCK_DATA.rows,
+    }),
+  }),
+};
+
+// Dark theme
+
+export const PivotTableDarkTheme = Template.bind({});
+PivotTableDarkTheme.args = {
+  ...PivotTableLightTheme.args,
+  theme: "night",
+};
