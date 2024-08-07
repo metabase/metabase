@@ -82,6 +82,7 @@ describe("scenarios > visualizations > pie chart", () => {
       cy.findByText("Show total").click();
     });
 
+    ensureEchartsContainerHasSvg();
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("TOTAL").should("be.visible");
     });
@@ -111,7 +112,7 @@ describe("scenarios > visualizations > pie chart", () => {
     // Ensure chart renders before hovering the legend item
     ensureEchartsContainerHasSvg();
     cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("TOTAL");
+      cy.findByText("TOTAL").should("be.visible");
     });
 
     cy.findAllByTestId("legend-item").eq(0).realHover();
@@ -123,6 +124,7 @@ describe("scenarios > visualizations > pie chart", () => {
 });
 
 function ensurePieChartRendered(rows, totalValue) {
+  ensureEchartsContainerHasSvg();
   cy.findByTestId("query-visualization-root").within(() => {
     // detail
     cy.findByText("TOTAL").should("be.visible");
