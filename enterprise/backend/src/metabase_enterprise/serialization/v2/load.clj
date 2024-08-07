@@ -20,7 +20,8 @@
                     (let [model (t2/model entity)]
                       {:entity entity
                        :model  (some-> model name)
-                       :table  (some-> model t2/table-name)})))))
+                       :table  (some-> model t2/table-name)
+                       :error  ::no-known-references})))))
 
 (defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
@@ -50,7 +51,7 @@
                     (throw e)))))]
       (reduce loader ctx deps))))
 
-(defn- circular-dep-info [error-type expanding path]
+(defn- deep-error-info [error-type expanding path]
   (let [last-model (:model (last path))]
     {:path       path
      :deps-chain expanding
@@ -75,13 +76,13 @@
   (log/infof "Loading %s" (serdes/log-path-str path))
   (cond
     (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path))
-                                     (circular-dep-info ::circular expanding path)))
+                                     (deep-error-info ::circular expanding path)))
     (seen path) ctx ; Already been done, can skip it.
     :else (let [ingested (try
                            (serdes.ingest/ingest-one ingestion path)
                            (catch Exception e
                              (throw (ex-info (format "Failed to read file for %s" (serdes/log-path-str path))
-                                             (circular-dep-info ::not-found expanding path)
+                                             (deep-error-info ::not-found expanding path)
                                              e))))
                 ingested (cond-> ingested
                            modfn modfn)
@@ -100,7 +101,7 @@
               ctx
               (catch Exception e
                 (throw (ex-info (format "Failed to load into database for %s" (pr-str path))
-                                (circular-dep-info ::load-failure expanding path)
+                                (deep-error-info ::load-failure expanding path)
                                 e)))))))
 
 (defn load-metabase!
