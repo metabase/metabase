@@ -218,22 +218,18 @@
 
 (def ^:private separators ",;\t")
 
-(def ^:private max-infered-lines 10)
-
-(defn- assert-inferred-separator [maybe-s]
-  (or maybe-s
-      (throw (ex-info (tru "Unable to recognise file separator")
-                      {:status-code 422}))))
+;; This number was chosen arbitrarily. There is robustness / performance trade-off.
+(def ^:private max-inferred-lines 10)
 
 (defn- separator-priority
   "Prefer separators according to the follow criteria, in order:
 
-   - Splitting the header at least once
-   - Giving a consistent column split for all the lines
-   - Not having more columns in any row than in the header
-   - The maximum number of column splits
-   - The number of fields in the header
-   - The precedence order in how we define them, e.g.. bias towards comma
+   - Splitting the header at least once.
+   - Giving a consistent column split for all the lines.
+   - Not having more columns in any row than in the header.
+   - The maximum number of column splits.
+   - The number of fields in the header.
+   - The precedence order in how we define them, e.g. a bias towards comma.
 
   This last preference is implicit in the order of [[separators]]"
   [[header-column-count & data-row-column-counts]]
@@ -248,20 +244,18 @@
   "Guess at what symbol is being used as a separator in the given CSV-like file.
   Our heuristic is to use the separator that gives us the most number of columns.
   Exclude separators which give incompatible column counts between the header and the first row."
-  [^File file]
+  [readable]
   (let [count-columns (fn [s]
-                        ;; Create a separate reader per separator, as the line-breaking behaviour depends on the parser.
-                        (with-open [reader (bom/bom-reader file)]
+                        ;; Create a separate reader per separator, as the line-breaking behavior depends on the parser.
+                        (with-open [reader (bom/bom-reader readable)]
                           (try (into []
-                                     ;; take first two rows and count the number of columns in each to compare headers
-                                     ;; vs data rows.
-                                     (comp (take max-infered-lines) (map count))
+                                     (comp (take max-inferred-lines)
+                                           (map count))
                                      (csv/read-csv reader :separator s))
                                (catch Exception _e nil))))]
     (->> (map (juxt identity count-columns) separators)
          (sort-by (comp separator-priority second) u/reverse-compare)
-         ffirst
-         assert-inferred-separator)))
+         ffirst)))
 
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
