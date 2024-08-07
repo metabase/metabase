@@ -18,7 +18,9 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
+   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
@@ -258,6 +260,124 @@
                             [(conj fields described-field) new-idx]))
                         [#{} 0]
                         column-info))})))
+
+(def top-level-query
+  [{"$sample" {"size" 2000}}
+   {"$project" {"doc" "$$ROOT"}}
+   {"$project" {"fields" {"$objectToArray" "$doc"}}}
+   {"$unwind" "$fields"}
+   {"$project"
+    {"fieldName" "$fields.k"
+     "fieldType" {"$type" "$fields.v"}}}
+   {"$group"
+    {"_id" {"field" "$fieldName"
+            "type" "$fieldType"}
+     "count" {"$sum" 1}}}
+   {"$sort" {"_id.field" 1, "count" -1}}
+   {"$group"
+    {"_id" "$_id.field"
+     "mostCommonType" {"$first" "$_id.type"}}}
+   {"$project"
+    {"_id" 1
+     "mostCommonType" 1}}])
+
+(defn build-path [path]
+  (str "$" (str/join "." path)))
+
+(defn build-nested-query [path]
+  [{"$project" {(str (str/join "::" path) "_fields") {"$objectToArray" (build-path path)}}}
+   {"$unwind" (str "$" (str/join "::" path) "_fields")}
+   {"$project"
+    {"fieldName" (str "$" (str/join "::" path) "_fields.k")
+     "fieldType" {"$type" (str "$" (str/join "::" path) "_fields.v")}}}
+   {"$group"
+    {"_id" {"field" "$fieldName"
+            "type" "$fieldType"}
+     "count" {"$sum" 1}}}
+   {"$sort" {"_id.field" 1, "count" -1}}
+   {"$group"
+    {"_id" "$_id.field"
+     "mostCommonType" {"$first" "$_id.type"}}}
+   {"$project"
+    {"_id" 0
+     "fieldName" "$_id"
+     "mostCommonType" 1}}])
+
+(defn infer-schema [db table]
+  (letfn [(q! [q]
+            (mt/rows+column-names (qp/process-query {:database (:id db)
+                                                     :type     "native"
+                                                     :native   {:collection (:name table)
+                                                                :query      (json/generate-string q)}})))
+          (query-nested [parent-paths]
+            (let [result (q! [{"$sample" {"size" 2000}}
+                              {"$facet"
+                               (into {}
+                                     (map (fn [path]
+                                            [(str/join "::" path) (build-nested-query path)]))
+                                     parent-paths)}])
+                  types (zipmap (:columns result) (first (:rows result)))
+                  fields (mapcat (fn [[path fields]]
+                                   (map (fn [field]
+                                          (assoc field :path (conj (str/split path #"::") (:fieldName field))))
+                                        fields))
+                                 types)
+                  object-fields (filter #(= (:mostCommonType %) "object") fields)
+                  non-object-fields (remove #(= (:mostCommonType %) "object") fields)]
+              (if (seq object-fields)
+                (concat non-object-fields
+                        (mapcat #(query-nested [(:path %)])
+                                object-fields))
+                fields)))]
+    (let [root-result (q! top-level-query)
+          root-fields (map (fn [[field type]]
+                             {:fieldName field
+                              :mostCommonType type
+                              :path [field]})
+                           (:rows root-result))
+          object-fields (filter #(= (:mostCommonType %) "object") root-fields)
+          non-object-fields (remove #(= (:mostCommonType %) "object") root-fields)]
+      (concat non-object-fields
+              (query-nested (map #(vector (:fieldName %)) object-fields))))))
+
+(defn type-alias->base-type [type-alias]
+  ;; Mongo types from $type aggregation operation
+  ;; https://www.mongodb.com/docs/manual/reference/operator/aggregation/type/#available-types
+  (get {"double"     :type/Float
+        "string"     :type/Text
+        "object"     :type/*     ; TODO: should this be type/Dictionary?
+        "array"      :type/Array
+        "binData"    :type/*
+        "undefined"  :type/*
+        "objectId"   :type/MongoBSONID
+        "bool"       :type/Boolean
+        "date"       :type/DateTime
+        "null"       :type/*
+        "regex"      :type/Text  ; Regular expressions are typically represented as strings
+        "dbPointer"  :type/*     ; Deprecated. TODO: should this be something else?
+        "javascript" :type/*     ; TODO: should this be text?
+        "symbol"     :type/Text  ; Deprecated. TODO: should this
+        "int"        :type/Integer
+        "timestamp"  :type/DateTime
+        "long"       :type/Integer
+        "decimal"    :type/Decimal
+        "minKey"     :type/* ; TODO: should this be something else?
+        "maxKey"     :type/*}
+        type-alias :type/*))
+
+(defmethod driver/describe-table :mongo
+  [_ database table]
+  (let [schema-data (infer-schema database table)]
+    {:schema nil
+     :name   (:name table)
+     :fields (set (map-indexed
+                   (fn [idx {:keys [fieldName mostCommonType]}]
+                     {:name              fieldName
+                      :database-type     mostCommonType
+                      :base-type         (type-alias->base-type mostCommonType)
+                      :database-position idx
+                      :pk?               (= fieldName "_id")})
+                   schema-data))}))
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :expression-aggregations         true
