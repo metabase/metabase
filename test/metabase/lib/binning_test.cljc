@@ -48,8 +48,8 @@
             (complement {:metabase.lib.field/binning {:strategy :default}})
             (m/find-first (comp #{"TOTAL"} :name) (lib/breakoutable-columns query))))
       (is (=?
-           {:metabase.lib.field/binning {:strategy :default}}
-           (lib/breakout-column query -1 (first (lib/breakouts query)))))
+            {:metabase.lib.field/binning {:strategy :default}}
+            (lib/breakout-column query -1 (first (lib/breakouts query)))))
       (is (=?
             {:metabase.lib.field/binning {:strategy :default}}
             (m/find-first (comp #{"TOTAL"} :name) (lib/returned-columns query))))
@@ -60,8 +60,8 @@
             (complement {:metabase.lib.field/temporal-unit :minute})
             (m/find-first (comp #{"CREATED_AT"} :name) (lib/breakoutable-columns query))))
       (is (=?
-           {:metabase.lib.field/temporal-unit :minute}
-           (lib/breakout-column query -1 (second (lib/breakouts query)))))
+            {:metabase.lib.field/temporal-unit :minute}
+            (lib/breakout-column query -1 (second (lib/breakouts query)))))
       (is (=?
             {:metabase.lib.field/temporal-unit :minute}
             (m/find-first (comp #{"CREATED_AT"} :name) (lib/returned-columns query)))))))
