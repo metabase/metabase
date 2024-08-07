@@ -28,7 +28,8 @@
        [(t2/table-name :model/QueryField) :qf]
        [:and
         [:= :qf.card_id :c.id]
-        [:= :qf.explicit_reference true]])
+        [:= :qf.explicit_reference true]
+        [:not= :qf.table nil]])
       (sql.helpers/left-join
        [(t2/table-name :model/Field) :f]
        [:= :qf.field_id :f.id])
