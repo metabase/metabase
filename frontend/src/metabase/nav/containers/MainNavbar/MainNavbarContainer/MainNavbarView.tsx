@@ -168,7 +168,7 @@ function MainNavbarView({
                 handleCreateNewCollection={handleCreateNewCollection}
               />
               <Tree
-                data={collectionsWithoutTrash.concat(1)}
+                data={collectionsWithoutTrash}
                 selectedId={collectionItem?.id}
                 onSelect={onItemSelect}
                 TreeNode={SidebarCollectionLink}
