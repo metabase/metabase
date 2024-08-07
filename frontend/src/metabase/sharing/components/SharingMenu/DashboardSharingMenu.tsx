@@ -5,7 +5,7 @@ import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dash
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
-import { Menu } from "metabase/ui";
+import { Flex, Menu } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
 import { DashboardSubscriptionMenuItem } from "./MenuItems/DashboardSubscriptionMenuItem";
@@ -38,13 +38,10 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
   const hasPublicLink = !!dashboard?.public_uuid;
   const canShare = isAdmin || isPublicSharingEnabled || isEmbeddingEnabled;
 
+  // TODO: handle prompt to save before sharing
+
   return (
-    <>
-      <SharingModals
-        modalType={modalType}
-        dashboard={dashboard}
-        onClose={() => setModalType(null)}
-      />
+    <Flex>
       <SharingMenu>
         <DashboardSubscriptionMenuItem onClick={toggleSubscriptionSidebar} />
         <ExportPdfMenuItem dashboard={dashboard} />
@@ -55,6 +52,11 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
         />
         <EmbedMenuItem onClick={() => setModalType("dashboard-embed")} />
       </SharingMenu>
-    </>
+      <SharingModals
+        modalType={modalType}
+        dashboard={dashboard}
+        onClose={() => setModalType(null)}
+      />
+    </Flex>
   );
 }
