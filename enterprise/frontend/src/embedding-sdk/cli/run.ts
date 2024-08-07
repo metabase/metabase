@@ -1,6 +1,11 @@
+import chalk from "chalk";
+
 import { generateReactComponentFiles } from "embedding-sdk/cli/steps/generate-component-files";
 
-import { METABASE_INSTANCE_SETUP_COMPLETE_MESSAGE } from "./constants/messages";
+import {
+  PREMIUM_TOKEN_REQUIRED_MESSAGE,
+  getMetabaseInstanceSetupCompleteMessage,
+} from "./constants/messages";
 import {
   addEmbeddingToken,
   checkIsDockerRunning,
@@ -61,12 +66,10 @@ export async function runCli() {
     state = nextState;
   }
 
-  console.log(METABASE_INSTANCE_SETUP_COMPLETE_MESSAGE);
+  console.log(getMetabaseInstanceSetupCompleteMessage(state.instanceUrl ?? ""));
 
   if (!state.token) {
-    console.log(
-      "  Don't forget to add your premium token to your Metabase instance in the admin settings!",
-    );
+    console.log(chalk.bold(PREMIUM_TOKEN_REQUIRED_MESSAGE));
   }
 
   printEmptyLines(1);
