@@ -108,6 +108,20 @@
   (serdes/with-cache
     (v2.load/load-metabase! (v2.ingest/ingest-yaml path) opts)))
 
+(def ^:private error-messages
+  {::v2.load/circular                     "Circular dependency"
+   ::v2.load/not-found                    "File not found"
+   ::v2.load/no-known-references          "Cannot clear references from entity"
+   ::v2.load/load-failure                 "Failure loading into database"
+   ::v2.entity-ids/mismatched-model-count "Error mapping tables to models"
+   ::v2.entity-ids/missing-pk             "Missing primary key"
+   ::v2.entity-ids/model-not-found        "Model not found"})
+
+(defn- stripped-error [e]
+  (let [{:keys [error] :as m} (ex-data e)]
+    (ex-info (error-messages error (str "Error code: " error))
+             (assoc m :msg (ex-message e)))))
+
 (mu/defn v2-load!
   "SerDes v2 load entry point.
 
@@ -122,7 +136,7 @@
                    (v2-load-internal! path opts :token-check? true)
                    (catch ExceptionInfo e
                      (if (:error (ex-data e))
-                       (reset! err (ex-info "Error loading data" (ex-data e)))
+                       (reset! err (stripped-error e))
                        (reset! err e)))
                    (catch Exception e
                      (reset! err e)))

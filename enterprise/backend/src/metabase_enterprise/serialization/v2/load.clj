@@ -51,7 +51,7 @@
                     (throw e)))))]
       (reduce loader ctx deps))))
 
-(defn- deep-error-info [error-type expanding path]
+(defn- path-error-data [error-type expanding path]
   (let [last-model (:model (last path))]
     {:path       path
      :deps-chain expanding
@@ -76,13 +76,13 @@
   (log/infof "Loading %s" (serdes/log-path-str path))
   (cond
     (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path))
-                                     (deep-error-info ::circular expanding path)))
+                                     (path-error-data ::circular expanding path)))
     (seen path) ctx ; Already been done, can skip it.
     :else (let [ingested (try
                            (serdes.ingest/ingest-one ingestion path)
                            (catch Exception e
                              (throw (ex-info (format "Failed to read file for %s" (serdes/log-path-str path))
-                                             (deep-error-info ::not-found expanding path)
+                                             (path-error-data ::not-found expanding path)
                                              e))))
                 ingested (cond-> ingested
                            modfn modfn)
@@ -101,7 +101,7 @@
               ctx
               (catch Exception e
                 (throw (ex-info (format "Failed to load into database for %s" (pr-str path))
-                                (deep-error-info ::load-failure expanding path)
+                                (path-error-data ::load-failure expanding path)
                                 e)))))))
 
 (defn load-metabase!
