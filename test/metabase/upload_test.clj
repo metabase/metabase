@@ -31,7 +31,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.io ByteArrayInputStream File)))
+   (java.io ByteArrayInputStream File FileOutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -115,6 +115,10 @@
       (#'upload/scan-and-sync-table! database table))
     (t2/select-one :model/Table (:id table))))
 
+(defn- tmp-file [prefix extension]
+   (doto (File/createTempFile prefix extension)
+     (.deleteOnExit)))
+
 (defn csv-file-with
   "Create a temp csv file with the given content and return the file"
   (^File [rows]
@@ -123,8 +127,7 @@
    (csv-file-with rows file-prefix io/writer))
   (^File [rows file-prefix writer-fn]
    (let [contents (str/join "\n" rows)
-         csv-file (doto (File/createTempFile file-prefix ".csv")
-                    (.deleteOnExit))]
+         csv-file (tmp-file file-prefix ".csv")]
      (with-open [^java.io.Writer w (writer-fn csv-file)]
        (.write w contents))
      csv-file)))
@@ -980,7 +983,7 @@
 (defn- update-csv!
   "Shorthand for synchronously updating a CSV"
   [action options]
-  (update-csv-synchronously! (assoc options :action action)))
+  (update-csv-synchronously! (merge {:filename "test.csv" :action action} options)))
 
 (deftest create-csv-upload!-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
@@ -1089,6 +1092,23 @@
                                           :upload-seconds    pos?}}}
                 (last-audit-event :upload-create)))))))
 
+(defn- write-empty-gzip
+  "Writes the data for an empty gzip file"
+  [^File file]
+  (with-open [out (FileOutputStream. file)]
+      (.write out (byte-array
+                   [0x1F 0x8B ; GZIP magic number
+                    0x08      ; Compression method (deflate)
+                    0         ; Flags
+                    0 0 0 0   ; Modification time (none)
+                    0         ; Extra flags
+                    0xFF      ; Operating system (unknown)
+                    0x03 0    ; Compressed data (empty block)
+                    0 0 0 0   ; CRC32
+                    0 0 0 0   ; Input size
+                    ]))
+      file))
+
 (deftest ^:mb/once create-csv-upload!-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
@@ -1107,13 +1127,23 @@
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^Uploads are not supported on \w+ databases\."
-                (upload-example-csv! :schema-name "public", :table-prefix "uploaded_magic_")))))
+                (upload-example-csv! :schema-name "public", :table-prefix "uploaded_magic_"))))
       (testing "User must have write permissions on the collection"
         (mt/with-non-admin-groups-no-root-collection-perms
           (is (thrown-with-msg?
-                java.lang.Exception
-                #"^You do not have curate permissions for this Collection\.$"
-                (upload-example-csv! :user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"))))))))
+               java.lang.Exception
+               #"^You do not have curate permissions for this Collection\.$"
+               (upload-example-csv!
+                {:user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"})))))
+      (testing "File type must be allowed"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Unsupported File Type"
+             (upload-example-csv! {:file (tmp-file "illegal" ".jpg")})))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Unsupported File Type"
+             (upload-example-csv! {:file (write-empty-gzip (tmp-file "sneaky" ".csv"))}))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
@@ -1181,12 +1211,6 @@
                             {}))
     (driver/insert-into! driver db-id schema+table-name insert-col-names rows)
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
-
-(defmacro maybe-apply-macro
-  [flag macro-fn & body]
-  `(if ~flag
-     (~macro-fn ~@body)
-     ~@body))
 
 (defn catch-ex-info* [f]
   (try
