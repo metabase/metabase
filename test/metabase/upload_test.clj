@@ -620,15 +620,13 @@
 
 (deftest infer-separator-multiline-test
   (testing "it picks the only viable separator forced by a quote"
-    (let [file (csv-file-with ["name, first;surname"
-                               "bond, james;bond"
-                               "\"semi;\";colon"])]
-      (is (= \; (#'upload/infer-separator file)))))
+    (is (= \; (infer-separator ["name, first;surname"
+                                "bond, james;bond"
+                                "\"semi;\";colon"]))))
   (testing "it considers consistency across the split count"
-    (let [file (csv-file-with ["product name; amount, in dollars"
-                               "blunderbuss;  1,000"
-                               "cyberwagon;   1,000,000"])]
-      (is (= \; (#'upload/infer-separator file))))))
+    (is (= \; (infer-separator ["product name; amount, in dollars"
+                                "blunderbuss;  1,000"
+                                "cyberwagon;   1,000,000"])))))
 
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
