@@ -375,17 +375,6 @@
            (offer-row row)
            result)))))))
 
-(defn- field-distinct-values
-  "Return the distinct values of `field`, each wrapped in a vector.
-  This is used to create a `FieldValues` object for `:type/Category` Fields."
-  [field]
-  (let [rff (if (isa? (:base_type field) :type/Text)
-              (distinct-text-field-rff *total-max-length*)
-              nil)]
-    (metadata-queries/field-query field {:breakout [[:field (u/the-id field) nil]]
-                                         :limit    *absolute-max-distinct-values-limit*}
-                                  rff)))
-
 (defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values are
   past the threshold, this returns a subset of possible values values where the total length of all items is less than [[*total-max-length*]].
@@ -393,24 +382,31 @@
 
   ;; (distinct-values (Field 1))
   ;; ->  {:values          [[1], [2], [3]]
-          :has_more_values false}
+  :has_more_values false}
 
   (This function provides the values that normally get saved as a Field's
   FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
   (try
-    (let [distinct-values      (field-distinct-values field)
-          distinct-values-rows (-> distinct-values :data :rows)]
-      {:values          distinct-values-rows
+    (let [rff             (if (isa? (:base_type field) :type/Text)
+                            ;; use a custom rff for text fields to prevent OOM in case of very long text values (#46411)
+                            (distinct-text-field-rff *total-max-length*)
+                            nil)
+          result          (metadata-queries/table-query (:table_id field)
+                                                        {:breakout [[:field (u/the-id field) nil]]
+                                                         :limit    *absolute-max-distinct-values-limit*}
+                                                        rff)
+          distinct-values (-> result :data :rows)]
+      {:values          distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
-       :has_more_values (or (true? (::reached-char-len-limit distinct-values))
-                          ;; [[field-distinct-values]] runs a query
-                          ;; with limit = [[*absolute-max-distinct-values-limit*]].
-                          ;; So, if the returned `distinct-values` has length equal to that exact limit,
-                          ;; we assume the returned values is just a subset of what we have in DB.
-                          (= (count distinct-values-rows)
-                             *absolute-max-distinct-values-limit*))})
+       :has_more_values (or (true? (::reached-char-len-limit result))
+                            ;; [[field-distinct-values]] runs a query
+                            ;; with limit = [[*absolute-max-distinct-values-limit*]].
+                            ;; So, if the returned `distinct-values` has length equal to that exact limit,
+                            ;; we assume the returned values is just a subset of what we have in DB.
+                            (= (count distinct-values)
+                               *absolute-max-distinct-values-limit*))})
     (catch Throwable e
       (log/error e "Error fetching field values")
       nil)))

@@ -15,8 +15,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
-
-
 (defn- partition-field->filter-form
   "Given a partition field, returns the default value can be used to query."
   [field]
@@ -56,27 +54,23 @@
       ;; > 1
       (update query :filter update-query-filter-fn (into [:and] (map partition-field->filter-form required-filter-fields))))))
 
-(defn- field-mbql-query
-  [table mbql-query]
-  (-> mbql-query
-      (assoc :source-table (:id table))
-      add-required-filters-if-needed))
-
-(defn field-query
-  "Docs."
-  ([field mbql-query]
-   (field-query field mbql-query nil))
-  ([{table-id :table_id} mbql-query rff]
+(defn table-query
+  "Runs the `mbql-query` where the source table is `table-id` and returns the result.
+  Add the required filters if the table requires it, see [[add-required-filters-if-needed]] for more details.
+  Also takes an optional `rff`, use the default rff if not provided."
+  ([table-id mbql-query]
+   (table-query table-id mbql-query nil))
+  ([table-id mbql-query rff]
    {:pre [(integer? table-id)]}
-   (let [table      (t2/select-one :model/Table :id table-id)
-         mbql-query (field-mbql-query table mbql-query)]
-     (binding [qp.i/*disable-qp-logging* true]
-       (qp/process-query
-        {:type       :query
-         :database   (:db_id table)
-         :query      mbql-query
-         :middleware {:disable-remaps? true}}
-        rff)))))
+   (binding [qp.i/*disable-qp-logging* true]
+     (qp/process-query
+      {:type       :query
+       :database   (t2/select-one-fn :db_id :model/Table table-id)
+       :query      (-> mbql-query
+                       (assoc :source-table table-id)
+                       add-required-filters-if-needed)
+       :middleware {:disable-remaps? true}}
+      rff))))
 
 ;; I'm not sure whether this field-distinct-values and field-distinct-values belong to this namespace
 ;; maybe it's better to keep this in metabase.models.field or metabase.models.field-values
@@ -86,29 +80,30 @@
 
   Note: the generated MBQL query assume that both `field` and `search-field` are from the same table."
  [field search-field value limit]
- (-> (field-query field {:filter   (when (some? value)
-                                     [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
-                         ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
-                         ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
-                         ;; identifiers/aliases
-                         :breakout (if (= (u/the-id field) (u/the-id search-field))
-                                     [[:field (u/the-id field) nil]]
-                                     [[:field (u/the-id field) nil]
-                                      [:field (u/the-id search-field) nil]])
-                         :limit    limit})
+ (-> (table-query (:table_id field)
+                  {:filter   (when (some? value)
+                               [:contains [:field (u/the-id search-field) nil] value {:case-sensitive false}])
+                   ;; if both fields are the same then make sure not to refer to it twice in the `:breakout` clause.
+                   ;; Otherwise this will break certain drivers like BigQuery that don't support duplicate
+                   ;; identifiers/aliases
+                   :breakout (if (= (u/the-id field) (u/the-id search-field))
+                               [[:field (u/the-id field) nil]]
+                               [[:field (u/the-id field) nil]
+                                [:field (u/the-id search-field) nil]])
+                   :limit    limit})
      :data :rows))
 
 (defn field-distinct-count
   "Return the distinct count of `field`."
   [field & [limit]]
-  (-> (field-query field {:aggregation [[:distinct [:field (u/the-id field) nil]]]
-                          :limit       limit})
+  (-> (table-query (:table_id field) {:aggregation [[:distinct [:field (u/the-id field) nil]]]
+                                      :limit       limit})
       :data :rows first first int))
 
 (defn field-count
   "Return the count of `field`."
   [field]
-  (-> (field-query field {:aggregation [[:count [:field (u/the-id field) nil]]]})
+  (-> (table-query (:table_id field) {:aggregation [[:count [:field (u/the-id field) nil]]]})
       :data :rows first first int))
 
 (def max-sample-rows

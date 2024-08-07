@@ -7,6 +7,7 @@
    [metabase.models :as models :refer [Database Field Table]]
    [metabase.models.interface :as mi]
    [metabase.models.table :as table]
+   [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
 
@@ -78,10 +79,14 @@
       ;; currently only applied for bigquery tables in which a table can have a required partition filter
       (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
               (get-in (#'metadata-queries/table-rows-sample-query table [field1] {}) [:query :filter]))))
-    (testing "the field mbql on a table that requires a filter will include a filter"
+    (testing "the mbql on a table that requires a filter will include a filter"
       ;; currently only applied for bigquery tables in which a table can have a required partition filter
-      (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
-              (get (#'metadata-queries/field-mbql-query table {}) :filter))))))
+      (let [query (atom nil)]
+        (with-redefs [qp/process-query (fn [& args]
+                                         (reset! query (-> args first :query)))]
+          (metadata-queries/table-query (:id table) {})
+          (is (=? [:> [:field (:id field2) {:base-type :type/Integer}] (mt/malli=? int?)]
+                  (:filter @query))))))))
 
 (deftest ^:parallel text-field?-test
   (testing "recognizes fields suitable for fingerprinting"
