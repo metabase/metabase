@@ -186,12 +186,11 @@
   "Checks that the current user has at least `required-perm` for the entire DB specified by `db-id`."
   [perm-type required-perm gtap-perms db-id]
   (or
-      (data-perms/at-least-as-permissive? perm-type
-                                          (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
-                                          required-perm)
-      (when gtap-perms
-       (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))
-      (throw (perms-exception {db-id {perm-type required-perm}}))))
+   (data-perms/at-least-as-permissive? perm-type
+                                       (data-perms/full-db-permission-for-user api/*current-user-id* perm-type db-id)
+                                       required-perm)
+   (when gtap-perms
+     (data-perms/at-least-as-permissive? perm-type gtap-perms required-perm))))
 
 (defn- has-perm-for-table?
   "Checks that the current user has the permissions for tables specified in `table-id->perm`. This can be satisfied via
@@ -231,7 +230,7 @@
       (has-perm-for-table? perm-type db-or-table-perms (perm-type gtap-perms) db-id)
 
       :else
-      (throw (ex-info (tru "Invalid required permissions") required-perms)))
+      (throw (ex-info (tru "Invalid permissions format") required-perms)))
     true))
 
 (defn check-data-perms

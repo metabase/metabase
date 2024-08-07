@@ -102,34 +102,34 @@
                                                                                      (api.card-test/mbql-count-query db table))
                                              :collection_id (u/the-id collection)))))))))))
 
-(deftest users-with-data-access-but-no-query-create-can-view-cards
-  (mt/with-model-cleanup [:model/Card]
-    (mt/with-temp [:model/User                       {user-id :id} {}
-                   :model/PermissionsGroup           group         {}
-                   :model/PermissionsGroupMembership _             {:user_id  user-id :group_id (u/the-id group)}
-                   :model/Card                       card          {:name "Some Name" :dataset_query (mt/mbql-query venues)}]
+(deftest users-with-data-access-and-query-create-may-access-cards
+  (mt/with-temp [:model/User                       {user-id :id} {}
+                 :model/PermissionsGroup           group         {}
+                 :model/PermissionsGroupMembership _             {:user_id  user-id
+                                                                  :group_id (u/the-id group)}
+                 :model/Card                       card          {:name "Some Name" :dataset_query {:database (mt/id),
+                                                                                                    :type :query,
+                                                                                                    :query {:source-table (mt/id :venues)}}}]
+    (let [cases [[:unrestricted           :query-builder-and-native "Request Permitted"]
+                 [:unrestricted           :query-builder            "Request Permitted"]
+                 [:unrestricted           :no                       "Request Permitted"]
+                 [:legacy-no-self-service :query-builder-and-native "Request Permitted"]
+                 [:legacy-no-self-service :query-builder            "Request Permitted"]
+                 [:legacy-no-self-service :no                       "You do not have permissions to run this query."]
+                 [:blocked                :query-builder-and-native "Request Permitted"]
+                 [:blocked                :query-builder            "Request Permitted"]
+                 [:blocked                :no                       "You do not have permissions to run this query."]]]
+      (is (= (count cases)
+             (* (-> data-perms/Permissions :perms/view-data :values count)
+                (-> data-perms/Permissions :perms/create-queries :values count)))
+          "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
       (mt/with-no-data-perms-for-all-users!
-        ;; Turn off all data access and query creation:
-        (data-perms/set-database-permission! group (:id (mt/db)) :perms/view-data :blocked)
-        (data-perms/set-database-permission! group (:id (mt/db)) :perms/create-queries :no)
-
-        (is (= :blocked (data-perms/table-permission-for-user user-id :perms/view-data (:id (mt/db)) (mt/id :venues))))
-        (is (= :no (data-perms/table-permission-for-user user-id :perms/create-queries (:id (mt/db)) (mt/id :venues))))
-        (is (= "You do not have permissions to run this query."
-               (:error (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query")))))
-
-        ;; view-data unrestricted alone is enough to view the card:
-        (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data :unrestricted)
-        (is (= "NO ERROR"
-               (:error
-                (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))
-                "NO ERROR")))
-
-        (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data :blocked)
-        (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries :query-builder)
-        ;; FIXME: I think this should be blocked, but it's not:
-        (is (= "You do not have permissions to run this query."
-               (:error (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query")))))))))
+        (doseq [[view-perm create-perm expected] cases]
+          (data-perms/set-table-permission! group (mt/id :venues) :perms/view-data view-perm)
+          (data-perms/set-table-permission! group (mt/id :venues) :perms/create-queries create-perm)
+          (testing (str "view-data: " view-perm ", create-queries: " create-perm)
+            (is (= expected (:error (mt/user-http-request user-id :post 202 (str "card/" (u/the-id card) "/query"))
+                                    "Request Permitted")))))))))
 
 (deftest sandbox-join-permissions-test
   (testing "Sandboxed query can't be saved when sandboxed table is joined to a table that the current user doesn't have access to"
