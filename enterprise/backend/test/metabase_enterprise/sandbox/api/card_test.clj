@@ -113,15 +113,17 @@
     (let [cases [[:unrestricted           :query-builder-and-native "Request Permitted"]
                  [:unrestricted           :query-builder            "Request Permitted"]
                  [:unrestricted           :no                       "Request Permitted"]
-                 [:legacy-no-self-service :query-builder-and-native "Request Permitted"]
-                 [:legacy-no-self-service :query-builder            "Request Permitted"]
                  [:legacy-no-self-service :no                       "You do not have permissions to run this query."]
-                 [:blocked                :query-builder-and-native "Request Permitted"]
-                 [:blocked                :query-builder            "Request Permitted"]
-                 [:blocked                :no                       "You do not have permissions to run this query."]]]
+                 [:blocked                :no                       "You do not have permissions to run this query."]]
+          ;; These are invalid permission combinations, so we don't test them:
+          invalid-cases [[:legacy-no-self-service :query-builder-and-native]
+                         [:legacy-no-self-service :query-builder]
+                         [:blocked :query-builder-and-native]
+                         [:blocked :query-builder]]]
       (is (= (count cases)
-             (* (-> data-perms/Permissions :perms/view-data :values count)
-                (-> data-perms/Permissions :perms/create-queries :values count)))
+             (- (* (-> data-perms/Permissions :perms/view-data :values count)
+                   (-> data-perms/Permissions :perms/create-queries :values count))
+                (count invalid-cases)))
           "Please test these permissions settings behaviors exhaustively: if you add perms, add the tests for them.")
       (mt/with-no-data-perms-for-all-users!
         (doseq [[view-perm create-perm expected] cases]
