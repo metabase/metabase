@@ -85,6 +85,50 @@ export const getAggregations = (
   return aggregations;
 };
 
+type BreakoutColumnAndBucket = {
+  breakout?: Lib.BreakoutClause;
+  column: Lib.ColumnMetadata;
+  bucket: Lib.Bucket | null;
+};
+
+export function getBreakout(
+  query: Lib.Query,
+  stageIndex: number,
+): BreakoutColumnAndBucket | null {
+  const breakouts = Lib.breakouts(query, stageIndex);
+  const temporalBreakout = breakouts.find(breakout =>
+    isTemporal(query, stageIndex, breakout),
+  );
+  if (temporalBreakout) {
+    return {
+      breakout: temporalBreakout,
+      column: Lib.breakoutColumn(query, stageIndex, temporalBreakout),
+      bucket: Lib.temporalBucket(temporalBreakout),
+    };
+  }
+
+  const columns = Lib.breakoutableColumns(query, stageIndex);
+  const temporalColumn = columns.find(column => Lib.isTemporal(column));
+
+  if (temporalColumn) {
+    return {
+      column: temporalColumn,
+      bucket: Lib.defaultTemporalBucket(query, stageIndex, temporalColumn),
+    };
+  }
+
+  return null;
+}
+
+function isTemporal(
+  query: Lib.Query,
+  stageIndex: number,
+  breakout: Lib.BreakoutClause,
+) {
+  const column = Lib.breakoutColumn(query, stageIndex, breakout);
+  return Lib.isTemporal(column);
+}
+
 export const canSubmit = (
   period: number | "",
   columns: ColumnType[],
