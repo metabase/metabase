@@ -91,6 +91,50 @@ const productsCreatedAtField: FieldReference = [
   },
 ];
 
+const queryNonDateBreakout: StructuredDatasetQuery = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [ordersQuantityField],
+  },
+};
+
+const query1DateBreakout: StructuredDatasetQuery = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [ordersCreatedAtField],
+  },
+};
+
+const query2DateBreakouts: StructuredDatasetQuery = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [ordersCreatedAtField, productsCreatedAtField],
+  },
+};
+
+const queryDateBreakoutsMultiStage: StructuredDatasetQuery = {
+  type: "query",
+  database: SAMPLE_DB_ID,
+  query: {
+    aggregation: [["count"]],
+    breakout: [ordersCreatedAtYearField],
+    "source-query": {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [ordersCreatedAtMonthField],
+    },
+  },
+};
+
 describe("parameters/utils/targets", () => {
   describe("isDimensionTarget", () => {
     it("should return false for non-dimension targets", () => {
@@ -309,15 +353,7 @@ describe("parameters/utils/targets", () => {
 
         it("non-date breakout - returns no columns", () => {
           const question = createQuestion({
-            dataset_query: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                aggregation: [["count"]],
-                breakout: [ordersQuantityField],
-              },
-            },
+            dataset_query: queryNonDateBreakout,
           });
           const { columns } = getParameterColumns(question, parameter);
 
@@ -326,15 +362,7 @@ describe("parameters/utils/targets", () => {
 
         it("1 date breakout - returns 1 date column", () => {
           const question = createQuestion({
-            dataset_query: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                aggregation: [["count"]],
-                breakout: [ordersCreatedAtField],
-              },
-            },
+            dataset_query: query1DateBreakout,
           });
           const { query, stageIndex, columns } = getParameterColumns(
             question,
@@ -347,15 +375,7 @@ describe("parameters/utils/targets", () => {
 
         it("2 date breakouts - returns 2 date columns", () => {
           const question = createQuestion({
-            dataset_query: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                aggregation: [["count"]],
-                breakout: [ordersCreatedAtField, productsCreatedAtField],
-              },
-            },
+            dataset_query: query2DateBreakouts,
           });
           const { query, stageIndex, columns } = getParameterColumns(
             question,
@@ -371,19 +391,7 @@ describe("parameters/utils/targets", () => {
 
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
           const question = createQuestion({
-            dataset_query: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                aggregation: [["count"]],
-                breakout: [ordersCreatedAtYearField],
-                "source-query": {
-                  "source-table": ORDERS_ID,
-                  aggregation: [["count"]],
-                  breakout: [ordersCreatedAtMonthField],
-                },
-              },
-            },
+            dataset_query: queryDateBreakoutsMultiStage,
           });
           const { query, stageIndex, columns } = getParameterColumns(
             question,
@@ -407,15 +415,7 @@ describe("parameters/utils/targets", () => {
 
         it("non-date breakout - returns no columns", () => {
           const question = createModel({
-            dataset_query: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                aggregation: [["count"]],
-                breakout: [ordersQuantityField],
-              },
-            },
+            dataset_query: queryNonDateBreakout,
             result_metadata: [createOrdersQuantityField(), createCountField()],
           });
           const { columns } = getParameterColumns(question, parameter);
@@ -425,15 +425,7 @@ describe("parameters/utils/targets", () => {
 
         it("1 date breakout - returns 1 date column", () => {
           const question = createModel({
-            dataset_query: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                aggregation: [["count"]],
-                breakout: [ordersCreatedAtField],
-              },
-            },
+            dataset_query: query1DateBreakout,
             result_metadata: [createOrdersCreatedAtField(), createCountField()],
           });
           const { columns } = getParameterColumns(question, parameter);
@@ -443,15 +435,7 @@ describe("parameters/utils/targets", () => {
 
         it("2 date breakouts - returns 2 date columns", () => {
           const question = createModel({
-            dataset_query: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                "source-table": ORDERS_ID,
-                aggregation: [["count"]],
-                breakout: [ordersCreatedAtField, productsCreatedAtField],
-              },
-            },
+            dataset_query: query2DateBreakouts,
             result_metadata: [
               createOrdersCreatedAtField(),
               createProductsCreatedAtField(),
@@ -465,19 +449,7 @@ describe("parameters/utils/targets", () => {
 
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
           const question = createModel({
-            dataset_query: {
-              type: "query",
-              database: SAMPLE_DB_ID,
-              query: {
-                aggregation: [["count"]],
-                breakout: [ordersCreatedAtYearField],
-                "source-query": {
-                  "source-table": ORDERS_ID,
-                  aggregation: [["count"]],
-                  breakout: [ordersCreatedAtMonthField],
-                },
-              },
-            },
+            dataset_query: queryDateBreakoutsMultiStage,
             result_metadata: [createOrdersCreatedAtField(), createCountField()],
           });
           const { columns } = getParameterColumns(question, parameter);
