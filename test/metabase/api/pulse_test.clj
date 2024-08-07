@@ -6,6 +6,7 @@
    [java-time.api :as t]
    [metabase.api.card-test :as api.card-test]
    [metabase.api.pulse :as api.pulse]
+   [metabase.channel.http-test :as channel.http-test]
    [metabase.http-client :as client]
    [metabase.integrations.slack :as slack]
    [metabase.models
@@ -922,36 +923,42 @@
   ;; see [[metabase-enterprise.advanced-config.api.pulse-test/test-pulse-endpoint-should-respect-email-domain-allow-list-test]]
   ;; for additional EE-specific tests
   (testing "POST /api/pulse/test send test alert to a http channel"
-    (mt/with-temp
-      [:model/Card    card    {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
-       :model/Channel channel {:type    :channel/http
-                               :details {:url         "http://example.com"
-                                         :auth-method :none}}]
-      (is (=? {:channel/http [{:body {:alert_creator_id   (mt/user->id :rasta)
-                                      :alert_creator_name "Rasta Toucan"
-                                      :alert_id           nil
-                                      :data               {:question_id   (:id card)
-                                                           :question_name (mt/malli=? string?)
-                                                           :question_url  (mt/malli=? string?)
-                                                           :raw_data      {:cols ["count"], :rows [[18760]]},
-                                                           :type          "question"
-                                                           :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
-                                      :type               "alert"}}]}
-              (pulse.test-util/with-captured-channel-send-messages!
-                (mt/user-http-request :rasta :post 200 "pulse/test"
-                                      {:name            (mt/random-name)
-                                       :cards           [{:id                (:id card)
-                                                          :include_csv       false
-                                                          :include_xls       false
-                                                          :dashboard_card_id nil}]
-                                       :channels        [{:enabled       true
-                                                          :channel_type  "http"
-                                                          :channel_id    (:id channel)
-                                                          :schedule_type "daily"
-                                                          :schedule_hour 12
-                                                          :schedule_day  nil
-                                                          :recipients    []}]
-                                       :alert_condition "rows"})))))))
+    (let [requests (atom [])
+          endpoint (channel.http-test/make-route
+                    :post "/test"
+                    (fn [req]
+                      (swap! requests conj req)))]
+      (channel.http-test/with-server [url [endpoint]]
+        (mt/with-temp
+          [:model/Card    card    {:dataset_query (mt/mbql-query orders {:aggregation [[:count]]})}
+           :model/Channel channel {:type    :channel/http
+                                   :details {:url         (str url "/test")
+                                             :auth-method :none}}]
+          (mt/user-http-request :rasta :post 200 "pulse/test"
+                                {:name            (mt/random-name)
+                                 :cards           [{:id                (:id card)
+                                                    :include_csv       false
+                                                    :include_xls       false
+                                                    :dashboard_card_id nil}]
+                                 :channels        [{:enabled       true
+                                                    :channel_type  "http"
+                                                    :channel_id    (:id channel)
+                                                    :schedule_type "daily"
+                                                    :schedule_hour 12
+                                                    :schedule_day  nil
+                                                    :recipients    []}]
+                                 :alert_condition "rows"})
+          (is (=? {:body {:alert_creator_id   (mt/user->id :rasta)
+                          :alert_creator_name "Rasta Toucan"
+                          :alert_id           nil
+                          :data               {:question_id   (:id card)
+                                               :question_name (mt/malli=? string?)
+                                               :question_url  (mt/malli=? string?)
+                                               :raw_data      {:cols ["count"], :rows [[18760]]},
+                                               :type          "question"
+                                               :visualization (mt/malli=? [:fn #(str/starts-with? % "data:image/png;base64,")])}
+                          :type               "alert"}}
+                  (first @requests))))))))
 
 (deftest send-test-pulse-validate-emails-test
   (testing (str "POST /api/pulse/test should call " `pulse-channel/validate-email-domains)

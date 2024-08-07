@@ -306,7 +306,7 @@
 
   Only supports HTTP channels for now, returns a map with type key for slack and email"
   [{channel-type :channel_type :as pulse-channel}]
-  (if (= "http" channel-type)
+  (if (= :http (keyword channel-type))
     (t2/select-one :model/Channel :id (:channel_id pulse-channel))
     {:type (keyword "channel" (name channel-type))}))
 
@@ -331,7 +331,6 @@
                            messages (channel/render-notification (:type channel)
                                                                  (get-notification-info pulse parts pulse-channel)
                                                                  (channel-recipients pulse-channel))]
-                       (println channel pulse-channel)
                        (log/debugf "Rendered %d messages for %s %d to channel %s"
                                    (count messages)
                                    (alert-or-pulse pulse)
