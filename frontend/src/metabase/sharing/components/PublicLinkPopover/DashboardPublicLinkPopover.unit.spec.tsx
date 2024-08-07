@@ -5,10 +5,11 @@ import { useState } from "react";
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { DashboardPublicLinkPopover } from "metabase/dashboard/components/PublicLinkPopover/DashboardPublicLinkPopover";
 import type { Dashboard } from "metabase-types/api";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+
+import { DashboardPublicLinkPopover } from "./DashboardPublicLinkPopover";
 
 const SITE_URL = "http://metabase.test";
 const TEST_DASHBOARD_ID = 1;
