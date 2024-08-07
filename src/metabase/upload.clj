@@ -275,7 +275,7 @@
   "Currently this only infers the separator, but in future it may also handle different quoting options."
   [filename ^File file]
   (let [s (if (= "tsv" (file-extension filename))
-            \t
+            \tab
             (infer-separator file))]
     (fn [stream]
       (csv/read-csv stream :separator s))))
@@ -791,7 +791,7 @@
 
     ;; Attempt to delete the underlying data from the customer database.
     ;; We perform this before marking the table as inactive in the app db so that even if it false, the table is still
-    ;; visible to administrators and the operation is easy to retry again later.
+    ;; visible to administrators, and the operation is easy to retry again later.
     (driver/drop-table! driver (:id database) table-name)
 
     ;; We mark the table as inactive synchronously, so that it will no longer shows up in the admin list.
