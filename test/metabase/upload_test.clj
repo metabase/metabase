@@ -1037,7 +1037,7 @@
 (defn- update-csv!
   "Shorthand for synchronously updating a CSV"
   [action options]
-  (update-csv-synchronously! (assoc options :action action)))
+  (update-csv-synchronously! (merge {:filename "test.csv" :action action} options)))
 
 (deftest create-csv-upload!-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
