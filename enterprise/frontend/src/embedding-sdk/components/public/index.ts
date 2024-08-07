@@ -7,3 +7,4 @@ export { MetabaseProvider } from "./MetabaseProvider";
 export { StaticDashboard } from "./StaticDashboard";
 export { CollectionBrowser } from "./CollectionBrowser";
 export { InteractiveDashboard } from "./InteractiveDashboard";
+export { NewQuestion } from "./NewQuestion";

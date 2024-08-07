@@ -101,7 +101,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
   return question.setQuery(newQuery);
 }
 
-export function deserializeCard(serializedCard: string) {
+export function deserializeCard(serializedCard: string): Card {
   const card = deserializeCardFromUrl(serializedCard);
   if (card.dataset_query.database != null) {
     // Ensure older MBQL is supported
@@ -260,7 +260,7 @@ async function handleQBInit(
 
   const deserializedCard = serializedCard
     ? deserializeCard(serializedCard)
-    : null;
+    : undefined;
 
   let { card, originalCard } = await resolveCards({
     cardId,

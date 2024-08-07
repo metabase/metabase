@@ -93,6 +93,7 @@ export function NotebookSteps({
         const isLast = index === steps.length - 1;
         const isLastOpened = lastOpenedStep === step.id;
         const onChange = async (query: Query) => {
+          console.log(query);
           await handleQueryChange(query, step);
         };
 

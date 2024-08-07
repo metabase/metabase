@@ -16,6 +16,14 @@ import { getPlugins } from "embedding-sdk/store/selectors";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
+import {
+  deserializeCard,
+  parseHash,
+  QueryParams,
+} from "metabase/query_builder/actions";
+import { LocationDescriptorObject } from "history";
+import * as Urls from "metabase/lib/urls";
+import { CardId, Card } from "metabase-types/api";
 
 interface InteractiveQuestionContextType
   extends Omit<LoadQuestionHookResult, "loadQuestion"> {
@@ -36,22 +44,52 @@ export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
 >(undefined);
 
-type InteractiveQuestionProviderProps = PropsWithChildren<
-  {
-    componentPlugins?: SdkPluginsConfig;
-    onReset?: () => void;
-    onNavigateBack?: () => void;
-  } & LoadSdkQuestionParams
->;
+type InteractiveQuestionProviderProps = PropsWithChildren<{
+  componentPlugins?: SdkPluginsConfig;
+  onReset?: () => void;
+  onNavigateBack?: () => void;
+}>;
 
-export const InteractiveQuestionProvider = ({
+// allow a provider with location + params
+export const InteractiveQuestionProviderWithLocation = ({
   location,
   params,
+  ...providerProps
+}: InteractiveQuestionProviderProps & {
+  location: LocationDescriptorObject;
+  params: QueryParams;
+}) => {
+  const cardId = Urls.extractEntityId(params.slug);
+  const { options, serializedCard } = parseHash(location.hash);
+  const deserializedCard = serializedCard
+    ? deserializeCard(serializedCard)
+    : undefined;
+
+  console.log("InteractiveQuestionProvider - ", cardId, deserializedCard?.id);
+
+  return (
+    <InteractiveQuestionProvider
+      {...providerProps}
+      cardId={cardId}
+      options={options}
+      deserializedCard={deserializedCard}
+    />
+  );
+};
+
+export const InteractiveQuestionProvider = ({
+  cardId,
+  options,
+  deserializedCard,
   componentPlugins,
   onReset,
   onNavigateBack,
   children,
-}: InteractiveQuestionProviderProps) => {
+}: InteractiveQuestionProviderProps & {
+  cardId?: CardId;
+  options: QueryParams;
+  deserializedCard?: Card;
+}) => {
   const {
     question,
     queryResults,
@@ -62,7 +100,11 @@ export const InteractiveQuestionProvider = ({
     loadQuestion,
     onQuestionChange,
     onNavigateToNewCard,
-  } = useLoadQuestion({ location, params });
+  } = useLoadQuestion({
+    cardId,
+    options,
+    deserializedCard,
+  });
 
   const globalPlugins = useSdkSelector(getPlugins);
   const plugins = componentPlugins || globalPlugins;

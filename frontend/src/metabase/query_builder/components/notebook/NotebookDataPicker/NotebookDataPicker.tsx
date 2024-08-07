@@ -63,6 +63,12 @@ export function NotebookDataPicker({
     const databaseId = checkNotNull(metadata.table(tableId)).db_id;
     const metadataProvider = Lib.metadataProvider(databaseId, metadata);
     const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+    console.log({
+      table,
+      metadataProvider,
+      databaseId,
+      metadata,
+    });
     onChangeRef.current?.(table, metadataProvider);
   };
 

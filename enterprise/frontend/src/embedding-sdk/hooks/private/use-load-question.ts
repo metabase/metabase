@@ -12,8 +12,14 @@ import type {
   SdkQuestionResult,
 } from "embedding-sdk/types/question";
 import { defer, type Deferred } from "metabase/lib/promise";
-import { useDispatch } from "metabase/lib/redux";
-import type Question from "metabase-lib/v1/Question";
+import { useDispatch, useSelector } from "metabase/lib/redux";
+import Question from "metabase-lib/v1/Question";
+import * as Urls from "metabase/lib/urls";
+import { parseHash } from "metabase/query_builder/actions";
+import * as Lib from "metabase-lib";
+import { getMetadata } from "metabase/selectors/metadata";
+import { sourceTableOrCardId } from "metabase-lib";
+import { assocIn } from "icepick";
 
 export interface LoadQuestionHookResult {
   question?: Question;
@@ -22,16 +28,25 @@ export interface LoadQuestionHookResult {
   isQuestionLoading: boolean;
   isQueryRunning: boolean;
 
-  loadQuestion(): Promise<SdkQuestionResult & { originalQuestion?: Question }>;
+  loadQuestion(): Promise<
+    SdkQuestionResult & {
+      originalQuestion?: Question;
+    }
+  >;
+
   onQuestionChange(question: Question): Promise<void>;
-  onNavigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
+
+  onNavigateToNewCard(nextCardParams: NavigateToNewCardParams): Promise<void>;
 }
 
 export function useLoadQuestion({
-  location,
-  params,
+  cardId,
+  options,
+  deserializedCard,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useDispatch();
+
+  const metadata = useSelector(getMetadata);
 
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
@@ -56,8 +71,9 @@ export function useLoadQuestion({
   const [loadQuestionState, loadQuestion] = useAsyncFn(async () => {
     const result = await dispatch(
       runQuestionOnLoadSdk({
-        location,
-        params,
+        cardId,
+        deserializedCard,
+        options,
         cancelDeferred: deferred(),
       }),
     );
@@ -65,7 +81,7 @@ export function useLoadQuestion({
     setQuestionResult(result);
 
     return result;
-  }, [dispatch, location, params]);
+  }, [dispatch]);
 
   const { originalQuestion } = loadQuestionState.value ?? {};
 
@@ -74,6 +90,19 @@ export function useLoadQuestion({
       if (!question) {
         return;
       }
+
+      console.log({
+        nextQuestion,
+        question,
+        originalQuestion,
+        attempt: Lib.databaseID(nextQuestion.query()),
+        queryDisplayInfo: Lib.queryDisplayInfo(nextQuestion.query()),
+        dependentMetadata: Lib.dependentMetadata(
+          nextQuestion.query(),
+          nextQuestion.id(),
+          nextQuestion.type(),
+        ),
+      });
 
       const result = await dispatch(
         runQuestionOnQueryChangeSdk({
@@ -90,10 +119,10 @@ export function useLoadQuestion({
   );
 
   const [navigateToNewCardState, onNavigateToNewCard] = useAsyncFn(
-    async (params: NavigateToNewCardParams) => {
+    async (nextCardParams: NavigateToNewCardParams) => {
       const result = await dispatch(
         runQuestionOnNavigateSdk({
-          ...params,
+          ...nextCardParams,
           originalQuestion,
           cancelDeferred: deferred(),
         }),
