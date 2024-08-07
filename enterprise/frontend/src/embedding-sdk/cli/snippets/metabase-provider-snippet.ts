@@ -49,7 +49,7 @@ const THEMES = {
       "text-secondary": "#696E7B",
       "text-tertiary": "#949AAB",
       border: "#EEECEC",
-      background: "#FFFFFF",
+      background: "transparent",
       "background-hover": "#F9FBFC",
       positive: "#84BB4C",
       negative: "#ED6E6E"
