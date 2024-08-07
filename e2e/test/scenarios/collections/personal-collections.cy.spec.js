@@ -63,7 +63,7 @@ describe("personal collections", () => {
       cy.visit("/collection/root");
       cy.findAllByRole("tree")
         .contains("Your personal collection")
-        .should("exist");
+        .should("be.visible");
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
