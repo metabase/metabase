@@ -128,21 +128,23 @@ export const DataPermissionsHelp = () => {
                 hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
                 icon="close"
                 iconColor="danger"
-                name={t`No access (Pro)`}
+                name={t`Blocked (Pro)`}
                 description={
                   <>
                     <Text>{`The group can't view:`}</Text>
                     <List mr="1rem">
                       <List.Item>
-                        <Text>The table when browsing data.</Text>
+                        <Text>The schema/table when browsing data.</Text>
                       </List.Item>
                       <List.Item>
-                        <Text>Query-builder questions using that table.</Text>
+                        <Text>
+                          Query-builder questions using that schema/table.
+                        </Text>
                       </List.Item>
                       <List.Item>
                         <Text>
                           ANY native questions querying the database, regardless
-                          of table.
+                          of schema/table.
                         </Text>
                       </List.Item>
                     </List>

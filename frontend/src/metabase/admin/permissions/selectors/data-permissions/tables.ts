@@ -6,6 +6,7 @@ import {
   getTablesPermission,
 } from "metabase/admin/permissions/utils/graph";
 import {
+  PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
@@ -55,6 +56,13 @@ const buildAccessPermission = (
     DataPermission.VIEW_DATA,
   );
 
+  const databaseValue = getSchemasPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
   const warning = getPermissionWarning(
     value,
     defaultGroupValue,
@@ -79,21 +87,25 @@ const buildAccessPermission = (
       DATA_PERMISSION_OPTIONS.controlled,
       originalValue === DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated.value &&
         DATA_PERMISSION_OPTIONS.noSelfServiceDeprecated,
+      ...PLUGIN_ADMIN_PERMISSIONS_TABLE_OPTIONS,
     ]),
     value,
   );
 
+  const isDisabled =
+    isAdmin ||
+    (!isAdmin &&
+      (options.length <= 1 ||
+        PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
+          value,
+          "tables",
+          databaseValue,
+        )));
+
   return {
     permission: DataPermission.VIEW_DATA,
     type: DataPermissionType.ACCESS,
-    isDisabled:
-      isAdmin ||
-      (!isAdmin &&
-        (options.length <= 1 ||
-          PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
-            value,
-            "tables",
-          ))),
+    isDisabled,
     isHighlighted: isAdmin,
     disabledTooltip: isAdmin ? UNABLE_TO_CHANGE_ADMIN_PERMISSIONS : null,
     value,

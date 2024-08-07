@@ -384,12 +384,12 @@ export function restrictNativeQueryPermissionsIfNeeded(
       [],
       DataPermissionValue.NO,
     );
-  } else if (
-    entityId.tableId != null &&
-    entityId.schemaName != null &&
-    isRestrictivePermission(value)
-  ) {
-    permissions = updateFieldsPermission(
+  } else if (entityId.schemaName != null && isRestrictivePermission(value)) {
+    const updatePermissionFn =
+      entityId.tableId != null
+        ? updateFieldsPermission
+        : updateTablesPermission;
+    permissions = updatePermissionFn(
       permissions,
       groupId,
       entityId as any,

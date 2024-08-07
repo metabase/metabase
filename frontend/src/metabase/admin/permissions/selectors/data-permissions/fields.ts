@@ -107,11 +107,13 @@ const buildAccessPermission = (
   );
   const isDisabled =
     isAdmin ||
-    PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
-      value,
-      "fields",
-      schemaValue,
-    );
+    (!isAdmin &&
+      (options.length <= 1 ||
+        PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
+          value,
+          "fields",
+          schemaValue,
+        )));
 
   return {
     permission: DataPermission.VIEW_DATA,
