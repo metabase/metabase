@@ -4,12 +4,13 @@ export const getActionIconOverrides =
   (): MantineThemeOverride["components"] => ({
     ActionIcon: {
       variants: {
-        subtle: theme => ({
+        // Default variant is "subtle"
+        subtle: () => ({
           root: {
-            color: theme.fn.themeColor("text-light"),
+            color: "var(--mb-color-text-tertiary)",
             "&:hover": {
-              color: theme.fn.themeColor("text-medium"),
-              backgroundColor: theme.fn.themeColor("bg-light"),
+              color: "var(--mb-color-text-secondary)",
+              backgroundColor: "var(--mb-color-bg-light)",
             },
           },
         }),

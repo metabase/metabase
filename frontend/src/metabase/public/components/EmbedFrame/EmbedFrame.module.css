@@ -41,6 +41,7 @@ body {
     var(--mb-color-text-white) 45%,
     transparent
   );
+  --mb-color-bg-light: var(--mb-base-color-gray-70);
 }
 
 [data-metabase-theme="night"][data-metabase-theme="night"] {
