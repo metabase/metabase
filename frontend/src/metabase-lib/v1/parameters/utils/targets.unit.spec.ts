@@ -16,13 +16,17 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/api";
 import {
+  createMockField,
   createMockParameter,
   createMockSavedQuestionsDatabase,
   createMockTable,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
 import {
+  createOrdersCreatedAtField,
+  createOrdersQuantityField,
   createOrdersTable,
+  createProductsCreatedAtField,
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
@@ -247,7 +251,9 @@ describe("parameters/utils/targets", () => {
 
       describe("model", () => {
         it("returns columns from source table and implicitly joinable tables", () => {
-          const question = createModel();
+          const question = createModel({
+            result_metadata: createOrdersTable().fields,
+          });
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -388,6 +394,97 @@ describe("parameters/utils/targets", () => {
           expect(columnsInfos).toEqual([["Orders", "Created At: Month"]]);
         });
       });
+
+      describe("model", () => {
+        it("no breakouts - returns no columns", () => {
+          const question = createModel({
+            result_metadata: createOrdersTable().fields,
+          });
+          const { columns } = getParameterColumns(question, parameter);
+
+          expect(columns).toHaveLength(0);
+        });
+
+        it("non-date breakout - returns no columns", () => {
+          const question = createModel({
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [["count"]],
+                breakout: [ordersQuantityField],
+              },
+            },
+            result_metadata: [createOrdersQuantityField(), createCountField()],
+          });
+          const { columns } = getParameterColumns(question, parameter);
+
+          expect(columns).toHaveLength(0);
+        });
+
+        it("1 date breakout - returns 1 date column", () => {
+          const question = createModel({
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [["count"]],
+                breakout: [ordersCreatedAtField],
+              },
+            },
+            result_metadata: [createOrdersCreatedAtField(), createCountField()],
+          });
+          const { columns } = getParameterColumns(question, parameter);
+
+          expect(columns).toHaveLength(0);
+        });
+
+        it("2 date breakouts - returns 2 date columns", () => {
+          const question = createModel({
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                "source-table": ORDERS_ID,
+                aggregation: [["count"]],
+                breakout: [ordersCreatedAtField, productsCreatedAtField],
+              },
+            },
+            result_metadata: [
+              createOrdersCreatedAtField(),
+              createProductsCreatedAtField(),
+              createCountField(),
+            ],
+          });
+          const { columns } = getParameterColumns(question, parameter);
+
+          expect(columns).toHaveLength(0);
+        });
+
+        it("date breakouts in multiple stages - returns date column from the last stage only", () => {
+          const question = createModel({
+            dataset_query: {
+              type: "query",
+              database: SAMPLE_DB_ID,
+              query: {
+                aggregation: [["count"]],
+                breakout: [ordersCreatedAtYearField],
+                "source-query": {
+                  "source-table": ORDERS_ID,
+                  aggregation: [["count"]],
+                  breakout: [ordersCreatedAtMonthField],
+                },
+              },
+            },
+            result_metadata: [createOrdersCreatedAtField(), createCountField()],
+          });
+          const { columns } = getParameterColumns(question, parameter);
+
+          expect(columns).toHaveLength(0);
+        });
+      });
     });
 
     describe("date parameter", () => {
@@ -438,11 +535,19 @@ function createQuestion(opts?: Partial<StructuredCard>) {
   return new Question(card, metadata);
 }
 
-function createModel(opts?: Partial<StructuredCard>) {
-  const card = createStructuredModelCard({
-    result_metadata: createOrdersTable().fields,
-    ...opts,
+function createCountField() {
+  return createMockField({
+    display_name: "Count",
+    semantic_type: "type/Quantity",
+    field_ref: ["aggregation", 0],
+    base_type: "type/BigInteger",
+    effective_type: "type/BigInteger",
+    name: "count",
   });
+}
+
+function createModel(opts?: Partial<StructuredCard>) {
+  const card = createStructuredModelCard(opts);
   const metadata = createMockMetadata({
     databases: [sampleDb, savedQuestionsDb],
     tables: [getModelVirtualTable(card)],
