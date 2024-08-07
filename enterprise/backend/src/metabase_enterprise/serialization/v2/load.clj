@@ -18,9 +18,9 @@
     (dissoc entity :dashcards)
     (throw (ex-info "No known references found when breaking circular dependency!"
                     (let [model (t2/model entity)]
-                      {:entity     entity
-                       :model      (some-> model name)
-                       :table_name (some-> model t2/table-name)})))))
+                      {:entity entity
+                       :model  (some-> model name)
+                       :table  (some-> model t2/table-name)})))))
 
 (defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
@@ -55,7 +55,7 @@
     {:path       path
      :deps-chain expanding
      :model      (some-> last-model name)
-     :table_name (some-> last-model t2/table-name)
+     :table      (some-> last-model t2/table-name)
      :error      error-type}))
 
 (defn- load-one!
