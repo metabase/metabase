@@ -9,7 +9,10 @@ import {
   getTemplateTagFromTarget,
   isParameterVariableTarget,
 } from "metabase-lib/v1/parameters/utils/targets";
-import type { ParameterDimensionTarget } from "metabase-types/api";
+import type {
+  FieldReference,
+  ParameterDimensionTarget,
+} from "metabase-types/api";
 import {
   createMockParameter,
   createMockSavedQuestionsDatabase,
@@ -19,6 +22,8 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
+  ORDERS,
+  ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -32,6 +37,30 @@ const metadata = createMockMetadata({
 });
 
 const db = metadata.database(SAMPLE_DB_ID) as Database;
+
+const ordersQuantityField: FieldReference = [
+  "field",
+  ORDERS.QUANTITY,
+  {
+    "base-type": "type/Integer",
+  },
+];
+
+const ordersCreatedAtField: FieldReference = [
+  "field",
+  ORDERS.CREATED_AT,
+  {
+    "base-type": "type/DateTime",
+  },
+];
+
+const productsCreatedAtField: FieldReference = [
+  "field",
+  PRODUCTS.CREATED_AT,
+  {
+    "base-type": "type/DateTime",
+  },
+];
 
 describe("parameters/utils/targets", () => {
   describe("isDimensionTarget", () => {
@@ -144,57 +173,175 @@ describe("parameters/utils/targets", () => {
   });
 
   describe("getParameterColumns", () => {
-    it("question - returns columns from source table and implicitly joinable tables", () => {
-      const card = createSavedStructuredCard();
-      const question = new Question(card, metadata);
-      const { query, stageIndex, columns } = getParameterColumns(question);
-      const columnsInfos = columns.map(column => {
-        return Lib.displayInfo(query, stageIndex, column);
+    describe("no parameter", () => {
+      it("question - returns columns from source table and implicitly joinable tables", () => {
+        const card = createSavedStructuredCard();
+        const question = new Question(card, metadata);
+        const parameter = undefined;
+        const { query, stageIndex, columns } = getParameterColumns(
+          question,
+          parameter,
+        );
+
+        expect(columns).toHaveLength(30);
+
+        const columnsInfos = columns.map(column => {
+          return Lib.displayInfo(query, stageIndex, column);
+        });
+
+        expect(columnsInfos[0]).toMatchObject({
+          table: { displayName: "Orders" },
+          longDisplayName: "Created At",
+        });
+        expect(columnsInfos[9]).toMatchObject({
+          table: { displayName: "Products" },
+          longDisplayName: "Product → Category",
+        });
+        expect(columnsInfos[17]).toMatchObject({
+          table: { displayName: "People" },
+          longDisplayName: "User → Address",
+        });
       });
 
-      expect(columnsInfos).toHaveLength(30);
-      expect(columnsInfos[0]).toMatchObject({
-        table: { displayName: "Orders" },
-        longDisplayName: "Created At",
-      });
-      expect(columnsInfos[9]).toMatchObject({
-        table: { displayName: "Products" },
-        longDisplayName: "Product → Category",
-      });
-      expect(columnsInfos[17]).toMatchObject({
-        table: { displayName: "People" },
-        longDisplayName: "User → Address",
+      it("model - returns columns from source table and implicitly joinable tables", () => {
+        const card = createStructuredModelCard();
+        const metadata = createMockMetadata({
+          databases: [createSampleDatabase(), savedQuestionsDb],
+          tables: [convertSavedQuestionToVirtualTable(card)],
+          questions: [card],
+        });
+        const question = new Question(card, metadata);
+        const parameter = undefined;
+        const { query, stageIndex, columns } = getParameterColumns(
+          question,
+          parameter,
+        );
+
+        expect(columns).toHaveLength(30);
+
+        const columnsInfos = columns.map(column => {
+          return Lib.displayInfo(query, stageIndex, column);
+        });
+
+        expect(columnsInfos[0]).toMatchObject({
+          table: { displayName: "Orders" },
+          longDisplayName: "Created At",
+        });
+        expect(columnsInfos[9]).toMatchObject({
+          table: { displayName: "Products" },
+          longDisplayName: "Product → Category",
+        });
+        expect(columnsInfos[17]).toMatchObject({
+          table: { displayName: "People" },
+          longDisplayName: "User → Address",
+        });
       });
     });
 
-    it("model - returns columns from source table and implicitly joinable tables", () => {
-      const card = createStructuredModelCard();
-      const metadata = createMockMetadata({
-        databases: [createSampleDatabase(), savedQuestionsDb],
-        tables: [convertSavedQuestionToVirtualTable(card)],
-        questions: [card],
-      });
-      const question = new Question(card, metadata);
-      const { query, stageIndex, columns } = getParameterColumns(question);
-      const columnsInfos = columns.map(column => {
-        return Lib.displayInfo(query, stageIndex, column);
+    describe("unit of time parameter", () => {
+      it("no breakouts - returns no columns", () => {
+        const card = createSavedStructuredCard();
+        const question = new Question(card, metadata);
+        const parameter = createUnitOfTimeParameter();
+        const { columns } = getParameterColumns(question, parameter);
+
+        expect(columns).toHaveLength(0);
       });
 
-      // TODO: columnsInfos length is 0
-      expect(columnsInfos).toHaveLength(30);
-      // TODO: update assertions
-      expect(columnsInfos[0]).toMatchObject({
-        table: { displayName: "Orders" },
-        longDisplayName: "Created At",
+      it("non-date breakout - returns no columns", () => {
+        const card = createSavedStructuredCard({
+          dataset_query: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [ordersQuantityField],
+            },
+          },
+        });
+        const question = new Question(card, metadata);
+        const parameter = createUnitOfTimeParameter();
+        const { columns } = getParameterColumns(question, parameter);
+
+        expect(columns).toHaveLength(0);
       });
-      expect(columnsInfos[9]).toMatchObject({
-        table: { displayName: "Products" },
-        longDisplayName: "Product → Category",
+
+      it("1 date breakout - returns 1 date column", () => {
+        const card = createSavedStructuredCard({
+          dataset_query: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [ordersCreatedAtField],
+            },
+          },
+        });
+        const question = new Question(card, metadata);
+        const parameter = createUnitOfTimeParameter();
+        const { query, stageIndex, columns } = getParameterColumns(
+          question,
+          parameter,
+        );
+
+        expect(columns).toHaveLength(1);
+
+        const columnsInfos = columns.map(column => {
+          return Lib.displayInfo(query, stageIndex, column);
+        });
+
+        expect(columnsInfos[0]).toMatchObject({
+          table: { displayName: "Orders" },
+          longDisplayName: "Created At",
+        });
       });
-      expect(columnsInfos[17]).toMatchObject({
-        table: { displayName: "People" },
-        longDisplayName: "User → Address",
+
+      it("2 date breakouts - returns 2 date columns", () => {
+        const card = createSavedStructuredCard({
+          dataset_query: {
+            type: "query",
+            database: SAMPLE_DB_ID,
+            query: {
+              "source-table": ORDERS_ID,
+              aggregation: [["count"]],
+              breakout: [ordersCreatedAtField, productsCreatedAtField],
+            },
+          },
+        });
+        const question = new Question(card, metadata);
+        const parameter = createUnitOfTimeParameter();
+        const { query, stageIndex, columns } = getParameterColumns(
+          question,
+          parameter,
+        );
+
+        expect(columns).toHaveLength(2);
+
+        const columnsInfos = columns.map(column => {
+          return Lib.displayInfo(query, stageIndex, column);
+        });
+
+        expect(columnsInfos[0]).toMatchObject({
+          table: { displayName: "Orders" },
+          longDisplayName: "Created At",
+        });
+        expect(columnsInfos[1]).toMatchObject({
+          table: { displayName: "Products" },
+          longDisplayName: "Product → Created At",
+        });
       });
     });
   });
 });
+
+function createUnitOfTimeParameter() {
+  return createMockParameter({
+    name: "Unit of Time",
+    slug: "unit_of_time",
+    id: "49358513",
+    type: "temporal-unit",
+    sectionId: "temporal-unit",
+  });
+}
