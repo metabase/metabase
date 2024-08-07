@@ -78,7 +78,7 @@ const getCellHoverBackground = (
   const { cell: cellTheme } = props.theme.other.table;
 
   if (!cellTheme.backgroundColor) {
-    return color("border");
+    return "var(--mb-color-border)";
   }
 
   const backgroundColor = getCellBackgroundColor(props);

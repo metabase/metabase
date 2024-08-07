@@ -1,6 +1,7 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story } from "@storybook/react";
+import { within } from "@storybook/testing-library";
 import { useEffect, type ComponentProps } from "react";
 import { Provider } from "react-redux";
 
@@ -179,11 +180,15 @@ PivotTableLightTheme.args = {
     }),
   }),
 };
+PivotTableLightTheme.play = async ({ canvasElement }) => {
+  const cell = await within(canvasElement).findByText("field-123");
+  (cell.parentNode?.parentNode as HTMLElement).classList.add("pseudo-hover");
+};
 
 // Dark theme
-
 export const PivotTableDarkTheme = Template.bind({});
 PivotTableDarkTheme.args = {
   ...PivotTableLightTheme.args,
   theme: "night",
 };
+PivotTableDarkTheme.play = PivotTableLightTheme.play;
