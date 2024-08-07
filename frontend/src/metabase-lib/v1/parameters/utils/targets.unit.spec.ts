@@ -1,12 +1,8 @@
 import { createMockMetadata } from "__support__/metadata";
-import { createMockEntitiesState } from "__support__/store";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import {
-  convertSavedQuestionToVirtualTable,
-  getQuestionVirtualTableId,
-} from "metabase-lib/v1/metadata/utils/saved-questions";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import {
   getParameterColumns,
   getParameterTargetField,
@@ -26,8 +22,6 @@ import {
 } from "metabase-types/api/mocks";
 import {
   createOrdersTable,
-  createPeopleTable,
-  createProductsTable,
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
@@ -38,8 +32,6 @@ import {
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
-import { createMockState } from "metabase-types/store/mocks";
-import { getMetadata } from "metabase/selectors/metadata";
 
 const sampleDb = createSampleDatabase();
 const savedQuestionsDb = createMockSavedQuestionsDatabase();
