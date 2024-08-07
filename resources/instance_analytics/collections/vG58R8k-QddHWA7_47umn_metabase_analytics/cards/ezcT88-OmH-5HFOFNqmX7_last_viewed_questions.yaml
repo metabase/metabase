@@ -249,23 +249,14 @@ result_metadata:
   visibility_type: normal
 visualization_settings:
   column_settings:
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Description
-    '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
+    '["name","description"]':
       column_title: Description
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Question ID
-    '["ref",["field",["Internal Metabase Database","public","v_content","id"],{"join-alias":"Question 35"}]]':
-      column_title: Dashboard ID
-      link_text: Dashboard {{id}}
-      link_url: ''
-      view_as: null
-    ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
-    : column_title: Question name
+    '["name","entity_id"]':
+      column_title: Question ID
+    '["name","name"]':
+      column_title: Question name
       link_url: /question/{{entity_id}}
       view_as: link
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
-      column_title: Dashboard name
   table.cell_column: model_id
   table.columns:
   - enabled: true

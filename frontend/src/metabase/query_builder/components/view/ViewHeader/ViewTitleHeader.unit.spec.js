@@ -255,7 +255,7 @@ describe("ViewTitleHeader", () => {
           ).not.toBeInTheDocument();
           expect(screen.queryByText("Summarize")).not.toBeInTheDocument();
           expect(
-            screen.queryByLabelText("notebook icon"),
+            screen.queryByTestId("notebook-button"),
           ).not.toBeInTheDocument();
           expect(screen.getByLabelText("refresh icon")).toBeInTheDocument();
         });
@@ -307,19 +307,8 @@ describe("ViewTitleHeader", () => {
             card,
             queryBuilderMode: "view",
           });
-          fireEvent.click(screen.getByLabelText("notebook icon"));
+          fireEvent.click(screen.getByTestId("notebook-button"));
           expect(setQueryBuilderMode).toHaveBeenCalledWith("notebook");
-        });
-
-        it("displays `Show editor` tooltip above notebook icon", async () => {
-          setup({
-            card,
-          });
-          const notebookButton = screen.getByLabelText("notebook icon");
-          await userEvent.hover(notebookButton);
-          const tooltip = screen.getByRole("tooltip");
-          expect(tooltip).toHaveAttribute("data-placement", "top");
-          expect(tooltip).toHaveTextContent("Show editor");
         });
 
         it("allows to close notebook editor", () => {
@@ -328,7 +317,7 @@ describe("ViewTitleHeader", () => {
             queryBuilderMode: "notebook",
             result: { data: [] },
           });
-          fireEvent.click(screen.getByLabelText("notebook icon"));
+          fireEvent.click(screen.getByTestId("notebook-button"));
           expect(setQueryBuilderMode).toHaveBeenCalledWith("view");
         });
 

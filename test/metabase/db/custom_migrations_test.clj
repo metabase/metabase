@@ -2059,8 +2059,8 @@
   (if (str/starts-with? key "[") key (keyword key)))
 
 (deftest update-legacy-column-keys-in-card-viz-settings-test
-  (testing "v51.2024-07-30T10:00:00"
-    (impl/test-migrations ["v51.2024-07-30T10:00:00"] [migrate!]
+  (testing "v51.2024-08-07T10:00:00"
+    (impl/test-migrations ["v51.2024-08-07T10:00:00"] [migrate!]
       (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
                                               {:first_name  "Howard"
                                                :last_name   "Hughes"
@@ -2102,8 +2102,8 @@
                      (json/parse-string keyword-except-column-key)))))))))
 
 (deftest update-legacy-column-keys-in-dashboard-card-viz-settings-test
-  (testing "v51.2024-07-30T11:00:00"
-    (impl/test-migrations ["v51.2024-07-30T11:00:00"] [migrate!]
+  (testing "v51.2024-08-07T11:00:00"
+    (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
       (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
                                               {:first_name  "Howard"
                                                :last_name   "Hughes"

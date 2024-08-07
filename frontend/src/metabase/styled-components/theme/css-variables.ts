@@ -22,22 +22,21 @@ type MetabaseComponentThemeKey = FlattenObjectKeys<MetabaseComponentTheme>;
  */
 export function getMetabaseCssVariables(theme: MantineTheme) {
   return css`
-    ${getDesignSystemCssVariables(theme)}
-    ${getThemeSpecificCssVariables(theme)}
+    :root {
+      ${getDesignSystemCssVariables(theme)}
+      ${getThemeSpecificCssVariables(theme)}
+    }
   `;
 }
 
 /**
  * Design System CSS variables.
  * These CSS variables are part of the core design system colors.
-
- * DO NOT ADD COLORS WITHOUT EXTREMELY GOOD REASON AND DESIGN REVIEW.
- * KEEP SYNCHRONIZED WITH:
- * frontend/src/metabase/ui/utils/colors.ts
- * frontend/src/metabase/css/core/colors.module.css
- * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
- * .storybook/preview-head.html
-**/
+ *
+ * Only keep colors that depend on the theme and are not specified anywhere else here.
+ * You don't need to add new colors from `colors.module.css` here since they'll already
+ * be available globally at :root
+ **/
 function getDesignSystemCssVariables(theme: MantineTheme) {
   return css`
     --mb-default-font-family: "${theme.fontFamily}";
@@ -82,9 +81,6 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
     --mb-color-success: ${theme.fn.themeColor("success")};
     --mb-color-summarize: ${theme.fn.themeColor("summarize")};
     --mb-color-warning: ${theme.fn.themeColor("warning")};
-    --mb-color-text-primary: var(--mb-color-text-dark);
-    --mb-color-text-secondary: var(--mb-color-text-medium);
-    --mb-color-text-tertiary: var(--mb-color-text-light);
   `;
 }
 

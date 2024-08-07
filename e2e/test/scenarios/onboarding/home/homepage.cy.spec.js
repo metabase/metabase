@@ -475,9 +475,7 @@ describe("scenarios > home > custom homepage", () => {
           );
           // Archive dashboard
           visitDashboard(ORDERS_DASHBOARD_ID);
-          dashboardHeader().within(() => {
-            cy.findByLabelText("dashboard-menu-button").click();
-          });
+          dashboardHeader().findByLabelText("Move, trash, and more…").click();
           popover().within(() => {
             cy.findByText("Move to trash").click();
           });

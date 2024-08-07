@@ -236,21 +236,23 @@ export const ParameterSettings = ({
       )}
 
       <Box mb="lg">
-        <SettingLabel>
+        <SettingLabel id="default-value-label">
           {t`Default value`}
           {parameter.required &&
             parameterHasNoDisplayValue(parameter.default) && (
-              <SettingLabelError>({t`required`})</SettingLabelError>
+              <SettingLabelError> ({t`required`})</SettingLabelError>
             )}
         </SettingLabel>
 
-        <SettingValueWidget
-          parameter={parameter}
-          value={parameter.default}
-          placeholder={t`No default`}
-          setValue={onChangeDefaultValue}
-          mimicMantine
-        />
+        <div aria-labelledby="default-value-label">
+          <SettingValueWidget
+            parameter={parameter}
+            value={parameter.default}
+            placeholder={t`No default`}
+            setValue={onChangeDefaultValue}
+            mimicMantine
+          />
+        </div>
 
         <RequiredParamToggle
           // This forces the toggle to be a new instance when the parameter changes,

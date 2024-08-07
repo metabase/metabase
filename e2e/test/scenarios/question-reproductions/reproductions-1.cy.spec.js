@@ -35,6 +35,7 @@ import {
   appBar,
   visitQuestion,
   openProductsTable,
+  openNotebook,
   mockSessionProperty,
   visitQuestionAdhoc,
   tableHeaderClick,
@@ -142,7 +143,7 @@ describe("issue 6239", () => {
     cy.get("[data-testid=cell-data]").eq(3).invoke("text").should("eq", "1");
 
     // Go back to the notebook editor
-    cy.icon("notebook").click();
+    openNotebook();
 
     // Sort descending this time
     cy.icon("arrow_up").click();
@@ -662,7 +663,7 @@ function closeModal() {
 }
 
 function openNotebookMode() {
-  cy.icon("notebook").click();
+  openNotebook();
 }
 
 function removeJoinedTable() {
@@ -915,7 +916,7 @@ describe("issues 11914, 18978, 18977, 23857", () => {
       cy.icon("refresh").should("be.visible");
       cy.icon("bookmark").should("be.visible");
       // querying
-      cy.icon("notebook").should("not.exist");
+      cy.findByTestId("notebook-button").should("not.exist");
       cy.findByText("Filter").should("not.exist");
       cy.findByText("Summarize").should("not.exist");
       cy.button("Save").should("not.exist");

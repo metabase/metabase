@@ -99,15 +99,15 @@ dataset_query:
 result_metadata: null
 visualization_settings:
   column_settings:
-    '["ref",["field",["Internal Metabase Database","public","v_audit_log","model_id"],null]]':
+    '["name","model_id"]':
       column_title: Content ID
-    '["ref",["field",["Internal Metabase Database","public","v_audit_log","timestamp"],null]]':
+    '["name","timestamp"]':
       column_title: Creation Date
-    '["ref",["field",["Internal Metabase Database","public","v_content","description"],{"join-alias":"Question 35"}]]':
+    '["name","description"]':
       column_title: Description
-    '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
+    '["name","name"]':
       column_title: Name
-    '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"join-alias":"Question 1"}]]':
+    '["name","full_name"]':
       column_title: Creator Name
   table.cell_column: model_id
   table.columns:
