@@ -122,7 +122,7 @@
 
 (mu/defn- column-join-alias :- [:maybe :string]
   [column :- ::lib.schema.metadata/column]
-  ((some-fn :metabase.lib.join/join-alias :source-alias) column))
+  (:metabase.lib.join/join-alias column))
 
 (mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field]} _ref-id] :- ::lib.schema.ref/ref
