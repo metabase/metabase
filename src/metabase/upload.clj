@@ -247,8 +247,9 @@
 
 (def ^:private ^Tika tika (Tika.))
 
-(defn- file-extension [^File file]
-  (-> file .getName (str/split #"\.") rest last))
+(defn- file-extension [filename]
+  (when filename
+    (-> filename (str/split #"\.") rest last)))
 
 (defn- file-mime-type [^File file]
   (.detect tika file))
@@ -272,8 +273,8 @@
 
 (defn- infer-parser
   "Currently this only infers the separator, but in future it may also handle different quoting options."
-  [^File file]
-  (let [s (if (= "tsv" (file-extension file))
+  [filename ^File file]
+  (let [s (if (= "tsv" (file-extension filename))
             \t
             (infer-separator file))]
     (fn [stream]
@@ -303,8 +304,8 @@
 (defn- create-from-csv!
   "Creates a table from a CSV file. If the table already exists, it will throw an error.
    Returns the file size, number of rows, and number of columns."
-  [driver db table-name ^File csv-file]
-  (let [parse (infer-parser csv-file)]
+  [driver db table-name filename ^File csv-file]
+  (let [parse (infer-parser filename csv-file)]
     (with-open [reader (bom/bom-reader csv-file)]
       (let [auto-pk?          (auto-pk-column? driver db)
             [header & rows]   (cond-> (parse reader)
@@ -422,8 +423,8 @@
 (defn- fail-stats
   "If a given upload / append / replace fails, this function is used to create the failure event payload for snowplow.
   It may involve redundantly reading the file, or even failing again if the file is unreadable."
-  [^File file]
-  (let [parse (infer-parser file)]
+  [filename ^File file]
+  (let [parse (infer-parser filename file)]
     (with-open [reader (bom/bom-reader file)]
       (let [rows (parse reader)]
         {:size-mb           (file-size-mb file)
@@ -433,12 +434,12 @@
 
 (defn- create-from-csv-and-sync!
   "This is separated from `create-csv-upload!` for testing"
-  [{:keys [db file schema table-name display-name]}]
+  [{:keys [db filename file schema table-name display-name]}]
   (let [driver            (driver.u/database->driver db)
         schema            (some->> schema (ddl.i/format-name driver))
         table-name        (some->> table-name (ddl.i/format-name driver))
         schema+table-name (table-identifier {:schema schema :name table-name})
-        stats             (create-from-csv! driver db schema+table-name file)
+        stats             (create-from-csv! driver db schema+table-name filename file)
         ;; Sync immediately to create the Table and its Fields; the scan is settings-dependent and can be async
         table             (sync-tables/create-table! db {:name         table-name
                                                          :schema       (not-empty schema)
@@ -453,8 +454,8 @@
     {:table table
      :stats stats}))
 
-(defn- check-filetype [file]
-  (let [extension (file-extension file)]
+(defn- check-filetype [filename file]
+  (let [extension (file-extension filename)]
     (when-not (contains? allowed-extensions extension)
       (throw (ex-info (tru "Unsupported File Type")
                       {:status-code    415 ; Unsupported Media Type
@@ -501,7 +502,7 @@
                      (throw (ex-info (tru "The uploads database does not exist.")
                                      {:status-code 422})))]
     (check-can-create-upload database schema-name)
-    (check-filetype file)
+    (check-filetype filename file)
     (collection/check-write-perms-for-collection collection-id)
     (try
       (let [timer             (u/start-timer)
@@ -516,6 +517,7 @@
                                    (u/lower-case-en))
             {:keys [stats
                     table]}   (create-from-csv-and-sync! {:db           database
+                                                          :filename     filename
                                                           :file         file
                                                           :schema       schema-name
                                                           :table-name   table-name
@@ -548,7 +550,7 @@
                                (assoc stats :model-id (:id card)))
         card)
       (catch Throwable e
-        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats file))
+        (snowplow/track-event! ::snowplow/csv-upload-failed api/*current-user-id* (fail-stats filename file))
         (throw e)))))
 
 ;;; +-----------------------------
@@ -654,9 +656,9 @@
     ;; Ideally we would do all the filtering in the query, but this would not allow us to leverage mlv2.
     (persisted-info/invalidate! {:card_id [:in model-ids]})))
 
-(defn- update-with-csv! [database table file & {:keys [replace-rows?]}]
+(defn- update-with-csv! [database table filename file & {:keys [replace-rows?]}]
   (try
-    (let [parse (infer-parser file)]
+    (let [parse (infer-parser filename file)]
       (with-open [reader (bom/bom-reader file)]
         (let [timer              (u/start-timer)
               driver             (driver.u/database->driver database)
@@ -729,7 +731,7 @@
 
           {:row-count row-count})))
     (catch Throwable e
-      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats file))
+      (snowplow/track-event! ::snowplow/csv-append-failed api/*current-user-id* (fail-stats filename file))
       (throw e))))
 
 (defn- can-update-error
@@ -823,17 +825,18 @@
   "Main entry point for updating an uploaded table with a CSV file.
   This will create an auto-incrementing primary key (auto-pk) column in the table for drivers that supported uploads
   before auto-pk columns were introduced by metabase#36249, if it does not already exist."
-  [{:keys [^File file table-id action]}
+  [{:keys [filename ^File file table-id action]}
    :- [:map
        [:table-id ms/PositiveInt]
+       [:filename :string]
        [:file (ms/InstanceOfClass File)]
        [:action update-action-schema]]]
   (let [table    (api/check-404 (t2/select-one :model/Table :id table-id))
         database (table/database table)
         replace? (= ::replace action)]
     (check-can-update database table)
-    (check-filetype file)
-    (update-with-csv! database table file :replace-rows? replace?)))
+    (check-filetype filename file)
+    (update-with-csv! database table filename file :replace-rows? replace?)))
 
 ;;; +--------------------------------
 ;;; |  hydrate based_on_upload for FE
