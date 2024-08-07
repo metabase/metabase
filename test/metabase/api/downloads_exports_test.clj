@@ -674,3 +674,34 @@
         (testing "for xlsx (#43039)"
           (is (= "2,185.89 Canadian dollars"
                  (-> (card-download card :xlsx true) second second))))))))
+
+(deftest table-metadata-affects-column-formatting-properly
+  (testing "A Table's configured metadata (eg. Semantic Type of currency) can affect column formatting"
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card  {:display                :table
+                                        :type                   :model
+                                        :dataset_query          {:database (mt/id)
+                                                                 :type     :query
+                                                                 :query    {:source-table (mt/id :orders)
+                                                                            :filter       [:not-null [:field (mt/id :orders :discount) {:base-type :type/Float}]]
+                                                                            :limit        1}}
+                                        :visualization_settings {:table.columns
+                                                                 [{:name "ID" :enabled false}
+                                                                  {:name "USER_ID" :enabled false}
+                                                                  {:name "PRODUCT_ID" :enabled false}
+                                                                  {:name "SUBTOTAL" :enabled false}
+                                                                  {:name "TAX" :enabled false}
+                                                                  {:name "TOTAL" :enabled false}
+                                                                  {:name "DISCOUNT" :enabled true}
+                                                                  {:name "CREATED_AT" :enabled false}
+                                                                  {:name "QUANTITY" :enabled false}]
+                                                                 :table.cell_column "SUBTOTAL"
+                                                                 :column_settings   {(format "[\"ref\",[\"field\",%s,null]]" (mt/id :orders :discount))
+                                                                                     {:currency_in_header false}}}}]
+        (testing "for csv"
+          (is (= [["Discount"] ["$6.42"]]
+                 (-> (card-download card :csv true)))))
+        (testing "for xlsx"
+          ;; the [$$] part will appear as $ when you open the Excel file in a spreadsheet app
+          (is (= [["Discount"] ["[$$]6.42"]]
+                 (-> (card-download card :xlsx true)))))))))

@@ -8,6 +8,7 @@
    [hiccup.util]
    [metabase.formatter.datetime :as datetime]
    [metabase.public-settings :as public-settings]
+   [metabase.query-processor.streaming.common :as common]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
    [metabase.types :as types]
@@ -96,17 +97,22 @@
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
   [{:keys [semantic_type effective_type base_type]
-    col-id :id field-ref :field_ref col-name :name col-settings :settings :as _column}
+    col-id :id field-ref :field_ref col-name :name col-settings :settings :as col}
    viz-settings]
-  (let [col-id (or col-id (second field-ref))
+  (let [global-type-settings (common/global-type-settings col viz-settings)
+        col-id (or col-id (second field-ref))
         column-settings (-> (get viz-settings ::mb.viz/column-settings)
                             (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
         column-settings (merge
                          (or (get column-settings {::mb.viz/field-id col-id})
                              (get column-settings {::mb.viz/column-name col-name}))
-                         (qualify-keys col-settings))
-        global-settings (::mb.viz/global-column-settings viz-settings)
+                         (qualify-keys col-settings)
+                         global-type-settings)
+        global-settings (merge
+                         global-type-settings
+                         (::mb.viz/global-column-settings viz-settings))
         currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
+                                     (= (::mb.viz/number-style viz-settings) "currency")
                                      (and (nil? (::mb.viz/number-style column-settings))
                                           (or
                                            (::mb.viz/currency-style column-settings)
