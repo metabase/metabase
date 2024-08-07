@@ -537,15 +537,27 @@
           (is (= [[3 "Unlucky Raven" nil]]
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:is-empty $bird_id]
-                             :fields [$id $name $bird_id]})))))
+                             :fields [$id $name $bird_id]}))))))
 
         (testing "treat non-null ObjectId as not-empty (#15801)"
           (is (= [[1 "Rasta Toucan" (ObjectId. "012345678901234567890123")]
                   [2 "Lucky Pigeon" (ObjectId. "abcdefabcdefabcdefabcdef")]]
                  (mt/rows (mt/run-mbql-query birds
                             {:filter [:not-empty $bird_id]
-                             :fields [$id $name $bird_id]}))))))
-
+                             :fields [$id $name $bird_id]})))))
+        (testing "can order by ObjectId (#46259)"
+          (is (= [[3 nil]
+                  [1 (ObjectId. "012345678901234567890123")]
+                  [2 (ObjectId. "abcdefabcdefabcdefabcdef")]]
+                 (mt/rows (mt/run-mbql-query birds
+                            {:fields [$id $bird_id]
+                             :order-by [[:asc $bird_id]]}))))
+          (is (= [[2 (ObjectId. "abcdefabcdefabcdefabcdef")]
+                  [1 (ObjectId. "012345678901234567890123")]
+                  [3 nil]]
+                 (mt/rows (mt/run-mbql-query birds
+                            {:fields [$id $bird_id]
+                             :order-by [[:desc $bird_id]]})))))
       (testing "BSON UUIDs"
         (testing "Check that we support Mongo BSON UUID and can filter by it"
           (is (= [[2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
@@ -570,7 +582,20 @@
                 [2 "Lucky Pigeon" "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
                (mt/rows (mt/run-mbql-query birds
                           {:filter [:not-empty $bird_uuid]
-                           :fields [$id $name $bird_uuid]}))))))))
+                           :fields [$id $name $bird_uuid]})))))
+      (testing "can order by UUID (#46259)"
+          (is (= [[3 nil]
+                  [1 "11111111-1111-1111-1111-111111111111"]
+                  [2 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]]
+                 (mt/rows (mt/run-mbql-query birds
+                            {:fields [$id $bird_uuid]
+                             :order-by [[:asc $bird_uuid]]}))))
+          (is (= [[2 "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"]
+                  [1 "11111111-1111-1111-1111-111111111111"]
+                  [3 nil]]
+                 (mt/rows (mt/run-mbql-query birds
+                            {:fields [$id $bird_uuid]
+                             :order-by [[:desc $bird_uuid]]}))))))))
 
 
 (deftest ^:parallel bson-fn-call-forms-test

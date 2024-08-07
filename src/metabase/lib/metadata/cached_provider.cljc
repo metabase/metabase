@@ -90,18 +90,15 @@
                   objects))]
     (get-in-cache-or-fetch cache [k table-id] thunk)))
 
-(defn- metadatas-for-tables [metadata-provider cache metadata-type table-ids]
-  (let [k        (case metadata-type
-                   :metadata/column  ::table-fields
-                   :metadata/metric  ::table-metrics
-                   :metadata/segment ::table-segments)
-        uncached (filter #(nil? (get-in-cache cache [k %])) table-ids)
-        objects  (lib.metadata.protocols/metadatas-for-tables metadata-provider metadata-type uncached)]
-    (doseq [metadata objects]
-      (store-in-cache! cache [(:lib/type metadata) (:id metadata)] metadata))
-    (doseq [[table-id table-metadatas] (group-by :table-id objects)]
-      (store-in-cache! cache [k table-id] table-metadatas))
-    (mapcat #(get-in-cache cache [k %]) table-ids)))
+(defn- metadatas-for-card [metadata-provider cache metadata-type card-id]
+  (let [k     (case metadata-type
+                :metadata/metric        ::table-metrics)
+        thunk (fn []
+                (let [objects (lib.metadata.protocols/metadatas-for-card metadata-provider metadata-type card-id)]
+                  (doseq [metadata objects]
+                    (store-in-cache! cache [(:lib/type metadata) (:id metadata)] metadata))
+                  objects))]
+    (get-in-cache-or-fetch cache [k card-id] thunk)))
 
 (defn- setting [metadata-provider cache setting-key]
   (get-in-cache-or-fetch cache [::setting (keyword setting-key)] #(lib.metadata.protocols/setting metadata-provider setting-key)))
@@ -117,8 +114,8 @@
     (get-in-cache-or-fetch cache [::database-tables] #(tables metadata-provider cache)))
   (metadatas-for-table [_this metadata-type table-id]
     (metadatas-for-table metadata-provider cache metadata-type table-id))
-  (metadatas-for-tables [_this metadata-type table-ids]
-    (metadatas-for-tables metadata-provider cache metadata-type table-ids))
+  (metadatas-for-card [_this metadata-type card-id]
+    (metadatas-for-card metadata-provider cache metadata-type card-id))
   (setting [_this setting-key]
     (setting metadata-provider cache setting-key))
 

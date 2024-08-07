@@ -9,8 +9,7 @@ import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
+import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { isCoordinate, isNumber } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
@@ -33,14 +32,11 @@ const getColumnSettings = (
   column: DatasetColumn,
   settings: VisualizationSettings,
 ): Record<string, unknown> => {
-  const columnKey = Object.keys(settings.column_settings ?? {}).find(
-    possiblyDenormalizedFieldRef =>
-      normalize(possiblyDenormalizedFieldRef) === getColumnKey(column),
+  const storedSettings = getObjectColumnSettings(
+    settings.column_settings,
+    column,
   );
-
-  const columnSettings = columnKey
-    ? { column, ...column.settings, ...settings.column_settings?.[columnKey] }
-    : { column, ...column.settings };
+  const columnSettings = { column, ...column.settings, ...storedSettings };
 
   if (isNumber(column) && !isCoordinate(column)) {
     fillWithDefaultValue(columnSettings, "currency", getDefaultCurrency());

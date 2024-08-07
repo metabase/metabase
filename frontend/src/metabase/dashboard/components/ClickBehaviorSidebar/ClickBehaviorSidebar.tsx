@@ -10,7 +10,7 @@ import {
   canSaveClickBehavior,
   clickBehaviorIsValid,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Dashboard,
   DashCardId,

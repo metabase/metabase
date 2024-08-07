@@ -37,6 +37,7 @@
   ([]
    (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
   ([analyze-fn]
+   ;; TODO once we are storing the hash of the query used for analysis, we'll be able to filter this properly.
    (let [cards (t2/reducible-select [:model/Card :id])]
      (run! analyze-fn cards))))
 
