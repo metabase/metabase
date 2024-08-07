@@ -56,7 +56,7 @@ const THEMES = {
     }
   },
 
-  // Dark theme for Metabase components
+  // Dark theme
   "dark": {
     colors: {
       brand: "#509EE3",

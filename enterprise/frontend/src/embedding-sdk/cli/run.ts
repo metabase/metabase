@@ -1,7 +1,5 @@
 import chalk from "chalk";
 
-import { generateReactComponentFiles } from "embedding-sdk/cli/steps/generate-component-files";
-
 import {
   PREMIUM_TOKEN_REQUIRED_MESSAGE,
   getMetabaseInstanceSetupCompleteMessage,
@@ -20,6 +18,7 @@ import {
   addDatabaseConnectionStep,
   pickDatabaseTables,
   createModelsAndXrays,
+  generateReactComponentFiles,
 } from "./steps";
 import type { CliState } from "./types/cli";
 import { printEmptyLines, printInfo } from "./utils/print";
