@@ -20,7 +20,7 @@ export const generateCodeSample: CliStepMethod = async state => {
     ];
   }
 
-  printEmptyLines(2);
+  printEmptyLines(1);
   printSuccess(
     "API key generated successfully. Here's a code sample to embed the Metabase SDK in your React application:",
   );

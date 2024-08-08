@@ -7,6 +7,7 @@ import {
   tableHeaderClick,
   pieSlices,
   leftSidebar,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -108,15 +109,15 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     // Ensure chart renders before hovering the legend item
-    cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("TOTAL");
-    });
+    cy.findByTestId("query-visualization-root")
+      .findByText("TOTAL")
+      .should("be.visible");
 
-    cy.findAllByTestId("legend-item").eq(0).realHover();
+    chartPathWithFillColor("#F9D45C").trigger("mousemove");
 
-    cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("DOOHICKEY THE QUICK BROWN FOX J…");
-    });
+    cy.findByTestId("query-visualization-root")
+      .findByText("DOOHICKEY THE QUICK BROWN FOX J…")
+      .should("be.visible");
   });
 });
 
