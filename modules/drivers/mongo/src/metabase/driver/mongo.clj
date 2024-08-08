@@ -315,8 +315,6 @@
    {"$facet"
     (into {}
           (map-indexed (fn [idx path]
-                         ;; the key doesn't matter, since we rely on the order in the results
-                         ;; matching parent-paths
                          [idx (path-query path)]))
           parent-paths)}])
 
