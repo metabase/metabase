@@ -134,7 +134,7 @@ export function AggregationPicker({
       });
     }
 
-    if (canAddTemporalCompareAggregation(query, stageIndex, aggregations)) {
+    if (canAddTemporalCompareAggregation(query, stageIndex)) {
       sections.push({
         type: "action",
         key: "compare",
@@ -155,15 +155,7 @@ export function AggregationPicker({
     }
 
     return sections;
-  }, [
-    metadata,
-    query,
-    stageIndex,
-    clauseIndex,
-    operators,
-    hasExpressionInput,
-    aggregations,
-  ]);
+  }, [metadata, query, stageIndex, clauseIndex, operators, hasExpressionInput]);
 
   const checkIsItemSelected = useCallback(
     (item: ListItem) => item.selected,

@@ -94,11 +94,9 @@ export const canSubmit = (
 export function canAddTemporalCompareAggregation(
   query: Lib.Query,
   stageIndex: number,
-  aggregations?: Lib.AggregationClause[],
 ): boolean {
-  const aggregationsToUse = aggregations ?? Lib.aggregations(query, stageIndex);
-
-  if (aggregationsToUse.length === 0) {
+  const aggregations = Lib.aggregations(query, stageIndex);
+  if (aggregations.length === 0) {
     // Hide the "Compare to the past" option if there are no aggregations
     return false;
   }
