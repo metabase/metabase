@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import type {
   EmbedMenuModes,
   EmbedMenuProps,
@@ -31,9 +32,15 @@ export const AdminEmbedMenu = ({
     getSetting(state, "enable-embedding"),
   );
 
-  const target = (
-    <ResourceEmbedButton hasBackground={resourceType === "dashboard"} />
-  );
+  const target =
+    resourceType === "dashboard" ? (
+      <ResourceEmbedButton hasBackground={true} />
+    ) : (
+      <ViewFooterButton
+        icon="share"
+        tooltipLabel={isPublicSharingEnabled ? t`Sharing` : t`Embedding`}
+      />
+    );
 
   if (menuMode === "public-link-popover") {
     return resourceType === "dashboard" ? (
