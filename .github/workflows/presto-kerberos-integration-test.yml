@@ -54,13 +54,6 @@ jobs:
       - name: Bring up Presto+Kerberos cluster
         run: cd presto-kerberos-docker && docker compose up -d && cd ..
 
-      # Create docker-compose wrapper script
-      # - name: Setup Docker Compose Wrapper
-      #   run: |
-      #     echo '#!/bin/bash' > /usr/local/bin/docker-compose
-      #     echo 'docker compose "$@"' >> /usr/local/bin/docker-compose
-      #     sudo chmod +x /usr/local/bin/docker-compose
-
       - name: Run Presto test query from command line (sanity check)
         run: cd presto-kerberos-docker && ./test.sh && cd ..
       # Since we are managing the Docker containers from the GitHub action container, we need to copy all the
@@ -71,6 +64,7 @@ jobs:
         run: docker cp presto-kerberos:/etc/krb5.conf resources
       - name: Copy client.keytab file to resources
         run: docker cp presto-kerberos:/home/presto/client.keytab resources
+
       - name: Checkout mba
         uses: actions/checkout@v4
         with:
@@ -85,8 +79,10 @@ jobs:
       - name: Ensure mba
         run: which mba
       - name: Run Metabase via MBA
-        run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com up
-      - name: Run test script in MBA instance
-        run: >
-          mba --mb . --data-db postgres-data -n example.com \
-           run .github/scripts/run-presto-kerberos-integration-test.sh
+        run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com config > mb-compose.yml
+      - name: print config
+        run: cat mb-compose.yml
+      # - name: Run test script in MBA instance
+      #   run: >
+      #     mba --mb . --data-db postgres-data -n example.com \
+      #      run .github/scripts/run-presto-kerberos-integration-test.sh
