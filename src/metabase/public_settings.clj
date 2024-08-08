@@ -888,6 +888,8 @@ See [fonts](../configuring-metabase/fonts.md).")
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (cond
+                  (premium-features/has-feature? :attached-dwh)
+                  (api/throw-403)
                   (nil? db_id)
                   (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
                                                                      :uploads_schema_name  nil
