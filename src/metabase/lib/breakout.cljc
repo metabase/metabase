@@ -46,10 +46,9 @@
   "Add a new breakout on an expression, presumably a Field reference. Ignores attempts to add a duplicate breakout."
   ([query expr]
    (breakout query -1 expr))
-
   ([query        :- ::lib.schema/query
-     stage-number :- :int
-     expr         :- some?]
+    stage-number :- :int
+    expr         :- some?]
    (let [expr (lib.ref/ref (if (fn? expr)
                              (expr query stage-number)
                              expr))
@@ -142,7 +141,7 @@
 (mu/defn breakout-column :- ::lib.schema.metadata/column
   "Returns the input column used for this breakout."
   ([query        :- ::lib.schema/query
-   breakout-ref  :- ::lib.schema.ref/ref]
+    breakout-ref  :- ::lib.schema.ref/ref]
   (breakout-column query -1 breakout-ref))
   ([query       :- ::lib.schema/query
    stage-number :- :int
