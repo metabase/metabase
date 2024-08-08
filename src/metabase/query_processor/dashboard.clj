@@ -140,8 +140,7 @@
                                                [param-id (dissoc param :default)]))
                                         (:resolved-params dashboard))
         ;; ignore default values in request params as well. (#20516)
-        request-param-id->param   (into {} (map (juxt :id identity)) (for [param request-params]
-                                                                       (dissoc param :default)))
+        request-param-id->param   (into {} (map (juxt :id #(dissoc % :default))) request-params)
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
     (when-let [user-id api/*current-user-id*]
