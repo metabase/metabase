@@ -55,11 +55,11 @@ jobs:
         run: cd presto-kerberos-docker && docker compose up -d && cd ..
 
       # Create docker-compose wrapper script
-      - name: Setup Docker Compose Wrapper
-        run: |
-          echo '#!/bin/bash' > /usr/local/bin/docker-compose
-          echo 'docker compose "$@"' >> /usr/local/bin/docker-compose
-          sudo chmod +x /usr/local/bin/docker-compose
+      # - name: Setup Docker Compose Wrapper
+      #   run: |
+      #     echo '#!/bin/bash' > /usr/local/bin/docker-compose
+      #     echo 'docker compose "$@"' >> /usr/local/bin/docker-compose
+      #     sudo chmod +x /usr/local/bin/docker-compose
 
       - name: Run Presto test query from command line (sanity check)
         run: cd presto-kerberos-docker && ./test.sh && cd ..
