@@ -1,16 +1,18 @@
 import { useMemo, useState, type MouseEvent } from "react";
 import { useLatest } from "react-use";
+import { t } from "ttag";
 
 import {
   DataPickerModal,
   getDataPickerValue,
 } from "metabase/common/components/DataPicker";
+import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
-import { Group, Icon, UnstyledButton } from "metabase/ui";
+import { Group, Icon, UnstyledButton, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
@@ -95,20 +97,30 @@ export function NotebookDataPicker({
 
   return (
     <>
-      <UnstyledButton
-        c="inherit"
-        fz="inherit"
-        fw="inherit"
-        p={NotebookCell.CONTAINER_PADDING}
-        disabled={isDisabled}
-        onClick={handleClick}
-        onAuxClick={handleAuxClick}
+      <Tooltip
+        label={t`${METAKEY}+click to open in new tab`}
+        hidden={!table}
+        events={{
+          hover: true,
+          focus: false,
+          touch: false,
+        }}
       >
-        <Group spacing="xs">
-          {tableInfo && <Icon name={getTableIcon(tableInfo)} />}
-          {tableInfo?.displayName ?? placeholder}
-        </Group>
-      </UnstyledButton>
+        <UnstyledButton
+          c="inherit"
+          fz="inherit"
+          fw="inherit"
+          p={NotebookCell.CONTAINER_PADDING}
+          disabled={isDisabled}
+          onClick={handleClick}
+          onAuxClick={handleAuxClick}
+        >
+          <Group spacing="xs">
+            {tableInfo && <Icon name={getTableIcon(tableInfo)} />}
+            {tableInfo?.displayName ?? placeholder}
+          </Group>
+        </UnstyledButton>
+      </Tooltip>
       {isOpen && (
         <DataPickerModal
           title={title}
