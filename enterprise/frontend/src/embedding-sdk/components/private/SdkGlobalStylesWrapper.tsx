@@ -7,7 +7,7 @@ import { rootStyle } from "metabase/css/core/base.styled";
 import { defaultFontFiles } from "metabase/css/core/fonts.styled";
 import { useSelector } from "metabase/lib/redux";
 import { getFontFiles } from "metabase/styled-components/selectors";
-import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
+import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
 import type { FontFile } from "metabase-types/api";
 
 interface SdkContentWrapperProps {
@@ -27,7 +27,7 @@ export function SdkGlobalStylesWrapper({
         fontFiles={fontFiles}
         {...divProps}
       />
-      <Global styles={getMetabaseCssVariables(theme)} />
+      <Global styles={getMetabaseSdkCssVariables(theme)} />
     </>
   );
 }

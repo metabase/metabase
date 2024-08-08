@@ -13,18 +13,31 @@ import { getEmbeddingChartColors } from "./get-embedding-chart-colors";
  */
 export type MappableSdkColor = Exclude<MetabaseColor, "charts">;
 
+type NEW_SEMANTIC_COLOR =
+  | "text-primary"
+  | "text-secondary"
+  | "text-tertiary"
+  | "text-selected"
+  | "text-brand"
+  | "text-white"
+  | "background"
+  | "background-selected"
+  | "background-disabled"
+  | "background-inverse"
+  | "background-brand";
+
 export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
-  ColorName[]
+  (ColorName | NEW_SEMANTIC_COLOR)[]
 > = {
   brand: ["brand"],
   border: ["border"],
   filter: ["filter"],
   summarize: ["summarize"],
-  "text-primary": ["text-dark"],
-  "text-secondary": ["text-medium"],
-  "text-tertiary": ["text-light"],
-  background: ["bg-white"],
+  "text-primary": ["text-dark", "text-primary"],
+  "text-secondary": ["text-medium", "text-secondary"],
+  "text-tertiary": ["text-light", "text-tertiary"],
+  background: ["bg-white", "background"],
   "background-hover": ["bg-light"],
   shadow: ["shadow"],
   positive: ["success"],
