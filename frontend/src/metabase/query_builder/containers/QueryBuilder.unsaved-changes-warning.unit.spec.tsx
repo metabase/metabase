@@ -435,7 +435,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByLabelText("notebook icon"));
+      await userEvent.click(screen.getByTestId("notebook-button"));
 
       await waitFor(() => {
         expect(screen.getByText("Visualize")).toBeInTheDocument();
@@ -782,7 +782,7 @@ describe("QueryBuilder - unsaved changes warning", () => {
       await userEvent.click(screen.getByText("Visualize"));
       await waitForLoaderToBeRemoved();
 
-      await userEvent.click(screen.getByLabelText("notebook icon"));
+      await userEvent.click(screen.getByTestId("notebook-button"));
 
       await waitFor(() => {
         expect(screen.getByText("Visualize")).toBeInTheDocument();

@@ -794,6 +794,7 @@
 (deftest record-revision-and-description-completeness-test
   (t2.with-temp/with-temp
     [:model/Database   db   {:name "random db"}
+     :model/Card       base-card {}
      :model/Card       card {:name                "A Card"
                              :description         "An important card"
                              :collection_position 0
@@ -821,6 +822,7 @@
                             (= col :embedding_params)  {:category_name "locked"}
                             (= col :public_uuid)       (str (random-uuid))
                             (= col :table_id)          (mt/id :venues)
+                            (= col :source_card_id)    (:id base-card)
                             (= col :database_id)       (:id db)
                             (= col :query_type)        :native
                             (= col :type)              "model"
@@ -841,7 +843,7 @@
               (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
             (when-not (#{;; these columns are expected to not have a description because it's always
                          ;; comes with a dataset_query changes
-                         :table_id :database_id :query_type
+                         :table_id :database_id :query_type :source_card_id
                          ;; we don't need a description for made_public_by_id because whenever this field changes
                          ;; public_uuid will change and we have a description for it.
                          :made_public_by_id

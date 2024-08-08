@@ -30,7 +30,8 @@ export function getPieChartLegend(
         return {
           name: label,
           percent:
-            settings["pie.percent_visibility"] === "legend"
+            settings["pie.percent_visibility"] === "legend" ||
+            settings["pie.percent_visibility"] === "both"
               ? formatters.formatPercent(s.data.normalizedPercentage, "legend")
               : undefined,
           color: s.data.color,

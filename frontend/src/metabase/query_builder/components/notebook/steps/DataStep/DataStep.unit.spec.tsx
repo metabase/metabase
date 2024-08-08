@@ -1,3 +1,4 @@
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -7,6 +8,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import { METAKEY } from "metabase/lib/browser";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -52,10 +54,12 @@ const setup = (
   step = createMockNotebookStep(),
   { readOnly = false }: { readOnly?: boolean } = {},
 ) => {
+  const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
+
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
-  setupRecentViewsAndSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
 
   renderWithProviders(
     <DataStep
@@ -89,7 +93,7 @@ const setup = (
     return Lib.displayInfo(nextQuery, 0, column);
   };
 
-  return { getNextQuery, getNextTableName, getNextColumn };
+  return { getNextQuery, getNextTableName, getNextColumn, mockWindowOpen };
 };
 
 const setupEmptyQuery = () => {
@@ -288,6 +292,78 @@ describe("DataStep", () => {
       setup(step);
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("link to data source", () => {
+    it("should show the tooltip on hover", async () => {
+      setup();
+
+      await userEvent.hover(screen.getByText("Orders"));
+      expect(screen.getByRole("tooltip")).toHaveTextContent(
+        `${METAKEY}+click to open in new tab`,
+      );
+    });
+
+    it("should not show the tooltip when there is no table selected", async () => {
+      setupEmptyQuery();
+
+      const modal = await screen.findByTestId("entity-picker-modal");
+      const closeButton = await screen.findByRole("button", { name: /close/i });
+
+      await userEvent.click(closeButton);
+      expect(modal).not.toBeInTheDocument();
+
+      await userEvent.hover(screen.getByText("Pick your starting data"));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+
+    it("meta click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      fireEvent.click(dataSource, { metaKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("ctrl click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      fireEvent.click(dataSource, { ctrlKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("middle click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      const middleClick = new MouseEvent("auxclick", {
+        bubbles: true,
+        button: 1,
+      });
+
+      fireEvent(dataSource, middleClick);
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("regular click should open the entity picker", async () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+
+      fireEvent.click(dataSource);
+
+      expect(
+        await screen.findByTestId("entity-picker-modal"),
+      ).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
     });
   });
 });

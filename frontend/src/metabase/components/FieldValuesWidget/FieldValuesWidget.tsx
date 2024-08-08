@@ -522,7 +522,7 @@ export function FieldValuesWidgetInner({
     function (option: FieldValue): {
       label: string;
       value: string;
-      customLabel?: string;
+      customlabel?: string;
     } {
       const value = getValue(option);
       const column = fields[0];
@@ -541,7 +541,7 @@ export function FieldValuesWidgetInner({
       return {
         value: value?.toString() ?? "",
         label,
-        customLabel: getLabel(option),
+        customlabel: getLabel(option),
       };
     },
     [fields, formatOptions],
@@ -549,22 +549,22 @@ export function FieldValuesWidgetInner({
 
   const CustomItemComponent = useMemo(
     () =>
-      forwardRef<HTMLDivElement, SelectItemProps & { customLabel?: string }>(
+      forwardRef<HTMLDivElement, SelectItemProps & { customlabel?: string }>(
         function CustomItem(props, ref) {
-          const customLabel =
+          const customlabel =
             props.value &&
             renderValue({
               fields,
               formatOptions,
               value: props.value,
-              displayValue: props.customLabel,
+              displayValue: props.customlabel,
             });
 
           return (
             <ItemWrapper
               ref={ref}
               {...props}
-              label={customLabel ?? (props.label || "")}
+              label={customlabel ?? (props.label || "")}
             />
           );
         },

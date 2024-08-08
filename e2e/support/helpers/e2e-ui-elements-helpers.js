@@ -133,7 +133,7 @@ export function clearFilterWidget(index = 0) {
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  return filterWidget().eq(index).icon("time_history").click();
+  return filterWidget().eq(index).icon("revert").click();
 }
 
 export function setFilterWidgetValue(
@@ -142,13 +142,15 @@ export function setFilterWidgetValue(
   { buttonLabel = "Update filter" } = {},
 ) {
   filterWidget().eq(0).click();
-  popover().within(() => {
-    removeMultiAutocompleteValue(0);
-    if (value) {
-      cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
-    }
-    cy.button(buttonLabel).click();
-  });
+  popover()
+    .first()
+    .within(() => {
+      removeMultiAutocompleteValue(0);
+      if (value) {
+        cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
+      }
+      cy.button(buttonLabel).click({ force: true });
+    });
 }
 
 export function toggleFilterWidgetValues(

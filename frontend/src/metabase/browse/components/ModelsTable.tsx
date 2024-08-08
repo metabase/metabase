@@ -7,6 +7,7 @@ import {
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { getCollectionName } from "metabase/collections/utils";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import { SortableColumnHeader } from "metabase/components/ItemsTable/BaseItemsTable";
@@ -35,7 +36,7 @@ import { SortDirection, type SortingOptions } from "metabase-types/api/sorting";
 
 import { trackModelClick } from "../analytics";
 import type { ModelResult } from "../types";
-import { getCollectionName, getIcon } from "../utils";
+import { getIcon } from "../utils";
 
 import {
   CollectionBreadcrumbsWithTooltip,
@@ -114,7 +115,7 @@ export const ModelsTable = ({
   }, [isLargeDataset, showLoadingManyRows, sortedModels]);
 
   return (
-    <Table aria-label={skeleton ? undefined : "Table of models"}>
+    <Table aria-label={skeleton ? undefined : t`Table of models`}>
       <colgroup>
         {/* <col> for Name column */}
         <ModelNameColumn containerName={itemsTableContainerName} />

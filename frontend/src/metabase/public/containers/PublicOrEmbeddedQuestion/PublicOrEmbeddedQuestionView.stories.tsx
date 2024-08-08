@@ -1,16 +1,24 @@
 // @ts-expect-error There is no type definition
 import createAsyncCallback from "@loki/create-async-callback";
 import type { ComponentStory, Story } from "@storybook/react";
+import { userEvent, within } from "@storybook/testing-library";
 import { useEffect, type ComponentProps } from "react";
 import { Provider } from "react-redux";
 
 import { getStore } from "__support__/entities-store";
 import { createMockMetadata } from "__support__/metadata";
 import { getNextId } from "__support__/utils";
-import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { explicitSizeRefreshModeContext } from "metabase/components/ExplicitSize/context";
+import {
+  DateTimeColumn,
+  NumberColumn,
+  StringColumn,
+} from "__support__/visualizations";
+import { waitTimeContext } from "metabase/context/wait-time";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
+import { registerVisualization } from "metabase/visualizations";
+import PivotTable from "metabase/visualizations/visualizations/PivotTable";
+import { PIVOT_TABLE_MOCK_DATA } from "metabase/visualizations/visualizations/PivotTable/pivot-table-test-mocks";
 import {
   createMockCard,
   createMockColumn,
@@ -23,6 +31,9 @@ import {
 } from "metabase-types/store/mocks";
 
 import { PublicOrEmbeddedQuestionView } from "./PublicOrEmbeddedQuestionView";
+
+// @ts-expect-error: incompatible prop types with registerVisualization
+registerVisualization(PivotTable);
 
 export default {
   title: "embed/PublicOrEmbeddedQuestionView",
@@ -48,9 +59,9 @@ function ReduxDecorator(Story: Story) {
 
 function FasterExplicitSizeUpdateDecorator(Story: Story) {
   return (
-    <explicitSizeRefreshModeContext.Provider value="none">
+    <waitTimeContext.Provider value={0}>
       <Story />
-    </explicitSizeRefreshModeContext.Provider>
+    </waitTimeContext.Provider>
   );
 }
 
@@ -100,6 +111,7 @@ const defaultArgs: Partial<
   titled: true,
   bordered: true,
   getParameters: () => [],
+  setCard: () => {},
   result: createMockDataset({
     data: createMockDatasetData({
       cols: [
@@ -118,11 +130,24 @@ const defaultArgs: Partial<
 export const LightThemeDefault = Template.bind({});
 LightThemeDefault.args = defaultArgs;
 
+export const LightThemeDefaultNoResults = Template.bind({});
+LightThemeDefaultNoResults.args = {
+  ...defaultArgs,
+  result: createMockDataset(),
+};
+
 // Dark theme
 export const DarkThemeDefault = Template.bind({});
 DarkThemeDefault.args = {
   ...defaultArgs,
   theme: "night",
+};
+
+export const DarkThemeDefaultNoResults = Template.bind({});
+DarkThemeDefaultNoResults.args = {
+  ...defaultArgs,
+  theme: "night",
+  result: createMockDataset(),
 };
 
 // Transparent theme
@@ -136,6 +161,149 @@ TransparentThemeDefault.decorators = [LightBackgroundDecorator];
 function LightBackgroundDecorator(Story: Story) {
   return (
     <Box bg="#ddd" h="100%">
+      <Story />
+    </Box>
+  );
+}
+
+// Pivot table
+
+// Light theme
+export const PivotTableLightTheme = Template.bind({});
+PivotTableLightTheme.args = {
+  ...defaultArgs,
+  card: createMockCard({
+    id: getNextId(),
+    display: "pivot",
+    visualization_settings: PIVOT_TABLE_MOCK_DATA.settings,
+  }),
+  result: createMockDataset({
+    data: createMockDatasetData({
+      cols: PIVOT_TABLE_MOCK_DATA.cols,
+      rows: PIVOT_TABLE_MOCK_DATA.rows,
+    }),
+  }),
+};
+PivotTableLightTheme.play = async ({ canvasElement }) => {
+  const cell = await within(canvasElement).findByText("field-123");
+  (cell.parentNode?.parentNode as HTMLElement).classList.add("pseudo-hover");
+};
+
+// Dark theme
+export const PivotTableDarkTheme = Template.bind({});
+PivotTableDarkTheme.args = {
+  ...PivotTableLightTheme.args,
+  theme: "night",
+};
+PivotTableDarkTheme.play = PivotTableLightTheme.play;
+
+// Smart scalar
+
+// Light theme
+export const SmartScalarLightTheme = Template.bind({});
+SmartScalarLightTheme.args = {
+  ...defaultArgs,
+  card: createMockCard({
+    id: getNextId(),
+    display: "smartscalar",
+    visualization_settings: {
+      "graph.dimensions": ["timestamp"],
+      "graph.metrics": ["count"],
+    },
+  }),
+  result: createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn(DateTimeColumn({ name: "Timestamp" })),
+        createMockColumn(NumberColumn({ name: "Count" })),
+      ],
+      insights: [
+        {
+          "previous-value": 150,
+          unit: "week",
+          offset: -199100,
+          "last-change": 0.4666666666666667,
+          col: "count",
+          slope: 10,
+          "last-value": 220,
+          "best-fit": ["+", -199100, ["*", 10, "x"]],
+        },
+      ],
+      rows: [
+        ["2024-07-21T00:00:00Z", 150],
+        ["2024-07-28T00:00:00Z", 220],
+      ],
+    }),
+  }),
+};
+
+// Dark theme
+export const SmartScalarDarkTheme = Template.bind({});
+SmartScalarDarkTheme.args = {
+  ...SmartScalarLightTheme.args,
+  theme: "night",
+};
+
+// Light theme tooltip
+export const SmartScalarLightThemeTooltip = Template.bind({});
+SmartScalarLightThemeTooltip.args = {
+  ...defaultArgs,
+  card: createMockCard({
+    id: getNextId(),
+    display: "smartscalar",
+    visualization_settings: {
+      "graph.dimensions": ["timestamp"],
+      "graph.metrics": ["count"],
+    },
+  }),
+  result: createMockDataset({
+    data: createMockDatasetData({
+      cols: [
+        createMockColumn(DateTimeColumn({ name: "Timestamp" })),
+        createMockColumn(NumberColumn({ name: "Count" })),
+      ],
+      insights: [
+        {
+          "previous-value": 150,
+          unit: "week",
+          offset: -199100,
+          "last-change": 0.4666666666666667,
+          col: "count",
+          slope: 10,
+          "last-value": 220,
+          "best-fit": ["+", -199100, ["*", 10, "x"]],
+        },
+      ],
+      rows: [
+        ["2024-07-21T00:00:00Z", 150],
+        ["2024-07-28T00:00:00Z", 220],
+      ],
+    }),
+  }),
+};
+SmartScalarLightThemeTooltip.decorators = [NarrowContainer];
+SmartScalarLightThemeTooltip.play = async ({ canvasElement }) => {
+  const value = "vs. July 21, 2024, 12:00 AM";
+  const valueElement = await within(canvasElement).findByText(value);
+  await userEvent.hover(valueElement);
+  const tooltip = document.documentElement.querySelector(
+    '[role="tooltip"]',
+  ) as HTMLElement;
+  await within(tooltip).findByText(`${value}:`);
+};
+
+// Dark theme tooltip
+export const SmartScalarDarkThemeTooltip = Template.bind({});
+SmartScalarDarkThemeTooltip.args = {
+  ...SmartScalarLightThemeTooltip.args,
+  theme: "night",
+};
+SmartScalarDarkThemeTooltip.decorators = [NarrowContainer];
+SmartScalarDarkThemeTooltip.play = SmartScalarLightThemeTooltip.play;
+
+function NarrowContainer(Story: Story) {
+  return (
+    <Box w="300px" h="250px" pos="relative">
       <Story />
     </Box>
   );

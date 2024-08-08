@@ -7,6 +7,7 @@ import {
   Divider,
   Icon,
   Popover,
+  rem,
   Text,
 } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -37,6 +38,7 @@ export function TemporalUnitSettings({
           fw="normal"
           rightIcon={<Icon name="chevrondown" />}
           fullWidth
+          px={rem(11)} // needs to be the same as default input paddingLeft in Input.styled.tsx
           styles={{ inner: { justifyContent: "space-between" } }} // justify prop in mantine v7
         >
           {getSelectedText(selectedUnits, isAll, isNone)}

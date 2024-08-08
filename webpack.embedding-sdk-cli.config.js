@@ -3,11 +3,13 @@ const webpack = require("webpack");
 const TerserPlugin = require("terser-webpack-plugin");
 
 const SDK_CLI_DIST_PATH = path.join(__dirname, "/resources/embedding-sdk/dist");
-
+const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const SDK_CLI_PATH = path.join(
   __dirname,
   "/enterprise/frontend/src/embedding-sdk/cli",
 );
+
+const METABASE_SRC_PATH = path.join(__dirname, "/frontend/src/metabase");
 
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
@@ -25,6 +27,10 @@ module.exports = {
   },
   resolve: {
     extensions: [".ts", ".js"],
+    alias: {
+      metabase: METABASE_SRC_PATH,
+      "embedding-sdk": SDK_SRC_PATH,
+    },
   },
   module: {
     rules: [

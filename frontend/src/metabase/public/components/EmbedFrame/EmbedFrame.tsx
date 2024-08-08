@@ -24,6 +24,7 @@ import { isUuid } from "metabase/lib/uuid";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import type { DisplayTheme } from "metabase/public/lib/types";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
@@ -43,7 +44,6 @@ import type {
 } from "metabase-types/api";
 
 import type { DashboardUrlHashOptions } from "../../../dashboard/types";
-import ParameterValueWidgetS from "../../../parameters/components/ParameterValueWidget.module.css";
 
 import EmbedFrameS from "./EmbedFrame.module.css";
 import type { FooterVariant } from "./EmbedFrame.styled";
@@ -86,20 +86,6 @@ type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
 export type EmbedFrameProps = EmbedFrameBaseProps &
   WithRequired<DashboardUrlHashOptions, "background">;
 
-const EMBED_THEME_CLASSES = (theme: DashboardUrlHashOptions["theme"]) => {
-  if (!theme) {
-    return null;
-  }
-
-  if (theme === "night") {
-    return cx(ParameterValueWidgetS.ThemeNight, EmbedFrameS.ThemeNight);
-  }
-
-  if (theme === "transparent") {
-    return EmbedFrameS.ThemeTransparent;
-  }
-};
-
 export const EmbedFrame = ({
   className,
   children,
@@ -124,6 +110,7 @@ export const EmbedFrame = ({
   hide_parameters,
   downloadsEnabled = true,
 }: EmbedFrameProps) => {
+  useGlobalTheme(theme);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
     state => !getSetting(state, "hide-embed-branding?"),
@@ -179,14 +166,9 @@ export const EmbedFrame = ({
     <Root
       hasScroll={hasFrameScroll}
       isBordered={bordered}
-      className={cx(
-        EmbedFrameS.EmbedFrame,
-        className,
-        EMBED_THEME_CLASSES(theme),
-        {
-          [EmbedFrameS.NoBackground]: !background,
-        },
-      )}
+      className={cx(EmbedFrameS.EmbedFrame, className, {
+        [EmbedFrameS.NoBackground]: !background,
+      })}
       data-testid="embed-frame"
       data-embed-theme={theme}
     >
@@ -295,6 +277,32 @@ export const EmbedFrame = ({
     </Root>
   );
 };
+
+function useGlobalTheme(theme: DisplayTheme | undefined) {
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  useEffect(() => {
+    // We don't want to modify user application DOM when using the SDK.
+    if (isEmbeddingSdk || theme == null) {
+      return;
+    }
+
+    const originalTheme = document.documentElement.getAttribute(
+      "data-metabase-theme",
+    );
+    document.documentElement.setAttribute("data-metabase-theme", theme);
+
+    return () => {
+      if (originalTheme == null) {
+        document.documentElement.removeAttribute("data-metabase-theme");
+      } else {
+        document.documentElement.setAttribute(
+          "data-metabase-theme",
+          originalTheme,
+        );
+      }
+    };
+  }, [isEmbeddingSdk, theme]);
+}
 
 function isParametersWidgetContainersSticky(parameterCount: number) {
   if (!isSmallScreen()) {

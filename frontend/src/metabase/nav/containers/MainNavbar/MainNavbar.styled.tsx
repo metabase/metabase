@@ -11,6 +11,7 @@ import {
 import { Box, type BoxProps, Icon } from "metabase/ui";
 
 import { SidebarLink } from "./SidebarItems";
+import { ExpandToggleButton } from "./SidebarItems/SidebarItems.styled";
 
 const openSidebarCSS = css`
   width: ${NAV_SIDEBAR_WIDTH};
@@ -82,6 +83,12 @@ export const SidebarSection = styled(Box)<BoxProps>`
   margin-bottom: ${space(2)};
   padding-inline-start: ${space(2)};
   padding-inline-end: ${space(2)};
+`;
+
+export const TrashSidebarSection = styled(SidebarSection)`
+  ${ExpandToggleButton} {
+    width: 12px;
+  }
 `;
 
 export const SidebarHeadingWrapper = styled.div`

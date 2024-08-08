@@ -25,6 +25,10 @@ import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
 import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
+import {
+  getParameterType,
+  isNumberParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 import type {
   ValuesSourceConfig,
   ValuesSourceType,
@@ -262,8 +266,8 @@ const CardSourceModal = ({
   onChangeSourceConfig,
 }: CardSourceModalProps) => {
   const fields = useMemo(() => {
-    return question ? getSupportedFields(question) : [];
-  }, [question]);
+    return question ? getSupportedFields(question, parameter) : [];
+  }, [question, parameter]);
 
   const selectedField = useMemo(() => {
     return getFieldByReference(fields, sourceConfig.value_field);
@@ -330,7 +334,7 @@ const CardSourceModal = ({
               </Select>
             ) : (
               <ModalErrorMessage>
-                {getErrorMessage(question)}{" "}
+                {getErrorMessage(question, parameter)}{" "}
                 {t`Please pick a different model or question.`}
               </ModalErrorMessage>
             )}
@@ -352,8 +356,19 @@ const CardSourceModal = ({
   );
 };
 
-const getErrorMessage = (question: Question) => {
+const getErrorMessage = (question: Question, parameter: Parameter) => {
+  const parameterType = getParameterType(parameter);
   const type = question.type();
+
+  if (parameterType === "number") {
+    if (type === "question") {
+      return t`This question doesn’t have any number columns.`;
+    }
+
+    if (type === "model") {
+      return t`This model doesn’t have any number columns.`;
+    }
+  }
 
   if (type === "question") {
     return t`This question doesn’t have any text columns.`;
@@ -457,10 +472,19 @@ const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
   return fields.find(field => _.isEqual(field.reference(), fieldReference));
 };
 
-const getSupportedFields = (question: Question) => {
+const getFieldFilter = (parameter: Parameter) => {
+  const type = getParameterType(parameter);
+  if (type === "number") {
+    return (field: Field) => field.isNumeric();
+  }
+  return (field: Field) => field.isString();
+};
+
+const getSupportedFields = (question: Question, parameter: Parameter) => {
+  const fieldFilter = getFieldFilter(parameter);
   const fields =
     question.composeQuestionAdhoc().legacyQueryTable()?.fields ?? [];
-  return fields.filter(field => field.isString());
+  return fields.filter(fieldFilter);
 };
 
 /**
@@ -474,7 +498,11 @@ const getSourceTypeOptions = (
     ...(hasFields(parameter)
       ? [{ name: t`From connected fields`, value: null }]
       : []),
-    { name: t`From another model or question`, value: "card" },
+    ...(isNumberParameter(parameter)
+      ? []
+      : ([
+          { name: t`From another model or question`, value: "card" },
+        ] as const)),
     { name: t`Custom list`, value: "static-list" },
   ];
 };

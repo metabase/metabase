@@ -149,17 +149,8 @@ export const createRawSeries = (options: {
   question: Question;
   queryResult: any;
   datasetQuery?: any;
-  showRawTable?: boolean;
 }): Series => {
-  const { question, queryResult, datasetQuery, showRawTable = false } = options;
-
-  let display = question && question.display();
-  let settings = question && question.settings();
-
-  if (showRawTable) {
-    display = "table";
-    settings = { "table.pivot": false };
-  }
+  const { question, queryResult, datasetQuery } = options;
 
   // we want to provide the visualization with a card containing the latest
   // "display", "visualization_settings", etc, (to ensure the correct visualization is shown)
@@ -169,9 +160,6 @@ export const createRawSeries = (options: {
       {
         card: {
           ...question.card(),
-          display: display,
-          visualization_settings: settings,
-
           ...(datasetQuery && { dataset_query: datasetQuery }),
         },
         data: queryResult && queryResult.data,
