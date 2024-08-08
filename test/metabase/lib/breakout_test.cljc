@@ -178,13 +178,13 @@
 
 (deftest ^:parallel breakoutable-columns-multiple-breakout-positions-test
   (testing "multiple breakout positions for the same column"
-    (let [base-query lib.tu/venues-query
-          columns (lib/breakoutable-columns base-query)
-          price-column (m/find-first #(= (:name %) "PRICE") columns)
-          binning-strategies (lib/available-binning-strategies base-query price-column)
-          query (-> base-query
-                    (lib/breakout (lib/with-binning price-column (first binning-strategies)))
-                    (lib/breakout (lib/with-binning price-column (second binning-strategies))))]
+    (let [base-query         lib.tu/venues-query
+          column             (->> (lib/breakoutable-columns base-query)
+                                  (m/find-first #(= (:name %) "PRICE")))
+          binning-strategies (lib/available-binning-strategies base-query column)
+          query              (-> base-query
+                                 (lib/breakout (lib/with-binning column (first binning-strategies)))
+                                 (lib/breakout (lib/with-binning column (second binning-strategies))))]
       (is (=? [{:display-name "ID"}
                {:display-name "Name"}
                {:display-name "Category ID"}
