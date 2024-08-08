@@ -36,6 +36,24 @@ function createSummarizedQuery() {
   });
 }
 
+function createQueryWithBreakoutsForSameColumn() {
+  return createQueryWithClauses({
+    aggregations: [{ operatorName: "count" }],
+    breakouts: [
+      {
+        tableName: "ORDERS",
+        columnName: "CREATED_AT",
+        temporalBucketName: "Year",
+      },
+      {
+        tableName: "ORDERS",
+        columnName: "CREATED_AT",
+        temporalBucketName: "Month of year",
+      },
+    ],
+  });
+}
+
 async function setup({
   query: initialQuery = createQuery(),
   withDefaultAggregation = true,
@@ -199,24 +217,86 @@ describe("SummarizeSidebar", () => {
   it("should list breakouts added before opening the sidebar in a separate section", async () => {
     await setup({ query: createSummarizedQuery() });
 
-    const pinnedColumnList = screen.getByTestId("pinned-dimensions");
-    const unpinnedColumnList = screen.getByTestId("unpinned-dimensions");
-
     expect(
-      within(pinnedColumnList).getByText("Product → Category"),
+      within(getPinnedColumnList()).getByText("Product → Category"),
     ).toBeInTheDocument();
     expect(
-      within(pinnedColumnList).getByText("Created At"),
+      within(getPinnedColumnList()).getByText("Created At"),
     ).toBeInTheDocument();
 
     expect(
-      within(unpinnedColumnList).queryByText("Category"),
+      within(getUnpinnedColumnList()).queryByText("Category"),
     ).not.toBeInTheDocument();
 
     // "Product → Created At" and "User → Created At" should still be there
-    expect(within(unpinnedColumnList).getAllByText("Created At")).toHaveLength(
-      2,
+    expect(
+      within(getUnpinnedColumnList()).getAllByText("Created At"),
+    ).toHaveLength(2);
+  });
+
+  it("should show mulitple breakouts of the same column", async () => {
+    await setup({
+      query: createQueryWithBreakoutsForSameColumn(),
+    });
+    expect(
+      within(getPinnedColumnList()).getAllByText("Created At"),
+    ).toHaveLength(2);
+  });
+
+  it("should allow to modify temporal units for breakouts of the same column", async () => {
+    const { getNextBreakouts } = await setup({
+      query: createQueryWithBreakoutsForSameColumn(),
+    });
+
+    await userEvent.click(await screen.findByText("by year"));
+    await userEvent.click(await screen.findByText("Quarter"));
+    expect(getNextBreakouts()).toMatchObject([
+      { displayName: "Created At: Quarter" },
+      { displayName: "Created At: Month of year" },
+    ]);
+
+    await userEvent.click(await screen.findByText("by month of year"));
+    await userEvent.click(await screen.findByText("Quarter of year"));
+    expect(getNextBreakouts()).toMatchObject([
+      { displayName: "Created At: Quarter" },
+      { displayName: "Created At: Quarter of year" },
+    ]);
+  });
+
+  it("should allow to remove breakouts of the same column", async () => {
+    const { getNextBreakouts } = await setup({
+      query: createQueryWithBreakoutsForSameColumn(),
+    });
+
+    const [firstBreakout] = within(getPinnedColumnList()).getAllByLabelText(
+      "Created At",
     );
+    await userEvent.click(
+      within(firstBreakout).getByLabelText("Remove dimension"),
+    );
+    expect(
+      within(getPinnedColumnList()).getByText("Created At"),
+    ).toBeInTheDocument();
+    expect(
+      within(getUnpinnedColumnList()).getAllByText("Created At"),
+    ).toHaveLength(2);
+    expect(getNextBreakouts()).toMatchObject([
+      { displayName: "Created At: Month of year" },
+    ]);
+
+    const [secondBreakout] = within(getPinnedColumnList()).getAllByLabelText(
+      "Created At",
+    );
+    await userEvent.click(
+      within(secondBreakout).getByLabelText("Remove dimension"),
+    );
+    expect(
+      within(getPinnedColumnList()).queryByText("Created At"),
+    ).not.toBeInTheDocument();
+    expect(
+      within(getUnpinnedColumnList()).getAllByText("Created At"),
+    ).toHaveLength(3);
+    expect(getNextBreakouts()).toEqual([]);
   });
 
   it("should add an aggregation", async () => {
@@ -379,3 +459,11 @@ describe("SummarizeSidebar", () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+function getPinnedColumnList() {
+  return screen.getByTestId("pinned-dimensions");
+}
+
+function getUnpinnedColumnList() {
+  return screen.getByTestId("unpinned-dimensions");
+}
