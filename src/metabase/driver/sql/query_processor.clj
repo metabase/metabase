@@ -1228,27 +1228,33 @@
         expr
         [:lower expr]))))
 
+
+(defn- uuid-field?
+  [x]
+  (and (mbql.u/mbql-clause? x)
+       (isa? (or (:effective-type (get x 2))
+                 (:base-type (get x 2)))
+             :type/UUID)))
+
 (mu/defn ^:private maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
   [driver field arg]
-  (if (and (isa? (or (:effective-type (get field 2))
-                     (:base-type (get field 2)))
-                 :type/UUID)
-           ;; If we could not convert the arg to a UUID then we have to cast the Field.
-           ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
-           (not (uuid? (->honeysql driver arg)))
-           ;; Check for inlined values
-           (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    [::cast field "varchar"]
-    field))
+  (if (and (uuid-field? field)
+             ;; If the arg is a uuid we are happy especially for joins (#46558)
+             (not (uuid-field? arg))
+             ;; If we could not convert the arg to a UUID then we have to cast the Field.
+             ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
+             (not (uuid? (->honeysql driver arg)))
+             ;; Check for inlined values
+             (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
+      [::cast field "varchar"]
+      field))
 
 (mu/defn ^:private maybe-cast-uuid-for-text-compare
   "For :contains, :starts-with, and :ends-with.
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [field]
-  (if (isa? (or (:effective-type (get field 2))
-                (:base-type (get field 2)))
-            :type/UUID)
+  (if (uuid-field? field)
     [::cast field "varchar"]
     field))
 
