@@ -1,4 +1,4 @@
-import type { ErrorInfo, ComponentType } from "react";
+import type { ErrorInfo, ComponentType, ReactNode } from "react";
 import { Component } from "react";
 
 import { SmallGenericError } from "metabase/components/ErrorPages";
@@ -9,6 +9,7 @@ export default class ErrorBoundary extends Component<
     onError?: (errorInfo: ErrorInfo) => void;
     errorComponent?: ComponentType;
     message?: string;
+    children: ReactNode;
   },
   {
     hasError: boolean;
