@@ -2,7 +2,7 @@
 title: Usage analytics
 ---
 
-## Usage analytics
+# Usage analytics
 
 {% include plans-blockquote.html feature="Metabase analytics" %}
 

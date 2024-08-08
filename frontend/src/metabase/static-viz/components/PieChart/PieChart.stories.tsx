@@ -203,6 +203,13 @@ NumDecimalPlacesLegend.args = {
   renderingContext,
 };
 
+export const TruncatedTotal = Template.bind({});
+TruncatedTotal.args = {
+  rawSeries: data.truncatedTotal as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const UnaggregatedDimension = Template.bind({});
 UnaggregatedDimension.args = {
   rawSeries: data.unaggregatedDimension as any,
