@@ -50,7 +50,6 @@ export const SummarizeAggregationItemList = ({
     <AddAggregationButton
       query={query}
       stageIndex={stageIndex}
-      onAddAggregations={onAddAggregations}
       onQueryChange={onQueryChange}
     />
   </Group>

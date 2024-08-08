@@ -21,27 +21,6 @@ export function AggregateStep({
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
 
-  const handleAddAggregations = (aggregations: Lib.Aggregable[]) => {
-    const nextQuery = aggregations.reduce(
-      (query, aggregation) => Lib.aggregate(query, stageIndex, aggregation),
-      query,
-    );
-    updateQuery(nextQuery);
-  };
-
-  const handleUpdateAggregation = (
-    currentClause: Lib.AggregationClause,
-    nextClause: Lib.Aggregable,
-  ) => {
-    const nextQuery = Lib.replaceClause(
-      query,
-      stageIndex,
-      currentClause,
-      nextClause,
-    );
-    updateQuery(nextQuery);
-  };
-
   const handleReorderAggregation = (
     sourceClause: Lib.AggregationClause,
     targetClause: Lib.AggregationClause,
@@ -77,10 +56,8 @@ export function AggregateStep({
           stageIndex={stageIndex}
           clause={aggregation}
           clauseIndex={index}
-          onAddAggregations={handleAddAggregations}
-          onUpdateAggregation={handleUpdateAggregation}
-          onClose={onClose}
           onQueryChange={updateQuery}
+          onClose={onClose}
         />
       )}
       onReorder={handleReorderAggregation}
@@ -94,16 +71,9 @@ interface AggregationPopoverProps {
   query: Lib.Query;
   stageIndex: number;
   clause?: Lib.AggregationClause;
-  onUpdateAggregation: (
-    currentClause: Lib.AggregationClause,
-    nextClause: Lib.Aggregable,
-  ) => void;
-  onAddAggregations: (aggregations: Lib.Aggregable[]) => void;
-
   clauseIndex?: number;
-
-  onClose: () => void;
   onQueryChange: (query: Lib.Query) => void;
+  onClose: () => void;
 }
 
 function AggregationPopover({
@@ -111,10 +81,8 @@ function AggregationPopover({
   stageIndex,
   clause,
   clauseIndex,
-  onAddAggregations,
-  onUpdateAggregation,
-  onClose,
   onQueryChange,
+  onClose,
 }: AggregationPopoverProps) {
   const isUpdate = clause != null && clauseIndex != null;
 
@@ -132,15 +100,8 @@ function AggregationPopover({
       clause={clause}
       clauseIndex={clauseIndex}
       operators={operators}
-      onSelect={aggregation => {
-        if (isUpdate) {
-          onUpdateAggregation(clause, aggregation);
-        } else {
-          onAddAggregations([aggregation]);
-        }
-      }}
-      onClose={onClose}
       onQueryChange={onQueryChange}
+      onClose={onClose}
     />
   );
 }

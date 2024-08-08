@@ -12,7 +12,6 @@ interface AggregationItemProps {
   stageIndex: number;
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
-  onUpdate: (nextAggregation: Lib.Aggregable) => void;
   onRemove: () => void;
   onQueryChange: (query: Lib.Query) => void;
 }
@@ -22,7 +21,6 @@ export function AggregationItem({
   stageIndex,
   aggregation,
   aggregationIndex,
-  onUpdate,
   onRemove,
   onQueryChange,
 }: AggregationItemProps) {
@@ -54,10 +52,6 @@ export function AggregationItem({
           clauseIndex={aggregationIndex}
           operators={operators}
           hasExpressionInput={false}
-          onSelect={nextAggregation => {
-            onUpdate(nextAggregation);
-            setIsOpened(false);
-          }}
           onQueryChange={onQueryChange}
         />
       </Popover.Dropdown>

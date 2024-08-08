@@ -152,7 +152,6 @@ function setup({
     ? Lib.selectedAggregationOperators(baseOperators, clause)
     : baseOperators;
 
-  const onSelect = jest.fn();
   const onQueryChange = jest.fn();
 
   renderWithProviders(
@@ -163,14 +162,13 @@ function setup({
       operators={operators}
       hasExpressionInput={hasExpressionInput}
       onQueryChange={onQueryChange}
-      onSelect={onSelect}
     />,
     { storeInitialState: state },
   );
 
   function getRecentClause(): Lib.Clause {
-    expect(onSelect).toHaveBeenCalledWith(expect.anything());
-    const [clause] = onSelect.mock.lastCall;
+    expect(onQueryChange).toHaveBeenCalledWith(expect.anything());
+    const [clause] = onQueryChange.mock.lastCall;
     return clause;
   }
 
@@ -184,7 +182,6 @@ function setup({
     stageIndex,
     getRecentClauseInfo,
     onQueryChange,
-    onSelect,
   };
 }
 
@@ -411,15 +408,17 @@ describe("AggregationPicker", () => {
       expect(onQueryChange).toHaveBeenCalled();
     });
 
-    it("does not call 'onSelect' on submit", async () => {
-      const { onSelect } = setup({ query: createQueryWithCountAggregation() });
+    it("does not call 'onQueryChange' on submit", async () => {
+      const { onQueryChange } = setup({
+        query: createQueryWithCountAggregation(),
+      });
 
       await userEvent.click(
         screen.getByText("Compare “Count” to previous period ..."),
       );
       await userEvent.click(screen.getByText("Done"));
 
-      expect(onSelect).not.toHaveBeenCalled();
+      expect(onQueryChange).not.toHaveBeenCalled();
     });
   });
 });

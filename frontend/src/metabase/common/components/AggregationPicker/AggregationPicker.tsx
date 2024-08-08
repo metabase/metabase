@@ -33,7 +33,6 @@ interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  onSelect: (aggregation: Lib.Aggregable) => void;
   onClose?: () => void;
   onQueryChange: (query: Lib.Query) => void;
 }
@@ -73,7 +72,6 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   hasExpressionInput = true,
-  onSelect,
   onClose,
   onQueryChange,
 }: AggregationPickerProps) {
@@ -106,6 +104,25 @@ export function AggregationPicker({
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
+
+  const onSelect = useCallback(
+    function (aggregation: Lib.Aggregable) {
+      const isUpdate = clause != null && clauseIndex != null;
+      if (isUpdate) {
+        const nextQuery = Lib.replaceClause(
+          query,
+          stageIndex,
+          clause,
+          aggregation,
+        );
+        onQueryChange(nextQuery);
+      } else {
+        const nextQuery = Lib.aggregate(query, stageIndex, aggregation);
+        onQueryChange(nextQuery);
+      }
+    },
+    [query, stageIndex, clause, clauseIndex, onQueryChange],
+  );
 
   const sections = useMemo(() => {
     const sections: Section[] = [];

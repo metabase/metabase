@@ -12,14 +12,12 @@ import { AddAggregationButtonRoot } from "./AddAggregationButton.styled";
 interface AddAggregationButtonProps {
   query: Lib.Query;
   stageIndex: number;
-  onAddAggregations: (aggregation: Lib.Aggregable[]) => void;
   onQueryChange: (query: Lib.Query) => void;
 }
 
 export function AddAggregationButton({
   query,
   stageIndex,
-  onAddAggregations,
   onQueryChange,
 }: AddAggregationButtonProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -57,10 +55,6 @@ export function AddAggregationButton({
           hasExpressionInput={false}
           onQueryChange={query => {
             onQueryChange(query);
-            setIsOpened(false);
-          }}
-          onSelect={aggregation => {
-            onAddAggregations([aggregation]);
             setIsOpened(false);
           }}
         />
