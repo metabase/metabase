@@ -51,25 +51,46 @@
                 :dashboard_id dashboard-id
                 :parameter_id parameter-id)))
 
+(mu/defn batched-upsert!
+  "Delete param with nil value and upsert the rest."
+  [user-id         :- ms/PositiveInt
+   dashboard-id    :- ms/PositiveInt
+   param-id->value :- [:map-of :string :any]]
+  (let [to-delete (filter (comp nil? second) param-id->value)
+        to-upsert (filter (comp some? second) param-id->value)]
+    (t2/with-transaction [_conn]
+      (doseq [[param-id value] to-upsert]
+        (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
+                                                         :dashboard_id dashboard-id
+                                                         :parameter_id param-id}
+                              {:value value}))
+            (t2/insert! :model/UserParameterValue {:user_id      user-id
+                                                   :dashboard_id dashboard-id
+                                                   :parameter_id param-id
+                                                   :value        value})))
+      (when (seq to-delete)
+        (t2/delete! :model/UserParameterValue
+                    :user_id user-id
+                    :dashboard_id dashboard-id
+                    :parameter_id [:in (map first to-delete)])))))
+
 ;; hydration
 
 (methodical/defmethod t2/batched-hydrate [:model/Dashboard :last_used_param_values]
   "Hydrate a map of parameter-id->last-used-value for the dashboards."
   [_model _k dashboards]
   (if-let [user-id api/*current-user-id*]
-    (let [all-parameter-ids (into #{} (comp (mapcat :parameters) (map :id)) dashboards)
-          last-used-values  (fn last-used-values [dashboard-id]
-                              (when (seq all-parameter-ids)
-                                (into {}
-                                      (t2/select-fn-reducible
-                                       (fn [{:keys [parameter_id value]}]
-                                         [parameter_id value])
-                                       :model/UserParameterValue
-                                       :user_id user-id
-                                       :dashboard_id dashboard-id
-                                       :parameter_id [:in all-parameter-ids]))))]
-      (map
-       (fn [{dashboard-id :id :as dashboard}]
-         (let [param-ids (mapv :id (:parameters dashboard))]
-           (assoc dashboard :last_used_param_values (select-keys (last-used-values dashboard-id) param-ids)))) dashboards))
+    (mi/instances-with-hydrated-data
+     dashboards
+     :last_used_param_values
+     (fn [] ;; return a map of {dashboard-id {parameter-id value}}
+       (let [upvs (t2/select :model/UserParameterValue
+                             :dashboard_id [:in (map :id dashboards)]
+                             :user_id user-id)]
+         (as-> upvs result
+           (group-by :dashboard_id result)
+           (update-vals result (fn [upvs]
+                                 (into {}
+                                       (map (juxt :parameter_id :value) upvs)))))))
+     :id)
     dashboards))

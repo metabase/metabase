@@ -8301,6 +8301,22 @@ databaseChangeLog:
       rollback: # nothing to do, since this is backwards compatible
 
   - changeSet:
+      id: v50.2024-08-08T20:04:03
+      author: qnkhuat
+      comment: Added 0.50.0 - Add index on user_parameter_value(user_id, parameter_id, dashboard_id)
+      changes:
+        - createIndex:
+            tableName: user_parameter_value
+            indexName: idx_user_parameter_value_user_id_dashboard_id_parameter_id
+            columns:
+              - column:
+                  name: user_id
+              - column:
+                  name: dashboard_id
+              - column:
+                  name: parameter_id
+
+  - changeSet:
       id: v51.2024-05-13T15:30:57
       author: metamben
       comment: Backup of dataset_query rewritten by the metrics v2 migration
