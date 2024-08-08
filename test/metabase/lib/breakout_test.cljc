@@ -176,7 +176,7 @@
                  {:display-name "Name"}]
                 (lib/breakoutable-columns query)))))))
 
-(deftest ^:parallel breakoutable-columns-multiple-breakout-positions-test
+(deftest ^:parallel multiple-breakouts-for-the-same-column-test
   (testing "multiple breakout positions for the same column"
     (let [base-query         lib.tu/venues-query
           column             (->> (lib/breakoutable-columns base-query)
@@ -193,7 +193,36 @@
                {:display-name "Price", :breakout-positions [0 1]}
                {:display-name "ID"}
                {:display-name "Name"}]
-              (lib/breakoutable-columns query))))))
+              (lib/breakoutable-columns query)))))
+  (testing "should ignore duplicate breakouts without binning strategy or temporal bucket"
+    (let [base-query lib.tu/venues-query
+          column     (first (lib/breakoutable-columns base-query))
+          query      (-> base-query
+                         (lib/breakout column)
+                         (lib/breakout column))
+          breakouts  (lib/breakouts query)]
+      (is (= 1 (count breakouts)))))
+  (testing "should ignore duplicate breakouts with the same binning strategy"
+    (let [base-query       lib.tu/venues-query
+          column           (->> (lib/breakoutable-columns base-query)
+                                  (m/find-first #(= (:name %) "PRICE")))
+          binning-strategy (first (lib/available-binning-strategies base-query column))
+          query            (-> base-query
+                               (lib/breakout (lib/with-binning column binning-strategy))
+                               (lib/breakout (lib/with-binning column binning-strategy)))
+          breakouts        (lib/breakouts query)]
+      (is (= 1 (count breakouts)))))
+  (testing "should ignore duplicate breakouts with the same temporal bucket"
+    (let [base-query      lib.tu/query-with-source-card
+          column          (->> (lib/breakoutable-columns base-query)
+                               (m/find-first #(= (:name %) "LAST_LOGIN")))
+          temporal-bucket (->> (lib/available-temporal-buckets base-query column)
+                               (m/find-first #(= (:unit %) :month)))
+          query           (-> base-query
+                              (lib/breakout (lib/with-temporal-bucket column temporal-bucket))
+                              (lib/breakout (lib/with-temporal-bucket column temporal-bucket)))
+          breakouts       (lib/breakouts query)]
+      (is (= 1 (count breakouts))))))
 
 (deftest ^:parallel breakoutable-explicit-joins-test
   (testing "breakoutable-columns should include columns from explicit joins"
