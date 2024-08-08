@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { t } from "ttag";
 
+import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import type { EmbedMenuProps } from "metabase/dashboard/components/EmbedMenu/types";
 import {
   DashboardPublicLinkPopover,
@@ -27,14 +28,22 @@ export const NonAdminEmbedMenu = ({
 
   const isDisabled = !isPublicSharingEnabled || !hasPublicLink;
 
-  const target = (
-    <ResourceEmbedButton
-      hasBackground={resourceType === "dashboard"}
-      onClick={() => setIsOpen(!isOpen)}
-      disabled={isDisabled}
-      tooltip={isDisabled ? tooltipLabel : null}
-    />
-  );
+  const target =
+    resourceType === "dashboard" ? (
+      <ResourceEmbedButton
+        hasBackground={true}
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={isDisabled}
+        tooltip={isDisabled ? tooltipLabel : null}
+      />
+    ) : (
+      <ViewFooterButton
+        icon="share"
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={isDisabled}
+        tooltipLabel={isDisabled ? tooltipLabel : null}
+      />
+    );
 
   return resourceType === "dashboard" ? (
     <DashboardPublicLinkPopover
