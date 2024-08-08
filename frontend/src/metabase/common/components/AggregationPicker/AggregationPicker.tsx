@@ -35,7 +35,7 @@ interface AggregationPickerProps {
   hasExpressionInput?: boolean;
   onSelect: (aggregation: Lib.Aggregable) => void;
   onClose?: () => void;
-  updateQuery: (query: Lib.Query) => void;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -75,7 +75,7 @@ export function AggregationPicker({
   hasExpressionInput = true,
   onSelect,
   onClose,
-  updateQuery,
+  onQueryChange,
 }: AggregationPickerProps) {
   const question = useSelector(getQuestion);
   const metadata = useSelector(getMetadata);
@@ -245,7 +245,7 @@ export function AggregationPicker({
 
   const handleCompareSubmit = useCallback(
     (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => {
-      updateQuery(query);
+      onQueryChange(query);
 
       if (question) {
         trackColumnCompareViaShortcut(
@@ -258,7 +258,7 @@ export function AggregationPicker({
 
       onClose?.();
     },
-    [stageIndex, question, onClose, updateQuery],
+    [stageIndex, question, onClose, onQueryChange],
   );
 
   if (isComparing) {

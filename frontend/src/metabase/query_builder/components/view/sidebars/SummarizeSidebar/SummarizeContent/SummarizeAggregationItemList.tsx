@@ -14,7 +14,7 @@ type SummarizeAggregationItemListProps = {
     nextAggregation: Lib.Aggregable,
   ) => void;
   onRemoveAggregation: (aggregation: Lib.AggregationClause) => void;
-  updateQuery: (query: Lib.Query) => void;
+  onQueryChange: (query: Lib.Query) => void;
 } & GroupProps;
 
 export const SummarizeAggregationItemList = ({
@@ -24,7 +24,7 @@ export const SummarizeAggregationItemList = ({
   onAddAggregations,
   onUpdateAggregation,
   onRemoveAggregation,
-  updateQuery,
+  onQueryChange,
   ...containerProps
 }: SummarizeAggregationItemListProps) => (
   <Group
@@ -40,7 +40,7 @@ export const SummarizeAggregationItemList = ({
         stageIndex={stageIndex}
         aggregation={aggregation}
         aggregationIndex={aggregationIndex}
-        updateQuery={updateQuery}
+        onQueryChange={onQueryChange}
         onUpdate={nextAggregation =>
           onUpdateAggregation(aggregation, nextAggregation)
         }
@@ -51,7 +51,7 @@ export const SummarizeAggregationItemList = ({
       query={query}
       stageIndex={stageIndex}
       onAddAggregations={onAddAggregations}
-      updateQuery={updateQuery}
+      onQueryChange={onQueryChange}
     />
   </Group>
 );

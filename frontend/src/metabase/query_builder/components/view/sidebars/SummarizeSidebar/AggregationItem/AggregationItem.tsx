@@ -14,7 +14,7 @@ interface AggregationItemProps {
   aggregationIndex: number;
   onUpdate: (nextAggregation: Lib.Aggregable) => void;
   onRemove: () => void;
-  updateQuery: (query: Lib.Query) => void;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 export function AggregationItem({
@@ -24,7 +24,7 @@ export function AggregationItem({
   aggregationIndex,
   onUpdate,
   onRemove,
-  updateQuery,
+  onQueryChange,
 }: AggregationItemProps) {
   const [isOpened, setIsOpened] = useState(false);
   const { displayName } = Lib.displayInfo(query, stageIndex, aggregation);
@@ -58,7 +58,7 @@ export function AggregationItem({
             onUpdate(nextAggregation);
             setIsOpened(false);
           }}
-          updateQuery={updateQuery}
+          onQueryChange={onQueryChange}
         />
       </Popover.Dropdown>
     </Popover>
