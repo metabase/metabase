@@ -70,7 +70,7 @@
 ;;;    - For entities that existed before the column was added, have a portable way to rebuild them (see below on
 ;;;      hashing).
 
-(def ^:dynamic *current* "Instance/map being exported/imported currently" nil)
+(def ^:private ^:dynamic *current* "Instance/map being exported/imported currently" nil)
 
 (defmulti entity-id
   "Given the model name and an entity, returns its entity ID (which might be nil).
@@ -695,18 +695,17 @@
     (ingested-model ingested)))
 
 (defn- xform-by-spec [model-name ingested]
-  (binding [*current* ingested]
-    (let [spec (make-spec model-name nil)]
-      (when spec
-        (-> (select-keys ingested (:copy spec))
-            (into (for [[k transform] (:transform spec)
-                        :when (not (::nested transform))
-                        :let  [res ((:import transform) (get ingested k))]
-                        ;; do not try to insert nil values if transformer returns nothing
-                        :when res]
-                    [k res])))))))
+  (let [spec (make-spec model-name nil)]
+    (when spec
+      (-> (select-keys ingested (:copy spec))
+          (into (for [[k transform] (:transform spec)
+                      :when         (not (::nested transform))
+                      :let          [res ((:import transform) (get ingested k))]
+                      ;; do not try to insert nil values if transformer returns nothing
+                      :when         res]
+                  [k res]))))))
 
-(defn- spec-post-process! [model-name ingested instance]
+(defn- spec-nested! [model-name ingested instance]
   (binding [*current* instance]
     (let [spec (make-spec model-name nil)]
       (doseq [[k transform] (:transform spec)
@@ -723,7 +722,7 @@
                    (if (nil? maybe-local)
                      (load-insert! model-name adjusted)
                      (load-update! model-name adjusted maybe-local)))]
-    (spec-post-process! model-name ingested instance)
+    (spec-nested! model-name ingested instance)
     instance))
 
 (defmethod load-one! :default [ingested maybe-local]
@@ -827,7 +826,6 @@
   [id model]
   (when id
     (let [model-name (name model)
-          ;;model      (t2.model/resolve-model (symbol model-name))
           entity     (t2/select-one model (first (t2/primary-keys model)) id)
           path       (when entity
                        (mapv :id (generate-path model-name entity)))]
@@ -851,12 +849,10 @@
   Unusual parameter order means this can be used as `(update x :some_id import-fk 'SomeModel)`."
   [eid model]
   (when eid
-    (let [;;model-name (name model)
-          ;;model      (t2.model/resolve-model (symbol model-name))
-          eid        (if (vector? eid)
-                       (last eid)
-                       eid)
-          entity     (lookup-by-id model eid)]
+    (let [eid    (if (vector? eid)
+                   (last eid)
+                   eid)
+          entity (lookup-by-id model eid)]
       (if entity
         (get entity (first (t2/primary-keys model)))
         (throw (ex-info "Could not find foreign key target - bad serdes dependencies or other serialization error"
@@ -1534,11 +1530,8 @@
      :model       model
      :backward-fk backward-fk
      :export      (fn [data]
-                    ;; if this looks weird, see :series hydration for DashboardCard, it supplies Cards while we need
-                    ;; to serialize DashboardCardSeries instances
-                    (when-not (every? #(t2/instance-of? model %) data)
-                      (assert false
-                              (format "Nested data is expected to be a %s, not %s" model (t2/model (first data)))))
+                    (assert (every? #(t2/instance-of? model %) data)
+                            (format "Nested data is expected to be a %s, not %s" model (t2/model (first data))))
                     ;; `nil? data` check is for `extract-one` case in tests; make sure to add empty vectors in
                     ;; `extract-query` implementations for nested collections
                     (try
@@ -1553,13 +1546,17 @@
                                         e)))))
      :import      (fn [lst]
                     (let [parent-id (:id *current*)
-                          loaded    (for [[idx ingested] (map-indexed vector lst)
+                          loaded    (for [ingested lst
                                           ;; it's not always entity-id though, not for DashcardCardSeries
-                                          :let           [entity-id (get ingested key-field)]]
+                                          :let     [entity-id (get ingested key-field)]]
                                       (let [ingested (assoc ingested
                                                             backward-fk  parent-id
-                                                            :position    idx
-                                                            :serdes/meta [{:model model-name :id entity-id}])
+                                                            ;; for a nested entity we pass our parent's data and our
+                                                            ;; data as a path
+                                                            :serdes/meta [{:model (name (t2/model *current*))
+                                                                           :id    (:entity_id *current*)}
+                                                                          {:model model-name
+                                                                           :id    entity-id}])
                                             local    (load-find-local (:serdes/meta ingested))]
                                         (load-one! ingested local)))]
                       (if-not (seq loaded)

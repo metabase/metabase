@@ -581,9 +581,7 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
 (defmethod serdes/extract-query "Dashboard" [_ opts]
-  (eduction (map #(-> %
-                      (t2/hydrate [:dashcards :series])
-                      (t2/hydrate :tabs)))
+  (eduction (map #(t2/hydrate % :tabs [:dashcards :series]))
             (serdes/extract-query-collections Dashboard opts)))
 
 (defmethod serdes/make-spec "Dashboard" [_model-name opts]

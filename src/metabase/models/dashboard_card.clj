@@ -352,15 +352,6 @@
     (compare row-1 row-2)))
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
-;; DashboardCards are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
-;; If the parent dashboard has tabs, the dashcards are inlined under each DashboardTab, which are inlined on the Dashboard.
-;; However, we can reuse some of the serdes machinery (especially load-one!) by implementing a few serdes methods.
-(defmethod serdes/generate-path "DashboardCard" [_ dashcard]
-  (remove nil?
-          [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
-           (when (:dashboard_tab_id dashcard)
-             (serdes/infer-self-path "DashboardTab" (t2/select-one :model/DashboardTab :id (:dashboard_tab_id dashcard))))
-           (serdes/infer-self-path "DashboardCard" dashcard)]))
 
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
   {:copy      [:col :entity_id :row :size_x :size_y]
@@ -380,7 +371,9 @@
                                          :sort-by :position
                                          :key-field :card_id))
                    ;; FIXME: this waits to be removed when `extract-nested` (instead of using hydration) is
-                   ;; implemented
+                   ;; implemented; see comment at `make-spec` for `DashboardCardSeries`
                    (assoc :export (fn [data]
-                                    (->> (sort-by :position data)
-                                         (mapv (fn [x] {:card_id (serdes/*export-fk* (:id x) :model/Card)}))))))}})
+                                    (vec (map-indexed (fn [i x]
+                                                        {:card_id  (serdes/*export-fk* (:id x) :model/Card)
+                                                         :position i})
+                                                      data)))))}})

@@ -16,21 +16,25 @@
 
 ;; Serialization
 
-;;(defmethod serdes/entity-id "DashboardCardSeries" [_ instance] (:card_id instance))
-
 (defmethod serdes/generate-path "DashboardCardSeries" [_ _] nil)
 
 (defmethod serdes/load-find-local "DashboardCardSeries" [path]
-  (let [{:keys [id]} (last path)]
-    (t2/select-one :model/DashboardCardSeries :card_id {:from   [:report_card]
-                                                        :select [:id]
-                                                        :where  [:= :entity_id id]})))
+  ;; they are coming in as [dashcard series] pair from `serdes/nested`
+  (let [[{dashcard-eid :id} {card-eid :id}] path]
+    (t2/select-one :model/DashboardCardSeries
+                   :dashboardcard_id {:from   [:report_dashboardcard]
+                                      :select [:id]
+                                      :where  [:= :entity_id dashcard-eid]}
+                   :card_id          {:from   [:report_card]
+                                      :select [:id]
+                                      :where  [:= :entity_id card-eid]})))
 
+;; TODO: this is not used atm as `DashboardCard` has custom :export/:import defined; see comment there
+;; to be implemented.
 (defmethod serdes/make-spec "DashboardCardSeries" [_model-name _opts]
-  ;; We did not have position in serialization before, it was inferred from the sequence, but current helper
-  ;; (`serdes/nested`) is too generic and does not support that.
-  {:copy      []
+  ;; We did not have `position` in serialization before, it was inferred from the order, but we're trying to keep
+  ;; code more generic right now - so it's carried over as data rather than implied.
+  {:copy      [:position]
    :skip      []
-   :transform {:position         {:export (constantly nil) :import identity}
-               :dashboardcard_id (serdes/parent-ref)
+   :transform {:dashboardcard_id (serdes/parent-ref)
                :card_id          (serdes/fk :model/Card)}})

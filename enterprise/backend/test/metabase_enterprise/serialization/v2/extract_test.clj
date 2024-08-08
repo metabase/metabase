@@ -583,7 +583,8 @@
                         (is (< (q) 13))))]
             (is (=? {:entity_id dash-eid
                      :dashcards [{:entity_id dc1-eid
-                                  :series (mt/exactly=? [{:card_id c2-eid} {:card_id c3-eid}])}
+                                  :series (mt/exactly=? [{:card_id c2-eid :position 0}
+                                                         {:card_id c3-eid :position 1}])}
                                  {:entity_id dc2-eid, :series []}]}
                     ser))
 
