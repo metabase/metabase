@@ -11,9 +11,9 @@ import { Icon } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 import type { VisualizationSettings } from "metabase-types/api";
 
-import {AlertListPopoverContent} from "../../AlertListPopoverContent";
+import { AlertListPopoverContent } from "../../AlertListPopoverContent";
 
-import { AlertIcon } from "./QuestionAlertWidget.unit.spec";
+import { AlertIcon } from "./QuestionAlertWidget.styled";
 
 export function QuestionAlertWidget({
   question,
