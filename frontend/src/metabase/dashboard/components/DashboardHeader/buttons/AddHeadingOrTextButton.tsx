@@ -51,9 +51,9 @@ export const AddHeadingOrTextButton = () => {
     <Menu position="bottom-end">
       <Menu.Target>
         <ToolbarButton
-          tooltipLabel={t`Add a heading or text box`}
+          tooltipLabel={t`Add a heading or text`}
           w="3rem"
-          data-element-id={t`Add a heading or text box`}
+          data-element-id={t`Add a heading or text`}
           aria-label={t`Add a heading or text box`}
         >
           <Group spacing="xs" noWrap>

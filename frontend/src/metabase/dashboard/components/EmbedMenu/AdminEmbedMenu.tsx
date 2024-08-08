@@ -39,6 +39,7 @@ export const AdminEmbedMenu = ({
       <ViewFooterButton
         icon="share"
         tooltipLabel={isPublicSharingEnabled ? t`Sharing` : t`Embedding`}
+        data-testid="resource-embed-button"
       />
     );
 
