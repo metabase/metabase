@@ -8893,6 +8893,22 @@ databaseChangeLog:
                 name: source_card_id
 
 
+  - changeSet:
+      id: v51.2024-08-07T10:00:00
+      author: ranquild
+      comment: Remove field refs from report_card.visualization_settings.column_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInCardVizSettings"
+
+  - changeSet:
+      id: v51.2024-08-07T11:00:00
+      author: ranquild
+      comment: Remove field refs from report_dashboardcard.visualization_settings.column_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

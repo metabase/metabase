@@ -1,4 +1,4 @@
-import { isEmail } from "metabase/lib/utils";
+import { isEmail } from "metabase/lib/email";
 
 import type { AvatarProps } from "./UserAvatar.styled";
 import { Avatar as StyledAvatar } from "./UserAvatar.styled";
