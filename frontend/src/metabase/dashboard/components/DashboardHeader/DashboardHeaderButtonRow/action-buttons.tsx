@@ -1,6 +1,7 @@
 import { withRouter } from "react-router";
 
-import { RefreshWidgetButton } from "../../DashboardActions.styled";
+import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
+
 import { DashboardBookmark } from "../../DashboardBookmark";
 import { DashboardEmbedAction } from "../../DashboardEmbedAction";
 import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
@@ -131,7 +132,7 @@ export const dashboardActionButtons: Record<
       setRefreshElapsedHook,
       onRefreshPeriodChange,
     }) => (
-      <RefreshWidgetButton
+      <RefreshWidget
         period={refreshPeriod}
         setRefreshElapsedHook={setRefreshElapsedHook}
         onChangePeriod={onRefreshPeriodChange}
