@@ -1,5 +1,4 @@
 import { generateSchemaId } from "metabase-lib/v1/metadata/utils/schema";
-import { createMockTable } from "metabase-types/api/mocks";
 
 export const SAVED_QUESTIONS_VIRTUAL_DB_ID = -1337;
 const ROOT_COLLECTION_VIRTUAL_SCHEMA_NAME = "Everything else";
@@ -46,7 +45,7 @@ export function getQuestionIdFromVirtualTableId(tableId) {
 }
 
 export function convertSavedQuestionToVirtualTable(card) {
-  return createMockTable({
+  return {
     id: getQuestionVirtualTableId(card.id),
     display_name: card.name,
     description: card.description,
@@ -54,5 +53,5 @@ export function convertSavedQuestionToVirtualTable(card) {
     db_id: card.dataset_query.database,
     schema: getCollectionVirtualSchemaId(card.collection),
     schema_name: getCollectionVirtualSchemaName(card.collection),
-  });
+  };
 }
