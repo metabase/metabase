@@ -1,23 +1,10 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { createMockMetadata } from "__support__/metadata";
 import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
-import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import Question from "metabase-lib/v1/Question";
-import type { Card, UnsavedCard } from "metabase-types/api";
+import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import { createMockCard } from "metabase-types/api/mocks";
-import {
-  ORDERS,
-  ORDERS_ID,
-  PEOPLE_ID,
-  PRODUCTS,
-  PRODUCTS_ID,
-  SAMPLE_DB_ID,
-  createAdHocCard,
-  createSampleDatabase,
-} from "metabase-types/api/mocks/presets";
 import {
   createMockQueryBuilderState,
   createMockState,
@@ -26,46 +13,38 @@ import {
 import { SummarizeSidebar } from "./SummarizeSidebar";
 
 type SetupOpts = {
-  card?: Card | UnsavedCard;
+  query?: Lib.Query;
   withDefaultAggregation?: boolean;
 };
 
-function createSummarizedCard() {
-  return createAdHocCard({
-    dataset_query: {
-      type: "query",
-      database: SAMPLE_DB_ID,
-      query: {
-        "source-table": ORDERS_ID,
-        aggregation: [["max", ["field", ORDERS.QUANTITY, null]]],
-        breakout: [
-          ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
-          ["field", PRODUCTS.CATEGORY, { "source-field": ORDERS.PRODUCT_ID }],
-        ],
+function createSummarizedQuery() {
+  return createQueryWithClauses({
+    aggregations: [
+      { operatorName: "max", tableName: "ORDERS", columnName: "QUANTITY" },
+    ],
+    breakouts: [
+      {
+        tableName: "ORDERS",
+        columnName: "CREATED_AT",
+        temporalBucketName: "Month",
       },
-    },
+      {
+        tableName: "PRODUCTS",
+        columnName: "CATEGORY",
+      },
+    ],
   });
 }
 
 async function setup({
-  card = createAdHocCard(),
+  query: initialQuery = createQuery(),
   withDefaultAggregation = true,
 }: SetupOpts = {}) {
   const onQueryChange = jest.fn();
   const onClose = jest.fn();
 
-  const metadata = createMockMetadata({
-    databases: [createSampleDatabase()],
-    questions: "id" in card ? [card] : [],
-  });
-
-  const question =
-    "id" in card
-      ? checkNotNull(metadata.question(card.id))
-      : new Question(card, metadata);
-
   function Wrapper() {
-    const [query, setQuery] = useState(question.query());
+    const [query, setQuery] = useState(initialQuery);
 
     return (
       <SummarizeSidebar
@@ -112,7 +91,6 @@ async function setup({
   }
 
   return {
-    metadata,
     getNextAggregations,
     getNextBreakouts,
     onQueryChange,
@@ -161,28 +139,22 @@ describe("SummarizeSidebar", () => {
     });
 
     it("shouldn't apply default aggregation if a query is already aggregated", async () => {
-      await setup({ card: createSummarizedCard() });
+      await setup({ query: createSummarizedQuery() });
       expect(screen.queryByLabelText("Count")).not.toBeInTheDocument();
     });
   });
 
   it("should list breakoutable columns", async () => {
-    const { metadata } = await setup();
-    const ordersTable = checkNotNull(metadata.table(ORDERS_ID));
-    const productsTable = checkNotNull(metadata.table(PRODUCTS_ID));
-    const peopleTable = checkNotNull(metadata.table(PEOPLE_ID));
-    const expectedColumnCount = [
-      ordersTable.fields,
-      productsTable.fields,
-      peopleTable.fields,
-    ].flat().length;
+    const query = createQuery();
+    const columns = Lib.breakoutableColumns(query, -1);
+    await setup({ query });
 
     expect(screen.getByText("Group by")).toBeInTheDocument();
     expect(screen.getByText("Discount")).toBeInTheDocument();
     expect(screen.getByText("Category")).toBeInTheDocument();
     expect(screen.getByText("Email")).toBeInTheDocument();
     expect(screen.getAllByTestId("dimension-list-item")).toHaveLength(
-      expectedColumnCount,
+      columns.length,
     );
   });
 
@@ -213,7 +185,7 @@ describe("SummarizeSidebar", () => {
   });
 
   it("should highlight selected breakout columns", async () => {
-    await setup({ card: createSummarizedCard() });
+    await setup({ query: createSummarizedQuery() });
 
     const [ordersCreatedAt, peopleCreatedAt] =
       screen.getAllByLabelText("Created At");
@@ -225,7 +197,7 @@ describe("SummarizeSidebar", () => {
   });
 
   it("should list breakouts added before opening the sidebar in a separate section", async () => {
-    await setup({ card: createSummarizedCard() });
+    await setup({ query: createSummarizedQuery() });
 
     const pinnedColumnList = screen.getByTestId("pinned-dimensions");
     const unpinnedColumnList = screen.getByTestId("unpinned-dimensions");
@@ -288,7 +260,7 @@ describe("SummarizeSidebar", () => {
   });
 
   it("shouldn't allow changing an aggregation to an expression", async () => {
-    await setup({ card: createSummarizedCard() });
+    await setup({ query: createSummarizedQuery() });
 
     await userEvent.click(screen.getByText("Max of Quantity"));
     await userEvent.click(await screen.findByLabelText("Back"));
@@ -362,7 +334,9 @@ describe("SummarizeSidebar", () => {
   });
 
   it("should add a new column instead of replacing when adding a bucketed column", async () => {
-    const { getNextBreakouts } = await setup({ card: createSummarizedCard() });
+    const { getNextBreakouts } = await setup({
+      query: createSummarizedQuery(),
+    });
 
     const [total] = screen.getAllByLabelText("Total");
     await userEvent.hover(total);
@@ -374,7 +348,9 @@ describe("SummarizeSidebar", () => {
   });
 
   it("should remove breakout", async () => {
-    const { getNextBreakouts } = await setup({ card: createSummarizedCard() });
+    const { getNextBreakouts } = await setup({
+      query: createSummarizedQuery(),
+    });
 
     const [breakout] = screen.getAllByLabelText("Created At");
     await userEvent.click(within(breakout).getByLabelText("Remove dimension"));
@@ -384,7 +360,9 @@ describe("SummarizeSidebar", () => {
   });
 
   it("should replace breakouts by clicking on a column", async () => {
-    const { getNextBreakouts } = await setup({ card: createSummarizedCard() });
+    const { getNextBreakouts } = await setup({
+      query: createSummarizedQuery(),
+    });
 
     await userEvent.click(screen.getByText("Quantity"));
 
