@@ -10,6 +10,7 @@ on:
         required: true
   schedule:
     - cron: '45 * * * *' # hourly
+  pull_request: # FIXME for test only
 
 jobs:
   update-release-log:
