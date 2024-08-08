@@ -384,7 +384,7 @@
       {:values          distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
        :has_more_values (or (true? (::reached-char-len-limit result))
-                            ;; `distinct-values` is from a query 
+                            ;; `distinct-values` is from a query
                             ;; with limit = [[*absolute-max-distinct-values-limit*]].
                             ;; So, if the returned `distinct-values` has length equal to that exact limit,
                             ;; we assume the returned values is just a subset of what we have in DB.
