@@ -141,13 +141,17 @@
 
   Parsing is case-insensitive."
   [s]
-  (try
-    (-> s (str/replace \space \T) t/offset-date-time)
-    (catch Exception _
-      (try
-        (OffsetDateTime/parse s auxillary-offset-datetime-formatter)
-        (catch DateTimeException _
-          (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable zoned datetime" s))))))))
+  (let [ss (str/replace s \space \T)]
+    (try
+      (OffsetDateTime/parse ss)
+      (catch DateTimeException e
+        (if (str/includes? (.getMessage e) "Invalid date")
+          (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable zoned datetime" s)))
+          (try
+            (OffsetDateTime/parse ss auxillary-offset-datetime-formatter)
+            (catch Exception _
+              (throw (IllegalArgumentException. (tru "''{0}'' is not a recognizable zoned datetime" s)))))))
+      )))
 
 (defn- remove-currency-signs
   "Remove any recognized currency signs from the string (c.f. [[currency-regex]])."
