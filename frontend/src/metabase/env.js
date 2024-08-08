@@ -1,6 +1,7 @@
 export const isCypressActive = !!window.Cypress;
 
-export const isStorybookActive = !!window.STORYBOOK_ENV;
+// eslint-disable-next-line no-undef
+export const isStorybookActive = !!process.env.STORYBOOK;
 
 // eslint-disable-next-line no-undef
 export const isProduction = process.env.WEBPACK_BUNDLE === "production";
