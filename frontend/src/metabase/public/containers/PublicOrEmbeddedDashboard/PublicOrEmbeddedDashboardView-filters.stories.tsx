@@ -545,12 +545,13 @@ LightThemeParameterListWithValue.play = async ({ canvasElement }) => {
   const filter = await canvas.findByRole("button", { name: "Category" });
   await userEvent.click(filter);
 
-  const documentElement = within(document.documentElement);
-  await userEvent.type(
-    documentElement.getByPlaceholderText("Search the list"),
-    "g",
-  );
-  await userEvent.click(documentElement.getByText("Widget"));
+  const popover = getLastPopover();
+  await userEvent.type(popover.getByPlaceholderText("Search the list"), "g");
+  await userEvent.click(popover.getByText("Widget"));
+  const gizmo = popover.getByRole("checkbox", {
+    name: "Gizmo",
+  }) as HTMLInputElement;
+  gizmo.disabled = true;
 };
 
 export const DarkThemeParameterList = Template.bind({});

@@ -4,13 +4,13 @@
   word-break: break-all;
 
   &:hover {
-    color: var(--mb-color-text-selected);
-    background-color: var(--mb-color-background-selected);
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
   }
 
   &.selected {
-    color: var(--mb-color-text-white);
-    background-color: var(--mb-color-background-brand);
+    color: var(--mb-color-text-selected);
+    background-color: var(--mb-color-background-selected);
   }
 
   &.disabled {
