@@ -45,7 +45,7 @@ export const runQuestionOnNavigateSdk =
     // Optimistic update the UI before we re-fetch the query metadata.
     onQuestionChange(new Question(nextCard, getMetadata(getState())));
 
-    dispatch(loadMetadataForCard(nextCard));
+    await dispatch(loadMetadataForCard(nextCard));
 
     const state = await runQuestionQuerySdk({
       question: new Question(nextCard, getMetadata(getState())),

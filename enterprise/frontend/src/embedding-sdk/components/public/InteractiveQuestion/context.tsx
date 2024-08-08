@@ -79,7 +79,7 @@ export const InteractiveQuestionProvider = ({
     onReset: onReset || loadQuestion,
     onNavigateBack,
     runQuestion,
-    updateQuestion: updateQuestion,
+    updateQuestion,
     navigateToNewCard,
     plugins,
     question,
