@@ -114,9 +114,9 @@ class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboard
       params: { uuid, token },
     } = this.props;
     if (uuid) {
-      setPublicDashboardEndpoints();
+      setPublicDashboardEndpoints(uuid);
     } else if (token) {
-      setEmbedDashboardEndpoints();
+      setEmbedDashboardEndpoints(token);
     }
 
     initialize();

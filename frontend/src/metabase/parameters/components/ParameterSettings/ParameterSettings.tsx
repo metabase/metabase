@@ -19,7 +19,10 @@ import {
 } from "metabase/ui";
 import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  getIsMultiSelect,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
   ValuesQueryType,
@@ -27,7 +30,6 @@ import type {
   ValuesSourceType,
 } from "metabase-types/api";
 
-import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import { RequiredParamToggle } from "../RequiredParamToggle";
 import { ValuesSourceSettings } from "../ValuesSourceSettings";
@@ -218,22 +220,24 @@ export const ParameterSettings = ({
       )}
 
       <Box mb="lg">
-        <SettingLabel>
+        <SettingLabel id="default-value-label">
           {t`Default value`}
           {parameter.required &&
             parameterHasNoDisplayValue(parameter.default) && (
-              <SettingLabelError>({t`required`})</SettingLabelError>
+              <SettingLabelError> ({t`required`})</SettingLabelError>
             )}
         </SettingLabel>
 
-        <SettingValueWidget
-          parameter={parameter}
-          name={parameter.name}
-          value={parameter.default}
-          placeholder={t`No default`}
-          setValue={onChangeDefaultValue}
-          mimicMantine
-        />
+        <div aria-labelledby="default-value-label">
+          <SettingValueWidget
+            parameter={parameter}
+            name={parameter.name}
+            value={parameter.default}
+            placeholder={t`No default`}
+            setValue={onChangeDefaultValue}
+            mimicMantine
+          />
+        </div>
 
         <RequiredParamToggle
           // This forces the toggle to be a new instance when the parameter changes,

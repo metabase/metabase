@@ -297,6 +297,18 @@ Timeout in milliseconds for connecting to databases, both Metabase application d
         In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
         as the connections via tunnels have more overhead than connections without.
 
+### `MB_DB_QUERY_TIMEOUT_MINUTES`
+
+- Type: integer
+- Default: `3`
+
+By default, this is 20 minutes.
+
+Timeout in minutes for databases query execution, both Metabase application database and data connections.
+  If you have long-running queries, you might consider increasing this value.
+  Adjusting the timeout does not impact Metabase’s frontend.
+  Please be aware that other services (like Nginx) may still drop long-running queries.
+
 ### `MB_EE_AI_FEATURES_ENABLED`
 
 - Type: boolean
@@ -457,10 +469,10 @@ Enable admins to create publicly viewable links (and embeddable iframes) for Que
 ### `MB_ENABLE_QUERY_CACHING`
 
 - Type: boolean
-- Default: `false`
+- Default: `true`
 - [Configuration file name](./config-file.md): `enable-query-caching`
 
-Enabling caching will save the results of queries that take a long time to run.
+Allow caching results of queries that take a long time to run.
 
 ### `MB_ENABLE_XRAYS`
 
@@ -928,6 +940,14 @@ When attempting to assemble prompts, the threshold at which prompt will no longe
 
 Matching style for native query editors autocomplete. Can be "substring", "prefix", or "off". Larger instances can have performance issues matching using substring, so can use prefix matching,  or turn autocompletions off.
 
+### `MB_NESTED_FIELD_COLUMNS_VALUE_LENGTH_LIMIT`
+
+- Type: integer
+- Default: `50000`
+- [Exported as](../installation-and-operation/serialization.md): `nested-field-columns-value-length-limit`.
+
+Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set too high it could lead to slow syncs or out of memory errors.
+
 ### `MB_NO_DATA_ILLUSTRATION`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1263,6 +1283,16 @@ Password for opening the keystore.
 
 Absolute path to the Keystore file to use for signing SAML requests.
 
+### `MB_SAML_SLO_ENABLED`
+
+> Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
+
+- Type: boolean
+- Default: `false`
+- [Configuration file name](./config-file.md): `saml-slo-enabled`
+
+Is SAML Single Log Out enabled?
+
 ### `MB_SAML_USER_PROVISIONING_ENABLED`
 
 > Only available on Metabase [Pro](https://www.metabase.com/product/pro) and [Enterprise](https://www.metabase.com/product/enterprise) plans.
@@ -1465,7 +1495,7 @@ Fetch size for result sets. We want to ensure that the jdbc ResultSet objects ar
 ### `MB_SQL_PARSING_ENABLED`
 
 - Type: boolean
-- Default: `true`
+- Default: `false`
 
 SQL Parsing is disabled.
 
@@ -1535,7 +1565,6 @@ Upload settings.
 
 Note: Sandboxed users will never see suggestions.
 
-## Other environment variables
 
 The following environment variables can only be set via the environment. They cannot be set by the configuration file.
 
@@ -1952,20 +1981,6 @@ Type: string<br>
 Default: `"db"`
 
 Current cache backend. Dynamically rebindable primarily for test purposes.
-
-### `MB_QUERY_CACHING_MIN_TTL`
-
-Type: integer<br>
-Default: `60`
-
-Metabase will cache all saved questions with an average query execution time longer than this many seconds.
-
-### `MB_QUERY_CACHING_TTL_RATIO`
-
-Type: integer<br>
-Default: `10`
-
-To determine how long each saved question's cached result should stick around, we take the query's average execution time and multiply that by whatever you input here. So if a query takes on average 2 minutes to run, and you input 10 for your multiplier, its cache entry will persist for 20 minutes.
 
 ### `MB_SEARCH_TYPEAHEAD_ENABLED`
 

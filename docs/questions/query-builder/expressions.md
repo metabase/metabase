@@ -12,7 +12,7 @@ You can also skip to the [complete list of expressions][expression-list].
 
 ## Custom expressions to create filters, metrics, and custom columns
 
-To use custom expression, create a __Custom Column__ (where the custom expression is used as a Field Formula to calculate values for the new column), or click on __Filter__ or __Summarize__ and select __Custom Expression__.
+To use custom expression, create a **Custom Column** (where the custom expression is used as a Field Formula to calculate values for the new column), or click on **Filter** or **Summarize** and select **Custom Expression**.
 
 When using the query builder, you can use expressions to create new:
 

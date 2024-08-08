@@ -33,4 +33,4 @@ See the [API changelog](./developers-guide/api-changelog.md).
 
 ## API endpoints
 
-_* indicates endpoints used for features available on [paid plans](https://www.metabase.com/pricing)._
+_* indicates endpoints used for features available on [Pro and Enterprise plans](https://www.metabase.com/pricing)._

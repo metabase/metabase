@@ -1,5 +1,6 @@
 import { push } from "react-router-redux";
 import { t } from "ttag";
+import _ from "underscore";
 
 import { DataPermissionValue } from "metabase/admin/permissions/types";
 import {
@@ -88,9 +89,8 @@ if (hasPremiumFeature("sandboxes")) {
 
   PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.push(state => {
     const sandboxes = getDraftPolicies(state);
-    return {
-      sandboxes,
-    };
+    const modifiedGroupIds = _.uniq(sandboxes.map(sb => sb.group_id));
+    return [{ sandboxes }, modifiedGroupIds];
   });
 
   PLUGIN_DATA_PERMISSIONS.hasChanges.push(hasPolicyChanges);

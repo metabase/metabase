@@ -1,3 +1,4 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import EditableText from "metabase/core/components/EditableText";
@@ -13,15 +14,13 @@ export const DashboardInfoSidebarRoot = styled.aside`
   background: ${color("white")};
   border-left: 1px solid ${color("border")};
   align-self: stretch;
-  // FIXME: ensure that removing this style is OK
-  // overflow-y: auto;
   box-sizing: border-box;
   display: flex;
   flex-direction: column;
 
   ${breakpointMaxSmall} {
     position: absolute;
-    right: 0px;
+    right: 0;
     z-index: 2;
     height: auto;
     border-bottom: 1px solid ${color("border")};
@@ -61,4 +60,16 @@ export const ContentSection = styled.div`
 
 export const DescriptionHeader = styled.h3`
   margin-bottom: 0.5rem;
+`;
+
+export const EditableDescription = styled(EditableText)<{ hasError?: boolean }>`
+  ${props =>
+    props.hasError &&
+    css`
+      border-color: ${color("error")};
+
+      &:hover {
+        border-color: ${color("error")};
+      }
+    `}
 `;

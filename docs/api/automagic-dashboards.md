@@ -116,6 +116,16 @@ Return an automagic comparison dashboard for entity `entity` with id `id` compar
 
 -  **`comparison-entity-id-or-query`**
 
+## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/query_metadata`
+
+Return all metadata for an automagic dashboard for entity `entity` with id `id`.
+
+### PARAMS:
+
+-  **`entity`** Invalid entity type.
+
+-  **`entity-id-or-query`**
+
 ## `GET /api/automagic-dashboards/:entity/:entity-id-or-query/rule/:prefix/:dashboard-template`
 
 Return an automagic dashboard for entity `entity` with id `id` using dashboard-template `dashboard-template`.

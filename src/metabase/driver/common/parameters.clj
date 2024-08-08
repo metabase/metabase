@@ -73,6 +73,11 @@
   (pretty [_]
     (list (pretty/qualify-symbol-for-*ns* `->DateRange) start end)))
 
+(p.types/defrecord+ DateTimeRange [start end]
+  pretty/PrettyPrintable
+  (pretty [_]
+          (list (pretty/qualify-symbol-for-*ns* `->DateRange) start end)))
+
 (def no-value
   "Convenience for representing an *optional* parameter present in a query but whose value is unspecified in the param
   values."

@@ -146,7 +146,6 @@ export const ParametersWidgetContainer = styled(FullWidthContainer)<{
       left: 0;
       width: 100%;
       z-index: 3;
-
       background-color: ${getParameterPanelBackgroundColor(
         props.embedFrameTheme,
       )};
@@ -157,9 +156,7 @@ export const Footer = styled.footer<{ variant: FooterVariant }>`
   display: flex;
   flex-shrink: 0;
   align-items: center;
-
   ${props => footerVariantStyles[props.variant]}
-
   padding: 0.5rem;
 
   ${breakpointMinMedium} {

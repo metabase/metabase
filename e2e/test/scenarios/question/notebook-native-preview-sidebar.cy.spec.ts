@@ -318,21 +318,21 @@ describe(
       cy.findByTestId("qb-header").findByText("Explore results").click();
       cy.get("[data-testid=cell-data]").should("contain", "Small Marble Shoes");
 
-      // FIXME: Remove `onlyOn` wrapper block once the issue #38181 is fixed!
+      cy.log("The generated query should be valid (metabase#38181)");
+      openNotebook(); // SQL sidebar state was persisted so it's already open now
+      cy.findByTestId("native-query-preview-sidebar").within(() => {
+        cy.findByText("Native query for this question").should("exist");
+        cy.get(".ace_content")
+          .should("contain", "$project")
+          .and("contain", "$limit")
+          .and("not.contain", "BsonString")
+          .and("not.contain", "BsonInt32");
+
+        cy.button("Convert this question to a native query").click();
+      });
+
+      // FIXME: Remove `onlyOn` wrapper block once the issue #40557 is fixed
       onlyOn(false, () => {
-        cy.log("The generated query should be valid (metabase#38181)");
-        openNotebook(); // SQL sidebar state was persisted so it's already open now
-        cy.findByTestId("native-query-preview-sidebar").within(() => {
-          cy.findByText("Native query for this question").should("exist");
-          cy.get(".ace_content")
-            .should("contain", "$project")
-            .and("contain", "$limit")
-            .and("not.contain", "BsonString")
-            .and("not.contain", "BsonInt32");
-
-          cy.button("Convert this question to a native query").click();
-        });
-
         cy.log(
           "Database and table should be pre-selected (metabase#15946 and/or metabase#40557)",
         );

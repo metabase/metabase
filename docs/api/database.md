@@ -52,14 +52,14 @@ Fetch all `Databases`.
 ## `GET /api/database/:id`
 
 Get a single Database with `id`. Optionally pass `?include=tables` or `?include=tables.fields` to include the Tables
-  belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
-  (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
-  returned details (see [[metabase.models.secret/expand-db-details-inferred-secret-values]] for full details).
+   belonging to this database, or the Tables and Fields, respectively.  If the requestor has write permissions for the DB
+   (i.e. is an admin or has data model permissions), then certain inferred secret values will also be included in the
+   returned details (see [[metabase.models.secret/expand-db-details-inferred-secret-values]] for full details).
 
-  Passing include_editable_data_model will only return tables for which the current user has data model editing
-  permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
-  In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
-  and tables, with no additional metadata.
+   Passing include_editable_data_model will only return tables for which the current user has data model editing
+   permissions, if Enterprise Edition code is available and a token with the advanced-permissions feature is present.
+   In addition, if the user has no data access for the DB (aka block permissions), it will return only the DB name, ID
+   and tables, with no additional metadata.
 
 ### PARAMS:
 

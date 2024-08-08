@@ -10,7 +10,7 @@ export const DashboardHeaderActionDivider = styled.div`
   height: 1.25rem;
   padding-left: 0.5rem;
   margin-left: 0.5rem;
-  width: 0px;
+  width: 0;
   border-left: 1px solid ${color("border")};
 `;
 

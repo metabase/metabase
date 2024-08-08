@@ -282,6 +282,7 @@ function DashCardInner({
     <ErrorBoundary>
       <DashCardRoot
         data-testid="dashcard"
+        data-dashcard-key={dashcard.id}
         className={cx(
           DashboardS.Card,
           EmbedFrameS.Card,

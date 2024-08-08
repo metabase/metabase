@@ -43,24 +43,6 @@ describe("DateOperatorPicker", () => {
     });
   });
 
-  it("should be able to change a specific date value", async () => {
-    const { onChange } = setup({
-      value: {
-        type: "specific",
-        operator: "=",
-        values: [new Date(2015, 1, 10)],
-      },
-    });
-
-    await userEvent.click(screen.getByText("15"));
-
-    expect(onChange).toHaveBeenCalledWith({
-      type: "specific",
-      operator: "=",
-      values: [new Date(2015, 1, 15)],
-    });
-  });
-
   it("should be able to change a relative date value", async () => {
     const { onChange } = setup({
       value: {

@@ -29,9 +29,7 @@ const BackButtonContainer = styled.div`
 const BackButtonLabel = styled.span`
   font-size: 16px;
   color: ${color("text-dark")};
-
   margin-left: ${space(1)};
-
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;

@@ -129,15 +129,15 @@
     (let [sql (apply format format-string args)]
       (log/infof "[BigQuery] %s\n" sql)
       (flush)
-      (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil nil))))
+      (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil))))
 
 (def ^:private valid-field-types
   #{:BOOLEAN :DATE :DATETIME :FLOAT :INTEGER :NUMERIC :RECORD :STRING :TIME :TIMESTAMP})
 
-;; Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128
+;; Fields must contain only letters, numbers, spaces, and underscores, start with a letter or underscore, and be at most 128
 ;; characters long.
 (def ^:private ValidFieldName
-  [:re #"^[A-Za-z_]\w{0,127}$"])
+  [:re #"^[A-Za-z_](\w| ){0,127}$"])
 
 (mu/defn ^:private delete-table!
   [dataset-id :- ::lib.schema.common/non-blank-string
@@ -166,10 +166,10 @@
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
   (let [sql                           (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)
         respond                       (fn [_ rows]
-                                        (ffirst rows))
+                                        (ffirst (into [] rows)))
         client                        (bigquery)
-        ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil nil)]
-    (#'bigquery/post-process-native respond query-response (atom false))))
+        ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil)]
+    (#'bigquery/post-process-native respond query-response #_cancel-chan nil)))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]

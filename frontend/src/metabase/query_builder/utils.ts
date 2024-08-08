@@ -1,11 +1,12 @@
 import type { Location } from "history";
 import querystring from "querystring";
+import _ from "underscore";
 
 import { serializeCardForUrl } from "metabase/lib/card";
 import * as Urls from "metabase/lib/urls";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, Field } from "metabase-types/api";
 import type { DatasetEditorTab, QueryBuilderMode } from "metabase-types/store";
 
 interface GetPathNameFromQueryBuilderModeOptions {
@@ -133,3 +134,17 @@ export const isNavigationAllowed = ({
 
   return true;
 };
+
+const WRITABLE_COLUMN_PROPERTIES = [
+  "id",
+  "display_name",
+  "description",
+  "semantic_type",
+  "fk_target_field_id",
+  "visibility_type",
+  "settings",
+];
+
+export function getWritableColumnProperties(column: Field) {
+  return _.pick(column, WRITABLE_COLUMN_PROPERTIES);
+}

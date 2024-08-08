@@ -7,6 +7,7 @@ import _ from "underscore";
 import Actions from "metabase/entities/actions";
 import Dashboards from "metabase/entities/dashboards";
 import Questions from "metabase/entities/questions";
+import Revisions from "metabase/entities/revisions";
 import { handleActions, combineReducers } from "metabase/lib/redux";
 import { NAVIGATE_BACK_TO_DASHBOARD } from "metabase/query_builder/actions";
 
@@ -41,6 +42,7 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   RESET,
+  RESET_PARAMETERS,
   SET_PARAMETER_VALUES,
   UNDO_REMOVE_CARD_FROM_DASH,
   SHOW_AUTO_APPLY_FILTERS_TOAST,
@@ -328,6 +330,10 @@ const dashcardData = handleActions(
     },
     [Questions.actionTypes.UPDATE]: (state, { payload: { object: card } }) =>
       _.mapObject(state, dashboardData => dissoc(dashboardData, card.id)),
+    [Revisions.actionTypes.REVERT]: (state, { payload: revision }) =>
+      _.mapObject(state, dashboardData =>
+        dissoc(dashboardData, revision.model_id),
+      ),
   },
   INITIAL_DASHBOARD_STATE.dashcardData,
 );
@@ -366,6 +372,14 @@ const parameterValues = handleActions(
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
     },
+    [RESET_PARAMETERS]: {
+      next: (state, { payload: parameters }) => {
+        return parameters.reduce(
+          (result, parameter) => assoc(result, parameter.id, parameter.value),
+          state ?? {},
+        );
+      },
+    },
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),
     },
@@ -395,6 +409,14 @@ const draftParameterValues = handleActions(
     },
     [SET_PARAMETER_VALUES]: {
       next: (state, { payload }) => payload,
+    },
+    [RESET_PARAMETERS]: {
+      next: (state, { payload: parameters }) => {
+        return parameters.reduce(
+          (result, parameter) => assoc(result, parameter.id, parameter.value),
+          state ?? {},
+        );
+      },
     },
     [REMOVE_PARAMETER]: {
       next: (state, { payload: { id } }) => dissoc(state, id),

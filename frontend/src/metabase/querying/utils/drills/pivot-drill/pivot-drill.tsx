@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { Box } from "metabase/ui";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionPopoverProps,
@@ -86,18 +87,20 @@ function getColumnPopover(
     onClose,
   }: ClickActionPopoverProps) {
     return (
-      <QueryColumnPicker
-        query={query}
-        stageIndex={stageIndex}
-        columnGroups={Lib.groupColumns(columns)}
-        checkIsColumnSelected={() => false}
-        onSelect={column => {
-          const nextQuestion = applyDrill(drill, column).setDefaultDisplay();
-          const nextCard = nextQuestion.card();
-          onChangeCardAndRun({ nextCard });
-        }}
-        onClose={onClose}
-      />
+      <Box mah="65vh">
+        <QueryColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          columnGroups={Lib.groupColumns(columns)}
+          checkIsColumnSelected={() => false}
+          onSelect={column => {
+            const nextQuestion = applyDrill(drill, column).setDefaultDisplay();
+            const nextCard = nextQuestion.card();
+            onChangeCardAndRun({ nextCard });
+          }}
+          onClose={onClose}
+        />
+      </Box>
     );
   };
 }

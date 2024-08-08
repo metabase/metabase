@@ -102,6 +102,7 @@ const RowChartVisualization = ({
   actionButtons,
   isFullscreen,
   isQueryBuilder,
+  isDashboard,
   onRender,
   onHoverChange,
   showTitle,
@@ -109,7 +110,8 @@ const RowChartVisualization = ({
   rawSeries: rawMultipleSeries,
   series: multipleSeries,
   fontFamily,
-  width,
+  width: outerWidth,
+  height: outerHeight,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
@@ -215,12 +217,18 @@ const RowChartVisualization = ({
       chartColumns,
     );
 
+    const areMultipleCards = rawMultipleSeries.length > 1;
+    if (areMultipleCards) {
+      openQuestion();
+      return;
+    }
+
     if ("breakout" in chartColumns && visualizationIsClickable(clickData)) {
       onVisualizationClick({
         ...clickData,
         element: event.currentTarget,
       });
-    } else {
+    } else if (isDashboard) {
       openQuestion();
     }
   };
@@ -278,10 +286,12 @@ const RowChartVisualization = ({
           icon={headerIcon}
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
-          width={width}
+          width={outerWidth}
         />
       )}
       <RowChartLegendLayout
+        width={outerWidth}
+        height={outerHeight}
         hasLegend={hasLegend}
         items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}

@@ -130,7 +130,7 @@ describe("scenarios > dashboard > filters > date", () => {
     saveDashboard();
 
     // Updates the filter value
-    filterWidget().click();
+    filterWidget().should("contain.text", "November 2023").click();
     popover().findByText("December").click();
     filterWidget().findByText("December 2023");
     ensureDashboardCardHasText("76.83");

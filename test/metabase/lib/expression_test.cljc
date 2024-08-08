@@ -72,7 +72,7 @@
                           #_#_(lib/concat string-field "abc") :type/Text
                           (lib/substring string-field 0 10) :type/Text
                           (lib/replace string-field "abc" "def") :type/Text
-                          (lib/regexextract string-field "abc") :type/Text
+                          (lib/regex-match-first string-field "abc") :type/Text
                           (lib/length string-field) :type/Integer
                           (lib/trim string-field) :type/Text
                           (lib/rtrim string-field) :type/Text
@@ -296,8 +296,10 @@
         expressionable-expressions-for-position (fn [pos]
                                                   (some->> (lib/expressionable-columns query pos)
                                                            (map :lib/desired-column-alias)))]
-    (is (= ["ID" "NAME"] (expressionable-expressions-for-position 0)))
-    (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
+    ;; Because of (the second problem in) #44584, the expression-position argument is ignored,
+    ;; so the first two calls behave the same as the last two.
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 0)))
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 1)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
     (is (= (lib/visible-columns query)
@@ -518,7 +520,7 @@
 (deftest ^:parallel diagnose-expression-test-4-offset-not-allowed-in-expressions
   (testing "adding/editing an expression using offset is not allowed"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (is (=? {:message "OFFSET is not supported in custom expressions"}
+      (is (=? {:message "OFFSET is not supported in custom columns"}
               (lib.expression/diagnose-expression query 0 :expression
                                                   (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                   nil))))))
@@ -532,3 +534,52 @@
                                                   (lib/< (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                          100)
                                                   nil))))))
+
+(deftest ^:parallel date-and-time-string-literals-test-1-dates
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    #{:type/Date :type/Text} "2024-07-02"))
+
+(deftest ^:parallel date-and-time-string-literals-test-2-times
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; Times without time zones
+    #{:type/Time :type/Text} "12:34:56.789"
+    #{:type/Time :type/Text} "12:34:56"
+    #{:type/Time :type/Text} "12:34"
+    ;; Times in Zulu
+    #{:type/Time :type/Text} "12:34:56.789Z"
+    #{:type/Time :type/Text} "12:34:56Z"
+    #{:type/Time :type/Text} "12:34Z"
+    ;; Times with offsets
+    #{:type/Time :type/Text} "12:34:56.789+07:00"
+    #{:type/Time :type/Text} "12:34:56-03:00"
+    #{:type/Time :type/Text} "12:34+02:03"))
+
+(deftest ^:parallel date-and-time-string-literals-test-3-datetimes-with-T
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; DateTimes without time zones
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34"
+    ;; DateTimes in Zulu time
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789Z"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56Z"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34Z"
+    ;; DateTimes with offsets
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789+07:00"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56-03:00"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34+02:03"))
+
+(deftest ^:parallel date-and-time-string-literals-test-4-datetimes-without-T
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; DateTimes without time zones and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34"
+    ;; DateTimes in Zulu time and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789Z"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56Z"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34Z"
+    ;; DateTimes with offsets and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789+07:00"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56-03:00"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34+02:03"))

@@ -22,6 +22,7 @@ import { Icon } from "metabase/ui";
 import type { TabListProps } from "../TabList/TabList";
 
 import { ScrollButton, TabList } from "./TabRow.styled";
+import { tabsCollisionDetection } from "./collision-detection";
 
 interface TabRowProps<T> extends TabListProps<T> {
   width?: number | null;
@@ -104,6 +105,7 @@ function TabRowInner<T>({
         onDragEnd={onDragEnd}
         modifiers={[restrictToHorizontalAxis, restrictToParentElement]}
         sensors={[pointerSensor, mouseSensor]}
+        collisionDetection={tabsCollisionDetection}
       >
         <SortableContext
           items={itemIds ?? []}

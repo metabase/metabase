@@ -25,12 +25,12 @@
 (defn- ee-score
   [search-string item]
   (mt/with-premium-features #{:official-collections :content-verification}
-    (-> (scoring/score-and-result search-string item) :score)))
+    (-> (scoring/score-and-result item {:search-string search-string}) :score)))
 
 (defn- oss-score
   [search-string item]
   (mt/with-premium-features #{}
-    (-> (scoring/score-and-result search-string item) :score)))
+    (-> (scoring/score-and-result item {:search-string search-string}) :score)))
 
 (deftest official-collection-tests
   (testing "it should bump up the value of items in official collections"
@@ -121,7 +121,7 @@
              (-> (scoring/top-results
                   results
                   1
-                  (map #(scoring/score-and-result search-string %)))
+                  (map #(scoring/score-and-result % {:search-string search-string})))
                  first
                  :name))))))
 

@@ -49,7 +49,7 @@ const defaultDatasetEditorProps = {
   onOpenModal: noop,
   onSave: noop,
   runQuestionQuery: noop,
-  setFieldMetadata: noop,
+  setMetadataDiff: noop,
   setQueryBuilderMode: noop,
   toggleDataReference: noop,
   toggleSnippetSidebar: noop,

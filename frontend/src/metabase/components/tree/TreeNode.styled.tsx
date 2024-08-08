@@ -27,7 +27,6 @@ export const TreeNodeRoot = styled.li<TreeNodeRootProps>`
 `;
 
 export const ExpandToggleButton = styled.button`
-  display: flex;
   cursor: pointer;
   padding: 0.5rem 0.25rem 0.5rem 0.25rem;
   display: block;

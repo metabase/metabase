@@ -185,31 +185,6 @@ describe("dashboard > actions > utils", () => {
 
       expect(haveDashboardCardsChanged(newCards, oldCards)).toBe(false);
     });
-
-    it("should perform reasonably well for 1000 cards", () => {
-      const oldCards = Array(1000)
-        .fill("")
-        .map(index =>
-          createMockDashboardCard({
-            id: index,
-            visualization_settings: { foo: { bar: { baz: index * 10 } } },
-          }),
-        );
-      const newCards = Array(1000)
-        .fill("")
-        .map(index =>
-          createMockDashboardCard({
-            id: index,
-            visualization_settings: { foo: { bar: { baz: index * 10 } } },
-          }),
-        );
-
-      const startTime = performance.now();
-      expect(haveDashboardCardsChanged(newCards, oldCards)).toBe(false);
-      const endTime = performance.now();
-
-      expect(endTime - startTime).toBeLessThan(100); // 100 ms (locally this was 6 ms)
-    });
   });
 
   describe("getDashCardMoveToTabUndoMessage", () => {

@@ -40,6 +40,7 @@
                                        :jdbc-driver {:name    (.getDriverName metadata)
                                                      :version (.getDriverVersion metadata)}}))
     :run-mode                     (config/config-kw :mb-run-mode)
+    :plan-alias (or (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :plan-alias) "")
     :version                      config/mb-version-info
     :settings                     {:report-timezone (driver/report-timezone)}}
    (when (premium-features/is-airgapped?)

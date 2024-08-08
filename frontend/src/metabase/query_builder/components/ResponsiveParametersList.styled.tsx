@@ -38,10 +38,8 @@ export const ParametersListContainer = styled.div<ParametersListContainerProps>`
       position: absolute;
       top: 0;
       left: 0;
-
       width: 100%;
       border-bottom: 1px solid ${color("border")};
-
       overflow-y: auto;
       bottom: ${isShowingMobile ? "0" : "100%"};
       padding-bottom: ${isShowingMobile ? "0.5rem" : "0"};

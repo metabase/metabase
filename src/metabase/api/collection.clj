@@ -20,6 +20,7 @@
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection-permission-graph-revision :as c-perm-revision]
    [metabase.models.collection.graph :as graph]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.dashboard :refer [Dashboard]]
@@ -373,11 +374,15 @@
             :moderated_status :icon :personal_owner_id :collection_preview
             :dataset_query :table_id :query_type :is_upload)))
 
-(defn- card-query [dataset? collection {:keys [archived? pinned-state]}]
+(defn- card-query [card-type collection {:keys [archived? pinned-state]}]
   (-> {:select    (cond->
                     [:c.id :c.name :c.description :c.entity_id :c.collection_position :c.display :c.collection_preview
                      :c.dataset_query
-                     [(h2x/literal (if dataset? "dataset" "card")) :model]
+                     [(h2x/literal (case card-type
+                                     :model "dataset"
+                                     :metric  "metric"
+                                     "card"))
+                      :model]
                      [:u.id :last_edit_user]
                      [:u.email :last_edit_email]
                      [:u.first_name :last_edit_first_name]
@@ -394,7 +399,7 @@
                        :order-by [[:id :desc]]
                        :limit    1}
                       :moderated_status]]
-                    dataset?
+                    (#{:question :model} card-type)
                     (conj :c.database_id))
        :from      [[:report_card :c]]
        :left-join [[:revision :r] [:and
@@ -405,15 +410,26 @@
        :where     [:and
                    [:= :collection_id (:id collection)]
                    [:= :archived (boolean archived?)]
-                   [:= :c.type (h2x/literal (if dataset? "model" "question"))]]}
-      (cond-> dataset?
+                   (case card-type
+                     :model
+                     [:= :c.type (h2x/literal "model")]
+
+                     :metric
+                     [:= :c.type (h2x/literal "metric")]
+
+                     [:= :c.type (h2x/literal "question")])]}
+      (cond-> (= :model card-type)
         (-> (sql.helpers/select :c.table_id :t.is_upload :c.query_type)
             (sql.helpers/left-join [:metabase_table :t] [:= :t.id :c.table_id])))
       (sql.helpers/where (pinned-state->clause pinned-state))))
 
 (defmethod collection-children-query :dataset
   [_ collection options]
-  (card-query true collection options))
+  (card-query :model collection options))
+
+(defmethod collection-children-query :card
+  [_ collection options]
+  (card-query :question collection options))
 
 (defmethod post-process-collection-children :dataset
   [_ collection rows]
@@ -424,10 +440,6 @@
          upload/model-hydrate-based-on-upload
          (map #(assoc %2 :dataset_query %1) queries-before)
          (post-process-collection-children :card collection))))
-
-(defmethod collection-children-query :card
-  [_ collection options]
-  (card-query false collection options))
 
 (defn- fully-parameterized-text?
   "Decide if `text`, usually (a part of) a query, is fully parameterized given the parameter types
@@ -1103,16 +1115,28 @@
   ;; TODO: should use a coercer for this?
   (graph-decoder permission-graph))
 
+(defn- update-graph!
+  "Handles updating the graph for a given namespace."
+  [namespace graph skip_graph]
+  (graph/update-graph! namespace graph)
+  (if skip_graph
+    {:revision (c-perm-revision/latest-id)}
+    (graph/graph namespace)))
+
 (api/defendpoint PUT "/graph"
   "Do a batch update of Collections Permissions by passing in a modified graph.
-  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged."
-  [:as {{:keys [namespace], :as body} :body}]
-  {body      :map
-   namespace [:maybe ms/NonBlankString]}
+  Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
+
+  If the `skip_graph` query parameter is true, it will only return the current revision"
+  [:as {{:keys [namespace revision groups skip_graph]} :body}]
+  {namespace  [:maybe ms/NonBlankString]
+   revision   ms/Int ;; can be 0.
+   groups     :map
+   skip_graph [:maybe ms/BooleanValue]}
   (api/check-superuser)
-  (->> (dissoc body :namespace)
-       decode-graph
-       (graph/update-graph! namespace))
-  (graph/graph namespace))
+  (update-graph!
+   namespace
+   (decode-graph {:revision revision :groups groups})
+   skip_graph))
 
 (api/define-routes)

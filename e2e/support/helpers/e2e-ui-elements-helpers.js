@@ -28,6 +28,10 @@ export function modal() {
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
+export function tooltip() {
+  return cy.get(".tippy-content");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
 }
@@ -129,7 +133,7 @@ export function clearFilterWidget(index = 0) {
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  return filterWidget().eq(index).icon("time_history").click();
+  return filterWidget().eq(index).icon("revert").click();
 }
 
 export function setFilterWidgetValue(
@@ -250,6 +254,20 @@ export const undoToastList = () => {
 
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
+}
+
+export function tableInteractive() {
+  return cy.findByTestId("TableInteractive-root");
+}
+
+export function tableHeaderClick(headerString) {
+  tableInteractive().within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mousedown");
+  });
+
+  tableInteractive().within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mouseup");
+  });
 }
 
 /**

@@ -17,21 +17,20 @@ export const ModelCardLink = styled(Link)`
 export const ModelCard = styled(Card)`
   padding: 1.5rem;
   padding-bottom: 1rem;
-
   height: 9rem;
   display: flex;
   flex-flow: column nowrap;
   justify-content: flex-start;
   align-items: flex-start;
-
   border: 1px solid ${color("border")};
-
   box-shadow: none;
+
   &:hover {
     h1 {
       color: ${color("brand")};
     }
   }
+
   transition: box-shadow 0.15s;
 
   h1 {
@@ -44,14 +43,12 @@ export const MultilineEllipsified = styled(Ellipsified)`
   overflow: hidden;
   text-overflow: ellipsis;
   width: 100%;
-
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
 
-  // Without the following rule, the useIsTruncated hook,
-  // which Ellipsified calls, might think that this element
-  // is truncated when it is not
+  /* Without the following rule, the useIsTruncated hook, which Ellipsified
+   calls, might think that this element is truncated when it is not */
   padding-bottom: 1px;
 `;
 
@@ -65,9 +62,11 @@ export const CollectionHeaderContainer = styled.button`
   margin-top: 0.75rem;
   cursor: pointer;
   color: ${color("text-dark")};
+
   &:hover {
     color: ${color("brand")};
   }
+
   :first-of-type {
     margin-top: 1rem;
     border-top: none;
@@ -77,6 +76,7 @@ export const CollectionHeaderContainer = styled.button`
 export const CollectionHeaderLink = styled(Link)`
   display: flex;
   align-items: center;
+
   &:hover {
     color: ${color("brand")};
   }
@@ -117,8 +117,10 @@ export const CollectionHeaderToggleContainer = styled.div`
   background-color: transparent;
   overflow: unset;
   display: flex;
+
   &:hover {
     background-color: inherit;
+
     div,
     svg {
       color: ${color("brand")};

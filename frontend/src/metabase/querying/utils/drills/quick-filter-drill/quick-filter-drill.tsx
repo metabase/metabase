@@ -37,7 +37,7 @@ function getActionOverrides(
   operator: Lib.QuickFilterDrillThruOperator,
   value: unknown,
 ): Partial<ClickAction> {
-  if (Lib.isDate(column) && value != null) {
+  if (Lib.isTemporal(column) && value != null) {
     const action: Partial<ClickAction> = {
       sectionTitle: t`Filter by this date`,
       sectionDirection: "column",

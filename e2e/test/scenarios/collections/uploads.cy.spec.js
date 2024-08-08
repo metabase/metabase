@@ -85,6 +85,25 @@ describeWithSnowplow(
           expect(Number(result.rows[0].count)).to.equal(testFile.rowCount);
         });
       });
+
+      cy.log(
+        "Ensure that table is visible in admin without refreshing (metabase#38041)",
+      );
+
+      cy.findByTestId("app-bar").button(/gear/).click();
+      popover().findByText("Admin settings").click();
+
+      cy.findByRole("link", { name: "Table Metadata" }).click();
+
+      cy.findByTestId("admin-metadata-header")
+        .findByText("Sample Database")
+        .click();
+      popover().findByText("Writable Postgres12").click();
+
+      cy.findByTestId("admin-metadata-table-list").within(() => {
+        cy.findByText("1 Queryable Table").should("exist");
+        cy.findByText("Dog Breeds").should("exist");
+      });
     });
 
     ["postgres", "mysql"].forEach(dialect => {

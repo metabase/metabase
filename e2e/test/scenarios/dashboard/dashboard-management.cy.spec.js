@@ -50,7 +50,7 @@ describe("managing dashboard from the dashboard's edit menu", () => {
                 dashboardDetails: { name: dashboardName },
               }).then(({ body: { dashboard_id } }) => {
                 cy.wrap(dashboard_id).as("originalDashboardId");
-                cy.intercept("GET", `/api/dashboard/${dashboard_id}`).as(
+                cy.intercept("GET", `/api/dashboard/${dashboard_id}*`).as(
                   "getDashboard",
                 );
                 cy.intercept("PUT", `/api/dashboard/${dashboard_id}`).as(

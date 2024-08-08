@@ -12,7 +12,6 @@ interface DashboardCardProps {
 export const DashboardCardContainer = styled.div<DashboardCardProps>`
   position: relative;
   z-index: 1;
-
   container-name: DashboardCard;
   container-type: inline-size;
 
@@ -35,7 +34,7 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
     bottom: 0;
     right: 0;
     border-radius: 8px;
-    box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.13);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.13);
   }
 
   ${props =>

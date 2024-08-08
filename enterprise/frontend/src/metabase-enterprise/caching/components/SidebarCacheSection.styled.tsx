@@ -9,6 +9,7 @@ export const FormLauncher = styled(Anchor)<
   AnchorProps & AnchorHTMLAttributes<HTMLAnchorElement>
 >`
   font-weight: bold;
+
   &:hover,
   &:active {
     color: ${color("brand")};

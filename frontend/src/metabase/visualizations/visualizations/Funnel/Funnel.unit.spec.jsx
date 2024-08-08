@@ -26,7 +26,12 @@ const setup = (funnelProps, visualizationSettings = {}) => {
       data: createMockDatasetData({
         cols: [
           createMockColumn({ id: 1, name: "foo", display_name: "foo" }),
-          createMockColumn({ id: 2, name: "bar", display_name: "bar" }),
+          createMockColumn({
+            id: 2,
+            name: "bar",
+            display_name: "bar",
+            semantic_type: "type/Number",
+          }),
         ],
         rows: [
           [10, 20],

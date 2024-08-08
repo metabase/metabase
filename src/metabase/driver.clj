@@ -10,6 +10,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [java-time.api :as t]
+   [metabase.auth-provider :as auth-provider]
    [metabase.driver.impl :as driver.impl]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.plugins.classloader :as classloader]
@@ -515,6 +516,16 @@
     ;; subselects in SQL queries.
     :nested-queries
 
+    ;; Does this driver support native template tag parameters of type `:card`, e.g. in a native query like
+    ;;
+    ;;    SELECT * FROM {{card}}
+    ;;
+    ;; do we support substituting `{{card}}` with another compiled (nested) query?
+    ;;
+    ;; By default, this is true for drivers that support `:native-parameters` and `:nested-queries`, but drivers can opt
+    ;; out if they do not support Card ID template tag parameters.
+    :native-parameter-card-reference
+
     ;; Does the driver support persisting models
     :persist-models
     ;; Is persisting enabled?
@@ -617,6 +628,12 @@
     ;; many databases in it.
     :connection/multiple-databases
 
+    ;; Does the driver support identifiers for tables and columns that contain spaces. Defaults to `false`.
+    :identifiers-with-spaces
+
+    ;; Does this driver support UUID type
+    :uuid-type
+
     ;; Does this driver support window functions like cumulative count and cumulative sum? (default: false)
     :window-functions/cumulative
 
@@ -663,6 +680,13 @@
                               :fingerprint                            true
                               :upload-with-auto-pk                    true}]
   (defmethod database-supports? [::driver feature] [_driver _feature _db] supported?))
+
+;;; By default a driver supports `:native-parameter-card-reference` if it supports `:native-parameters` AND
+;;; `:nested-queries`.
+(defmethod database-supports? [::driver :native-parameter-card-reference]
+  [driver _feature database]
+  (and (database-supports? driver :native-parameters database)
+       (database-supports? driver :nested-queries database)))
 
 (defmulti ^String escape-alias
   "Escape a `column-or-table-alias` string in a way that makes it valid for your database. This method is used for
@@ -883,6 +907,30 @@
   dispatch-on-uninitialized-driver
   :hierarchy #'hierarchy)
 
+(defmulti incorporate-auth-provider-details
+  "A multimethod for driver specific behavior required to incorporate response of an auth-provider into the DB details.
+   In most cases this means setting the :password and/or :username based on the auth-provider and its response."
+  {:added "0.50.17" :arglists '([driver auth-provider auth-provider-response details])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod incorporate-auth-provider-details :default
+  [_driver _auth-provider _auth-provider-response details]
+  details)
+
+(defmethod incorporate-auth-provider-details :sql-jdbc
+  [_driver auth-provider auth-provider-response details]
+  (case auth-provider
+    (:oauth :azure-managed-identity)
+    (let [{:keys [access_token expires_in]} auth-provider-response]
+      (cond-> (assoc details :password access_token)
+        expires_in (assoc :password-expiry-timestamp (+ (System/currentTimeMillis)
+                                                        (* (- (parse-long expires_in)
+                                                              auth-provider/azure-auth-token-renew-slack-seconds)
+                                                           1000)))))
+
+    (merge details auth-provider-response)))
+
 ;;; TODO:
 ;;;
 ;;; 1. We definitely should not be asking drivers to "update the value for `:details`". Drivers shouldn't touch the
@@ -900,9 +948,9 @@
   :hierarchy #'hierarchy)
 
 (defmethod normalize-db-details ::driver
-  [_ db-details]
+  [_ database]
   ;; no normalization by default
-  db-details)
+  database)
 
 (defmulti superseded-by
   "Returns the driver that supersedes the given `driver`.  A non-nil return value means that the given `driver` is
@@ -958,10 +1006,20 @@
   nil)
 
 (defmulti table-name-length-limit
-  "Return the maximum number of characters allowed in a table name, or `nil` if there is no limit."
+  "Return the maximum number of bytes allowed in a table name, or `nil` if there is no limit."
   {:changelog-test/ignore true, :added "0.47.0", :arglists '([driver])}
   dispatch-on-initialized-driver
   :hierarchy #'hierarchy)
+
+(defmulti column-name-length-limit
+  "Return the maximum number of bytes allowed in a column name, or `nil` if there is no limit."
+  {:changelog-test/ignore true, :added "0.49.19", :arglists '([driver])}
+  dispatch-on-initialized-driver
+  :hierarchy #'hierarchy)
+
+(defmethod column-name-length-limit :default [driver]
+  ;; For most databases, the same limit is used for all identifier types.
+  (table-name-length-limit driver))
 
 (defmulti create-table!
   "Create a table named `table-name`. If the table already exists it will throw an error.

@@ -24,7 +24,6 @@ export const TitleContainer = styled.div`
 export const RemoveButton = styled(Button)`
   color: ${color("white")};
   background-color: transparent;
-
   opacity: 0.6;
   transition: all 100ms;
 

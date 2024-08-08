@@ -36,7 +36,7 @@ export const DashboardLoadingAndErrorWrapper = styled(
 )`
   min-height: 100%;
   height: 1px;
-  // prevents header from scrolling so we can have a fixed sidebar
+  /* prevents header from scrolling so we can have a fixed sidebar */
   ${({ isFullHeight }) =>
     isFullHeight &&
     css`
@@ -71,7 +71,6 @@ export const DashboardHeaderContainer = styled.header<{
 }>`
   position: relative;
   z-index: 2;
-
   background-color: ${color("bg-white")};
   border-bottom: 1px solid ${color("border")};
 
@@ -138,9 +137,11 @@ export const ParametersAndCardsContainer = styled.div<{
   overflow-y: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
     shouldMakeDashboardHeaderStickyAfterScrolling ? "auto" : "visible"};
   overflow-x: hidden;
+
   @supports (overflow-x: clip) {
     overflow-x: clip;
   }
+
   padding-bottom: 40px;
   /* Makes sure it doesn't use all the height, so the actual content height could be used in embedding #37437 */
   align-self: ${({ shouldMakeDashboardHeaderStickyAfterScrolling }) =>
@@ -150,7 +151,6 @@ export const ParametersAndCardsContainer = styled.div<{
     ${ParametersWidgetContainer} {
       background-color: transparent;
       border-bottom: none;
-
       margin-top: 1rem;
 
       legend {

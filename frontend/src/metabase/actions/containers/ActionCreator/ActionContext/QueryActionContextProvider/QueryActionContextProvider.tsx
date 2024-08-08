@@ -67,7 +67,6 @@ function convertActionToQuestionCard(
 
     type: "question",
     can_write: true,
-    can_run_adhoc_query: true,
     public_uuid: null,
     collection_id: null,
     collection_position: null,

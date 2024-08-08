@@ -2,6 +2,7 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { color } from "metabase/lib/colors";
+import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 export interface DashCardRootProps {
   isNightMode: boolean;
@@ -40,6 +41,11 @@ export const DashCardRoot = styled.div<DashCardRootProps>`
 
   ${({ shouldForceHiddenBackground }) =>
     shouldForceHiddenBackground && hiddenBackgroundStyle}
+
+  &.${SAVING_DOM_IMAGE_CLASS} {
+    border-radius: 0;
+    border: none !important;
+  }
 `;
 
 export const VirtualDashCardOverlayRoot = styled.div`

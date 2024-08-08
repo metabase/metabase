@@ -1213,14 +1213,17 @@
   will happen, in [[call-on-change]] below.
 
   ###### `:feature`
+
   If non-nil, determines the Enterprise feature flag required to use this setting. If the feature is not enabled,
   the setting will behave the same as if `enabled?` returns `false` (see below).
 
   ###### `enabled?`
+
   Function which returns true if the setting should be enabled. If it returns false, the setting will throw an
   exception when it is attempted to be set, and will return its default value when read. Defaults to always enabled.
 
   ###### `audit`
+
   Keyword that determines what kind of audit log entry should be created when this setting is written. Options are
   `:never`, `:no-value`, `:raw-value`, and `:getter`. User- and database-local settings are never audited. `:getter`
   should be used for most non-sensitive settings, and will log the value returned by its getter, which may be
@@ -1229,6 +1232,7 @@
   and `:sensitive` settings.)
 
   ###### `base`
+
   A map which can provide values for any of the above options, except for :export?.
   Any top level options will override what's in this base map.
   The use case for this map is sharing strongly coupled options between similar settings, see [[uuid-nonce-base]].

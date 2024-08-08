@@ -5,7 +5,9 @@
    [clojure.string :as str]
    [metabase.public-settings :as public-settings]
    [metabase.util.i18n :refer [trs]]
-   [metabase.util.log :as log]))
+   [metabase.util.log :as log])
+  (:import
+   (java.awt Font GraphicsEnvironment)))
 
 (set! *warn-on-reflection* true)
 
@@ -101,12 +103,13 @@
 
 (defn- register-font! [filename]
   (with-open [is (io/input-stream (io/resource filename))]
-    (.registerFont (java.awt.GraphicsEnvironment/getLocalGraphicsEnvironment)
-                   (java.awt.Font/createFont java.awt.Font/TRUETYPE_FONT is))))
+    (.registerFont (GraphicsEnvironment/getLocalGraphicsEnvironment)
+                   (Font/createFont java.awt.Font/TRUETYPE_FONT is))))
 
 (defn- register-fonts! []
   (try
-    (doseq [weight ["regular" "700" "900"]]
+    (register-font! "frontend_client/app/fonts/Lato/Lato-Regular.ttf")
+    (doseq [weight ["700" "900"]]
       (register-font! (format "frontend_client/app/fonts/Lato/lato-v16-latin-%s.ttf" weight)))
     (catch Throwable e
       (let [message (str (trs "Error registering fonts: Metabase will not be able to send Pulses.")

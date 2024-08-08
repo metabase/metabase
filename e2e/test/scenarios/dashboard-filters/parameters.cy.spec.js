@@ -668,7 +668,7 @@ describe("scenarios > dashboard > parameters", () => {
 
     it("should not fetch dashcard data when nothing changed on save", () => {
       editDashboard();
-      saveDashboard();
+      saveDashboard({ awaitRequest: false });
 
       cy.get("@dashcardRequestSpy").should("have.callCount", 0);
     });

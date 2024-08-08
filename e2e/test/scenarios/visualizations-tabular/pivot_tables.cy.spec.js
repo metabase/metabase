@@ -1,4 +1,4 @@
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
@@ -15,7 +15,13 @@ import {
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
   modal,
+  dashboardCards,
+  queryBuilderMain,
+  createQuestion,
+  openNotebook,
+  getNotebookStep,
 } from "e2e/support/helpers";
+import { PIVOT_TABLE_BODY_LABEL } from "metabase/visualizations/visualizations/PivotTable/constants";
 
 const {
   ORDERS,
@@ -571,7 +577,30 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   describe("dashboards", () => {
-    beforeEach(() => {
+    it("should be scrollable even when tiny (metabase#24678)", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 3,
+          size_y: 3,
+        },
+      }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
+
+      dashboardCards()
+        .eq(0)
+        .within(() => {
+          cy.findByText("Doohickey").scrollIntoView().should("be.visible");
+        });
+    });
+
+    it("should allow filtering drill through (metabase#14632) (metabase#14465)", () => {
       cy.createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
@@ -586,13 +615,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           size_y: 8,
         },
       }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
-    });
 
-    it("should display a pivot table on a dashboard (metabase#14465)", () => {
-      assertOnPivotFields();
-    });
-
-    it("should allow filtering drill through (metabase#14632)", () => {
       assertOnPivotFields();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Google").click(); // open drill-through menu
@@ -1015,6 +1038,69 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
     }
   });
 
+  it("should be horizontally scrollable when columns overflow", () => {
+    const createdAtField = [
+      "field",
+      REVIEWS.CREATED_AT,
+      {
+        "temporal-unit": "month",
+        "base-type": "type/DateTimeWithLocalTZ",
+      },
+    ];
+    const ratingField = [
+      "field",
+      REVIEWS.RATING,
+      { "base-type": "type/Integer" },
+    ];
+
+    const query = {
+      "source-table": REVIEWS_ID,
+      aggregation: [["count"]],
+      breakout: [createdAtField, ratingField],
+    };
+
+    const vizSettings = {
+      rows: ratingField,
+      columns: createdAtField,
+      "pivot_table.column_split": {
+        rows: [ratingField],
+        columns: [createdAtField],
+        values: [["aggregation", 0]],
+      },
+    };
+
+    cy.createQuestionAndDashboard({
+      questionDetails: {
+        name: QUESTION_NAME,
+        query,
+        display: "pivot",
+        visualization_settings: vizSettings,
+      },
+      dashboardDetails: {
+        name: DASHBOARD_NAME,
+      },
+      cardDetails: {
+        size_x: 16,
+        size_y: 8,
+      },
+    }).then(({ body: { dashboard_id }, questionId }) => {
+      cy.wrap(questionId).as("questionId");
+      visitDashboard(dashboard_id);
+    });
+
+    dashboardCards().within(() => {
+      cy.findByLabelText(PIVOT_TABLE_BODY_LABEL).scrollTo(10000, 0);
+      cy.findByText("Row totals").should("be.visible");
+    });
+
+    cy.get("@questionId").then(id => visitQuestion(id));
+
+    queryBuilderMain().within(() => {
+      cy.findByLabelText(PIVOT_TABLE_BODY_LABEL).scrollTo(10000, 0);
+      cy.findByText("Row totals").should("be.visible");
+    });
+  });
+
   describe("column resizing", () => {
     const getCellWidth = textEl =>
       textEl.closest("[data-testid=pivot-table-cell]").width();
@@ -1141,6 +1227,272 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       );
     },
   );
+
+  describe("issue 37380", () => {
+    beforeEach(() => {
+      const categoryField = [
+        "field",
+        PRODUCTS.CATEGORY,
+        { "base-type": "type/Text" },
+      ];
+
+      const createdAtField = [
+        "field",
+        PRODUCTS.CREATED_AT,
+        {
+          "base-type": "type/DateTime",
+          "temporal-unit": "month",
+        },
+      ];
+
+      // to reproduce metabase#37380 it's important that user has access to the database, but not to the table
+      cy.updatePermissionsGraph({
+        [USER_GROUPS.DATA_GROUP]: {
+          [SAMPLE_DB_ID]: {
+            "create-queries": {
+              PUBLIC: {
+                [PRODUCTS_ID]: "no",
+              },
+            },
+          },
+        },
+      });
+
+      createQuestion(
+        {
+          query: {
+            "source-table": PRODUCTS_ID,
+            aggregation: ["count"],
+            breakout: [categoryField, createdAtField],
+          },
+          display: "pivot",
+          visualization_settings: {
+            "pivot_table.column_split": {
+              rows: [createdAtField],
+              columns: [categoryField],
+              values: [["aggregation", 0]],
+            },
+            "pivot_table.column_widths": {
+              leftHeaderWidths: [141],
+              totalLeftHeaderWidths: 141,
+              valueHeaderWidths: {},
+            },
+          },
+        },
+        {
+          wrapId: true,
+          idAlias: "questionId",
+        },
+      );
+    });
+
+    it("does not allow users with no table access to update pivot questions (metabase#37380)", () => {
+      cy.signInAsNormalUser();
+      visitQuestion("@questionId");
+      cy.findByTestId("viz-settings-button").click();
+      cy.findByLabelText("Show row totals").click();
+
+      cy.button("Save").should("have.attr", "disabled");
+    });
+  });
+
+  describe("issue 38265", () => {
+    beforeEach(() => {
+      createQuestion(
+        {
+          query: {
+            "source-table": ORDERS_ID,
+            aggregation: [
+              ["count"],
+              [
+                "sum",
+                ["field", ORDERS.SUBTOTAL, { "base-type": "type/Float" }],
+              ],
+            ],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+              [
+                "field",
+                PEOPLE.STATE,
+                { "base-type": "type/Text", "source-field": ORDERS.USER_ID },
+              ],
+              [
+                "field",
+                PRODUCTS.CATEGORY,
+                { "base-type": "type/Text", "source-field": ORDERS.PRODUCT_ID },
+              ],
+            ],
+          },
+          display: "pivot",
+        },
+        {
+          visitQuestion: true,
+        },
+      );
+    });
+
+    it("correctly filters the query when zooming in on a **row** header (metabase#38265)", () => {
+      cy.findByTestId("pivot-table").findByText("KS").click();
+      popover().findByText("Zoom in").click();
+
+      cy.log("Filter pills");
+      cy.findByTestId("filter-pill").should("have.text", "User → State is KS");
+
+      cy.log("Pivot table column headings");
+      cy.findByTestId("pivot-table")
+        .should("contain", "Created At: Month")
+        .and("contain", "User → Latitude")
+        .and("contain", "User → Longitude");
+    });
+  });
+
+  it("should be possible to switch between notebook and simple views when pivot table is the visualization (metabase#39504)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [
+            [
+              "sum",
+              [
+                "field",
+                ORDERS.SUBTOTAL,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+            ],
+            [
+              "sum",
+              [
+                "field",
+                ORDERS.TOTAL,
+                {
+                  "base-type": "type/Float",
+                },
+              ],
+            ],
+          ],
+          breakout: [
+            [
+              "field",
+              PEOPLE.SOURCE,
+              {
+                "base-type": "type/Text",
+                "source-field": ORDERS.USER_ID,
+              },
+            ],
+          ],
+        },
+        type: "query",
+      },
+    });
+
+    cy.log("Set the visualization to pivot table using the UI");
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("Pivot Table-button").click();
+    cy.wait("@pivotDataset");
+    cy.findByTestId("pivot-table")
+      .should("contain", "User → Source")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total")
+      .and("contain", "Grand totals");
+
+    openNotebook();
+    getNotebookStep("summarize")
+      .should("be.visible")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total");
+
+    // Close the notebook editor
+    cy.findByTestId("qb-header-action-panel").icon("notebook").click();
+    cy.findByTestId("pivot-table")
+      .should("contain", "User → Source")
+      .and("contain", "Sum of Subtotal")
+      .and("contain", "Sum of Total")
+      .and("contain", "Grand totals");
+  });
+
+  it("displays total values for collapsed rows (metabase#26919)", () => {
+    const categoryField = [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "base-type": "type/Text" },
+    ];
+
+    createQuestion(
+      {
+        display: "pivot",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            test: [
+              "case",
+              [[["is-null", categoryField], categoryField]],
+              { default: categoryField },
+            ],
+          },
+          aggregation: [["count"]],
+          breakout: [
+            ["expression", "test", { "base-type": "type/Text" }],
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                "base-type": "type/Float",
+                binning: {
+                  strategy: "default",
+                },
+              },
+            ],
+          ],
+        },
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: [
+              ["expression", "test"],
+              ["field", PRODUCTS.RATING],
+            ],
+            columns: [],
+            values: [["aggregation", 0]],
+          },
+          "pivot_table.collapsed_rows": {
+            value: ['["Doohickey"]', '["Gadget"]', '["Gizmo"]', '["Widget"]'],
+            rows: [
+              ["expression", "test"],
+              [
+                "field",
+                PRODUCTS.RATING,
+                {
+                  "base-type": "type/Float",
+                  binning: {
+                    strategy: "num-bins",
+                    "min-value": 0,
+                    "max-value": 5.25,
+                    "num-bins": 8,
+                    "bin-width": 0.75,
+                  },
+                },
+              ],
+            ],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    getPivotTableBodyCell(0).should("have.text", "42");
+    getPivotTableBodyCell(1).should("have.text", "53");
+    getPivotTableBodyCell(2).should("have.text", "51");
+    getPivotTableBodyCell(3).should("have.text", "54");
+    getPivotTableBodyCell(4).should("have.text", "200");
+  });
 });
 
 const testQuery = {
@@ -1239,4 +1591,11 @@ function sortColumnResults(column, direction) {
     const decodedQuery = atob(base64EncodedQuery);
     expect(decodedQuery).to.include(direction);
   });
+}
+
+function getPivotTableBodyCell(index) {
+  return cy
+    .findByLabelText("pivot-table-body-grid")
+    .findAllByTestId("pivot-table-cell")
+    .eq(index);
 }

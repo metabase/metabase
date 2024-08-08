@@ -658,7 +658,7 @@ const clearAndBlurInput = oldValue => {
 const searchAndSelectValue = (newValue, searchText = newValue) => {
   popover().within(() => {
     cy.findByRole("grid").scrollTo("top", { ensureScrollable: false });
-    cy.findByPlaceholderText("Find...").type(searchText);
+    cy.findByPlaceholderText("Find...").type(searchText, { delay: 50 });
     cy.findByText(newValue).click();
   });
 };

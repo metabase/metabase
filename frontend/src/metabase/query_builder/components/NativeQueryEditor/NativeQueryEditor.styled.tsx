@@ -142,13 +142,10 @@ export const DragHandleContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-
   width: 100%;
   height: 8px;
-
   position: absolute;
   bottom: -4px;
-
   cursor: row-resize;
 `;
 

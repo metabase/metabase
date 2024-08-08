@@ -117,14 +117,49 @@
 ;;; |                                        Add Implicit Breakout Order Bys                                         |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defn- fix-order-by-field-refs
+  "This function transforms top level integer field refs in order by to corresponding string field refs from breakout
+  if present.
+
+  ## Context
+  In current situation, ie. model as a source, then aggregation and breakout, and finally order by a breakout field,
+  [[metabase.lib.order-by/orderable-columns]] returns field ref with integer id, while reference to same field, but
+  with string id is present in breakout. Then, [[add-implicit-breakout-order-by]] adds the string ref to order by.
+
+  Resulting query would contain both references, while integral is transformed differently -- it contains no casting.
+  As that is not part of group by, the query would fail.
+
+  Reference: https://github.com/metabase/metabase/issues/44653."
+  [{:keys [breakout order-by] :as inner-query}]
+  (if (or (empty? breakout) (empty? order-by))
+    inner-query
+    (let [name->breakout (into {}
+                               (keep (fn [[tag id-or-name :as clause]]
+                                       (when (and (= :field tag)
+                                                  (string? id-or-name))
+                                         [id-or-name clause])))
+                               breakout)
+          ref->maybe-field-name (fn [[tag id-or-name]]
+                                  (when (and (= :field tag)
+                                             (integer? id-or-name))
+                                    ((some-fn :lib/desired-column-alias :name)
+                                     (lib.metadata/field (qp.store/metadata-provider)
+                                                         id-or-name))))
+          maybe-convert-order-by-ref (fn [[dir ref :as order-by-elm]]
+                                       (if-some [breakout (-> ref ref->maybe-field-name name->breakout)]
+                                         [dir breakout]
+                                         order-by-elm))]
+      (update inner-query :order-by (partial mapv maybe-convert-order-by-ref)))))
+
 (mu/defn ^:private add-implicit-breakout-order-by :- mbql.s/MBQLQuery
   "Fields specified in `breakout` should add an implicit ascending `order-by` subclause *unless* that Field is already
   *explicitly* referenced in `order-by`."
-  [{breakouts :breakout, :as inner-query} :- mbql.s/MBQLQuery]
+  [inner-query :- mbql.s/MBQLQuery]
   ;; Add a new [:asc <breakout-field>] clause for each breakout. The cool thing is `add-order-by-clause` will
   ;; automatically ignore new ones that are reference Fields already in the order-by clause
-  (reduce mbql.u/add-order-by-clause inner-query (for [breakout breakouts]
-                                                   [:asc breakout])))
+  (let [{breakouts :breakout, :as inner-query} (fix-order-by-field-refs inner-query)]
+    (reduce mbql.u/add-order-by-clause inner-query (for [breakout breakouts]
+                                                     [:asc breakout]))))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+

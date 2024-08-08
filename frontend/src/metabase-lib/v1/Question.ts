@@ -28,6 +28,7 @@ import type {
   DatabaseId,
   DatasetData,
   DatasetQuery,
+  Field,
   Parameter as ParameterObject,
   ParameterId,
   ParameterValues,
@@ -359,16 +360,6 @@ class Question {
     return this._card && this._card.can_write;
   }
 
-  canRunAdhocQuery(): boolean {
-    if (this.isSaved()) {
-      return this._card.can_run_adhoc_query;
-    }
-
-    const query = this.query();
-    const { isEditable } = Lib.queryDisplayInfo(query);
-    return isEditable;
-  }
-
   canWriteActions(): boolean {
     const database = this.database();
 
@@ -574,6 +565,10 @@ class Question {
     return this._card && this._card.archived;
   }
 
+  getResultMetadata() {
+    return this.card().result_metadata ?? [];
+  }
+
   setResultsMetadata(resultsMetadata) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
     return this.setCard({
@@ -582,8 +577,13 @@ class Question {
     });
   }
 
-  getResultMetadata() {
-    return this.card().result_metadata ?? [];
+  setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
+    const metadata = this.getResultMetadata();
+    const newMetadata = metadata.map(column => {
+      const columnDiff = metadataDiff[column.name];
+      return columnDiff ? { ...column, ...columnDiff } : column;
+    });
+    return this.setResultsMetadata({ columns: newMetadata });
   }
 
   /**
@@ -679,6 +679,13 @@ class Question {
       );
     });
     return a.isDirtyComparedTo(b);
+  }
+
+  isQueryDirtyComparedTo(originalQuestion: Question) {
+    return !Lib.areLegacyQueriesEqual(
+      this.datasetQuery(),
+      originalQuestion.datasetQuery(),
+    );
   }
 
   // Internal methods

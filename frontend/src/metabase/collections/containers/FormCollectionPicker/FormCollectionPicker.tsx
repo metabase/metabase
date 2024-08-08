@@ -9,6 +9,7 @@ import {
 } from "metabase/collections/utils";
 import type {
   CollectionPickerItem,
+  CollectionPickerModalProps,
   CollectionPickerOptions,
 } from "metabase/common/components/CollectionPicker";
 import { CollectionPickerModal } from "metabase/common/components/CollectionPicker";
@@ -32,6 +33,7 @@ export interface FormCollectionPickerProps
   onOpenCollectionChange?: (collectionId: CollectionId) => void;
   filterPersonalCollections?: FilterItemsInPersonalCollection;
   zIndex?: number;
+  collectionPickerModalProps?: Partial<CollectionPickerModalProps>;
 }
 
 function ItemName({
@@ -56,6 +58,7 @@ function FormCollectionPicker({
   placeholder = t`Select a collection`,
   type = "collections",
   filterPersonalCollections,
+  collectionPickerModalProps,
 }: FormCollectionPickerProps) {
   const id = useUniqueId();
   const [{ value }, { error, touched }, { setValue }] = useField(name);
@@ -84,6 +87,7 @@ function FormCollectionPicker({
       hasConfirmButtons: true,
       namespace: type === "snippet-collections" ? "snippets" : undefined,
       allowCreateNew: showCreateNewCollectionOption,
+      hasRecents: type !== "snippet-collections",
     }),
     [filterPersonalCollections, type, showCreateNewCollectionOption],
   );
@@ -133,6 +137,7 @@ function FormCollectionPicker({
           onChange={handleChange}
           onClose={() => setIsPickerOpen(false)}
           options={options}
+          {...collectionPickerModalProps}
         />
       )}
     </>

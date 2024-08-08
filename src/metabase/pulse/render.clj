@@ -8,7 +8,6 @@
    [metabase.pulse.render.image-bundle :as image-bundle]
    [metabase.pulse.render.png :as png]
    [metabase.pulse.render.style :as style]
-   [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -152,7 +151,6 @@
           (log/error e "Pulse card render error")
           (body/render :render-error nil nil nil nil nil))))))
 
-
 (mu/defn render-pulse-card :- formatter/RenderedPulseCard
   "Render a single `card` for a `Pulse` to Hiccup HTML. `result` is the QP results. Returns a map with keys
 
@@ -168,11 +166,6 @@
   (let [{title             :content
          title-attachments :attachments} (make-title-if-needed render-type card dashcard)
         {description :content}           (make-description-if-needed dashcard card)
-        results                          (update-in results
-                                                    [:data :viz-settings]
-                                                    (fn [viz-settings]
-                                                      (merge viz-settings (mb.viz/db->norm
-                                                                           (:visualization_settings dashcard)))))
         {pulse-body       :content
          body-attachments :attachments
          text             :render/text}  (render-pulse-card-body render-type timezone-id card dashcard results)]
@@ -180,7 +173,7 @@
              :content [:p
                        ;; Provide a horizontal scrollbar for tables that overflow container width.
                        ;; Surrounding <p> element prevents buggy behavior when dragging scrollbar.
-                       [:div {:style (style/style {:overflow-x :auto})}
+                       [:div
                         [:a {:href        (card-href card)
                              :target      "_blank"
                              :rel         "noopener noreferrer"
@@ -191,7 +184,8 @@
                          title
                          description
                          [:div {:class "pulse-body"
-                                :style (style/style {:display :block
+                                :style (style/style {:overflow-x :auto ;; when content is wide enough, automatically show a horizontal scrollbar
+                                                     :display :block
                                                      :margin  :16px})}
                           (if-let [more-results-message (body/attached-results-text render-type card)]
                             (conj more-results-message (list pulse-body))

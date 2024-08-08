@@ -61,6 +61,12 @@
                   :field_order  (driver/default-field-order (t2/select-one-fn :engine :model/Database :id (:db_id table)))}]
     (merge defaults table)))
 
+(t2/define-before-delete :model/Table
+  [table]
+  ;; We need to use toucan to delete the fields instead of cascading deletes because MySQL doesn't support columns with cascade delete
+  ;; foreign key constraints in generated columns. #44866
+  (t2/delete! :model/Field :table_id (:id table)))
+
 (defn- set-new-table-permissions!
   [table]
   (t2/with-transaction [_conn]

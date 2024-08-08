@@ -118,3 +118,11 @@ WHERE pg.name != 'Administrators'
      WHERE dp.group_id = pg.id
        AND dp.table_id = mt.id
        AND dp.perm_type = 'perms/create-queries');
+
+DELETE
+FROM data_permissions
+WHERE perm_type = 'perms/view-data';
+
+DELETE
+FROM data_permissions
+WHERE perm_type = 'perms/create-queries';

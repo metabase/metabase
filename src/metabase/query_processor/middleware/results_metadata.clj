@@ -55,9 +55,10 @@
    (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
-                              :settings :field_ref :name :base_type :effective_type
+                              :settings :field_ref :base_type :effective_type
                               :coercion_strategy :visibility_type])
       insights-col
+      {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))
    final-col-metadata
@@ -77,6 +78,8 @@
              (map? result)
              (update :data
                      assoc
+                     ;; TODO: We agreed on the name `:result_metadata` everywhere, and this needs updating.
+                     ;; It'll definitely break things on the FE, so a coordinated change is needed.
                      :results_metadata {:columns metadata}
                      :insights         insights)))))))
 

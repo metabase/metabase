@@ -35,13 +35,13 @@ Get all foreign keys whose destination is a `Field` that belongs to this `Table`
 Get metadata about a `Table` useful for running queries.
    Returns DB, fields, field FKs, and field values.
 
-  Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
-  Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
+   Passing `include_hidden_fields=true` will include any hidden `Fields` in the response. Defaults to `false`
+   Passing `include_sensitive_fields=true` will include any sensitive `Fields` in the response. Defaults to `false`.
 
-  Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
-  data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
+   Passing `include_editable_data_model=true` will check that the current user has write permissions for the table's
+   data model, while `false` checks that they have data access perms for the table. Defaults to `false`.
 
-  These options are provided for use in the Admin Edit Metadata page.
+   These options are provided for use in the Admin Edit Metadata page.
 
 ### PARAMS:
 

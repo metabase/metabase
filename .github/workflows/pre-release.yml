@@ -119,7 +119,6 @@ jobs:
       DISPLAY: ""
       CYPRESS_ALL_FEATURES_TOKEN: ${{ secrets.ENTERPRISE_TOKEN }}
       CYPRESS_NO_FEATURES_TOKEN: ${{ secrets.E2E_STARTER_TOKEN }}
-      CYPRESS_REPLAYIO_ENABLED: 1
       # disabled because of out of memory issues
       # probably related to https://github.com/cypress-io/cypress/issues/27415
       CYPRESS_NO_COMMAND_LOG: 1
@@ -148,6 +147,7 @@ jobs:
           java-version: 11
           distribution: "temurin"
       - name: Prepare Cypress environment
+        id: cypress-prep
         uses: ./.github/actions/prepare-cypress
       - name: Run Snowplow micro
         uses: ./.github/actions/run-snowplow-micro
@@ -165,7 +165,8 @@ jobs:
           yarn test-cypress-run \
             --env grepTags="@smoke",grepOmitFiltered=true \
             --spec './e2e/test/scenarios/**/*.cy.spec.(js|ts)' \
-            --browser 'replay-chromium'
+            --browser ${{ steps.cypress-prep.outputs.chrome-path }}
+
       - name: Upload Cypress Artifacts upon failure
         uses: actions/upload-artifact@v4
         if: failure()

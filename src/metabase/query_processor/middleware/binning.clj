@@ -72,8 +72,7 @@
       (throw (ex-info (tru "Cannot update binned field: query is missing source-metadata")
                       {:field field-name})))
     ;; try to find field in source-metadata with matching name
-    (let [mlv2-metadatas (for [col source-metadata]
-                           (lib.card/->card-metadata-column (qp.store/metadata-provider) col))]
+    (let [mlv2-metadatas (lib.card/->card-metadata-columns (qp.store/metadata-provider) source-metadata)]
       (or
        (lib.equality/find-matching-column
         [:field {:lib/uuid (str (random-uuid)), :base-type :type/*} field-name]

@@ -58,12 +58,12 @@
          (is (=? {:db string?}
                 (t2/select-one-fn :details :model/Database :engine :h2))))))))
 
-(defn- get-data-source [db-type db-def]
+(defn get-data-source [db-type db-def]
   (let [connection-details (tx/dbdef->connection-details db-type :db db-def)
         db-spec (sql-jdbc.conn/connection-details->spec db-type connection-details)]
     (mdb.test-util/->ClojureJDBCSpecDataSource db-spec)))
 
-(defn- create-current-database
+(defn create-current-database
   [db-type db-def data-source]
   (tx/create-db! db-type db-def)
   (mdb.setup/setup-db! db-type data-source true false))

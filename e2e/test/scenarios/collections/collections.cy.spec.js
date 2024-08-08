@@ -28,13 +28,16 @@ import {
   openCollectionMenu,
   createQuestion,
   entityPickerModalItem,
+  createCollection,
+  openCollectionItemMenu,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 import { displaySidebarChildOf } from "./helpers/e2e-collections-sidebar.js";
 
 const { nocollection } = USERS;
 const { DATA_GROUP } = USER_GROUPS;
-const { FEEDBACK_ID } = SAMPLE_DATABASE;
+const { FEEDBACK_ID, ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
 describe("scenarios > collection defaults", () => {
   beforeEach(() => {
@@ -702,7 +705,6 @@ describe("scenarios > collection defaults", () => {
 
           entityPickerModal().within(() => {
             cy.log("should disable all moving collections");
-            cy.findByRole("tab", { name: /Collections/ }).click();
             findPickerItem("First collection").should("have.attr", "disabled");
             findPickerItem("Another collection").should(
               "have.attr",
@@ -713,6 +715,72 @@ describe("scenarios > collection defaults", () => {
               "data-active",
               "true",
             );
+          });
+        });
+
+        it("moving collections should disable moving into any of the moving collections in recents or search (metabase#45248)", () => {
+          createCollection({ name: "Outer collection 1" }).then(
+            ({ body: { id: parentCollectionId } }) => {
+              cy.wrap(parentCollectionId).as("outerCollectionId");
+              createCollection({
+                name: "Inner collection 1",
+                parent_id: parentCollectionId,
+              }).then(({ body: { id: innerCollectionId } }) => {
+                cy.wrap(innerCollectionId).as("innerCollectionId");
+              });
+              createCollection({
+                name: "Inner collection 2",
+                parent_id: parentCollectionId,
+              });
+            },
+          );
+          createCollection({ name: "Outer collection 2" });
+
+          // modify the inner collection so that it shows up in recents
+          cy.get("@innerCollectionId").then(innerCollectionId => {
+            cy.request("PUT", `/api/collection/${innerCollectionId}`, {
+              name: "Inner collection 1 - modified",
+            });
+          });
+          cy.visit("/collection/root");
+
+          cy.log("single move");
+
+          cy.findByTestId("collection-table").within(() => {
+            openCollectionItemMenu("Outer collection 1");
+          });
+
+          popover().findByText("Move").click();
+
+          entityPickerModal().within(() => {
+            entityPickerModalTab("Recents").should(
+              "have.attr",
+              "data-active",
+              "true",
+            );
+
+            cy.findByText(/inner collection/).should("not.exist");
+
+            cy.button("Cancel").click();
+          });
+
+          cy.log("bulk move");
+
+          cy.findByTestId("collection-table").within(() => {
+            selectItemUsingCheckbox("Orders");
+            selectItemUsingCheckbox("Outer collection 1");
+          });
+
+          cy.findByTestId("toast-card").button("Move").click();
+
+          entityPickerModal().within(() => {
+            entityPickerModalTab("Recents").should(
+              "have.attr",
+              "data-active",
+              "true",
+            );
+
+            cy.findByText(/inner collection/).should("not.exist");
           });
         });
       });
@@ -761,6 +829,292 @@ describe("scenarios > collection defaults", () => {
       openEllipsisMenuFor("Orders");
       popover().findByText("X-ray this").click();
       cy.wait("@dashboard");
+    });
+  });
+});
+
+describe("scenarios > collection items listing", () => {
+  function toggleSortingFor(columnName) {
+    const testId = "items-table-head";
+    cy.findByTestId(testId).findByText(columnName).click();
+  }
+
+  function assertCollectionItemsOrder(testId, names) {
+    for (let index = 0; index < names.length; ++index) {
+      cy.findAllByTestId(testId).eq(index).should("have.text", names[index]);
+    }
+  }
+
+  function visitRootCollection() {
+    cy.visit("/collection/root");
+    cy.wait(["@getCollectionItems", "@getCollectionItems"]);
+  }
+
+  function archiveAll() {
+    cy.request("GET", "/api/collection/root/items").then(response => {
+      response.body.data.forEach(({ model, id }) => {
+        if (model !== "collection") {
+          cy.request(
+            "PUT",
+            `/api/${model === "dataset" ? "card" : model}/${id}`,
+            {
+              archived: true,
+            },
+          );
+        }
+      });
+    });
+  }
+
+  beforeEach(() => {
+    cy.intercept("GET", "/api/collection/root/items?*").as(
+      "getCollectionItems",
+    );
+
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  const TEST_QUESTION_QUERY = {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      ["field", ORDERS.CREATED_AT, { "temporal-unit": "hour-of-day" }],
+    ],
+  };
+
+  const PAGE_SIZE = 25;
+
+  describe("pagination", () => {
+    const SUBCOLLECTIONS = 1;
+    const ADDED_QUESTIONS = 15;
+    const ADDED_DASHBOARDS = 14;
+
+    const TOTAL_ITEMS = SUBCOLLECTIONS + ADDED_DASHBOARDS + ADDED_QUESTIONS;
+
+    beforeEach(() => {
+      // Removes questions and dashboards included in the default database,
+      // so the test won't fail if we change the default database
+      archiveAll();
+
+      _.times(ADDED_DASHBOARDS, i =>
+        cy.createDashboard({ name: `dashboard ${i}` }),
+      );
+      _.times(ADDED_QUESTIONS, i =>
+        cy.createQuestion({
+          name: `generated question ${i}`,
+          query: TEST_QUESTION_QUERY,
+        }),
+      );
+    });
+
+    it("should allow to navigate back and forth", () => {
+      visitRootCollection();
+
+      // First page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+
+      cy.findByLabelText("Next page").click();
+      cy.wait("@getCollectionItems");
+
+      // Second page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`${PAGE_SIZE + 1} - ${TOTAL_ITEMS}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should(
+        "have.length",
+        TOTAL_ITEMS - PAGE_SIZE,
+      );
+      cy.findByLabelText("Next page").should("be.disabled");
+
+      cy.findByLabelText("Previous page").click();
+
+      // First page
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+      cy.findByTestId("pagination-total").should("have.text", TOTAL_ITEMS);
+      cy.findAllByTestId("collection-entry").should("have.length", PAGE_SIZE);
+    });
+  });
+
+  describe("sorting", () => {
+    beforeEach(() => {
+      // Removes questions and dashboards included in a default dataset,
+      // so it's easier to test sorting
+      archiveAll();
+    });
+
+    it("should allow to sort unpinned items by columns asc and desc", () => {
+      ["A", "B", "C"].forEach((letter, i) => {
+        cy.createDashboard({
+          name: `${letter} Dashboard`,
+          collection_position: null,
+        });
+
+        // Signing in as a different users, so we have different names in "Last edited by"
+        // In that way we can test sorting by this column correctly
+        cy.signIn("normal");
+
+        cy.createQuestion({
+          name: `${letter} Question`,
+          collection_position: null,
+          query: TEST_QUESTION_QUERY,
+        });
+      });
+
+      visitRootCollection();
+      // We're waiting for the loading spinner to disappear from the main sidebar.
+      // Otherwise, this causes the page re-render and the flaky test.
+      cy.findByTestId("main-navbar-root").get("circle").should("not.exist");
+
+      cy.log("sorted alphabetically by default");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "A Dashboard",
+        "A Question",
+        "B Dashboard",
+        "B Question",
+        "C Dashboard",
+        "C Question",
+        "First collection",
+      ]);
+
+      toggleSortingFor(/Name/i);
+      cy.wait("@getCollectionItems");
+
+      cy.log("sorted alphabetically reversed");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "First collection",
+        "C Question",
+        "C Dashboard",
+        "B Question",
+        "B Dashboard",
+        "A Question",
+        "A Dashboard",
+      ]);
+
+      toggleSortingFor(/Name/i);
+      // Not sure why the same XHR doesn't happen after we click the "Name" sorting again?
+      cy.log("sorted alphabetically");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "A Dashboard",
+        "A Question",
+        "B Dashboard",
+        "B Question",
+        "C Dashboard",
+        "C Question",
+        "First collection",
+      ]);
+
+      toggleSortingFor(/Type/i);
+      cy.wait("@getCollectionItems");
+
+      cy.log("sorted dashboards first");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "A Dashboard",
+        "B Dashboard",
+        "C Dashboard",
+        "A Question",
+        "B Question",
+        "C Question",
+        "First collection",
+      ]);
+
+      toggleSortingFor(/Type/i);
+      cy.wait("@getCollectionItems");
+
+      cy.log("sorted collections first");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "First collection",
+        "A Question",
+        "B Question",
+        "C Question",
+        "A Dashboard",
+        "B Dashboard",
+        "C Dashboard",
+      ]);
+
+      toggleSortingFor(/Last edited by/i);
+      cy.wait("@getCollectionItems");
+
+      cy.log("sorted by last editor name alphabetically");
+      assertCollectionItemsOrder("collection-entry-last-edited-by", [
+        "Bobby Tables",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "",
+      ]);
+
+      toggleSortingFor(/Last edited by/i);
+      cy.wait("@getCollectionItems");
+
+      cy.log("sorted by last editor name alphabetically reversed");
+      assertCollectionItemsOrder("collection-entry-last-edited-by", [
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Robert Tableton",
+        "Bobby Tables",
+        "",
+      ]);
+
+      toggleSortingFor(/Last edited at/i);
+      cy.wait("@getCollectionItems");
+
+      cy.log("sorted newest last");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "A Dashboard",
+        "A Question",
+        "B Dashboard",
+        "B Question",
+        "C Dashboard",
+        "C Question",
+        "First collection",
+      ]);
+
+      toggleSortingFor(/Last edited at/i);
+      cy.wait("@getCollectionItems");
+
+      cy.log("sorted newest first");
+      assertCollectionItemsOrder("collection-entry-name", [
+        "C Question",
+        "C Dashboard",
+        "B Question",
+        "B Dashboard",
+        "A Question",
+        "A Dashboard",
+        "First collection",
+      ]);
+    });
+
+    it("should reset pagination if sorting applied on not first page", () => {
+      _.times(15, i => cy.createDashboard(`dashboard ${i}`));
+      _.times(15, i =>
+        cy.createQuestion({
+          name: `generated question ${i}`,
+          query: TEST_QUESTION_QUERY,
+        }),
+      );
+
+      visitRootCollection();
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`1 - ${PAGE_SIZE}`);
+
+      cy.findByLabelText("Next page").click();
+      cy.wait("@getCollectionItems");
+
+      toggleSortingFor(/Last edited at/i);
+      cy.wait("@getCollectionItems");
+
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText(`1 - ${PAGE_SIZE}`);
     });
   });
 });

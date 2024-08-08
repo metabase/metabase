@@ -74,6 +74,7 @@
                               :percentile-aggregations   false
                               :regex                     true
                               :test/jvm-timezone-setting false
+                              :uuid-type                 true
                               :uploads                   true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
@@ -467,8 +468,8 @@
                                 (#{CHARACTER CHAR} LARGE OBJECT)
                                 CLOB
                                 (#{NATIONAL CHARACTER NCHAR} LARGE OBJECT)
-                                NCLOB
-                                UUID}
+                                NCLOB}
+    :type/UUID                #{UUID}
     :type/*                   #{ARRAY
                                 BINARY
                                 "BINARY VARYING"

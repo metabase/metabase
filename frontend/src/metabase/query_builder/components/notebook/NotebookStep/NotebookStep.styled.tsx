@@ -57,11 +57,13 @@ export const ColorButton = styled(Button)<ColorButtonProps>`
   color: ${({ color }) => color};
   background-color: ${({ color, transparent }) =>
     transparent ? null : alpha(color, 0.2)};
+
   &:hover {
     color: ${({ color }) => darken(color, 0.115)};
     background-color: ${({ color, transparent }) =>
       transparent ? lighten(color, 0.5) : alpha(color, 0.35)};
   }
+
   transition: background 300ms;
 `;
 

@@ -68,16 +68,12 @@
 (mu/defn ^:private search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
-   search-native-query? :- [:maybe :boolean]]
+   search-native-query  :- [:maybe true?]]
   (when-let [query (:search-string search-context)]
     (into
      [:or]
-     (for [column           (cond->> (search.config/searchable-columns-for-model model)
-                              (not search-native-query?)
-                              (remove #{:dataset_query})
-
-                              true
-                              (map #(search.config/column-with-model-alias model %)))
+     (for [column           (->> (search.config/searchable-columns model search-native-query)
+                                 (map #(search.config/column-with-model-alias model %)))
            wildcarded-token (->> (search.util/normalize query)
                                  search.util/tokenize
                                  (map search.util/wildcard-match))]
@@ -123,6 +119,11 @@
   (defmethod build-optional-filter-query [:created-by model]
     [_filter model query creator-ids]
     (sql.helpers/where query (default-created-by-filter-clause model creator-ids))))
+
+(doseq [model ["card" "dataset" "metric" "dashboard" "action"]]
+  (defmethod build-optional-filter-query [:id model]
+    [_filter model query ids]
+    (sql.helpers/where query [:in (search.config/column-with-model-alias model :id) ids])))
 
 ;; Verified filters
 
@@ -244,10 +245,11 @@
   This is function instead of a def so that optional-filter-clause can be defined anywhere in the codebase."
   []
   (merge
-   ;; models support search-native-query if dataset_query is one of the searchable columns
-   {:search-native-query (->> (dissoc (methods search.config/searchable-columns-for-model) :default)
-                              (filter (fn [[k v]]
-                                        (contains? (set (v k)) :dataset_query)))
+   ;; models support search-native-query if there are additional columns to search when the `search-native-query`
+   ;; argument is true
+   {:search-native-query (->> (dissoc (methods search.config/searchable-columns) :default)
+                              (filter (fn [[model f]]
+                                        (seq (set/difference (set (f model true)) (set (f model false))))))
                               (map first)
                               set)}
    (->> (dissoc (methods build-optional-filter-query) :default)
@@ -286,14 +288,16 @@
   [honeysql-query :- :map
    model          :- SearchableModel
    search-context :- SearchContext]
-  (let [{:keys [archived?
+  (let [{:keys [models
+                archived?
                 created-at
                 created-by
                 last-edited-at
                 last-edited-by
                 search-string
                 search-native-query
-                verified]}    search-context]
+                verified
+                ids]}    search-context]
     (cond-> honeysql-query
       (not (str/blank? search-string))
       (sql.helpers/where (search-string-clause-for-model model search-context search-native-query))
@@ -316,6 +320,10 @@
 
       (some? verified)
       (#(build-optional-filter-query :verified model % verified))
+
+      (and (some? ids)
+           (contains? models model))
+      (#(build-optional-filter-query :id model % ids))
 
       (= "table" model)
       (sql.helpers/where

@@ -169,7 +169,7 @@
   concat
   substring
   replace
-  regexextract
+  regex-match-first
   length
   trim
   ltrim
@@ -215,6 +215,7 @@
   is-empty not-empty
   starts-with ends-with
   contains does-not-contain
+  relative-time-interval
   time-interval
   segment]
  [lib.filter.update

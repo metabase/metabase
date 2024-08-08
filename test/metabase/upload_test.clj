@@ -31,7 +31,7 @@
    [metabase.util :as u]
    [toucan2.core :as t2])
   (:import
-   (java.io File)))
+   (java.io ByteArrayInputStream File FileOutputStream)))
 
 (set! *warn-on-reflection* true)
 
@@ -115,6 +115,10 @@
       (#'upload/scan-and-sync-table! database table))
     (t2/select-one :model/Table (:id table))))
 
+(defn- tmp-file [prefix extension]
+   (doto (File/createTempFile prefix extension)
+     (.deleteOnExit)))
+
 (defn csv-file-with
   "Create a temp csv file with the given content and return the file"
   (^File [rows]
@@ -123,8 +127,7 @@
    (csv-file-with rows file-prefix io/writer))
   (^File [rows file-prefix writer-fn]
    (let [contents (str/join "\n" rows)
-         csv-file (doto (File/createTempFile file-prefix ".csv")
-                    (.deleteOnExit))]
+         csv-file (tmp-file file-prefix ".csv")]
      (with-open [^java.io.Writer w (writer-fn csv-file)]
        (.write w contents))
      csv-file)))
@@ -133,8 +136,9 @@
   "Calls detect-schema on rows from a CSV file. `rows` is a vector of strings"
   [rows]
   (with-open [reader (io/reader (csv-file-with rows))]
-    (let [[header & rows] (csv/read-csv reader)]
-      (#'upload/detect-schema (upload-parsing/get-settings) header rows))))
+    (let [[header & rows] (csv/read-csv reader)
+          column-names (#'upload/derive-column-names nil header)]
+      (#'upload/detect-schema (upload-parsing/get-settings) column-names rows))))
 
 (deftest ^:parallel detect-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -365,6 +369,39 @@
      (mt/with-model-cleanup [:model/Table]
        (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
 
+(deftest create-from-csv-display-name-test
+  (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+    (let [test-names-match (fn [table expected]
+                             (is (= expected
+                                    (:display_name table)
+                                    (:name (table->card table)))))]
+      (testing "The table's display name and model's name is humanized from the CSV file name"
+        (let [csv-file-prefix "some_FILE-prefix"]
+          (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+            (test-names-match table "Some File Prefix"))))
+      (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
+        (let [csv-file-prefix "出色的"]
+          (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
+            (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
+              (test-names-match table "出色的")
+              (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
+                     (:name table)))))))
+      (testing "The names should be truncated to the right size"
+        ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
+        (let [max-bytes 50]
+          (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
+                        upload/max-bytes (constantly max-bytes)]
+            (doseq [c ["a" "出"]]
+              (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
+                    char-size            (count (.getBytes ^String c "UTF-8"))]
+                (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
+                  (testing "The card name should be truncated to max bytes with UTF-8 encoding"
+                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                           (:name (table->card table)))))
+                  (testing "The display name should be truncated to the max bytes with UTF-8 encoding"
+                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                           (:display_name table)))))))))))))
+
 (deftest create-from-csv-table-name-test
   (testing "Can upload two files with the same name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -374,11 +411,15 @@
           (with-upload-table!
             [table-2 (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
             (mt/with-current-user (mt/user->id :crowberto)
+              (testing "both tables have the same display name"
+                (is (= "Some File Prefix"
+                       (:display_name table-1)
+                       (:display_name table-2))
               (testing "tables are different between the two uploads"
                 (is (some? (:id table-1)))
                 (is (some? (:id table-2)))
                 (is (not= (:id table-1)
-                          (:id table-2)))))))))))
+                          (:id table-2)))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id
@@ -473,24 +514,68 @@
             (is (= (rows-with-auto-pk [["a,b,c" "d"]])
                    (rows-for-table table)))))))))
 
+(defn reusable-string-reader
+  "Because life is too short for zillions of temp files."
+  [^String s]
+  (let [bytes (.getBytes s "UTF-8")]
+    (reify
+      io/IOFactory
+      (make-input-stream [_ _opts]
+        (ByteArrayInputStream. bytes))
+      (make-reader [this opts]
+        (io/reader (io/make-input-stream this opts))))))
+
+(defn- infer-separator [rows]
+  (#'upload/infer-separator (reusable-string-reader (str/join "\n" rows))))
+
 (deftest infer-separator-test
   (testing "doesn't error when checking alternative separators (#44034)"
-    (let [file (csv-file-with ["\"c1\",\"c2\""
-                               "\"a,b,c\",\"d\""])]
-      (is (= \, (#'upload/infer-separator file)))))
+    (let [rows ["\"c1\",\"c2\""
+                "\"a,b,c\",\"d\""]]
+      (is (= \, (infer-separator rows)))))
   (doseq [[separator lines] example-files]
     (testing (str "inferring " separator)
-      (let [f (csv-file-with lines)
-            s ({:tab \tab :semi-colon \; :comma \,} separator)]
-        (is (= s (#'upload/infer-separator f))))))
+      (let [s ({:tab \tab :semi-colon \; :comma \,} separator)]
+        (is (= s (infer-separator lines))))))
   ;; it's actually decently hard to make it not stumble on comma or semicolon. The strategy here is that the data
   ;; column count is greater than the header column count regardless of the separators we choose
   (let [lines [","
                ",,,;;;\t\t"]]
-    (testing "throws an error if there's no clear winner"
-      (let [f (csv-file-with lines)]
-        (is (thrown-with-msg? clojure.lang.ExceptionInfo #"Unable to recognise file separator"
-                              (#'upload/infer-separator f)))))))
+    (testing "will defer data width errors to insertion time if other separators are degenerate"
+      (is (= \, (infer-separator lines))))))
+
+(deftest infer-separator-priority-test
+  (testing "Multiple header columns"
+    ;; Despite inconsistent counts, we pick \;
+    (is (= \; (infer-separator ["a;b" "1"]))))
+  (testing "Consistent column counts"
+    ;; despite more data columns for the other separators, we pick \;
+    (is (= \; (infer-separator ["a;b,c\td"
+                                "1;2,3,4\t5\t6"]))))
+  (testing "Headers for every column"
+    ;; despite more data columns for other separators, we pick \;
+    (is (= \; (infer-separator ["a,b;c\td"
+                                "1,2,3;4\t5"]))))
+  (testing "Greatest number of data columns"
+    ;; despite more headers for \, we pick \;
+    (is (= \; (infer-separator ["a;b;c;d,e,f,g,h\ti\tj"
+                                "1;2;3,4\t5"]))))
+  (testing "Greatest number of header columns"
+    (is (= \; (infer-separator ["a,b;c;d\te"]))))
+  (testing "Precedence"
+    (is (= \, (infer-separator [])))
+    (is (= \; (infer-separator ["a\tb;c"
+                                "1\t2;3"])))))
+
+(deftest infer-separator-multiline-test
+  (testing "it picks the only viable separator forced by a quote"
+    (is (= \; (infer-separator ["name, first;surname"
+                                "bond, james;bond"
+                                "\"semi;\";colon"]))))
+  (testing "it considers consistency across the split count"
+    (is (= \; (infer-separator ["product name; amount, in dollars"
+                                "blunderbuss;  1,000"
+                                "cyberwagon;   1,000,000"])))))
 
 (deftest create-from-csv-date-test
   (testing "Upload a CSV file with a datetime column"
@@ -726,11 +811,11 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     ;; There aren't any officially supported databases yet that don't support `:upload-with-auto-pk`
     ;; So we'll fake it here to test it for 3rd party drivers
-    (let [original-database-supports?-fn driver/database-supports?]
-      (with-redefs [driver/database-supports? (fn [driver feature db]
-                                                (if (= feature :upload-with-auto-pk)
-                                                  false
-                                                  (original-database-supports?-fn driver feature db)))]
+    (let [original-supports?-fn driver.u/supports?]
+      (with-redefs [driver.u/supports? (fn [driver feature db]
+                                         (if (= feature :upload-with-auto-pk)
+                                           false
+                                           (original-supports?-fn driver feature db)))]
         (with-mysql-local-infile-on-and-off
           (testing "Upload a CSV file with column names that are reserved by the DB, NOT ignoring them"
             (testing "A single column whose name normalizes to _mb_row_id"
@@ -898,7 +983,7 @@
 (defn- update-csv!
   "Shorthand for synchronously updating a CSV"
   [action options]
-  (update-csv-synchronously! (assoc options :action action)))
+  (update-csv-synchronously! (merge {:filename "test.csv" :action action} options)))
 
 (deftest create-csv-upload!-schema-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
@@ -1007,6 +1092,23 @@
                                           :upload-seconds    pos?}}}
                 (last-audit-event :upload-create)))))))
 
+(defn- write-empty-gzip
+  "Writes the data for an empty gzip file"
+  [^File file]
+  (with-open [out (FileOutputStream. file)]
+      (.write out (byte-array
+                   [0x1F 0x8B ; GZIP magic number
+                    0x08      ; Compression method (deflate)
+                    0         ; Flags
+                    0 0 0 0   ; Modification time (none)
+                    0         ; Extra flags
+                    0xFF      ; Operating system (unknown)
+                    0x03 0    ; Compressed data (empty block)
+                    0 0 0 0   ; CRC32
+                    0 0 0 0   ; Input size
+                    ]))
+      file))
+
 (deftest ^:mb/once create-csv-upload!-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
@@ -1021,17 +1123,27 @@
               #"^The uploads database does not exist\.$"
               (upload-example-csv! :db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"))))
       (testing "Uploads must be supported"
-        (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
+        (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
                 java.lang.Exception
                 #"^Uploads are not supported on \w+ databases\."
-                (upload-example-csv! :schema-name "public", :table-prefix "uploaded_magic_")))))
+                (upload-example-csv! :schema-name "public", :table-prefix "uploaded_magic_"))))
       (testing "User must have write permissions on the collection"
         (mt/with-non-admin-groups-no-root-collection-perms
           (is (thrown-with-msg?
-                java.lang.Exception
-                #"^You do not have curate permissions for this Collection\.$"
-                (upload-example-csv! :user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"))))))))
+               java.lang.Exception
+               #"^You do not have curate permissions for this Collection\.$"
+               (upload-example-csv!
+                {:user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"})))))
+      (testing "File type must be allowed"
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Unsupported File Type"
+             (upload-example-csv! {:file (tmp-file "illegal" ".jpg")})))
+        (is (thrown-with-msg?
+             clojure.lang.ExceptionInfo
+             #"Unsupported File Type"
+             (upload-example-csv! {:file (write-empty-gzip (tmp-file "sneaky" ".csv"))}))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
@@ -1099,12 +1211,6 @@
                             {}))
     (driver/insert-into! driver db-id schema+table-name insert-col-names rows)
     (sync-upload-test-table! :database (mt/db) :table-name table-name :schema-name schema-name)))
-
-(defmacro maybe-apply-macro
-  [flag macro-fn & body]
-  `(if ~flag
-     (~macro-fn ~@body)
-     ~@body))
 
 (defn catch-ex-info* [f]
   (try
@@ -1188,7 +1294,7 @@
                       :data    {:status-code 422}}
                      (catch-ex-info (update-csv-with-defaults! action :file (csv-file-with []))))))
             (testing "Uploads must be supported"
-              (mt/with-dynamic-redefs [driver/database-supports? (constantly false)]
+              (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
                 (is (= {:message (format "Uploads are not supported on %s databases." (str/capitalize (name driver/*driver*)))
                         :data    {:status-code 422}}
                        (catch-ex-info (update-csv-with-defaults! action))))))))))))
@@ -1992,3 +2098,83 @@
             (is (= [false] (mapv :active (t2/select :model/Table :id (:id table)))))
             (testing "We do not clean up any of the child resources synchronously (yet?)"
               (is (seq (t2/select :model/Field :table_id (:id table)))))))))))
+
+(deftest create-csv-from-really-long-names-test
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string (str (str/join (repeat 1000 "really_")) "long")
+             header      (str (str "a_" long-string ",")
+                              (str "b_" long-string ",")
+                              (str "b_" long-string "_with_a"))]
+         (with-upload-table!
+           [table (create-from-csv-and-sync-with-defaults!
+                   :file (csv-file-with [header
+                                         "a,b1,b2"]))]
+           (testing "Table and Fields exist after sync"
+             (testing "Check the data was uploaded into the table correctly"
+               (let [column-names (column-names-for-table table)]
+                 (testing "We preserve names where possible"
+                   (let [header-names (->> (str/split header #",")
+                                           (map (partial #'upload/normalize-column-name driver/*driver*)))]
+                     (is (every? (set column-names) header-names))))
+                 (testing "We preserve prefixes where_possible"
+                   (is (= {"_mb_row_" 1
+                           "a_really" 1
+                           "b_really" 2}
+                          (frequencies (map #(subs % 0 8) column-names))))))))))))))
+
+(deftest append-with-really-long-names-test
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
+             header       (str (str "a_" long-string ",")
+                               (str "b_" long-string))
+             original-row "a,b"
+             appended-row "A,B"]
+         (with-upload-table!
+           [table (create-from-csv-and-sync-with-defaults!
+                   :file (csv-file-with [header original-row]))]
+           (let [csv-rows [header appended-row]
+                 file     (csv-file-with csv-rows (mt/random-name))]
+             (is (= {:row-count 1}
+                    (update-csv! ::upload/append {:file file, :table-id (:id table)})))
+             (testing "Check the data was appended into the table"
+               (is (= (map second (rows-with-auto-pk
+                                   [(csv/read-csv original-row)
+                                    (csv/read-csv appended-row)]))
+                      (map rest (rows-for-table table)))))
+             (io/delete-file file))))))))
+
+(deftest append-with-really-long-names-that-duplicate-test
+  (testing "Upload a CSV file with unique column names that get sanitized to the same string"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
+      (with-mysql-local-infile-on-and-off
+       (let [long-string  (str (str/join (repeat 1000 "really_")) "long")
+             header       (str (str "a_" long-string ",")
+                               (str "b_" long-string ",")
+                               (str "b_" long-string "_with_a"))
+             original-row "a,b1,b2"
+             appended-row "A,B1,B2"]
+         (with-upload-table!
+           [table (create-from-csv-and-sync-with-defaults!
+                   :file (csv-file-with [header original-row]))]
+           (let [csv-rows [header appended-row]
+                 file     (csv-file-with csv-rows (mt/random-name))]
+             ;; TODO: we should be able to make this work with smarter truncation
+             (is (= {:message "The CSV file contains duplicate column names."
+                     :data    {:status-code 422}}
+                    (catch-ex-info (update-csv! ::upload/append {:file file, :table-id (:id table)}))))
+             (testing "Check the data was not uploaded into the table"
+               (is (= (map second (rows-with-auto-pk [(csv/read-csv original-row)]))
+                      (map rest (rows-for-table table)))))
+             (io/delete-file file))))))))
+
+(driver/register! ::short-column-test-driver)
+(defmethod driver/column-name-length-limit ::short-column-test-driver [_] 10)
+
+(deftest unique-long-column-names-test
+  (let [original ["αbcdεf"     "αbcdεfg"   "αbc_2_etc" "αbc_3_xyz"]
+        expected [:%CE%B1bcd%  :%_852c229f :%CE%B1bc_2 :%CE%B1bc_3]]
+    (is (= expected (#'upload/derive-column-names ::short-column-test-driver original)))))

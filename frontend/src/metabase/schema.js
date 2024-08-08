@@ -46,6 +46,10 @@ export const TableSchema = new schema.Entity(
         };
       }
 
+      if (table.fields != null && table.original_fields == null) {
+        table.original_fields = table.fields;
+      }
+
       return table;
     },
   },
@@ -96,9 +100,6 @@ FieldSchema.define({
   target: FieldSchema,
   table: TableSchema,
   name_field: FieldSchema,
-  dimensions: {
-    human_readable_field: FieldSchema,
-  },
 });
 
 SegmentSchema.define({

@@ -10,7 +10,6 @@
        "/"
        "/test"
        "localhost"
-       "localhost:3000"
        "http://localhost:3000"
        "http://localhost:3000/dashboard/1-test-dashboard?currency=British%20Pound"))
 
@@ -19,6 +18,7 @@
        "http://example.com"
        "//example.com"
        "not a url"
+       "localhost:3000" ; URI thinks `localhost` here is scheme
        "http://localhost:3000?a=not a param"))))
 
 (deftest create-new-sso-user-test

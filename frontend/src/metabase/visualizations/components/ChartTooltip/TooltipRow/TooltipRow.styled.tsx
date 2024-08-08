@@ -47,6 +47,7 @@ export const Cell = styled.td`
     border-top-left-radius: 4px;
     border-bottom-left-radius: 4px;
   }
+
   &:last-of-type {
     border-bottom-right-radius: 4px;
     border-top-right-radius: 4px;

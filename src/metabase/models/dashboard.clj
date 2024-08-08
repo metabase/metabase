@@ -100,11 +100,12 @@
   [dashboard]
   (let [changes (t2/changes dashboard)]
     (u/prog1 (maybe-populate-initially-published-at dashboard)
-     (params/assert-valid-parameters dashboard)
-     (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-     (collection/check-collection-namespace Dashboard (:collection_id dashboard))
-     (when (:archived changes)
-       (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
+      (params/assert-valid-parameters dashboard)
+      (when (:parameters changes)
+        (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
+      (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+      (when (:archived changes)
+        (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -290,9 +291,9 @@
    (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
 (defmethod revision/revert-to-revision! :model/Dashboard
-  [_model dashboard-id _user-id serialized-dashboard]
+  [model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (t2/update! :model/Dashboard dashboard-id (dissoc serialized-dashboard :cards :tabs))
+  ((get-method revision/revert-to-revision! :default) model dashboard-id user-id (dissoc serialized-dashboard :cards :tabs))
   ;; Now update the tabs and cards as needed
   (let [serialized-dashcards      (:cards serialized-dashboard)
         current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
@@ -381,11 +382,6 @@
              (deferred-tru "set auto apply filters to {0}" (str (f dashboard)))))]
         (concat (map-indexed check-series-change (:cards changes)))
         (->> (filter identity)))))
-
-(defn has-tabs?
-  "Check if a dashboard has tabs."
-  [dashboard-or-id]
-  (t2/exists? :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id)))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |

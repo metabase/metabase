@@ -104,16 +104,16 @@
 (deftest ^:parallel native-query-perms-test
   (is (= {:perms/create-queries :query-builder-and-native
           :perms/view-data :unrestricted}
-         (query-perms/required-perms
+         (query-perms/required-perms-for-query
           (native "SELECT count(*) FROM toucan_sightings;")))))
 
 (deftest ^:parallel mbql-query-test
-  (is (= {:perms/view-data :unrestricted
+  (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
           :perms/create-queries {(mt/id :venues) :query-builder}}
-         (query-perms/required-perms (mt/mbql-query venues))))
-  (is (= {:perms/view-data :unrestricted
+         (query-perms/required-perms-for-query (mt/mbql-query venues))))
+  (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
           :perms/create-queries {(mt/id :venues) :query-builder}}
-         (query-perms/required-perms
+         (query-perms/required-perms-for-query
           {:query    {:source-table (mt/id :venues)
                       :filter       [:> [:field (mt/id :venues :id) nil] 10]}
            :type     :query
@@ -127,18 +127,18 @@
       (mt/with-no-data-perms-for-all-users!
         (binding [*current-user-permissions-set* (atom nil)
                   *current-user-id*              (mt/user->id :rasta)]
-          (is (= {:perms/view-data :unrestricted
+          (is (= {:perms/view-data      {(u/the-id table) :unrestricted}
                   :perms/create-queries {(u/the-id table) :query-builder}}
-                 (query-perms/required-perms
+                 (query-perms/required-perms-for-query
                   {:database (u/the-id db)
                    :type     :query
                    :query    {:source-table (u/the-id table)}}))))))))
 
 (deftest ^:parallel mbql-query-test-3
   (testing "should be able to calculate permissions of a query before normalization"
-    (is (= {:perms/view-data :unrestricted
+    (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
             :perms/create-queries {(mt/id :venues) :query-builder}}
-           (query-perms/required-perms
+           (query-perms/required-perms-for-query
             {:query    {"SOURCE_TABLE" (mt/id :venues)
                         "FILTER"       [">" (mt/id :venues :id) 10]}
              :type     :query
@@ -146,10 +146,11 @@
 
 (deftest ^:parallel mbql-query-with-join-test
   (testing "you should need perms for both tables if you include a JOIN"
-    (is (= {:perms/view-data :unrestricted
+    (is (= {:perms/view-data      {(mt/id :venues) :unrestricted
+                                   (mt/id :checkins) :unrestricted}
             :perms/create-queries {(mt/id :venues) :query-builder
                                    (mt/id :checkins) :query-builder}}
-           (query-perms/required-perms
+           (query-perms/required-perms-for-query
             (mt/mbql-query checkins
               {:order-by [[:asc $checkins.venue_id->venues.name]]}))))))
 
@@ -162,7 +163,7 @@
                                                         :type     :query
                                                         :query    {:source-table (mt/id :venues)}}}]
       (is (= {:paths #{"/collection/root/read/"}}
-             (query-perms/required-perms
+             (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
 (deftest ^:parallel nested-query-test-2
@@ -173,7 +174,7 @@
                                               :type     :query
                                               :query    {:source-table (mt/id :venues)}}}]
       (is (= {:paths #{(perms/collection-read-path collection)}}
-             (query-perms/required-perms
+             (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
 (deftest ^:parallel nested-query-with-join-test
@@ -185,7 +186,7 @@
                                          :query    {:source-table (mt/id :checkins)
                                                     :order-by     [[:asc [:field (mt/id :users :id) {:source-field (mt/id :checkins :user_id)}]]]}}}]
       (is (= {:paths #{"/collection/root/read/"}}
-             (query-perms/required-perms
+             (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
 (deftest ^:parallel nested-native-query-test
@@ -195,7 +196,7 @@
                                                         :type     :native
                                                         :native   {:query "SELECT * FROM CHECKINS"}}}]
       (is (= {:paths #{"/collection/root/read/"}}
-             (query-perms/required-perms
+             (query-perms/required-perms-for-query
               (query-with-source-card card)))))))
 
 (deftest ^:parallel nested-native-query-test-2
@@ -203,7 +204,7 @@
                 "READWRITE permissions to save the query since we can't verify that it belongs to a Card that you can view.")
     (is (= {:perms/view-data :unrestricted
             :perms/create-queries :query-builder-and-native}
-           (query-perms/required-perms
+           (query-perms/required-perms-for-query
             {:database (mt/id)
              :type     :query
              :query    {:source-query {:native "SELECT * FROM CHECKINS"}}}
@@ -212,7 +213,7 @@
 (deftest ^:parallel invalid-queries-test
   (testing "invalid/legacy queries should return perms for something that doesn't exist so no one gets to see it"
     (is (= {:perms/create-queries {0 :query-builder}}
-           (query-perms/required-perms
+           (query-perms/required-perms-for-query
             (mt/mbql-query venues
               {:filter [:WOW 100 200]}))))))
 
@@ -222,10 +223,11 @@
                                                  (mt/mbql-query checkins
                                                    {:aggregation [[:sum $id]]
                                                     :breakout    [$user_id]}))]
-      (is (= {:perms/view-data :unrestricted
+      (is (= {:perms/view-data      {(mt/id :users) :unrestricted
+                                     (mt/id :checkins) :unrestricted}
               :perms/create-queries {(mt/id :users) :query-builder
                                      (mt/id :checkins) :query-builder}}
-             (query-perms/required-perms
+             (query-perms/required-perms-for-query
               (mt/mbql-query users
                 {:joins [{:fields       :all
                           :alias        "__alias__"
@@ -235,11 +237,11 @@
                                          [:field "USER_ID" {:base-type :type/Integer, :join-alias "__alias__"}]]}]
                  :limit 10})
               :throw-exceptions? true)))
-
-      (is (= {:perms/view-data :unrestricted
+      (is (= {:perms/view-data      {(mt/id :users) :unrestricted
+                                     (mt/id :checkins) :unrestricted}
               :perms/create-queries {(mt/id :users) :query-builder
                                      (mt/id :checkins) :query-builder}}
-           (query-perms/required-perms
+           (query-perms/required-perms-for-query
             (mt/mbql-query users
               {:joins [{:alias        "c"
                         :source-table $$checkins
@@ -251,9 +253,9 @@
     (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
           venues            (lib.metadata/table metadata-provider (mt/id :venues))
           query             (lib/query metadata-provider venues)]
-      (is (= {:perms/view-data :unrestricted
+      (is (= {:perms/view-data      {(mt/id :venues) :unrestricted}
               :perms/create-queries {(mt/id :venues) :query-builder}}
-             (query-perms/required-perms query))))))
+             (query-perms/required-perms-for-query query))))))
 
 (deftest ^:parallel pmbql-native-query-test
   (testing "Should be able to calculate permissions for a pMBQL native query (#39024)"
@@ -262,4 +264,43 @@
                                                           :native   "SELECT *;"})]
       (is (= {:perms/view-data :unrestricted
               :perms/create-queries :query-builder-and-native}
-             (query-perms/required-perms query))))))
+             (query-perms/required-perms-for-query query))))))
+
+(deftest ^:parallel native-query-referenced-card-permissions-test
+  (testing "Check permissions for native query card reference parameters (the `:metabase.models.query.permissions/referenced-card-ids` key(s))"
+    (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                   :model/Collection {collection-2-id :id} {}
+                   :model/Card       {card-1-id :id}       {:collection_id collection-1-id}
+                   :model/Card       {card-2-id :id}       {:collection_id collection-2-id}]
+      (testing "native query"
+        (is (= {:perms/create-queries :query-builder-and-native
+                :perms/view-data      :unrestricted
+                :paths                #{(format "/collection/%d/read/" collection-1-id)
+                                        (format "/collection/%d/read/" collection-2-id)}}
+               (query-perms/required-perms-for-query
+                {:database                         (mt/id)
+                 :type                             :native
+                 :native                           "SELECT * FROM (SELECT * FROM whatever);"
+                 ::query-perms/referenced-card-ids #{card-1-id card-2-id}}))))
+      (testing "MBQL query with native source queries"
+        (let [native-query {:database (mt/id)
+                            :type     :query
+                            :query    {:source-query {:native                           "SELECT * FROM (SELECT * FROM whatever);"
+                                                      ::query-perms/referenced-card-ids #{card-1-id}}
+                                       :joins        [{:alias        "J"
+                                                       :source-query {:native                           "SELECT * FROM (SELECT * FROM whatever);"
+                                                                      ::query-perms/referenced-card-ids #{card-2-id}}
+                                                       :condition    [:= true false]}]}}]
+          (is (= {:perms/create-queries :query-builder-and-native
+                  :perms/view-data      :unrestricted
+                  :paths                #{(format "/collection/%d/read/" collection-1-id)
+                                          (format "/collection/%d/read/" collection-2-id)}}
+                 (query-perms/required-perms-for-query native-query)))
+          (testing "pMBQL query"
+            (is (= {:perms/create-queries :query-builder-and-native
+                    :perms/view-data      :unrestricted
+                    :paths                #{(format "/collection/%d/read/" collection-1-id)
+                                            (format "/collection/%d/read/" collection-2-id)}}
+                   (query-perms/required-perms-for-query
+                    (lib/query (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                               (lib/->pMBQL native-query)))))))))))

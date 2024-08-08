@@ -1,0 +1,21 @@
+# Config is in .github/auto_request_review.yml
+name: Auto Request Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened, synchronize]
+
+jobs:
+  auto-request-review:
+    # Don't run on forked repos
+    if: ${{ !github.event.pull_request.head.repo.fork }}
+    permissions:
+      contents: read
+      pull-requests: write
+    name: Auto Request Review
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request review based on files changes and/or groups the author belongs to
+        uses: necojackarc/auto-request-review@v0.13.0
+        with:
+          token: '${{ secrets.GITHUB_TOKEN }}'

@@ -97,6 +97,14 @@ Fetch possible values of the parameter whose ID is `:param-key`. If the values c
 
 -  **`constraint-param-key->value`**
 
+## `GET /api/dashboard/:id/query_metadata`
+
+Get all of the required query metadata for the cards on dashboard.
+
+### PARAMS:
+
+-  **`id`** value must be an integer greater than zero.
+
 ## `GET /api/dashboard/:id/related`
 
 Return related entities.

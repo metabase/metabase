@@ -48,6 +48,7 @@ export const CompactSelect = styled(Select)`
   ${SelectButton.Icon} {
     margin-left: 0;
   }
+
   &:hover {
     ${SelectButton.Root} {
       background-color: ${color("bg-light")};

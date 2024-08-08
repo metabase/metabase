@@ -315,8 +315,8 @@
   ;; when it should return true.
   (testing "Make sure selecting a database calls `driver/database-supports?` with a database instance"
     (mt/with-temp [Database {db-id :id} {:engine (u/qualified-name ::test)}]
-      (mt/with-dynamic-redefs [driver/database-supports? (fn [_ _ db]
-                                                           (is (true? (mi/instance-of? :model/Database db))))]
+      (mt/with-dynamic-redefs [driver.u/supports? (fn [_ _ db]
+                                                    (is (true? (mi/instance-of? :model/Database db))))]
         (is (some? (t2/select-one-fn :features Database :id db-id)))))))
 
 (deftest hydrate-tables-test

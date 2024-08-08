@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
@@ -226,3 +227,70 @@
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is (not (contains? syncable "public")))
                 (is (not (contains? syncable fake-schema-name)))))))))))
+
+(deftest ^:parallel uuid-filtering-test
+  (mt/test-drivers (set/intersection
+                     (mt/sql-jdbc-drivers)
+                     (mt/normal-drivers-with-feature :uuid-type))
+    (let [uuid (random-uuid)
+          uuid-query (mt/native-query {:query (format "select cast('%s' as uuid) as x" uuid)})
+          results (qp/process-query uuid-query)
+          result-metadata (get-in results [:data :results_metadata :columns])
+          col-metadata (first result-metadata)]
+      (is (= :type/UUID (:base_type col-metadata)))
+      (mt/with-temp [:model/Card card {:type :model
+                                       :result_metadata result-metadata
+                                       :dataset_query uuid-query}]
+        (let [model-query {:database (mt/id)
+                           :type :query
+                           :query {:source-table (str "card__" (:id card))}}]
+          (are [expected filt]
+            (= expected
+               (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
+            [[uuid]] [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]]
+            [[uuid]] [:= (:field_ref col-metadata) (str uuid)]
+            [[uuid]] [:!= (:field_ref col-metadata) (str (random-uuid))]
+            [[uuid]] [:starts-with (:field_ref col-metadata) (str uuid)]
+            [[uuid]] [:ends-with (:field_ref col-metadata) (str uuid)]
+            [[uuid]] [:contains (:field_ref col-metadata) (str uuid)]
+
+            ;; Test partial uuid values
+            [[uuid]] [:contains (:field_ref col-metadata) (subs (str uuid) 0 1)]
+            [[uuid]] [:starts-with (:field_ref col-metadata) (subs (str uuid) 0 1)]
+            [[uuid]] [:ends-with (:field_ref col-metadata) (subs (str uuid) (dec (count (str uuid))))]
+
+            ;; Cannot match a uuid, but should not blow up
+            [[uuid]] [:!= (:field_ref col-metadata) "q"]
+            [] [:= (:field_ref col-metadata) "q"]
+            [] [:starts-with (:field_ref col-metadata) "q"]
+            [] [:ends-with (:field_ref col-metadata) "q"]
+            [] [:contains (:field_ref col-metadata) "q"]
+
+            ;; empty/null handling
+            [] [:is-empty (:field_ref col-metadata)]
+            [[uuid]] [:not-empty (:field_ref col-metadata)]
+            [] [:is-null (:field_ref col-metadata)]
+            [[uuid]] [:not-null (:field_ref col-metadata)]
+
+            ;; nil value handling
+            [[uuid]] [:!= (:field_ref col-metadata) nil]
+            [] [:= (:field_ref col-metadata) nil])
+          (testing ":= uses indexable query"
+            (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
+                     (some-fn #(= uuid %)
+                              #(= [:metabase.util.honey-sql-2/typed
+                                   [:cast (str uuid) [:raw "uuid"]]
+                                   {:database-type "uuid"}]
+                                  %))]
+                    (sql.qp/->honeysql
+                      driver/*driver*
+                      [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
+            (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
+                     (some-fn #(= uuid %)
+                              #(= [:metabase.util.honey-sql-2/typed
+                                   [:cast (str uuid) [:raw "uuid"]]
+                                   {:database-type "uuid"}]
+                                  %))]
+                    (sql.qp/->honeysql
+                      driver/*driver*
+                      [:= (:field_ref col-metadata) uuid])))))))))

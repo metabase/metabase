@@ -224,11 +224,12 @@ export const apiCreateQuestion = question => {
 
     dispatch({ type: API_CREATE_QUESTION, payload: card });
 
-    const isModel = question.type() === "model";
-    const metadataOptions = { reload: isModel };
-    await dispatch(loadMetadataForCard(card, metadataOptions));
+    await dispatch(loadMetadataForCard(card));
 
-    return createdQuestion;
+    const isModel = question.type() === "model";
+    if (isModel) {
+      dispatch(runQuestionQuery());
+    }
   };
 };
 
@@ -280,8 +281,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       await dispatch(ModelIndexes.actions.updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: isModel };
-    await dispatch(loadMetadataForCard(question.card(), metadataOptions));
+    await dispatch(loadMetadataForCard(question.card()));
 
     if (rerunQuery) {
       dispatch(runQuestionQuery());

@@ -25,12 +25,10 @@ type ButtonProps = {
 export const CurrentButton = styled(Button)<ButtonProps>`
   border: none;
   border-radius: 99px;
-
   background-color: ${({ selected, primaryColor = color("brand") }) =>
     selected ? primaryColor : alpha(primaryColor, 0.1)};
   color: ${({ selected, primaryColor = color("brand") }) =>
     selected ? "white" : primaryColor};
-
   padding-top: ${space(1)};
   padding-bottom: ${space(1)};
 

@@ -17,11 +17,9 @@ export const FieldText = styled.span<{ hasError?: boolean; margin: string }>`
 export const Input = styled(NumericInput)`
   width: 50px;
   text-align: center;
-
   color: ${props => color(props.hasError ? "error" : "text-dark")};
   font-weight: bold;
   padding: 0.75em;
-
   border: 1px solid ${color("border")};
   border-radius: 4px;
   outline: none;

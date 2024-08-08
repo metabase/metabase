@@ -42,7 +42,8 @@
              :id card-id,
              :display "display",
              :timestamp String
-             :model :card}]
+             :model :card
+             :database_id db-id}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views (mt/user->id :rasta))))))))
@@ -59,7 +60,8 @@
              :moderated_status nil,
              :id card-id,
              :timestamp String
-             :model :dataset}]
+             :model :dataset
+             :database_id db-id}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views (mt/user->id :rasta))))))))
@@ -290,7 +292,6 @@
     (t2.with-temp/with-temp [:model/Dashboard {dash-id :id} {}
                              :model/Dashboard {dash-id-2 :id} {}
                              :model/Dashboard {dash-id-3 :id} {}]
-
       (is (nil? (recent-views/most-recently-viewed-dashboard-id (mt/user->id :rasta))))
 
       (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Dashboard dash-id :view)

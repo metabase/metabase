@@ -1,4 +1,3 @@
-import { merge } from "icepick";
 import { push } from "react-router-redux";
 import { createAction } from "redux-actions";
 import { t } from "ttag";
@@ -7,16 +6,17 @@ import Questions from "metabase/entities/questions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { addUndo } from "metabase/redux/undo";
 import { getMetadata } from "metabase/selectors/metadata";
-import { isSameField } from "metabase-lib/v1/queries/utils/field-ref";
 
-import { getOriginalCard, getQuestion, getResultsMetadata } from "../selectors";
+import { getOriginalCard, getQuestion } from "../selectors";
 
 import { apiUpdateQuestion, updateQuestion, API_UPDATE_QUESTION } from "./core";
 import { runDirtyQuestionQuery, runQuestionQuery } from "./querying";
 import { setQueryBuilderMode } from "./ui";
 
 export const setDatasetEditorTab = datasetEditorTab => dispatch => {
-  dispatch(setQueryBuilderMode("dataset", { datasetEditorTab }));
+  dispatch(
+    setQueryBuilderMode("dataset", { datasetEditorTab, replaceState: false }),
+  );
   dispatch(runDirtyQuestionQuery());
 };
 
@@ -67,47 +67,21 @@ export const turnQuestionIntoDataset = () => async (dispatch, getState) => {
   );
 };
 
-export const turnDatasetIntoQuestion = () => async (dispatch, getState) => {
-  const dataset = getQuestion(getState());
-  const question = dataset.setType("question");
+export const turnModelIntoQuestion = () => async (dispatch, getState) => {
+  const model = getQuestion(getState());
+  const question = model.setType("question");
   await dispatch(apiUpdateQuestion(question, { rerunQuery: true }));
 
   dispatch(
     addUndo({
       message: t`This is a question now.`,
-      actions: [apiUpdateQuestion(dataset)],
+      actions: [apiUpdateQuestion(model)],
     }),
   );
 };
 
-export const SET_RESULTS_METADATA = "metabase/qb/SET_RESULTS_METADATA";
-export const setResultsMetadata = createAction(SET_RESULTS_METADATA);
-
 export const SET_METADATA_DIFF = "metabase/qb/SET_METADATA_DIFF";
 export const setMetadataDiff = createAction(SET_METADATA_DIFF);
-
-export const setFieldMetadata =
-  ({ field_ref, changes }) =>
-  (dispatch, getState) => {
-    const question = getQuestion(getState());
-    const resultsMetadata = getResultsMetadata(getState());
-
-    const nextColumnMetadata = resultsMetadata.columns.map(fieldMetadata => {
-      const isTargetField = isSameField(field_ref, fieldMetadata.field_ref);
-      return isTargetField ? merge(fieldMetadata, changes) : fieldMetadata;
-    });
-
-    const nextResultsMetadata = {
-      ...resultsMetadata,
-      columns: nextColumnMetadata,
-    };
-
-    const nextQuestion = question.setResultsMetadata(nextResultsMetadata);
-
-    dispatch(updateQuestion(nextQuestion));
-    dispatch(setMetadataDiff({ field_ref, changes }));
-    dispatch(setResultsMetadata(nextResultsMetadata));
-  };
 
 export const onModelPersistenceChange = isEnabled => (dispatch, getState) => {
   const question = getQuestion(getState());

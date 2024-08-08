@@ -250,6 +250,7 @@ export type CreateDashboardRequest = {
   cache_ttl?: number;
   collection_id?: CollectionId | null;
   collection_position?: number | null;
+  tabs?: Pick<DashboardTab, "id" | "name" | "position">[];
 };
 
 export type UpdateDashboardRequest = {
@@ -270,6 +271,11 @@ export type UpdateDashboardRequest = {
   embedding_params?: EmbeddingParameters | null;
   cache_ttl?: number;
   position?: number | null;
+};
+
+export type GetDashboardQueryMetadataRequest = {
+  id: DashboardId;
+  dashboard_load_id?: string;
 };
 
 export type SaveDashboardRequest = Omit<UpdateDashboardRequest, "id">;

@@ -136,22 +136,6 @@ describe("visualization_settings", () => {
         expect(settings["graph.show_values"]).toBe(false);
       });
     });
-    describe("table.columns", () => {
-      it("should include fieldRef in default table.columns", () => {
-        const card = { visualization_settings: {} };
-        const cols = [
-          NumberColumn({
-            name: "some number",
-            field_ref: ["field", 123, null],
-          }),
-        ];
-        const {
-          "table.columns": [setting],
-        } = getComputedSettingsForSeries([{ card, data: { cols } }]);
-
-        expect(setting.fieldRef).toEqual(["field", 123, null]);
-      });
-    });
   });
 
   describe("getStoredSettingsForSeries", () => {

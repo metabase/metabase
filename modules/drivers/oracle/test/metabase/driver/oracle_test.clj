@@ -14,7 +14,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
@@ -30,6 +29,7 @@
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
@@ -288,9 +288,14 @@
           (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
-          (t2.with-temp/with-temp [Table table    {:schema username, :name "messages", :db_id (mt/id)}
-                                   Field id-field {:table_id (u/the-id table), :name "id", :base_type "type/Integer"}
-                                   Field _        {:table_id (u/the-id table), :name "message", :base_type "type/Text"}]
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
+                id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
+            (testing "The CLOB is synced as a text field"
+              (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
+                ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
+                (is (= :type/OracleCLOB base-type))
+                (is (isa? base-type :type/Text))))
             (is (= [[1M "Hello"]
                     [2M nil]]
                    (mt/rows
@@ -461,3 +466,41 @@
   (testing "Oracle should strip double quotes and null characters from identifiers"
     (is (= "ABC_D_E__FG_H"
            (driver/escape-alias :oracle "ABC\"D\"E\"\u0000FG\u0000H")))))
+
+(deftest read-timestamp-with-tz-test
+  (mt/test-driver :oracle
+    (testing "We should return TIMESTAMP WITH TIME ZONE columns correctly"
+      (let [test-date "2024-12-20 16:05:00 US/Eastern"
+            sql       (format "SELECT TIMESTAMP '%s' AS timestamp_tz FROM dual" test-date)
+            query     (-> (mt/native-query {:query sql})
+                          (assoc-in [:middleware :format-rows?] false))]
+        (doseq [report-tz ["UTC" "US/Pacific"]]
+          (mt/with-temporary-setting-values [report-timezone report-tz]
+            (mt/with-native-query-testing-context query
+              (testing "The value should come back from driver with original zone info, regardless of report timezone"
+                (= (t/offset-date-time (u.date/parse test-date) "US/Eastern")
+                   (ffirst (mt/rows (qp/process-query query))))))))))))
+
+(deftest read-timestamp-with-local-tz-test
+  (mt/test-driver :oracle
+    (testing "We should return TIMESTAMP WITH LOCAL TIME ZONE columns correctly"
+      (let [test-date  "2024-12-20 16:05:00 US/Pacific"
+            sql        (format "SELECT CAST(TIMESTAMP '%s' AS TIMESTAMP WITH LOCAL TIME ZONE) AS timestamp_tz FROM dual" test-date)
+            query      (-> (mt/native-query {:query sql})
+                           (assoc-in [:middleware :format-rows?] false))
+            spec       #(sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+            old-format (-> (jdbc/query (spec) "SELECT value FROM NLS_SESSION_PARAMETERS WHERE PARAMETER = 'NLS_TIMESTAMP_TZ_FORMAT'")
+                           ffirst
+                           val)
+            do-with-temp-tz-format (fn [thunk]
+                                     ;; verify that the value is independent of NLS_TIMESTAMP_TZ_FORMAT
+                                     (jdbc/execute! (spec) "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT = 'YYYY-MM-DD HH:MI'")
+                                     (thunk)
+                                     (jdbc/execute! (spec) (format "ALTER SESSION SET NLS_TIMESTAMP_TZ_FORMAT = '%s'" old-format)))]
+        (do-with-temp-tz-format
+         (fn []
+           (doseq [report-tz ["UTC" "US/Pacific"]]
+             (mt/with-temporary-setting-values [report-timezone report-tz]
+               (mt/with-native-query-testing-context query
+                 (is (= (t/zoned-date-time (u.date/parse test-date) report-tz)
+                        (ffirst (mt/rows (qp/process-query query))))))))))))))

@@ -31,6 +31,11 @@ import { CollectionsApi, PermissionsApi } from "metabase/services";
 import { trackPermissionChange } from "./analytics";
 import { DataPermissionType, DataPermission } from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
+import {
+  getModifiedGroupsPermissionsGraphParts,
+  getModifiedCollectionPermissionsGraphParts,
+  mergeGroupsPermissionsUpdates,
+} from "./utils/graph/partial-updates";
 
 const INITIALIZE_DATA_PERMISSIONS =
   "metabase/admin/permissions/INITIALIZE_DATA_PERMISSIONS";
@@ -189,32 +194,37 @@ export const saveDataPermissions = createThunkAction(
   () => async (_dispatch, getState) => {
     MetabaseAnalytics.trackStructEvent("Permissions", "save");
     const state = getState();
-    const groupIds = Object.keys(state.entities.groups);
-    const { dataPermissions, dataPermissionsRevision } =
-      getState().admin.permissions;
+    const allGroupIds = Object.keys(state.entities.groups);
+    const {
+      originalDataPermissions,
+      dataPermissions,
+      dataPermissionsRevision,
+    } = state.admin.permissions;
 
-    // catch edge case where user has deleted a group but has loaded the permissions graph
-    // with state for the now deleted group still in the graph
-    const groupDataPermissions = _.pick(dataPermissions, groupIds);
-
-    const extraData =
+    const advancedPermissions =
       PLUGIN_DATA_PERMISSIONS.permissionsPayloadExtraSelectors.reduce(
         (data, selector) => {
+          const [extraData, modifiedGroupIds] = selector(state);
           return {
-            ...data,
-            ...selector(getState()),
+            permissions: { ...data.permissions, ...extraData },
+            modifiedGroupIds: [...data.modifiedGroupIds, ...modifiedGroupIds],
           };
         },
-        {},
+        { modifiedGroupIds: [], permissions: {} },
       );
 
-    const permissionsGraph = {
-      groups: groupDataPermissions,
-      revision: dataPermissionsRevision,
-      ...extraData,
-    };
+    const modifiedGroups = getModifiedGroupsPermissionsGraphParts(
+      dataPermissions,
+      originalDataPermissions,
+      allGroupIds,
+      advancedPermissions.modifiedGroupIds,
+    );
 
-    return await PermissionsApi.updateGraph(permissionsGraph);
+    return await PermissionsApi.updateGraph({
+      groups: modifiedGroups,
+      revision: dataPermissionsRevision,
+      ...advancedPermissions.permissions,
+    });
   },
 );
 
@@ -230,14 +240,29 @@ export const saveCollectionPermissions = createThunkAction(
   SAVE_COLLECTION_PERMISSIONS,
   namespace => async (_dispatch, getState) => {
     MetabaseAnalytics.trackStructEvent("Permissions", "save");
-    const { collectionPermissions, collectionPermissionsRevision } =
-      getState().admin.permissions;
+
+    const {
+      originalCollectionPermissions,
+      collectionPermissions,
+      collectionPermissionsRevision,
+    } = getState().admin.permissions;
+
+    const modifiedPermissions = getModifiedCollectionPermissionsGraphParts(
+      originalCollectionPermissions,
+      collectionPermissions,
+    );
+
     const result = await CollectionsApi.updateGraph({
       namespace,
       revision: collectionPermissionsRevision,
-      groups: collectionPermissions,
+      groups: modifiedPermissions,
+      skip_graph: true,
     });
-    return result;
+
+    return {
+      ...result,
+      groups: collectionPermissions,
+    };
   },
 );
 
@@ -288,7 +313,10 @@ const dataPermissions = handleActions(
     [LOAD_DATA_PERMISSIONS_FOR_DB]: {
       next: (state, { payload }) => merge(payload.groups, state),
     },
-    [SAVE_DATA_PERMISSIONS]: { next: (_state, { payload }) => payload.groups },
+    [SAVE_DATA_PERMISSIONS]: {
+      next: (state, { payload }) =>
+        mergeGroupsPermissionsUpdates(state, payload.groups),
+    },
     [UPDATE_DATA_PERMISSION]: {
       next: (state, { payload }) => {
         if (payload == null) {
@@ -393,7 +421,8 @@ const originalDataPermissions = handleActions(
       next: (state, { payload }) => merge(payload.groups, state),
     },
     [SAVE_DATA_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) =>
+        mergeGroupsPermissionsUpdates(state, payload.groups),
     },
   },
   null,
@@ -452,7 +481,7 @@ const originalCollectionPermissions = handleActions(
       next: (_state, { payload }) => payload.groups,
     },
     [SAVE_COLLECTION_PERMISSIONS]: {
-      next: (_state, { payload }) => payload.groups,
+      next: (state, { payload }) => payload.groups,
     },
   },
   null,

@@ -77,6 +77,14 @@ Get `Card` with ID.
 
 -  **`ignore_view`** nullable boolean.
 
+## `GET /api/card/:id/query_metadata`
+
+Get all of the required query metadata for a card.
+
+### PARAMS:
+
+-  **`id`** value must be an integer greater than zero.
+
 ## `GET /api/card/:id/related`
 
 Return related entities.

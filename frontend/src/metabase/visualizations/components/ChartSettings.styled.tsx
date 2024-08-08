@@ -28,6 +28,7 @@ export const SectionContainer = styled.div<SectionContainerProps>`
     margin-right: 0;
     display: flex;
     justify-content: center;
+
     &:not(:last-child) {
       margin-right: 0;
     }

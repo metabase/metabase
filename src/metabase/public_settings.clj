@@ -261,9 +261,9 @@
   :audit      :getter)
 
 (defsetting enable-query-caching
-  (deferred-tru "Enabling caching will save the results of queries that take a long time to run.")
+  (deferred-tru "Allow caching results of queries that take a long time to run.")
   :type       :boolean
-  :default    false
+  :default    true
   :visibility :authenticated
   :audit      :getter)
 
@@ -880,6 +880,8 @@ See [fonts](../configuring-metabase/fonts.md).")
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (cond
+                  (premium-features/has-feature? :attached-dwh)
+                  (api/throw-403)
                   (nil? db_id)
                   (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
                                                                      :uploads_schema_name  nil

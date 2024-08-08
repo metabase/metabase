@@ -18,6 +18,7 @@ export const PolicyToken = styled(Button)<
   border-width: 1px;
   border-style: solid;
   justify-content: center;
+
   ${({ variant }) =>
     css`
       border-color: ${color(

@@ -352,6 +352,15 @@ class View extends Component {
       onConfirmToast,
       isShowingToaster,
       isHeaderVisible,
+      updateQuestion,
+      reportTimezone,
+      readOnly,
+      isDirty,
+      isRunnable,
+      isResultDirty,
+      hasVisualizeButton,
+      runQuestionQuery,
+      setQueryBuilderMode,
     } = this.props;
 
     // if we don't have a question at all or no databases then we are initializing, so keep it simple
@@ -369,7 +378,22 @@ class View extends Component {
       return (
         <>
           <DatasetEditor {...this.props} />
-          <QueryModals {...this.props} />
+          <QueryModals
+            questionAlerts={this.props.questionAlerts}
+            user={this.props.user}
+            onSave={this.props.onSave}
+            onCreate={this.props.onCreate}
+            updateQuestion={this.props.updateQuestion}
+            modal={this.props.modal}
+            modalContext={this.props.modalContext}
+            card={this.props.card}
+            question={this.props.question}
+            onCloseModal={this.props.onCloseModal}
+            onOpenModal={this.props.onOpenModal}
+            setQueryBuilderMode={this.props.setQueryBuilderMode}
+            originalQuestion={this.props.originalQuestion}
+            onChangeLocation={this.props.onChangeLocation}
+          />
         </>
       );
     }
@@ -394,7 +418,16 @@ class View extends Component {
             {!isNative && (
               <NotebookContainer
                 isOpen={isNotebookContainerOpen}
-                {...this.props}
+                updateQuestion={updateQuestion}
+                reportTimezone={reportTimezone}
+                readOnly={readOnly}
+                question={question}
+                isDirty={isDirty}
+                isRunnable={isRunnable}
+                isResultDirty={isResultDirty}
+                hasVisualizeButton={hasVisualizeButton}
+                runQuestionQuery={runQuestionQuery}
+                setQueryBuilderMode={setQueryBuilderMode}
               />
             )}
             <ViewSidebar side="left" isOpen={!!leftSidebar}>
@@ -419,7 +452,22 @@ class View extends Component {
           />
         )}
 
-        <QueryModals {...this.props} />
+        <QueryModals
+          questionAlerts={this.props.questionAlerts}
+          user={this.props.user}
+          onSave={this.props.onSave}
+          onCreate={this.props.onCreate}
+          updateQuestion={this.props.updateQuestion}
+          modal={this.props.modal}
+          modalContext={this.props.modalContext}
+          card={this.props.card}
+          question={this.props.question}
+          onCloseModal={this.props.onCloseModal}
+          onOpenModal={this.props.onOpenModal}
+          setQueryBuilderMode={this.props.setQueryBuilderMode}
+          originalQuestion={this.props.originalQuestion}
+          onChangeLocation={this.props.onChangeLocation}
+        />
 
         <Toaster
           message={t`Would you like to be notified when this question is done loading?`}

@@ -793,3 +793,13 @@
   ;; Following cyclic dependency by that requiring resolve.
   ((requiring-resolve 'metabase.test.data.impl/resolve-dataset-definition)
    'metabase.test.data.dataset-definitions 'test-data))
+
+(defmulti native-query-with-card-template-tag
+  "For drivers that support `:native-parameter-card-reference`:
+
+  Return a native `:query` (just the SQL string or equivalent with a `:card` template tag e.g.
+
+    \"SELECT * FROM {{%s}}\""
+  {:arglists '([driver card-template-tag-name])}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)

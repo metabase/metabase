@@ -22,6 +22,9 @@
       true,
       { "ignoreProperties": ["composes"] }
     ],
-    "comment-empty-line-before": null
+    "comment-empty-line-before": null,
+    "selector-pseudo-element-colon-notation": null,
+    "no-empty-source": null,
+    "font-family-no-missing-generic-family-keyword": null
   }
 }

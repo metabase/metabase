@@ -32,7 +32,7 @@ We'll use the following sample data to show you `SumIf` with [required](#require
 | Payment  | Plan        | Date Received     |
 |----------|-------------| ------------------|
 | 100      | Basic       | October 1, 2020   |
-| 100      | Basic       | October 1, 2020   | 
+| 100      | Basic       | October 1, 2020   |
 | 200      | Business    | October 1, 2020   |
 | 200      | Business    | November 1, 2020  |
 | 400      | Premium     | November 1, 2020  |
@@ -79,7 +79,7 @@ To get a conditional subtotal for a category or group, such as the total payment
 | Payment  | Plan        | Date Received     |
 |----------|-------------| ------------------|
 | 100      | Basic       | October 1, 2020   |
-| 100      | Basic       | October 1, 2020   | 
+| 100      | Basic       | October 1, 2020   |
 | 200      | Business    | October 1, 2020   |
 | 200      | Business    | November 1, 2020  |
 | 400      | Premium     | November 1, 2020  |
@@ -90,7 +90,7 @@ To sum payments for the Business and Premium plans:
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-Or, sum payments for all plans that aren't "Basic": 
+Or, sum payments for all plans that aren't "Basic":
 
 ```
 SumIf([Payment], [Plan] != "Basic")
@@ -102,14 +102,14 @@ To view those payments by month, set the **Group by** column to "Date Received: 
 
 | Date Received: Month | Total Payments for Business and Premium Plans |
 |----------------------|-----------------------------------------------|
-| October              | 200                                           | 
+| October              | 200                                           |
 | November             | 600                                           |
 
 > Tip: when sharing your work with other people, it's helpful to use the `OR` filter, even though the `!=` filter is shorter. The inclusive `OR` filter makes it easier to understand which categories (e.g., plans) are included in the sum.
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `SumIf`        |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `SumIf`        |
 | ------------------------------------------------------------------------------------------------ | ------------------------- |
 | String                                                                                           | ❌                        |
 | Number                                                                                           | ✅                        |
@@ -163,7 +163,7 @@ For example, to get the running total of payments for the Business and Premium p
 
 | Date Received: Month | Total Payments for Business and Premium Plans |
 |----------------------|-----------------------------------------------|
-| October              | 200                                           | 
+| October              | 200                                           |
 | November             | 800                                           |
 
 Create an aggregation from **Summarize** > **Custom expression**:
@@ -181,7 +181,7 @@ When you run a question using the [query builder](https://www.metabase.com/gloss
 If our [payment sample data](#sumif) is stored in a PostgreSQL database, the SQL query:
 
 ```sql
-SELECT 
+SELECT
     SUM(CASE WHEN plan = "Basic" THEN payment ELSE 0 END) AS total_payments_basic
 FROM invoices
 ```
@@ -195,11 +195,11 @@ SumIf([Payment], [Plan] = "Basic")
 To add [multiple conditions with a grouping column](#conditional-subtotals-by-group), use the SQL query:
 
 ```sql
-SELECT 
+SELECT
     DATE_TRUNC("month", date_received)                       AS date_received_month,
     SUM(CASE WHEN plan = "Business" THEN payment ELSE 0 END) AS total_payments_business_or_premium
 FROM invoices
-GROUP BY 
+GROUP BY
     DATE_TRUNC("month", date_received)
 ```
 

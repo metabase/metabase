@@ -820,6 +820,27 @@ SafariNonIanaTimezoneRepro44128.args = {
   renderingContext,
 };
 
+export const CombinedWithInvalidSettings = Template.bind({});
+CombinedWithInvalidSettings.args = {
+  rawSeries: data.combinedWithInvalidSettings as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const StackedChartCustomYAxisRange = Template.bind({});
+StackedChartCustomYAxisRange.args = {
+  rawSeries: data.stackedChartCustomYAxisRange as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const SeriesOrderSettingsDoNotMatchSeriesCount = Template.bind({});
+SeriesOrderSettingsDoNotMatchSeriesCount.args = {
+  rawSeries: data.seriesOrderSettingsDoNotMatchSeriesCount as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Default = Template.bind({});
 Default.args = {
   rawSeries: data.messedUpAxis as any,

@@ -10,17 +10,14 @@ export const Root = styled(FullWidthContainer)<{ admin: boolean }>`
   align-items: center;
   justify-content: space-between;
   position: relative;
-
   padding-top: 0.5rem;
   padding-bottom: 0.5rem;
-
   background-color: ${props =>
     alpha(color(props.admin ? "accent7" : "brand"), 0.85)};
 
   .${ButtonsS.Button} {
     color: ${color("text-white")};
     background-color: ${alpha(color("bg-white"), 0.1)};
-
     border: none;
     font-size: 1em;
     margin-left: 0.75em;

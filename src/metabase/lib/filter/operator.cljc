@@ -32,16 +32,6 @@
    (operator-def :is-null :is-empty)
    (operator-def :not-null :not-empty)])
 
-(def ^:private location-operators
-  [(operator-def :=)
-   (operator-def :!=)
-   (operator-def :is-empty)
-   (operator-def :not-empty)
-   (operator-def :contains)
-   (operator-def :does-not-contain)
-   (operator-def :starts-with)
-   (operator-def :ends-with)])
-
 (def ^:private temporal-operators
   [(operator-def :!= :excludes)
    (operator-def :=)
@@ -77,8 +67,6 @@
    (operator-def :!=)
    (operator-def :contains)
    (operator-def :does-not-contain)
-   (operator-def :is-null)
-   (operator-def :not-null)
    (operator-def :is-empty)
    (operator-def :not-empty)
    (operator-def :starts-with)
@@ -87,8 +75,6 @@
 (def ^:private text-like-operators
   [(operator-def :=)
    (operator-def :!=)
-   (operator-def :is-null)
-   (operator-def :not-null)
    (operator-def :is-empty)
    (operator-def :not-empty)])
 
@@ -98,10 +84,8 @@
    (operator-def :not-null :not-empty)])
 
 (def ^:private default-operators
-  [(operator-def :=)
-   (operator-def :!=)
-   (operator-def :is-null)
-   (operator-def :not-null)])
+  [(operator-def :is-null :is-empty)
+   (operator-def :not-null :not-empty)])
 
 (def join-operators
   "Operators that should be listed as options in join conditions."
@@ -111,13 +95,6 @@
    (operator-def :>=)
    (operator-def :<=)
    (operator-def :!=)])
-
-(defn- key-operators-for [column]
-  (condp lib.types.isa/field-type? column
-    :metabase.lib.types.constants/string      text-operators
-    :metabase.lib.types.constants/string_like text-like-operators
-    ;; default
-    numeric-key-operators))
 
 (mu/defn filter-operators :- [:sequential ::lib.schema.filter/operator]
   "The list of available filter operators.
@@ -129,12 +106,11 @@
   ;; on the effective-type rather than the semantic-type, eg boolean and number cannot become
   ;; string if semantic type is type/Category
   (condp lib.types.isa/field-type? column
-    :metabase.lib.types.constants/primary_key (key-operators-for column)
-    :metabase.lib.types.constants/foreign_key (key-operators-for column)
-    :metabase.lib.types.constants/location    location-operators
     :metabase.lib.types.constants/temporal    temporal-operators
     :metabase.lib.types.constants/coordinate  coordinate-operators
-    :metabase.lib.types.constants/number      number-operators
+    :metabase.lib.types.constants/number      (if ((some-fn lib.types.isa/primary-key? lib.types.isa/foreign-key?) column)
+                                                numeric-key-operators
+                                                number-operators)
     :metabase.lib.types.constants/boolean     boolean-operators
     :metabase.lib.types.constants/string      text-operators
     :metabase.lib.types.constants/string_like text-like-operators

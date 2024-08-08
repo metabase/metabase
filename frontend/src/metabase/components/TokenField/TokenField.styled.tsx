@@ -10,9 +10,7 @@ export const TokenFieldContainer = styled.ul`
   gap: ${space(0)};
   font-weight: bold;
   cursor: pointer;
-
   max-height: 130px;
-
   background-color: ${color("white")};
   overflow-x: auto;
   overflow-y: auto;

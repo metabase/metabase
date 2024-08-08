@@ -152,8 +152,11 @@
    {:where    [:and
                [:= :user_id user-id]
                [:= :model (h2x/literal "dashboard")]
-               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]]
-    :order-by [[:id :desc]]}))
+               [:> :timestamp (t/minus (t/zoned-date-time) (t/days 1))]
+               [:not= :d.archived true]]
+    :order-by [[:recent_views.id :desc]]
+    :left-join [[:report_dashboard :d]
+                [:= :recent_views.model_id :d.id]]}))
 
 (def Item
   "The shape of a recent view item, returned from `GET /recent_views`."
@@ -219,31 +222,40 @@
 ;; == Recent Cards ==
 
 (defn card-recents
-  "Query to select card data"
+  "Query to select `report_card` data"
   [card-ids]
   (if-not (seq card-ids)
     []
     (t2/select :model/Card
-               {:select [:report_card.name
-                         :report_card.description
-                         :report_card.archived
-                         :report_card.collection_id
-                         :report_card.id
-                         :report_card.display
+               {:select [:card.name
+                         :card.description
+                         :card.archived
+                         :card.id
+                         :card.database_id
+                         :card.display
+                         [:card.collection_id :entity-coll-id]
                          [:mr.status :moderated-status]
-                         [:c.id :collection-id]
-                         [:c.name :collection-name]
-                         [:c.authority_level :collection-authority-level]]
-                :where [:in :report_card.id card-ids]
+                         [:collection.id :collection_id]
+                         [:collection.name :collection_name]
+                         [:collection.authority_level :collection_authority_level]]
+                :from [[:report_card :card]]
+                :where [:in :card.id card-ids]
                 :left-join [[:moderation_review :mr]
                             [:and
+                             [:= :mr.moderated_item_id :card.id]
                              [:= :mr.moderated_item_type "card"]
-                             [:= :mr.most_recent true]
-                             [:in :mr.moderated_item_id card-ids]]
-                            [:collection :c]
+                             [:= :mr.most_recent true]]
+                            [:collection]
                             [:and
-                             [:= :c.id :report_card.collection_id]
-                             [:= :c.archived false]]]})))
+                             [:= :collection.id :card.collection_id]
+                             [:= :collection.archived false]]]})))
+
+(defn- fill-parent-coll [model-object]
+  (if (:collection_id model-object)
+    {:id (:collection_id model-object)
+     :name (:collection_name model-object)
+     :authority_level (some-> (:collection_authority_level model-object) name)}
+    (root-coll)))
 
 (defmethod fill-recent-view-info :card [{:keys [_model model_id timestamp model_object]}]
   (when-let [card (and
@@ -251,17 +263,14 @@
                    (ellide-archived model_object))]
     {:id model_id
      :name (:name card)
+     :database_id (:database_id card)
      :description (:description card)
      :display (some-> card :display name)
      :model :card
      :can_write (mi/can-write? card)
      :timestamp (str timestamp)
      :moderated_status (:moderated-status card)
-     :parent_collection (if (:collection-id card)
-                          {:id (:collection-id card)
-                           :name (:collection-name card)
-                           :authority_level (:collection-authority-level card)}
-                          (root-coll))}))
+     :parent_collection (fill-parent-coll card)}))
 
 (defmethod fill-recent-view-info :dataset [{:keys [_model model_id timestamp model_object]}]
   (when-let [dataset (and
@@ -269,17 +278,14 @@
                       (ellide-archived model_object))]
     {:id model_id
      :name (:name dataset)
+     :database_id (:database_id dataset)
      :description (:description dataset)
      :model :dataset
      :can_write (mi/can-write? dataset)
      :timestamp (str timestamp)
      ;; another table that doesn't differentiate between card and dataset :cry:
      :moderated_status (:moderated-status dataset)
-     :parent_collection (if (:collection-id dataset)
-                          {:id (:collection-id dataset)
-                           :name (:collection-name dataset)
-                           :authority_level (:collection-authority-level dataset)}
-                          (root-coll))}))
+     :parent_collection (fill-parent-coll dataset)}))
 
 ;; == Recent Dashboards ==
 

@@ -39,10 +39,8 @@ export const NodeRoot = styled(TreeNode.Root)<{
   hasDefaultIconStyle?: boolean;
 }>`
   color: ${props => getTextColor(props.isSelected)};
-
   background-color: ${props =>
     props.isSelected ? alpha("brand", 0.2) : "unset"};
-
   padding-left: ${props => props.depth}rem;
   border-radius: 4px;
 

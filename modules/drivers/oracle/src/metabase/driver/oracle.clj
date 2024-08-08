@@ -23,6 +23,7 @@
    [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.models.secret :as secret]
    [metabase.query-processor.timezone :as qp.timezone]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log]
    [metabase.util.ssh :as ssh])
@@ -39,9 +40,10 @@
 (driver/register! :oracle, :parent #{:sql-jdbc
                                      ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(doseq [[feature supported?] {:datetime-diff    true
-                              :now              true
-                              :convert-timezone true}]
+(doseq [[feature supported?] {:datetime-diff           true
+                              :now                     true
+                              :identifiers-with-spaces true
+                              :convert-timezone        true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (defmethod driver/prettify-native-form :oracle
@@ -58,7 +60,7 @@
     [#"BLOB"        :type/*]
     [#"RAW"         :type/*]
     [#"CHAR"        :type/Text]
-    [#"CLOB"        :type/Text]
+    [#"CLOB"        :type/OracleCLOB]
     [#"DATE"        :type/Date]
     [#"DOUBLE"      :type/Float]
     ;; Expression filter type
@@ -77,7 +79,8 @@
     ;; Spatial types -- see http://docs.oracle.com/cd/B28359_01/server.111/b28286/sql_elements001.htm#i107588
     [#"^SDO_"       :type/*]
     [#"STRUCT"      :type/*]
-    [#"TIMESTAMP(\(\d\))? WITH TIME ZONE" :type/DateTimeWithTZ]
+    [#"TIMESTAMP(\(\d\))? WITH TIME ZONE"       :type/DateTimeWithTZ]
+    [#"TIMESTAMP(\(\d\))? WITH LOCAL TIME ZONE" :type/DateTimeWithLocalTZ]
     [#"TIMESTAMP"   :type/DateTime]
     [#"URI"         :type/Text]
     [#"XML"         :type/*]]))
@@ -610,11 +613,15 @@
     (when-let [^TIMESTAMPTZ t (.getObject rs i TIMESTAMPTZ)]
       (let [^C3P0ProxyConnection proxy-conn (.. rs getStatement getConnection)
             conn                            (.unwrap proxy-conn OracleConnection)]
-        ;; TIMEZONE FIXME - we need to warn if the Oracle JDBC driver is `ojdbc7.jar`, which probably won't have this
-        ;; method
-        ;;
-        ;; I think we can call `(oracle.jdbc.OracleDriver/getJDBCVersion)` and check whether it returns 4.2+
         (.offsetDateTimeValue t conn)))))
+
+(defmethod sql-jdbc.execute/read-column-thunk [:oracle OracleTypes/TIMESTAMPLTZ]
+  [_driver ^ResultSet rs _rsmeta ^Integer i]
+  ;; `.offsetDateTimeValue` with TIMESTAMPLTZ returns the incorrect value with daylight savings time, so instead of
+  ;; trusting Oracle to get time zones right we assume the string value from `.getNString` is correct and is in a format
+  ;; we can parse.
+  (fn []
+    (u.date/parse (.getNString rs i))))
 
 (defmethod unprepare/unprepare-value [:oracle OffsetDateTime]
   [_ t]

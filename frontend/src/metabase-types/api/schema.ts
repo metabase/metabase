@@ -49,6 +49,7 @@ export interface NormalizedTable
   metrics?: MetricId[];
   schema?: SchemaId;
   schema_name?: SchemaName;
+  original_fields?: Field[];
 }
 
 export interface NormalizedForeignKey

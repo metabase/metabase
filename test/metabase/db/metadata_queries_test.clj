@@ -2,7 +2,6 @@
   (:require
    [clojure.test :refer :all]
    [metabase.db.metadata-queries :as metadata-queries]
-   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
    [metabase.driver.util :as driver.u]
    [metabase.models :as models :refer [Database Field Table]]
@@ -60,17 +59,17 @@
       (let [table  (mi/instance Table {:id 1234})
             fields [(mi/instance Field {:id 4321 :base_type :type/Text})]]
         (testing "uses substrings if driver supports expressions"
-          (with-redefs [driver/database-supports? (constantly true)]
+          (with-redefs [driver.u/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (seq (get-in query [:query :expressions]))))))
         (testing "doesnt' use substrings if driver doesn't support expressions"
-          (with-redefs [driver/database-supports? (constantly false)]
+          (with-redefs [driver.u/supports? (constantly false)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions])))))))
       (testing "pre-existing json fields are still marked as `:type/Text`"
         (let [table (mi/instance Table {:id 1234})
               fields [(mi/instance Field {:id 4321, :base_type :type/Text, :semantic_type :type/SerializedJSON})]]
-          (with-redefs [driver/database-supports? (constantly true)]
+          (with-redefs [driver.u/supports? (constantly true)]
             (let [query (#'metadata-queries/table-rows-sample-query table fields {:truncation-size 4})]
               (is (empty? (get-in query [:query :expressions]))))))))))
 
