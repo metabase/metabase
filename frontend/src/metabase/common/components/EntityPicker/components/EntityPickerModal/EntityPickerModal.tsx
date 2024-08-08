@@ -1,9 +1,10 @@
 import { useWindowEvent } from "@mantine/hooks";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-import { useLogRecentItemMutation, useListRecentsQuery } from "metabase/api";
+import { useListRecentsQuery, useLogRecentItemMutation } from "metabase/api";
+import type { PrototypeState } from "metabase/common/components/DataPicker";
 import { BULK_ACTIONS_Z_INDEX } from "metabase/components/BulkActionBar";
 import { useModalOpen } from "metabase/hooks/use-modal-open";
 import { Modal } from "metabase/ui";
@@ -31,7 +32,7 @@ import {
   ModalContent,
   SinglePickerView,
 } from "./EntityPickerModal.styled";
-import { TabsView } from "./TabsView";
+import { computeInitialTab, TabsView } from "./TabsView";
 
 export type EntityPickerModalOptions = {
   showSearch?: boolean;
@@ -69,6 +70,8 @@ export interface EntityPickerModalProps<Model extends string, Item> {
    * with the same model as the initialValue. Defaults to true.
    */
   defaultToRecentTab?: boolean;
+  prototypeState?: PrototypeState;
+  onTabChange?: (tab: string) => void;
 }
 
 export function EntityPickerModal<
@@ -91,6 +94,8 @@ export function EntityPickerModal<
   trapFocus = true,
   searchParams,
   defaultToRecentTab = true,
+  prototypeState,
+  onTabChange,
 }: EntityPickerModalProps<Model, Item>) {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const { data: recentItems, isLoading: isLoadingRecentItems } =
@@ -166,6 +171,42 @@ export function EntityPickerModal<
 
   const hasTabs = tabs.length > 1 || searchQuery;
 
+  const handleTabChange = (tab: string) => {
+    if (tab !== "search") {
+      setSearchQuery("");
+    }
+
+    setSelectedTab(tab);
+  };
+
+  const hasRecentsTab = tabs.some(tab => tab.model === "recents");
+  const defaultTab = useMemo(
+    () =>
+      computeInitialTab({
+        initialValue,
+        tabs,
+        hasRecents: hasRecentsTab,
+        defaultToRecentTab,
+      }),
+    [initialValue, tabs, hasRecentsTab, defaultToRecentTab],
+  );
+  const [selectedTab, setSelectedTab] = useState<string>(defaultTab.model);
+
+  useEffect(() => {
+    onTabChange?.(selectedTab);
+  }, [onTabChange, selectedTab]);
+
+  const handleSearchQueryChange = (query: string) => {
+    setSearchQuery(query);
+
+    // when the searchQuery changes, switch to the search tab
+    if (query) {
+      setSelectedTab("search");
+    } else {
+      setSelectedTab(defaultTab.model);
+    }
+  };
+
   const handleConfirm = useCallback(() => {
     if (onConfirm) {
       onConfirm();
@@ -217,7 +258,7 @@ export function EntityPickerModal<
                 models={tabModels}
                 setSearchResults={setSearchResults}
                 searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
+                setSearchQuery={handleSearchQueryChange}
                 searchFilter={searchResultFilter}
                 searchParams={searchParams}
               />
@@ -237,6 +278,9 @@ export function EntityPickerModal<
                 initialValue={initialValue}
                 defaultToRecentTab={defaultToRecentTab}
                 setShowActionButtons={setShowActionButtons}
+                prototypeState={prototypeState}
+                selectedTab={selectedTab}
+                setSelectedTab={handleTabChange}
               />
             ) : (
               <SinglePickerView>{tabs[0].element}</SinglePickerView>

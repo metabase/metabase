@@ -29,9 +29,15 @@ interface Props {
   databaseId?: DatabaseId;
   value: TablePickerValue | undefined;
   onChange: (value: NotebookDataPickerValueItem) => void;
+  onFolderSelect: (value: NotebookDataPickerFolderItem) => void;
 }
 
-export const TablePicker = ({ databaseId, value, onChange }: Props) => {
+export const TablePicker = ({
+  databaseId,
+  value,
+  onChange,
+  onFolderSelect,
+}: Props) => {
   const [dbId, setDbId] = useState<DatabaseId | undefined>(
     databaseId ?? value?.db_id,
   );
@@ -79,6 +85,12 @@ export const TablePicker = ({ databaseId, value, onChange }: Props) => {
 
   const handleFolderSelect = useCallback(
     ({ folder }: { folder: NotebookDataPickerFolderItem }) => {
+      if (folder.model === "schema" && schemas?.length === 1) {
+        // onFolderSelect(selectedDbItem);
+      } else {
+        onFolderSelect(folder);
+      }
+
       if (folder.model === "database") {
         if (dbId === folder.id) {
           setSchemaName(schemas?.length === 1 ? schemas[0] : undefined);
@@ -94,7 +106,7 @@ export const TablePicker = ({ databaseId, value, onChange }: Props) => {
         setTableId(undefined);
       }
     },
-    [dbId, schemas],
+    [dbId, schemas, onFolderSelect],
   );
 
   const handleItemSelect = useCallback(

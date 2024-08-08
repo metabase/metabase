@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { useSetting } from "metabase/common/hooks";
@@ -18,6 +18,7 @@ import { useAvailableData } from "../hooks";
 import type {
   DataPickerModalOptions,
   DataPickerValue,
+  NotebookDataPickerFolderItem,
   NotebookDataPickerValueItem,
 } from "../types";
 import {
@@ -49,6 +50,33 @@ const MODEL_PICKER_MODELS: CollectionItemModel[] = ["dataset"];
 
 const METRIC_PICKER_MODELS: CollectionItemModel[] = ["metric"];
 
+export type PrototypeState = Record<
+  "dataset" | "metric" | "table" | "card",
+  NotebookDataPickerFolderItem | undefined
+> & {
+  lastTab: "dataset" | "metric" | "card" | "table" | undefined;
+};
+
+const initialPrototypeState: PrototypeState = {
+  dataset: {
+    name: "Our analytics",
+    id: "root",
+    model: "collection",
+  },
+  table: undefined,
+  card: {
+    name: "Our analytics",
+    id: "root",
+    model: "collection",
+  },
+  metric: {
+    name: "Our analytics",
+    id: "root",
+    model: "collection",
+  },
+  lastTab: undefined,
+};
+
 const options: DataPickerModalOptions = {
   ...defaultOptions,
   hasConfirmButtons: false,
@@ -65,6 +93,7 @@ export const DataPickerModal = ({
   onChange,
   onClose,
 }: Props) => {
+  const [prototypeState, setPrototypeState] = useState(initialPrototypeState);
   const hasNestedQueriesEnabled = useSetting("enable-nested-queries");
   const { hasQuestions, hasModels, hasMetrics } = useAvailableData({
     databaseId,
@@ -113,8 +142,22 @@ export const DataPickerModal = ({
     [onChange, onClose],
   );
 
+  const [selectedTab, setSelectedTab] = useState<string>();
+
   const handleCardChange = useCallback(
     (item: QuestionPickerItem) => {
+      if (
+        item.model === "collection" &&
+        selectedTab &&
+        ["dataset", "metric", "card", "table"].includes(selectedTab)
+      ) {
+        setPrototypeState(state => ({
+          ...state,
+          [selectedTab as "dataset" | "metric" | "card" | "table"]:
+            item as unknown as any,
+        }));
+      }
+
       if (!isValidValueItem(item.model)) {
         return;
       }
@@ -122,7 +165,7 @@ export const DataPickerModal = ({
       onChange(getQuestionVirtualTableId(item.id));
       onClose();
     },
-    [onChange, onClose],
+    [onChange, onClose, selectedTab],
   );
 
   const tabs: EntityTab<NotebookDataPickerValueItem["model"]>[] = [
@@ -167,6 +210,14 @@ export const DataPickerModal = ({
           databaseId={databaseId}
           value={isTableItem(value) ? value : undefined}
           onChange={handleChange}
+          onFolderSelect={folder => {
+            if (folder.id) {
+              setPrototypeState(state => ({
+                ...state,
+                table: folder,
+              }));
+            }
+          }}
         />
       ),
     },
@@ -204,6 +255,24 @@ export const DataPickerModal = ({
       title={title}
       onClose={onClose}
       onItemSelect={handleChange}
+      prototypeState={prototypeState}
+      onTabChange={tab => {
+        setSelectedTab(tab);
+
+        if (["dataset", "metric", "card", "table"].includes(tab)) {
+          setPrototypeState(state => ({
+            ...state,
+            lastTab: tab as "dataset" | "metric" | "card" | "table",
+          }));
+        }
+
+        if (tab === "recents") {
+          setPrototypeState(state => ({
+            ...state,
+            lastTab: undefined,
+          }));
+        }
+      }}
     />
   );
 };
