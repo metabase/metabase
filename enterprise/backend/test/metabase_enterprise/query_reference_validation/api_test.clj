@@ -107,7 +107,8 @@
                                                               :table_id    nil
                                                               :field_id    nil}]
      (mt/with-premium-features #{:query-reference-validation}
-       (mt/call-with-map-params f [card-1 card-2 card-3 card-4 coll-2 coll-3])))))
+       (mt/with-temporary-setting-values [query-analysis-enabled true]
+         (mt/call-with-map-params f [card-1 card-2 card-3 card-4 coll-2 coll-3]))))))
 
 (defmacro ^:private with-test-setup
   "Creates some non-stale QueryFields and anaphorically provides stale QueryField IDs called `qf-{1-3}` and `qf-1b` and
@@ -159,6 +160,13 @@
 
 (defn- with-data-keys [{:keys [data] :as resp} ks]
   (assoc resp :data (map (fn [d] (select-keys d ks)) data)))
+
+(deftest setting-test
+  (testing "It requires the query analysis setting"
+    (with-test-setup
+      (mt/with-temporary-setting-values [query-analysis-enabled false]
+        (is (= "Query Analysis must be enabled to use the Query Reference Validator"
+               (mt/user-http-request :crowberto :get 429 url)))))))
 
 (deftest list-invalid-cards-basic-test
   (testing "Only returns cards with problematic field refs"

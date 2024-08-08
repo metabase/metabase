@@ -6,6 +6,7 @@
    [metabase.api.routes.common :refer [+auth]]
    [metabase.models.collection :as collection]
    [metabase.models.query-analysis :as query-analysis]
+   [metabase.public-settings :as public-settings]
    [metabase.server.middleware.offset-paging :as mw.offset-paging]
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
@@ -103,4 +104,14 @@
            {:limit mw.offset-paging/*limit*
             :offset mw.offset-paging/*offset*})))
 
-(api/define-routes api/+check-superuser +auth)
+(defn +check-setting
+  "Middleware that gates this API behind the associated feature flag"
+  [handler]
+  (with-meta
+   (fn [request respond raise]
+     (if (public-settings/query-analysis-enabled)
+       (handler request respond raise)
+       (respond {:status 429 :body "Query Analysis must be enabled to use the Query Reference Validator"})))
+   (meta handler)))
+
+(api/define-routes api/+check-superuser +auth +check-setting)
