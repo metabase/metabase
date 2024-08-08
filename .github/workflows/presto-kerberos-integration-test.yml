@@ -91,16 +91,13 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
-            const config = fs.readFileSync('mba-compose.yml', 'utf8');
-
-            const newConfig =
-              config.replace(
+            const fs = require("fs");
+            const config = fs.readFileSync("mba-compose.yml", "utf8");
+            const newConfig = config.replace(
               /name:\s+example.com/,
-              'name: example.com\n    external: true',
+              "name: example.com\n    external: true",
             );
-
-            fs.writeFileSync('mba-compose.yml', newConfig);
+            fs.writeFileSync("mba-compose.yml", newConfig);
 
       - name: Print compose config
         run: cat mba-compose.yml
