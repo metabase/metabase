@@ -346,7 +346,7 @@ function ColumnPickerHeader({
 }
 
 function renderItemName(item: ListItem) {
-  return "displayName" in item ? item.displayName : undefined;
+  return item.displayName;
 }
 
 function omitItemDescription() {
