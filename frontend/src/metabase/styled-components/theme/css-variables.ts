@@ -45,11 +45,11 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
     --mb-color-bg-dark: ${theme.fn.themeColor("bg-dark")};
     --mb-color-brand: ${theme.fn.themeColor("brand")};
 
-    --mb-color-brand-light: color-mix(in srgb, var(--mb-color-brand) 53%, #fff);
+    --mb-color-brand-light: color-mix(in srgb, var(--mb-color-brand), #fff 80%);
     --mb-color-brand-lighter: color-mix(
       in srgb,
-      var(--mb-color-brand) 60%,
-      #fff
+      var(--mb-color-brand),
+      #fff 90%
     );
     --mb-color-brand-alpha-04: color-mix(
       in srgb,
@@ -59,6 +59,26 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
     --mb-color-brand-alpha-88: color-mix(
       in srgb,
       var(--mb-color-brand) 88%,
+      transparent
+    );
+    --mb-color-border-alpha-30: color-mix(
+      in srgb,
+      var(--mb-color-border) 30%,
+      transparent
+    );
+    --mb-color-text-white-alpha-85: color-mix(
+      in srgb,
+      var(--mb-color-text-white) 85%,
+      transparent
+    );
+    --mb-color-bg-black-alpha-60: color-mix(
+      in srgb,
+      var(--mb-color-bg-black) 60%,
+      transparent
+    );
+    --mb-color-bg-white-alpha-15: color-mix(
+      in srgb,
+      var(--mb-color-bg-white) 15%,
       transparent
     );
 
@@ -91,7 +111,7 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
  * These CSS variables are NOT part of the core design system colors.
  * Do NOT add them to [palette.ts] and [colors.ts].
  *
- * Keep in sync with [GlobalStyles.tsx] and [.storybook/preview-head.html].
+ * Keep in sync with [GlobalStyles.tsx].
  * Refer to DEFAULT_METABASE_COMPONENT_THEME for their defaults.
  **/
 export function getThemeSpecificCssVariables(theme: MantineTheme) {
