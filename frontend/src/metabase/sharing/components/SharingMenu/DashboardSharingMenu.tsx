@@ -1,10 +1,9 @@
 import { useState } from "react";
 
-import { useSetting } from "metabase/common/hooks";
+import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { setSharing as setDashboardSubscriptionSidebarOpen } from "metabase/dashboard/actions";
 import { getIsSharing as getIsDashboardSubscriptionSidebarOpen } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
 import { Flex, Menu } from "metabase/ui";
 import type { Dashboard } from "metabase-types/api";
 
@@ -31,26 +30,32 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
     null,
   );
 
-  const isPublicSharingEnabled = useSetting("enable-public-sharing");
-  const isEmbeddingEnabled = useSetting("enable-embedding");
-  const isAdmin = useSelector(getUserIsAdmin);
-
   const hasPublicLink = !!dashboard?.public_uuid;
-  const canShare = isAdmin || isPublicSharingEnabled || isEmbeddingEnabled;
+  const isArchived = dashboard.archived;
+  const isAnalytics =
+    dashboard.collection && isInstanceAnalyticsCollection(dashboard.collection);
 
-  // TODO: handle prompt to save before sharing
+  const canShare = !isAnalytics;
+
+  if (isArchived) {
+    return null;
+  }
 
   return (
     <Flex>
       <SharingMenu>
         <DashboardSubscriptionMenuItem onClick={toggleSubscriptionSidebar} />
         <ExportPdfMenuItem dashboard={dashboard} />
-        {!!canShare && <Menu.Divider />}
-        <PublicLinkMenuItem
-          hasPublicLink={hasPublicLink}
-          onClick={() => setModalType("dashboard-public-link")}
-        />
-        <EmbedMenuItem onClick={() => setModalType("dashboard-embed")} />
+        {!!canShare && (
+          <>
+            <Menu.Divider />
+            <PublicLinkMenuItem
+              hasPublicLink={hasPublicLink}
+              onClick={() => setModalType("dashboard-public-link")}
+            />
+            <EmbedMenuItem onClick={() => setModalType("dashboard-embed")} />
+          </>
+        )}
       </SharingMenu>
       <SharingModals
         modalType={modalType}

@@ -5,6 +5,25 @@ import { screen } from "__support__/ui";
 import { setupDashboardSharingMenu, openMenu } from "./setup";
 
 describe("DashboardSharingMenu", () => {
+  it("should have a 'sharing' tooltip by default", () => {
+    setupDashboardSharingMenu({
+      isAdmin: true,
+    });
+    expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
+      "aria-label",
+      "Sharing",
+    );
+  });
+
+  it("should not appear for archived dashboards", async () => {
+    setupDashboardSharingMenu({
+      isAdmin: true,
+      dashboard: { archived: true },
+    });
+
+    expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
+  });
+
   describe("dashboard subscriptions", () => {
     ["admin", "non-admin"].forEach(userType => {
       it(`${userType}: should always show the "Subscriptions" menu item`, async () => {
@@ -101,7 +120,7 @@ describe("DashboardSharingMenu", () => {
         ).not.toBeInTheDocument();
       });
 
-      it("should show a 'ask your admin to create a public link' menu item if public sharing is disabled", async () => {
+      it("should not show a 'ask your admin to create a public link' menu item if public sharing is disabled", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: false,

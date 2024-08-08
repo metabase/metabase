@@ -53,6 +53,7 @@ export function setupDashboardSharingMenu({
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: isEnterprise,
     dashboard_subscription_filters: isEnterprise,
+    audit_app: isEnterprise,
   });
 
   const settingValues = createMockSettings({
@@ -117,6 +118,7 @@ export function setupQuestionSharingMenu({
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: isEnterprise,
     dashboard_subscription_filters: isEnterprise,
+    audit_app: isEnterprise,
   });
 
   const settingValues = createMockSettings({

@@ -40,8 +40,10 @@ const TestComponent = ({
 
 const setup = ({
   hasPublicLink = true,
+  isAdmin = true,
 }: {
   hasPublicLink?: boolean;
+  isAdmin?: boolean;
 } = {}) => {
   const TEST_DASHBOARD = createMockDashboard({
     id: TEST_DASHBOARD_ID,
@@ -51,7 +53,7 @@ const setup = ({
   setupDashboardPublicLinkEndpoints(TEST_DASHBOARD_ID);
 
   const state = createMockState({
-    currentUser: createMockUser({ is_superuser: true }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
       "site-url": SITE_URL,
     }),
@@ -99,5 +101,11 @@ describe("DashboardPublicLinkPopover", () => {
         method: "DELETE",
       }),
     ).toHaveLength(1);
+  });
+
+  it("should not show non-admins the option to remove a public link", () => {
+    setup({ isAdmin: false });
+
+    expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
   });
 });
