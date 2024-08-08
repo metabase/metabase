@@ -938,7 +938,7 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting query-analysis-enabled
   (deferred-tru "Whether or not we analyze any queries at all")
-  :visibility :internal
+  :visibility :admin
   :export?    false
   :default    true
   :type       :boolean)
