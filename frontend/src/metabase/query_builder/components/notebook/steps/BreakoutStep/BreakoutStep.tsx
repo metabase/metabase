@@ -104,21 +104,18 @@ const BreakoutPopover = ({
   onClose,
 }: BreakoutPopoverProps) => {
   const columnGroups = useMemo(() => {
-    const availableColumns = Lib.breakoutableColumns(query, stageIndex);
-    const breakoutColumns = availableColumns.map(column => {
-      const { breakoutPositions = [] } = Lib.displayInfo(
-        query,
-        stageIndex,
-        column,
-      );
-      return breakout != null &&
-        breakoutIndex != null &&
-        breakoutPositions.includes(breakoutIndex)
-        ? Lib.breakoutColumn(query, stageIndex, breakout)
-        : column;
+    const columns = Lib.breakoutableColumns(query, stageIndex);
+
+    const filteredColumns = columns.filter(column => {
+      const columnInfo = Lib.displayInfo(query, stageIndex, column);
+      const { breakoutPositions = [] } = columnInfo;
+      const isAlreadyUsed = breakoutPositions.length > 0;
+      const isSelected = checkColumnSelected(columnInfo, breakoutIndex);
+      return isSelected || !isAlreadyUsed;
     });
-    return Lib.groupColumns(breakoutColumns);
-  }, [query, stageIndex, breakout, breakoutIndex]);
+
+    return Lib.groupColumns(filteredColumns);
+  }, [query, stageIndex, breakoutIndex]);
 
   return (
     <QueryColumnPicker
