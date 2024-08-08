@@ -133,12 +133,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Reviews").click();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").should("exist");
-        entityPickerModalTab("Tables").and(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        tabsShouldBe("Tables", ["Models", "Tables", "Saved questions"]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema
@@ -152,12 +147,7 @@ describe("scenarios > notebook > data source", () => {
       openNotebook();
       cy.findByTestId("data-step-cell").should("have.text", "Orders").click();
       entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").should("exist");
-        entityPickerModalTab("Tables").and(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        tabsShouldBe("Tables", ["Models", "Tables", "Saved questions"]);
         // should not show databases step if there's only 1 database
         entityPickerModalLevel(0).should("not.exist");
         // should not show schema step if there's only 1 schema

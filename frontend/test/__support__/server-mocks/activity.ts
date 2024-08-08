@@ -1,6 +1,12 @@
 import fetchMock from "fetch-mock";
+import querystring from "querystring";
 
-import type { Dashboard, PopularItem, RecentItem } from "metabase-types/api";
+import type {
+  Dashboard,
+  PopularItem,
+  RecentContexts,
+  RecentItem,
+} from "metabase-types/api";
 
 export function setupRecentViewsEndpoints(recentItems: RecentItem[]) {
   fetchMock.get(url => url.endsWith("/api/activity/recents?context=views"), {
@@ -10,14 +16,19 @@ export function setupRecentViewsEndpoints(recentItems: RecentItem[]) {
 
 export function setupRecentViewsAndSelectionsEndpoints(
   recentItems: RecentItem[],
+  context: RecentContexts[] = ["selections", "views"],
 ) {
   fetchMock.get(
     url =>
-      url.endsWith("/api/activity/recents?context=selections&context=views"),
+      url.endsWith(
+        `/api/activity/recents?${querystring.stringify({ context })}`,
+      ),
     {
       recents: recentItems,
     },
   );
+
+  fetchMock.post("path:/api/activity/recents", 200);
 }
 
 export function setupPopularItemsEndpoints(popularItems: PopularItem[]) {
