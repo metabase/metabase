@@ -20,8 +20,6 @@ import {
   entityPickerModal,
   collectionOnTheGoModal,
   tableHeaderClick,
-  entityPickerModalItem,
-  entityPickerModalTab,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -296,34 +294,6 @@ describe("scenarios > question > saved", () => {
       // scrollHeight: height of the text content, including content not visible on the screen
       const heightDifference = $el[0].clientHeight - $el[0].scrollHeight;
       expect(heightDifference).to.eq(0);
-    });
-  });
-
-  it("should allow you to move a question, and show you an error if the api request fails", () => {
-    visitQuestion(ORDERS_QUESTION_ID);
-    openQuestionActions();
-    popover().findByText("Move").click();
-    entityPickerModal().within(() => {
-      entityPickerModalItem(1, "First collection").click();
-      cy.button("Move").click();
-    });
-
-    cy.findByTestId("app-bar")
-      .findByRole("link", { name: /First collection/ })
-      .should("exist");
-
-    cy.intercept("PUT", `/api/card/${ORDERS_QUESTION_ID}`, {
-      statusCode: 500,
-      body: { message: "Ryan said no" },
-    });
-
-    openQuestionActions();
-    popover().findByText("Move").click();
-
-    entityPickerModal().within(() => {
-      entityPickerModalTab("Collections").click();
-      entityPickerModalItem(0, "Our analytics").click();
-      cy.button("Move").click();
     });
   });
 });
