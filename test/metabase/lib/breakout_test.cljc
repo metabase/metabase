@@ -176,6 +176,25 @@
                  {:display-name "Name"}]
                 (lib/breakoutable-columns query)))))))
 
+(deftest ^:parallel breakoutable-columns-multiple-breakout-positions-test
+  (testing "multiple breakout positions for the same column"
+    (let [base-query lib.tu/venues-query
+          columns (lib/breakoutable-columns base-query)
+          price-column (m/find-first #(= (:name %) "PRICE") columns)
+          binning-strategies (lib/available-binning-strategies base-query price-column)
+          query (-> base-query
+                    (lib/breakout (lib/with-binning price-column (first binning-strategies)))
+                    (lib/breakout (lib/with-binning price-column (second binning-strategies))))]
+      (is (=? [{:display-name "ID"}
+               {:display-name "Name"}
+               {:display-name "Category ID"}
+               {:display-name "Latitude"}
+               {:display-name "Longitude"}
+               {:display-name "Price", :breakout-positions [0 1]}
+               {:display-name "ID"}
+               {:display-name "Name"}]
+              (lib/breakoutable-columns query))))))
+
 (deftest ^:parallel breakoutable-explicit-joins-test
   (testing "breakoutable-columns should include columns from explicit joins"
     (let [query (-> lib.tu/venues-query
@@ -605,15 +624,39 @@
               (lib.breakout/remove-existing-breakouts-for-column query' (meta/field-metadata :people :latitude)))))))
 
 (deftest ^:parallel breakout-column-test
-  (let [query      (-> lib.tu/venues-query
-                       (lib/breakout  (meta/field-metadata :venues :category-id))
-                       (lib/breakout  (meta/field-metadata :venues :price))
-                       (lib/aggregate (lib/count)))
-        category   (m/find-first #(= (:name %) "CATEGORY_ID") (lib/visible-columns query))
-        price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
-        breakouts  (lib/breakouts query)]
-    (is (= (count breakouts) 2))
-    (is (=? category
-            (lib.breakout/breakout-column query -1 (first breakouts))))
-    (is (=? price
-            (lib.breakout/breakout-column query -1 (second breakouts))))))
+  (testing "should find the correct column"
+    (let [query      (-> lib.tu/venues-query
+                           (lib/breakout  (meta/field-metadata :venues :category-id))
+                           (lib/breakout  (meta/field-metadata :venues :price))
+                           (lib/aggregate (lib/count)))
+            category   (m/find-first #(= (:name %) "CATEGORY_ID") (lib/visible-columns query))
+            price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
+            breakouts  (lib/breakouts query)]
+        (is (= (count breakouts) 2))
+        (is (=? category
+                (lib.breakout/breakout-column query (first breakouts))))
+        (is (=? price
+                (lib.breakout/breakout-column query (second breakouts))))))
+  (testing "should set the binning strategy from the breakout clause"
+    (let [base-query       lib.tu/venues-query
+          column           (->> (lib/breakoutable-columns base-query)
+                                (m/find-first #(= (:name %) "PRICE")))
+          binning-strategy (first (lib/available-binning-strategies base-query column))
+          query            (->> (lib/with-binning column binning-strategy)
+                                (lib/breakout base-query))
+          breakout         (first (lib/breakouts query))]
+          (is (=? {:strategy :default}
+                  (->> (lib/breakout-column query breakout)
+                       (lib/binning))))))
+  (testing "should set the temporal unit from the breakout clause"
+    (let [base-query      lib.tu/query-with-source-card
+          column          (->> (lib/breakoutable-columns base-query)
+                               (m/find-first #(= (:name %) "LAST_LOGIN")))
+          temporal-bucket (->> (lib/available-temporal-buckets base-query column)
+                               (m/find-first #(= (:unit %) :month)))
+          query           (->> (lib/with-temporal-bucket column temporal-bucket)
+                               (lib/breakout base-query))
+          breakout        (first (lib/breakouts query))]
+          (is (=? {:unit :month}
+                  (->> (lib/breakout-column query breakout)
+                       (lib/temporal-bucket)))))))

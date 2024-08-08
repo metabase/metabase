@@ -141,7 +141,10 @@
 
 (mu/defn breakout-column :- ::lib.schema.metadata/column
   "Returns the input column used for this breakout."
-  [query        :- ::lib.schema/query
+  ([query        :- ::lib.schema/query
+   breakout-ref  :- ::lib.schema.ref/ref]
+  (breakout-column query -1 breakout-ref))
+  ([query       :- ::lib.schema/query
    stage-number :- :int
    breakout-ref :- ::lib.schema.ref/ref]
   (when-let [column (lib.equality/find-matching-column breakout-ref
@@ -151,7 +154,7 @@
           bucket  (lib.temporal-bucket/temporal-bucket breakout-ref)]
       (cond-> column
         binning (lib.binning/with-binning binning)
-        bucket  (lib.temporal-bucket/with-temporal-bucket bucket)))))
+        bucket  (lib.temporal-bucket/with-temporal-bucket bucket))))))
 
 (mu/defn remove-all-breakouts :- ::lib.schema/query
   "Remove all breakouts from a query stage."
