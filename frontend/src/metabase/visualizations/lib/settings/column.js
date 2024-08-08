@@ -23,7 +23,10 @@ import {
   isDateWithoutTime,
   isNumber,
 } from "metabase-lib/v1/types/utils/isa";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import {
+  getColumnKey,
+  getObjectColumnSettings,
+} from "metabase-lib/v1/queries/utils/column-key";
 import {
   findColumnIndexesForColumnSettings,
   findColumnSettingIndexesForColumns,
@@ -67,6 +70,7 @@ export function columnSettings({
     objectName: "column",
     getObjects: getColumns,
     getObjectKey: getColumnKey,
+    getObjectSettings: getObjectColumnSettings,
     getSettingDefinitionsForObject: getSettingDefinitionsForColumn,
     component: ChartNestedSettingColumns,
     getInheritedSettingsForObject: getInhertiedSettingsForColumn,

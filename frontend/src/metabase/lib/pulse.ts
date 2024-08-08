@@ -1,7 +1,7 @@
 import _ from "underscore";
 
+import { getEmailDomain } from "metabase/lib/email";
 import MetabaseSettings from "metabase/lib/settings";
-import { getEmailDomain } from "metabase/lib/utils";
 import {
   getDefaultValuePopulatedParameters,
   normalizeParameterValue,

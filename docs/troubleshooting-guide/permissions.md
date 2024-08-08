@@ -56,7 +56,6 @@ If you can’t solve your problem using the troubleshooting guides:
 [data-model]: ../data-modeling/metadata-editing.md
 [data-permissions]: ../permissions/data.md
 [discourse]: https://discourse.metabase.com/
-[granular]: ../permissions/data.md#granular-access
 [group-permissions]: ../permissions/introduction.md#key-points-regarding-permissions
 [known-issues]: ./known-issues.md
 [learn-permissions]: https://www.metabase.com/learn/permissions

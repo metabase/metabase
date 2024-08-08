@@ -52,11 +52,6 @@
                      (str "Duplicate :lib/uuid " (pr-str (find-duplicate-uuid value))))}
    #'unique-uuids?])
 
-(defn remove-namespaced-keys
-  "Remove all the namespaced keys from a map."
-  [m]
-  (into {} (remove (fn [[k _v]] (qualified-keyword? k))) m))
-
 (defn distinct-refs?
   "Is a sequence of `refs` distinct for the purposes of appearing in `:fields` or `:breakouts` (ignoring keys that
   aren't important such as namespaced keys and type info)?"
@@ -66,7 +61,13 @@
    (apply
     distinct?
     (for [ref refs]
-      (lib.options/update-options ref (fn [options]
-                                        (-> options
-                                            remove-namespaced-keys
-                                            (dissoc :base-type :effective-type))))))))
+      (let [options (lib.options/options ref)]
+        (lib.options/with-options ref
+          ;; Using reduce-kv to remove namespaced keys and some other keys to perform the comparison.
+          (reduce-kv (fn [acc k _]
+                       (if (or (qualified-keyword? k)
+                               (= k :base-type)
+                               (= k :effective-type))
+                         (dissoc acc k)
+                         acc))
+                     options options)))))))

@@ -43,7 +43,7 @@
           {}
           errors))
 
-(defn field-reference-errors
+(defn- field-reference-errors
   "Given a seq of cards, return a map of card-id => field reference errors"
   [cards]
   (when (seq cards)

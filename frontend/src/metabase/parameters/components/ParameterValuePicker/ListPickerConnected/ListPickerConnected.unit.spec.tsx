@@ -228,13 +228,13 @@ describe("ListPickerConnected", () => {
       });
     });
 
-    it("clears value when clicked on close", async () => {
+    it("clears value when clicked on Clear", async () => {
       const { onChangeMock } = setup({
         value: "1-1245 Lee Road 146",
         parameter: getStaticListParam(),
       });
 
-      await userEvent.click(screen.getByLabelText("close icon"));
+      await userEvent.click(screen.getByLabelText("Clear"));
       expect(onChangeMock).toHaveBeenCalledTimes(1);
       expect(onChangeMock).toHaveBeenCalledWith(null);
       onChangeMock.mockClear();

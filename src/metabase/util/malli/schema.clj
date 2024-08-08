@@ -5,6 +5,7 @@
   "
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [malli.core :as mc]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
@@ -386,3 +387,20 @@
   "Helper for creating a schema that coerces single-value to a vector. Useful for coercing query parameters."
   [schema]
   [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} schema])
+
+(defn MapWithNoKebabKeys
+  "Helper for creating a schema to check if a map doesn't contain kebab case keys."
+  []
+  [:fn
+   {:error/message "Map should not contain any kebab-case keys"}
+   (fn [m]
+     ;; reduce-kv is more efficient that iterating over (keys m). But we have to extract the underlying map from
+     ;; Toucan2 Instance because it doesn't implement IKVReduce (yet).
+     (let [m (if (instance? toucan2.instance.Instance m)
+               (.m ^toucan2.instance.Instance m)
+               m)]
+       (reduce-kv (fn [_ k _]
+                    (if (str/includes? k "-")
+                      (reduced false)
+                      true))
+                  true m)))])

@@ -2,11 +2,16 @@ import cx from "classnames";
 import type { ReactNode } from "react";
 import { useEffect, useRef, useState } from "react";
 import { useMount } from "react-use";
+import { match } from "ts-pattern";
 import { t } from "ttag";
 import _ from "underscore";
 
 import TitleAndDescription from "metabase/components/TitleAndDescription";
 import CS from "metabase/css/core/index.css";
+import {
+  trackExportDashboardToPDF,
+  type DashboardAccessedVia,
+} from "metabase/dashboard/analytics";
 import {
   FixedWidthContainer,
   ParametersFixedWidthContainer,
@@ -14,9 +19,12 @@ import {
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
+import { isJWT } from "metabase/lib/utils";
+import { isUuid } from "metabase/lib/uuid";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
 import { ParametersList } from "metabase/parameters/components/ParametersList";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import type { DisplayTheme } from "metabase/public/lib/types";
 import { SyncedParametersList } from "metabase/query_builder/components/SyncedParametersList";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getSetting } from "metabase/selectors/settings";
@@ -36,7 +44,6 @@ import type {
 } from "metabase-types/api";
 
 import type { DashboardUrlHashOptions } from "../../../dashboard/types";
-import ParameterValueWidgetS from "../../../parameters/components/ParameterValueWidget.module.css";
 
 import EmbedFrameS from "./EmbedFrame.module.css";
 import type { FooterVariant } from "./EmbedFrame.styled";
@@ -79,20 +86,6 @@ type WithRequired<T, K extends keyof T> = T & Required<Pick<T, K>>;
 export type EmbedFrameProps = EmbedFrameBaseProps &
   WithRequired<DashboardUrlHashOptions, "background">;
 
-const EMBED_THEME_CLASSES = (theme: DashboardUrlHashOptions["theme"]) => {
-  if (!theme) {
-    return null;
-  }
-
-  if (theme === "night") {
-    return cx(ParameterValueWidgetS.ThemeNight, EmbedFrameS.ThemeNight);
-  }
-
-  if (theme === "transparent") {
-    return EmbedFrameS.ThemeTransparent;
-  }
-};
-
 export const EmbedFrame = ({
   className,
   children,
@@ -117,6 +110,7 @@ export const EmbedFrame = ({
   hide_parameters,
   downloadsEnabled = true,
 }: EmbedFrameProps) => {
+  useGlobalTheme(theme);
   const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
   const hasEmbedBranding = useSelector(
     state => !getSetting(state, "hide-embed-branding?"),
@@ -153,29 +147,28 @@ export const EmbedFrame = ({
   const canParameterPanelSticky =
     !!dashboard && isParametersWidgetContainersSticky(visibleParameters.length);
 
-  const saveAsPDF = async () => {
-    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
-    await saveDashboardPdf(
-      cardNodeSelector,
-      name ?? t`Exported dashboard`,
-    ).then(() => {
-      // TODO: tracking
-      // trackExportDashboardToPDF(dashboard.id);
+  const saveAsPDF = () => {
+    const dashboardAccessedVia = match(dashboard?.id)
+      .returnType<DashboardAccessedVia>()
+      .when(isJWT, () => "static-embed")
+      .when(isUuid, () => "public-link")
+      .otherwise(() => "sdk-embed");
+
+    trackExportDashboardToPDF({
+      dashboardAccessedVia,
     });
+
+    const cardNodeSelector = `#${DASHBOARD_PDF_EXPORT_ROOT_ID}`;
+    saveDashboardPdf(cardNodeSelector, name ?? t`Exported dashboard`);
   };
 
   return (
     <Root
       hasScroll={hasFrameScroll}
       isBordered={bordered}
-      className={cx(
-        EmbedFrameS.EmbedFrame,
-        className,
-        EMBED_THEME_CLASSES(theme),
-        {
-          [EmbedFrameS.NoBackground]: !background,
-        },
-      )}
+      className={cx(EmbedFrameS.EmbedFrame, className, {
+        [EmbedFrameS.NoBackground]: !background,
+      })}
       data-testid="embed-frame"
       data-embed-theme={theme}
     >
@@ -209,7 +202,7 @@ export const EmbedFrame = ({
                     <Button
                       variant="subtle"
                       leftIcon={<Icon name="document" />}
-                      color="text-dark"
+                      color="brand"
                       onClick={saveAsPDF}
                     >
                       {getExportTabAsPdfButtonText(dashboard.tabs)}
@@ -284,6 +277,32 @@ export const EmbedFrame = ({
     </Root>
   );
 };
+
+function useGlobalTheme(theme: DisplayTheme | undefined) {
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  useEffect(() => {
+    // We don't want to modify user application DOM when using the SDK.
+    if (isEmbeddingSdk || theme == null) {
+      return;
+    }
+
+    const originalTheme = document.documentElement.getAttribute(
+      "data-metabase-theme",
+    );
+    document.documentElement.setAttribute("data-metabase-theme", theme);
+
+    return () => {
+      if (originalTheme == null) {
+        document.documentElement.removeAttribute("data-metabase-theme");
+      } else {
+        document.documentElement.setAttribute(
+          "data-metabase-theme",
+          originalTheme,
+        );
+      }
+    };
+  }, [isEmbeddingSdk, theme]);
+}
 
 function isParametersWidgetContainersSticky(parameterCount: number) {
   if (!isSmallScreen()) {
