@@ -2,7 +2,6 @@ import { t } from "ttag";
 
 export const DIMENSIONS = {
   maxSideLength: 550,
-  totalDiameterThreshold: 120,
   padding: {
     legend: 16,
     side: 12,
@@ -16,6 +15,11 @@ export const DIMENSIONS = {
       fontWeight: 700,
       padding: 4,
     },
+  },
+  total: {
+    minWidth: 120,
+    valueFontSize: 22,
+    labelFontSize: 14,
   },
 };
 

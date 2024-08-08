@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { assoc } from "icepick";
 import type { HandleThunkActionCreator } from "react-redux";
+import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
@@ -41,6 +42,32 @@ import { EmbedFrame } from "../../components/EmbedFrame";
 
 import { DashboardContainer } from "./PublicOrEmbeddedDashboard.styled";
 
+interface PublicOrEmbeddedDashboardViewProps {
+  dashboard: Dashboard | null;
+  selectedTabId: SelectedTabId;
+  parameters: UiParameter[];
+  parameterValues: Record<string, ParameterValueOrArray>;
+  draftParameterValues: Record<string, ParameterValueOrArray | null>;
+  setParameterValue: HandleThunkActionCreator<
+    typeof setParameterValueDashboardAction
+  >;
+  setParameterValueToDefault: HandleThunkActionCreator<
+    typeof setParameterValueToDefaultDashboardAction
+  >;
+  dashboardId: DashboardId;
+  background: boolean;
+  bordered: boolean;
+  titled: boolean;
+  theme: DisplayTheme;
+  hideParameters: EmbedHideParameters;
+  navigateToNewCardFromDashboard?: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
+  slowCards: Record<number, boolean>;
+  cardTitled: boolean;
+  downloadsEnabled: boolean;
+}
+
 export function PublicOrEmbeddedDashboardView({
   dashboard,
   hasNightModeToggle,
@@ -67,35 +94,14 @@ export function PublicOrEmbeddedDashboardView({
   slowCards,
   cardTitled,
   downloadsEnabled,
-}: {
-  dashboard: Dashboard | null;
-  selectedTabId: SelectedTabId;
-  parameters: UiParameter[];
-  parameterValues: Record<string, ParameterValueOrArray>;
-  draftParameterValues: Record<string, ParameterValueOrArray | null>;
-  setParameterValue: HandleThunkActionCreator<
-    typeof setParameterValueDashboardAction
-  >;
-  setParameterValueToDefault: HandleThunkActionCreator<
-    typeof setParameterValueToDefaultDashboardAction
-  >;
-  dashboardId: DashboardId;
-  background: boolean;
-  bordered: boolean;
-  titled: boolean;
-  theme: DisplayTheme;
-  hideParameters: EmbedHideParameters;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
-  slowCards: Record<number, boolean>;
-  cardTitled: boolean;
-  downloadsEnabled: boolean;
-} & DashboardRefreshPeriodControls &
+}: PublicOrEmbeddedDashboardViewProps &
+  DashboardRefreshPeriodControls &
   DashboardNightModeControls &
   DashboardFullscreenControls) {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
+      canResetFilters={false}
+      onResetFilters={_.noop}
       dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
       refreshPeriod={refreshPeriod}
       onRefreshPeriodChange={onRefreshPeriodChange}
@@ -120,7 +126,7 @@ export function PublicOrEmbeddedDashboardView({
       (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
     ).length > 0;
 
-  const hiddenParameterSlugs = getHiddenParameterSlugs({
+  const hiddenParameterSlugs = getTabHiddenParameterSlugs({
     parameters,
     dashboard,
     selectedTabId,
@@ -203,7 +209,7 @@ export function PublicOrEmbeddedDashboardView({
   );
 }
 
-function getHiddenParameterSlugs({
+function getTabHiddenParameterSlugs({
   parameters,
   dashboard,
   selectedTabId,

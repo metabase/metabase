@@ -658,6 +658,7 @@
                   :id                card-virtual-table-id
                   :type              "question"
                   :moderated_status  nil
+                  :metrics           nil
                   :description       nil
                   :dimension_options (default-dimension-options)
                   :fields            (map (comp #(merge (default-card-field-for-venues card-virtual-table-id) %)
@@ -719,6 +720,7 @@
                     :type              "question"
                     :description       nil
                     :moderated_status  nil
+                    :metrics           nil
                     :dimension_options (default-dimension-options)
                     :fields            [{:name                     "NAME"
                                          :display_name             "NAME"
@@ -744,6 +746,36 @@
                                          :field_ref                ["field" "LAST_LOGIN" {:base-type "type/DateTime"}]}]}
                    (mt/user-http-request :crowberto :get 200
                                          (format "table/card__%d/query_metadata" (u/the-id card)))))))))))
+
+(deftest ^:parallel include-metrics-for-card-test
+  (testing "GET /api/table/:id/query_metadata"
+    (testing "Test metrics being included with cards"
+      (t2.with-temp/with-temp [Card model {:name          "Venues model"
+                                           :database_id   (mt/id)
+                                           :type          :model
+                                           :dataset_query (mt/mbql-query venues)}]
+        (let [card-virtual-table-id (str "card__" (:id model))
+              metric-query {:database 2
+                            :type "query"
+                            :query {:source-table card-virtual-table-id
+                                    :aggregation [["count"]]}}]
+          (t2.with-temp/with-temp [Card metric {:name          "Venues metric"
+                                                :database_id   (mt/id)
+                                                :type          :metric
+                                                :dataset_query metric-query}]
+            (is (=? {:display_name      "Venues model"
+                     :db_id             (mt/id)
+                     :id                card-virtual-table-id
+                     :type              "model"
+                     :metrics [{:source_card_id (:id model)
+                                :table_id (:table_id model)
+                                :database_id (mt/id)
+                                :name "Venues metric"
+                                :type "metric"
+                                :dataset_query metric-query
+                                :id (:id metric)}]}
+                    (mt/user-http-request :crowberto :get 200
+                                          (format "table/card__%d/query_metadata" (u/the-id model)))))))))))
 
 (defn- narrow-fields [category-names api-response]
   (for [field (:fields api-response)
@@ -1058,7 +1090,7 @@
     (upload-test/create-upload-table!)))
 
 (defn- update-csv! [options]
-  (@#'api.table/update-csv! options))
+  (@#'api.table/update-csv! (merge {:filename "test.csv"} options)))
 
 (defn- update-csv-via-api!
   "Upload a small CSV file to the given collection ID. Default args can be overridden"
