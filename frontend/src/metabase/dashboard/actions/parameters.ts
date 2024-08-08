@@ -56,6 +56,7 @@ import {
   getParameterValues,
   getParameterMappingsBeforeEditing,
   getSelectedTabId,
+  getFiltersToReset,
 } from "../selectors";
 import { isQuestionDashCard } from "../utils";
 
@@ -322,6 +323,8 @@ export const setParameterType = createThunkAction(
         );
       }
 
+      restoreValueConfigIfNeeded(getState, dispatch, parameterId, sectionId);
+
       return { id: parameterId, type };
     },
 );
@@ -375,6 +378,55 @@ function restoreParameterMappingsIfNeeded(
       setParameterMapping(parameterId, Number(dashcardId), card_id, target),
     );
   });
+
+  return true;
+}
+
+function restoreValueConfigIfNeeded(
+  getState: GetState,
+  dispatch: Dispatch,
+  parameterId: ParameterId,
+  sectionId: string,
+): boolean {
+  const dashboardBeforeEditing = getDashboardBeforeEditing(getState());
+  if (!dashboardBeforeEditing) {
+    return false;
+  }
+
+  const parametersBeforeEditing = dashboardBeforeEditing.parameters;
+  const parameterToRestore = parametersBeforeEditing?.find(
+    ({ id }) => id === parameterId,
+  );
+
+  if (!parameterToRestore) {
+    return false;
+  }
+
+  if (sectionId !== parameterToRestore.sectionId) {
+    return false;
+  }
+
+  if (parameterToRestore.values_source_config) {
+    dispatch(
+      setParameterSourceConfig(
+        parameterId,
+        parameterToRestore.values_source_config,
+      ),
+    );
+  }
+  if (parameterToRestore.values_source_type) {
+    dispatch(
+      setParameterSourceType(
+        parameterId,
+        parameterToRestore.values_source_type,
+      ),
+    );
+  }
+  if (parameterToRestore.values_query_type) {
+    dispatch(
+      setParameterQueryType(parameterId, parameterToRestore.values_query_type),
+    );
+  }
 
   return true;
 }
@@ -446,6 +498,24 @@ export const setParameterValueToDefault = createThunkAction(
     if (defaultValue) {
       dispatch(setParameterValue(parameterId, defaultValue));
     }
+  },
+);
+
+export const RESET_PARAMETERS = "metabase/dashboard/RESET_PARAMETERS";
+export const resetParameters = createThunkAction(
+  RESET_PARAMETERS,
+  () => (_dispatch, getState) => {
+    const parameters = getFiltersToReset(getState());
+
+    return parameters.map(parameter => {
+      const newValue = parameter.default ?? null;
+      const isValueEmpty = isParameterValueEmpty(newValue);
+
+      return {
+        id: parameter.id,
+        value: isValueEmpty ? PULSE_PARAM_EMPTY : newValue,
+      };
+    });
   },
 );
 

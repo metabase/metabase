@@ -93,9 +93,7 @@ features.forEach(feature => {
           );
 
         if (feature === "all") {
-          cy.findByText(
-            "Enable users to download data from this embed",
-          ).click();
+          cy.findByText("Download buttons").click();
 
           cy.get(".ace_content")
             .first()
@@ -142,9 +140,7 @@ features.forEach(feature => {
 
         // hide download button for pro/enterprise users metabase#23477
         if (feature === "all") {
-          cy.findByText(
-            "Enable users to download data from this embed",
-          ).click();
+          cy.findByText("Download buttons").click();
 
           cy.get(".ace_content")
             .first()

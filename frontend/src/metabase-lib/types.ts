@@ -190,13 +190,16 @@ export type TextFingerprintDisplayInfo = {
   percentUrl: number;
 };
 
+// We're setting the values here as unknown even though
+// the API will return numbers most of the time, because
+// sometimes it doesn't!
 export type NumberFingerprintDisplayInfo = {
-  avg: number;
-  max: number;
-  min: number;
-  q1: number;
-  q3: number;
-  sd: number;
+  avg: unknown;
+  max: unknown;
+  min: unknown;
+  q1: unknown;
+  q3: unknown;
+  sd: unknown;
 };
 
 export type DateTimeFingerprintDisplayInfo = {
@@ -275,6 +278,7 @@ export type ExpressionOperatorName =
   | "concat"
   | "interval"
   | "time-interval"
+  | "relative-time-interval"
   | "relative-datetime"
   | "inside"
   | "segment"

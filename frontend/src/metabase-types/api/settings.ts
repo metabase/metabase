@@ -202,7 +202,7 @@ interface InstanceSettings {
   "admin-email": string;
   "email-smtp-host": string | null;
   "email-smtp-port": number | null;
-  "email-smtp-security": "None" | "SSL" | "TLS" | "STARTTLS";
+  "email-smtp-security": "none" | "ssl" | "tls" | "starttls";
   "email-smtp-username": string | null;
   "email-smtp-password": string | null;
   "enable-embedding": boolean;

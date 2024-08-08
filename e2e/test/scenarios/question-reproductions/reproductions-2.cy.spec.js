@@ -110,7 +110,7 @@ describe("issue 24839: should be able to summarize a nested question based on th
   });
 
   it("from the notebook GUI (metabase#24839-1)", () => {
-    cy.icon("notebook").click();
+    openNotebook();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage

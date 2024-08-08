@@ -5,7 +5,6 @@ import NoResults from "assets/img/no_results.svg";
 import { useListRecentsQuery } from "metabase/api";
 import { useFetchModels } from "metabase/common/hooks/use-fetch-models";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { color } from "metabase/lib/colors";
 import {
   PLUGIN_COLLECTIONS,
   PLUGIN_CONTENT_VERIFICATION,
@@ -37,27 +36,26 @@ export const BrowseModels = () => {
 
   const modelsResult = useFetchModels({ model_ancestors: true });
 
-  const { allModels, doVerifiedModelsExist } = useMemo(() => {
-    const allModels =
+  const { models, doVerifiedModelsExist } = useMemo(() => {
+    const unfilteredModels =
       (modelsResult.data?.data as ModelResult[] | undefined) ?? [];
-    const doVerifiedModelsExist = allModels.some(
+    const doVerifiedModelsExist = unfilteredModels.some(
       model => model.moderated_status === "verified",
     );
-    return { allModels, doVerifiedModelsExist };
+    const models =
+      PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics(unfilteredModels);
+    return { models, doVerifiedModelsExist };
   }, [modelsResult]);
 
-  const models = useMemo(
-    () => PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics(allModels),
-    [allModels],
-  );
-
   const { filteredModels } = useMemo(() => {
-    // If no models are verified, don't filter them
-    const filteredModels = doVerifiedModelsExist
-      ? filterModels(models, actualModelFilters, availableModelFilters)
-      : models;
+    const filteredModels = filterModels(
+      models,
+      // If no models are verified, don't filter them
+      doVerifiedModelsExist ? actualModelFilters : {},
+      availableModelFilters,
+    );
     return { filteredModels };
-  }, [actualModelFilters, doVerifiedModelsExist, models]);
+  }, [actualModelFilters, models, doVerifiedModelsExist]);
 
   const recentModelsResult = useListRecentsQuery(undefined, {
     refetchOnMountOrArgChange: true,
@@ -67,16 +65,17 @@ export const BrowseModels = () => {
     () =>
       filterModels(
         recentModelsResult.data?.filter(isRecentModel),
-        actualModelFilters,
+        // If no models are verified, don't filter them
+        doVerifiedModelsExist ? actualModelFilters : {},
         availableModelFilters,
       ),
-    [recentModelsResult.data, actualModelFilters],
+    [recentModelsResult.data, actualModelFilters, doVerifiedModelsExist],
   );
 
   const recentModels = useMemo(() => {
-    const cap = getMaxRecentModelCount(allModels.length);
+    const cap = getMaxRecentModelCount(models.length);
     return filteredRecentModels.slice(0, cap);
-  }, [filteredRecentModels, allModels.length]);
+  }, [filteredRecentModels, models.length]);
 
   const isEmpty =
     !recentModelsResult.isLoading &&
@@ -85,7 +84,7 @@ export const BrowseModels = () => {
 
   return (
     <BrowseContainer>
-      <BrowseHeader>
+      <BrowseHeader role="heading" data-testid="browse-models-header">
         <BrowseSection>
           <Flex
             w="100%"
@@ -96,7 +95,7 @@ export const BrowseModels = () => {
           >
             <Title order={1} color="text-dark">
               <Group spacing="sm">
-                <Icon size={24} color={color("brand")} name="model" />
+                <Icon size={24} color={"var(--mb-color-brand)"} name="model" />
                 {t`Models`}
               </Group>
             </Title>

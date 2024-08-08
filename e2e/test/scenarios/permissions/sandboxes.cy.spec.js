@@ -10,6 +10,7 @@ import {
   openOrdersTable,
   openPeopleTable,
   openReviewsTable,
+  openNotebook,
   popover,
   restore,
   remapDisplayValueToFK,
@@ -158,7 +159,7 @@ describeEE("formatting > sandboxes", () => {
         );
 
         cy.log("Add filter to a question");
-        cy.icon("notebook").click();
+        openNotebook();
         filter({ mode: "notebook" });
         popover().findByText("Total").click();
         selectFilterOperator("Greater than");

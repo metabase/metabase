@@ -172,8 +172,8 @@ const buildNativePermission = (
     confirmations: nativePermissionConfirmations,
     options: [
       DATA_PERMISSION_OPTIONS.queryBuilderAndNative,
-      DATA_PERMISSION_OPTIONS.controlled,
       DATA_PERMISSION_OPTIONS.queryBuilder,
+      DATA_PERMISSION_OPTIONS.controlled,
       DATA_PERMISSION_OPTIONS.no,
     ],
     postActions: {

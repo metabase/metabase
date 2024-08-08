@@ -7,7 +7,7 @@ import { Provider } from "react-redux";
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
-import { explicitSizeRefreshModeContext } from "metabase/components/ExplicitSize/context";
+import { waitTimeContext } from "metabase/context/wait-time";
 import { publicReducers } from "metabase/reducers-public";
 import { Box } from "metabase/ui";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
@@ -52,9 +52,9 @@ function ReduxDecorator(Story: Story) {
 
 function FasterExplicitSizeUpdateDecorator(Story: Story) {
   return (
-    <explicitSizeRefreshModeContext.Provider value="none">
+    <waitTimeContext.Provider value={0}>
       <Story />
-    </explicitSizeRefreshModeContext.Provider>
+    </waitTimeContext.Provider>
   );
 }
 

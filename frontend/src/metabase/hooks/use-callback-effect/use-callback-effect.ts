@@ -4,7 +4,7 @@ type Callback = () => void | Promise<void>;
 
 type IsScheduled = boolean;
 
-type ScheduleCallback = (callback: Callback) => void;
+export type ScheduleCallback = (callback: Callback) => void;
 
 /**
  * Will schedule running a callback once after a re-render.

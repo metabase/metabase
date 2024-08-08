@@ -1,6 +1,7 @@
 import cx from "classnames";
 import { assoc } from "icepick";
 import type { HandleThunkActionCreator } from "react-redux";
+import _ from "underscore";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 import ColorS from "metabase/css/core/colors.module.css";
@@ -96,6 +97,8 @@ export function PublicOrEmbeddedDashboardView({
   DashboardFullscreenControls) {
   const buttons = !isWithinIframe() ? (
     <DashboardHeaderButtonRow
+      canResetFilters={false}
+      onResetFilters={_.noop}
       dashboardActionKeys={DASHBOARD_DISPLAY_ACTIONS}
       refreshPeriod={refreshPeriod}
       onRefreshPeriodChange={onRefreshPeriodChange}
@@ -120,7 +123,7 @@ export function PublicOrEmbeddedDashboardView({
       (dc: DashboardCard) => dc.dashboard_tab_id === selectedTabId,
     ).length > 0;
 
-  const hiddenParameterSlugs = getHiddenParameterSlugs({
+  const hiddenParameterSlugs = getTabHiddenParameterSlugs({
     parameters,
     dashboard,
     selectedTabId,
@@ -203,7 +206,7 @@ export function PublicOrEmbeddedDashboardView({
   );
 }
 
-function getHiddenParameterSlugs({
+function getTabHiddenParameterSlugs({
   parameters,
   dashboard,
   selectedTabId,

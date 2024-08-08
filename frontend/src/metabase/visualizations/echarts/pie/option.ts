@@ -2,6 +2,7 @@ import Color from "color";
 import type { EChartsOption } from "echarts";
 
 import { getTextColorForBackground } from "metabase/lib/colors";
+import { truncateText } from "metabase/static-viz/lib/text";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,
@@ -36,21 +37,27 @@ function getTotalGraphicOption(
   let labelText = "";
 
   // Don't display any text if there isn't enough width
-  const hasSufficientWidth =
-    outerRadius * 2 >= DIMENSIONS.totalDiameterThreshold;
+  const hasSufficientWidth = outerRadius * 2 >= DIMENSIONS.total.minWidth;
 
   if (hasSufficientWidth && settings["pie.show_total"]) {
-    valueText = formatters.formatMetric(
-      hoveredIndex != null
-        ? chartModel.slices[hoveredIndex].data.displayValue
-        : chartModel.total,
+    valueText = truncateText(
+      formatters.formatMetric(
+        hoveredIndex != null
+          ? chartModel.slices[hoveredIndex].data.displayValue
+          : chartModel.total,
+      ),
+      outerRadius, // innerRadius technically makes more sense, but looks too narrow in practice
+      DIMENSIONS.total.valueFontSize,
     );
-    labelText =
+    labelText = truncateText(
       hoveredIndex != null
         ? formatters
             .formatDimension(chartModel.slices[hoveredIndex].data.key)
             .toUpperCase()
-        : TOTAL_TEXT;
+        : TOTAL_TEXT,
+      outerRadius,
+      DIMENSIONS.total.labelFontSize,
+    );
   }
 
   return {
@@ -59,10 +66,11 @@ function getTotalGraphicOption(
     left: "center",
     children: [
       {
+        // Value
         type: "text",
         cursor: "text",
         style: {
-          fontSize: "22px",
+          fontSize: `${DIMENSIONS.total.valueFontSize}px`,
           fontWeight: "700",
           textAlign: "center",
           fontFamily: renderingContext.fontFamily,
@@ -71,11 +79,12 @@ function getTotalGraphicOption(
         },
       },
       {
+        // Label
         type: "text",
         cursor: "text",
         top: 26,
         style: {
-          fontSize: "14px",
+          fontSize: `${DIMENSIONS.total.labelFontSize}px`,
           fontWeight: "700",
           textAlign: "center",
           fontFamily: renderingContext.fontFamily,
@@ -167,7 +176,11 @@ export function getPieChartOption(
 
   // "Show percentages: On the chart" setting
   const formatSlicePercent = (key: PieSliceData["key"]) => {
-    if (settings["pie.percent_visibility"] !== "inside") {
+    if (
+      settings["pie.percent_visibility"] == null ||
+      settings["pie.percent_visibility"] === "off" ||
+      settings["pie.percent_visibility"] === "legend"
+    ) {
       return " ";
     }
 

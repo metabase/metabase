@@ -85,7 +85,7 @@
                      [:group :name]))))
     (testing "A non-empty name is required"
       (is (= {:errors          {:name "value must be a non-blank string."}
-              :specific-errors {:name ["should be at least 1 characters, received: \"\"" "non-blank string, received: \"\""]}}
+              :specific-errors {:name ["should be at least 1 character, received: \"\"" "non-blank string, received: \"\""]}}
              (mt/user-http-request :crowberto :post 400 "api-key"
                                    {:group_id group-id
                                     :name     ""}))))
