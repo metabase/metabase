@@ -17,6 +17,7 @@ import type {
   StructuredDatasetQuery,
 } from "metabase-types/api";
 import {
+  createMockCard,
   createMockField,
   createMockParameter,
   createMockSavedQuestionsDatabase,
@@ -29,8 +30,6 @@ import {
   createOrdersTable,
   createProductsCreatedAtField,
   createSampleDatabase,
-  createSavedStructuredCard,
-  createStructuredModelCard,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -486,11 +485,7 @@ function createDateParameter() {
 }
 
 function createQuestion(query: Lib.Query) {
-  const card = createSavedStructuredCard({
-    dataset_query: Lib.toLegacyQuery(query) as StructuredDatasetQuery,
-  });
-
-  return new Question(card, metadata);
+  return new Question(createMockCard(), metadata).setQuery(query);
 }
 
 function createCountField() {
@@ -509,17 +504,14 @@ function createModel(
   /* result_metadata needs to be passed, otherwise test setup would be incorrect */
   result_metadata: StructuredCard["result_metadata"],
 ) {
-  const card = createStructuredModelCard({
-    dataset_query: Lib.toLegacyQuery(query) as StructuredDatasetQuery,
-    result_metadata,
-  });
+  const card = createMockCard({ type: "model", result_metadata });
   const metadata = createMockMetadata({
     databases: [sampleDb, savedQuestionsDb],
     tables: [getModelVirtualTable(card)],
     questions: [card],
   });
 
-  return new Question(card, metadata);
+  return new Question(card, metadata).setQuery(query);
 }
 
 function getModelVirtualTable(card: Card) {
