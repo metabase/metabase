@@ -3,12 +3,11 @@
  * frontend/src/metabase/ui/utils/colors.ts
  * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
  * frontend/src/metabase/styled-components/theme/css-variables.ts
- * .storybook/preview-head.html
  */
 :root {
   /* Semantic colors */
   --mb-color-brand: var(--mb-base-color-blue-40);
-  --mb-color-brand-light: #f9fbfc;
+  --mb-color-brand-light: #ddecfa;
   --mb-color-brand-lighter: #eef6fc;
   --mb-color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
@@ -17,7 +16,7 @@
   --mb-color-text-dark: #4c5773;
   --mb-color-text-medium: #696e7b;
   --mb-color-text-light: #949aab;
-  --mb-color-bg-black: var(--mb-base-color-gray-80);
+  --mb-color-bg-black: #2e353b;
   --mb-color-bg-dark: #93a1ab;
   --mb-color-bg-medium: #edf2f5;
   --mb-color-bg-light: #f9fbfc;
@@ -27,17 +26,19 @@
   --mb-color-shadow: rgba(0, 0, 0, 0.13);
   --mb-color-border: #eeecec;
   --mb-color-filter: #7172ad;
-  --mb-color-focus: #cbe2f7;
+  --mb-color-focus: var(--mb-base-color-blue-20);
   --mb-color-warning: #f9cf48;
   --mb-color-text-primary: var(--mb-color-text-dark);
   --mb-color-text-secondary: var(--mb-color-text-medium);
   --mb-color-text-tertiary: var(--mb-color-text-light);
-  --mb-color-text-selected: var(--mb-base-color-brand-40);
+  --mb-color-text-selected: var(--mb-base-color-white);
+  --mb-color-text-hover: var(--mb-base-color-brand-40);
   --mb-color-text-brand: var(--mb-base-color-brand-40);
   --mb-color-text-white: var(--mb-base-color-white);
   --mb-color-background: var(--mb-base-color-white);
-  --mb-color-background-selected: var(--mb-base-color-brand-10);
-  --mb-color-background-disabled: var(--mb-color-bg-light);
+  --mb-color-background-selected: var(--mb-base-color-brand-40);
+  --mb-color-background-hover: var(--mb-base-color-brand-10);
+  --mb-color-background-disabled: var(--mb-base-color-gray-10);
   --mb-color-background-inverse: var(--mb-color-bg-black);
   --mb-color-background-brand: var(--mb-base-color-brand-40);
 
@@ -91,13 +92,31 @@
   );
 
   /* Blue */
-  /*   brand */
-  --mb-base-color-blue-40: #509ee3;
+  --mb-base-color-blue-100: #00172b;
+  --mb-base-color-blue-90: #042746;
+  --mb-base-color-blue-80: #0a3b67;
+  --mb-base-color-blue-70: #105490;
+  --mb-base-color-blue-60: #1871bf;
+  --mb-base-color-blue-50: #358cd9;
+  --mb-base-color-blue-40: #509ee3; /* brand */
+  --mb-base-color-blue-30: #8dc0ed;
+  --mb-base-color-blue-20: #cbe2f7; /* focus */
+  --mb-base-color-blue-10: #eef6fd; /* baby blue */
+  --mb-base-color-blue-5: #f8fbfe;
 
   /* Gray */
   /*   bg-black */
-  --mb-base-color-gray-80: #2e353b;
-  --mb-base-color-gray-70: hsl(208deg, 12%, 30%);
+  --mb-base-color-gray-100: #121619;
+  --mb-base-color-gray-90: #20272b;
+  --mb-base-color-gray-80: #313b42;
+  --mb-base-color-gray-70: #47545e;
+  --mb-base-color-gray-60: #657079;
+  --mb-base-color-gray-50: #808991;
+  --mb-base-color-gray-40: #929aa1;
+  --mb-base-color-gray-30: #b4bcc3;
+  --mb-base-color-gray-20: #dbdfe3;
+  --mb-base-color-gray-10: #f3f5f7;
+  --mb-base-color-gray-5: #fafbfc;
 }
 
 .textDefault {

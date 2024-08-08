@@ -1,0 +1,297 @@
+[
+  {
+    "card": {
+      "original_card_id": 346,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-06-05T23:14:45.449636Z",
+      "parameters": [],
+      "metabase_version": "v0.2.0-SNAPSHOT (a727fad)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "trashed_from_location": null,
+        "slug": "pie",
+        "name": "Pie",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 23,
+        "entity_id": "hy98llXqY3i_uwtm5ISY_",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2024-06-03T19:59:20.91934Z"
+      },
+      "visualization_settings": {
+        "column_settings": {
+          "[\"name\",\"sum\"]": {
+            "number_style": "decimal",
+            "scale": 0.001,
+            "suffix": " kg",
+            "prefix": "incredibly super duper long prefix for the weight of this penguin that weighs ",
+            "decimals": 2
+          }
+        }
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-06-05T23:14:45.710965Z"
+      },
+      "collection_preview": true,
+      "entity_id": "-lZmLkBMVbB0U5puWZnOu",
+      "display": "pie",
+      "parameter_mappings": [],
+      "id": 346,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            [
+              "sum",
+              [
+                "field",
+                "body_mass_g",
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "species",
+              {
+                "base-type": "type/Text"
+              }
+            ]
+          ],
+          "source-table": "card__92"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-06T00:13:07.782678Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 319.5882352941176,
+      "type": "question",
+      "last_used_at": "2024-06-06T00:13:07.782678Z",
+      "dashboard_count": 1,
+      "last_query_start": "2024-06-06T00:13:07.345851Z",
+      "name": "Pie - Column Settings - Penguins sum of body mass by species",
+      "query_type": "query",
+      "collection_id": 23,
+      "enable_embedding": false,
+      "database_id": 2,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-06-05T21:21:49.288174Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "semantic_type": "type/Category",
+          "name": "species",
+          "field_ref": [
+            "field",
+            "species",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1403,
+          "visibility_type": "normal",
+          "display_name": "Species",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.593023255813954
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Sum of Body Mass G",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 253850,
+                "q1": 330087.5,
+                "q3": 607962.5,
+                "max": 624350,
+                "sd": 197720.9966088579,
+                "avg": 479000
+              }
+            }
+          }
+        }
+      ],
+      "can_run_adhoc_query": true,
+      "table_id": 151,
+      "collection_position": null,
+      "view_count": 12,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["Adelie", 558800],
+        ["Chinstrap", 253850],
+        ["Gentoo", 624350]
+      ],
+      "cols": [
+        {
+          "database_type": "varchar",
+          "semantic_type": "type/Category",
+          "table_id": 151,
+          "name": "species",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "species",
+            {
+              "base-type": "type/Text"
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 1403,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Species",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 3,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.593023255813954
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "semantic_type": "type/Quantity",
+          "base_type": "type/Float",
+          "name": "sum",
+          "display_name": "Sum of Body Mass G",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"species\" AS \"species\", SUM(\"source\".\"body_mass_g\") AS \"sum\" FROM (SELECT \"csv_upload_data\".\"csv_upload_penguins_20231130074915\".\"id\" AS \"id\", \"csv_upload_data\".\"csv_upload_penguins_20231130074915\".\"species\" AS \"species\", \"csv_upload_data\".\"csv_upload_penguins_20231130074915\".\"island\" AS \"island\", \"csv_upload_data\".\"csv_upload_penguins_20231130074915\".\"bill_length_mm\" AS \"bill_length_mm\", \"csv_upload_data\".\"csv_upload_penguins_20231130074915\".\"bill_depth_mm\" AS \"bill_depth_mm\", \"csv_upload_data\".\"csv_upload_penguins_20231130074915\".\"flipper_length_mm\" AS \"flipper_length_mm\", \"csv_upload_data\".\"csv_upload_penguins_20231130074915\".\"body_mass_g\" AS \"body_mass_g\", \"csv_upload_data\".\"csv_upload_penguins_20231130074915\".\"sex\" AS \"sex\" FROM \"csv_upload_data\".\"csv_upload_penguins_20231130074915\") AS \"source\" GROUP BY \"source\".\"species\" ORDER BY \"source\".\"species\" ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/Category",
+            "name": "species",
+            "field_ref": [
+              "field",
+              "species",
+              {
+                "base-type": "type/Text"
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 1403,
+            "visibility_type": "normal",
+            "display_name": "Species",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.593023255813954
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Sum of Body Mass G",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 3,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 253850,
+                  "q1": 330087.5,
+                  "q3": 607962.5,
+                  "max": 624350,
+                  "sd": 197720.9966088579,
+                  "avg": 479000
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]
