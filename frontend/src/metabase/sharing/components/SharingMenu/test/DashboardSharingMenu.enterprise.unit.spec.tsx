@@ -7,6 +7,7 @@ describe("DashboardSharingMenu > Enterprise", () => {
   it('Should show the "Subscriptions" menu item to non-admins if the user has subscriptions/alerts permissions', async () => {
     await setupDashboardSharingMenu({
       canManageSubscriptions: true,
+      isEmailSetup: true,
       isEnterprise: true,
       isAdmin: false,
     });
@@ -17,6 +18,7 @@ describe("DashboardSharingMenu > Enterprise", () => {
   it('Should not show the "Subscriptions" menu item to non-admins if the user lacks subscriptions/alerts permissions', async () => {
     await setupDashboardSharingMenu({
       canManageSubscriptions: false,
+      isEmailSetup: true,
       isEnterprise: true,
       isAdmin: false,
     });
