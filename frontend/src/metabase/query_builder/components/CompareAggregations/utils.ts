@@ -86,7 +86,7 @@ export const getAggregations = (
 };
 
 type BreakoutColumnAndBucket = {
-  breakout?: Lib.BreakoutClause;
+  breakoutIndex: number | null;
   column: Lib.ColumnMetadata;
   bucket: Lib.Bucket | null;
 };
@@ -96,14 +96,15 @@ export function getBreakout(
   stageIndex: number,
 ): BreakoutColumnAndBucket | null {
   const breakouts = Lib.breakouts(query, stageIndex);
-  const temporalBreakout = breakouts.find(breakout =>
+  const breakoutIndex = breakouts.findIndex(breakout =>
     isTemporal(query, stageIndex, breakout),
   );
-  if (temporalBreakout) {
+  if (breakoutIndex >= 0) {
+    const breakout = breakouts[breakoutIndex];
     return {
-      breakout: temporalBreakout,
-      column: Lib.breakoutColumn(query, stageIndex, temporalBreakout),
-      bucket: Lib.temporalBucket(temporalBreakout),
+      breakoutIndex,
+      column: Lib.breakoutColumn(query, stageIndex, breakout),
+      bucket: Lib.temporalBucket(breakout),
     };
   }
 
@@ -112,6 +113,7 @@ export function getBreakout(
 
   if (temporalColumn) {
     return {
+      breakoutIndex: null,
       column: temporalColumn,
       bucket: Lib.defaultTemporalBucket(query, stageIndex, temporalColumn),
     };

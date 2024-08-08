@@ -72,30 +72,26 @@ export const CompareAggregations = ({
         columnAndBucket.bucket,
       );
 
-      let breakout = columnAndBucket.breakout;
-      if (breakout) {
+      let { breakoutIndex } = columnAndBucket;
+      if (breakoutIndex !== null) {
         // replace the breakout
-        const breakoutIndex = Lib.breakouts(nextQuery, stageIndex).indexOf(
-          breakout,
-        );
+        const breakout = Lib.breakouts(nextQuery, stageIndex)[breakoutIndex];
         nextQuery = Lib.replaceClause(nextQuery, stageIndex, breakout, column);
-        breakout = Lib.breakouts(nextQuery, stageIndex)[breakoutIndex];
       } else {
         // add the breakout
         nextQuery = Lib.breakout(nextQuery, stageIndex, column);
-        breakout = Lib.breakouts(nextQuery, stageIndex).at(-1);
+        breakoutIndex = Lib.breakouts(nextQuery, stageIndex).length - 1;
       }
 
-      const breakouts = Lib.breakouts(nextQuery, stageIndex);
-      const firstBreakout = breakouts[0];
+      if (breakoutIndex !== 0) {
+        const breakouts = Lib.breakouts(nextQuery, stageIndex);
 
-      if (breakout && breakout !== firstBreakout) {
         // move the breakout to the front
         nextQuery = Lib.swapClauses(
           nextQuery,
           stageIndex,
-          firstBreakout,
-          breakout,
+          breakouts[0],
+          breakouts[breakoutIndex],
         );
       }
 
