@@ -79,9 +79,10 @@ jobs:
       - name: Ensure mba
         run: which mba
       - name: Run Metabase via MBA
-        run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com config > mb-compose.yml
+        run: /home/runner/work/metabase/metabase/mba-src/src/main.clj --mb . --data-db postgres-data -n example.com config > /home/runner/work/metabase/metabase/mb-compose.yml
       - name: print config
         run: cat mb-compose.yml
+
       # - name: Run test script in MBA instance
       #   run: >
       #     mba --mb . --data-db postgres-data -n example.com \
