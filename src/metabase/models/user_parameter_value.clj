@@ -38,15 +38,15 @@
   (let [to-delete (filter (comp nil? second) param-id->value)
         to-upsert (filter (comp some? second) param-id->value)]
     (t2/with-transaction [_conn]
-      (t2/query {:insert-into :user_parameter_value
-                 :values      (map (fn [[param-id value]]
-                                     {:user_id      user-id
-                                      :dashboard_id dashboard-id
-                                      :parameter_id param-id
-                                      :value        value})
-                                   to-upsert)
-                 :on-conflict  [:user_id :dashboard_id :parameter_id]
-                 :do-update-set :value})
+      (doseq [[param-id value] to-upsert]
+        (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
+                                                         :dashboard_id dashboard-id
+                                                         :parameter_id param-id}
+                              {:value value}))
+            (t2/insert! :model/UserParameterValue {:user_id      user-id
+                                                   :dashboard_id dashboard-id
+                                                   :parameter_id param-id
+                                                   :value        value})))
       (when (seq to-delete)
         (t2/delete! :model/UserParameterValue
                     :user_id user-id
