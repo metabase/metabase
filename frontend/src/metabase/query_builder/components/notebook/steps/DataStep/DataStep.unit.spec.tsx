@@ -1,3 +1,4 @@
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { createMockMetadata } from "__support__/metadata";
@@ -52,6 +53,8 @@ const setup = (
   step = createMockNotebookStep(),
   { readOnly = false }: { readOnly?: boolean } = {},
 ) => {
+  const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
+
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
@@ -89,7 +92,7 @@ const setup = (
     return Lib.displayInfo(nextQuery, 0, column);
   };
 
-  return { getNextQuery, getNextTableName, getNextColumn };
+  return { getNextQuery, getNextTableName, getNextColumn, mockWindowOpen };
 };
 
 const setupEmptyQuery = () => {
@@ -288,6 +291,56 @@ describe("DataStep", () => {
       setup(step);
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("link to data source", () => {
+    it("meta click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      fireEvent.click(dataSource, { metaKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("ctrl click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      fireEvent.click(dataSource, { ctrlKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("middle click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      const middleClick = new MouseEvent("auxclick", {
+        bubbles: true,
+        button: 1,
+      });
+
+      fireEvent(dataSource, middleClick);
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("regular click should open the entity picker", async () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+
+      fireEvent.click(dataSource);
+
+      expect(
+        await screen.findByTestId("entity-picker-modal"),
+      ).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
     });
   });
 });

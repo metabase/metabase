@@ -47,7 +47,6 @@ export const runQuestionOnQueryChangeSdk =
       question: nextQuestion,
       queryResult: queryResults?.[0],
       datasetQuery: undefined,
-      showRawTable: false,
     });
 
     const questionPivotResult = computeQuestionPivotTable({
