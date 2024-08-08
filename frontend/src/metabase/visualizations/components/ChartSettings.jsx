@@ -417,8 +417,8 @@ class ChartSettings extends Component {
         <ChartSettingsWidgetPopover
           anchor={popoverRef}
           widgets={[
-            this.getFormattingWidget(widgets),
             this.getStyleWidget(widgets),
+            this.getFormattingWidget(widgets),
           ].filter(widget => !!widget)}
           handleEndShowWidget={this.handleEndShowWidget}
         />
