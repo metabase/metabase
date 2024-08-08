@@ -1,7 +1,4 @@
-import type {
-  ScheduleDayType,
-  ScheduleType,
-} from "metabase-types/api/settings";
+import type { ScheduleSettings } from "metabase-types/api/settings";
 
 import type { Card } from "./card";
 
@@ -15,11 +12,10 @@ export type Channel = {
   details: Record<string, string>;
   enabled?: boolean;
   recipients?: NotificationRecipient[];
-  schedule_day?: null | ScheduleDayType;
-  schedule_frame?: null | "first";
-  schedule_hour?: number | null;
-  schedule_type?: ScheduleType;
-};
+} & Pick<
+  ScheduleSettings,
+  "schedule_day" | "schedule_type" | "schedule_hour" | "schedule_frame"
+>;
 
 type ChannelField = {
   name: string;

@@ -10,16 +10,13 @@ import { fetchPulseFormInput } from "metabase/pulse/actions";
 import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
 import { getPulseFormInput } from "metabase/pulse/selectors";
 import { getUser } from "metabase/selectors/user";
-import type { Alert, User } from "metabase-types/api";
+import type { Alert } from "metabase-types/api";
 
 import { getScheduleFromChannel } from "./schedule";
 
 type AlertEditChannelsProps = {
   onAlertChange: (alert: Alert) => void;
   alert: Alert;
-  user: User;
-  users: User[];
-  formInput: any;
 };
 
 export const AlertEditChannels = ({
