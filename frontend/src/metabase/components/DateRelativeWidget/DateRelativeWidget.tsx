@@ -106,10 +106,12 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
                   ButtonsS.Button,
                   ButtonsS.ButtonNormal,
                   ButtonsS.ButtonMedium,
-                  CS.textNormal,
-                  CS.textCentered,
                   CS.full,
                   DateRelativeWidgetStyle.shortcut,
+                  {
+                    [DateRelativeWidgetStyle.shortcutSelected]:
+                      this.isSelectedShortcut(s),
+                  },
                 )}
                 onClick={() => this.onSetShortcut(s)}
               >
@@ -133,30 +135,33 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
               </legend>
             </fieldset>
             <div className={CS.flex}>
-              {RELATIVE_SHORTCUTS[sectionName].map((s, index) => (
+              {RELATIVE_SHORTCUTS[sectionName].map((shortcut, index) => (
                 <button
                   key={index}
-                  aria-selected={this.isSelectedShortcut(s)}
+                  aria-selected={this.isSelectedShortcut(shortcut)}
                   data-ui-tag={
                     "relative-date-shortcut-" +
                     sectionName.toLowerCase() +
                     "-" +
-                    s.name.toLowerCase()
+                    shortcut.name.toLowerCase()
                   }
                   className={cx(
                     ButtonsS.Button,
                     ButtonsS.ButtonNormal,
                     ButtonsS.ButtonMedium,
-                    CS.flexFull,
+                    CS.full,
                     CS.mb1,
+                    DateRelativeWidgetStyle.shortcut,
                     {
                       [CS.mr1]:
                         index !== RELATIVE_SHORTCUTS[sectionName].length - 1,
+                      [DateRelativeWidgetStyle.shortcutSelected]:
+                        this.isSelectedShortcut(shortcut),
                     },
                   )}
-                  onClick={() => this.onSetShortcut(s)}
+                  onClick={() => this.onSetShortcut(shortcut)}
                 >
-                  {s.name}
+                  {shortcut.name}
                 </button>
               ))}
             </div>
