@@ -58,6 +58,7 @@ backend_ci: &backend_ci
 backend_presto_kerberos:
   - "**/presto_jdbc/**"
   - "**/presto_jdbc.clj"
+  - ".github/workflows/presto-kerberos-integration-test.yml"
 
 backend_sources: &backend_sources
   - *shared_sources
