@@ -946,6 +946,6 @@ See [fonts](../configuring-metabase/fonts.md).")
 (defsetting download-row-limit
   (deferred-tru "Exports row limit, not including xlsx.")
   :visibility :internal
-  :export?    false
+  :export?    true
   :type       :integer
   :doc false)
