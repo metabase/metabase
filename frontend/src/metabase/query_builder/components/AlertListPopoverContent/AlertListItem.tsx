@@ -107,9 +107,6 @@ export const AlertListItem = ({
           </div>
         </div>
 
-        {
-          // To-do: @kdoh wants to look into overall alignment
-        }
         <ul className={cx(CS.flex, CS.mt2, CS.textSmall)}>
           <li className={cx(CS.flex, CS.alignCenter)}>
             <Icon name="clock" size="12" className={CS.mr1} />{" "}
