@@ -53,18 +53,28 @@
                             ;; QFs not to include:
                             ;; - Field is still active
                             :model/QueryField {}             {:card_id     card-1
-                                                              :analysis_id qa-3
+                                                              :analysis_id qa-1
                                                               :table       "ORDERS"
                                                               :column      "tax"
                                                               :table_id    (mt/id :orders)
                                                               :field_id    (mt/id :orders :tax)}
                             ;; - Implicit reference
                             :model/QueryField {}             {:card_id            card-2
-                                                              :analysis_id        qa-3
+                                                              :analysis_id        qa-2
                                                               :table              "T1"
                                                               :column             "FA"
+                                                              :table_id           table-1
                                                               :field_id           field-1
                                                               :explicit_reference false}
+                            ;; - No resolved table, probably an imaginary column due to Macaw bugs
+                            :model/QueryField {}             {:card_id            card-3
+                                                              :analysis_id        qa-3
+                                                              :table              nil
+                                                              :column             "FALSE"
+                                                              :table_id           nil
+                                                              :field_id           nil
+                                                              :explicit_reference true}
+
                             ;; QFs to include:
                             :model/QueryField {}             {:card_id     card-1
                                                               :analysis_id qa-1
