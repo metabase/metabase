@@ -18,19 +18,26 @@ The display name for the database in the Metabase interface.
 
 ### Account name
 
-Enter your Account ID with the region that your Snowflake cluster is running on. E.g., `xxxxxxxxx.us-east-3.aws`.
+Enter your Snowflake [Account Identifier](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html).
 
-Enter your Snowflake [Account Identifier](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html). For example, if you're running Snowflake on AWS and your account URL is `https://az12345.ca-central-1.snowflakecomputing.com`:
+**If you're on AWS**, Enter your Account identifier with the region that your Snowflake cluster is running on. E.g., `xxxxxxxxx.us-east-3.aws`. For example, if you're running Snowflake on AWS and your account URL is `https://az12345.ca-central-1.snowflakecomputing.com`:
+
 - `<account_identifier>`: `az12345.ca-central-1`.
 - `<cloud_platform>`: `aws`.
 
 You'd enter `az12345.ca-central-1.aws` as the account name in Metabase.
 
-> Not all regions require the cloud platform identifier. If you are in `us-west-2`, you would enter `az12345` as the account name. For the requirements per region, see [the official Snowflake's documentation](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html#non-vps-account-locator-formats-by-cloud-platform-and-region).
+Not all regions require the cloud platform identifier. If you're in `us-west-2`, you would enter `az12345` as the account name. For the requirements per region, see [the official Snowflake's documentation](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html#non-vps-account-locator-formats-by-cloud-platform-and-region).
+
+**If you're on app.snowflake.com**, you can get your account name by going to Admin > Accounts. The Account name will be under Accounts. For the account you want to use, click on the three dot menu and select "Manage URLs". The "Current URL" contains your account identifier. E.g.,  `https://<account-identifier>.snowflakecomputing.com`.
+
+Learn more about [Account Identifiers in Snowflake](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html).
 
 ### Username
 
 The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+
+On your app.snowflake.com account page, you can find Users and roles under Admin > Users & Roles.
 
 ### Password
 
@@ -38,15 +45,17 @@ The password for the username that you use to connect to the database.
 
 ### RSA private key (PEM)
 
-You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
+Not required. You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
 ### Warehouse
 
 Snowflake warehouse. If the user lacks a default warehouse, you'll need to enter the warehouse to connect to.
 
+On app.snowflake.com, you can find warehouses under Admin > Warehouses.
+
 ### Database name (case sensitive)
 
-The name of the database you want to connect to in Snowflake.
+The name of the database you want to connect to in Snowflake. On app.snowflake.com you can find databases under Data > Databases.
 
 ### Schemas (optional)
 
@@ -76,6 +85,7 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 ### Role (optional)
 
 Specify a role to override the database user's default role. For example, if the database user `METABASE` has the roles:
+
 - Default role `APPLICATION`.
 - Additional role `ANALYTICS`.
 
