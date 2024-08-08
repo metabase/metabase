@@ -7,7 +7,9 @@
    [metabase.models :refer [Database Table]]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2])
+  (:import
+    (clojure.lang ExceptionInfo)))
 
 (use-fixtures :each (fn [thunk]
                       (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
@@ -78,5 +80,39 @@
                      (t2/count Database :name test-db-name)))
               (testing "Database should NOT have been synced"
                 (is (zero? (t2/count Table :db_id (u/the-id db))))))))
+        (finally
+          (t2/delete! Database :name test-db-name))))))
+
+(deftest delete-test
+  (testing "We should be able to delete Databases from the config file if we pass the confirmation string"
+    (mt/with-temp [Database _ {:name   test-db-name
+                               :engine "h2"}]
+      (try
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:settings  {:config-from-file-sync-databases false}
+                                                           :databases [{:name    test-db-name
+                                                                        :engine  "h2"
+                                                                        :details {}
+                                                                        :delete  (format "DELETE_WITH_DEPENDENTS:%s" test-db-name)}]}}]
+          (is (= :ok
+                 (advanced-config.file/initialize!)))
+          (is (not (t2/exists? Database :name test-db-name))))
+        (finally
+          (t2/delete! Database :name test-db-name)))))
+  (testing "We should not delete Databases from the config file if the confirmation string mismatches"
+    (mt/with-temp [Database _ {:name   test-db-name
+                               :engine "h2"}]
+      (try
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:settings  {:config-from-file-sync-databases false}
+                                                           :databases [{:name    test-db-name
+                                                                        :engine  "h2"
+                                                                        :details {}
+                                                                        :delete  "DELETE_WITH_DEPENDENTS:copy-paste-mistake"}]}}]
+          (is (thrown-with-msg?
+                ExceptionInfo
+                (re-pattern (format "To delete database \"%s\" set `delete` to \"DELETE_WITH_DEPENDENTS:%s\"" test-db-name test-db-name))
+                (advanced-config.file/initialize!)))
+          (is (t2/exists? Database :name test-db-name)))
         (finally
           (t2/delete! Database :name test-db-name))))))

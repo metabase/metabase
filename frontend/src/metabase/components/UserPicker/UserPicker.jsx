@@ -3,7 +3,7 @@ import { useCallback, useMemo } from "react";
 import { t } from "ttag";
 
 import TokenField from "metabase/components/TokenField";
-import { isEmail } from "metabase/lib/utils";
+import { isEmail } from "metabase/lib/email";
 
 import {
   UserPickerAvatar,

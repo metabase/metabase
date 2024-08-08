@@ -1,6 +1,13 @@
-.shortcut:hover {
+.shortcutSelected {
   color: var(--mb-color-text-selected);
   background-color: var(--mb-color-background-selected);
+  border-color: var(--mb-color-background-selected);
+}
+
+.shortcut:hover {
+  color: var(--mb-color-text-hover);
+  background-color: var(--mb-color-background-hover);
+  border-color: var(--mb-color-background-hover);
 }
 
 .sectionLine {
