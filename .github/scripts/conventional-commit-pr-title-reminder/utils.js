@@ -4,6 +4,7 @@ exports.updateComment = updateComment;
 async function updateComment({ github, context }) {
   const githubUsername = context.payload.sender.login;
   const comment = `${CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER}
+  different comment
 @${githubUsername} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
 Here are all the supported types that will be shown in the changelog:
 - \`feat\`
