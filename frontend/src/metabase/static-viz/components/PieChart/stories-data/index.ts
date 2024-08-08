@@ -35,6 +35,7 @@ import singleDimension from "./single-dimension.json";
 import smallMinimumSlicePercentage from "./small-min-slice-percentage.json";
 import sortedMetricCol from "./sorted-metric-col.json";
 import tinySlicesDisappear43766 from "./tiny-slices-disappear-43766.json";
+import truncatedTotal from "./truncated-total.json";
 import unaggregatedDimension from "./unaggregated-dimension.json";
 import zeroMinimumSlicePercentage from "./zero-min-slice-percentage.json";
 
@@ -63,6 +64,7 @@ export const data = {
   nullDimension,
   numDecimalPlacesChart,
   numDecimalPlacesLegend,
+  truncatedTotal,
   unaggregatedDimension,
   singleDimension,
   longDimensionName,

@@ -162,8 +162,6 @@ describe("scenarios > question > download", () => {
 
       assertOrdersExport(18760);
 
-      dismissDownloadStatus();
-
       editDashboard();
 
       setFilter("ID");
@@ -187,8 +185,6 @@ describe("scenarios > question > download", () => {
       });
 
       assertOrdersExport(1);
-
-      dismissDownloadStatus();
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
