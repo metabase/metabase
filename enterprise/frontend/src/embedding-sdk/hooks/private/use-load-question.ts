@@ -1,19 +1,24 @@
-import { useRef, useState } from "react";
+import { useReducer, useRef } from "react";
 import { useAsyncFn, useUnmount } from "react-use";
 
 import {
   runQuestionOnLoadSdk,
-  runQuestionOnQueryChangeSdk,
+  updateQuestionSdk,
   runQuestionOnNavigateSdk,
 } from "embedding-sdk/lib/interactive-question";
+import { runQuestionQuerySdk } from "embedding-sdk/lib/interactive-question/run-question-query";
 import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
-  SdkQuestionResult,
+  SdkQuestionState,
 } from "embedding-sdk/types/question";
 import { defer, type Deferred } from "metabase/lib/promise";
 import { useDispatch } from "metabase/lib/redux";
 import type Question from "metabase-lib/v1/Question";
+
+type LoadQuestionResult = Promise<
+  SdkQuestionState & { originalQuestion?: Question }
+>;
 
 export interface LoadQuestionHookResult {
   question?: Question;
@@ -22,9 +27,10 @@ export interface LoadQuestionHookResult {
   isQuestionLoading: boolean;
   isQueryRunning: boolean;
 
-  loadQuestion(): Promise<SdkQuestionResult & { originalQuestion?: Question }>;
-  onQuestionChange(question: Question): Promise<void>;
-  onNavigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
+  runQuestion(): Promise<void>;
+  loadQuestion(): LoadQuestionResult;
+  updateQuestion(question: Question): Promise<void>;
+  navigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
 }
 
 export function useLoadQuestion({
@@ -35,8 +41,8 @@ export function useLoadQuestion({
 
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.
-  const [result, setQuestionResult] = useState<SdkQuestionResult>({});
-  const { question, queryResults } = result;
+  const [questionState, setQuestionState] = useReducer(questionReducer, {});
+  const { question, queryResults } = questionState;
 
   const deferredRef = useRef<Deferred>();
 
@@ -54,7 +60,7 @@ export function useLoadQuestion({
   });
 
   const [loadQuestionState, loadQuestion] = useAsyncFn(async () => {
-    const result = await dispatch(
+    const state = await dispatch(
       runQuestionOnLoadSdk({
         location,
         params,
@@ -62,36 +68,51 @@ export function useLoadQuestion({
       }),
     );
 
-    setQuestionResult(result);
+    setQuestionState(state);
 
-    return result;
+    return state;
   }, [dispatch, location, params]);
 
   const { originalQuestion } = loadQuestionState.value ?? {};
 
-  const [questionChangeState, onQuestionChange] = useAsyncFn(
+  const [runQuestionState, runQuestion] = useAsyncFn(async () => {
+    if (!question) {
+      return;
+    }
+
+    const state = await runQuestionQuerySdk({
+      question,
+      originalQuestion,
+      cancelDeferred: deferred(),
+    });
+
+    setQuestionState(state);
+  }, [dispatch]);
+
+  const [updateQuestionState, updateQuestion] = useAsyncFn(
     async (nextQuestion: Question) => {
       if (!question) {
         return;
       }
 
-      const result = await dispatch(
-        runQuestionOnQueryChangeSdk({
+      const state = await dispatch(
+        updateQuestionSdk({
           nextQuestion,
           previousQuestion: question,
           originalQuestion,
           cancelDeferred: deferred(),
+          onQuestionChange: () => setQuestionState({ question }),
         }),
       );
 
-      setQuestionResult(result);
+      setQuestionState(state);
     },
     [dispatch, question, originalQuestion],
   );
 
-  const [navigateToNewCardState, onNavigateToNewCard] = useAsyncFn(
+  const [navigateToNewCardState, navigateToNewCard] = useAsyncFn(
     async (params: NavigateToNewCardParams) => {
-      const result = await dispatch(
+      const state = await dispatch(
         runQuestionOnNavigateSdk({
           ...params,
           originalQuestion,
@@ -99,25 +120,35 @@ export function useLoadQuestion({
         }),
       );
 
-      if (!result) {
+      if (!state) {
         return;
       }
 
-      setQuestionResult(result);
+      setQuestionState(state);
     },
     [dispatch, originalQuestion],
   );
+
+  const isQueryRunning =
+    runQuestionState.loading ||
+    updateQuestionState.loading ||
+    navigateToNewCardState.loading;
 
   return {
     question,
     queryResults,
 
     isQuestionLoading: loadQuestionState.loading,
-    isQueryRunning:
-      questionChangeState.loading || navigateToNewCardState.loading,
+    isQueryRunning,
 
+    runQuestion,
     loadQuestion,
-    onQuestionChange,
-    onNavigateToNewCard,
+    updateQuestion,
+    navigateToNewCard,
   };
 }
+
+const questionReducer = (state: SdkQuestionState, next: SdkQuestionState) => ({
+  ...state,
+  ...next,
+});

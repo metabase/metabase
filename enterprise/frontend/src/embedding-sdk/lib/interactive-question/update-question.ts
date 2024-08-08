@@ -1,6 +1,6 @@
 import _ from "underscore";
 
-import type { SdkQuestionResult } from "embedding-sdk/types/question";
+import type { SdkQuestionState } from "embedding-sdk/types/question";
 import type { Deferred } from "metabase/lib/promise";
 import { computeQuestionPivotTable } from "metabase/query_builder/actions/core/pivot-table";
 import { getAdHocQuestionWithVizSettings } from "metabase/query_builder/actions/core/utils";
@@ -13,21 +13,24 @@ import type { Dispatch, GetState } from "metabase-types/store";
 
 import { runQuestionQuerySdk } from "./run-question-query";
 
-interface RunQuestionOnQueryChangeParams {
+interface UpdateQuestionParams {
   previousQuestion: Question;
   nextQuestion: Question;
   originalQuestion?: Question;
   shouldStartAdHocQuestion?: boolean;
   queryResults?: any[];
   cancelDeferred?: Deferred;
+
+  /** Optimistic update the question in the query builder UI */
+  onQuestionChange: (question: Question) => void;
+
+  /** Whether to run the query by default? */
+  run?: boolean;
 }
 
-export const runQuestionOnQueryChangeSdk =
-  (params: RunQuestionOnQueryChangeParams) =>
-  async (
-    dispatch: Dispatch,
-    getState: GetState,
-  ): Promise<SdkQuestionResult> => {
+export const updateQuestionSdk =
+  (params: UpdateQuestionParams) =>
+  async (dispatch: Dispatch, getState: GetState): Promise<SdkQuestionState> => {
     let {
       previousQuestion,
       nextQuestion,
@@ -35,6 +38,8 @@ export const runQuestionOnQueryChangeSdk =
       shouldStartAdHocQuestion = true,
       cancelDeferred,
       queryResults,
+      onQuestionChange,
+      run = false,
     } = params;
 
     nextQuestion = getAdHocQuestionWithVizSettings({
@@ -43,19 +48,30 @@ export const runQuestionOnQueryChangeSdk =
       shouldStartAdHocQuestion,
     });
 
+    if (!nextQuestion.canAutoRun()) {
+      run = false;
+    }
+
     const rawSeries = createRawSeries({
       question: nextQuestion,
       queryResult: queryResults?.[0],
       datasetQuery: undefined,
     });
 
-    const questionPivotResult = computeQuestionPivotTable({
+    const computedPivotQuestion = computeQuestionPivotTable({
       question: nextQuestion,
       currentQuestion: previousQuestion,
       rawSeries,
     });
 
-    nextQuestion = questionPivotResult.question;
+    nextQuestion = computedPivotQuestion.question;
+
+    if (computedPivotQuestion.shouldRun !== null) {
+      run = computedPivotQuestion.shouldRun;
+    }
+
+    // Optimistic update the UI before we re-fetch the query metadata.
+    onQuestionChange(nextQuestion);
 
     const currentDependencies = previousQuestion
       ? Lib.dependentMetadata(
@@ -76,10 +92,17 @@ export const runQuestionOnQueryChangeSdk =
     }
 
     const metadata = getMetadata(getState());
+    nextQuestion = new Question(nextQuestion.card(), metadata);
 
-    return runQuestionQuerySdk({
-      question: new Question(nextQuestion.card(), metadata),
-      originalQuestion,
-      cancelDeferred,
-    });
+    // In most cases, we only update the question when the query change.
+    // We don't usually run the query right away unless specified.
+    if (run) {
+      return runQuestionQuerySdk({
+        question: nextQuestion,
+        originalQuestion,
+        cancelDeferred,
+      });
+    }
+
+    return { question: nextQuestion };
   };

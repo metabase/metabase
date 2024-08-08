@@ -1,9 +1,5 @@
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
-import { useDispatch, useSelector } from "metabase/lib/redux";
-import {
-  runQuestionQuery,
-  updateQuestion,
-} from "metabase/query_builder/actions";
+import { useSelector } from "metabase/lib/redux";
 import { default as QBNotebook } from "metabase/query_builder/components/notebook/Notebook";
 import {
   getIsDirty,
@@ -12,12 +8,12 @@ import {
 } from "metabase/query_builder/selectors";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 type NotebookProps = { onApply?: () => void };
 
 export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
-  const { question } = useInteractiveQuestionContext();
+  const { question, updateQuestion, runQuestion } =
+    useInteractiveQuestionContext();
 
   const isDirty = useSelector(getIsDirty);
   const isRunnable = useSelector(getIsRunnable);
@@ -25,8 +21,6 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
   const reportTimezone = useSelector(state =>
     getSetting(state, "report-timezone-long"),
   );
-
-  const dispatch = useDispatch();
 
   return (
     question && (
@@ -38,12 +32,10 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           isResultDirty={Boolean(isResultDirty)}
           reportTimezone={reportTimezone}
           readOnly={false}
-          updateQuestion={(question: Question) =>
-            dispatch(updateQuestion(question))
-          }
-          runQuestionQuery={() => {
-            dispatch(runQuestionQuery());
+          updateQuestion={updateQuestion}
+          runQuestionQuery={async () => {
             onApply();
+            await runQuestion();
           }}
           setQueryBuilderMode={() => {}}
           hasVisualizeButton={true}

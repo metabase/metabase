@@ -1,6 +1,6 @@
 import type {
   NavigateToNewCardParams,
-  SdkQuestionResult,
+  SdkQuestionState,
 } from "embedding-sdk/types/question";
 import { loadCard } from "metabase/lib/card";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -9,7 +9,7 @@ import Question from "metabase-lib/v1/Question";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import type { Dispatch, GetState } from "metabase-types/store";
 
-import { runQuestionOnQueryChangeSdk } from "./run-question-on-query-change";
+import { updateQuestionSdk } from "./update-question";
 
 interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
   originalQuestion?: Question;
@@ -20,7 +20,7 @@ export const runQuestionOnNavigateSdk =
   async (
     dispatch: Dispatch,
     getState: GetState,
-  ): Promise<SdkQuestionResult | null> => {
+  ): Promise<SdkQuestionState | null> => {
     let { nextCard, previousCard, originalQuestion } = params;
 
     // Do not reload questions with breakouts when clicking on a legend item
@@ -41,12 +41,13 @@ export const runQuestionOnNavigateSdk =
     const nextQuestion = new Question(nextCard, metadata);
 
     const result = await dispatch(
-      runQuestionOnQueryChangeSdk({
+      updateQuestionSdk({
         previousQuestion,
         nextQuestion,
         originalQuestion,
+        onQuestionChange: () => {},
       }),
     );
 
-    return result as SdkQuestionResult;
+    return result as SdkQuestionState;
   };

@@ -6,7 +6,7 @@ import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/t
 import type Question from "metabase-lib/v1/Question";
 import type { Card } from "metabase-types/api";
 
-export interface SdkQuestionResult {
+export interface SdkQuestionState {
   question?: Question;
   queryResults?: any[];
 }
