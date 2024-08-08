@@ -20,8 +20,7 @@ export const useCreateQuestion = ({
 
   return useCallback(
     async (newQuestion: Question) => {
-      const shouldBePinned =
-        newQuestion.type() === "model" || newQuestion.type() === "metric";
+      const shouldBePinned = newQuestion.type() === "model";
       const createdQuestion = await dispatch(
         apiCreateQuestion(newQuestion.setPinned(shouldBePinned)),
       );
