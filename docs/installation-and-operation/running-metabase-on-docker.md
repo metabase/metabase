@@ -338,6 +338,7 @@ We currently support the following [environment variables](../configuring-metaba
 - MB_EMAIL_SMTP_USERNAME
 - MB_LDAP_PASSWORD
 - MB_LDAP_BIND_DN
+- MB_ENCRYPTION_SECRET_KEY
 
 In order for the Metabase container to read the files and use the contents as a secret, the environment variable name needs to be appended with a "\_FILE" as explained above.
 
