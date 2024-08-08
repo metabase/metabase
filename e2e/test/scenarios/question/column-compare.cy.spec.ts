@@ -221,22 +221,25 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         });
       });
 
+      verifyBreakoutExistsAndIsFirst({
+        column: "Created At",
+        bucket: "Month",
+      });
+
       verifyAggregations([
         {
-          name: "Count (previous period)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous period)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous period)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
-
-      breakout({ column: "Created At", bucket: "Month" }).should("exist");
     });
 
     it("breakout on binned datetime column", () => {
@@ -419,25 +422,28 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
 
       verifyAggregations([
         {
-          name: "Count (previous value)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous value)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous value)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
 
-      breakout({ column: "Created At", bucket: "Month" }).should("exist");
+      verifyBreakoutExistsAndIsFirst({
+        column: "Created At",
+        bucket: "Month",
+      });
 
       verifyColumns([
-        "Count (previous value)",
-        "Count (vs previous value)",
-        "Count (% vs previous value)",
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
       ]);
     });
 
@@ -479,15 +485,15 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
 
       verifyAggregations([
         {
-          name: "Count (previous value)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous value)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous value)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
@@ -496,9 +502,9 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       breakout({ column: "Category" }).should("exist");
 
       verifyColumns([
-        "Count (previous value)",
-        "Count (vs previous value)",
-        "Count (% vs previous value)",
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
       ]);
     });
 
@@ -540,15 +546,15 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
 
       verifyAggregations([
         {
-          name: "Count (previous value)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous value)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous value)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
@@ -558,9 +564,9 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       breakout({ column: "Created At" }).should("exist");
 
       verifyColumns([
-        "Count (previous value)",
-        "Count (vs previous value)",
-        "Count (% vs previous value)",
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
       ]);
     });
 
@@ -684,22 +690,21 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         });
       });
 
+      verifyBreakoutExistsAndIsFirst({ column: "Created At", bucket: "Month" });
       verifyAggregations([
         {
-          name: "Count (previous period)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous period)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous period)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
-
-      verifyBreakoutExistsAndIsFirst({ column: "Created At", bucket: "Month" });
     });
 
     it("breakout on binned datetime column", () => {
@@ -890,22 +895,22 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
 
       verifyAggregations([
         {
-          name: "Count (previous value)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous value)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous value)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
       verifyColumns([
-        "Count (previous value)",
-        "Count (vs previous value)",
-        "Count (% vs previous value)",
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
       ]);
     });
   });

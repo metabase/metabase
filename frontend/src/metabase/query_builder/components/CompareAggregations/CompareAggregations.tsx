@@ -64,30 +64,15 @@ export const CompareAggregations = ({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
 
-    if (aggregation && offset !== "") {
-      const aggregations = getAggregations(
-        query,
-        stageIndex,
-        aggregation,
-        columns,
-        offset,
-      );
+    let nextQuery = query;
 
-      if (!columnAndBucket) {
-        return;
-      }
-
-      let nextQuery = aggregations.reduce(
-        (query, aggregation) => Lib.aggregate(query, stageIndex, aggregation),
-        query,
-      );
-      let breakout = columnAndBucket.breakout;
-
+    if (aggregation && offset !== "" && columnAndBucket) {
       const column = Lib.withTemporalBucket(
         columnAndBucket.column,
         columnAndBucket.bucket,
       );
 
+      let breakout = columnAndBucket.breakout;
       if (breakout) {
         // replace the breakout
         const breakoutIndex = Lib.breakouts(nextQuery, stageIndex).indexOf(
@@ -113,6 +98,19 @@ export const CompareAggregations = ({
           breakout,
         );
       }
+
+      const aggregations = getAggregations(
+        nextQuery,
+        stageIndex,
+        aggregation,
+        columns,
+        offset,
+      );
+
+      nextQuery = aggregations.reduce(
+        (query, aggregation) => Lib.aggregate(query, stageIndex, aggregation),
+        nextQuery,
+      );
 
       onSubmit(nextQuery, aggregations);
       onClose();
