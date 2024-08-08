@@ -1,5 +1,7 @@
+exports.updateComment = updateComment;
+
 /** @param {import('@types/github-script').AsyncFunctionArguments} AsyncFunctionArguments */
-export async function updateComment({ github, context }) {
+async function updateComment({ github, context }) {
   const githubUsername = context.payload.sender.login;
   const comment = `${CONVENTIONAL_COMMIT_REMINDER_COMMENT_IDENTIFIER}
 @${githubUsername} You have modified embedding SDK code. Please make sure the PR title follows [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) style.
@@ -26,8 +28,9 @@ For example, these are valid PR titles:
     issue_number: pullRequestNumber,
   });
 
-  const existingComment =
-    getExistingConventionalCommitReminderComment(comments);
+  const existingComment = getExistingConventionalCommitReminderComment(
+    comments.data,
+  );
 
   if (existingComment) {
     return await github.rest.issues.updateComment({
