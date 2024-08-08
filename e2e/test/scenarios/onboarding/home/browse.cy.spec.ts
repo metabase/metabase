@@ -215,6 +215,7 @@ describeWithSnowplowEE("scenarios > browse (EE)", () => {
 
     cy.log("Visit Model 1");
     cy.findByRole("heading", { name: "Model 1" }).click();
+    cy.findByLabelText("Move, trash, and more...");
 
     browseModels();
 
