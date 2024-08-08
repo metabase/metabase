@@ -72,8 +72,6 @@
        :middleware {:disable-remaps? true}}
       rff))))
 
-;; I'm not sure whether this field-distinct-values and field-distinct-values belong to this namespace
-;; maybe it's better to keep this in metabase.models.field or metabase.models.field-values
 (defn search-values-query
  "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query generated
   differs slightly based on whether the two Fields are the same Field.

@@ -162,11 +162,15 @@
     (is (= {:values [[1] [2] [3] [4] [5]]
             :has_more_values false}
            (distinct-field-values (mt/id :reviews :rating)))))
-  (testing "if the values of text field exceeds max-char-len, return a subset of it (#2332)"
+  (testing "if the values of field exceeds max-char-len, return a subset of it (#2332)"
     (binding [field-values/*total-max-length* 16]
       (is (= {:values          [["Doohickey"] ["Gadget"]]
               :has_more_values true}
-             (distinct-field-values (mt/id :products :category)))))))
+             (distinct-field-values (mt/id :products :category)))))
+    (binding [field-values/*total-max-length* 3]
+      (is (= {:values          [[1] [2] [3]]
+              :has_more_values true}
+             (distinct-field-values (mt/id :reviews :rating)))))))
 
 (deftest clear-field-values-for-field!-test
   (mt/with-temp [Database    {database-id :id} {}

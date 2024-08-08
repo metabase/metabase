@@ -33,10 +33,13 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
@@ -341,39 +344,23 @@
 ;;; |                                                    CRUD fns                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(defn- distinct-text-field-rff
-  "Similar to [[metabase.query-processor.reducible/default-rff]] but stop when the total characters of all rows exceed
-  `max-char-len`.
-
-  Expect the row to have only one column of text."
-  [max-char-len]
+(mu/defn- limit-max-char-len-rff :- ::qp.schema/rff
+  "Returns a rff that will stop when the total character length of the values exceeds `max-char-len`."
+  [rff max-char-len]
   (fn [metadata]
-   (let [row-count  (volatile! 0)
-         rows       (volatile! (transient []))
-         total-char (volatile! 0)
-         offer-row  (fn [row]
-                     (vswap! row-count inc)
-                     (vswap! rows conj! row))]
-     (fn default-rf
-       ([]
-        {:data metadata})
-
-       ([result]
-        {:pre [(map? (unreduced result))]}
-        ;; if the result is a clojure.lang.Reduced, unwrap it so we always get back the standard-format map
-        (-> (unreduced result)
-            (assoc :row_count @row-count
-                   :status :completed)
-            (assoc-in [:data :rows] (persistent! @rows))))
-
-       ([result row]
-        (assert (= 1 (count row)))
-        (vswap! total-char + (count (first row)))
-        (if (> @total-char max-char-len)
-          (reduced (assoc result ::reached-char-len-limit true))
-          (do
-           (offer-row row)
-           result)))))))
+    (let [rf         (rff metadata)
+          total-char (volatile! 0)]
+      (fn
+        ([]
+         (rf))
+        ([result]
+         (rf result))
+        ([result row]
+         (assert (= 1 (count row)))
+         (vswap! total-char + (count (str (first row))))
+         (if (> @total-char max-char-len)
+           (reduced (assoc result ::reached-char-len-limit true))
+           (rf result row)))))))
 
 (defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values are
@@ -382,21 +369,17 @@
 
   ;; (distinct-values (Field 1))
   ;; ->  {:values          [[1], [2], [3]]
-  :has_more_values false}
+          :has_more_values false}
 
   (This function provides the values that normally get saved as a Field's
   FieldValues. You most likely should not be using this directly in code outside of this namespace, unless it's for a
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
   (try
-    (let [rff             (if (isa? (:base_type field) :type/Text)
-                            ;; use a custom rff for text fields to prevent OOM in case of very long text values (#46411)
-                            (distinct-text-field-rff *total-max-length*)
-                            nil)
-          result          (metadata-queries/table-query (:table_id field)
+    (let [result          (metadata-queries/table-query (:table_id field)
                                                         {:breakout [[:field (u/the-id field) nil]]
                                                          :limit    *absolute-max-distinct-values-limit*}
-                                                        rff)
+                                                        (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
           distinct-values (-> result :data :rows)]
       {:values          distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
