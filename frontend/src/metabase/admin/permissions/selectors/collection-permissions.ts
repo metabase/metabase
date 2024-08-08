@@ -212,7 +212,7 @@ export type CollectionPermissionEditorType = null | {
       disabledTooltip: string | null;
       value: string;
       warning: string | null;
-      confirmations: (newValue: string, entity: any) => string[];
+      confirmations: (newValue: string) => string[];
       options: string[];
     }[];
   }[];

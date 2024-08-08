@@ -77,8 +77,11 @@ describe("mergeGroupsPermissionsUpdates", () => {
         "1": { [DataPermission.VIEW_DATA]: DataPermissionValue.UNRESTRICTED },
       },
     };
+    const modifiedGroupIds = Object.keys(update);
 
-    expect(mergeGroupsPermissionsUpdates(undefined, update)).toBe(update);
+    expect(
+      mergeGroupsPermissionsUpdates(undefined, update, modifiedGroupIds),
+    ).toBe(update);
   });
 
   it("should only apply updates to groups that have been modified", async () => {
