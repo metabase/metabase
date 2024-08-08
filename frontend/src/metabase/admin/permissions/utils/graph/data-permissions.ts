@@ -313,11 +313,7 @@ export function hasPermissionValueInEntityGraphs(
   });
 }
 
-// TODO: update comment
-// Ideally this would live in downgradeNativePermissionsIfNeeded, but originally that function was
-// created to only be called if a view permission was changing. there needs to be some reworking
-// in some of the setter methods to make sure the downgrading will always happen at the appropriate time
-export function restrictNativeQueryPermissionsIfNeeded(
+export function restrictCreateQueriesPermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: EntityId,
@@ -325,7 +321,7 @@ export function restrictNativeQueryPermissionsIfNeeded(
   value: DataPermissionValue,
   database: Database,
 ) {
-  const currDbNativePermission = getSchemasPermission(
+  const currDbCreateQueriesPermission = getSchemasPermission(
     permissions,
     groupId,
     { databaseId: entityId.databaseId },
@@ -336,7 +332,8 @@ export function restrictNativeQueryPermissionsIfNeeded(
     permission === DataPermission.CREATE_QUERIES &&
     value !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
     (entityId.tableId != null || entityId.schemaName != null) &&
-    currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
+    currDbCreateQueriesPermission ===
+      DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
 
   const shouldRestrictForSomeReason =
     PLUGIN_DATA_PERMISSIONS.shouldRestrictNativeQueryPermissions(
@@ -352,7 +349,6 @@ export function restrictNativeQueryPermissionsIfNeeded(
     isMakingGranularCreateQueriesChange || shouldRestrictForSomeReason;
 
   if (shouldRestrictNative) {
-    // TODO: could this be shortened to just a single updateSchemasPermission call?
     const schemaNames = (database && database.schemaNames()) ?? [null];
 
     schemaNames.forEach(schemaName => {

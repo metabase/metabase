@@ -28,14 +28,13 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
     restore();
     cy.signInAsAdmin();
     setTokenFeatures("all");
-    cy.intercept("PUT", "/api/permissions/graph").as("saveGraph");
   });
 
   it("should allow saving 'blocked' and disable create queries dropdown when set", () => {
     const g = "All Users";
 
     cy.visit(
-      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+      `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`, // table level
     );
 
     assertPermissionForItem(g, DATA_ACCESS_PERM_IDX, "Can view", false);
@@ -44,7 +43,7 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
 
     modifyPermission(g, DATA_ACCESS_PERM_IDX, "Blocked");
 
-    assertSameWithSave(() => {
+    assertSameBeforeAndAfterSave(() => {
       assertPermissionForItem(g, DATA_ACCESS_PERM_IDX, "Blocked", false);
       assertPermissionForItem(g, CREATE_QUERIES_PERM_IDX, "No", true);
       assertPermissionForItem(g, DOWNLOAD_PERM_IDX, "No", true);
@@ -58,7 +57,7 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
 
     modifyPermission(g, DATA_ACCESS_PERM_IDX, "Blocked");
 
-    assertSameWithSave(() => {
+    assertSameBeforeAndAfterSave(() => {
       assertPermissionForItem(g, DATA_ACCESS_PERM_IDX, "Blocked", false);
       assertPermissionForItem(g, CREATE_QUERIES_PERM_IDX, "No", true);
       assertPermissionForItem(g, DOWNLOAD_PERM_IDX, "No", true);
@@ -816,17 +815,8 @@ function saveImpersonationSettings() {
   cy.findByRole("dialog").findByText("Save").click();
 }
 
-function assertSameWithSave(assertionCallback, saveReqName = "saveGraph") {
+function assertSameBeforeAndAfterSave(assertionCallback) {
   assertionCallback();
-
-  cy.button("Save changes").click();
-  modal().within(() => {
-    cy.findByText("Save permissions?");
-    cy.button("Yes").click();
-  });
-  cy.wait(`@${saveReqName}`);
-  // TODO: add back - currently some tests are broken but this unblocks me
-  // cy.findByTestId("edit-bar").should("not.exist");
-
+  savePermissions();
   assertionCallback();
 }

@@ -8,7 +8,10 @@ import {
   DataPermission,
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
-import { isTableEntityId } from "metabase/admin/permissions/utils/data-entity-id";
+import {
+  isTableEntityId,
+  isSchemaEntityId,
+} from "metabase/admin/permissions/utils/data-entity-id";
 import {
   getSchemasPermission,
   updateSchemasPermission,
@@ -31,12 +34,22 @@ export function shouldRestrictNativeQueryPermissions(
     DataPermission.CREATE_QUERIES,
   );
 
-  return (
-    isTableEntityId(entityId) &&
-    (value === DataPermissionValue.SANDBOXED ||
-      value === DataPermissionValue.BLOCKED) &&
-    currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
-  );
+  if (isTableEntityId(entityId)) {
+    return (
+      (value === DataPermissionValue.SANDBOXED ||
+        value === DataPermissionValue.BLOCKED) &&
+      currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+    );
+  }
+
+  if (isSchemaEntityId(entityId)) {
+    return (
+      value === DataPermissionValue.BLOCKED &&
+      currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+    );
+  }
+
+  return false;
 }
 
 export function upgradeViewPermissionsIfNeeded(
