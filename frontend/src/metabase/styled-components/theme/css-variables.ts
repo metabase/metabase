@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import { get } from "lodash";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
-import { color } from "metabase/lib/colors";
 import type { MantineTheme } from "metabase/ui";
 
 // https://www.raygesualdo.com/posts/flattening-object-keys-with-typescript-types/
@@ -41,48 +40,17 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
   return css`
     --mb-default-font-family: "${theme.fontFamily}";
 
+    /* Semantic colors */
+
+    /* Dynamic colors from app */
+    --mb-color-brand: ${theme.fn.themeColor("brand")};
+    --mb-color-summarize: ${theme.fn.themeColor("summarize")};
+    --mb-color-filter: ${theme.fn.themeColor("filter")};
+
+    /* Dynamic colors from SDK */
+    /* TODO: Construct this dynamically */
     --mb-color-bg-light: ${theme.fn.themeColor("bg-light")};
     --mb-color-bg-dark: ${theme.fn.themeColor("bg-dark")};
-    --mb-color-brand: ${theme.fn.themeColor("brand")};
-
-    --mb-color-brand-light: color-mix(in srgb, var(--mb-color-brand), #fff 80%);
-    --mb-color-brand-lighter: color-mix(
-      in srgb,
-      var(--mb-color-brand),
-      #fff 90%
-    );
-    --mb-color-brand-alpha-04: color-mix(
-      in srgb,
-      var(--mb-color-brand) 4%,
-      transparent
-    );
-    --mb-color-brand-alpha-88: color-mix(
-      in srgb,
-      var(--mb-color-brand) 88%,
-      transparent
-    );
-    --mb-color-border-alpha-30: color-mix(
-      in srgb,
-      var(--mb-color-border) 30%,
-      transparent
-    );
-    --mb-color-text-white-alpha-85: color-mix(
-      in srgb,
-      var(--mb-color-text-white) 85%,
-      transparent
-    );
-    --mb-color-bg-black-alpha-60: color-mix(
-      in srgb,
-      var(--mb-color-bg-black) 60%,
-      transparent
-    );
-    --mb-color-bg-white-alpha-15: color-mix(
-      in srgb,
-      var(--mb-color-bg-white) 15%,
-      transparent
-    );
-
-    /* Semantic colors */
     --mb-color-focus: ${theme.fn.themeColor("focus")};
     --mb-color-bg-white: ${theme.fn.themeColor("bg-white")};
     --mb-color-bg-black: ${theme.fn.themeColor("bg-black")};
@@ -93,13 +61,9 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
     --mb-color-text-light: ${theme.fn.themeColor("text-light")};
     --mb-color-danger: ${theme.fn.themeColor("danger")};
     --mb-color-error: ${theme.fn.themeColor("error")};
-    --mb-color-filter: ${theme.fn.themeColor("filter")};
-    --mb-color-bg-error: ${color("bg-error")};
     --mb-color-bg-medium: ${theme.fn.themeColor("bg-medium")};
-    --mb-color-bg-night: ${color("bg-night")};
     --mb-color-text-white: ${theme.fn.themeColor("text-white")};
     --mb-color-success: ${theme.fn.themeColor("success")};
-    --mb-color-summarize: ${theme.fn.themeColor("summarize")};
     --mb-color-warning: ${theme.fn.themeColor("warning")};
   `;
 }

@@ -7,8 +7,38 @@
 :root {
   /* Semantic colors */
   --mb-color-brand: var(--mb-base-color-blue-40);
-  --mb-color-brand-light: #ddecfa;
-  --mb-color-brand-lighter: #eef6fc;
+  --mb-color-brand-light: color-mix(in srgb, var(--mb-color-brand), #fff 80%);
+  --mb-color-brand-lighter: color-mix(in srgb, var(--mb-color-brand), #fff 90%);
+  --mb-color-brand-alpha-04: color-mix(
+    in srgb,
+    var(--mb-color-brand) 4%,
+    transparent
+  );
+  --mb-color-brand-alpha-88: color-mix(
+    in srgb,
+    var(--mb-color-brand) 88%,
+    transparent
+  );
+  --mb-color-border-alpha-30: color-mix(
+    in srgb,
+    var(--mb-color-border) 30%,
+    transparent
+  );
+  --mb-color-text-white-alpha-85: color-mix(
+    in srgb,
+    var(--mb-color-text-white) 85%,
+    transparent
+  );
+  --mb-color-bg-black-alpha-60: color-mix(
+    in srgb,
+    var(--mb-color-bg-black) 60%,
+    transparent
+  );
+  --mb-color-bg-white-alpha-15: color-mix(
+    in srgb,
+    var(--mb-color-bg-white) 15%,
+    transparent
+  );
   --mb-color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
   --mb-color-error: #ed6e6e;
