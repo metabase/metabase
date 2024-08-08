@@ -98,3 +98,27 @@ export const dismissSplitPermsModal = () => {
     .findByRole("button", { name: "Got it" })
     .click();
 };
+
+export function savePermissions() {
+  cy.findByTestId("edit-bar").button("Save changes").click();
+  cy.findByRole("dialog").findByText("Yes").click();
+  cy.findByTestId("edit-bar").should("not.exist");
+}
+
+export function selectImpersonatedAttribute(attribute) {
+  cy.findByRole("dialog").within(() => {
+    cy.findByTestId("select-button").click();
+  });
+
+  popover().findByText(attribute).click();
+}
+
+export function saveImpersonationSettings() {
+  cy.findByRole("dialog").findByText("Save").click();
+}
+
+export function assertSameBeforeAndAfterSave(assertionCallback) {
+  assertionCallback();
+  savePermissions();
+  assertionCallback();
+}
