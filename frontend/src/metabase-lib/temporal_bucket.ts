@@ -36,10 +36,7 @@ export function withDefaultTemporalBucket(
   stageIndex: number,
   column: ColumnMetadata,
 ): ColumnMetadata {
-  const buckets = availableTemporalBuckets(query, stageIndex, column);
-  const defaultBucket = buckets.find(
-    bucket => displayInfo(query, stageIndex, bucket).default,
-  );
+  const defaultBucket = defaultTemporalBucket(query, stageIndex, column);
   return defaultBucket ? withTemporalBucket(column, defaultBucket) : column;
 }
 
@@ -53,7 +50,7 @@ export function defaultTemporalBucket(
     bucket => displayInfo(query, stageIndex, bucket).default,
   );
 
-  return defaultBucket ?? buckets[0] ?? null;
+  return defaultBucket ?? null;
 }
 
 type IntervalAmount = number | "current" | "next" | "last";
