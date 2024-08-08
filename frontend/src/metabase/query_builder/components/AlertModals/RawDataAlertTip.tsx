@@ -1,21 +1,30 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
-import { connect } from "react-redux";
 
 import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
 import {
   getQuestion,
   getVisualizationSettings,
 } from "metabase/query_builder/selectors";
 import { Icon } from "metabase/ui";
+import type { VisualizationSettings } from "metabase-types/api";
 
 import AlertModalsS from "./AlertModals.module.css";
 import { MultiSeriesAlertTip } from "./MultiSeriesAlertTip";
 import { NormalAlertTip } from "./NormalAlertTip";
 
-function RawDataAlertTipInner(props) {
-  const display = props.question.display();
-  const vizSettings = props.visualizationSettings;
+export const RawDataAlertTip = () => {
+  const question = useSelector(getQuestion);
+  const visualizationSettings: VisualizationSettings = useSelector(
+    getVisualizationSettings,
+  );
+
+  if (!question) {
+    return null;
+  }
+
+  const display = question.display();
+  const vizSettings = visualizationSettings;
   const goalEnabled = vizSettings["graph.show_goal"];
   const isLineAreaBar =
     display === "line" || display === "area" || display === "bar";
@@ -53,9 +62,4 @@ function RawDataAlertTipInner(props) {
       {showMultiSeriesGoalAlert ? <MultiSeriesAlertTip /> : <NormalAlertTip />}
     </div>
   );
-}
-
-export const RawDataAlertTip = connect(state => ({
-  question: getQuestion(state),
-  visualizationSettings: getVisualizationSettings(state),
-}))(RawDataAlertTipInner);
+};

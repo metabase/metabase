@@ -1,9 +1,12 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 
 import CS from "metabase/css/core/index.css";
 
-export const AlertModalTitle = ({ text }) => (
+type AlertModalTitleProps = {
+  text: string;
+};
+
+export const AlertModalTitle = ({ text }: AlertModalTitleProps) => (
   <div className={cx(CS.mlAuto, CS.mrAuto, CS.my4, CS.pb2, CS.textCentered)}>
     <img
       className={CS.mb3}

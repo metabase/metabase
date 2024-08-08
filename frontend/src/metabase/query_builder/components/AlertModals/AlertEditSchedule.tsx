@@ -1,14 +1,16 @@
-/* eslint-disable react/prop-types */
 import cx from "classnames";
 import { t } from "ttag";
 
+import type { ScheduleChangeProp } from "metabase/components/Schedule/types";
 import SchedulePicker from "metabase/containers/SchedulePicker";
 import CS from "metabase/css/core/index.css";
 import { ALERT_TYPE_ROWS } from "metabase-lib/v1/Alert";
+import type { AlertType } from "metabase-lib/v1/Alert/types";
+import type { Alert, ScheduleSettings } from "metabase-types/api";
 
 import { RawDataAlertTip } from "./RawDataAlertTip";
 
-export const getSchedulePickerSendTimeText = alert => {
+export const getSchedulePickerSendTimeText = (alert: Alert) => {
   const channels = alert.channels.filter(channel => channel.enabled);
   const [channel] = channels;
   if (channels.length === 0) {
@@ -30,6 +32,14 @@ export function AlertEditSchedule({
   alertType,
   schedule,
   onScheduleChange,
+}: {
+  alert: Alert;
+  alertType: AlertType;
+  schedule: ScheduleSettings;
+  onScheduleChange: (
+    nextSchedule: ScheduleSettings,
+    change: ScheduleChangeProp,
+  ) => void;
 }) {
   return (
     <div>
