@@ -13,9 +13,11 @@ export function getLinkedIssues(body: string) {
   return null;
 }
 
+export const issueNumberRegex = /\(#(\d+)\)/g
+
 export function getPRsFromCommitMessage(message: string) {
   const firstLine = message.split('\n\n')[0];
-  const result = [ ...firstLine.matchAll(/\(#(\d+)\)/g) ];
+  const result = [ ...firstLine.matchAll(issueNumberRegex) ];
   if (!result.length) {
     console.log('No pr found in commit message', message);
     return null;
