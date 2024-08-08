@@ -7,7 +7,6 @@ import {
   tableHeaderClick,
   pieSlices,
   leftSidebar,
-  ensureEchartsContainerHasSvg,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -82,7 +81,6 @@ describe("scenarios > visualizations > pie chart", () => {
       cy.findByText("Show total").click();
     });
 
-    ensureEchartsContainerHasSvg();
     cy.findByTestId("query-visualization-root").within(() => {
       cy.findByText("TOTAL").should("be.visible");
     });
@@ -110,21 +108,19 @@ describe("scenarios > visualizations > pie chart", () => {
     });
 
     // Ensure chart renders before hovering the legend item
-    ensureEchartsContainerHasSvg();
-    cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("TOTAL").should("be.visible");
-    });
+    cy.findByTestId("query-visualization-root")
+      .findByText("TOTAL")
+      .should("be.visible");
 
     cy.findAllByTestId("legend-item").eq(0).realHover();
 
-    cy.findByTestId("query-visualization-root").within(() => {
-      cy.findByText("DOOHICKEY THE QUICK BROWN FOX J…");
-    });
+    cy.findByTestId("query-visualization-root")
+      .findByText("DOOHICKEY THE QUICK BROWN FOX J…")
+      .should("be.visible");
   });
 });
 
 function ensurePieChartRendered(rows, totalValue) {
-  ensureEchartsContainerHasSvg();
   cy.findByTestId("query-visualization-root").within(() => {
     // detail
     cy.findByText("TOTAL").should("be.visible");
