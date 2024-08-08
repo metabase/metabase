@@ -79,15 +79,26 @@ export const getButtonOverrides = (): MantineThemeOverride["components"] => ({
       filled: (theme, { color }: ButtonStylesParams) => {
         const primaryColor = getPrimaryColor(theme, color);
         const hoverColor = getHoverColor(theme, primaryColor);
+        const isThemeable = color === "brand";
+        const colors = isThemeable
+          ? {
+              default: "var(--mb-color-background-brand)",
+              hover:
+                "color-mix(in srgb, var(--mb-color-background-brand) 88%, transparent)",
+            }
+          : {
+              default: primaryColor,
+              hover: hoverColor,
+            };
 
         return {
           root: {
             color: theme.white,
-            borderColor: "var(--mb-color-background-brand)",
-            backgroundColor: "var(--mb-color-background-brand)",
+            borderColor: colors.default,
+            backgroundColor: colors.default,
             "&:hover": {
-              borderColor: hoverColor,
-              backgroundColor: hoverColor,
+              borderColor: colors.hover,
+              backgroundColor: colors.hover,
             },
             "&:disabled": {
               color: "var(--mb-color-text-tertiary)",
