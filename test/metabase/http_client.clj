@@ -83,7 +83,7 @@
 ;;; parse-response
 
 (def ^:private auto-deserialize-dates-keys
-  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed})
+  #{:created_at :updated_at :last_login :date_joined :started_at :finished_at :last_analyzed :last_used_at :last_viewed_at})
 
 (defn- auto-deserialize-dates
   "Automatically recurse over `response` and look for keys that are known to correspond to dates. Parse their values and
@@ -230,7 +230,7 @@
    [:query-parameters {:optional true} [:maybe map?]]
    [:request-options  {:optional true} [:maybe map?]]])
 
-(mu/defn ^:private -client
+(mu/defn- -client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [credentials method expected-status url http-body query-parameters request-options]} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)
@@ -320,7 +320,7 @@
      request-options
      (build-body-params http-body content-type))))
 
-(mu/defn ^:private -mock-client
+(mu/defn- -mock-client
   ;; Since the params for this function can get a little complicated make sure we validate them
   [{:keys [method expected-status] :as params} :- ClientParamsMap]
   (initialize/initialize-if-needed! :db :web-server)

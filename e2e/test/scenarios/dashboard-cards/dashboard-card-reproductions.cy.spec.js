@@ -2,24 +2,27 @@ import { WRITABLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  addOrUpdateDashboardCard,
+  assertDescendantNotOverflowsContainer,
+  assertIsEllipsified,
+  assertIsNotEllipsified,
+  createQuestion,
+  cypressWaitAll,
+  echartsContainer,
   editDashboard,
+  getDashboardCard,
+  openNavigationSidebar,
+  popover,
+  queryBuilderHeader,
   resetTestTable,
   restore,
   resyncDatabase,
+  saveDashboard,
   showDashboardCardActions,
   sidebar,
   visitDashboard,
-  addOrUpdateDashboardCard,
-  saveDashboard,
-  openNavigationSidebar,
-  assertDescendantNotOverflowsContainer,
-  cypressWaitAll,
-  assertIsEllipsified,
-  assertIsNotEllipsified,
-  popover,
-  echartsContainer,
-  queryBuilderHeader,
 } from "e2e/support/helpers";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 const { ORDERS, ORDERS_ID, REVIEWS, PRODUCTS, PRODUCTS_ID, REVIEWS_ID } =
   SAMPLE_DATABASE;
@@ -232,12 +235,8 @@ describe("issue 17160", () => {
   function assertMultipleValuesFilterState() {
     cy.findByText("2 selections").click();
 
-    cy.findByTestId("Doohickey-filter-value").within(() =>
-      cy.get("input").should("be.checked"),
-    );
-    cy.findByTestId("Gadget-filter-value").within(() =>
-      cy.get("input").should("be.checked"),
-    );
+    cy.findByLabelText("Doohickey").should("be.checked");
+    cy.findByLabelText("Gadget").should("be.checked");
   }
 
   function setup() {
@@ -1646,6 +1645,96 @@ describe("issue 32231", () => {
       cy.findByText(issue32231Error).should("not.exist");
       cy.findByText(multipleSeriesError).should("not.exist");
       cy.findByText(defaultError).should("exist");
+    });
+  });
+});
+
+describe("issue 43219", () => {
+  const questionDetails = {
+    display: "line",
+    query: {
+      "source-table": ORDERS_ID,
+      aggregation: [["count"]],
+      breakout: [
+        [
+          "field",
+          ORDERS.CREATED_AT,
+          {
+            "base-type": "type/DateTime",
+            "temporal-unit": "month",
+          },
+        ],
+      ],
+    },
+  };
+
+  const textFilter = createMockParameter({
+    name: "Text",
+    slug: "string",
+    id: "5aefc726",
+    type: "string/=",
+    sectionId: "string",
+  });
+
+  const cardsCount = 10;
+
+  const getQuestionAlias = index => `question-${index}`;
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+
+    cypressWaitAll(
+      Array.from({ length: cardsCount }, (_value, index) => {
+        const name = `Series ${index + 1}`;
+        return createQuestion({ ...questionDetails, name }).then(
+          ({ body: question }) => {
+            cy.wrap(question).as(getQuestionAlias(index));
+          },
+        );
+      }),
+    );
+
+    cy.then(function () {
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [textFilter],
+        },
+        questions: [
+          {
+            ...questionDetails,
+            name: "Base series",
+          },
+        ],
+        cards: [
+          {
+            size_x: 4,
+            size_y: 3,
+            series: Array.from(
+              { length: cardsCount },
+              (_value, index) => this[getQuestionAlias(index)],
+            ),
+          },
+        ],
+      }).then(({ dashboard }) => {
+        visitDashboard(dashboard.id);
+      });
+    });
+  });
+
+  it("is possible to map parameters to dashcards with lots of series (metabase#43219)", () => {
+    editDashboard();
+    cy.findByTestId("edit-dashboard-parameters-widget-container")
+      .findByText("Text")
+      .click();
+
+    getDashboardCard(0).within(() => {
+      cy.findByText("Series 10").should("exist").and("not.be.visible");
+
+      cy.findByTestId("visualization-root").scrollTo("bottom");
+      cy.findByTestId("parameter-mapper-container").scrollTo("right");
+
+      cy.findByText("Series 10").should("be.visible");
     });
   });
 });

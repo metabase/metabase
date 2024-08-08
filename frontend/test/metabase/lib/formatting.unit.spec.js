@@ -226,6 +226,16 @@ describe("formatting", () => {
   });
 
   describe("formatValue", () => {
+    it("should return null on nullish values by default", () => {
+      expect(formatValue(null)).toEqual(null);
+      expect(formatValue(undefined)).toEqual(null);
+    });
+    it("should format null as (empty) when stringifyNull option is true", () => {
+      expect(formatValue(null, { stringifyNull: true })).toEqual("(empty)");
+      expect(formatValue(undefined, { stringifyNull: true })).toEqual(
+        "(empty)",
+      );
+    });
     it("should format numbers with null column", () => {
       expect(formatValue(12345)).toEqual("12345");
     });

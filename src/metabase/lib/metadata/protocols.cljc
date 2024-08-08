@@ -92,7 +92,7 @@
    [:lib/type ::metadata-type-excluding-database]
    [:id       pos-int?]])
 
-(mu/defn ^:private metadata :- [:maybe ::metadata]
+(mu/defn- metadata :- [:maybe ::metadata]
   [metadata-provider :- ::metadata-provider
    metadata-type     :- ::metadata-type-excluding-database
    metadata-id       :- pos-int?]

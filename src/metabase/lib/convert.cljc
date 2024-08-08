@@ -413,7 +413,7 @@
              :get-week :get-year :get-month :get-day :get-hour
              :get-minute :get-second :get-quarter
              :datetime-add :datetime-subtract
-             :concat :substring :replace :regexextract :regex-match-first
+             :concat :substring :replace :regex-match-first
              :length :trim :ltrim :rtrim :upper :lower]]
   (lib.hierarchy/derive tag ::expression))
 
@@ -427,7 +427,7 @@
               (map ->legacy-MBQL))
         (:columns stage-metadata)))
 
-(mu/defn ^:private chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
+(mu/defn- chain-stages [{:keys [stages]} :- [:map [:stages [:sequential :map]]]]
   ;; :source-metadata aka :lib/stage-metadata is handled differently in the two formats.
   ;; In legacy, an inner query might have both :source-query, and :source-metadata giving the metadata for that nested
   ;; :source-query.

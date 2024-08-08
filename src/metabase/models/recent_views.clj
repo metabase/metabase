@@ -178,9 +178,11 @@
     [:multi {:dispatch :model}
      [:card [:map
              [:display :string]
+             [:database_id :int]
              [:parent_collection ::pc]
              [:moderated_status ::verified]]]
      [:dataset [:map
+                [:database_id :int]
                 [:parent_collection ::pc]
                 [:moderated_status ::verified]]]
      [:metric [:map
@@ -226,7 +228,7 @@
 ;; ================== Recent Cards ==================
 
 (defn card-recents
-  "Query to select card data"
+  "Query to select `report_card` data"
   [card-ids]
   (if-not (seq card-ids)
     []
@@ -235,6 +237,7 @@
                          :card.description
                          :card.archived
                          :card.id
+                         :card.database_id
                          :card.display
                          [:card.collection_id :entity-coll-id]
                          [:mr.status :moderated-status]
@@ -276,6 +279,7 @@
                    (ellide-archived model_object))]
     {:id model_id
      :name (:name card)
+     :database_id (:database_id card)
      :description (:description card)
      :display (some-> card :display name)
      :model :card
@@ -292,6 +296,7 @@
                       (ellide-archived model_object))]
     {:id model_id
      :name (:name dataset)
+     :database_id (:database_id dataset)
      :description (:description dataset)
      :model :dataset
      :can_write (mi/can-write? dataset)
@@ -460,7 +465,7 @@
                                               [:= :coll.id :rv.model_id]]]
                                  :order-by  [[:rv.timestamp :desc]]}))
 
-(mu/defn ^:private model->return-model [model :- :keyword]
+(mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
 
 (defn- post-process [entity->id->data recent-view]

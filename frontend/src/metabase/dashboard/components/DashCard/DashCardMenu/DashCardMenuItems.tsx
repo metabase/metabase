@@ -30,6 +30,7 @@ export const DashCardMenuItems = ({
     plugins,
     onEditQuestion = question => dispatch(editQuestion(question)),
   } = useInteractiveDashboardContext();
+
   const dashcardMenuItems = plugins?.dashboard?.dashcardMenu as
     | DashCardCustomMenuItem
     | undefined;
@@ -69,7 +70,9 @@ export const DashCardMenuItems = ({
       items.push(
         ...customItems.map(item => {
           const customItem =
-            typeof item === "function" ? item({ question }) : item;
+            typeof item === "function"
+              ? item({ question: question.card() })
+              : item;
 
           return {
             ...customItem,

@@ -19505,7 +19505,7 @@ msgstr "Wie man einen Treiber aktualisiert"
 
 #: frontend/src/metabase/components/DriverWarning/DriverWarning.jsx:74
 msgid "New driver"
-msgstr "Neuer Fahrer"
+msgstr "Neuer Treiber"
 
 #: frontend/src/metabase/components/DriverWarning/DriverWarning.jsx:74
 msgid "Driver deprecated"
@@ -31182,22 +31182,22 @@ msgstr "{0}min"
 #: frontend/src/metabase/browse/components/LastEdited.tsx:16
 #: frontend/src/metabase/browse/components/LastEdited.tsx:17
 msgid "{0}h"
-msgstr "{0}h"
+msgstr "{0}Std"
 
 #: frontend/src/metabase/browse/components/LastEdited.tsx:18
 #: frontend/src/metabase/browse/components/LastEdited.tsx:19
 msgid "{0}d"
-msgstr "{0}d"
+msgstr "{0}T"
 
 #: frontend/src/metabase/browse/components/LastEdited.tsx:20
 #: frontend/src/metabase/browse/components/LastEdited.tsx:21
 msgid "{0}mo"
-msgstr "{0}mo"
+msgstr "{0}M"
 
 #: frontend/src/metabase/browse/components/LastEdited.tsx:22
 #: frontend/src/metabase/browse/components/LastEdited.tsx:23
 msgid "{0}yr"
-msgstr "{0}Jahr"
+msgstr "{0}J"
 
 #: frontend/src/metabase/browse/components/LastEdited.tsx:43
 #: frontend/src/metabase/components/LastEditInfoLabel/LastEditInfoLabel.tsx:33
@@ -31443,7 +31443,7 @@ msgstr "(Keine Daten)"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.js:261
 msgid "vs. N/A"
-msgstr "gegen k.A."
+msgstr "vs. n.v."
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.js:273
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.js:281
@@ -31453,7 +31453,7 @@ msgstr "vs. {0}"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.js:425
 msgid "vs. previous {0}"
-msgstr "im Vergleich zu früher {0}"
+msgstr "vs. vorherige(r) {0}"
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/compute.js:564
 msgid "No change"
@@ -31723,7 +31723,7 @@ msgstr "Tage der Woche..."
 
 #: frontend/src/metabase/querying/components/DatePicker/ExcludeDatePicker/constants.ts:12
 msgid "Months of the year…"
-msgstr "Die Monate des Jahres..."
+msgstr "Monate des Jahres..."
 
 #: frontend/src/metabase/querying/components/DatePicker/ExcludeDatePicker/constants.ts:16
 msgid "Quarters of the year…"
@@ -31731,7 +31731,7 @@ msgstr "Quartale des Jahres..."
 
 #: frontend/src/metabase/querying/components/DatePicker/ExcludeDatePicker/constants.ts:20
 msgid "Hours of the day…"
-msgstr "Die Stunden des Tages..."
+msgstr "Stunden des Tages..."
 
 #: frontend/src/metabase/querying/components/DatePicker/ExcludeDatePicker/utils.ts:84
 msgid "1st"
@@ -33909,7 +33909,7 @@ msgstr "Dies kann sich auf die Modelle und Fragen auswirken, die die Tabelle(n) 
 msgid "Also send all models and questions based on this table to the trash"
 msgid_plural "Also send all models and questions based on these tables to the trash"
 msgstr[0] "Senden Sie auch alle Modelle und Fragen, die auf dieser Tabelle basieren, an den Papierkorb"
-msgstr[1] ""
+msgstr[1] "Senden Sie auch alle Modelle und Fragen, die auf diesen Tabellen basieren, in den Papierkorb"
 
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx:18
 msgid "Minimize maintenance"
@@ -34343,22 +34343,22 @@ msgstr "[{0} {1}]"
 #: frontend/src/metabase/components/Schedule/Schedule.tsx:204
 msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a time like '12:00pm'"
 msgid "{0} {1} at {2}"
-msgstr "{0} {1} bei {2}"
+msgstr "{0} {1} um {2}"
 
 #: frontend/src/metabase/components/Schedule/Schedule.tsx:216
 msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a day like 'Tuesday', {3} is a time like '12:00pm'"
 msgid "{0} {1} on {2} at {3}"
-msgstr "{0} {1} auf {2} bei {3}"
+msgstr "{0} {1} an {2} um {3}"
 
 #: frontend/src/metabase/components/Schedule/Schedule.tsx:230
 msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is the noun '15th' (as in 'the 15th of the month'), {3} is a time like '12:00pm'"
 msgid "{0} {1} on the {2} at {3}"
-msgstr "{0} {1} auf der {2} bei {3}"
+msgstr "{0} {1} am {2} um {3}"
 
 #: frontend/src/metabase/components/Schedule/Schedule.tsx:243
 msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is an adjective like 'first', {3} is a day like 'Tuesday', {4} is a time like '12:00pm'"
 msgid "{0} {1} on the {2} {3} at {4}"
-msgstr "{0} {1} auf dem {2} {3} bei {4}"
+msgstr "{0} {1} am {2} {3} um {4}"
 
 #: frontend/src/metabase/components/Schedule/constants.ts:19
 msgctxt "This is a time like 12:00pm. {0} is the hour part of the time"
@@ -34398,12 +34398,12 @@ msgstr "PM"
 #: frontend/src/metabase/components/Schedule/constants.ts:66
 msgctxt "Appears in contexts like 'Monthly on the first Monday'"
 msgid "first"
-msgstr "erste"
+msgstr "ersten"
 
 #: frontend/src/metabase/components/Schedule/constants.ts:70
 msgctxt "Appears in contexts like 'Monthly on the last Monday'"
 msgid "last"
-msgstr "zuletzt"
+msgstr "letzten"
 
 #: frontend/src/metabase/components/Schedule/constants.ts:74
 msgctxt "This is a noun meaning 'the fifteenth of the month', not an adjective. It appears in the phrase 'Monthly on the 15th'"
@@ -34462,13 +34462,13 @@ msgstr "Keine Cache-Konfiguration zum Invalidieren."
 msgid "Cleared a cached result."
 msgid_plural "Cleared {0} cached results."
 msgstr[0] "Ein zwischengespeichertes Ergebnis wurde gelöscht."
-msgstr[1] ""
+msgstr[1] "{0} zwischengespeicherte Ergebnisse wurden gelöscht."
 
 #: metabase/api/cache.clj:130
 msgid "Invalidated cache configuration."
 msgid_plural "Invalidated {0} cache configurations."
 msgstr[0] "Die Cache-Konfiguration ist ungültig."
-msgstr[1] ""
+msgstr[1] "{0} zwischengespeicherte Konfigurationen sind ungültig."
 
 #: metabase/api/cache.clj:126
 msgid "No cached results to clear."

@@ -20,6 +20,7 @@ import type {
   SPECIFIC_DATE_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   TIME_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
 } from "./constants";
 import type { ColumnExtractionTag } from "./extractions";
 
@@ -320,6 +321,8 @@ export type ExcludeDateFilterOperatorName =
 
 export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
 
+export type DefaultFilterOperatorName = typeof DEFAULT_FILTER_OPERATORS[number];
+
 export type RelativeDateBucketName = typeof RELATIVE_DATE_BUCKETS[number];
 
 export type ExcludeDateBucketName = typeof EXCLUDE_DATE_BUCKETS[number];
@@ -334,12 +337,13 @@ export type FilterOperatorDisplayInfo = {
 export type FilterParts =
   | StringFilterParts
   | NumberFilterParts
+  | CoordinateFilterParts
   | BooleanFilterParts
   | SpecificDateFilterParts
   | RelativeDateFilterParts
   | ExcludeDateFilterParts
   | TimeFilterParts
-  | CoordinateFilterParts;
+  | DefaultFilterParts;
 
 export type StringFilterParts = {
   operator: StringFilterOperatorName;
@@ -409,6 +413,11 @@ export type TimeFilterParts = {
   operator: TimeFilterOperatorName;
   column: ColumnMetadata;
   values: Date[];
+};
+
+export type DefaultFilterParts = {
+  operator: DefaultFilterOperatorName;
+  column: ColumnMetadata;
 };
 
 export type JoinConditionOperatorDisplayInfo = {

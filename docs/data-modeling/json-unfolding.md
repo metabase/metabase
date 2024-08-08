@@ -4,6 +4,12 @@ title: Working with JSON
 
 # Working with JSON
 
+## Filtering JSON
+
+In the [query builder](../questions/query-builder/introduction.md), Metabase can't parse JSON in columns, so you can only filter by "Is empty" or "Not empty".
+
+## JSON unfolding
+
 With [some databases](#databases-that-support-json-unfolding), Metabase can unfold JSON columns into their component fields, which you can then filter on using the query builder.
 
 Here is a table with a column that contains JSON.

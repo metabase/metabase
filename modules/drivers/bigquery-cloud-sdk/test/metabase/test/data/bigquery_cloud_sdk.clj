@@ -4,12 +4,10 @@
    [flatland.ordered.map :as ordered-map]
    [java-time.api :as t]
    [medley.core :as m]
-   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.bigquery-cloud-sdk :as bigquery]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.lib.schema.common :as lib.schema.common]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test.data :as data]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
@@ -37,20 +35,6 @@
                        (t/minus (t/instant) (t/hours 2)))
         (reset! timestamp* (System/currentTimeMillis)))
       @timestamp*)))
-
-;; Don't enable foreign keys when testing because BigQuery *doesn't* have a notion of foreign keys. Joins are still
-;; allowed, which puts us in a weird position, however; people can manually specifiy "foreign key" relationships in
-;; admin and everything should work correctly. Since we can't infer any "FK" relationships during sync our normal FK
-;; tests are not appropriate for BigQuery, so they're disabled for the time being.
-;;
-;; TODO - either write BigQuery-speciifc tests for FK functionality or add additional code to manually set up these FK
-;; relationships for FK tables
-(defmethod driver/database-supports? [:bigquery-cloud-sdk :foreign-keys]
-  [_driver _feature _db]
-  (if config/is-test?
-    qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests*
-    true))
-
 
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
@@ -110,7 +94,7 @@
   [_driver table-or-field-name]
   (str/replace table-or-field-name #"-" "_"))
 
-(mu/defn ^:private create-dataset! [^String dataset-id :- ::dataset-id]
+(mu/defn- create-dataset! [^String dataset-id :- ::dataset-id]
   (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
   (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
@@ -129,23 +113,23 @@
     (let [sql (apply format format-string args)]
       (log/infof "[BigQuery] %s\n" sql)
       (flush)
-      (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil nil))))
+      (#'bigquery/execute-bigquery-on-db (data/db) sql nil nil))))
 
 (def ^:private valid-field-types
   #{:BOOLEAN :DATE :DATETIME :FLOAT :INTEGER :NUMERIC :RECORD :STRING :TIME :TIMESTAMP})
 
-;; Fields must contain only letters, numbers, and underscores, start with a letter or underscore, and be at most 128
+;; Fields must contain only letters, numbers, spaces, and underscores, start with a letter or underscore, and be at most 128
 ;; characters long.
 (def ^:private ValidFieldName
-  [:re #"^[A-Za-z_]\w{0,127}$"])
+  [:re #"^[A-Za-z_](\w| ){0,127}$"])
 
-(mu/defn ^:private delete-table!
+(mu/defn- delete-table!
   [dataset-id :- ::lib.schema.common/non-blank-string
    table-id   :- ::lib.schema.common/non-blank-string]
   (.delete (bigquery) (TableId/of dataset-id table-id))
   (log/error (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
 
-(mu/defn ^:private create-table!
+(mu/defn- create-table!
   [^String dataset-id :- ::lib.schema.common/non-blank-string
    ^String table-id   :- ::lib.schema.common/non-blank-string
    field-name->type   :- [:map-of ValidFieldName (into [:enum] valid-field-types)]]
@@ -166,10 +150,10 @@
 (defn- table-row-count ^Integer [^String dataset-id, ^String table-id]
   (let [sql                           (format "SELECT count(*) FROM `%s.%s.%s`" (project-id) dataset-id table-id)
         respond                       (fn [_ rows]
-                                        (ffirst rows))
+                                        (ffirst (into [] rows)))
         client                        (bigquery)
-        ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil nil)]
-    (#'bigquery/post-process-native respond query-response (atom false))))
+        ^TableResult query-response   (#'bigquery/execute-bigquery client sql [] nil)]
+    (#'bigquery/post-process-native respond query-response #_cancel-chan nil)))
 
 (defprotocol ^:private Insertable
   (^:private ->insertable [this]

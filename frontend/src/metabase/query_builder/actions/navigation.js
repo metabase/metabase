@@ -58,9 +58,20 @@ export const popState = createThunkAction(
     if (location.state && location.state.card) {
       if (!equals(card, location.state.card)) {
         const shouldUpdateUrl = location.state.card.type === "model";
-        await dispatch(setCardAndRun(location.state.card, { shouldUpdateUrl }));
-        await dispatch(setCurrentState(location.state));
-        await dispatch(resetUIControls());
+        const isEmptyQuery = !location.state.card.dataset_query.database;
+
+        if (isEmptyQuery) {
+          // We are being navigated back to empty notebook edtor without data source selected.
+          // Reset QB state to aovid showing any data or errors from "future" history states.
+          // Do not run the question as the query without data source is invalid.
+          await dispatch(initializeQB(location, {}));
+        } else {
+          await dispatch(
+            setCardAndRun(location.state.card, { shouldUpdateUrl }),
+          );
+          await dispatch(setCurrentState(location.state));
+          await dispatch(resetUIControls());
+        }
       }
     }
 

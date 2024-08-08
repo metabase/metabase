@@ -4,7 +4,6 @@ import { t } from "ttag";
 import AccordionList from "metabase/core/components/AccordionList";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
-import { checkNotNull } from "metabase/lib/types";
 import {
   CompareAggregations,
   getOffsetPeriod,
@@ -78,7 +77,7 @@ export function AggregationPicker({
   onSelect,
   onClose,
 }: AggregationPickerProps) {
-  const question = checkNotNull(useSelector(getQuestion));
+  const question = useSelector(getQuestion);
   const metadata = useSelector(getMetadata);
   const displayInfo = clause
     ? Lib.displayInfo(query, stageIndex, clause)
@@ -248,12 +247,14 @@ export function AggregationPicker({
     (aggregations: Lib.ExpressionClause[]) => {
       onAdd(aggregations);
 
-      trackColumnCompareViaShortcut(
-        query,
-        stageIndex,
-        aggregations,
-        question.id(),
-      );
+      if (question) {
+        trackColumnCompareViaShortcut(
+          query,
+          stageIndex,
+          aggregations,
+          question.id(),
+        );
+      }
 
       onClose?.();
     },

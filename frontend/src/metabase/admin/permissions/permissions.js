@@ -33,6 +33,7 @@ import { DataPermissionType, DataPermission } from "./types";
 import { isDatabaseEntityId } from "./utils/data-entity-id";
 import {
   getModifiedGroupsPermissionsGraphParts,
+  getModifiedCollectionPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./utils/graph/partial-updates";
 
@@ -239,14 +240,29 @@ export const saveCollectionPermissions = createThunkAction(
   SAVE_COLLECTION_PERMISSIONS,
   namespace => async (_dispatch, getState) => {
     MetabaseAnalytics.trackStructEvent("Permissions", "save");
-    const { collectionPermissions, collectionPermissionsRevision } =
-      getState().admin.permissions;
+
+    const {
+      originalCollectionPermissions,
+      collectionPermissions,
+      collectionPermissionsRevision,
+    } = getState().admin.permissions;
+
+    const modifiedPermissions = getModifiedCollectionPermissionsGraphParts(
+      originalCollectionPermissions,
+      collectionPermissions,
+    );
+
     const result = await CollectionsApi.updateGraph({
       namespace,
       revision: collectionPermissionsRevision,
-      groups: collectionPermissions,
+      groups: modifiedPermissions,
+      skip_graph: true,
     });
-    return result;
+
+    return {
+      ...result,
+      groups: collectionPermissions,
+    };
   },
 );
 

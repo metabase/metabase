@@ -34,7 +34,9 @@
     (mapv file-hash [ ;; inline script in index.html that sets `MetabaseBootstrap` and the like
                      "frontend_client/inline_js/index_bootstrap.js"
                      ;; inline script in init.html
-                     "frontend_client/inline_js/init.js"])))
+                     "frontend_client/inline_js/init.js"
+                     ;; inline script in init.html to handle errors when grabbing app scripts
+                     "frontend_client/inline_js/asset_loading_error.js"])))
 
 (defn- cache-prevention-headers
   "Headers that tell browsers not to cache a response."

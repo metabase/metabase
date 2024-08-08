@@ -15,11 +15,124 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.pulse :as pulse]
+   [metabase.pulse.test-util :as pulse.test-util]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
    [metabase.test :as mt])
   (:import
    (org.apache.poi.xssf.usermodel XSSFSheet)))
+
+(defn- process-results
+  [export-format results]
+  (when (seq results)
+    (case export-format
+      :csv (csv/read-csv results))))
+
+(defn- card-download
+  [{:keys [id] :as _card} export-format format-rows?]
+  (->> (format "card/%d/query/%s?format_rows=%s" id (name export-format) format-rows?)
+       (mt/user-http-request :crowberto :post 200)
+       (process-results export-format)))
+
+(defn- dashcard-download
+  [card-or-dashcard export-format format-rows?]
+  (letfn [(dashcard-download* [{dashcard-id  :id
+                                card-id      :card_id
+                                dashboard-id :dashboard_id}]
+            (->> (format "dashboard/%d/dashcard/%d/card/%d/query/%s?format_rows=%s" dashboard-id dashcard-id card-id (name export-format) format-rows?)
+                 (mt/user-http-request :crowberto :post 200)
+                 (process-results export-format)))]
+      (if (contains? card-or-dashcard :dashboard_id)
+        (dashcard-download* card-or-dashcard)
+        (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                      :card_id      (:id card-or-dashcard)}]
+          (dashcard-download* dashcard)))))
+
+(defn- run-pulse-and-return-attached-csv-data!
+  "Simulate sending the pulse email, get the attached text/csv content, and parse into a map of
+  attachment name -> column name -> column data"
+  [pulse export-format]
+  (let [m    (update
+              (mt/with-test-user nil
+                (pulse.test-util/with-captured-channel-send-messages!
+                  (pulse/send-pulse! pulse)))
+              :channel/email vec)
+        msgs (get-in m [:channel/email 0 :message])]
+    (first (keep
+            (fn [{:keys [type content-type content]}]
+             (when (and
+                    (= :attachment type)
+                    (= (format "text/%s" (name export-format)) content-type))
+               (slurp content)))
+           msgs))))
+
+(defn- alert-attachment!
+  [card export-format _format-rows?]
+  (letfn [(alert-attachment* [pulse]
+            (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
+                 (process-results export-format)))]
+    (mt/with-temp [:model/Pulse {pulse-id :id
+                                 :as      pulse} {:name "Test Alert"
+                                                  :alert_condition "rows"}
+                   :model/PulseCard _ (merge
+                                       (when (= :csv  export-format) {:include_csv true})
+                                       (when (= :json export-format) {:include_json true})
+                                       (when (= :xlsx export-format) {:include_xlsx true})
+                                       {:pulse_id pulse-id
+                                        :card_id  (:id card)})
+                   :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                               :pulse_id     pulse-id
+                                                               :enabled      true}
+                   :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                   :user_id          (mt/user->id :rasta)}]
+      (alert-attachment* pulse))))
+
+(defn- subscription-attachment!
+  [card-or-dashcard export-format _format-rows?]
+  (letfn [(subscription-attachment* [pulse]
+            (->> (run-pulse-and-return-attached-csv-data! pulse export-format)
+                 (process-results export-format)))]
+    (if (contains? card-or-dashcard :dashboard_id)
+      ;; dashcard
+      (mt/with-temp [:model/Pulse {pulse-id :id
+                                   :as      pulse} {:name         "Test Pulse"
+                                   :dashboard_id (:dashboard_id card-or-dashcard)}
+                     :model/PulseCard _ (merge
+                                         (case export-format
+                                           :csv  {:include_csv true}
+                                           :json {:include_json true}
+                                           :xlsx {:include_xlsx true})
+                                         {:pulse_id          pulse-id
+                                          :card_id           (:card_id card-or-dashcard)
+                                          :dashboard_card_id (:id card-or-dashcard)})
+                     :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                 :pulse_id     pulse-id
+                                                                 :enabled      true}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                     :user_id          (mt/user->id :rasta)}]
+        (subscription-attachment* pulse))
+      ;; card
+      (mt/with-temp [:model/Dashboard {dashboard-id :id} {}
+                     :model/DashboardCard {dashcard-id :id} {:dashboard_id dashboard-id
+                                                             :card_id      (:id card-or-dashcard)}
+                     :model/Pulse {pulse-id :id
+                                   :as      pulse} {:name         "Test Pulse"
+                                   :dashboard_id dashboard-id}
+                     :model/PulseCard _ (merge
+                                         (when (= :csv  export-format) {:include_csv true})
+                                         (when (= :json export-format) {:include_json true})
+                                         (when (= :xlsx export-format) {:include_xlsx true})
+                                         {:pulse_id          pulse-id
+                                          :card_id           (:id card-or-dashcard)
+                                          :dashboard_card_id dashcard-id})
+                     :model/PulseChannel {pulse-channel-id :id} {:channel_type :email
+                                                                 :pulse_id     pulse-id
+                                                                 :enabled      true}
+                     :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
+                                                     :user_id          (mt/user->id :rasta)}]
+        (subscription-attachment* pulse)))))
 
 (set! *warn-on-reflection* true)
 
@@ -427,3 +540,63 @@
                     ["Widget" 0.0 3109.31]
                     [nil 1.0 11149.28]]
                  (take 6 data)))))))))
+
+(deftest ^:parallel dashcard-viz-settings-downloads-test
+  (testing "Dashcard visualization settings are respected in downloads."
+    (testing "for csv"
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {card-id :id :as card}  {:display       :table
+                                                            :dataset_query {:database (mt/id)
+                                                                            :type     :query
+                                                                            :query    {:source-table (mt/id :orders)}}
+                                                            :visualization_settings
+                                                            {:table.cell_column "SUBTOTAL"
+                                                             :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
+                                                                                 {:column_title "SUB CASH MONEY"}}}}
+                       :model/Dashboard {dashboard-id :id} {}
+                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                      :card_id      card-id
+                                                      :visualization_settings
+                                                      {:table.cell_column "TOTAL"
+                                                       :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
+                                                                           {:column_title "CASH MONEY"}}}}]
+          (let [card-result     (card-download card :csv true)
+                dashcard-result (dashcard-download dashcard :csv true)
+                card-header     ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                 "Total" "Discount ($)" "Created At" "Quantity"]
+                dashcard-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                 "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
+            (is (= {:card-download     card-header
+                    :dashcard-download dashcard-header}
+                   {:card-download     (first card-result)
+                    :dashcard-download (first dashcard-result)}))))))))
+
+(deftest dashcard-viz-settings-attachments-test
+  (testing "Dashcard visualization settings are respected in subscription attachments."
+    (testing "for csv"
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card {card-id :id :as card} {:display       :table
+                                                           :dataset_query {:database (mt/id)
+                                                                           :type     :query
+                                                                           :query    {:source-table (mt/id :orders)}}
+                                                           :visualization_settings
+                                                           {:table.cell_column "SUBTOTAL"
+                                                            :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :subtotal))
+                                                                                {:column_title "SUB CASH MONEY"}}}}
+                       :model/Dashboard {dashboard-id :id} {}
+                       :model/DashboardCard dashcard  {:dashboard_id dashboard-id
+                                                       :card_id      card-id
+                                                       :visualization_settings
+                                                       {:table.cell_column "TOTAL"
+                                                        :column_settings   {(format "[\"ref\",[\"field\",%d,null]]" (mt/id :orders :total))
+                                                                            {:column_title "CASH MONEY"}}}}]
+          (let [subscription-result (subscription-attachment! dashcard :csv true)
+                alert-result        (alert-attachment! card :csv true)
+                alert-header        ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                     "Total" "Discount ($)" "Created At" "Quantity"]
+                subscription-header ["ID" "User ID" "Product ID" "SUB CASH MONEY" "Tax"
+                                     "CASH MONEY" "Discount ($)" "Created At" "Quantity"]]
+            (is (= {:alert-attachment        alert-header
+                    :subscription-attachment subscription-header}
+                   {:alert-attachment        (first alert-result)
+                    :subscription-attachment (first subscription-result)}))))))))

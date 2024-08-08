@@ -12,6 +12,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card :as card]
    [metabase.models.interface :as mi]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.card-test :as qp.card-test]
@@ -181,16 +182,6 @@
           ;; actions still exists
           (is (= 2 (t2/count :model/Action :id [:in [action-id-1 action-id-2]])))
           (is (= 2 (t2/count :model/ImplicitAction :action_id [:in [action-id-1 action-id-2]]))))))))
-
-(deftest replace-fields-and-tables!-test
-  (testing "fields and tables in a native card can be replaced"
-    ;; We need the user to be defined in order to population the new revision related to the card update
-    (binding [api/*current-user-id* (mt/user->id :crowberto)]
-      (t2.with-temp/with-temp [:model/Card {card-id :id :as card} {:dataset_query (mt/native-query {:query "SELECT TOTAL FROM ORDERS"})}]
-        (card/replace-fields-and-tables! card {:fields {(mt/id :orders :total) (mt/id :people :name)}
-                                               :tables {(mt/id :orders) (mt/id :people)}})
-        (is (= "SELECT NAME FROM PEOPLE"
-               (:query (:native (t2/select-one-fn :dataset_query :model/Card :id card-id)))))))))
 
 ;;; ------------------------------------------ Circular Reference Detection ------------------------------------------
 
@@ -432,13 +423,13 @@
       (testing "Should not be able to create new Card with a filter with the wrong Database ID"
         (is (thrown-with-msg?
              clojure.lang.ExceptionInfo
-             #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""
+             #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
              (t2.with-temp/with-temp [:model/Card _ bad-card-data]))))
       (testing "Should not be able to update a Card to have a filter with the wrong Database ID"
         (t2.with-temp/with-temp [:model/Card {card-id :id} good-card-data]
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
-               #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data\", but the query is against Database \d+ \"daily-bird-counts\""
+               #"Invalid Field Filter: Field \d+ \"VENUES\"\.\"NAME\" belongs to Database \d+ \"test-data \(h2\)\", but the query is against Database \d+ \"daily-bird-counts \(h2\)\""
                (t2/update! :model/Card card-id bad-card-data))))))))
 
 ;;; ------------------------------------------ Parameters tests ------------------------------------------
@@ -576,6 +567,18 @@
         (t2/delete! :model/Card :id source-card-id)
         (is (= []
                (t2/select :model/ParameterCard :card_id source-card-id)))))))
+
+(deftest do-not-update-parameter-card-if-it-doesn't-change-test
+  (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
+    (mt/with-temp [:model/Card  {source-card-id :id} {}
+                   :model/Card  {card-id-1 :id}      {:parameters [{:name       "Category Name"
+                                                                    :slug       "category_name"
+                                                                    :id         "_CATEGORY_NAME_"
+                                                                    :type       "category"
+                                                                    :values_source_type    "card"
+                                                                    :values_source_config {:card_id source-card-id}}]}]
+      (mt/with-dynamic-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
+        (t2/update! :model/Card card-id-1 {:name "new name"})))))
 
 (deftest cleanup-parameter-on-card-changes-test
   (mt/dataset test-data
@@ -834,10 +837,8 @@
             (t2/delete! :model/Revision :model "Card" :model_id (:id card))
             (t2/update! :model/Card (:id card) changes)
             (create-card-revision! (:id card) false)
-
             (testing (format "we should track when %s changes" col)
               (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
-
             (when-not (#{;; these columns are expected to not have a description because it's always
                          ;; comes with a dataset_query changes
                          :table_id :database_id :query_type

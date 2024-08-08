@@ -312,7 +312,7 @@
 (deftest sync-fks-and-fields-test
   (testing (str "[[sync-fields/sync-fields-for-table!]] and [[sync-fks/sync-fks-for-table!]] should sync fields and fks"
                 "in the same way that [[sync-fields/sync-fields!]] and [[sync-fks/sync-fks!]] do")
-    (mt/test-drivers (mt/normal-drivers-with-feature :foreign-keys)
+    (mt/test-drivers (mt/normal-drivers-with-feature :metadata/key-constraints)
       (mt/dataset country
         (let [tables (t2/select :model/Table :db_id (mt/id))]
           (doseq [sync-fields-and-fks! [(fn []

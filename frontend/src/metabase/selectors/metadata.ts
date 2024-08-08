@@ -369,8 +369,6 @@ function hydrateNameField(field: Field, metadata: Metadata): Field | undefined {
   const nameFieldId = field.getPlainObject().name_field;
   if (nameFieldId != null) {
     return metadata.field(nameFieldId) ?? undefined;
-  } else if (field.table && field.isPK()) {
-    return field.table.getFields().find(f => f.isEntityName());
   }
 }
 

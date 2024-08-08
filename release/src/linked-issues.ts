@@ -1,6 +1,6 @@
 export function getLinkedIssues(body: string) {
   const matches = body.match(
-    /(close(s|d)?|fixe?(s|d)?|resolve(s|d)?) (#|https?:\/\/github.com\/.+\/issues\/)(\d+)/gi,
+    /(close(s|d)?|fixe?(s|d)?|resolve(s|d)?)(:?) (#|https?:\/\/github.com\/.+\/issues\/)(\d+)/gi,
   );
 
   if (matches) {
@@ -17,7 +17,7 @@ export function getPRsFromCommitMessage(message: string) {
   const firstLine = message.split('\n\n')[0];
   const result = [ ...firstLine.matchAll(/\(#(\d+)\)/g) ];
   if (!result.length) {
-    console.log('no pr found in commit message', message);
+    console.log('No pr found in commit message', message);
     return null;
   }
 

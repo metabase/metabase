@@ -32,11 +32,11 @@ export function PublicOrEmbeddedQuestionView({
   setParameterValue,
   setParameterValueToDefault,
   bordered,
-  hide_download_button,
   hide_parameters,
   theme,
   titled,
   setCard,
+  downloadsEnabled,
 }: {
   initialized: boolean;
   card: Card<DatasetQuery> | null;
@@ -49,14 +49,14 @@ export function PublicOrEmbeddedQuestionView({
   setParameterValue: (parameterId: ParameterId, value: any) => Promise<void>;
   setParameterValueToDefault: (parameterId: ParameterId) => void;
   bordered: boolean;
-  hide_download_button: boolean | null;
   hide_parameters: string | null;
   theme: DisplayTheme | undefined;
   titled: boolean;
   setCard: Dispatch<SetStateAction<Card<DatasetQuery> | null>>;
+  downloadsEnabled: boolean;
 }) {
   const question = new Question(card, metadata);
-  const actionButtons = result && (
+  const actionButtons = result && downloadsEnabled && (
     <QueryDownloadWidget
       className={cx(CS.m1, CS.textMediumHover)}
       question={question}
@@ -77,8 +77,9 @@ export function PublicOrEmbeddedQuestionView({
       setParameterValue={setParameterValue}
       enableParameterRequiredBehavior
       setParameterValueToDefault={setParameterValueToDefault}
+      // We don't support background: false on questions (metabase#43838)
+      background
       bordered={bordered}
-      hide_download_button={hide_download_button}
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}

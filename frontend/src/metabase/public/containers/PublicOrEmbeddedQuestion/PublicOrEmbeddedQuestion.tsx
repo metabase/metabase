@@ -1,19 +1,18 @@
 import type { Location } from "history";
 import { useCallback, useEffect, useState } from "react";
 import { useMount } from "react-use";
-import _ from "underscore";
 
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { useEmbedFrameOptions } from "metabase/public/hooks";
 import { setErrorPage } from "metabase/redux/app";
-import { addParamValues, addFields } from "metabase/redux/metadata";
+import { addFields, addParamValues } from "metabase/redux/metadata";
 import { getMetadata } from "metabase/selectors/metadata";
 import {
-  PublicApi,
   EmbedApi,
-  setPublicQuestionEndpoints,
-  setEmbedQuestionEndpoints,
+  PublicApi,
   maybeUsePivotEndpoint,
+  setEmbedQuestionEndpoints,
+  setPublicQuestionEndpoints,
 } from "metabase/services";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
@@ -47,6 +46,8 @@ export const PublicOrEmbeddedQuestion = ({
   const [parameterValues, setParameterValues] = useState<ParameterValuesMap>(
     {},
   );
+  const { bordered, hide_parameters, theme, titled, downloadsEnabled } =
+    useEmbedFrameOptions({ location });
 
   useMount(async () => {
     if (uuid) {
@@ -165,9 +166,6 @@ export const PublicOrEmbeddedQuestion = ({
     );
   };
 
-  const { bordered, hide_download_button, hide_parameters, theme, titled } =
-    useEmbedFrameOptions({ location });
-
   return (
     <PublicOrEmbeddedQuestionView
       initialized={initialized}
@@ -181,11 +179,11 @@ export const PublicOrEmbeddedQuestion = ({
       setParameterValue={setParameterValue}
       setParameterValueToDefault={setParameterValueToDefault}
       bordered={bordered}
-      hide_download_button={hide_download_button}
       hide_parameters={hide_parameters}
       theme={theme}
       titled={titled}
       setCard={setCard}
+      downloadsEnabled={downloadsEnabled}
     />
   );
 };

@@ -157,7 +157,11 @@ export function showAutoWireToastNewCard({
       );
 
       for (const dashcard of dashcards) {
-        for (const mapping of dashcard.parameter_mappings ?? []) {
+        const mappings = (dashcard.parameter_mappings ?? []).filter(
+          mapping => mapping.parameter_id === parameter.id,
+        );
+
+        for (const mapping of mappings) {
           const option = getMappingOptionByTarget(
             dashcardMappingOptions,
             targetDashcard,

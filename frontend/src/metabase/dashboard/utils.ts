@@ -1,3 +1,4 @@
+import type { Location } from "history";
 import _ from "underscore";
 
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
@@ -345,3 +346,25 @@ export function createVirtualCard(display: VirtualCardDisplay): VirtualCard {
 export const isDashboardCacheable = (
   dashboard: Dashboard,
 ): dashboard is CacheableDashboard => typeof dashboard.id !== "string";
+
+export function parseTabSlug(location: Location) {
+  const slug = location.query?.tab;
+  if (typeof slug === "string" && slug.length > 0) {
+    const id = parseInt(slug, 10);
+    return Number.isSafeInteger(id) ? id : null;
+  }
+  return null;
+}
+
+export function createTabSlug({
+  id,
+  name,
+}: {
+  id: SelectedTabId;
+  name: string | undefined;
+}) {
+  if (id === null || id < 0 || !name) {
+    return "";
+  }
+  return [id, ...name.toLowerCase().split(" ")].join("-");
+}

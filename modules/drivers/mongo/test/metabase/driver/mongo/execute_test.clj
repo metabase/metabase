@@ -6,8 +6,10 @@
    [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.query-processor :as qp]
+   [metabase.query-processor.middleware.cache.impl :as middleware.cache.impl]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    #_(com.mongodb BasicDBObject)
    (java.util NoSuchElementException)))
@@ -91,3 +93,39 @@
             (is (thrown-with-msg? Throwable
                                   #"Command failed with error 11601.*operation was interrupted"
                                   (qp/process-query query))))))))))
+
+(deftest ^:synchronized question-base-on-native-model-cache-test
+  (testing "Question based on native model is cacheable (#43901)"
+    (mt/test-drivers
+     #{:mongo}
+     (t2.with-temp/with-temp
+       [:model/Card c {:type :model
+                       :dataset_query {:database (mt/id)
+                                       :type     :native
+                                       :native   {:template_tags {}
+                                                  :collection "orders"
+                                                  :query (str "[{\"$addFields\": {}}\n"
+                                                              " {\"$limit\":1}]")}}}]
+       (mt/with-temporary-setting-values [enable-query-caching true]
+         (let [orig-freeze! @#'middleware.cache.impl/freeze!
+               freeze-started (atom false)
+               thrown-data (atom [])]
+           (with-redefs [middleware.cache.impl/freeze! (fn [& args]
+                                                         (reset! freeze-started true)
+                                                         (try
+                                                           (apply orig-freeze! args)
+                                                           (catch Throwable t
+                                                             (swap! thrown-data conj t)
+                                                             (throw t))))]
+             (let [model-based-query (-> (mt/mbql-query orders {:source-table (str "card__" (:id c))})
+                                         (update :cache_strategy assoc
+                                                 ;; Enable caching for current query
+                                                 :avg-execution-time 5000
+                                                 :min_duration_ms 1
+                                                 :multiplier 100000
+                                                 :type :ttl))]
+               (qp/process-query model-based-query)
+               (testing "Sanity: freeze! caching function ran"
+                 (is (true? @freeze-started)))
+               (testing "No exception was thrown during results cache serialization"
+                 (is (zero? (count @thrown-data))))))))))))

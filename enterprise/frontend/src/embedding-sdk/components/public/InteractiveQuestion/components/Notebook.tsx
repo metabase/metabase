@@ -1,3 +1,4 @@
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import {
   runQuestionQuery,
@@ -10,15 +11,13 @@ import {
   getIsRunnable,
 } from "metabase/query_builder/selectors";
 import { getSetting } from "metabase/selectors/settings";
-import { Box } from "metabase/ui";
+import { ScrollArea } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
-
-import { useInteractiveQuestionData } from "../hooks";
 
 type NotebookProps = { onApply?: () => void };
 
 export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
-  const { question } = useInteractiveQuestionData();
+  const { question } = useInteractiveQuestionContext();
 
   const isDirty = useSelector(getIsDirty);
   const isRunnable = useSelector(getIsRunnable);
@@ -31,7 +30,7 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
 
   return (
     question && (
-      <Box w="100%" h="100%">
+      <ScrollArea w="100%" h="100%">
         <QBNotebook
           question={question}
           isDirty={isDirty}
@@ -42,11 +41,14 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           updateQuestion={(question: Question) =>
             dispatch(updateQuestion(question))
           }
-          runQuestionQuery={() => dispatch(runQuestionQuery())}
-          setQueryBuilderMode={onApply}
+          runQuestionQuery={() => {
+            dispatch(runQuestionQuery());
+            onApply();
+          }}
+          setQueryBuilderMode={() => {}}
           hasVisualizeButton={true}
         />
-      </Box>
+      </ScrollArea>
     )
   );
 };

@@ -1,5 +1,6 @@
 (ns metabase.query-processor.preprocess
   (:require
+   [clojure.data :as data]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.query :as lib.query]
@@ -52,7 +53,7 @@
 ;;; individual middleware function is wrapped in either [[ensure-legacy]] or [[ensure-pmbql]], and will then see the
 ;;; flavor of MBQL it is written for.
 
-(mu/defn ^:private ->legacy :- mbql.s/Query
+(mu/defn- ->legacy :- mbql.s/Query
   [query]
   (lib.convert/->legacy-MBQL query))
 
@@ -135,10 +136,12 @@
               (when-not (= <> query)
                 (let [middleware-fn-name (if-let [fn-name (:name (meta middleware-fn))]
                                            (if-let [fn-ns (:ns (meta middleware-fn))]
-                                             (format "%s/%s" (ns-name fn-ns) fn-name)
+                                             (symbol (format "%s/%s" (ns-name fn-ns) fn-name))
                                              fn-name)
                                            middleware-fn)]
-                  (list middleware-fn-name '=> <>))))
+                  (list middleware-fn-name '=> <>
+                        ^{:portal.viewer/default :portal.viewer/diff}
+                        (data/diff query <>)))))
             ;; make sure the middleware returns a valid query... this should be dev-facing only so no need to i18n
             (when-not (map? <>)
               (throw (ex-info (format "Middleware did not return a valid query.")
@@ -154,7 +157,7 @@
   (let [replacement (-> preprocessed-query :info :alias/escaped->original)]
     (escape-join-aliases/restore-aliases preprocessed-query replacement)))
 
-(mu/defn query->expected-cols :- [:sequential :map]
+(mu/defn query->expected-cols :- [:maybe [:sequential :map]]
   "Return the `:cols` you would normally see in MBQL query results by preprocessing the query and calling `annotate` on
   it. This only works for pure MBQL queries, since it does not actually run the queries. Native queries or MBQL
   queries with native source queries won't work, since we don't need the results."

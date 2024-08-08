@@ -17,7 +17,7 @@ export const onlyOnOSS = () => cy.onlyOn(isOSS);
  *
  * @param {boolean} cond
  */
-const conditionalDescribe = cond => (cond ? describe : describe.skip);
+export const conditionalDescribe = cond => (cond ? describe : describe.skip);
 
 export const describeEE = conditionalDescribe(isEE);
 

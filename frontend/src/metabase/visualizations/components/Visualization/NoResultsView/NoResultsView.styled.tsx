@@ -10,7 +10,7 @@ export const Root = styled.div`
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   padding-bottom: 0.5rem;
-  color: var(--mb-color-text-light);
+  color: var(--mb-color-text-tertiary);
 `;
 
 export const ShortMessage = styled.span`

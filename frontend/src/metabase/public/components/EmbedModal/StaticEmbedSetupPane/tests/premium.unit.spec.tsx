@@ -38,13 +38,13 @@ describe("Static Embed Setup phase - EE, with token", () => {
       });
     });
 
-    describe("Appearance tab", () => {
+    describe("Look and Feel tab", () => {
       it("should render Font selector", async () => {
         await setup({
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
@@ -54,7 +54,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
 
         await userEvent.click(fontSelect);
 
-        const popover = await screen.findByRole("grid");
+        const popover = await screen.findByRole("listbox", { name: "Font" });
 
         FONTS_MOCK_VALUES.forEach(fontName => {
           expect(within(popover).getByText(fontName)).toBeVisible();
@@ -72,13 +72,13 @@ describe("Static Embed Setup phase - EE, with token", () => {
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
 
         expect(
-          screen.queryByText("Removing the “Powered by Metabase” banner"),
+          screen.queryByText("Removing the banner"),
         ).not.toBeInTheDocument();
       });
 
@@ -87,14 +87,12 @@ describe("Static Embed Setup phase - EE, with token", () => {
           props: {
             resourceType,
           },
-          activeTab: "Appearance",
+          activeTab: "Look and Feel",
           hasEnterprisePlugins: true,
           tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
         });
 
-        expect(
-          screen.getByText("Customizing your embed’s appearance"),
-        ).toBeVisible();
+        expect(screen.getByText("Customizing look and feel")).toBeVisible();
 
         const link = screen.getByRole("link", {
           name: "documentation",
@@ -113,7 +111,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
               resourceType,
               resource: getMockResource(resourceType, true),
             },
-            activeTab: "Appearance",
+            activeTab: "Look and Feel",
             hasEnterprisePlugins: true,
             tokenFeatures: createMockTokenFeatures({ whitelabel: true }),
           });
@@ -124,7 +122,7 @@ describe("Static Embed Setup phase - EE, with token", () => {
           await userEvent.click(screen.getByLabelText("Download data"));
 
           expect(screen.getByTestId("text-editor-mock")).toHaveTextContent(
-            `hide_download_button=true`,
+            `downloads=false`,
           );
         });
       }

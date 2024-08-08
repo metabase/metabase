@@ -12,9 +12,9 @@ import _ from "underscore";
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import CS from "metabase/css/core/index.css";
 import { Dashboard } from "metabase/dashboard/components/Dashboard/Dashboard";
-import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
   useDashboardUrlParams,
+  useDashboardUrlQuery,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
 import favicon from "metabase/hoc/Favicon";
@@ -50,9 +50,9 @@ import {
   getIsEditing,
   getIsEditingParameter,
   getIsHeaderVisible,
-  getIsLoadingComplete,
+  getIsDashCardsLoadingComplete,
   getIsNavigatingBackToDashboard,
-  getIsRunning,
+  getIsDashCardsRunning,
   getIsSharing,
   getLoadingStartTime,
   getParameterValues,
@@ -87,8 +87,8 @@ const mapStateToProps = (state: State) => {
     sidebar: getSidebar(state),
     pageFavicon: getFavicon(state),
     documentTitle: getDocumentTitle(state),
-    isRunning: getIsRunning(state),
-    isLoadingComplete: getIsLoadingComplete(state),
+    isRunning: getIsDashCardsRunning(state),
+    isLoadingComplete: getIsDashCardsLoadingComplete(state),
     isHeaderVisible: getIsHeaderVisible(state),
     isAdditionalInfoVisible: getIsAdditionalInfoVisible(state),
     selectedTabId: getSelectedTabId(state),
@@ -109,8 +109,15 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type DashboardAppProps = OwnProps & ReduxProps & WithRouterProps;
 
 const DashboardApp = (props: DashboardAppProps) => {
-  const { dashboard, isRunning, isLoadingComplete, isEditing, isDirty, route } =
-    props;
+  const {
+    dashboard,
+    isRunning,
+    isLoadingComplete,
+    isEditing,
+    isDirty,
+    route,
+    router,
+  } = props;
 
   const {
     documentTitle: _documentTitle,
@@ -195,7 +202,6 @@ const DashboardApp = (props: DashboardAppProps) => {
 
   const {
     hasNightModeToggle,
-    hideParameters,
     isFullscreen,
     isNightMode,
     onNightModeChange,
@@ -205,12 +211,11 @@ const DashboardApp = (props: DashboardAppProps) => {
     onRefreshPeriodChange,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
 
-  useSyncURLSlug({ location });
+  useDashboardUrlQuery(router, location);
 
   return (
     <div className={cx(CS.shrinkBelowContentSize, CS.fullHeight)}>
       <LeaveConfirmationModal isEnabled={isEditing && isDirty} route={route} />
-      {/* @ts-expect-error - types coming from thunks are not correct*/}
       <Dashboard
         location={location}
         dashboardId={dashboardId}
@@ -218,7 +223,6 @@ const DashboardApp = (props: DashboardAppProps) => {
         addCardOnLoad={addCardOnLoad}
         isFullscreen={isFullscreen}
         refreshPeriod={refreshPeriod}
-        hideParameters={hideParameters}
         isNightMode={isNightMode}
         hasNightModeToggle={hasNightModeToggle}
         setRefreshElapsedHook={setRefreshElapsedHook}

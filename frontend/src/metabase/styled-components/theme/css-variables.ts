@@ -63,6 +63,7 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
       transparent
     );
 
+    /* Semantic colors */
     --mb-color-focus: ${theme.fn.themeColor("focus")};
     --mb-color-bg-white: ${theme.fn.themeColor("bg-white")};
     --mb-color-bg-black: ${theme.fn.themeColor("bg-black")};
@@ -81,6 +82,9 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
     --mb-color-success: ${theme.fn.themeColor("success")};
     --mb-color-summarize: ${theme.fn.themeColor("summarize")};
     --mb-color-warning: ${theme.fn.themeColor("warning")};
+    --mb-color-text-primary: var(--mb-color-text-dark);
+    --mb-color-text-secondary: var(--mb-color-text-medium);
+    --mb-color-text-tertiary: var(--mb-color-text-light);
   `;
 }
 

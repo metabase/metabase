@@ -14,6 +14,7 @@
    [metabase-enterprise.content-verification.api.routes
     :as content-verification]
    [metabase-enterprise.llm.api :as llm.api]
+   [metabase-enterprise.query-reference-validation.api :as api.query-reference-validation]
    [metabase-enterprise.sandbox.api.routes :as sandbox]
    [metabase-enterprise.scim.routes :as scim]
    [metabase-enterprise.serialization.api :as api.serialization]
@@ -54,5 +55,8 @@
     "/serialization" []
     (ee.api.common/+require-premium-feature :serialization (deferred-tru "Serialization") api.serialization/routes))
    (context
-    "/upload-management" []
-    (ee.api.common/+require-premium-feature :upload-management (deferred-tru "Upload Management") api.uploads/routes))))
+    "/query-reference-validation" []
+     (ee.api.common/+require-premium-feature :query-reference-validation (deferred-tru "Query Reference Validation") api.query-reference-validation/routes))
+   (context
+     "/upload-management" []
+     (ee.api.common/+require-premium-feature :upload-management (deferred-tru "Upload Management") api.uploads/routes))))

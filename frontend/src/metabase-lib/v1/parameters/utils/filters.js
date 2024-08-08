@@ -31,7 +31,7 @@ export function columnFilterForParameter(query, stageIndex, parameter) {
 
   switch (type) {
     case "date":
-      return column => Lib.isDate(column);
+      return column => Lib.isTemporal(column);
     case "id":
       return column => Lib.isPrimaryKey(column) || Lib.isForeignKey(column);
     case "category":

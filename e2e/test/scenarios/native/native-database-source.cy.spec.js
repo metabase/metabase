@@ -386,6 +386,8 @@ function startNativeQuestion() {
     .click();
 }
 
+// It is extremely important to use the UI flow for these scenarios!
+// Do not change this or replace it with `startNewNativeModel()`!
 function startNativeModel() {
   cy.visit("/model/new");
   cy.findByRole("heading", { name: "Use a native query" }).click();

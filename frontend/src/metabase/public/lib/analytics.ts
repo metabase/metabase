@@ -11,12 +11,15 @@ import type {
 const SCHEMA_NAME = "embed_flow";
 const SCHEMA_VERSION = "1-0-1";
 
+// We changed the UI to `Look and Feel` now
 type Appearance = {
+  background: boolean;
   titled: boolean;
   bordered: boolean;
   theme: DisplayTheme;
   font: "instance" | "custom";
   hide_download_button: boolean | null;
+  // TODO: implement `downloads` parameter in the analytics event
 };
 
 export const trackStaticEmbedDiscarded = ({
@@ -108,11 +111,13 @@ function normalizeAppearance(
   displayOptions: EmbeddingDisplayOptions,
 ): Appearance {
   return {
+    background: displayOptions.background,
     titled: displayOptions.titled,
     bordered: displayOptions.bordered,
     theme: displayOptions.theme ?? "light",
     font: displayOptions.font ? "custom" : "instance",
-    hide_download_button: displayOptions.hide_download_button,
+    // TODO: replace with `downloads` when it's implemented
+    hide_download_button: displayOptions.hide_download_button ?? null,
   };
 }
 

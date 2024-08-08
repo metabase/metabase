@@ -164,3 +164,31 @@ export const tagRelease = async ({
     throw new Error(`failed to tag release ${version}`);
   }
 };
+
+const _issueCache: Record<number, Issue> = {};
+
+export async function getIssueWithCache ({
+  github,
+  owner,
+  repo,
+  issueNumber,
+}: GithubProps & { issueNumber: number }) {
+  if (_issueCache[issueNumber]) {
+    return _issueCache[issueNumber];
+  }
+
+  const issue = await github.rest.issues.get({
+    owner,
+    repo,
+    issue_number: issueNumber,
+  }).catch((err) => {
+    console.log(err);
+    return null;
+  });
+
+  if (issue?.data) {
+    _issueCache[issueNumber] = issue.data as Issue;
+  }
+
+  return issue?.data as Issue | null;
+}

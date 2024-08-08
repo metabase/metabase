@@ -37,9 +37,10 @@
 (driver/register! :oracle, :parent #{:sql-jdbc
                                      ::sql.qp.empty-string-is-null/empty-string-is-null})
 
-(doseq [[feature supported?] {:datetime-diff    true
-                              :now              true
-                              :convert-timezone true}]
+(doseq [[feature supported?] {:datetime-diff           true
+                              :now                     true
+                              :identifiers-with-spaces true
+                              :convert-timezone        true}]
   (defmethod driver/database-supports? [:oracle feature] [_driver _feature _db] supported?))
 
 (defmethod driver/prettify-native-form :oracle
@@ -56,7 +57,7 @@
     [#"BLOB"        :type/*]
     [#"RAW"         :type/*]
     [#"CHAR"        :type/Text]
-    [#"CLOB"        :type/Text]
+    [#"CLOB"        :type/OracleCLOB]
     [#"DATE"        :type/Date]
     [#"DOUBLE"      :type/Float]
     ;; Expression filter type
@@ -549,7 +550,7 @@
   (str/replace entity-name "/" "//"))
 
 (defmethod sql-jdbc.describe-table/get-table-pks :oracle
-  [_driver ^Connection conn _ table]
+  [_driver ^Connection conn _db-name-or-nil table]
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
     (into [] (sql-jdbc.sync.common/reducible-results
               #(.getPrimaryKeys metadata nil nil (:name table))

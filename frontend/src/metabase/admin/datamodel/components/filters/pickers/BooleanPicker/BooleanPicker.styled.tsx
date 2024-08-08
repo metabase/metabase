@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import PropTypes from "prop-types";
 import { t } from "ttag";
 
 import Button from "metabase/core/components/Button";
@@ -43,10 +42,6 @@ const ToggleButton = styled(Button)`
 ToggleButton.defaultProps = {
   iconRight: "chevrondown",
   iconSize: 12,
-};
-
-Toggle.propTypes = {
-  onClick: PropTypes.func.isRequired,
 };
 
 export function Toggle({ onClick }: { onClick: () => void }) {

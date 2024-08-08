@@ -19,7 +19,7 @@
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
 
-(mu/defn ^:private normalize-query :- :string
+(mu/defn- normalize-query :- :string
   "Normalize a `query` to lower-case."
   [query :- :string]
   (u/lower-case-en (str/trim query)))

@@ -28,7 +28,6 @@
             TimelineEvent
             User]]
    [metabase.models.action :as action]
-   [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.test :as mt]
    [metabase.util.malli.schema :as ms]
@@ -43,8 +42,6 @@
        (filter #(= model-name (:model %)))
        (map :id)
        set))
-
-(def ^:private trash-eid (delay (:entity_id (collection/trash-collection))))
 
 (deftest fundamentals-test
   (mt/with-empty-h2-app-db
@@ -103,15 +100,15 @@
 
       (testing "overall extraction returns the expected set"
         (testing "no user specified"
-          (is (= #{coll-eid child-eid @trash-eid}
+          (is (= #{coll-eid child-eid}
                  (by-model "Collection" (extract/extract nil)))))
 
         (testing "valid user specified"
-          (is (= #{coll-eid child-eid pc-eid @trash-eid}
+          (is (= #{coll-eid child-eid pc-eid}
                  (by-model "Collection" (extract/extract {:user-id mark-id})))))
 
         (testing "invalid user specified"
-          (is (= #{coll-eid child-eid @trash-eid}
+          (is (= #{coll-eid child-eid}
                  (by-model "Collection" (extract/extract {:user-id 218921})))))))))
 
 (deftest database-test
@@ -556,12 +553,11 @@
                       (into [])
                       (map :name)))))
         (testing "unowned collections and the personal one with a user"
-          ;; the trash is always included
-          (is (= #{coll-eid mark-coll-eid @trash-eid}
+          (is (= #{coll-eid mark-coll-eid}
                  (->> {:collection-set (#'extract/collection-set-for-user mark-id)}
                       (serdes/extract-all "Collection")
                       (by-model "Collection"))))
-          (is (= #{coll-eid dave-coll-eid @trash-eid}
+          (is (= #{coll-eid dave-coll-eid}
                  (->> {:collection-set (#'extract/collection-set-for-user dave-id)}
                       (serdes/extract-all "Collection")
                       (by-model "Collection"))))))
@@ -1706,4 +1702,16 @@
         (is (some? (audit/default-custom-reports-collection))))
       (let [ser (extract/extract {:no-settings   true
                                   :no-data-model true})]
-        (is (= #{@trash-eid} (by-model "Collection" ser)))))))
+        (is (= #{} (by-model "Collection" ser)))))))
+
+(deftest entity-id-in-targets-test
+  (mt/with-temp [Collection c {:name "Top-Level Collection"}]
+    (testing "Conversion from eid to id works"
+      (is (= (:id c)
+             (serdes/eid->id "Collection" (:entity_id c)))))
+    (testing "Extracting by entity id works"
+      (let [ser (extract/extract {:targets       [["Collection" (:entity_id c)]]
+                                  :no-settings   true
+                                  :no-data-model true})]
+        (is (= #{(:entity_id c)}
+               (by-model "Collection" ser)))))))

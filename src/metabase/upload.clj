@@ -134,7 +134,7 @@
     (str truncated-name-without-time
          (t/format time-format (strictly-monotonic-now)))))
 
-(mu/defn ^:private database-type
+(mu/defn- database-type
   [driver
    column-type :- (into [:enum] upload-types/column-types)]
   (let [external-type (keyword "metabase.upload" (name column-type))]
@@ -154,7 +154,7 @@
   []
   (t2/select-one Database :uploads_enabled true))
 
-(mu/defn table-identifier
+(mu/defn table-identifier :- :string
   "Returns a string that can be used as a table identifier in SQL, including a schema if provided."
   [{:keys [schema name] :as _table}
    :- [:map
@@ -392,10 +392,6 @@
   [db schema-name]
   (nil? (can-create-upload-error db schema-name)))
 
-(defn- start-timer [] (System/nanoTime))
-
-(defn- since-ms [timer] (/ (- (System/nanoTime) timer) 1e6))
-
 ;;; +-----------------------------------------
 ;;; |  public interface for creating CSV table
 ;;; +-----------------------------------------
@@ -470,7 +466,7 @@
     (check-can-create-upload database schema-name)
     (collection/check-write-perms-for-collection collection-id)
     (try
-      (let [timer             (start-timer)
+      (let [timer             (u/start-timer)
             filename-prefix   (or (second (re-matches #"(.*)\.(csv|tsv)$" filename))
                                   filename)
             humanized-name    (humanization/name->human-readable-name filename-prefix)
@@ -497,7 +493,7 @@
                                 :name                   card-name
                                 :visualization_settings {}}
                                @api/*current-user*)
-            upload-seconds    (/ (since-ms timer) 1e3)
+            upload-seconds    (/ (u/since-ms timer) 1e3)
             stats             (assoc stats :upload-seconds upload-seconds)]
 
         (events/publish-event! :event/upload-create
@@ -624,7 +620,7 @@
   (try
     (let [parse (infer-parser file)]
       (with-open [reader (bom/bom-reader file)]
-        (let [timer              (start-timer)
+        (let [timer              (u/start-timer)
               driver             (driver.u/database->driver database)
               auto-pk?           (auto-pk-column? driver database)
               [header & rows]    (cond-> (parse reader)
@@ -661,7 +657,7 @@
                                   :num-columns       (count new-types)
                                   :generated-columns (if create-auto-pk? 1 0)
                                   :size-mb           (file-size-mb file)
-                                  :upload-seconds    (since-ms timer)}]
+                                  :upload-seconds    (u/since-ms timer)}]
           (try
             (when replace-rows?
               (driver/truncate! driver (:id database) (table-identifier table)))

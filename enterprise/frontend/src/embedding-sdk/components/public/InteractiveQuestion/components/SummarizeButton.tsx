@@ -1,10 +1,9 @@
 import cx from "classnames";
 
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import CS from "metabase/css/core/index.css";
 import { QuestionSummarizeWidget } from "metabase/query_builder/components/view/ViewHeader/components";
 import * as Lib from "metabase-lib";
-
-import { useInteractiveQuestionData } from "../hooks";
 
 export const SummarizeButton = ({
   isOpen,
@@ -15,7 +14,7 @@ export const SummarizeButton = ({
   onOpen: () => void;
   onClose: () => void;
 }) => {
-  const { question } = useInteractiveQuestionData();
+  const { question } = useInteractiveQuestionContext();
 
   let shouldShowButton = true;
   if (question) {

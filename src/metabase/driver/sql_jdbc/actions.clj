@@ -104,7 +104,7 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(mu/defn ^:private cast-values :- ::lib.schema.actions/row
+(mu/defn- cast-values :- ::lib.schema.actions/row
   "Certain value types need to have their honeysql form updated to work properly during update/creation. This function
   uses honeysql casting to wrap values in the map that need to be cast with their column's type, and passes through
   types that do not need casting like integer or string."
@@ -384,7 +384,7 @@
 
 ;;;; Shared stuff for both `:bulk/delete` and `:bulk/update`
 
-(mu/defn ^:private table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
+(mu/defn- table-id->pk-field-name->id :- [:map-of ::lib.schema.common/non-blank-string ::lib.schema.id/field]
   "Given a `table-id` return a map of string Field name -> Field ID for the primary key columns for that Table."
   [database-id :- ::lib.schema.id/database
    table-id    :- ::lib.schema.id/table]
@@ -489,7 +489,7 @@
 
 ;;;; `bulk/update`
 
-(mu/defn ^:private check-row-has-all-pk-columns
+(mu/defn- check-row-has-all-pk-columns
   "Return a 400 if `row` doesn't have all the required PK columns."
   [row      :- ::lib.schema.actions/row
    pk-names :- [:set :string]]
@@ -500,7 +500,7 @@
                          (pr-str (set (keys row))))
                     {:row row, :pk-names pk-names, :status-code 400}))))
 
-(mu/defn ^:private check-row-has-some-non-pk-columns
+(mu/defn- check-row-has-some-non-pk-columns
   "Return a 400 if `row` doesn't have any non-PK columns to update."
   [row      :- ::lib.schema.actions/row
    pk-names :- [:set :string]]

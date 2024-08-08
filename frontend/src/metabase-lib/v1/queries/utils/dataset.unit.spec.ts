@@ -26,7 +26,6 @@ describe("dataset utils", () => {
       });
       const columnSetting = createMockTableColumnOrderSetting({
         name: "TOTAL",
-        fieldRef: ["field", ORDERS.TOTAL, null],
         enabled: true,
       });
 
@@ -50,7 +49,6 @@ describe("dataset utils", () => {
       });
       const columnSetting = createMockTableColumnOrderSetting({
         name: "TOTAL",
-        fieldRef: ["field", ORDERS.TOTAL, { "base-type": "type/Number" }],
         enabled: true,
       });
 
@@ -74,7 +72,6 @@ describe("dataset utils", () => {
       });
       const columnSetting = createMockTableColumnOrderSetting({
         name: "TOTAL",
-        fieldRef: ["field", ORDERS.TOTAL, { "base-type": "type/Number" }],
         enabled: true,
       });
 
@@ -94,7 +91,6 @@ describe("dataset utils", () => {
       });
       const columnSetting = createMockTableColumnOrderSetting({
         name: "TOTAL",
-        fieldRef: ["field", ORDERS.TOTAL, { "base-type": "type/Number" }],
         enabled: true,
       });
 
@@ -118,7 +114,6 @@ describe("dataset utils", () => {
       });
       const columnSetting = createMockTableColumnOrderSetting({
         name: "TOTAL",
-        fieldRef: ["field", ORDERS.TOTAL, { "base-type": "type/Number" }],
         enabled: true,
       });
 
@@ -142,7 +137,6 @@ describe("dataset utils", () => {
       });
       const columnSetting = createMockTableColumnOrderSetting({
         name: "TOTAL",
-        fieldRef: ["field", ORDERS.TOTAL, { "base-type": "type/Number" }],
         enabled: true,
       });
 

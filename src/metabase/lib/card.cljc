@@ -54,7 +54,7 @@
             (lib.metadata.calculation/display-name query stage-number card-metadata :long))
           (fallback-display-name source-card)))))
 
-(mu/defn ^:private infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
+(mu/defn- infer-returned-columns :- [:maybe [:sequential ::lib.schema.metadata/column]]
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-query            :- :map]
   (when (some? card-query)

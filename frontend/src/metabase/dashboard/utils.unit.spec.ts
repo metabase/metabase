@@ -1,3 +1,5 @@
+import type { Location } from "history";
+
 import {
   fetchDataOrError,
   getCurrentTabDashboardCards,
@@ -6,6 +8,8 @@ import {
   hasDatabaseActionsEnabled,
   isDashcardLoading,
   syncParametersAndEmbeddingParams,
+  parseTabSlug,
+  createTabSlug,
 } from "metabase/dashboard/utils";
 import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import {
@@ -16,6 +20,7 @@ import {
   createMockDataset,
   createMockDatasetData,
 } from "metabase-types/api/mocks";
+import { createMockLocation } from "metabase-types/store/mocks";
 
 const ENABLED_ACTIONS_DATABASE = createMockDatabase({
   id: 1,
@@ -26,6 +31,10 @@ const DISABLED_ACTIONS_DATABASE = createMockDatabase({
   settings: { "database-enable-actions": false },
 });
 const NO_ACTIONS_DATABASE = createMockDatabase({ id: 3 });
+
+function getMockLocationWithTab(slug: Location["query"][string]) {
+  return createMockLocation({ query: { tab: slug } });
+}
 
 describe("Dashboard utils", () => {
   describe("fetchDataOrError()", () => {
@@ -327,6 +336,42 @@ describe("Dashboard utils", () => {
           dashcard: visibleDashcard,
         },
       ]);
+    });
+  });
+
+  describe("parseTabSlug", () => {
+    it("should return the tab ID from the location object if valid", () => {
+      expect(parseTabSlug(getMockLocationWithTab("1-tab-name"))).toBe(1);
+    });
+
+    it("should return null if the slug is invalid", () => {
+      expect(parseTabSlug(getMockLocationWithTab(null))).toBe(null);
+      expect(parseTabSlug(getMockLocationWithTab(undefined))).toBe(null);
+      expect(parseTabSlug(getMockLocationWithTab(""))).toBe(null);
+      expect(
+        parseTabSlug(
+          getMockLocationWithTab(["1-tab-name", "2-another-tab-name"]),
+        ),
+      ).toBe(null);
+      expect(parseTabSlug({ ...getMockLocationWithTab(""), query: {} })).toBe(
+        null,
+      );
+    });
+  });
+
+  describe("createTabSlug", () => {
+    it("should return a lower-cased, hyphenated concatenation of the tabId and name", () => {
+      expect(createTabSlug({ id: 1, name: "SoMe-TaB-NaMe" })).toEqual(
+        "1-some-tab-name",
+      );
+    });
+
+    it("should return an empty string when tabId or name is invalid", () => {
+      expect(createTabSlug({ id: null, name: "SoMe-TaB-NaMe" })).toEqual("");
+      expect(createTabSlug({ id: -1, name: "SoMe-TaB-NaMe" })).toEqual("");
+
+      expect(createTabSlug({ id: 1, name: "" })).toEqual("");
+      expect(createTabSlug({ id: 1, name: undefined })).toEqual("");
     });
   });
 });

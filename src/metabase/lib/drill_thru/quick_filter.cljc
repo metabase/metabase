@@ -56,7 +56,7 @@
 (defn- operator [op & args]
   (lib.options/ensure-uuid (into [op {}] args)))
 
-(mu/defn ^:private operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
+(mu/defn- operators-for :- [:sequential ::lib.schema.drill-thru/drill-thru.quick-filter.operator]
   [column :- ::lib.schema.metadata/column
    value]
   (let [field-ref (lib.ref/ref column)]

@@ -1,9 +1,11 @@
 import type { Query } from "history";
-import { Component } from "react";
+import { useEffect, useRef } from "react";
 import type { ConnectedProps } from "react-redux";
 import { connect } from "react-redux";
+import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
+import { getEventHandlers } from "embedding-sdk/store/selectors";
 import {
   cancelFetchDashboardCardData,
   fetchDashboard,
@@ -16,9 +18,11 @@ import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/comp
 import {
   getDashboardComplete,
   getDraftParameterValues,
+  getIsLoading,
+  getIsLoadingWithoutCards,
   getIsNavigatingBackToDashboard,
-  getParameters,
   getParameterValues,
+  getParameters,
   getSelectedTabId,
   getSlowCards,
 } from "metabase/dashboard/selectors";
@@ -28,7 +32,10 @@ import type {
   FetchDashboardResult,
   SuccessfulFetchDashboardResult,
 } from "metabase/dashboard/types";
+import { useDispatch, useSelector, type DispatchFn } from "metabase/lib/redux";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { setErrorPage } from "metabase/redux/app";
+import { getErrorPage } from "metabase/selectors/app";
 import type { DashboardId } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
@@ -43,16 +50,16 @@ const mapStateToProps = (state: State) => {
     draftParameterValues: getDraftParameterValues(state),
     selectedTabId: getSelectedTabId(state),
     isNavigatingBackToDashboard: getIsNavigatingBackToDashboard(state),
+    isErrorPage: getErrorPage(state),
+    isLoading: getIsLoading(state),
+    isLoadingWithoutCards: getIsLoadingWithoutCards(state),
   };
 };
 
 const mapDispatchToProps = {
-  initialize,
   cancelFetchDashboardCardData,
   setParameterValueToDefault,
   setParameterValue,
-  setErrorPage,
-  fetchDashboard,
   fetchDashboardCardData,
 };
 
@@ -63,11 +70,11 @@ type ReduxProps = ConnectedProps<typeof connector>;
 type OwnProps = {
   dashboardId: DashboardId;
   parameterQueryParams: Query;
-
+  downloadsEnabled?: boolean;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-};
+} & PublicOrEmbeddedDashboardEventHandlersProps;
 
 type DisplayProps = Pick<
   DashboardDisplayOptionControls,
@@ -86,127 +93,207 @@ type PublicOrEmbeddedDashboardProps = OwnProps &
   DisplayProps &
   EmbedDisplayParams;
 
-class PublicOrEmbeddedDashboardInner extends Component<PublicOrEmbeddedDashboardProps> {
-  _initialize = async (isForceUpdate?: boolean) => {
-    const {
-      initialize,
-      fetchDashboard,
-      fetchDashboardCardData,
-      setErrorPage,
-      parameterQueryParams,
-      dashboardId,
-      isNavigatingBackToDashboard,
-    } = this.props;
+const initializeData = async ({
+  dashboardId,
+  shouldReload,
+  parameterQueryParams,
+  dispatch,
+}: {
+  dashboardId: string;
+  shouldReload: boolean;
+  parameterQueryParams: OwnProps["parameterQueryParams"];
+  dispatch: DispatchFn;
+}) => {
+  dispatch(initialize({ clearCache: shouldReload }));
 
-    const shouldReloadDashboardData =
-      !isNavigatingBackToDashboard || !!isForceUpdate;
-
-    initialize({ clearCache: shouldReloadDashboardData });
-
-    const result = await fetchDashboard({
+  const result = await dispatch(
+    fetchDashboard({
       dashId: String(dashboardId),
       queryParams: parameterQueryParams,
       options: {
-        clearCache: shouldReloadDashboardData,
+        clearCache: shouldReload,
       },
-    });
+    }),
+  );
 
-    if (!isSuccessfulFetchDashboardResult(result)) {
-      setErrorPage(result.payload);
+  if (!isSuccessfulFetchDashboardResult(result)) {
+    dispatch(setErrorPage(result.payload));
+    return;
+  }
+
+  try {
+    if ((result.payload.dashboard?.tabs?.length || 0) === 0) {
+      await dispatch(
+        fetchDashboardCardData({ reload: false, clearCache: true }),
+      );
+    }
+  } catch (error) {
+    console.error(error);
+    dispatch(setErrorPage(error));
+  }
+};
+
+const PublicOrEmbeddedDashboardInner = ({
+  dashboard,
+  parameters,
+  parameterValues,
+  draftParameterValues,
+  isFullscreen,
+  isNightMode = false,
+  onFullscreenChange,
+  onNightModeChange,
+  onRefreshPeriodChange,
+  refreshPeriod,
+  setRefreshElapsedHook,
+  hasNightModeToggle,
+  background,
+  bordered,
+  titled,
+  theme,
+  downloadsEnabled = true,
+  hideParameters,
+  navigateToNewCardFromDashboard,
+  selectedTabId,
+  slowCards,
+  dashboardId,
+  cardTitled,
+  isNavigatingBackToDashboard,
+  parameterQueryParams,
+  isErrorPage,
+  onLoad,
+  onLoadWithoutCards,
+  isLoading,
+  isLoadingWithoutCards,
+  cancelFetchDashboardCardData,
+  setParameterValueToDefault,
+  setParameterValue,
+  fetchDashboardCardData,
+}: PublicOrEmbeddedDashboardProps) => {
+  const dispatch = useDispatch();
+  const didMountRef = useRef(false);
+
+  const previousDashboardId = usePrevious(dashboardId);
+  const previousSelectedTabId = usePrevious(selectedTabId);
+  const previousParameterValues = usePrevious(parameterValues);
+
+  const previousIsLoading = usePrevious(isLoading);
+  const previousIsLoadingWithoutCards = usePrevious(isLoadingWithoutCards);
+
+  const sdkEventHandlers = useSelector(getEventHandlers);
+
+  const shouldFetchCardData = dashboard?.tabs?.length === 0;
+
+  useUnmount(() => {
+    cancelFetchDashboardCardData();
+  });
+
+  useEffect(() => {
+    if (!didMountRef.current) {
+      initializeData({
+        dashboardId: String(dashboardId),
+        shouldReload: !isNavigatingBackToDashboard,
+        parameterQueryParams,
+        dispatch,
+      });
+
+      didMountRef.current = true;
       return;
     }
 
-    try {
-      if (this.props.dashboard?.tabs?.length === 0) {
-        await fetchDashboardCardData({ reload: false, clearCache: true });
-      }
-    } catch (error) {
-      console.error(error);
-      setErrorPage(error);
-    }
-  };
-
-  async componentDidMount() {
-    await this._initialize();
-  }
-
-  componentWillUnmount() {
-    this.props.cancelFetchDashboardCardData();
-  }
-
-  async componentDidUpdate(prevProps: PublicOrEmbeddedDashboardProps) {
-    if (this.props.dashboardId !== prevProps.dashboardId) {
-      return this._initialize(true);
-    }
-
-    if (!_.isEqual(prevProps.selectedTabId, this.props.selectedTabId)) {
-      this.props.fetchDashboardCardData();
+    if (dashboardId !== previousDashboardId) {
+      initializeData({
+        dashboardId: String(dashboardId),
+        shouldReload: true,
+        parameterQueryParams,
+        dispatch,
+      });
       return;
     }
 
-    if (!_.isEqual(this.props.parameterValues, prevProps.parameterValues)) {
-      this.props.fetchDashboardCardData({ reload: false, clearCache: true });
+    if (selectedTabId && selectedTabId !== previousSelectedTabId) {
+      fetchDashboardCardData();
+      return;
     }
-  }
 
-  render() {
-    const {
-      dashboard,
-      parameters,
-      parameterValues,
-      draftParameterValues,
-      isFullscreen,
-      isNightMode = false,
-      setParameterValueToDefault,
-      onFullscreenChange,
-      onNightModeChange,
-      onRefreshPeriodChange,
-      refreshPeriod,
-      setRefreshElapsedHook,
-      hasNightModeToggle,
-      bordered,
-      titled,
-      theme,
-      hideDownloadButton,
-      hideParameters,
-      navigateToNewCardFromDashboard,
-      selectedTabId,
-      setParameterValue,
-      slowCards,
-      dashboardId,
-      cardTitled,
-    } = this.props;
+    if (!_.isEqual(parameterValues, previousParameterValues)) {
+      fetchDashboardCardData({ reload: false, clearCache: true });
+    }
+  }, [
+    dashboardId,
+    dispatch,
+    fetchDashboardCardData,
+    isNavigatingBackToDashboard,
+    parameterQueryParams,
+    parameterValues,
+    previousDashboardId,
+    previousParameterValues,
+    previousSelectedTabId,
+    selectedTabId,
+    shouldFetchCardData,
+  ]);
 
-    return (
-      <PublicOrEmbeddedDashboardView
-        dashboard={dashboard}
-        hasNightModeToggle={hasNightModeToggle}
-        isFullscreen={isFullscreen}
-        isNightMode={isNightMode}
-        onFullscreenChange={onFullscreenChange}
-        onNightModeChange={onNightModeChange}
-        onRefreshPeriodChange={onRefreshPeriodChange}
-        refreshPeriod={refreshPeriod}
-        setRefreshElapsedHook={setRefreshElapsedHook}
-        selectedTabId={selectedTabId}
-        parameters={parameters}
-        parameterValues={parameterValues}
-        draftParameterValues={draftParameterValues}
-        setParameterValue={setParameterValue}
-        setParameterValueToDefault={setParameterValueToDefault}
-        dashboardId={dashboardId}
-        bordered={bordered}
-        titled={titled}
-        theme={theme}
-        hideParameters={hideParameters}
-        hideDownloadButton={hideDownloadButton}
-        navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
-        slowCards={slowCards}
-        cardTitled={cardTitled}
-      />
-    );
-  }
-}
+  useEffect(() => {
+    if (
+      !isLoadingWithoutCards &&
+      previousIsLoadingWithoutCards &&
+      !isErrorPage
+    ) {
+      sdkEventHandlers?.onDashboardLoadWithoutCards?.(dashboard);
+      onLoadWithoutCards?.(dashboard);
+    }
+  }, [
+    isLoadingWithoutCards,
+    isErrorPage,
+    previousIsLoadingWithoutCards,
+    dashboard,
+    sdkEventHandlers,
+    onLoadWithoutCards,
+  ]);
+
+  useEffect(() => {
+    if (!isLoading && previousIsLoading && !isErrorPage) {
+      sdkEventHandlers?.onDashboardLoad?.(dashboard);
+      onLoad?.(dashboard);
+    }
+  }, [
+    isLoading,
+    isErrorPage,
+    previousIsLoading,
+    sdkEventHandlers,
+    dashboard,
+    onLoad,
+  ]);
+
+  return (
+    <PublicOrEmbeddedDashboardView
+      dashboard={dashboard}
+      hasNightModeToggle={hasNightModeToggle}
+      isFullscreen={isFullscreen}
+      isNightMode={isNightMode}
+      onFullscreenChange={onFullscreenChange}
+      onNightModeChange={onNightModeChange}
+      onRefreshPeriodChange={onRefreshPeriodChange}
+      refreshPeriod={refreshPeriod}
+      setRefreshElapsedHook={setRefreshElapsedHook}
+      selectedTabId={selectedTabId}
+      parameters={parameters}
+      parameterValues={parameterValues}
+      draftParameterValues={draftParameterValues}
+      setParameterValue={setParameterValue}
+      setParameterValueToDefault={setParameterValueToDefault}
+      dashboardId={dashboardId}
+      background={background}
+      bordered={bordered}
+      titled={titled}
+      theme={theme}
+      hideParameters={hideParameters}
+      navigateToNewCardFromDashboard={navigateToNewCardFromDashboard}
+      slowCards={slowCards}
+      cardTitled={cardTitled}
+      downloadsEnabled={downloadsEnabled}
+    />
+  );
+};
 
 function isSuccessfulFetchDashboardResult(
   result: FetchDashboardResult,

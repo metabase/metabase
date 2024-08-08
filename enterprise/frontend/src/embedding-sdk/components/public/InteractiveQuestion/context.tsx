@@ -1,83 +1,96 @@
 import {
   createContext,
-  type PropsWithChildren,
   useContext,
+  useEffect,
+  type PropsWithChildren,
   useMemo,
 } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
+import {
+  useLoadQuestion,
+  type LoadQuestionHookResult,
+} from "embedding-sdk/hooks/private/use-load-question";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
+import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
-import {
-  type UseLoadQuestionParams,
-  useInteractiveQuestionData,
-  useLoadQuestion,
-} from "./hooks";
-
-type InteractiveQuestionContextType = {
+interface InteractiveQuestionContextType
+  extends Omit<LoadQuestionHookResult, "loadQuestion"> {
   plugins: SdkPluginsConfig | null;
   mode: Mode | null | undefined;
-  isQuestionLoading: boolean;
   resetQuestion: () => void;
   onReset?: () => void;
   onNavigateBack?: () => void;
-};
+}
 
 /**
  * Note: This context should only be used as a wrapper for the InteractiveQuestionResult
  * component. The idea behind this context is to allow the InteractiveQuestionResult component
  * to use components within the ./components folder, which use the context for display
- * and functions. Any data that can be referenced from the store should be placed in
- * the useInteractiveQuestionData hook.
+ * and functions.
  * */
 export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
 >(undefined);
 
 type InteractiveQuestionProviderProps = PropsWithChildren<
-  UseLoadQuestionParams & {
+  {
     componentPlugins?: SdkPluginsConfig;
     onReset?: () => void;
     onNavigateBack?: () => void;
-  }
+  } & LoadSdkQuestionParams
 >;
 
 export const InteractiveQuestionProvider = ({
-  children,
   location,
   params,
   componentPlugins,
   onReset,
   onNavigateBack,
+  children,
 }: InteractiveQuestionProviderProps) => {
-  const { isQuestionLoading, resetQuestion } = useLoadQuestion({
-    location: location,
-    params: params,
-  });
+  const {
+    question,
+    queryResults,
 
-  const { question } = useInteractiveQuestionData();
+    isQuestionLoading,
+    isQueryRunning,
+
+    loadQuestion,
+    onQuestionChange,
+    onNavigateToNewCard,
+  } = useLoadQuestion({ location, params });
 
   const globalPlugins = useSdkSelector(getPlugins);
   const plugins = componentPlugins || globalPlugins;
-  const mode = useMemo(
-    () => question && getEmbeddingMode(question, plugins || undefined),
-    [plugins, question],
-  );
+
+  const mode = useMemo(() => {
+    return question && getEmbeddingMode(question, plugins ?? undefined);
+  }, [question, plugins]);
+
+  const questionContext: InteractiveQuestionContextType = {
+    isQuestionLoading,
+    isQueryRunning,
+    resetQuestion: loadQuestion,
+    onReset: onReset || loadQuestion,
+    onNavigateBack,
+    onQuestionChange,
+    onNavigateToNewCard,
+    plugins,
+    question,
+    queryResults,
+    mode,
+  };
+
+  useEffect(() => {
+    loadQuestion();
+  }, [loadQuestion]);
 
   return (
-    <InteractiveQuestionContext.Provider
-      value={{
-        isQuestionLoading,
-        resetQuestion,
-        onReset: onReset || resetQuestion,
-        onNavigateBack,
-        mode,
-        plugins,
-      }}
-    >
+    <InteractiveQuestionContext.Provider value={questionContext}>
       {children}
     </InteractiveQuestionContext.Provider>
   );

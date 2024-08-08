@@ -629,7 +629,7 @@ describe("issue 21665", () => {
     }).then(({ dashboardId, questionId }) => {
       cy.intercept(
         "GET",
-        `/api/dashboard/${dashboardId}`,
+        `/api/dashboard/${dashboardId}*`,
         cy.spy().as("dashboardLoaded"),
       ).as("getDashboard");
 

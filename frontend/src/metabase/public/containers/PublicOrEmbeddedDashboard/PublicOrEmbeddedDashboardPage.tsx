@@ -1,10 +1,10 @@
 import type { WithRouterProps } from "react-router";
 
-import { useSyncURLSlug } from "metabase/dashboard/components/DashboardTabs/use-sync-url-slug";
 import {
   useDashboardUrlParams,
   useRefreshDashboard,
 } from "metabase/dashboard/hooks";
+import { useDashboardUrlQuery } from "metabase/dashboard/hooks/use-dashboard-url-query";
 import { getDashboardComplete } from "metabase/dashboard/selectors";
 import { SetTitle } from "metabase/hoc/Title";
 import { useSelector } from "metabase/lib/redux";
@@ -13,7 +13,7 @@ import { PublicOrEmbeddedDashboard } from "./PublicOrEmbeddedDashboard";
 import { usePublicDashboardEndpoints } from "./WithPublicDashboardEndpoints";
 
 export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
-  const { location } = props;
+  const { location, router } = props;
   const parameterQueryParams = props.location.query;
 
   const { dashboardId } = usePublicDashboardEndpoints(props);
@@ -23,10 +23,13 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     parameterQueryParams,
   });
 
+  useDashboardUrlQuery(router, location);
+
   const {
+    background,
     bordered,
     hasNightModeToggle,
-    hideDownloadButton,
+    downloadsEnabled,
     hideParameters,
     isFullscreen,
     isNightMode,
@@ -39,8 +42,6 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
     titled,
     font,
   } = useDashboardUrlParams({ location, onRefresh: refreshDashboard });
-
-  useSyncURLSlug({ location });
 
   const dashboard = useSelector(getDashboardComplete);
 
@@ -58,8 +59,9 @@ export const PublicOrEmbeddedDashboardPage = (props: WithRouterProps) => {
         onNightModeChange={onNightModeChange}
         onFullscreenChange={onFullscreenChange}
         onRefreshPeriodChange={onRefreshPeriodChange}
+        background={background}
         bordered={bordered}
-        hideDownloadButton={hideDownloadButton}
+        downloadsEnabled={downloadsEnabled}
         theme={theme}
         titled={titled}
         font={font}

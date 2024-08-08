@@ -218,6 +218,8 @@ export const createMockSettings = (
   "show-homepage-xrays": false,
   "show-metabase-links": true,
   "show-metabot": true,
+  "show-updated-permission-modal": false,
+  "show-updated-permission-banner": false,
   "site-locale": "en",
   "site-url": "http://localhost:3000",
   "site-uuid": "1234",

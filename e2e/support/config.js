@@ -1,38 +1,44 @@
+import path from "node:path";
+
+import {
+  removeDirectory,
+  verifyDownloadTasks,
+} from "./commands/downloads/downloadUtils";
 import * as dbTasks from "./db_tasks";
 
 const createBundler = require("@bahmutov/cypress-esbuild-preprocessor"); // This function is called when a project is opened or re-opened (e.g. due to the project's config changing)
 const {
   NodeModulesPolyfillPlugin,
 } = require("@esbuild-plugins/node-modules-polyfill");
-const replay = require("@replayio/cypress");
-
-const {
-  removeDirectory,
-  verifyDownloadTasks,
-} = require("./commands/downloads/downloadUtils");
 
 const isEnterprise = process.env["MB_EDITION"] === "ee";
 
 const hasSnowplowMicro = process.env["MB_SNOWPLOW_AVAILABLE"];
 const snowplowMicroUrl = process.env["MB_SNOWPLOW_URL"];
 
-const isQaDatabase = process.env["QA_DB_ENABLED"];
+const isQaDatabase = process.env["QA_DB_ENABLED"] === "true";
 
 const sourceVersion = process.env["CROSS_VERSION_SOURCE"];
 const targetVersion = process.env["CROSS_VERSION_TARGET"];
 
-const runWithReplay = process.env["CYPRESS_REPLAYIO_ENABLED"];
-/**
- * CI coerces the value of this env var to a string (even if it's `false` or `0`!
- * Just omit it from any workflow that doesn't need to upload test recordings,
- * like we do in the `e2e-stress-test-flake-fix` workflow.
- */
-const uploadReplayRecordings = !!process.env["CYPRESS_REPLAYIO_ENABLE_UPLOAD"];
-
 const feHealthcheckEnabled = process.env["CYPRESS_FE_HEALTHCHECK"] === "true";
 
-const convertStringToInt = string =>
-  string.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+// docs say that tsconfig paths should handle aliases, but they don't
+const assetsResolverPlugin = {
+  name: "assetsResolver",
+  setup(build) {
+    // Redirect all paths starting with "assets/" to "resources/"
+    build.onResolve({ filter: /^assets\// }, args => {
+      return {
+        path: path.join(
+          __dirname,
+          "../../resources/frontend_client/app",
+          args.path,
+        ),
+      };
+    });
+  },
+};
 
 const defaultConfig = {
   // This is the functionality of the old cypress-plugins.js file
@@ -43,43 +49,13 @@ const defaultConfig = {
      **                        PREPROCESSOR                            **
      ********************************************************************/
 
-    if (runWithReplay) {
-      on = replay.wrapOn(on);
-      replay.default(on, config, {
-        upload: uploadReplayRecordings,
-        apiKey: process.env.REPLAY_API_KEY,
-        filter: r => {
-          const hasCrashed = r.status === "crashed";
-          const hasFailed = r.metadata.test?.result === "failed";
-          const isFlaky =
-            r.metadata.test?.result === "passed" &&
-            r.metadata.test.tests.some(r => r.result === "failed");
-          const randomlyUploadAll =
-            r.metadata.source.branch === "master" &&
-            convertStringToInt(r.metadata.test.run.id) % 10 === 1;
-
-          console.log("upload replay ::", {
-            hasCrashed,
-            hasFailed,
-            isFlaky,
-            randomlyUploadAll,
-            branch: r.metadata.source.branch,
-            result: r.metadata.test?.result,
-            status: r.status,
-            runId: r.metadata.test.run.id,
-          });
-          return hasCrashed || hasFailed || isFlaky || randomlyUploadAll;
-        },
-      });
-    }
-
     on(
       "file:preprocessor",
       createBundler({
         loader: {
           ".svg": "text",
         },
-        plugins: [NodeModulesPolyfillPlugin()],
+        plugins: [NodeModulesPolyfillPlugin(), assetsResolverPlugin],
         sourcemap: "inline",
       }),
     );

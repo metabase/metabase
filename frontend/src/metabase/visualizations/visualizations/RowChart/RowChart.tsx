@@ -110,7 +110,8 @@ const RowChartVisualization = ({
   rawSeries: rawMultipleSeries,
   series: multipleSeries,
   fontFamily,
-  width,
+  width: outerWidth,
+  height: outerHeight,
   getHref,
 }: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
@@ -286,11 +287,13 @@ const RowChartVisualization = ({
           icon={headerIcon}
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
-          width={width}
+          width={outerWidth}
           getHref={getHref}
         />
       )}
       <RowChartLegendLayout
+        width={outerWidth}
+        height={outerHeight}
         hasLegend={hasLegend}
         items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}

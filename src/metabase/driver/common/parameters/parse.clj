@@ -69,7 +69,7 @@
     ["\n" :newline]]
    param-token-patterns))
 
-(mu/defn ^:private tokenize :- [:sequential StringOrToken]
+(mu/defn- tokenize :- [:sequential StringOrToken]
   [s                   :- :string
    handle-sql-comments :- :boolean]
   (reduce
@@ -104,7 +104,7 @@
                     {:type qp.error-type/invalid-query})))
   (params/->Optional (combine-adjacent-strings parsed)))
 
-(mu/defn ^:private parse-tokens* :- [:tuple
+(mu/defn- parse-tokens* :- [:tuple
                                      [:sequential ParsedToken]
                                      [:maybe [:sequential StringOrToken]]]
   [tokens         :- [:sequential StringOrToken]

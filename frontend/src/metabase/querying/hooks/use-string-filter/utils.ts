@@ -1,7 +1,11 @@
-import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
+import {
+  getAvailableOperatorOptions,
+  getDefaultAvailableOperator,
+} from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
+import type { OperatorOption } from "./types";
 
 function isNotEmpty(value: string) {
   return value.length > 0;
@@ -26,16 +30,15 @@ export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
 
 export function getDefaultOperator(
   column: Lib.ColumnMetadata,
+  availableOptions: OperatorOption[],
 ): Lib.StringFilterOperatorName {
-  if (
+  const desiredOperator =
     Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||
     Lib.isCategory(column)
-  ) {
-    return "=";
-  } else {
-    return "contains";
-  }
+      ? "="
+      : "contains";
+  return getDefaultAvailableOperator(availableOptions, desiredOperator);
 }
 
 export function getDefaultValues(

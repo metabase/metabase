@@ -560,7 +560,7 @@
            :cards dashcards)))
 
 (def ^:private ^:const ^Long max-related 8)
-(def ^:private ^:const ^Long max-cards 15)
+(def ^:private ^:const ^Long max-cards 30)
 
 (defn ->related-entity
   "Turn `entity` into an entry in `:related.`"
@@ -583,7 +583,7 @@
       (update :fields (partial remove magic.util/key-col?))
       (->> (m/map-vals (comp (partial map ->related-entity) u/one-or-many)))))
 
-(mu/defn ^:private indepth
+(mu/defn- indepth
   [{:keys [dashboard-templates-prefix url] :as root}
    {:keys [dashboard-template-name]} :- [:maybe dashboard-templates/DashboardTemplate]]
   (let [base-context (make-base-context root)]
@@ -726,7 +726,7 @@
               :related  [sideways sideways sideways]
               :compare  [compare compare]})})
 
-(mu/defn ^:private related
+(mu/defn- related
   "Build a balanced list of related X-rays. General composition of the list is determined for each
    root type individually via `related-selectors`. That recipe is then filled round-robin style."
   [root
@@ -812,7 +812,7 @@
   [metric opts]
   (automagic-dashboard (merge (->root metric) opts)))
 
-(mu/defn ^:private collect-metrics :- [:maybe [:sequential (ms/InstanceOf LegacyMetric)]]
+(mu/defn- collect-metrics :- [:maybe [:sequential (ms/InstanceOf LegacyMetric)]]
   [root question]
   (map (fn [aggregation-clause]
          (if (-> aggregation-clause
@@ -827,7 +827,7 @@
                                   :table_id   table-id}))))
        (get-in question [:dataset_query :query :aggregation])))
 
-(mu/defn ^:private collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf Field)]]
+(mu/defn- collect-breakout-fields :- [:maybe [:sequential (ms/InstanceOf Field)]]
   [root question]
   (for [breakout     (get-in question [:dataset_query :query :breakout])
         field-clause (take 1 (magic.util/collect-field-references breakout))
@@ -876,8 +876,7 @@
                                                :dashboard-templates-prefix ["table"]})
                                             opts)]
                            (automagic-dashboard root'))
-                         (let [opts      (assoc opts :show :all)
-                               root'     (merge root
+                         (let [root'     (merge root
                                                 (when cell-query
                                                   {:url cell-url})
                                                 opts)

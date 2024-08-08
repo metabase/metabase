@@ -39,13 +39,28 @@ const TIME_FIELD = createMockField({
   semantic_type: null,
 });
 
+const UNKNOWN_FIELD = createMockField({
+  id: 103,
+  table_id: PEOPLE_ID,
+  name: "UNKNOWN",
+  display_name: "Unknown",
+  base_type: "type/*",
+  effective_type: "type/*",
+  semantic_type: null,
+});
+
 const DATABASE = createSampleDatabase({
   tables: [
     createOrdersTable(),
     createProductsTable(),
     createReviewsTable(),
     createPeopleTable({
-      fields: [...(PEOPLE_TABLE.fields ?? []), BOOLEAN_FIELD, TIME_FIELD],
+      fields: [
+        ...(PEOPLE_TABLE.fields ?? []),
+        BOOLEAN_FIELD,
+        TIME_FIELD,
+        UNKNOWN_FIELD,
+      ],
     }),
   ],
 });
@@ -143,6 +158,13 @@ function addExcludeDateFilter(
 
 function addTimeFilter(query: Lib.Query, filterClause: Lib.ExpressionClause) {
   return addFilter(query, filterClause, Lib.timeFilterParts);
+}
+
+function addDefaultFilter(
+  query: Lib.Query,
+  filterClause: Lib.ExpressionClause,
+) {
+  return addFilter(query, filterClause, Lib.defaultFilterParts);
 }
 
 describe("filter", () => {
@@ -1525,6 +1547,72 @@ describe("filter", () => {
         }),
       );
 
+      expect(filterParts).toBeNull();
+    });
+  });
+
+  describe("default filters", () => {
+    it.each<Lib.DefaultFilterOperatorName>(["is-null", "not-null"])(
+      'should be able to create and destructure a default filter with unknown column types and "%s" operator',
+      operator => {
+        const column = findColumn(query, "PEOPLE", UNKNOWN_FIELD.name);
+        const { filterParts, columnInfo } = addDefaultFilter(
+          query,
+          Lib.defaultFilterClause({
+            operator,
+            column,
+          }),
+        );
+
+        expect(filterParts).toMatchObject({
+          operator,
+          column: expect.anything(),
+        });
+        expect(columnInfo?.name).toBe(UNKNOWN_FIELD.name);
+      },
+    );
+
+    it.each([
+      {
+        title: "a string column",
+        tableName: "PRODUCTS",
+        columnName: "CATEGORY",
+      },
+      {
+        title: "a numeric column",
+        tableName: "ORDERS",
+        columnName: "TAX",
+      },
+      {
+        title: "a date column",
+        tableName: "ORDERS",
+        columnName: "CREATED_AT",
+      },
+      {
+        title: "a time column",
+        tableName: "PEOPLE",
+        columnName: TIME_FIELD.name,
+      },
+      {
+        title: "a boolean column",
+        tableName: "PEOPLE",
+        columnName: BOOLEAN_FIELD.name,
+      },
+    ])(`should ignore filters with $title`, ({ tableName, columnName }) => {
+      const column = findColumn(query, tableName, columnName);
+      const { filterParts } = addDefaultFilter(
+        query,
+        Lib.expressionClause("is-null", [column]),
+      );
+      expect(filterParts).toBeNull();
+    });
+
+    it("should ignore expressions with not supported operators", () => {
+      const column = findColumn(query, "ORDERS", "TAX");
+      const { filterParts } = addDefaultFilter(
+        query,
+        Lib.expressionClause("is-empty", [column]),
+      );
       expect(filterParts).toBeNull();
     });
   });

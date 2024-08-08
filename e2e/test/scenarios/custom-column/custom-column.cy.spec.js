@@ -615,7 +615,7 @@ describe("scenarios > question > custom column", () => {
 
     cy.wait("@dataset");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Showing 463 rows").should("be.visible");
+    cy.findByText("Showing 487 rows").should("be.visible");
   });
 
   it("should work with relative date filter applied to a custom column (metabase#16273)", () => {

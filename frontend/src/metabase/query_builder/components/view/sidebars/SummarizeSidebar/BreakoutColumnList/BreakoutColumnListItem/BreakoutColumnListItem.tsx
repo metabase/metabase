@@ -17,10 +17,9 @@ import {
   Root,
 } from "./BreakoutColumnListItem.styled";
 
-const STAGE_INDEX = -1;
-
 interface BreakoutColumnListItemProps {
   query: Lib.Query;
+  stageIndex: number;
   item: Lib.ColumnDisplayInfo & { column: Lib.ColumnMetadata };
   breakout?: Lib.BreakoutClause;
   isPinned?: boolean;
@@ -32,6 +31,7 @@ interface BreakoutColumnListItemProps {
 
 export function BreakoutColumnListItem({
   query,
+  stageIndex,
   item,
   breakout,
   isPinned = false,
@@ -43,12 +43,12 @@ export function BreakoutColumnListItem({
   const isSelected = typeof item.breakoutPosition === "number";
 
   const handleAddClick = useCallback(() => {
-    onAddColumn(Lib.withDefaultBucket(query, STAGE_INDEX, item.column));
-  }, [query, item.column, onAddColumn]);
+    onAddColumn(Lib.withDefaultBucket(query, stageIndex, item.column));
+  }, [query, stageIndex, item.column, onAddColumn]);
 
   const handleListItemClick = useCallback(() => {
-    onReplaceColumns?.(Lib.withDefaultBucket(query, STAGE_INDEX, item.column));
-  }, [query, item.column, onReplaceColumns]);
+    onReplaceColumns?.(Lib.withDefaultBucket(query, stageIndex, item.column));
+  }, [query, stageIndex, item.column, onReplaceColumns]);
 
   const handleRemoveColumn = useCallback(
     (event: MouseEvent) => {
@@ -72,7 +72,7 @@ export function BreakoutColumnListItem({
         <TitleContainer>
           <ColumnTypeIcon
             query={query}
-            stageIndex={STAGE_INDEX}
+            stageIndex={stageIndex}
             column={item.column}
             position="left"
             size={18}
@@ -81,7 +81,7 @@ export function BreakoutColumnListItem({
         </TitleContainer>
         <BucketPickerPopover
           query={query}
-          stageIndex={STAGE_INDEX}
+          stageIndex={stageIndex}
           column={item.column}
           color="summarize"
           isEditing={isSelected}

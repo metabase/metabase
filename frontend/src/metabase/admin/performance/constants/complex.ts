@@ -4,13 +4,15 @@ import * as Yup from "yup";
 import type { CacheableModel } from "metabase-types/api";
 
 import type { StrategyData } from "../types";
-import { isValidStrategyName } from "../utils";
+import { getStrategyValidationSchema, isValidStrategyName } from "../utils";
 
 import { defaultMinDurationMs } from "./simple";
 
-export const positiveInteger = Yup.number()
-  .positive(t`Enter a positive number.`)
-  .integer(t`Enter an integer.`);
+/** Rather than a constant defined in the module scope, this is a function. This way, ttag.t runs *after* the locale is set */
+export const getPositiveIntegerSchema = () =>
+  Yup.number()
+    .positive(t`Enter a positive number.`)
+    .integer(t`Enter an integer.`);
 
 export const inheritStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["inherit"]),
@@ -20,14 +22,18 @@ export const doNotCacheStrategyValidationSchema = Yup.object({
   type: Yup.string().equals(["nocache"]),
 });
 
-export const adaptiveStrategyValidationSchema = Yup.object({
-  type: Yup.string().equals(["ttl"]),
-  min_duration_ms: positiveInteger.default(defaultMinDurationMs),
-  min_duration_seconds: positiveInteger.default(
-    Math.ceil(defaultMinDurationMs / 1000),
-  ),
-  multiplier: positiveInteger.default(10),
-});
+/** Rather than a constant defined in the module scope, this is a function. This way, ttag.t runs *after* the locale is set */
+export const getAdaptiveStrategyValidationSchema = () => {
+  const positiveInteger = getPositiveIntegerSchema();
+  return Yup.object({
+    type: Yup.string().equals(["ttl"]),
+    min_duration_ms: positiveInteger.default(defaultMinDurationMs),
+    min_duration_seconds: positiveInteger.default(
+      Math.ceil(defaultMinDurationMs / 1000),
+    ),
+    multiplier: positiveInteger.default(10),
+  });
+};
 
 export const strategyValidationSchema = Yup.object().test(
   "strategy-validation",
@@ -35,7 +41,7 @@ export const strategyValidationSchema = Yup.object().test(
   function (value) {
     if (!value) {
       return this.createError({
-        message: `Strategy is falsy`,
+        message: "Strategy is falsy",
       });
     }
     const { type } = value as unknown as { type: string };
@@ -45,7 +51,7 @@ export const strategyValidationSchema = Yup.object().test(
         path: "type",
       });
     }
-    const schema = strategies[type].validateWith;
+    const schema = getStrategyValidationSchema(strategies[type]);
     try {
       schema.validateSync(value);
       return true;
@@ -75,18 +81,20 @@ export const strategies = {
           return t`Use default`;
       }
     },
-    shortLabel: t`Use default`,
-    validateWith: inheritStrategyValidationSchema,
+    // NOTE: We use functions for labels because otherwise t doesn't work properly
+    shortLabel: () => t`Use default`,
+    validationSchema: inheritStrategyValidationSchema,
   },
   // NOTE: The strategy is called 'ttl' in the BE, but we've renamed it 'Adaptive' in the FE
   ttl: {
-    label: t`Adaptive: use a query’s average execution time to determine how long to cache its results`,
-    shortLabel: t`Adaptive`,
-    validateWith: adaptiveStrategyValidationSchema,
+    label: () =>
+      t`Adaptive: use a query’s average execution time to determine how long to cache its results`,
+    shortLabel: () => t`Adaptive`,
+    validationSchema: getAdaptiveStrategyValidationSchema,
   },
   nocache: {
-    label: t`Don’t cache results`,
-    validateWith: doNotCacheStrategyValidationSchema,
-    shortLabel: t`No caching`,
+    label: () => t`Don’t cache results`,
+    shortLabel: () => t`No caching`,
+    validationSchema: doNotCacheStrategyValidationSchema,
   },
 } as Record<string, StrategyData>;

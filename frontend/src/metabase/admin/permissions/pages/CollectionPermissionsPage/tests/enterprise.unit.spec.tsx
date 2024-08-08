@@ -110,12 +110,12 @@ describe("Admin > CollectionPermissionsPage (enterprise)", () => {
       expect(lastRequest).toEqual({
         ...iaPermissionsGraph,
         groups: {
-          ...iaPermissionsGraph.groups,
           1: {
             ...iaPermissionsGraph.groups[1],
             13371337: "none",
           },
         },
+        skip_graph: true,
       });
     });
   });

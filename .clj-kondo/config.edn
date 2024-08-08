@@ -53,7 +53,7 @@
     (clojure.core.logic/fresh)
     (clojure.core.logic/matcha)
     (clojure.core.logic/run)
-    (clojure.test/is [query= =? malli=])
+    (clojure.test/is [query= =? malli= qv=])
     (clojure.tools.macro/macrolet)
     instaparse.core/transform
     (metabase.async.streaming-response/streaming-response)
@@ -115,6 +115,7 @@
   :discouraged-namespace
   {camel-snake-kebab.core {:message "CSK is not Turkish-safe, use the versions in metabase.util instead."}
    clojure.tools.logging  {:message "Use metabase.util.log instead of clojure.tools.logging directly"}
+   grouper.core           {:message "Use metabase.util.grouper instead of grouper.core"}
    honeysql.core          {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.format        {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
    honeysql.helpers       {:message "Use Honey SQL 2. Honey SQL 1 is removed as a dependency in Metabase 49+."}
@@ -150,7 +151,8 @@
    {metabase.actions               #{metabase.actions.core}
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
-                                     metabase.analytics.stats}                                      ; TODO -- consolidate these into a real API namespace.
+                                     metabase.analytics.stats
+                                     metabase.analytics.sdk}                                      ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
@@ -189,7 +191,6 @@
     metabase.metabot               #{metabase.metabot}
     metabase.models                :any                                                             ; TODO -- scream, 62 namespaces used elsewhere, but to be fair a lot of these don't *need* to be required.
     metabase.moderation            #{metabase.moderation}
-    metabase.native-query-analyzer #{metabase.native-query-analyzer}
     metabase.permissions           #{metabase.permissions.util}                                     ; TODO -- this is currently the only namespace in this module. Give it a real API namespace?
     metabase.plugins               #{metabase.plugins
                                      metabase.plugins.classloader}                                  ; TODO -- not 100% sure the classloader belongs here
@@ -204,6 +205,8 @@
                                      metabase.pulse.render.js-svg
                                      metabase.pulse.render.style}                                   ; TODO -- consolidate these into a real API namespace.
     metabase.query-processor       :any                                                             ; TODO omg scream, 29 namespaces used outside of the module. WHAT THE HECC
+    metabase.query-analysis        #{metabase.query-analysis
+                                     metabase.query-analysis.failure-map}
     metabase.related               #{metabase.related}
     metabase.sample-data           #{metabase.sample-data}
     metabase.search                #{metabase.search}
@@ -263,6 +266,7 @@
     metabase.api                   :any
     metabase.async                 :any
     metabase.audit                 :any
+    metabase.auth-provider         #{metabase.util}
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
@@ -283,16 +287,18 @@
     metabase.metabot               :any
     metabase.models                :any
     metabase.moderation            :any
-    metabase.native-query-analyzer #{metabase.config
-                                     metabase.driver
-                                     metabase.lib
-                                     metabase.public-settings
-                                     metabase.query-processor
-                                     metabase.util}
     metabase.permissions           :any
     metabase.plugins               :any
     metabase.public-settings       :any
     metabase.pulse                 :any
+    metabase.query-analysis        #{metabase.config
+                                     metabase.driver
+                                     metabase.legacy-mbql
+                                     metabase.lib
+                                     metabase.models
+                                     metabase.public-settings
+                                     metabase.query-processor
+                                     metabase.util}
     metabase.query-processor       :any
     metabase.related               :any
     metabase.sample-data           :any
@@ -365,6 +371,7 @@
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.test                                      met
+    metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
     metabase.analyze.query-results                                qr
     metabase.analyze.classifiers.category                         classifiers.category
@@ -494,8 +501,8 @@
     metabase.models.setting.cache                                 setting.cache
     metabase.models.timeline                                      timeline
     metabase.models.timeline-event                                timeline-event
-    metabase.native-query-analyzer                                query-analyzer
-    metabase.native-query-analyzer.parameter-substitution         nqa.sub
+    metabase.analysis.native-query-analyzer                       nqa
+    metabase.analysis.native-query-analyzer.parameter-substitution nqa.sub
     metabase.plugins.initialize                                   plugins.init
     metabase.public-settings                                      public-settings
     metabase.public-settings.premium-features                     premium-features
@@ -577,6 +584,7 @@
     metabase.util.encryption                                      encryption
     metabase.util.encryption-test                                 encryption-test
     metabase.util.files                                           u.files
+    metabase.util.grouper                                         grouper
     metabase.util.honey-sql-2                                     h2x
     metabase.util.i18n                                            i18n
     metabase.util.i18n.impl                                       i18n.impl
@@ -603,7 +611,9 @@
     toucan.models                                                 models}}}
 
  :lint-as
- {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
+ {cljs.cache/defcache                                                                  clojure.core/deftype
+  clojure.core.cache/defcache                                                          clojure.core/deftype
+  clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                              clojure.test/deftest
   clojurewerkz.quartzite.jobs/defjob                                                   clojure.core/defn
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
@@ -655,12 +665,15 @@
   metabase.test/with-temp-empty-app-db                                                 clojure.core/let
   metabase.test/with-temp-file                                                         clojure.core/let
   metabase.test/with-user-in-groups                                                    clojure.core/let
+  metabase.test/with-grouper-batches!                                                  clojure.core/fn
   metabase.upload-test/with-upload-table!                                              clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
   metabase.util.malli.defn/defn                                                        schema.core/defn
+  metabase.util.malli.defn/defn-                                                       schema.core/defn
   metabase.util.malli.fn/fn                                                            schema.core/fn
   metabase.util.malli/defmethod                                                        schema.core/defmethod
   metabase.util.malli/defn                                                             schema.core/defn
+  metabase.util.malli/defn-                                                            schema.core/defn
   metabase.util.malli/fn                                                               schema.core/fn
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   metabase.xrays.domain-entities.malli/defn                                            schema.core/defn
@@ -789,9 +802,12 @@
    clojurewerkz.quartzite.schedule.simple/schedule                              macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                        macros.quartz/build-trigger
    metabase-enterprise.sandbox.test-util/with-gtaps!                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                   macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
    metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.test/with-gtaps-for-user!                                macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!  macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
+   metabase-enterprise.query-reference-validation.api-test/with-test-setup      macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
@@ -809,6 +825,7 @@
    metabase.query-processor.streaming/streaming-response                        macros.metabase.query-processor.streaming/streaming-response
    metabase.related-test/with-world                                             macros.metabase.related-test/with-world
    metabase.shared.util.namespaces/import-fn                                    macros.metabase.shared.util.namespaces/import-fn
+   metabase.task.setup.query-analysis-setup/with-test-setup!                    macros.metabase.task.setup.query-analysis-setup/with-test-setup!
    metabase.test.data.users/with-group-for-user                                 macros.metabase.test.data.users/with-group-for-user
    metabase.test.util/with-temp-env-var-value!                                  macros.metabase.test.util/with-temp-env-var-value!
    metabase.test.util/with-temporary-raw-setting-values                         macros.metabase.test.util/with-temporary-raw-setting-values

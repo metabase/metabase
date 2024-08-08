@@ -5,7 +5,9 @@ import { useInteractiveQuestionContext } from "../context";
 export const BackButton = () => {
   const { onNavigateBack } = useInteractiveQuestionContext();
 
-  return (
-    onNavigateBack && <DashboardBackButton noLink onClick={onNavigateBack} />
-  );
+  if (!onNavigateBack) {
+    return null;
+  }
+
+  return <DashboardBackButton noLink onClick={onNavigateBack} />;
 };

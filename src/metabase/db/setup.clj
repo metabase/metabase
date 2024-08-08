@@ -104,7 +104,7 @@
          (liquibase/release-lock-if-needed! liquibase)
          (throw e))))))
 
-(mu/defn ^:private verify-db-connection
+(mu/defn- verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting."
   [db-type     :- :keyword
@@ -120,7 +120,7 @@
       (log/infof "Successfully verified %s %s application database connection. %s"
                  (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅")))))
 
-(mu/defn ^:private error-if-downgrade-required!
+(mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
@@ -141,7 +141,7 @@
                        (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
                   {})))))))
 
-(mu/defn ^:private run-schema-migrations!
+(mu/defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
   [data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
    auto-migrate? :- :boolean]

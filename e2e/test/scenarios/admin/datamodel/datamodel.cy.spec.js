@@ -879,6 +879,67 @@ describe("scenarios > admin > datamodel > segments", () => {
       modal().find("textarea").type("delete it");
       modal().contains("button", "Retire").click();
     });
+
+    it("should show segment revision history (metabase#45577, metabase#45594)", () => {
+      cy.request("PUT", "/api/segment/1", {
+        description: "Medium orders",
+        revision_message: "Foo",
+      });
+
+      cy.log("Make sure revisions are displayed properly in /references");
+      cy.visit("/reference/segments/1/revisions");
+      cy.findByTestId("segment-revisions").within(() => {
+        cy.findByText(`Revision history for ${SEGMENT_NAME}`).should(
+          "be.visible",
+        );
+
+        assertRevisionHistory();
+      });
+
+      cy.log(
+        "Make sure revisions are displayed properly in admin table metadata",
+      );
+      cy.visit("/admin/datamodel/segments");
+      cy.get("tr")
+        .filter(`:contains(${SEGMENT_NAME})`)
+        .icon("ellipsis")
+        .click();
+      popover().findByTextEnsureVisible("Revision History").click();
+
+      cy.location("pathname").should(
+        "eq",
+        "/admin/datamodel/segment/1/revisions",
+      );
+
+      cy.findByTestId("segment-revisions").within(() => {
+        // metabase#45594
+        cy.findByRole("heading", {
+          name: `Revision History for "${SEGMENT_NAME}"`,
+        }).should("be.visible");
+
+        assertRevisionHistory();
+      });
+
+      cy.findByTestId("breadcrumbs").within(() => {
+        cy.findByText("Segment History");
+        cy.findByRole("link", { name: "Segments" }).click();
+      });
+
+      cy.location("pathname").should("eq", "/admin/datamodel/segments");
+      cy.location("search").should("eq", `?table=${ORDERS_ID}`);
+
+      function assertRevisionHistory() {
+        cy.findAllByRole("listitem").as("revisions").should("have.length", 2);
+        cy.get("@revisions")
+          .first()
+          .should("contain", "You edited the description")
+          .and("contain", "Foo");
+        cy.get("@revisions")
+          .last()
+          .should("contain", `You created "${SEGMENT_NAME}"`)
+          .and("contain", "All orders with a total under $100.");
+      }
+    });
   });
 });
 

@@ -17,7 +17,7 @@
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
-(mu/defn ^:private cast-values :- ::lib.schema.actions/row
+(mu/defn- cast-values :- ::lib.schema.actions/row
   [driver        :- :keyword
    column->value :- ::lib.schema.actions/row
    table-id      :- ::lib.schema.id/table]

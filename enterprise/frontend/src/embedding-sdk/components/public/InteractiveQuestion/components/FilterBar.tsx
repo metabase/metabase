@@ -1,20 +1,17 @@
-import { useDispatch } from "metabase/lib/redux";
-import { updateQuestion } from "metabase/query_builder/actions";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
 
-import { useInteractiveQuestionData } from "../hooks";
-
 export const FilterBar = () => {
-  const dispatch = useDispatch();
-
-  const { question, uiControls } = useInteractiveQuestionData();
+  const { question, onQuestionChange } = useInteractiveQuestionContext();
 
   const shouldRender =
     question &&
     QuestionFiltersHeader.shouldRender({
       question,
-      queryBuilderMode: uiControls.queryBuilderMode,
       isObjectDetail: false,
+
+      // This only renders when the queryBuilderMode is view.
+      queryBuilderMode: "view",
     });
 
   if (!shouldRender) {
@@ -25,7 +22,7 @@ export const FilterBar = () => {
     <QuestionFiltersHeader
       expanded
       question={question}
-      updateQuestion={(...args) => dispatch(updateQuestion(...args))}
+      updateQuestion={onQuestionChange}
     />
   );
 };

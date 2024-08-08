@@ -3,6 +3,7 @@ import type { MouseEvent } from "react";
 import { forwardRef, useCallback, useMemo } from "react";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 import { Icon } from "metabase/ui";
@@ -84,6 +85,7 @@ const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
       >
         <PaginationMessage>{paginateMessage}</PaginationMessage>
         <PaginationButton
+          className={CS.textPrimary}
           aria-label={t`Previous page`}
           direction="previous"
           onClick={handlePreviousPage}
@@ -92,6 +94,7 @@ const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
           <Icon name="chevronleft" />
         </PaginationButton>
         <PaginationButton
+          className={CS.textPrimary}
           aria-label={t`Next page`}
           direction="next"
           onClick={handleNextPage}

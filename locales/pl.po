@@ -28358,7 +28358,7 @@ msgstr "Oczekiwano dodatniej liczby całkowitej, ale znaleziono {0}"
 #: frontend/src/metabase-lib/v1/operators/constants.js:353
 #: metabase/lib/schema/aggregation.cljc:164
 msgid "Median of ..."
-msgstr "Media z ..."
+msgstr "Mediana z ..."
 
 #: frontend/src/metabase-lib/v1/operators/constants.js:354
 #: metabase/lib/schema/aggregation.cljc:165
@@ -28368,7 +28368,7 @@ msgstr "Mediana"
 #: frontend/src/metabase-lib/v1/operators/constants.js:355
 #: metabase/lib/schema/aggregation.cljc:166
 msgid "Median of all the values of a column"
-msgstr "Mediana z wszystkich wartości w kolumnie"
+msgstr "Mediana ze wszystkich wartości w kolumnie"
 
 #: enterprise/frontend/src/metabase-enterprise/advanced_permissions/components/ImpersonationModal/ImpersonationModalView.tsx:83
 msgid "Map a user attribute to database roles"
@@ -33282,7 +33282,7 @@ msgstr "Ten element został trwale usunięty."
 #: frontend/src/metabase/models/components/ModelDetailPage/ModelDetailHeader/ModelDetailHeader.tsx:52
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/components/QuestionActions/QuestionActions.tsx:231
 msgid "Move to trash"
-msgstr "Przeniesienie do kosza"
+msgstr "Przenieś do kosza"
 
 #: frontend/src/metabase/collections/components/CollectionEmptyState/CollectionEmptyState.tsx:42
 msgid "Deleted items will appear here."
@@ -33763,25 +33763,25 @@ msgstr "Utworzono w"
 msgid "Error deleting table"
 msgid_plural "Error deleting tables"
 msgstr[0] "Błąd usuwania tabeli"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[1] "Błąd usuwania tabel"
+msgstr[2] "Błąd usuwania tabel"
+msgstr[3] "Błąd usuwania tabel"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:117
 msgid "1 table deleted"
 msgid_plural "{0} tables deleted"
 msgstr[0] "1 usunięta tabela"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[1] "{0} usunięte tabele"
+msgstr[2] "{0} usuniętych tabel"
+msgstr[3] "{0} usuniętych tabel"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:132
 msgid "Selected {0} table"
 msgid_plural "Selected {0} tables"
-msgstr[0] "Wybrana tabela {0}"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "Wybrano tabelę {0}"
+msgstr[1] "Wybrano {0} tabele"
+msgstr[2] "Wybrano {0} tabel"
+msgstr[3] "Wybrano {0} tabel"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/UploadManagementTable.tsx:146
 msgid "Manage Uploads"
@@ -33837,23 +33837,23 @@ msgstr "Usuń trwale"
 msgid "Delete item permanently?"
 msgid_plural "Delete {0} items permanently?"
 msgstr[0] "Usunąć element na stałe?"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[1] "Usunąć {0} elementy na stałe?"
+msgstr[2] "Usunąć {0} elementów na stałe?"
+msgstr[3] "Usunąć {0} elementów na stałe?"
 
 #: frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx:80
 msgid "{0} item has been permanently deleted."
 msgid_plural "{0} items have been permanently deleted."
 msgstr[0] "{0} element został trwale usunięty."
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[1] "{0} elementy zostały trwale usunięte."
+msgstr[2] "{0} elementów zostało trwale usuniętych."
+msgstr[3] "{0} elementów zostało trwale usuniętych."
 
 #: frontend/src/metabase/archive/components/ArchivedEntityBanner/ArchivedEntityBanner.tsx:59
 #: frontend/src/metabase/collections/components/CollectionBulkActions/ArchivedBulkActions.tsx:105
 #: frontend/src/metabase/components/EntityItem/EntityItem.tsx:222
 msgid "Restore"
-msgstr "Przywracanie"
+msgstr "Przywróc"
 
 #: frontend/src/metabase/common/components/DashboardPicker/components/DashboardPickerModal.tsx:54
 #: frontend/src/metabase/components/DashboardSelector/DashboardSelector.tsx:39
@@ -34061,10 +34061,10 @@ msgstr "Może to mieć wpływ na modele i pytania, które używają tabeli jako 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/DeleteConfirmModal.tsx:46
 msgid "Also send all models and questions based on this table to the trash"
 msgid_plural "Also send all models and questions based on these tables to the trash"
-msgstr[0] "Wysyłaj również wszystkie modele i pytania oparte na tej tabeli do kosza"
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[0] "Wyślij również wszystkie modele i pytania oparte na tej tabeli do kosza"
+msgstr[1] "Wyślij również wszystkie modele i pytania oparte na tej tabeli do kosza"
+msgstr[2] "Wyślij również wszystkie modele i pytania oparte na tej tabeli do kosza"
+msgstr[3] "Wyślij również wszystkie modele i pytania oparte na tej tabeli do kosza"
 
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx:18
 msgid "Minimize maintenance"
@@ -34447,7 +34447,7 @@ msgstr "Czyszczenie pamięci podręcznej... "
 #: frontend/src/metabase/admin/permissions/selectors/confirmations.ts:153
 msgctxt "This is a verb, for a confirmation button"
 msgid "Change"
-msgstr "Zmiana"
+msgstr "Zmień"
 
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts:128
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts:148
@@ -34458,7 +34458,7 @@ msgstr "{0} zweryfikował to"
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts:151
 msgctxt "{0} is the name of a user"
 msgid "{0} removed verification"
-msgstr "{0} usunięta weryfikacja"
+msgstr "{0} usunął weryfikację"
 
 #: enterprise/frontend/src/metabase-enterprise/moderation/service.ts:154
 msgctxt "{0} is the name of a user, {1} is the status of a review"
@@ -34468,12 +34468,12 @@ msgstr "{0} zmienił status na {1}"
 #: frontend/src/metabase/components/EntityItem/EntityItem.tsx:160
 msgctxt "Verb"
 msgid "Bookmark"
-msgstr "Zakładka"
+msgstr "Dodaj do zakładek"
 
 #: frontend/src/metabase/components/EntityItem/EntityItem.tsx:198
 msgctxt "Verb"
 msgid "Duplicate"
-msgstr "Duplikat"
+msgstr "Powiel"
 
 #: frontend/src/metabase/components/ItemsTable/Columns.tsx:182
 msgctxt "Precedes the name of a user"
@@ -34483,7 +34483,7 @@ msgstr "Usunięty przez"
 #: frontend/src/metabase/components/ItemsTable/Columns.tsx:228
 msgctxt "Time which the item was deleted"
 msgid "Deleted at"
-msgstr "Usunięto w"
+msgstr "Usunięto o"
 
 #: frontend/src/metabase/components/Schedule/Schedule.tsx:180
 msgctxt "{0} is a verb like 'Send', {1} is an adverb like 'hourly', {2} is a number of minutes"
@@ -34528,17 +34528,17 @@ msgstr "co godzinę"
 #: frontend/src/metabase/components/Schedule/constants.ts:34
 msgctxt "adverb"
 msgid "daily"
-msgstr "codzienny"
+msgstr "codziennie"
 
 #: frontend/src/metabase/components/Schedule/constants.ts:35
 msgctxt "adverb"
 msgid "weekly"
-msgstr "tygodnik"
+msgstr "co tydzień"
 
 #: frontend/src/metabase/components/Schedule/constants.ts:36
 msgctxt "adverb"
 msgid "monthly"
-msgstr "miesięcznik"
+msgstr "co mieciąc"
 
 #: frontend/src/metabase/components/Schedule/constants.ts:60
 msgctxt "As in 9:00 AM"
@@ -34593,7 +34593,7 @@ msgstr "To {0} jest w koszu."
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationError.tsx:27
 msgctxt "{0} is an email address"
 msgid "Please try again later, and reach out to us at {0} if you need help."
-msgstr "Spróbuj ponownie później i skontaktuj się z nami pod numerem {0}, jeśli potrzebujesz pomocy."
+msgstr "Spróbuj ponownie później i skontaktuj się z nami {0}, jeśli potrzebujesz pomocy."
 
 #: frontend/src/metabase/admin/settings/components/CloudPanel/MigrationSuccess.tsx:42
 msgctxt "{0} is the date and time the snapshot was uploaded"
@@ -34617,17 +34617,17 @@ msgstr "Brak konfiguracji pamięci podręcznej do unieważnienia."
 msgid "Cleared a cached result."
 msgid_plural "Cleared {0} cached results."
 msgstr[0] "Wyczyszczono buforowany wynik."
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[1] "Wyczyszczono {0} buforowane wyniki."
+msgstr[2] "Wyczyszczono {0} buforowanych wyniki."
+msgstr[3] "Wyczyszczono {0} buforowanych wyników."
 
 #: metabase/api/cache.clj:130
 msgid "Invalidated cache configuration."
 msgid_plural "Invalidated {0} cache configurations."
 msgstr[0] "Nieprawidłowa konfiguracja pamięci podręcznej."
-msgstr[1] ""
-msgstr[2] ""
-msgstr[3] ""
+msgstr[1] "{0} nieprawidłowe konfiguracje pamięci podręcznej."
+msgstr[2] "{0} nieprawidłowych konfiguracji pamięci podręcznej."
+msgstr[3] "{0} nieprawidłowych konfiguracji pamięci podręcznej."
 
 #: metabase/api/cache.clj:126
 msgid "No cached results to clear."

@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import type { MockCall } from "fetch-mock";
 import fetchMock from "fetch-mock";
+import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
   screen,
@@ -28,6 +29,7 @@ registerVisualizations();
 describe("QueryBuilder", () => {
   afterEach(() => {
     jest.resetAllMocks();
+    setupJestCanvasMock();
   });
 
   describe("rendering", () => {
@@ -124,7 +126,7 @@ describe("QueryBuilder", () => {
 
         const executionTime = await screen.findByTestId("execution-time");
         expect(executionTime).toBeInTheDocument();
-        expect(executionTime).toHaveTextContent("123 ms");
+        expect(executionTime).toHaveTextContent("123ms");
       });
 
       it("renders query execution time for native questions", async () => {
@@ -137,7 +139,7 @@ describe("QueryBuilder", () => {
 
         const executionTime = await screen.findByTestId("execution-time");
         expect(executionTime).toBeInTheDocument();
-        expect(executionTime).toHaveTextContent("123 ms");
+        expect(executionTime).toHaveTextContent("123ms");
       });
     });
   });

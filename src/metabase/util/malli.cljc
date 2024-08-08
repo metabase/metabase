@@ -1,5 +1,5 @@
 (ns metabase.util.malli
-  (:refer-clojure :exclude [fn defn defmethod])
+  (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
        ([metabase.util.i18n]
@@ -18,7 +18,7 @@
 #?(:clj
    (p/import-vars
     [mu.fn fn]
-    [mu.defn defn]))
+    [mu.defn defn defn-]))
 
 (core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."

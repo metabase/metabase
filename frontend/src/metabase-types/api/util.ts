@@ -41,3 +41,5 @@ export interface BugReportDetails {
   "metabase-info": MetabaseInfo;
   "system-info": SystemInfo;
 }
+
+export type LongTaskStatus = "incomplete" | "complete" | "aborted";

@@ -1,6 +1,5 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
-import PropTypes from "prop-types";
 
 import { Badge } from "metabase/components/Badge";
 
@@ -35,10 +34,6 @@ const DividerSpan = styled.span`
   user-select: none;
 `;
 
-Divider.propTypes = {
-  char: PropTypes.string,
-};
-
-export function Divider({ char = "/" }) {
+export function Divider({ char = "/" }: { char?: string }) {
   return <DividerSpan>{char}</DividerSpan>;
 }

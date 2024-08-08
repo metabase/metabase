@@ -51,6 +51,8 @@
   "Sync the indexes for all tables in `database` if the driver supports storing index info."
   [database]
   (if (driver.u/supports? (driver.u/database->driver database) :index-info database)
-    (apply merge-with + empty-stats
-           (map #(maybe-sync-indexes-for-table! database %) (sync-util/db->sync-tables database)))
+    (transduce (map #(maybe-sync-indexes-for-table! database %))
+               (partial merge-with +)
+               empty-stats
+               (sync-util/reducible-sync-tables database))
     empty-stats))

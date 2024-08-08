@@ -305,7 +305,7 @@
 (lib.common/defop time-interval [x amount unit])
 (lib.common/defop segment [segment-id])
 
-(mu/defn ^:private add-filter-to-stage
+(mu/defn- add-filter-to-stage
   "Add a new filter clause to a `stage`, ignoring it if it is a duplicate clause (ignoring :lib/uuid)."
   [stage      :- ::lib.schema/stage
    new-filter :- [:maybe ::lib.schema.expression/boolean]]

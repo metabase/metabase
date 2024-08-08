@@ -96,8 +96,9 @@
     {:name       "hydrate-dashboard-details"
      :attributes {:dashboard/id dashboard-id}}
     (t2/hydrate dashboard [:dashcards
-                           [:card :can_write :can_run_adhoc_query [:moderation_reviews :moderator_details]]
-                           [:series :can_write :can_run_adhoc_query]
+                           ;; disabled :can_run_adhoc_query for performance reasons in 50 release
+                           [:card :can_write #_:can_run_adhoc_query [:moderation_reviews :moderator_details]]
+                           [:series :can_write #_:can_run_adhoc_query]
                            :dashcard/action
                            :dashcard/linkcard-info]
                 :can_restore
@@ -292,7 +293,7 @@
 (def ^:private get-dashboard-fn
   (memoize/ttl (fn [dashboard-load-id]
                  (if dashboard-load-id
-                   (memoize get-dashboard*) ; If dashboard-load-id is set, return a memoized get-dashboard*.
+                   (memoize/memo get-dashboard*) ; If dashboard-load-id is set, return a memoized get-dashboard*.
                    get-dashboard*))         ; If unset, just call through to get-dashboard*.
                :ttl/threshold dashboard-load-cache-ttl))
 
@@ -305,8 +306,11 @@
   (if dashboard-load-id
     (binding [*dashboard-load-id*                        dashboard-load-id
               lib.metadata.jvm/*metadata-provider-cache* (dashboard-load-metadata-provider-cache dashboard-load-id)]
+      (log/debugf "Using dashboard_load_id %s" dashboard-load-id)
       (body-fn))
-    (body-fn)))
+    (do
+      (log/debug "No dashboard_load_id provided")
+      (body-fn))))
 
 (defmacro ^:private with-dashboard-load-id [dashboard-load-id & body]
   `(do-with-dashboard-load-id ~dashboard-load-id (^:once fn* [] ~@body)))
@@ -510,7 +514,7 @@
     (lib.util.match/match-one field-clause [:field (id :guard integer?) _] id)))
 
 ;; TODO -- should we only check *new* or *modified* mappings?
-(mu/defn ^:private check-parameter-mapping-permissions
+(mu/defn- check-parameter-mapping-permissions
   "Starting in 0.41.0, you must have *data* permissions in order to add or modify a DashboardCard parameter mapping."
   {:added "0.41.0"}
   [parameter-mappings :- [:sequential dashboard-card/ParamMapping]]
@@ -770,10 +774,6 @@
           dash-updates                       (api/updates-with-archived-directly current-dash dash-updates)]
       (collection/check-allowed-to-change-collection current-dash dash-updates)
       (check-allowed-to-change-embedding current-dash dash-updates)
-      ;; Can't move things to the Trash.
-      (when (some-> dash-updates :collection_id (= (collection/trash-collection-id)))
-        (throw (ex-info (tru "Cannot move a card to the trash collection.")
-                        {:status-code 400})))
       (api/check-500
         (do
           (t2/with-transaction [_conn]
@@ -833,29 +833,32 @@
             hydrate-dashboard-details
             (assoc :last-edit-info (last-edit/edit-information-for-user @api/*current-user*)))))))
 
+(def ^:private DashUpdates
+  "Schema for Dashboard Updates."
+  [:map
+   [:name                    {:optional true} [:maybe ms/NonBlankString]]
+   [:description             {:optional true} [:maybe :string]]
+   [:caveats                 {:optional true} [:maybe :string]]
+   [:points_of_interest      {:optional true} [:maybe :string]]
+   [:show_in_getting_started {:optional true} [:maybe :boolean]]
+   [:enable_embedding        {:optional true} [:maybe :boolean]]
+   [:embedding_params        {:optional true} [:maybe ms/EmbeddingParams]]
+   [:parameters              {:optional true} [:maybe [:sequential ms/Parameter]]]
+   [:position                {:optional true} [:maybe ms/PositiveInt]]
+   [:width                   {:optional true} [:enum "fixed" "full"]]
+   [:archived                {:optional true} [:maybe :boolean]]
+   [:collection_id           {:optional true} [:maybe ms/PositiveInt]]
+   [:collection_position     {:optional true} [:maybe ms/PositiveInt]]
+   [:cache_ttl               {:optional true} [:maybe ms/PositiveInt]]
+   [:dashcards               {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]]
+   [:tabs                    {:optional true} [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]]])
+
 (api/defendpoint PUT "/:id"
   "Update a Dashboard, and optionally the `dashcards` and `tabs` of a Dashboard. The request body should be a JSON object with the same
   structure as the response from `GET /api/dashboard/:id`."
-  [id :as {{:keys [description name parameters caveats points_of_interest show_in_getting_started enable_embedding
-                   embedding_params position width archived collection_id collection_position cache_ttl dashcards tabs]
-            :as   dash-updates} :body}]
-  {id                      ms/PositiveInt
-   name                    [:maybe ms/NonBlankString]
-   description             [:maybe :string]
-   caveats                 [:maybe :string]
-   points_of_interest      [:maybe :string]
-   show_in_getting_started [:maybe :boolean]
-   enable_embedding        [:maybe :boolean]
-   embedding_params        [:maybe ms/EmbeddingParams]
-   parameters              [:maybe [:sequential ms/Parameter]]
-   position                [:maybe ms/PositiveInt]
-   width                   [:maybe [:enum "fixed" "full"]]
-   archived                [:maybe :boolean]
-   collection_id           [:maybe ms/PositiveInt]
-   collection_position     [:maybe ms/PositiveInt]
-   cache_ttl               [:maybe ms/PositiveInt]
-   dashcards               [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardCard] :id)]
-   tabs                    [:maybe (ms/maps-with-unique-key [:sequential UpdatedDashboardTab] :id)]}
+  [id :as {dash-updates :body}]
+  {id           ms/PositiveInt
+   dash-updates DashUpdates}
   (update-dashboard id dash-updates))
 
 (api/defendpoint PUT "/:id/cards"
@@ -911,7 +914,7 @@
   (with-dashboard-load-id dashboard-load-id
     (data-perms/with-relevant-permissions-for-user api/*current-user-id*
       (let [dashboard (get-dashboard id)]
-        (api.query-metadata/dashboard-metadata dashboard)))))
+        (api.query-metadata/batch-fetch-dashboard-metadata [dashboard])))))
 
 ;;; ----------------------------------------------- Sharing is Caring ------------------------------------------------
 
@@ -1005,7 +1008,7 @@
     (keyword (name type))
     :=))
 
-(mu/defn ^:private param->fields
+(mu/defn- param->fields
   [{:keys [mappings] :as param} :- mbql.s/Parameter]
   (for [{:keys [target] {:keys [card]} :dashcard} mappings
         :let  [[_ dimension] (->> (mbql.normalize/normalize-tokens target :ignore-path)
@@ -1017,14 +1020,21 @@
                            :expression   dimension
                            :template-tag (:dimension ttag)
                            (log/error "cannot handle this dimension" {:dimension dimension}))
-               field-id  (params/param-target->field-id dimension card)]
+               field-id  (or
+                          ;; Get the field id from the field-clause if it contains it. This is the common case
+                          ;; for mbql queries.
+                          (lib.util.match/match-one dimension [:field (id :guard integer?) _] id)
+                          ;; Attempt to get the field clause from the model metadata corresponding to the field.
+                          ;; This is the common case for native queries in which mappings from original columns
+                          ;; have been performed using model metadata.
+                          (:id (qp.util/field->field-info dimension (:result_metadata card))))]
         :when field-id]
     {:field-id field-id
      :op       (param-type->op (:type param))
      :options  (merge (:options ttag)
                       (:options param))}))
 
-(mu/defn ^:private chain-filter-constraints :- chain-filter/Constraints
+(mu/defn- chain-filter-constraints :- chain-filter/Constraints
   [dashboard constraint-param-key->value]
   (vec (for [[param-key value] constraint-param-key->value
              :let              [param (get-in dashboard [:resolved-params param-key])]
@@ -1227,13 +1237,13 @@
 
 (api/defendpoint POST "/:dashboard-id/dashcard/:dashcard-id/card/:card-id/query"
   "Run the query associated with a Saved Question (`Card`) in the context of a `Dashboard` that includes it."
-  [dashboard-id dashcard-id card-id :as {{:keys [parameters], :as body}          :body
-                                         {dashboard-load-id "dashboard_load_id"} :query-params}]
-  {dashboard-id  ms/PositiveInt
-   dashcard-id   ms/PositiveInt
-   card-id       ms/PositiveInt
-   parameters    [:maybe [:sequential ParameterWithID]]}
-  (with-dashboard-load-id dashboard-load-id
+  [dashboard-id dashcard-id card-id :as {{:keys [dashboard_load_id parameters], :as body} :body}]
+  {dashboard-id      ms/PositiveInt
+   dashcard-id       ms/PositiveInt
+   card-id           ms/PositiveInt
+   dashboard_load_id [:maybe ms/NonBlankString]
+   parameters        [:maybe [:sequential ParameterWithID]]}
+  (with-dashboard-load-id dashboard_load_id
     (u/prog1 (m/mapply qp.dashboard/process-query-for-dashcard
                        (merge
                          body

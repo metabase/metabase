@@ -15,7 +15,7 @@
    [metabase.lib.util :as lib.util]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private pop-until-aggregation-or-breakout :- [:maybe ::lib.schema/query]
+(mu/defn- pop-until-aggregation-or-breakout :- [:maybe ::lib.schema/query]
   "Strips off any trailing stages that do not contain aggregations.
 
   If there are no such stages, returns nil."

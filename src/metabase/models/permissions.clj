@@ -475,7 +475,7 @@
     collection-or-id
     (t2/select-one :model/Collection :id (u/the-id collection-or-id))))
 
-(mu/defn ^:private check-is-modifiable-collection
+(mu/defn- check-is-modifiable-collection
   "Check whether `collection-or-id` refers to a collection that can have permissions modified. Personal collections, the
   Trash, and descendants of those can't have their permissions modified."
   [collection-or-id :- MapOrID]

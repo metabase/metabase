@@ -100,7 +100,7 @@
                 :parameters             request-parameters
                 :destination-parameters destination-param-ids})))
 
-(mu/defn ^:private build-implicit-query :- [:map
+(mu/defn- build-implicit-query :- [:map
                                             [:query          ::mbql.s/Query]
                                             [:row-parameters ::lib.schema.actions/row]
                                             ;; TODO -- the schema for these should probably be

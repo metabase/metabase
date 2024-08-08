@@ -1,7 +1,12 @@
-import type { ScheduleSettings } from "metabase-types/api";
+import type {
+  AdaptiveStrategy,
+  ScheduleSettings,
+  InheritStrategy,
+} from "metabase-types/api";
 
 import {
   cronToScheduleSettings,
+  getShortStrategyLabel,
   hourTo24HourFormat,
   hourToTwelveHourFormat,
   scheduleSettingsToCron,
@@ -274,5 +279,30 @@ describe("hourTo24HourFormat", () => {
 
   it("converts NaN NaN to NaN", () => {
     expect(hourTo24HourFormat(NaN, NaN)).toBeNaN();
+  });
+});
+
+describe("getShortStrategyLabel", () => {
+  it("should return null if no strategy is provided", () => {
+    const result = getShortStrategyLabel();
+    expect(result).toBeNull();
+  });
+
+  it("can abbreviate an 'Adaptive' strategy", () => {
+    const strategy: AdaptiveStrategy = {
+      type: "ttl",
+      multiplier: 2,
+      min_duration_ms: 1000,
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Adaptive");
+  });
+
+  it("can abbreviate a 'Use default' aka inherit strategy", () => {
+    const strategy: InheritStrategy = {
+      type: "inherit",
+    };
+    const result = getShortStrategyLabel(strategy);
+    expect(result).toBe("Use default");
   });
 });

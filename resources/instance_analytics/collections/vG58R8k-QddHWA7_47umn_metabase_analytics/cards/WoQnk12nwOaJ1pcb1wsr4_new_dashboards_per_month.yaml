@@ -59,6 +59,5 @@ serdes/meta:
   label: new_dashboards_per_month
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: null
 type: question

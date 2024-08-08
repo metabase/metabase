@@ -177,7 +177,8 @@
   (testing "Check that we prevent open redirects to untrusted sites"
     (with-jwt-default-setup
       (doseq [redirect-uri ["https://badsite.com"
-                            "//badsite.com"]]
+                            "//badsite.com"
+                            "https:///badsite.com"]]
         (is (= "Invalid redirect URL"
                (-> (client/client
                     :get 400 "/auth/sso" {:request-options {:redirect-strategy :none}}

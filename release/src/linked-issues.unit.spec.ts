@@ -41,7 +41,7 @@ describe("getLinkedIssues", () => {
       ).toBeNull();
     });
 
-    it("should return `null` when the issue doesn't immediatelly follow the closing keyword", () => {
+    it("should return `null` when the issue doesn't immediately follow the closing keyword", () => {
       // Two or more spaces
       expect(getLinkedIssues("Fix  #123")).toBeNull();
       // Newline
@@ -68,6 +68,12 @@ describe("getLinkedIssues", () => {
 
       it(`should return the issue id for ${closingKeyword.toLowerCase()}`, () => {
         expect(getLinkedIssues(`${closingKeyword.toLowerCase()} #123`)).toEqual(
+          ["123"],
+        );
+      });
+
+      it(`should return the issue id for ${closingKeyword.toLowerCase()} with a colon`, () => {
+        expect(getLinkedIssues(`${closingKeyword.toLowerCase()}: #123`)).toEqual(
           ["123"],
         );
       });

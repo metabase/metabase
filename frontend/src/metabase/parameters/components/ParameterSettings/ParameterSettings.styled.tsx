@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import ParameterValueWidget from "../ParameterValueWidget";
+import { ParameterValueWidget } from "../ParameterValueWidget";
 
 export const SettingLabel = styled.label`
   display: block;

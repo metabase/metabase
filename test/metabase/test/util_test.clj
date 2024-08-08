@@ -118,3 +118,17 @@
                                    (orig))))]
       (mock-me-outer)))
   (is (= :mock/redefined (z))))
+
+(deftest ^:parallel ordered-subset?-test
+  (is (mt/ordered-subset? [1 2 3] [1 2 3]))
+  (is (mt/ordered-subset? [1 2 3] [1 2 1 3 4 5]))
+  (is (mt/ordered-subset? [1 2 3] [1 2 3 4]))
+  (is (mt/ordered-subset? [1 2 3] [0 1 2 3]))
+  (is (mt/ordered-subset? [1 2 3] [0 1 2 3 4 5]))
+  (is (not (mt/ordered-subset? [1 2 3] [1 2])))
+  (is (mt/ordered-subset? [] []))
+  (is (mt/ordered-subset? [] [1]))
+  (is (not (mt/ordered-subset? [1] [])))
+  (is (mt/ordered-subset? [            "foo"   "bar"              "baz"]
+                          ["elephants" "foxes" "badgers" "zebras" "beavers" "platypi"]
+                          (fn [x y] (= (first x) (first y))))))

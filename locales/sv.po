@@ -23245,7 +23245,7 @@ msgstr "Grupper med blockdata-åtkomst kan inte ladda ner resultat"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:78
 msgid "Disable model persistence"
-msgstr "Inaktivera modellpersistens"
+msgstr "Inaktivera modellcache"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:79
 msgid "Disabling…"
@@ -23253,7 +23253,7 @@ msgstr "Inaktiverar..."
 
 #: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:87
 msgid "Enable model persistence"
-msgstr "Aktivera modellpersistens"
+msgstr "Aktivera modellcache"
 
 #: frontend/src/metabase/admin/databases/components/DatabaseEditApp/Sidebar/Sidebar.jsx:88
 msgid "Enabling…"
@@ -23449,11 +23449,11 @@ msgstr "Värdet måste vara ett heltal som representerar timmar större än elle
 
 #: metabase/api/persist.clj:122
 msgid "Enabling model persistence"
-msgstr "Möjliggör modellpersistens"
+msgstr "Aktiverar modellcache"
 
 #: metabase/api/persist.clj:135
 msgid "Disabling model persistence"
-msgstr "Inaktiverar modellpersistens"
+msgstr "Inaktiverar modellcache"
 
 #: metabase/automagic_dashboards/util.clj:86
 msgid "Warning: Automagic analysis context is missing result metadata. Unable to resolve Fields by name."
@@ -23490,7 +23490,7 @@ msgstr "Steg {0} slutfördes för db {1}"
 
 #: metabase/driver/mysql/ddl.clj:165 metabase/driver/postgres/ddl.clj:119
 msgid "Error in `{0}` while checking for model persistence permissions."
-msgstr "Fel i `{0}` vid kontroll av modellpersistensbehörigheter."
+msgstr "Fel i `{0}` vid kontroll av modellcache-behörigheter."
 
 #: metabase/public_settings.clj:271
 msgid "Allow persisting models into the source database."
@@ -32807,7 +32807,7 @@ msgstr "Du kan antingen ha en cachepolicy för alla dina databaser eller en spec
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ModelPersistenceConfiguration.tsx:134
 msgid "Enable model persistence to make your models (and the queries that use them) load faster."
-msgstr "Aktivera modellpersistens så att dina modeller (och de frågor som använder dem) laddas snabbare."
+msgstr "Aktivera modellcache så att dina modeller (och de frågor som använder dem) laddas snabbare."
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:67
 msgid "Clear all cached results for {0}?"
@@ -32839,9 +32839,10 @@ msgstr "Återställ alla databascache-policyer?"
 msgid "Reset all to default"
 msgstr "Återställ samtliga"
 
+#. Andreas forced me to do this. It makes sense as long as this name is only being used as the tab name.
 #: enterprise/frontend/src/metabase-enterprise/caching/components/ModelPersistenceTab.tsx:9
 msgid "Model persistence"
-msgstr "Modell-uthållighet"
+msgstr "Modellcachning"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/SidebarCacheSection.tsx:40
 msgid "Caching policy"
@@ -33855,7 +33856,7 @@ msgstr "Detta kan påverka modeller/frågor som använder tabellen/tabellerna so
 msgid "Also send all models and questions based on this table to the trash"
 msgid_plural "Also send all models and questions based on these tables to the trash"
 msgstr[0] "Skicka också alla modeller och frågor som baseras på denna tabell till papperskorgen"
-msgstr[1] ""
+msgstr[1] "Skicka också alla modeller och frågor som baseras tabellerna till papperskorgen"
 
 #: frontend/src/metabase/admin/upsells/UpsellHosting.tsx:18
 msgid "Minimize maintenance"

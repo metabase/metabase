@@ -10,6 +10,7 @@ import {
   createPublicQuestionLink,
   modal,
   openNativeEditor,
+  dismissDownloadStatus,
 } from "e2e/support/helpers";
 
 const { PEOPLE } = SAMPLE_DATABASE;
@@ -86,11 +87,12 @@ describe("scenarios > public > question", () => {
       cy.get("[data-testid=cell-data]").contains("Winner");
 
       // Make sure we can download the public question (metabase#21993)
-      cy.get("@uuid").then(publicUid => {
+      cy.get("@uuid").then(publicUuid => {
         downloadAndAssert(
-          { fileType: "xlsx", questionId: id, publicUid },
+          { fileType: "xlsx", questionId: id, publicUuid },
           assertSheetRowsCount(5),
         );
+        dismissDownloadStatus();
       });
     });
   });

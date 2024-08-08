@@ -754,7 +754,7 @@ msgstr "Choisissez un champ"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/FieldRemappingSettings/FieldRemappingSettings.jsx:288
 msgid "Please select a column to use for display."
-msgstr "S'il vous plaît, sélectionnez une colonne à utiliser pour l'affichage"
+msgstr "S'il vous plaît, sélectionnez une colonne à utiliser pour l'affichage."
 
 #: frontend/src/metabase/admin/datamodel/containers/FieldApp.jsx:771
 msgid "Tip:"
@@ -794,7 +794,7 @@ msgstr "Suppression lancée !"
 
 #: frontend/src/metabase/admin/datamodel/metadata/components/MetadataEditor/MetadataEditor.tsx:74
 msgid "Select any table to see its schema and add or edit metadata."
-msgstr "Sélectionner une table pour voir son schéma et enrichir ses métadonnées"
+msgstr "Sélectionner une table pour voir son schéma et enrichir ses métadonnées."
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:163
 msgid "Name is required"
@@ -810,7 +810,7 @@ msgstr "Un message d'historique est requis"
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm/MetricForm.tsx:194
 msgid "Aggregation is required"
-msgstr "Une agrégation est requise."
+msgstr "Une agrégation est requise"
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm/MetricForm.tsx:79
 msgid "Edit Your Metric"
@@ -854,7 +854,7 @@ msgstr "Donnez une description à votre métrique pour aider les autres à mieux
 
 #: frontend/src/metabase/admin/datamodel/components/MetricForm/MetricForm.tsx:116
 msgid "This is a good place to be more specific about less obvious metric rules"
-msgstr "C'est le bon endroit pour expliquer plus précisement à quoi sert votre métrique et comment vous l'avez construite."
+msgstr "C'est le bon endroit pour expliquer plus précisement à quoi sert votre métrique et comment vous l'avez construite"
 
 #: frontend/src/metabase/admin/datamodel/components/SegmentForm/SegmentForm.tsx:106
 msgid "Reason For Changes"

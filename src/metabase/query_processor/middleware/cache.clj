@@ -149,7 +149,7 @@
            (vreset! final-metadata row)
            (rf acc row)))))))
 
-(mu/defn ^:private maybe-reduce-cached-results :- [:tuple
+(mu/defn- maybe-reduce-cached-results :- [:tuple
                                                    #_status
                                                    [:enum ::ok ::miss ::canceled]
                                                    #_result
@@ -185,7 +185,7 @@
 
 ;;; --------------------------------------------------- Middleware ---------------------------------------------------
 
-(mu/defn ^:private run-query-with-cache :- :some
+(mu/defn- run-query-with-cache :- :some
   [qp {:keys [cache-strategy middleware], :as query} :- ::qp.schema/query
    rff                                               :- ::qp.schema/rff]
   ;; Query will already have `info.hash` if it's a userland query. It's not the same hash, because this is calculated

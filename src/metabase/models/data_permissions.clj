@@ -108,7 +108,7 @@
                           [:data_permissions :p] [:= :p.group_id :pg.id]]
                    :where [:= :pgm.user_id user-id]})
        (reduce (fn [m {:keys [user_id perm_type db_id] :as row}]
-                 (update-in m [user_id perm_type db_id] (fnil conj []) row))
+                 (update-in m [user_id perm_type db_id] u/conjv row))
                {})))
 
 (defn- relevant-permissions-for-user-perm-and-db
@@ -133,10 +133,22 @@
   sorry. The values are collections of rows of DataPermissions."
   (delay nil))
 
+(defenterprise enforced-sandboxes-for-user
+  "Given a user-id, returns the set of sandboxes that should be enforced for the provided user ID. This result is
+  cached for the duration of a request. Empty on OSS instances."
+  metabase-enterprise.sandbox.api.util
+  [_user-id]
+  #{})
+
+(def ^:dynamic *sandboxes-for-user*
+  "Filled by `enforced-sandboxes-for-user`. Empty on OSS instances, or EE instances without the `sandboxes` feature."
+  (delay nil))
+
 (defmacro with-relevant-permissions-for-user
-  "Populates the `*permissions-for-user*` dynamic var for use by the cache-aware functions in this namespace."
+  "Populates the `*permissions-for-user*` and `dynamic var for use by the cache-aware functions in this namespace."
   [user-id & body]
-  `(binding [*permissions-for-user* (delay (relevant-permissions-for-user ~user-id))]
+  `(binding [*permissions-for-user* (delay (relevant-permissions-for-user ~user-id))
+             *sandboxes-for-user*   (delay (enforced-sandboxes-for-user ~user-id))]
      ~@body))
 
 (defn- get-permissions [user-id perm-type db-id]

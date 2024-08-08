@@ -73,7 +73,7 @@
           "metabase.api.common/*current-user* must be bound in order to use search for an indexed entity")
   (premium-features/sandboxed-or-impersonated-user?))
 
-(mu/defn ^:private search-string-clause-for-model
+(mu/defn- search-string-clause-for-model
   [model                :- SearchableModel
    search-context       :- SearchContext
    search-native-query  :- [:maybe true?]]

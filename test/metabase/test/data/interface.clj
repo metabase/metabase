@@ -17,8 +17,10 @@
    [metabase.db :as mdb]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.driver.sql-jdbc.sync.describe-table]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :as field :refer [Field]]
+   [metabase.models.setting :refer [defsetting]]
    [metabase.models.table :refer [Table]]
    [metabase.plugins.classloader :as classloader]
    [metabase.query-processor.preprocess :as qp.preprocess]
@@ -35,6 +37,12 @@
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
+
+(defsetting database-source-dataset-name
+  "The name of the test dataset this Database was created from, if any."
+  :visibility     :internal
+  :type           :string
+  :database-local :only)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                   Dataset Definition Record Types & Protocol                                   |
@@ -210,22 +218,31 @@
   purpose of this is to allow for a new Database to clone an existing one with the same details (ex: to test different
   connection methods with syncing, etc.).
 
-  Currently, this only affects `db-qualified-table-name`."
+  Currently, this only affects [[db-qualified-table-name]]."
   nil)
 
 (defn- normalize-qualified-name [n]
   (-> n u/lower-case-en (str/replace #"-" "_")))
 
+(defn- assert-database-name-does-not-include-driver
+  "Throw an error if you're passing in Database display name e.g. `test-data (h2)` as opposed to the actual physical
+  name e.g. `test-data` -- this is almost certainly a bug."
+  [db-name]
+  (when driver/*driver*
+    (#'metabase.driver.sql-jdbc.sync.describe-table/assert-database-name-does-not-include-driver driver/*driver* db-name)))
+
 (defn- db-qualified-table-name-prefix [db-name]
+  (assert-database-name-does-not-include-driver db-name)
   (str (normalize-qualified-name (or *database-name-override* db-name))
        \_))
 
 (defn qualified-by-db-name?
   "Is `table-name` qualified by the name of its database? See [[db-qualified-table-name]] for more details."
   [db-name table-name]
+  (assert-database-name-does-not-include-driver db-name)
   (str/starts-with? table-name (db-qualified-table-name-prefix db-name)))
 
-(defn db-qualified-table-name
+(mu/defn db-qualified-table-name :- [:string]
   "Return a combined table name qualified with the name of its database, suitable for use as an identifier.
   Provided for drivers where testing wackiness makes it hard to actually create separate Databases, such as Oracle,
   where this is disallowed on RDS. (Since Oracle can't create seperate DBs, we just create various tables in the same
@@ -233,11 +250,9 @@
 
   Asserts that the resulting name has fewer than 30 characters, because databases like Oracle have limits on the
   lengths of identifiers."
-  ^String [^String database-name, ^String table-name]
-  {:pre [(string? database-name)
-         (string? table-name)]
-   :post [(qualified-by-db-name? database-name %)
-          (<= (count %) 30)]}
+  ^String [^String database-name :- :string
+           ^String table-name    :- :string]
+  {:post [(qualified-by-db-name? database-name %)]}
   (str (db-qualified-table-name-prefix database-name)
        (normalize-qualified-name table-name)))
 
@@ -256,7 +271,6 @@
   ([_              _ db-name]                       [db-name])
   ([session-schema _ db-name table-name]            [session-schema (db-qualified-table-name db-name table-name)])
   ([session-schema _ db-name table-name field-name] [session-schema (db-qualified-table-name db-name table-name) field-name]))
-
 
 (defmulti metabase-instance
   "Return the Metabase object associated with this definition, if applicable. `context` should be the parent object (the
@@ -282,16 +296,21 @@
                            :%lower.name table-name
                            {:order-by [[:id :asc]]}))]
     (or (table-with-name (u/lower-case-en (:table-name this)))
-        (table-with-name (db-qualified-table-name (:name database) (:table-name this))))))
+        (when-let [dataset-name (get-in database [:settings :database-source-dataset-name])]
+          (table-with-name (db-qualified-table-name dataset-name (:table-name this)))))))
 
-(defmethod metabase-instance DatabaseDefinition
-  [{:keys [database-name]} driver]
-  (assert (string? database-name))
-  (assert (keyword? driver))
+(defn database-display-name-for-driver
+  "Get the name for a test dataset for a driver, e.g. `test-data` for `:postgres` is `test-data (postgres)`."
+  [driver database-name]
+  (format "%s (%s)" database-name (u/qualified-name driver)))
+
+(mu/defmethod metabase-instance DatabaseDefinition :- [:maybe :map]
+  [{:keys [database-name]} :- [:map [:database-name :string]]
+   driver                  :- :keyword]
   (mdb/setup-db! :create-sample-content? false) ; skip sample content for speedy tests. this doesn't reflect production
   (t2/select-one Database
-                 :name    database-name
-                 :engine (u/qualified-name driver)
+                 :name   (database-display-name-for-driver driver database-name)
+                 :engine driver
                  {:order-by [[:id :asc]]}))
 
 (declare after-run)
@@ -354,21 +373,32 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defmulti dataset-already-loaded?
+  "Check whether a dataset named by unique `dataset-name` has already been loaded, so we can skip the calls to
+  [[create-db!]] when adding a test dataset.
+
+  There is a default implementation for `:sql-jdbc` in [[metabase.test.data.sql-jdbc]]. Default implementation for
+  other drivers returns `false`."
+  {:arglists '([driver dbdef]), :added "0.51.0"}
+  dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod dataset-already-loaded? ::test-extensions
+  [_driver _dbdef]
+  false)
+
 (defmulti create-db!
   "Create a new database from `database-definition`, including adding tables, fields, and foreign key constraints,
   and load the appropriate data. (This refers to creating the actual *DBMS* database itself, *not* a Metabase
   `Database` object.)
 
-  Optional `options` as third param. Currently supported options include `skip-drop-db?`. If unspecified,
-  `skip-drop-db?` should default to `false`.
+  Optional key-value parameter `options`. Not currently used.
 
-  This method should drop existing databases with the same name if applicable, unless the `skip-drop-db?` arg is
-  truthy. This is to work around a scenario where the Postgres driver terminates the connection before dropping the DB
-  and causes some tests to fail.
+  This method is not expected to return anything; you use [[dbdef->connection-details]] to get connection details for this
+  database after you create it.
 
-  This method is not expected to return anything; use `dbdef->connection-details` to get connection details for this
-  database after you create it."
-  {:arglists '([driver database-definition & {:keys [skip-drop-db?]}])}
+  Sync is done automatically with the newly created data."
+  {:arglists '([driver database-definition & {:as _options}])}
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
@@ -389,7 +419,6 @@
   :hierarchy #'driver/hierarchy)
 
 (defmethod id-field-type ::test-extensions [_] :type/Integer)
-
 
 (defmulti sorts-nil-first?
   "Whether this database will sort nil values (of type `base-type`) before or after non-nil values. Defaults to `true`.
@@ -486,14 +515,14 @@
 ;; TODO - not sure everything below belongs in this namespace
 ;; Tech debt issue: #39363
 
-(mu/defn ^:private dataset-field-definition :- ValidFieldDefinition
+(mu/defn- dataset-field-definition :- ValidFieldDefinition
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
   [field-definition-map :- DatasetFieldDefinition]
   ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 
-(mu/defn ^:private dataset-table-definition :- ValidTableDefinition
+(mu/defn- dataset-table-definition :- ValidTableDefinition
   "Parse a Table definition (from a `defdatset` form or EDN file) and return a TableDefinition instance for
   comsumption by various test-data-loading methods."
   ([tabledef :- DatasetTableDefinition]
@@ -638,7 +667,7 @@
 ;; TODO - maybe this should go in a different namespace
 ;; Tech debt issue: #39363
 
-(mu/defn ^:private tabledef-with-name :- ValidTableDefinition
+(mu/defn- tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
   [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
@@ -648,25 +677,25 @@
        tabledef))
    table-definitions))
 
-(mu/defn ^:private fielddefs-for-table-with-name :- [:sequential ValidFieldDefinition]
+(mu/defn- fielddefs-for-table-with-name :- [:sequential ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
   [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))
 
-(mu/defn ^:private tabledef->id->row :- [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]
+(mu/defn- tabledef->id->row :- [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]
   [{:keys [field-definitions rows]} :- (ms/InstanceOfClass TableDefinition)]
   (let [field-names (map :field-name field-definitions)]
     (into {} (for [[i values] (m/indexed rows)]
                [(inc i) (zipmap field-names values)]))))
 
-(mu/defn ^:private dbdef->table->id->row :- [:map-of ms/NonBlankString [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]]
+(mu/defn- dbdef->table->id->row :- [:map-of ms/NonBlankString [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]]
   "Return a map of table name -> map of row ID -> map of column key -> value."
   [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)]
   (into {} (for [{:keys [table-name] :as tabledef} table-definitions]
              [table-name (tabledef->id->row tabledef)])))
 
-(mu/defn ^:private nest-fielddefs
+(mu/defn- nest-fielddefs
   [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
@@ -677,7 +706,7 @@
                               (update nested-fielddef :field-name (partial vector field-name fk))))))]
     (mapcat nest-fielddef (fielddefs-for-table-with-name dbdef table-name))))
 
-(mu/defn ^:private flatten-rows
+(mu/defn- flatten-rows
   [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (let [nested-fielddefs (nest-fielddefs dbdef table-name)

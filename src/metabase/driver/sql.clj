@@ -21,24 +21,20 @@
                  :binning
                  :expression-aggregations
                  :expressions
-                 :foreign-keys
+                 :full-join
+                 :inner-join
+                 :left-join
                  :native-parameters
                  :nested-queries
+                 :parameterized-sql
                  :percentile-aggregations
                  :regex
+                 :right-join
                  :standard-deviation-aggregations
                  :metadata/key-constraints
                  :window-functions/cumulative
                  :window-functions/offset]]
   (defmethod driver/database-supports? [:sql feature] [_driver _feature _db] true))
-
-(doseq [join-feature [:left-join
-                      :right-join
-                      :inner-join
-                      :full-join]]
-  (defmethod driver/database-supports? [:sql join-feature]
-    [driver _feature db]
-    (driver/database-supports? driver :foreign-keys db)))
 
 (defmethod driver/database-supports? [:sql :persist-models-enabled]
   [driver _feat db]
@@ -67,6 +63,17 @@
       (seq referenced-card-ids)
       (update :metabase.models.query.permissions/referenced-card-ids set/union referenced-card-ids))))
 
+(defmulti json-field-length
+  "Return a HoneySQL expression that calculates the number of characters in a JSON field for a given driver.
+  `json-field-identifier` is the Identifier ([[metabase.util.honey-sql-2/Identifier]]) for a JSON field."
+  {:added "0.49.22", :arglists '([driver json-field-identifier])}
+  driver/dispatch-on-initialized-driver
+  :hierarchy #'driver/hierarchy)
+
+(defmethod json-field-length :default
+  [_driver _native-form]
+  ;; we rely on this to tell if the method is implemented for this driver or not
+  ::nyi)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Connection Impersonation                                          |

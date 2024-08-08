@@ -360,8 +360,8 @@
                      (u/poll {:thunk       complete!
                               :done?       uploaded-to-channel?
                               ;; Cal 2024-04-30: this typically takes 1-2 seconds to succeed.
-                              ;; If it takes more than 10 seconds, something else is wrong and we should abort.
-                              :timeout-ms  3000
+                              ;; If it takes more than 20 seconds, something else is wrong and we should abort.
+                              :timeout-ms  20000
                               :interval-ms 500}))
             (throw (ex-info "Timed out waiting to confirm the file was uploaded to a Slack channel."
                             {:channel-id channel-id, :filename filename})))]

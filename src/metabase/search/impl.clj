@@ -29,7 +29,6 @@
    [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]
    [toucan2.instance :as t2.instance]
-   [toucan2.jdbc.options :as t2.jdbc.options]
    [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
@@ -39,7 +38,7 @@
    :keyword
    [:tuple :any :keyword]])
 
-(mu/defn ^:private ->column-alias :- keyword?
+(mu/defn- ->column-alias :- keyword?
   "Returns the column name. If the column is aliased, i.e. [`:original_name` `:aliased_name`], return the aliased
   column name"
   [column-or-aliased :- HoneySQLColumn]
@@ -47,7 +46,7 @@
     (second column-or-aliased)
     column-or-aliased))
 
-(mu/defn ^:private canonical-columns :- [:sequential HoneySQLColumn]
+(mu/defn- canonical-columns :- [:sequential HoneySQLColumn]
   "Returns a seq of canonicalized list of columns for the search query with the given `model` Will return column names
   prefixed with the `model` name so that it can be used in criteria. Projects a `nil` for columns the `model` doesn't
   have and doesn't modify aliases."
@@ -77,7 +76,7 @@
          [:cast nil col-type])
        search-col])))
 
-(mu/defn ^:private select-clause-for-model :- [:sequential HoneySQLColumn]
+(mu/defn- select-clause-for-model :- [:sequential HoneySQLColumn]
   "The search query uses a `union-all` which requires that there be the same number of columns in each of the segments
   of the query. This function will take the columns for `model` and will inject constant `nil` values for any column
   missing from `entity-columns` but found in `search.config/all-search-columns`."
@@ -87,12 +86,12 @@
         cols-or-nils                  (canonical-columns model column-alias->honeysql-clause)]
     cols-or-nils))
 
-(mu/defn ^:private from-clause-for-model :- [:tuple [:tuple :keyword :keyword]]
+(mu/defn- from-clause-for-model :- [:tuple [:tuple :keyword :keyword]]
   [model :- SearchableModel]
   (let [{:keys [db-model alias]} (get search.config/model-to-db-model model)]
     [[(t2/table-name db-model) alias]]))
 
-(mu/defn ^:private base-query-for-model :- [:map {:closed true}
+(mu/defn- base-query-for-model :- [:map {:closed true}
                                             [:select :any]
                                             [:from :any]
                                             [:where :any]
@@ -155,7 +154,7 @@
                   [:not-like :collection.location (format "/%d/%%" id)]))
                [:= collection-id-col nil]))))))
 
-(mu/defn ^:private add-table-db-id-clause
+(mu/defn- add-table-db-id-clause
   "Add a WHERE clause to only return tables with the given DB id.
   Used in data picker for joins because we can't join across DB's."
   [query :- ms/Map id :- [:maybe ms/PositiveInt]]
@@ -163,7 +162,7 @@
     (sql.helpers/where query [:= id :db_id])
     query))
 
-(mu/defn ^:private add-card-db-id-clause
+(mu/defn- add-card-db-id-clause
   "Add a WHERE clause to only return cards with the given DB id.
   Used in data picker for joins because we can't join across DB's."
   [query :- ms/Map id :- [:maybe ms/PositiveInt]]
@@ -171,7 +170,7 @@
     (sql.helpers/where query [:= id :database_id])
     query))
 
-(mu/defn ^:private replace-select :- :map
+(mu/defn- replace-select :- :map
   "Replace a select from query that has alias is `target-alias` with [`with` `target-alias`] column, throw an error if
   can't find the target select.
 
@@ -195,7 +194,7 @@
                                                     :target-alias target-alias
                                                     :with         with})))))
 
-(mu/defn ^:private with-last-editing-info :- :map
+(mu/defn- with-last-editing-info :- :map
   [query :- :map
    model :- [:enum "card" "dashboard"]]
   (-> query
@@ -206,7 +205,7 @@
                               [:= :r.most_recent true]
                               [:= :r.model (search.config/search-model->revision-model model)]])))
 
-(mu/defn ^:private with-moderated-status :- :map
+(mu/defn- with-moderated-status :- :map
   [query :- :map
    model :- [:enum "card" "dataset"]]
   (-> query
@@ -221,7 +220,7 @@
   {:arglists '([model search-context])}
   (fn [model _] model))
 
-(mu/defn ^:private shared-card-impl
+(mu/defn- shared-card-impl
   [model      :- :metabase.models.card/type
    search-ctx :- SearchContext]
   (-> (base-query-for-model "card" search-ctx)
@@ -432,7 +431,7 @@
                   (map :model)
                   set))))
 
-(mu/defn ^:private full-search-query
+(mu/defn- full-search-query
   "Postgres 9 is not happy with the type munging it needs to do to make the union-all degenerate down to trivial case of
   one model without errors. Therefore we degenerate it down for it"
   [search-ctx :- SearchContext]
@@ -443,7 +442,8 @@
       {:select [nil]}
 
       (= (count models) 1)
-      (search-query-for-model (first models) search-ctx)
+      (merge (search-query-for-model (first models) search-ctx)
+             {:limit search.config/*db-max-results*})
 
       :else
       {:select   [:*]
@@ -451,7 +451,8 @@
                                           :let  [query (search-query-for-model model search-ctx)]
                                           :when (seq query)]
                                       query))} :alias_is_required_by_sql_but_not_needed_here]]
-       :order-by order-clause})))
+       :order-by order-clause
+       :limit    search.config/*db-max-results*})))
 
 (defn- hydrate-user-metadata
   "Hydrate common-name for last_edited_by and created_by from result."
@@ -597,11 +598,9 @@
         to-toucan-instance (fn [row]
                              (let [model (-> row :model search.config/model-to-db-model :db-model)]
                                (t2.instance/instance model row)))
-        reducible-results  (reify clojure.lang.IReduceInit
-                             (reduce [_this rf init]
-                               (binding [t2.jdbc.options/*options* (assoc t2.jdbc.options/*options* :max-rows search.config/*db-max-results*)]
-                                 (reduce rf init (t2/reducible-query search-query)))))
+        reducible-results  (t2/reducible-query search-query)
         xf                 (comp
+                            (take search.config/*db-max-results*)
                             (map t2.realize/realize)
                             (map to-toucan-instance)
                             (map #(if (and (t2/instance-of? :model/Collection %)
@@ -626,6 +625,7 @@
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true                           hydrate-user-metadata
+
                               (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
                               true                           (add-collection-effective-location)
                               true                           (map serialize))

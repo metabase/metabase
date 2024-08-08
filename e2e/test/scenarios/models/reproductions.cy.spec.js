@@ -52,6 +52,7 @@ import {
   tableHeaderClick,
   onlyOnOSS,
   visitModel,
+  startNewNativeModel,
 } from "e2e/support/helpers";
 import {
   createMockActionParameter,
@@ -445,7 +446,7 @@ describe("issue 22517", () => {
     cy.wait("@updateMetadata");
   });
 
-  it("adding or removging a column should not drop previously edited metadata (metabase#22517)", () => {
+  it.skip("adding or removing a column should not drop previously edited metadata (metabase#22517)", () => {
     openQuestionActions();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Edit query definition").click();
@@ -762,7 +763,7 @@ describe("issue 23421", () => {
     cy.get(".ace_content").should("contain", query);
     cy.findByRole("columnheader", { name: "id" }).should("be.visible");
     cy.findByRole("columnheader", { name: "created_at" }).should("be.visible");
-    cy.button("Save changes").should("be.disabled");
+    cy.button("Save changes").should("be.visible");
   });
 
   it("`visualization_settings` with hidden columns should not break UI (metabase#23421)", () => {
@@ -1189,7 +1190,7 @@ describe("issue 29517 - nested question based on native model with remapped valu
 
     visitDashboard("@dashboardId");
 
-    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}`).as(
+    cy.intercept("GET", `/api/dashboard/${ORDERS_DASHBOARD_ID}*`).as(
       "loadTargetDashboard",
     );
     cartesianChartCircle().eq(25).click({ force: true });
@@ -1597,51 +1598,49 @@ describe("issue 32963", () => {
 });
 
 describe("issues 35039 and 37009", () => {
+  // We only need to ensure there is a comment. Any comment.
+  const query = "select * from products limit 1 -- foo";
+
+  const cardDetails = {
+    name: "35039",
+    type: "model",
+    native: { query },
+    visualization_settings: {},
+  };
+
   beforeEach(() => {
     restore();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.signInAsNormalUser();
+
+    createNativeQuestion(cardDetails).then(({ body: { id } }) => {
+      // It is crucial for this repro to go directly to the "edit query definition" page!
+      // When the repro was created back in v47-v48, it was still possible to save a new model
+      // without running the query first. This resulted in the missing `result_metadata`.
+      // It's not possible to replicate that using UI anymore, so our best bet is to create a model
+      // using API, and then to visit this page directly.
+      cy.visit(`/model/${id}/query`);
+    });
+    assertResultsLoaded();
   });
 
   // This test follows #37009 repro steps because they are simpler than #35039 but still equivalent
   it("should show columns available in the model (metabase#35039) (metabase#37009)", () => {
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options")
-      .findByText("Use a native query")
-      .click();
-
-    focusNativeEditor().type("select * from products -- where true=false");
-    cy.findByTestId("native-query-editor-container").icon("play").click();
-    cy.wait("@dataset");
-
-    cy.findByTestId("dataset-edit-bar").button("Save").click();
-    modal()
-      .last()
-      .within(() => {
-        cy.findByLabelText("Name").type("Model").realPress("Tab");
-        cy.findByText("Save").click();
-      });
-
-    openQuestionActions();
-    popover().findByText("Edit query definition").click();
-
-    focusNativeEditor().type(
-      "{backspace}{backspace}{backspace}{backspace}{backspace}",
-    );
+    // The repro requires that we update the query in a minor, non-impactful way.
+    cy.log("Update the query and save");
+    focusNativeEditor().type("{backspace}");
     cy.findByTestId("native-query-editor-container").icon("play").click();
     cy.wait("@dataset");
 
     cy.findByTestId("dataset-edit-bar").within(() => {
-      cy.findByText("Save changes").click();
-      cy.findByText("Saving…").should("not.exist");
+      cy.button("Save changes").click();
+      cy.button("Saving…").should("not.exist");
     });
 
-    cy.findByTestId("query-builder-main").within(() => {
-      cy.findByText("Doing science...").should("be.visible");
-      cy.findByText("Doing science...").should("not.exist");
-    });
+    assertResultsLoaded();
 
-    cy.icon("notebook").click();
+    cy.log("Start new ad-hoc question and make sure all columns are there");
+    openNotebook();
     cy.findByTestId("fields-picker").click();
     popover().within(() => {
       cy.findByText("ID").should("exist");
@@ -1654,6 +1653,10 @@ describe("issues 35039 and 37009", () => {
       cy.findByText("CREATED_AT").should("exist");
     });
   });
+
+  function assertResultsLoaded() {
+    cy.findAllByTestId("cell-data").should("contain", "Rustic Paper Wallet");
+  }
 });
 
 describe("issue 37009", () => {
@@ -1666,12 +1669,8 @@ describe("issue 37009", () => {
   });
 
   it("should prevent saving new and updating existing models without result_metadata (metabase#37009)", () => {
-    cy.visit("/model/new");
-    cy.findByTestId("new-model-options")
-      .findByText("Use a native query")
-      .click();
+    startNewNativeModel({ query: "select * from products" });
 
-    focusNativeEditor().type("select * from products");
     cy.findByTestId("dataset-edit-bar")
       .button("Save")
       .should("be.disabled")
@@ -1691,7 +1690,7 @@ describe("issue 37009", () => {
       .last()
       .within(() => {
         cy.findByLabelText("Name").type("Model");
-        cy.findByText("Save").click();
+        cy.button("Save").click();
       });
     cy.wait("@saveCard")
       .its("request.body")

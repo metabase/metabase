@@ -18,7 +18,7 @@ function ParameterValueWidgetTriggerInner(
   }: {
     children: ReactNode;
     hasValue: boolean;
-    ariaLabel: string;
+    ariaLabel?: string;
     className?: string;
     mimicMantine?: boolean;
   },

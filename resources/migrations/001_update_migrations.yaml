@@ -6542,6 +6542,9 @@ databaseChangeLog:
       comment: Populate metabase_field.is_defective_duplicate
       changes:
         - sql:
+            # idx_uniq_field_table_id_parent_id_name_2col would prevent defective duplicates with Postgres but it
+            # can be removed by upgrading from 49 and downgrading again. We need to populate is_defective_duplicate
+            # in that case.
             sql: >-
               UPDATE metabase_field mf
               SET is_defective_duplicate = TRUE
@@ -6611,9 +6614,9 @@ databaseChangeLog:
             - and:
                 - dbms:
                     type: h2,postgresql
-                    uniqueConstraintExists:
-                      tableName: metabase_field
-                      constraintName: idx_uniq_field_table_id_parent_id_name
+                - uniqueConstraintExists:
+                    tableName: metabase_field
+                    constraintName: idx_uniq_field_table_id_parent_id_name
             - and:
                 - dbms:
                     type: mysql,mariadb
@@ -6709,6 +6712,18 @@ databaseChangeLog:
         - dropUniqueConstraint:
             tableName: metabase_field
             constraintName: idx_unique_field
+
+  - changeSet:
+      id: v49.2024-06-27T00:00:09
+      author: calherries
+      comment: Set is_defective_duplicate=TRUE fields that shouldn't exist to have active=FALSE
+      changes:
+        - sql:
+            sql: >-
+              UPDATE metabase_field
+              SET active = false
+              WHERE is_defective_duplicate AND (nfc_path = concat('["', name, '"]') OR nfc_path IS NULL);
+      rollback: # No rollback needed since this is backward compatible
 
   - changeSet:
       id: v50.2024-01-04T13:52:51
@@ -7006,9 +7021,56 @@ databaseChangeLog:
               DROP VIEW IF EXISTS v_content;
 
   - changeSet:
+      id: v50.2024-02-26T22:15:52
+      author: noahmoss
+      comment: Add index on data_permissions(group_id, db_id, perm_value)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_permissions
+                indexName: idx_data_permissions_group_id_db_id_perm_value
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_group_id_db_id_perm_value
+            columns:
+              - column:
+                  name: group_id
+              - column:
+                  name: db_id
+              - column:
+                  name: perm_value
+
+  - changeSet:
+      id: v50.2024-02-26T22:15:53
+      author: noahmoss
+      comment: Add index on data_permissions(group_id, db_id, table_id, perm_value)
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+            - indexExists:
+                tableName: data_permissions
+                indexName: idx_data_permissions_group_id_db_id_table_id_perm_value
+      changes:
+        - createIndex:
+            tableName: data_permissions
+            indexName: idx_data_permissions_group_id_db_id_table_id_perm_value
+            columns:
+              - column:
+                  name: group_id
+              - column:
+                  name: db_id
+              - column:
+                  name: table_id
+              - column:
+                  name: perm_value
+
+  - changeSet:
       id: v50.2024-02-26T22:15:54
       author: noahmoss
       comment: New `view-data` permission
+      validCheckSum: ANY
       changes:
         - sqlFile:
             dbms: postgresql,h2
@@ -7027,6 +7089,7 @@ databaseChangeLog:
       id: v50.2024-02-26T22:15:55
       author: noahmoss
       comment: New `create_queries` permission
+      validCheckSum: 9:7c2bc517b6def4e3278394b0399c3d4b
       changes:
         - sqlFile:
             path: permissions/create_queries.sql
@@ -8088,6 +8151,7 @@ databaseChangeLog:
       id: v50.2024-06-12T12:33:08
       author: piranha
       comment: 'Copy old cache configurations to cache_config table'
+      validCheckSum: ANY
       changes:
         - sqlFile:
             dbms: postgresql
@@ -8108,6 +8172,7 @@ databaseChangeLog:
       author: piranha
       comment: 'Fix root cache config for mysql if it is wrong'
       dbms: mysql,mariadb
+      validCheckSum: ANY
       changes:
         - sqlFile:
             path: custom_sql/fill_cache_config_root_fix.my.sql
@@ -8190,6 +8255,50 @@ databaseChangeLog:
             columns:
               column:
                 name: dashboard_id
+
+  # last_used_at is used to determine if a report card is stale and should be cleaned up
+  # if the card is imported with serialization, we don't want to automatically clean up
+  # newly imported cards, and we don't want to have to make it nullable.
+  - changeSet:
+      id: v50.2024-07-09T20:04:01
+      author: calherries
+      comment: Populate default value for report_card.last_used_at
+      changes:
+        - sql:
+            sql: >-
+              UPDATE report_card
+              SET last_used_at = current_timestamp
+              WHERE last_used_at IS NULL;
+      rollback: # nothing to do, since this is backwards compatible
+
+  - changeSet:
+      id: v50.2024-07-09T20:04:02
+      author: calherries
+      comment: Add not null constraint for report_card.last_used_at
+      preConditions:
+      changes:
+        - addNotNullConstraint:
+            tableName: report_card
+            columnName: last_used_at
+            columnDataType: ${timestamp_type}
+
+  # addDefaultValue with defaultValueComputed doesn't work for MySQL/MariaDB so we have to do this the hard way.
+  - changeSet:
+      id: v50.2024-07-09T20:04:03
+      author: calherries
+      comment: Set default for report_card.last_used_at
+      preConditions:
+      changes:
+        - sql:
+            dbms: postgresql,h2
+            sql: ALTER TABLE report_card ALTER COLUMN last_used_at SET DEFAULT CURRENT_TIMESTAMP;
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              ALTER TABLE report_card
+              CHANGE last_used_at
+              last_used_at timestamp(6) NOT NULL DEFAULT current_timestamp(6);
+      rollback: # nothing to do, since this is backwards compatible
 
   - changeSet:
       id: v51.2024-05-13T15:30:57
@@ -8278,6 +8387,184 @@ databaseChangeLog:
             tableName: login_history
             indexName: idx_user_id_device_id
       preConditions:
+
+  - changeSet:
+      id: v51.2024-07-09T17:15:43
+      author: tsmacdonald
+      comment: Fix default boolean value for query_field.explicit_reference
+      dbms: mysql,mariadb
+      changes:
+        - addDefaultValue:
+            tableName: query_field
+            columnName: explicit_reference
+            defaultValueBoolean: true
+
+  - changeSet:
+      id: v51.2024-07-10T12:28:10
+      author: johnswanson
+      comment: Add `last_viewed_at` to dashboards
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: report_dashboard
+              columnName: last_viewed_at
+      changes:
+        - addColumn:
+            tableName: report_dashboard
+            columns:
+              - column:
+                  name: last_viewed_at
+                  type: ${timestamp_type}
+                  remarks: Timestamp of when this dashboard was last viewed
+                  defaultValueComputed: current_timestamp
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:37
+      author: escherize
+      comment: Add embedding_client column to query_execution for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: query_execution
+              columnName: embedding_client
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_client
+                  remarks: Used by the embedding team to track SDK usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:38
+      author: escherize
+      comment: Add embedding_version column to query_execution for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: query_execution
+              columnName: embedding_version
+      changes:
+        - addColumn:
+            tableName: query_execution
+            columns:
+              - column:
+                  name: embedding_version
+                  remarks: Used by the embedding team to track SDK version usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:39
+      author: escherize
+      comment: Add embedding_client column to view_log for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: view_log
+              columnName: embedding_client
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_client
+                  remarks: Used by the embedding team to track SDK usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-22T15:49:40
+      author: escherize
+      comment: Add embedding_version column to view_log for metabase embedding SDK analytics
+      preConditions:
+        - onFail: MARK_RAN
+        - not:
+          - columnExists:
+              tableName: view_log
+              columnName: embedding_version
+      changes:
+        - addColumn:
+            tableName: view_log
+            columns:
+              - column:
+                  name: embedding_version
+                  remarks: Used by the embedding team to track SDK version usage
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: v51.2024-07-25T11:56:27
+      author: crisptrutski
+      comment: Wipe stale query fields, so we can add new non-nullable columns
+      rollback: # none, entries will be recreated by sweeper
+      changes:
+        - delete:
+            tableName: query_field
+            remarks: remove stale analysis, so the new fields can be non-nullable
+
+  - changeSet:
+      id: v51.2024-07-25T11:57:27
+      author: crisptrutski
+      comment: Add `column` column to query fields
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_field
+              columnName: column
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: column
+                  type: varchar(254) # matching metabase_field.name
+                  remarks: name of the table or card being referenced
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-25T11:58:27
+      author: crisptrutski
+      comment: Add `table` column to query fields
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: query_field
+              columnName: table
+      changes:
+        - addColumn:
+            tableName: query_field
+            columns:
+              - column:
+                  name: table
+                  type: varchar(254) # matching metabase_table.name
+                  remarks: name of the table or card being referenced
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: v51.2024-07-25T12:02:21
+      author: crisptrutski
+      comment: Make `field_id` nullable on query fields
+      changes:
+        - dropNotNullConstraint:
+            tableName: query_field
+            columnDataType: int
+            columnName: field_id
+            remarks: This value is null if the field does not exist, or is created within a model
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

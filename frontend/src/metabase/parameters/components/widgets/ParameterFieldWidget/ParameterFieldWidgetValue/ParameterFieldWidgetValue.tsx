@@ -1,5 +1,3 @@
-import PropTypes from "prop-types";
-
 import Value from "metabase/components/Value";
 import { renderNumberOfSelections } from "metabase/parameters/utils/formatting";
 import type Field from "metabase-lib/v1/metadata/Field";
@@ -37,8 +35,3 @@ export default function ParameterFieldWidgetValue({
     />
   );
 }
-
-ParameterFieldWidgetValue.propTypes = {
-  value: PropTypes.array,
-  fields: PropTypes.array,
-};

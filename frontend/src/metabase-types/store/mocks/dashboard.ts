@@ -16,7 +16,9 @@ export const createMockDashboardState = (
     startTime: null,
     endTime: null,
   },
-  loadingControls: {},
+  loadingControls: {
+    isLoading: false,
+  },
   editingDashboard: null,
   isAddParameterPopoverOpen: false,
   isNavigatingBackToDashboard: false,

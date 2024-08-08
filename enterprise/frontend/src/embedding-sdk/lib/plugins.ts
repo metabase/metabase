@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import type { DashCardMenuItem } from "metabase/dashboard/components/DashCard/DashCardMenu/DashCardMenu";
 import type { ClickAction, ClickObject } from "metabase/visualizations/types";
-import type Question from "metabase-lib/v1/Question";
+import type { Card as QuestionType } from "metabase-types/api";
 
 export type SdkDataPointObject = Pick<
   ClickObject,
@@ -14,16 +14,16 @@ export type SdkClickActionPluginsConfig = (
   clickedDataPoint: SdkDataPointObject,
 ) => ClickAction[];
 
-type DashCardMenuCustomElement = ({
+export type DashCardMenuCustomElement = ({
   question,
 }: {
-  question: Question;
+  question: QuestionType;
 }) => ReactNode;
 
-type CustomDashCardMenuItem = ({
+export type CustomDashCardMenuItem = ({
   question,
 }: {
-  question?: Question;
+  question?: QuestionType;
 }) => DashCardMenuItem;
 
 export type DashCardCustomMenuItem = {

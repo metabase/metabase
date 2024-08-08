@@ -51,7 +51,7 @@ using, this usually looks like `https://your-org-name.example.com` or `https://e
   :feature :sso-saml
   :audit   :getter)
 
-(mu/defn ^:private validate-saml-idp-cert
+(mu/defn- validate-saml-idp-cert
   "Validate that an encoded identity provider certificate is valid, or throw an Exception."
   [idp-cert-str :- :string]
   (try

@@ -24765,7 +24765,7 @@ msgstr "Filtreleri Uygula"
 
 #: frontend/src/metabase/querying/components/FilterModal/utils/modal.ts:7
 msgid "Filter {0} by"
-msgstr "0} ile filtreleyin"
+msgstr "{0} ile filtreleyin"
 
 #: frontend/src/metabase/querying/components/FilterModal/SegmentFilterEditor/SegmentFilterEditor.tsx:46
 #: frontend/src/metabase/querying/components/FilterModal/SegmentFilterEditor/SegmentFilterEditor.tsx:48
@@ -25455,7 +25455,7 @@ msgstr "Güncelleme sırasında bir şeyler ters gitti"
 
 #: frontend/src/metabase/dashboard/actions/writeback.ts:158
 msgid "Successfully updated {0} records"
-msgstr "0} kayıt başarıyla güncellendi"
+msgstr "{0} kayıt başarıyla güncellendi"
 
 #: frontend/src/metabase/dashboard/actions/writeback.ts:186
 msgid "Something went wrong while deleting"
@@ -25463,7 +25463,7 @@ msgstr "Silerken bir şeyler yanlış gitti"
 
 #: frontend/src/metabase/dashboard/actions/writeback.ts:216
 msgid "Successfully deleted {0} records"
-msgstr "0} kayıt başarıyla silindi"
+msgstr "{0} kayıt başarıyla silindi"
 
 #: frontend/src/metabase/dashboard/actions/writeback.ts:256
 msgid "Successfully executed the action"
@@ -25876,7 +25876,7 @@ msgstr "Eylem {0} için Kart bulunamadı."
 
 #: metabase/actions/execution.clj:74
 msgid "No destination parameter found for id {0}. Found: {1}"
-msgstr "id {0} için hedef parametresi bulunamadı. Bulundu: {1}"
+msgstr "id {0} için hedef parametresi bulunamadı. Bulunan: {1}"
 
 #: metabase/actions/execution.clj:196
 msgid "Unknown action type {0}."
@@ -25892,7 +25892,7 @@ msgstr "Belirsiz sütun adlarına sahip bir tablo üzerinde örtük eylem yürü
 
 #: metabase/actions/execution.clj:96
 msgid "No destination parameter found for {0}. Found: {1}"
-msgstr "0} için hedef parametresi bulunamadı. Bulundu: {1}"
+msgstr "{0} için hedef parametresi bulunamadı. Bulunan: {1}"
 
 #: metabase/actions/execution.clj:161
 msgid "Implicit parameters must be provided."
@@ -26096,7 +26096,7 @@ msgstr "Hafta "
 
 #: metabase/query_processor/writeback.clj:36
 msgid "No parameter mapping found for parameter {0}. Found: {1}"
-msgstr "0} parametresi için parametre eşlemesi bulunamadı. Bulundu: {1}"
+msgstr "{0} parametresi için parametre eşlemesi bulunamadı. Bulundu: {1}"
 
 #: metabase/query_processor/writeback.clj:47
 msgid "Only native queries can be executed as write queries."
@@ -26124,7 +26124,7 @@ msgstr "Bu Çeyrek"
 
 #: metabase/sync/sync_metadata/fields/sync_metadata.clj:121
 msgid "Database required of {0} has changed from ''{1}'' to ''{2}''."
-msgstr "0} için gerekli veritabanı ''{1}''den ''{2}''ye değişti."
+msgstr "{0} için gerekli veritabanı ''{1}''den ''{2}''ye değişti."
 
 #: metabase/task.clj:168
 msgid "Metabase task scheduler disabled. Scheduled tasks will not be ran."
@@ -26142,7 +26142,7 @@ msgstr "{0} (isteğe bağlı)"
 
 #: metabase_enterprise/advanced_config/file.clj:164
 msgid "Found config file at path {0}; Metabase will be initialized with values from this file"
-msgstr "0} yolunda yapılandırma dosyası bulundu; Metabase bu dosyadaki değerlerle başlatılacak"
+msgstr "{0} yolunda yapılandırma dosyası bulundu; Metabase bu dosyadaki değerlerle başlatılacak"
 
 #: metabase_enterprise/advanced_config/file.clj:265
 msgid "Done initializing from file."
@@ -26150,7 +26150,7 @@ msgstr "Dosyadan başlatma işlemi tamamlandı."
 
 #: metabase_enterprise/advanced_config/file.clj:167
 msgid "No config file found at path {0}"
-msgstr "0} yolunda yapılandırma dosyası bulunamadı"
+msgstr "{0} yolunda yapılandırma dosyası bulunamadı"
 
 #: metabase_enterprise/advanced_config/file.clj:181
 msgid "Don''t know how to expand template form: {0}"
@@ -26347,7 +26347,7 @@ msgstr "\"{0}\" ve sorularını çoğaltın"
 
 #: frontend/src/metabase/collections/components/CollectionCopyEntityModal.jsx:60
 msgid "Duplicated {0}, but couldn't duplicate some questions"
-msgstr "0} çoğaltıldı, ancak bazı sorular çoğaltılamadı"
+msgstr "{0} çoğaltıldı, ancak bazı sorular çoğaltılamadı"
 
 #: metabase/models/card.clj:614
 msgid "No query provided so not querying for metadata"
@@ -26388,11 +26388,11 @@ msgstr "'zaman dilimine sahip zaman damgası' sütunlarında 'kaynak zaman dilim
 
 #: metabase/sync/util.clj:429
 msgid "Error running step ''{0}'' for {1}"
-msgstr "1} için ''{0}'' adımı çalıştırılırken hata oluştu"
+msgstr "{1} için ''{0}'' adımı çalıştırılırken hata oluştu"
 
 #: metabase_enterprise/serialization/v2/backfill_ids.clj:23
 msgid "Backfilling entity_id for {0} rows of {1}"
-msgstr "1}'in {0} satırı için entity_id'yi geri doldurma"
+msgstr "{1}'in {0} satırı için entity_id'yi geri dolduruluyor"
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:1051
 msgid "Convert timezone of a date or timestamp column.\n"
@@ -26412,7 +26412,7 @@ msgstr "Yüzdeleri göster"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:148
 msgid "In legend"
-msgstr "Efsanede"
+msgstr "Lejantta"
 
 #: frontend/src/metabase/visualizations/visualizations/PieChart/PieChart.jsx:149
 msgid "On the chart"
@@ -26720,7 +26720,7 @@ msgstr "Kullanıcılar bu sütunda nasıl filtreleme yapmalıdır?"
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceCardModal.tsx:43
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceTypeModal.tsx:87
 msgid "Selectable values for {0}"
-msgstr "0} için seçilebilir değerler"
+msgstr "{0} için seçilebilir değerler"
 
 #: frontend/src/metabase/parameters/components/ValuesSourceModal/ValuesSourceCardModal.tsx:147
 msgid "Search for a question or model"
@@ -26813,7 +26813,7 @@ msgstr "İlk {1} öğesinin {0} öğesi"
 
 #: frontend/src/metabase/visualizations/components/TableSimple/TableFooter.tsx:50
 msgid "Item {0} of {1}"
-msgstr "1} öğesinin {0} öğesi"
+msgstr "{1} öğesinin {0} öğesi"
 
 #: frontend/src/metabase/visualizations/components/settings/ChartSettingColumnEditor.tsx:257
 msgid "Deselect All"
@@ -27043,19 +27043,19 @@ msgstr[1] "Kayıtlı {0} soruyu sil"
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx:56
 msgid "Delete {0} model"
 msgid_plural "Delete {0} models"
-msgstr[0] "0} modelini sil"
+msgstr[0] "{0} modelini sil"
 msgstr[1] "{0} modeli sil"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx:69
 msgid "Delete {0} metric"
 msgid_plural "Delete {0} metrics"
-msgstr[0] "0} metriğini sil"
+msgstr[0] "{0} metriğini sil"
 msgstr[1] "{0} metriği sil"
 
 #: frontend/src/metabase/admin/databases/components/ContentRemovalConfirmation/ContentRemovalConfirmation.tsx:82
 msgid "Delete {0} segment"
 msgid_plural "Delete {0} segments"
-msgstr[0] "0} segmentini sil"
+msgstr[0] "{0} segmentini sil"
 msgstr[1] "{0} segmenti sil"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardActionsPanel/LinkCardEditButton/LinkCardEditButton.tsx:37
@@ -27324,7 +27324,7 @@ msgstr "Geçersiz hafta günü: {0}"
 #: metabase/public_settings/premium_features.clj:166
 #: metabase/public_settings/premium_features.clj:174
 msgid "Error fetching token status from {0}:"
-msgstr "0}'dan token durumu alınırken hata oluştu:"
+msgstr "{0}'dan token durumu alınırken hata oluştu:"
 
 #: metabase/server/middleware/auth.clj:50
 msgid "MB_API_KEY is not set. See {0} for details"
@@ -27474,7 +27474,7 @@ msgstr "Aşama {0} mevcut değil"
 
 #: metabase/models/serialization.clj:341
 msgid "Extracting {0} {1}"
-msgstr "0} {1} ayıklanıyor"
+msgstr "{0} {1} ayıklanıyor"
 
 #: metabase/task/truncate_audit_log.clj:55
 msgid "query_execution cleanup successful, no rows were deleted"
@@ -27693,7 +27693,7 @@ msgstr "{0} ({1} maks)"
 
 #: frontend/src/metabase/collections/components/UploadOverlay/UploadOverlay.tsx:19
 msgid "Drop here to upload to {0}"
-msgstr "0}'a yüklemek için buraya bırakın"
+msgstr "{0}'a yüklemek için buraya bırakın"
 
 #: frontend/src/metabase/common/components/Timeline/utils.ts:20
 msgid "edited this."
@@ -27701,7 +27701,7 @@ msgstr "Bunu düzenledim."
 
 #: frontend/src/metabase/common/components/Timeline/Timeline.tsx:58
 msgid "revert to {0}"
-msgstr "0}'a geri dönün"
+msgstr "{0}'a geri dönün"
 
 #: frontend/src/metabase/core/components/TabButton/TabButton.tsx:213
 msgid "Rename"
@@ -27747,12 +27747,12 @@ msgstr "Verileriniz hakkında bana bir şeyler sorabilirsiniz."
 #: frontend/src/metabase/metabot/components/MetabotHeader/MetabotHeader.tsx:139
 #: frontend/src/metabase/metabot/components/MetabotHeader/MetabotHeader.tsx:159
 msgid "What do you want to know about {0}, {1}?"
-msgstr "0}, {1} hakkında ne bilmek istiyorsunuz?"
+msgstr "{0}, {1} hakkında ne bilmek istiyorsunuz?"
 
 #: frontend/src/metabase/metabot/components/MetabotHeader/MetabotHeader.tsx:140
 #: frontend/src/metabase/metabot/components/MetabotHeader/MetabotHeader.tsx:160
 msgid "What do you want to know about {0}?"
-msgstr "0} hakkında ne bilmek istiyorsunuz?"
+msgstr "{0} hakkında ne bilmek istiyorsunuz?"
 
 #: frontend/src/metabase/metabot/components/MetabotHeader/MetabotHeader.tsx:165
 #: frontend/src/metabase/metabot/components/MetabotWidget/MetabotWidget.tsx:111
@@ -27856,7 +27856,7 @@ msgstr "Örnek"
 
 #: frontend/src/metabase/status/components/FileUploadStatusLarge/FileUploadStatusLarge.tsx:102
 msgid "Data added to {0}"
-msgstr "0}'a eklenen veriler"
+msgstr "{0}'a eklenen veriler"
 
 #: frontend/src/metabase/status/components/FileUploadStatusLarge/FileUploadStatusLarge.tsx:101
 msgid "Error uploading your File"
@@ -28015,7 +28015,7 @@ msgstr "Bu sütunla eşleştirerek aramada tek tek kayıtları yüzeye çıkarma
 
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/ViewHeader.jsx:185
 msgid "Back to {0}"
-msgstr "0}'a geri dön"
+msgstr "{0}'a geri dön"
 
 #: frontend/src/metabase/visualizations/lib/settings/visualization.js:32
 msgid "Hide this card if there are no results"
@@ -28031,7 +28031,7 @@ msgstr "Bir veritabanı seçin"
 
 #: frontend/src/metabase/redux/uploads.ts:65
 msgid "You cannot upload files larger than {0}"
-msgstr "0}'dan daha büyük dosyalar yükleyemezsiniz"
+msgstr "{0}'dan daha büyük dosyalar yükleyemezsiniz"
 
 #: metabase/api/card.clj:883 metabase/api/table.clj:543
 msgid "There was an error uploading the file"
@@ -28072,7 +28072,7 @@ msgstr "string1'in içinde string2 olup olmadığını kontrol eder."
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:747
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:764
 msgid "Type of interval like {0}, {1}, {2}."
-msgstr "0}, {1}, {2} gibi aralık türü."
+msgstr "{0}, {1}, {2} gibi aralık türü."
 
 #: frontend/src/metabase-lib/v1/expressions/helper-text-strings.ts:785
 msgid "Checks if a column is not null"
@@ -28418,11 +28418,11 @@ msgstr "Açık değil"
 
 #: frontend/src/metabase/querying/utils/drills/quick-filter-drill/quick-filter-drill.tsx:74
 msgid "Is {0}"
-msgstr "0} mı"
+msgstr "{0} mı"
 
 #: frontend/src/metabase/querying/utils/drills/quick-filter-drill/quick-filter-drill.tsx:80
 msgid "Is not {0}"
-msgstr "0} değil"
+msgstr "{0} değil"
 
 #: frontend/src/metabase/querying/utils/drills/quick-filter-drill/quick-filter-drill.tsx:86
 msgid "Contains…"
@@ -28454,7 +28454,7 @@ msgstr "Uploads veritabanı mevcut değil."
 
 #: metabase/upload.clj:335
 msgid "The schema {0} is not syncable."
-msgstr "0} şeması senkronize edilebilir değildir."
+msgstr "{0} şeması senkronize edilebilir değildir."
 
 #: metabase/upload.clj:305
 msgid "Uploads are not supported on {0} databases."
@@ -28462,7 +28462,7 @@ msgstr "Yüklemeler {0} veritabanlarında desteklenmez."
 
 #: metabase/api/card.clj:387
 msgid "Card with type {0} is not compatible to have series"
-msgstr "0} tipindeki kart, seriye sahip olmak için uyumlu değildir"
+msgstr "{0} tipindeki kart, seriye sahip olmak için uyumlu değildir"
 
 #: metabase/upload.clj:317
 msgid "A schema has not been set."
@@ -28590,7 +28590,7 @@ msgstr "uuid {0} ile toplama yok"
 
 #: metabase/lib/breakout.cljc:21
 msgid "Grouped by {0}"
-msgstr "0} ile gruplanmıştır"
+msgstr "{0} ile gruplanmıştır"
 
 #: metabase/lib/card.cljc:30
 msgid "Saved Question {0}"
@@ -28606,7 +28606,7 @@ msgstr "[Bilinmeyen Alan]"
 
 #: metabase/lib/field.cljc:74
 msgid "Cannot resolve column {0}: stage has no metadata"
-msgstr "0} sütunu çözümlenemiyor: aşamanın meta verisi yok"
+msgstr "{0} sütunu çözümlenemiyor: aşamanın meta verisi yok"
 
 #: metabase/lib/filter.cljc:154 metabase/lib/filter.cljc:157
 msgid "{0} ends with {1}"
@@ -28659,11 +28659,11 @@ msgstr "{0}, {1}'den küçüktür"
 
 #: metabase/lib/filter.cljc:259
 msgid "not {0}"
-msgstr "0} değil"
+msgstr "{0} değil"
 
 #: metabase/lib/filter.cljc:46
 msgid "Filtered by {0}"
-msgstr "0} tarafından filtrelenmiştir"
+msgstr "{0} tarafından filtrelenmiştir"
 
 #: metabase/lib/filter.cljc:199
 #: metabase/xrays/automagic_dashboards/names.clj:180
@@ -28680,7 +28680,7 @@ msgstr "{0} boş değil"
 
 #: metabase/lib/join.cljc:170
 msgid "No join named {0}, found: {1}"
-msgstr "0} adında bir birleştirme bulunamadı: {1}"
+msgstr "{0} adında bir birleştirme bulunamadı: {1}"
 
 #: metabase/lib/card.cljc:47
 msgid "Question {0}"
@@ -28692,7 +28692,7 @@ msgstr "Meta veri hesaplanırken hata oluştu {0}"
 
 #: metabase/lib/metadata/calculation.cljc:344
 msgid "Error calculating display info for {0}: {1}"
-msgstr "0} için ekran bilgisi hesaplanırken hata oluştu: {1}"
+msgstr "{0} için ekran bilgisi hesaplanırken hata oluştu: {1}"
 
 #: metabase/lib/metadata/calculation.cljc:268
 msgid "Error calculating display name for query: {0}"
@@ -28712,7 +28712,7 @@ msgstr "{0} azalan"
 
 #: metabase/lib/order_by.cljc:26
 msgid "Sorted by {0}"
-msgstr "0} ile sıralanmıştır"
+msgstr "{0} ile sıralanmıştır"
 
 #: metabase/lib/query.cljc:103
 msgid "Saved Question is missing query"
@@ -28728,7 +28728,7 @@ msgstr "SD"
 
 #: metabase/lib/schema/expression.cljc:55
 msgid "{0}: Don''t know how to determine the type of {1}"
-msgstr "{0}: 1}'in türünü nasıl belirleyeceğimi bilmiyorum"
+msgstr "{0}: {1}'in türünü nasıl belirleyeceğimi bilmiyorum"
 
 #: metabase/lib/stage.cljc:366
 msgid "Cannot drop the only stage"
@@ -28868,7 +28868,7 @@ msgstr "bunu değiştirdi"
 
 #: metabase/models/revision/diff.clj:55
 msgid "moved {0} to {1}"
-msgstr "0}'ı {1}'e taşıdı"
+msgstr "{0}'ı {1}'e taşıdı"
 
 #: metabase/models/revision/diff.clj:80
 msgid "disabled collection preview"
@@ -28888,7 +28888,7 @@ msgstr "etkin koleksiyon incelemesi"
 
 #: metabase/models/revision/diff.clj:21 metabase/models/revision/diff.clj:30
 msgid "made {0} public"
-msgstr "0} halka açık hale getirildi"
+msgstr "{0} halka açık hale getirildi"
 
 #: metabase/models/revision/diff.clj:46
 msgid "unarchived {0}"
@@ -28908,7 +28908,7 @@ msgstr "o"
 
 #: metabase/models/revision/diff.clj:24 metabase/models/revision/diff.clj:27
 msgid "made {0} private"
-msgstr "0} özel yapıldı"
+msgstr "{0} özel yapıldı"
 
 #: metabase/models/revision/diff.clj:33
 msgid "enabled embedding"
@@ -28916,7 +28916,7 @@ msgstr "etkin gömme"
 
 #: metabase/models/revision/diff.clj:12
 msgid "renamed {0} from \"{1}\" to \"{2}\""
-msgstr "0}'ın adını \"{1}\"'den \"{2}\"'ye değiştirdi"
+msgstr "{0}'ın adını \"{1}\"'den \"{2}\"'ye değiştirdi"
 
 #: metabase/models/revision/diff.clj:123
 msgid "Card"
@@ -28924,7 +28924,7 @@ msgstr "Kart"
 
 #: metabase/models/revision/diff.clj:62
 msgid "moved {0} from {1} to {2}"
-msgstr "0}'ı {1}'den {2}'ye taşıdı"
+msgstr "{0}'ı {1}'den {2}'ye taşıdı"
 
 #: metabase/models/revision/diff.clj:45
 msgid "archived {0}"
@@ -28948,7 +28948,7 @@ msgstr "Segment açıklaması hesaplanırken hata oluştu: {0}"
 
 #: metabase/models/setting.clj:778
 msgid "Setting {0} can only be set in a user-local way, but there are no *user-local-values*."
-msgstr "0} ayarı yalnızca kullanıcı-yerel bir şekilde ayarlanabilir, ancak *kullanıcı-yerel-değerleri* yoktur."
+msgstr "{0} ayarı yalnızca kullanıcı-yerel bir şekilde ayarlanabilir, ancak *kullanıcı-yerel-değerleri* yoktur."
 
 #: metabase/public_settings.clj:850
 msgid "Prefix for upload table names"
@@ -28984,11 +28984,11 @@ msgstr "Sorgu pMBQL'e dönüştürülürken hata oluştu: {0}"
 
 #: metabase/sync/sync_metadata/fields/sync_metadata.clj:115
 msgid "Database auto incremented of {0} has changed from ''{1}'' to ''{2}''."
-msgstr "0}'ın veritabanı otomatik artırımı ''{1}''den ''{2}''ye değişti."
+msgstr "{0}'ın veritabanı otomatik artırımı ''{1}''den ''{2}''ye değişti."
 
 #: metabase/sync/sync_metadata/fields/sync_metadata.clj:103
 msgid "Position of {0} has changed from ''{1}'' to ''{2}''."
-msgstr "0}'ın konumu ''{1}''den ''{2}''ye değişti."
+msgstr "{0}'ın konumu ''{1}''den ''{2}''ye değişti."
 
 #: metabase/task/index_values.clj:92
 msgid "Scheduling indexing for model: {0}"
@@ -29004,7 +29004,7 @@ msgstr "Model için dizin zaten mevcut: {0}"
 
 #: metabase/upload.clj:223
 msgid "Could not find a common type for {0} and {1}"
-msgstr "0} ve {1} için ortak bir tür bulunamadı"
+msgstr "{0} ve {1} için ortak bir tür bulunamadı"
 
 #: metabase/upload/parsing.clj:63
 msgid "{0} is not a recognizable datetime"
@@ -29040,7 +29040,7 @@ msgstr "değer geçerli bir kullanıcı öznitelikleri haritası olmalıdır (ad
 
 #: metabase_enterprise/serialization/cmd.clj:214
 msgid "Export to {0} complete!"
-msgstr "0}'a aktarım tamamlandı!"
+msgstr "{0}'a aktarım tamamlandı!"
 
 #: metabase_enterprise/serialization/cmd.clj:230
 msgid "Exporting Metabase to {0}"
@@ -29048,7 +29048,7 @@ msgstr "Metatabanı {0}'a Aktarılıyor"
 
 #: metabase_enterprise/serialization/v2/load.clj:80
 msgid "Error importing {0}. Continuing..."
-msgstr "0} içe aktarılırken hata oluştu. Devam ediyoruz..."
+msgstr "{0} içe aktarılırken hata oluştu. Devam ediyoruz..."
 
 #: metabase_enterprise/serialization/v2/load.clj:45
 msgid "Loading {0}"
@@ -29064,7 +29064,7 @@ msgstr "Tablo {0} için model bulunamadı"
 
 #: metabase_enterprise/serialization/v2/storage.clj:27
 msgid "Storing {0}"
-msgstr "0} depolanıyor"
+msgstr "{0} depolanıyor"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "How different products are performing."
@@ -29185,7 +29185,7 @@ msgstr "Ana sayfa olarak kullanılacak bir gösterge tablosu seçin. Kullanıcı
 
 #: frontend/src/metabase/redux/uploads.ts:68
 msgid "You cannot upload files larger than {0}mb"
-msgstr "0}mb'den büyük dosyalar yükleyemezsiniz"
+msgstr "{0}mb'den büyük dosyalar yükleyemezsiniz"
 
 #: metabase/public_settings.clj:104
 msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, Metabase will redirect them to the default homepage."
@@ -29205,11 +29205,11 @@ msgstr "Bu {0} örneği için kullanılan ad."
 
 #: metabase/public_settings.clj:186
 msgid "The default language for all users across the {0} UI, system emails, pulses, and alerts. Users can individually override this default language from their own account settings."
-msgstr "0} kullanıcı arayüzünde, sistem e-postalarında, darbelerde ve uyarılarda tüm kullanıcılar için varsayılan dil. Kullanıcılar bu varsayılan dili kendi hesap ayarlarından bireysel olarak geçersiz kılabilirler."
+msgstr "{0} kullanıcı arayüzünde, sistem e-postalarında, darbelerde ve uyarılarda tüm kullanıcılar için varsayılan dil. Kullanıcılar bu varsayılan dili kendi hesap ayarlarından bireysel olarak geçersiz kılabilirler."
 
 #: metabase/public_settings.clj:210
 msgid "Enable the collection of anonymous usage data in order to help {0} improve."
-msgstr "0}'ın gelişmesine yardımcı olmak için anonim kullanım verilerinin toplanmasını etkinleştirin."
+msgstr "{0}'ın gelişmesine yardımcı olmak için anonim kullanım verilerinin toplanmasını etkinleştirin."
 
 #: metabase/embed/settings.clj:15
 msgid "Allow this origin to embed the full {0} application"
@@ -29217,7 +29217,7 @@ msgstr "Bu kaynağın {0} uygulamasının tamamını yerleştirmesine izin verin
 
 #: metabase/search/config.clj:14
 msgid "Enable typeahead search in the {0} navbar?"
-msgstr "0} gezinme çubuğunda typeahead aramasını etkinleştirin mi?"
+msgstr "{0} gezinme çubuğunda typeahead aramasını etkinleştirin mi?"
 
 #: metabase_enterprise/sso/integrations/sso_settings.clj:139
 msgid "JSON containing SAML to {0} group mappings."
@@ -29293,7 +29293,7 @@ msgstr "Lütfen bir dakika bekleyin ve tekrar deneyin"
 
 #: frontend/src/metabase/redux/uploads.ts:81
 msgid "You cannot upload files larger than {0} MB"
-msgstr "0} MB'den büyük dosyaları yükleyemezsiniz"
+msgstr "{0} MB'den büyük dosyaları yükleyemezsiniz"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:70
 #: frontend/src/metabase/admin/settings/selectors.js:444
@@ -29316,7 +29316,7 @@ msgstr "Bu Pro/Enterprise özelliği ile müşterilerinizin, markanızla birlikt
 
 #: frontend/src/metabase/admin/settings/components/widgets/FullAppEmbeddingLinkWidget/FullAppEmbeddingLinkWidget.tsx:14
 msgid "With {0} you can embed the full Metabase app to allow people to drill-through to charts, browse collections, and use the graphical query builder. You can also get priority support, more tools to help you share your insights with your teams and powerful options to help you create seamless, interactive data experiences for your customers."
-msgstr "0} ile Metabase uygulamasının tamamını ekleyerek kullanıcıların grafiklere geçmesine, koleksiyonlara göz atmasına ve grafiksel sorgu oluşturucuyu kullanmasına olanak tanıyabilirsiniz. Ayrıca öncelikli destek, içgörülerinizi ekiplerinizle paylaşmanıza yardımcı olacak daha fazla araç ve müşterileriniz için sorunsuz, etkileşimli veri deneyimleri oluşturmanıza yardımcı olacak güçlü seçenekler elde edebilirsiniz."
+msgstr "{0} ile Metabase uygulamasının tamamını ekleyerek kullanıcıların grafiklere geçmesine, koleksiyonlara göz atmasına ve grafiksel sorgu oluşturucuyu kullanmasına olanak tanıyabilirsiniz. Ayrıca öncelikli destek, içgörülerinizi ekiplerinizle paylaşmanıza yardımcı olacak daha fazla araç ve müşterileriniz için sorunsuz, etkileşimli veri deneyimleri oluşturmanıza yardımcı olacak güçlü seçenekler elde edebilirsiniz."
 
 #: metabase/analytics/prometheus.clj:208
 msgid "Number of emails sent."
@@ -29369,15 +29369,15 @@ msgstr "H2 bir veri ambarı olarak desteklenmez"
 
 #: metabase/models/setting.clj:1010
 msgid "Setting {0} uses both :enabled? and :feature options, which are mutually exclusive"
-msgstr "0} ayarı, birbirini dışlayan :enabled? ve :feature seçeneklerinin her ikisini de kullanır"
+msgstr "{0} ayarı, birbirini dışlayan :enabled? ve :feature seçeneklerinin her ikisini de kullanır"
 
 #: metabase/models/setting.clj:936
 msgid "Setting {0} is not enabled because feature {1} is not available"
-msgstr "1} özelliği mevcut olmadığından {0} ayarı etkinleştirilmemiştir"
+msgstr "{1} özelliği mevcut olmadığından {0} ayarı etkinleştirilmemiştir"
 
 #: metabase/models/setting.clj:938
 msgid "Setting {0} is not enabled"
-msgstr "0} ayarı etkin değil"
+msgstr "{0} ayarı etkin değil"
 
 #: metabase/public_settings/premium_features.clj:323
 msgid "{0} is a paid feature not currently available to your instance. Please upgrade to use it. Learn more at metabase.com/upgrade/"
@@ -29547,7 +29547,7 @@ msgstr "Standart olmayan birleştirme koşulu. {0}"
 
 #: metabase/lib/metadata/calculation.cljc:231
 msgid "Error calculating metadata for {0}: {1}"
-msgstr "0} için meta veri hesaplanırken hata oluştu: {1}"
+msgstr "{0} için meta veri hesaplanırken hata oluştu: {1}"
 
 #: metabase/lib/native.cljc:151
 msgid "Missing extra, required keys for native query: {0}"
@@ -30153,7 +30153,7 @@ msgstr "Çalıştırılmamış geçiş bulunamadı."
 
 #: metabase/db/liquibase.clj:223
 msgid "Migration lock is cleared. Running {0} migrations ..."
-msgstr "Geçiş kilidi temizlendi. 0} geçiş çalıştırılıyor ..."
+msgstr "Geçiş kilidi temizlendi. {0} geçiş çalıştırılıyor ..."
 
 #: metabase/driver/h2/actions.clj:72 metabase/driver/mysql/actions.clj:58
 #: metabase/driver/mysql/actions.clj:63 metabase/driver/postgres/actions.clj:32
@@ -30245,7 +30245,7 @@ msgstr "Olaylar ad alanı yükleniyor:"
 
 #: metabase/events.clj:145
 msgid "Error publishing {0} event: {1}"
-msgstr "0} olayı yayınlanırken hata oluştu: {1}"
+msgstr "{0} olayı yayınlanırken hata oluştu: {1}"
 
 #: metabase/lib/drill_thru/zoom_in_timeseries.cljc:85
 msgid "See this day by hour"
@@ -30398,7 +30398,7 @@ msgstr "Bu veritabanını sorgulamak için audit-app özellik bayrağı gerekir"
 
 #: metabase/query_processor/store.clj:182
 msgid "Failed to fetch {0} {1}"
-msgstr "0} {1} getirilemedi"
+msgstr "{0} {1} getirilemedi"
 
 #: metabase/query_processor/store.clj:131
 msgid "Attempting to initialize metadata provider with new Database {0}. Queries can only reference one Database. Already referencing: {1}"
@@ -30583,7 +30583,7 @@ msgstr "Bu {0} üzerindeki izin ayarının değiştirilmesinin, bazı {1} verita
 
 #: frontend/src/metabase/auth/components/ForgotPasswordForm/ForgotPasswordForm.tsx:58
 msgid "The email you use for your {0} account"
-msgstr "0} hesabınız için kullandığınız e-posta"
+msgstr "{0} hesabınız için kullandığınız e-posta"
 
 #: frontend/src/metabase/collections/components/CollectionHeader/CollectionUploadInfoModal.tsx:30
 msgid "Uploads CSVs to {0}"
@@ -30591,7 +30591,7 @@ msgstr "CSV'leri {0}'a yükler"
 
 #: frontend/src/metabase/dashboard/components/ClickBehaviorSidebar/hooks.ts:18
 msgid "Open the {0} drill-through menu"
-msgstr "0} delme menüsünü açın"
+msgstr "{0} delme menüsünü açın"
 
 #: frontend/src/metabase/dashboard/components/DashCard/DashCardVisualization.tsx:139
 msgid "Placeholder Card"
@@ -30605,7 +30605,7 @@ msgstr "Bölüm ekle"
 #: frontend/src/metabase/dashboard/components/DashboardHeader/DashboardHeader.tsx:685
 msgid "The {0} parameter requires a default value but none was provided."
 msgid_plural "The {0} parameters require default values but none were provided."
-msgstr[0] "0} parametresi varsayılan bir değer gerektirir ancak hiçbiri sağlanmamıştır."
+msgstr[0] "{0} parametresi varsayılan bir değer gerektirir ancak hiçbiri sağlanmamıştır."
 msgstr[1] ""
 
 #: frontend/src/metabase/dashboard/components/EmbedMenu/NonAdminEmbedMenu.tsx:25
@@ -30686,7 +30686,7 @@ msgstr "{0} ipucu"
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:72
 msgid "Try out these sample x-rays to see what {0} can do."
-msgstr "0}'ın neler yapabileceğini görmek için bu örnek x-ışınlarını deneyin."
+msgstr "{0}'ın neler yapabileceğini görmek için bu örnek x-ışınlarını deneyin."
 
 #: frontend/src/metabase/parameters/components/ParameterSettings/ParameterSettings.tsx:249
 msgid "This filter is set to disabled in an embedded dashboard."
@@ -31012,7 +31012,7 @@ msgstr "PROFESYONEL & KURUMSAL"
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:114
 msgid "Use interactive embedding when you want to {0} and people want to create their own questions, dashboards, models, and more, all in their own data sandbox."
-msgstr "0} istediğinizde ve insanlar kendi sorularını, gösterge tablolarını, modellerini ve daha fazlasını kendi veri sanal alanlarında oluşturmak istediklerinde etkileşimli yerleştirmeyi kullanın."
+msgstr "{0} istediğinizde ve insanlar kendi sorularını, gösterge tablolarını, modellerini ve daha fazlasını kendi veri sanal alanlarında oluşturmak istediklerinde etkileşimli yerleştirmeyi kullanın."
 
 #: frontend/src/metabase/admin/settings/components/widgets/EmbeddingOption/EmbeddingOption.tsx:119
 msgid "offer multi-tenant, self-service analytics"
@@ -31089,7 +31089,7 @@ msgstr "Hakkında {0}"
 
 #: frontend/src/metabase/nav/components/ProfileLink/ProfileLink.jsx:119
 msgid "Thanks for using {0}!"
-msgstr "0} kullandığınız için teşekkürler!"
+msgstr "{0} kullandığınız için teşekkürler!"
 
 #: frontend/src/metabase/reference/databases/NoDatabasesEmptyState.jsx:11
 msgid "{0} is no fun without any data"
@@ -31097,7 +31097,7 @@ msgstr "{0} herhangi bir veri olmadan eğlenceli değildir"
 
 #: frontend/src/metabase/visualizations/components/legend/Legend.jsx:72
 msgid "Legend"
-msgstr "Efsane"
+msgstr "Lejant"
 
 #: frontend/src/metabase/home/components/CustomHomePageModal/CustomHomePageModal.tsx:108
 msgid "Pick a dashboard to serve as the homepage. If people lack permissions to view the selected dashboard, {0} will redirect them to the default homepage. You can update or reset the homepage at any time in Admin Settings > Settings > General."
@@ -31211,11 +31211,11 @@ msgstr "Ekleme"
 
 #: frontend/src/metabase/components/SchedulePicker/SchedulePicker.tsx:283
 msgid "your {0} timezone"
-msgstr "0} saat diliminiz"
+msgstr "{0} saat diliminiz"
 
 #: frontend/src/metabase/dashboard/actions/tabs.ts:323
 msgid "Copy of {0}"
-msgstr "0}'ın kopyası"
+msgstr "{0}'ın kopyası"
 
 #: frontend/src/metabase/dashboard/actions/tabs.ts:335
 msgid "Copy of Tab 1"
@@ -31296,7 +31296,7 @@ msgstr "Özel Slack kanallarına abonelik ve uyarı göndermek için önce {0} b
 
 #: frontend/src/metabase/status/components/FileUploadStatusLarge/FileUploadErrorModal.tsx:21
 msgid "There were some errors while uploading {0}:"
-msgstr "0} yüklenirken bazı hatalar oluştu:"
+msgstr "{0} yüklenirken bazı hatalar oluştu:"
 
 #: frontend/src/metabase/visualizations/visualizations/DashCardPlaceholder.tsx:56
 msgid "Select question"
@@ -31386,7 +31386,7 @@ msgstr " ({0} API anahtarı içerir)"
 #: frontend/src/metabase/query_builder/components/view/ViewHeader/ViewHeader.jsx:585
 msgid "The {0} variable requires a default value but none was provided."
 msgid_plural "The {0} variables require default values but none were provided."
-msgstr[0] "0} değişkeni varsayılan bir değer gerektirir ancak hiçbiri sağlanmamıştır."
+msgstr[0] "{0} değişkeni varsayılan bir değer gerektirir ancak hiçbiri sağlanmamıştır."
 msgstr[1] ""
 
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SmartScalar.jsx:274
@@ -31753,7 +31753,7 @@ msgstr "Önemli kilometre taşlarını, lansmanları veya başka herhangi bir ş
 
 #: frontend/src/metabase/timelines/collections/components/TimelineEmptyState/TimelineEmptyState.tsx:76
 msgid "Events in {0} let you see important milestones, launches, or anything else, right alongside your data."
-msgstr "0}'daki etkinlikler, önemli kilometre taşlarını, lansmanları veya başka herhangi bir şeyi doğrudan verilerinizin yanında görmenizi sağlar."
+msgstr "{0}'daki etkinlikler, önemli kilometre taşlarını, lansmanları veya başka herhangi bir şeyi doğrudan verilerinizin yanında görmenizi sağlar."
 
 #: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx:35
 msgid "Add events to {0} to show helpful context alongside your data."
@@ -31761,7 +31761,7 @@ msgstr "Verilerinizin yanında yararlı bağlamlar göstermek için {0}'a olayla
 
 #: frontend/src/metabase/timelines/questions/components/TimelineEmptyState/TimelineEmptyState.tsx:36
 msgid "Events in {0} let you see helpful context alongside your data."
-msgstr "0} içindeki olaylar, verilerinizin yanında yararlı bir bağlam görmenizi sağlar."
+msgstr "{0} içindeki olaylar, verilerinizin yanında yararlı bir bağlam görmenizi sağlar."
 
 #: frontend/src/metabase/query_builder/components/expressions/CombineColumns/util.ts:41
 #: frontend/src/metabase/visualizations/visualizations/SmartScalar/SettingsComponents/ComparisonPicker.tsx:275
@@ -31799,7 +31799,7 @@ msgstr "{0} id pozitif bir tamsayı olmalıdır."
 
 #: metabase/db/liquibase.clj:293
 msgid "Running {0} migrations ..."
-msgstr "0} geçiş çalıştırılıyor ..."
+msgstr "{0} geçiş çalıştırılıyor ..."
 
 #: metabase/db/liquibase.clj:228
 msgid "Database has unrun migrations. Checking if migraton lock is taken..."
@@ -31843,7 +31843,7 @@ msgstr "Veritabanı ayrıntıları alınamıyor."
 
 #: metabase/lib/fe_util.cljc:138
 msgid "Excludes {0}"
-msgstr "0} hariçtir"
+msgstr "{0} hariçtir"
 
 #: metabase/metabot/settings.clj:10
 msgid "The OpenAI Model (e.g. 'gpt-4-turbo-preview', 'gpt-4', 'gpt-3.5-turbo')"
@@ -31871,7 +31871,7 @@ msgstr "Ayar için geçersiz {0} yapılandırması: {1}"
 
 #: metabase/models/setting.clj:1006
 msgid "Setting {0} uses both :default and :init options, which are mutually exclusive"
-msgstr "0} ayarı, birbirini dışlayan :default ve :init seçeneklerinin her ikisini de kullanır"
+msgstr "{0} ayarı, birbirini dışlayan :default ve :init seçeneklerinin her ikisini de kullanır"
 
 #: metabase/models/setting.clj:1443
 msgid "Error of type {0} thrown while parsing a setting"
@@ -32362,7 +32362,7 @@ msgstr "Anketleri etkinleştirin veya devre dışı bırakın"
 
 #: metabase/email/messages.clj:714
 msgid "Subscription to {0} removed"
-msgstr "0} aboneliği kaldırıldı"
+msgstr "{0} aboneliği kaldırıldı"
 
 #: metabase/lib/drill_thru/column_extract.cljc:33
 msgid "Extract day, month…"
@@ -32382,7 +32382,7 @@ msgstr "Bir sorguda yalnızca kaynak sütunlar (bir tablodan, modelden veya kay�
 
 #: metabase/lib/metadata.cljc:201
 msgid "Failed to fetch {0} {1}: either it does not exist, or it belongs to a different Database"
-msgstr "0} {1} getirilemedi: ya mevcut değil ya da farklı bir Veritabanına ait"
+msgstr "{0} {1} getirilemedi: ya mevcut değil ya da farklı bir Veritabanına ait"
 
 #: metabase/models/data_permissions.clj:720
 #: metabase/models/data_permissions.clj:835
@@ -32514,7 +32514,7 @@ msgstr "Sorgu sonuçlarını azaltma işlevi oluşturulurken hata oluştu: {0}"
 
 #: metabase/query_processor/preprocess.clj:133
 msgid "Error preprocessing query in {0}: {1}"
-msgstr "0}'da sorgu önişleme hatası: {1}"
+msgstr "{0}'da sorgu önişleme hatası: {1}"
 
 #: metabase/query_processor/setup.clj:26
 msgid "Invalid query: missing or invalid query type (:lib/type or :type)"
@@ -32850,7 +32850,7 @@ msgstr "Modellerinizin (ve bunları kullanan sorguların) daha hızlı yüklenme
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:67
 msgid "Clear all cached results for {0}?"
-msgstr "0} için önbelleğe alınmış tüm sonuçları temizle?"
+msgstr "{0} için önbelleğe alınmış tüm sonuçları temizle?"
 
 #: enterprise/frontend/src/metabase-enterprise/caching/components/InvalidateNowButton.tsx:67
 msgid "this object"
@@ -33441,7 +33441,7 @@ msgstr "\"{0}\" ile diğer sütunları birleştirin"
 #: frontend/src/metabase/query_builder/components/expressions/CombineColumns/CombineColumns.tsx:181
 #: frontend/src/metabase/querying/utils/drills/combine-columns-drill/components/CombineColumnsDrill/CombineColumnsDrill.tsx:155
 msgid "Separated by {0}"
-msgstr "0} ile ayrılmıştır"
+msgstr "{0} ile ayrılmıştır"
 
 #: frontend/src/metabase/query_builder/components/expressions/CombineColumns/CombineColumns.tsx:194
 #: frontend/src/metabase/querying/utils/drills/combine-columns-drill/components/CombineColumnsDrill/CombineColumnsDrill.tsx:166
@@ -33702,7 +33702,7 @@ msgstr " Daha fazla bilgi için tıklayın"
 
 #: frontend/src/metabase/components/Schedule/components.tsx:96
 msgid "Your {0} timezone"
-msgstr "0} saat diliminiz"
+msgstr "{0} saat diliminiz"
 
 #: frontend/src/metabase/components/Schedule/constants.ts:55
 msgid "calendar day"
@@ -33916,7 +33916,7 @@ msgstr "Otomatik güncellemeler alın"
 
 #: frontend/src/metabase/components/ConfirmDeleteModal.tsx:25
 msgid "Delete {0} permanently?"
-msgstr "0} kalıcı olarak silinsin mi?"
+msgstr "{0} kalıcı olarak silinsin mi?"
 
 #: frontend/src/metabase/containers/AddToDashSelectDashModal/AddToDashSelectDashModal.tsx:22
 msgid "Add this metric to a dashboard"
@@ -33983,8 +33983,8 @@ msgstr "İzinleri yapılandırma"
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:75
 msgid "{0} will only be able to use the query\n"
 "builder for {1}."
-msgstr "{0} sorgusunu kullanabilecektir.\n"
-"1} için oluşturucu."
+msgstr "{0} sadece {1} için sorgu oluşturucuyu \n"
+"kullanabilecek."
 
 #: frontend/src/metabase/admin/permissions/components/PermissionsConfirm.jsx:81
 msgid "{0} will be able to use the query builder and write native queries for {1}."
@@ -34398,12 +34398,12 @@ msgstr "15."
 #: enterprise/frontend/src/metabase-enterprise/upload_management/DeleteConfirmModal.tsx:21
 msgctxt "{0} is the name of a database table to be deleted"
 msgid "Delete {0}?"
-msgstr "0} silinsin mi?"
+msgstr "{0} silinsin mi?"
 
 #: enterprise/frontend/src/metabase-enterprise/upload_management/DeleteConfirmModal.tsx:23
 msgctxt "{0} is the number of database tables to be deleted"
 msgid "Delete {0} tables?"
-msgstr "0} tabloları silinsin mi?"
+msgstr "{0} tabloları silinsin mi?"
 
 #: frontend/src/metabase/archive/utils.ts:20
 msgctxt "{0} is the name of the entity being trashed, e.g. My Awesome Dashboard"
@@ -34465,7 +34465,7 @@ msgstr "Geçersiz kılacak bir şey yok."
 
 #: metabase/api/card.clj:447
 msgid "Card of type {0} is invalid, cannot be saved."
-msgstr "0} tipindeki kart geçersiz, kaydedilemez."
+msgstr "{0} tipindeki kart geçersiz, kaydedilemez."
 
 #: metabase/api/setup.clj:221
 msgid "Get customizable, flexible, and scalable customer-facing analytics in no time"

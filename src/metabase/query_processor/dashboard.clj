@@ -5,6 +5,7 @@
    [medley.core :as m]
    [metabase.api.common :as api]
    [metabase.driver.common.parameters.operators :as params.ops]
+   [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.dashboard :as dashboard :refer [Dashboard]]
@@ -115,7 +116,7 @@
                    target)))
    dashboard-param-id->param))
 
-(mu/defn ^:private resolve-params-for-query :- [:maybe [:sequential :map]]
+(mu/defn- resolve-params-for-query :- [:maybe [:sequential :map]]
   "Given a sequence of parameters included in a query-processing request to run the query for a Dashboard/Card, validate
   that those parameters exist and have allowed types, and merge in default values and other info from the parameter
   mappings."
@@ -175,6 +176,7 @@
                     :attributes {:dashboard/id dashboard-id
                                  :dashcard/id  dashcard-id
                                  :card/id      card-id}}
+    (events/publish-event! :event/dashboard-queried {:object-id dashboard-id :user-id api/*current-user-id*})
     ;; make sure we can read this Dashboard. Card will get read-checked later on inside
     ;; [[qp.card/process-query-for-card]]
     (api/read-check Dashboard dashboard-id)

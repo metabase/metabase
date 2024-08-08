@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { useUserSetting } from "metabase/common/hooks";
 import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
-import { useHomepageDashboard } from "metabase/common/hooks/use-homepage-dashboard";
+import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
 import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { Tree } from "metabase/components/tree";
 import {
@@ -60,7 +60,7 @@ type Props = {
   }: {
     newIndex: number;
     oldIndex: number;
-  }) => void;
+  }) => Promise<any>;
 };
 const OTHER_USERS_COLLECTIONS_URL = Urls.otherUsersPersonalCollections();
 const ADD_YOUR_OWN_DATA_URL = "/admin/databases/create";
@@ -81,7 +81,7 @@ function MainNavbarView({
     "expand-bookmarks-in-nav",
   );
 
-  const { canNavigateHome } = useHomepageDashboard();
+  const isAtHomepageDashboard = useIsAtHomepageDashboard();
 
   const {
     card: cardItem,
@@ -100,12 +100,12 @@ function MainNavbarView({
     (event: MouseEvent) => {
       // Prevent navigating to the dashboard homepage when a user is already there
       // https://github.com/metabase/metabase/issues/43800
-      if (!canNavigateHome) {
+      if (isAtHomepageDashboard) {
         event.preventDefault();
       }
       onItemSelect();
     },
-    [canNavigateHome, onItemSelect],
+    [isAtHomepageDashboard, onItemSelect],
   );
 
   // Can upload CSVs if

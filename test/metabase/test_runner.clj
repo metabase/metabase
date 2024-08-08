@@ -70,7 +70,8 @@
     (hawk/find-tests directories options)))
 
 (def ^:private excluded-directories
-  ["classes"
+  [".clj-kondo/src"
+   "classes"
    "dev"
    "enterprise/backend/src"
    "local"

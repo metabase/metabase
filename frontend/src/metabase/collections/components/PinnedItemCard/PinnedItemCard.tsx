@@ -7,6 +7,7 @@ import type {
   CreateBookmark,
   DeleteBookmark,
 } from "metabase/collections/types";
+import EventSandbox from "metabase/components/EventSandbox";
 import Tooltip from "metabase/core/components/Tooltip";
 import { getIcon } from "metabase/lib/icon";
 import { modelToUrl } from "metabase/lib/urls";
@@ -121,16 +122,20 @@ function PinnedItemCard({
             <ActionsContainer h={item ? undefined : "2rem"}>
               {item?.model === "dataset" && <ModelDetailLink model={item} />}
               {hasActions && (
-                <ActionMenu
-                  databases={databases}
-                  bookmarks={bookmarks}
-                  createBookmark={createBookmark}
-                  deleteBookmark={deleteBookmark}
-                  item={item}
-                  collection={collection}
-                  onCopy={onCopy}
-                  onMove={onMove}
-                />
+                // This component is used within a `<Link>` component,
+                // so we must prevent events from triggering the activation of the link
+                <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
+                  <ActionMenu
+                    databases={databases}
+                    bookmarks={bookmarks}
+                    createBookmark={createBookmark}
+                    deleteBookmark={deleteBookmark}
+                    item={item}
+                    collection={collection}
+                    onCopy={onCopy}
+                    onMove={onMove}
+                  />
+                </EventSandbox>
               )}
             </ActionsContainer>
           </Header>

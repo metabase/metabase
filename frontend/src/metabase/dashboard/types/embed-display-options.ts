@@ -1,13 +1,21 @@
+import type { DashboardNightModeControls } from "metabase/dashboard/types/display-options";
 import type { DisplayTheme } from "metabase/public/lib/types";
 
-export type EmbedTitle = boolean;
-export type EmbedTitledControls = {
+type EmbedBackground = boolean;
+type EmbedBackgroundControls = {
+  background: EmbedBackground;
+};
+
+type EmbedTitle = boolean;
+type EmbedTitledControls = {
   titled: EmbedTitle;
 };
 
-export type EmbedHideDownloadButton = boolean | null;
-export type EmbedHideDownloadButtonControls = {
+type EmbedHideDownloadButton = boolean | null;
+type EmbedDownloadsEnabled = boolean | null;
+type EmbedHideDownloadButtonControls = {
   hideDownloadButton: EmbedHideDownloadButton;
+  downloadsEnabled: EmbedDownloadsEnabled;
 };
 
 export type EmbedHideParameters = string | null;
@@ -15,31 +23,30 @@ export type EmbedHideParametersControls = {
   hideParameters: EmbedHideParameters;
 };
 
-export type EmbedThemeControls = {
-  theme: DisplayTheme;
-  setTheme: (theme: DisplayTheme) => void;
-  hasNightModeToggle?: boolean;
-  onNightModeChange?: (isNightMode: boolean) => void;
-  isNightMode?: boolean;
-};
-
 export type EmbedFont = string | null;
-export type EmbedFontControls = {
+type EmbedFontControls = {
   font: EmbedFont;
   setFont: (font: EmbedFont) => void;
 };
 
+export type EmbedThemeControls = {
+  theme: DisplayTheme;
+  setTheme: (theme: DisplayTheme) => void;
+} & DashboardNightModeControls;
+
 export type EmbedDisplayParams = {
+  background: EmbedBackground;
   bordered: boolean;
   titled: EmbedTitle;
   cardTitled: EmbedTitle;
-  hideDownloadButton: EmbedHideDownloadButton;
   hideParameters: EmbedHideParameters;
   font: EmbedFont;
   theme: DisplayTheme;
+  downloadsEnabled: boolean;
 };
 
 export type EmbedDisplayControls = EmbedThemeControls &
+  EmbedBackgroundControls &
   EmbedTitledControls &
   EmbedHideDownloadButtonControls &
   EmbedHideParametersControls &

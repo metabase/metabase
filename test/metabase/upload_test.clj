@@ -17,6 +17,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models :refer [Field]]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
@@ -24,25 +25,27 @@
    [metabase.query-processor :as qp]
    [metabase.sync.sync-metadata.tables :as sync-tables]
    [metabase.test :as mt]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.sql :as sql.tx]
    [metabase.upload :as upload]
    [metabase.upload.parsing :as upload-parsing]
    [metabase.upload.types :as upload-types]
    [metabase.util :as u]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2])
   (:import
    (java.io File)))
 
 (set! *warn-on-reflection* true)
 
-(def ^:private bool-type         ::upload-types/boolean)
-(def ^:private int-type          ::upload-types/int)
-(def ^:private float-type        ::upload-types/float)
-(def ^:private vchar-type        ::upload-types/varchar-255)
-(def ^:private date-type         ::upload-types/date)
-(def ^:private datetime-type     ::upload-types/datetime)
-(def ^:private offset-dt-type    ::upload-types/offset-datetime)
-(def ^:private text-type         ::upload-types/text)
+(def ^:private bool-type      ::upload-types/boolean)
+(def ^:private int-type       ::upload-types/int)
+(def ^:private float-type     ::upload-types/float)
+(def ^:private vchar-type     ::upload-types/varchar-255)
+(def ^:private date-type      ::upload-types/date)
+(def ^:private datetime-type  ::upload-types/datetime)
+(def ^:private offset-dt-type ::upload-types/offset-datetime)
+(def ^:private text-type      ::upload-types/text)
 
 (defn- local-infile-on? []
   (= "ON" (-> (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -274,20 +277,28 @@
                                                    :schema     schema
                                                    :table-name table-name})))))
 
-(defn upload-example-csv!
-  "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the
-  current user is granted data permissions to the database."
-  [& {:keys [table-prefix collection-id grant-permission? uploads-enabled user-id db-id auxiliary-sync-steps csv-file-prefix file]
-      :or {collection-id            nil ;; root collection
-           grant-permission?        true
-           uploads-enabled          true
-           user-id                  (mt/user->id :rasta)
-           db-id                    (mt/id)
-           ;; usually we don't care about analyze or field values for tests, so skip by default for speed
-           auxiliary-sync-steps     :never
-           csv-file-prefix          "example csv file"}
-      :as args}]
-  (mt/with-discard-model-updates [:model/Database]
+(mu/defn do-with-uploaded-example-csv!
+  "Upload a small CSV file to the given collection ID. `grant-permission?` controls whether the current user is granted
+  data permissions to the database.
+
+  Calls
+
+    (f model)
+
+  with the model created for the uploaded CSV. Cleans up created model and table when finished."
+  [{:keys [table-prefix collection-id grant-permission? uploads-enabled user-id db-id auxiliary-sync-steps csv-file-prefix file]
+    :or {collection-id            nil ;; root collection
+         grant-permission?        true
+         uploads-enabled          true
+         user-id                  (mt/user->id :rasta)
+         db-id                    (mt/id)
+         ;; usually we don't care about analyze or field values for tests, so skip by default for speed
+         auxiliary-sync-steps     :never
+         csv-file-prefix          "example csv file"}
+    :as options}
+   f :- [:=> [:cat [:map [:id ::lib.schema.id/card]]] :any]]
+  {:pre [(keyword? driver/*driver*)]}
+  (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
     (t2/update! :model/Database db-id {:uploads_enabled uploads-enabled})
     (mt/with-current-user user-id
@@ -297,8 +308,8 @@
                                    "2, Darth Vader"]
                                   csv-file-prefix))
             db          (t2/select-one :model/Database db-id)
-            schema-name (if (contains? args :schema-name)
-                          (ddl.i/format-name driver/*driver* (:schema-name args))
+            schema-name (if (contains? options :schema-name)
+                          (ddl.i/format-name driver/*driver* (:schema-name options))
                           (sql.tx/session-schema driver/*driver*))
             group-id    (u/the-id (perms-group/all-users))
             grant?      (and db
@@ -309,40 +320,53 @@
             (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted)
             (data-perms/set-database-permission! group-id db-id :perms/create-queries :query-builder))
           (binding [upload/*auxiliary-sync-steps* auxiliary-sync-steps]
-            (upload/create-csv-upload! {:collection-id collection-id
-                                        :filename      csv-file-prefix
-                                        :file          file
-                                        :db-id         db-id
-                                        :schema-name   schema-name
-                                        :table-prefix  table-prefix})))))))
+            (let [uploaded-model (upload/create-csv-upload! {:collection-id collection-id
+                                                             :filename      csv-file-prefix
+                                                             :file          file
+                                                             :db-id         db-id
+                                                             :schema-name   schema-name
+                                                             :table-prefix  table-prefix})]
+              (try
+                (f uploaded-model)
+                (finally
+                  (let [model-id (u/the-id uploaded-model)
+                        table-id (u/the-id (:table_id uploaded-model))
+                        table    (t2/select-one :model/Table :id table-id)]
+                    (t2/delete! :model/Card :id model-id)
+                    (t2/delete! :model/Table :id table-id)
+                    (driver/drop-table! driver/*driver*
+                                        (u/the-id (:db_id table))
+                                        (#'upload/table-identifier table))))))))))))
 
-(defn do-with-uploads-enabled
+(defn do-with-uploads-enabled!
   "Set uploads_enabled to true the current database, and as an admin user, run the thunk"
   [thunk]
-  (mt/with-discard-model-updates [:model/Database]
+  (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database (mt/id) {:uploads_enabled     true
                                          :uploads_schema_name (sql.tx/session-schema driver/*driver*)})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
-(defmacro with-uploads-enabled [& body]
-  `(do-with-uploads-enabled (fn [] ~@body)))
+(defmacro with-uploads-enabled! [& body]
+  `(do-with-uploads-enabled! (fn [] ~@body)))
 
-(defn do-with-uploads-disabled
+(defn do-with-uploads-disabled!
   "Set uploads_enabled to false the current database, and as an admin user, run the thunk"
   [thunk]
-  (mt/with-discard-model-updates [:model/Database]
+  (mt/with-discard-model-updates! [:model/Database]
     (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
     (mt/with-current-user (mt/user->id :crowberto)
       (thunk))))
 
-(defmacro with-uploads-disabled [& body]
-  `(do-with-uploads-disabled (fn [] ~@body)))
+(defmacro with-uploads-disabled! [& body]
+  `(do-with-uploads-disabled! (fn [] ~@body)))
 
 (defn do-with-upload-table! [table thunk]
   (try (thunk table)
        (finally
-         (when (not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
+         ;; I'm experimenting with disabling this, it seems preposterous that this would actually cause test flakes --
+         ;; Cam
+         (do #_when #_(not= driver/*driver* :redshift) ; redshift tests flake when tables are dropped
            (driver/drop-table! driver/*driver*
                                (:db_id table)
                                (#'upload/table-identifier table))))))
@@ -354,17 +378,34 @@
   (t2/select-one :model/Table (:table_id card)))
 
 (defmacro with-upload-table!
-  "Execute `body` with a table created by evaluating the expression `create-table-expr`. `create-table-expr` must evaluate
-  to a toucan Table instance. The instance is bound to `table-sym` in `body`. The table is cleaned up from both the test
-  and app DB after the body executes.
+  "Execute `body` with a table created by evaluating the expression `create-table-expr`. `create-table-expr` must
+  evaluate to a toucan Table instance. The instance is bound to `table-sym` in `body`. The table is cleaned up from
+  both the test and app DB after the body executes.
 
     (with-upload-table [table (create-upload-table! ...)]
       ...)"
   {:style/indent :defn}
   [[table-binding create-table-expr] & body]
-  `(with-uploads-enabled
+  `(with-uploads-enabled!
      (mt/with-model-cleanup [:model/Table]
        (do-with-upload-table! ~create-table-expr (fn [~table-binding] ~@body)))))
+
+(declare create-upload-table!)
+
+(deftest with-upload-table!-and-do-with-uploaded-example-csv!-test
+  (testing "with-upload-table! and do-with-uploaded-example-csv! should ACTUALLY clean up after themselves"
+    (mt/test-drivers (mt/normal-drivers-with-feature :uploads :schemas)
+      (letfn [(table-names []
+                (into #{} (map :name) (:tables (driver/describe-database driver/*driver* (mt/db)))))]
+        (let [original-table-names (table-names)]
+          (with-upload-table! [table (create-upload-table!)]
+            (do-with-uploaded-example-csv!
+             {:grant-permission? false
+              :schema-name       (:schema table)
+              :table-prefix      "uploaded_magic_"}
+             (constantly nil)))
+          (is (= original-table-names
+                 (table-names))))))))
 
 (deftest create-from-csv-display-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
@@ -374,49 +415,62 @@
                                     (:name (table->card table)))))]
       (testing "The table's display name and model's name is humanized from the CSV file name"
         (let [csv-file-prefix "some_FILE-prefix"]
-          (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
-            (test-names-match table "Some File Prefix"))))
+          (do-with-uploaded-example-csv!
+           {:csv-file-prefix csv-file-prefix}
+           (fn [model]
+             (with-upload-table! [table (card->table model)]
+               (test-names-match table "Some File Prefix"))))))
       (testing "Unicode characters are preserved in the display name, even when the table name is slugified"
         (let [csv-file-prefix "出色的"]
           (with-redefs [upload/strictly-monotonic-now (constantly #t "2024-06-28T00:00:00")]
-            (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
-              (test-names-match table "出色的")
-              (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
-                     (:name table)))))))
+            (do-with-uploaded-example-csv!
+             {:csv-file-prefix csv-file-prefix}
+             (fn [model]
+               (with-upload-table! [table (card->table model)]
+                 (test-names-match table "出色的")
+                 (is (= (ddl.i/format-name driver/*driver* "%e5%87%ba%e8%89%b2%e7%9a%84_20240628000000")
+                        (:name table)))))))))
       (testing "The names should be truncated to the right size"
         ;; we can assume app DBs use UTF-8 encoding (metabase#11753)
         (let [max-bytes 50]
           (with-redefs [; redef this because the UNIX filename limit is 255 bytes, so we can't test it in CI
                         upload/max-bytes (constantly max-bytes)]
-            (doseq [c ["a" "出"]]
+            (doseq [^String c ["a" "出"]]
               (let [long-csv-file-prefix (apply str (repeat (inc max-bytes) c))
-                    char-size            (count (.getBytes c "UTF-8"))]
-                (with-upload-table! [table (card->table (upload-example-csv! :csv-file-prefix long-csv-file-prefix))]
-                  (testing "The card name should be truncated to max bytes with UTF-8 encoding"
-                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
-                           (:name (table->card table)))))
-                  (testing "The display name should be truncated to the max bytes with UTF-8 encoding"
-                    (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
-                           (:display_name table)))))))))))))
+                    char-size            (count (.getBytes ^String c "UTF-8"))]
+                (do-with-uploaded-example-csv!
+                 {:csv-file-prefix long-csv-file-prefix}
+                 (fn [model]
+                   (with-upload-table! [table (card->table model)]
+                     (testing "The card name should be truncated to max bytes with UTF-8 encoding"
+                       (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                              (:name (table->card table)))))
+                     (testing "The display name should be truncated to the max bytes with UTF-8 encoding"
+                       (is (= (str/capitalize (apply str (repeat (quot max-bytes char-size) c)))
+                              (:display_name table)))))))))))))))
 
 (deftest create-from-csv-table-name-test
   (testing "Can upload two files with the same name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
       (let [csv-file-prefix "some file prefix"]
-        (with-upload-table!
-          [table-1 (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
-          (with-upload-table!
-            [table-2 (card->table (upload-example-csv! :csv-file-prefix csv-file-prefix))]
-            (mt/with-current-user (mt/user->id :crowberto)
-              (testing "both tables have the same display name"
-                (is (= "Some File Prefix"
-                       (:display_name table-1)
-                       (:display_name table-2))
-              (testing "tables are different between the two uploads"
-                (is (some? (:id table-1)))
-                (is (some? (:id table-2)))
-                (is (not= (:id table-1)
-                          (:id table-2)))))))))))))
+        (do-with-uploaded-example-csv!
+         {:csv-file-prefix csv-file-prefix}
+         (fn [model-1]
+           (do-with-uploaded-example-csv!
+            {:csv-file-prefix csv-file-prefix}
+            (fn [model-2]
+              (with-upload-table! [table-1 (card->table model-1)]
+                (with-upload-table! [table-2 (card->table model-2)]
+                  (mt/with-current-user (mt/user->id :crowberto)
+                    (testing "both tables have the same display name"
+                      (is (= "Some File Prefix"
+                             (:display_name table-1)
+                             (:display_name table-2))
+                          (testing "tables are different between the two uploads"
+                            (is (some? (:id table-1)))
+                            (is (some? (:id table-2)))
+                            (is (not= (:id table-1)
+                                      (:id table-2)))))))))))))))))
 
 (defn- query [db-id source-table]
   (qp/process-query {:database db-id
@@ -948,28 +1002,30 @@
                                                                   :is_full_sync false})]
       (try
         (testing "Happy path with schema, and without table-prefix"
-          (with-upload-table!
-            [new-table (card->table (upload-example-csv! :schema-name schema-name :auxiliary-sync-steps :synchronous))]
-            (is (=? {:display          :table
-                     :database_id      db-id
-                     :dataset_query    {:database db-id
-                                        :query    {:source-table (:id new-table)}
-                                        :type     :query}
-                     :creator_id       (mt/user->id :rasta)
-                     :name             #"(?i)example csv file(.*)"
-                     :collection_id    nil}
-                    (t2/select-one :model/Card :table_id (:id new-table)))
-                "A new model is created")
-            (is (=? {:name      #"(?i)example(.*)"
-                     :schema    (re-pattern (str "(?i)" schema-name))
-                     :is_upload true}
-                    new-table)
-                "A new table is created")
-            (is (= "complete"
-                   (:initial_sync_status (t2/select-one :model/Table (:id new-table))))
-                "The table is synced and marked as complete")
-            (is (t2/exists? Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
-                "The sync actually runs")))
+          (do-with-uploaded-example-csv!
+           {:schema-name schema-name, :auxiliary-sync-steps :synchronous}
+           (fn [model]
+             (with-upload-table! [new-table (card->table model)]
+               (is (=? {:display          :table
+                        :database_id      db-id
+                        :dataset_query    {:database db-id
+                                           :query    {:source-table (:id new-table)}
+                                           :type     :query}
+                        :creator_id       (mt/user->id :rasta)
+                        :name             #"(?i)example csv file(.*)"
+                        :collection_id    nil}
+                       (t2/select-one :model/Card :table_id (:id new-table)))
+                   "A new model is created")
+               (is (=? {:name      #"(?i)example(.*)"
+                        :schema    (re-pattern (str "(?i)" schema-name))
+                        :is_upload true}
+                       new-table)
+                   "A new table is created")
+               (is (= "complete"
+                      (:initial_sync_status (t2/select-one :model/Table (:id new-table))))
+                   "The table is synced and marked as complete")
+               (is (t2/exists? Field :table_id (:id new-table) :%lower.name "name" :semantic_type :type/Name)
+                   "The sync actually runs")))))
         (finally
           (t2/update! :model/Database db-id original-sync-values))))))
 
@@ -978,98 +1034,120 @@
     (testing "Happy path with table prefix, and without schema"
       (if (driver.u/supports? driver/*driver* :schemas (mt/db))
         (is (thrown-with-msg?
-              java.lang.Exception
-              #"^A schema has not been set."
-              (upload-example-csv! :table-prefix "uploaded_magic_" :schema-name nil)))
-        (with-upload-table! [table (card->table (upload-example-csv! :table-prefix "uploaded_magic_"))]
-          (is (=? {:name #"(?i)example csv file(.*)"}
-                  (table->card table)))
-          (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
-                  table))
-          (is (nil? (:schema table))))))))
+             java.lang.Exception
+             #"^A schema has not been set."
+             (do-with-uploaded-example-csv!
+              {:table-prefix "uploaded_magic_" :schema-name nil}
+              identity)))
+        (do-with-uploaded-example-csv!
+         {:table-prefix "uploaded_magic_"}
+         (fn [model]
+           (with-upload-table! [table (card->table model)]
+             (is (=? {:name #"(?i)example csv file(.*)"}
+                     (table->card table)))
+             (is (=? {:name #"(?i)uploaded_magic_example(.*)"}
+                     table))
+             (is (nil? (:schema table))))))))))
 
 (deftest create-csv-upload!-auto-pk-column-display-name-test
   (testing "The auto-generated column display_name should be the same as its name"
     (mt/test-drivers (mt/normal-drivers-with-feature :uploads :upload-with-auto-pk)
-      (with-upload-table! [table (card->table (upload-example-csv!))]
-        (let [new-field (t2/select-one Field :table_id (:id table) :name "_mb_row_id")]
-          (is (= "_mb_row_id"
-                 (:name new-field)
-                 (:display_name new-field))))))))
+      (do-with-uploaded-example-csv!
+       {}
+       (fn [model]
+         (with-upload-table! [table (card->table model)]
+           (let [new-field (t2/select-one Field :table_id (:id table) :name "_mb_row_id")]
+             (is (= "_mb_row_id"
+                    (:name new-field)
+                    (:display_name new-field))))))))))
 
 (deftest ^:mb/once csv-upload-snowplow-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (snowplow-test/with-fake-snowplow-collector
-      (with-upload-table! [_table (card->table (upload-example-csv!))]
-        (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
-          (is (=? {:data    {"event"             "csv_upload_successful"
-                             "model_id"          pos?
-                             "size_mb"           3.910064697265625E-5
-                             "num_columns"       2
-                             "num_rows"          2
-                             "generated_columns" 1
-                             "upload_seconds"    pos?}
-                   :user-id (str (mt/user->id :rasta))}
-                  (last (snowplow-test/pop-event-data-and-user-id!)))))
+      (do-with-uploaded-example-csv!
+       {}
+       (fn [model]
+         (with-upload-table! [_table (card->table model)]
+           (testing "Successfully creating a CSV Upload publishes statistics to Snowplow"
+             (is (=? {:data    {"event"             "csv_upload_successful"
+                                "model_id"          pos?
+                                "size_mb"           3.910064697265625E-5
+                                "num_columns"       2
+                                "num_rows"          2
+                                "generated_columns" 1
+                                "upload_seconds"    pos?}
+                      :user-id (str (mt/user->id :rasta))}
+                     (last (snowplow-test/pop-event-data-and-user-id!)))))
 
-        (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
-          (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
-            (try (upload-example-csv!)
-                 (catch Throwable _
-                   nil))
-            (is (= {:data    {"event"             "csv_upload_failed"
-                              "size_mb"           3.910064697265625E-5
-                              "num_columns"       2
-                              "num_rows"          2
-                              "generated_columns" 0}
-                    :user-id (str (mt/user->id :rasta))}
-                   (last (snowplow-test/pop-event-data-and-user-id!))))))))))
+           (testing "Failures when creating a CSV Upload will publish statistics to Snowplow"
+             (mt/with-dynamic-redefs [upload/create-from-csv! (fn [_ _ _ _] (throw (Exception.)))]
+               (try (do-with-uploaded-example-csv! {} identity)
+                    (catch Throwable _
+                      nil))
+               (is (= {:data    {"event"             "csv_upload_failed"
+                                 "size_mb"           3.910064697265625E-5
+                                 "num_columns"       2
+                                 "num_rows"          2
+                                 "generated_columns" 0}
+                       :user-id (str (mt/user->id :rasta))}
+                      (last (snowplow-test/pop-event-data-and-user-id!))))))))))))
 
 (deftest ^:mb/once csv-upload-audit-log-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-premium-features #{:audit-app}
-      (with-upload-table!
-        [_table (card->table (upload-example-csv!))]
-        (is (=? {:topic    :upload-create
-                 :user_id  (:id (mt/fetch-user :rasta))
-                 :model    "Table"
-                 :model_id pos?
-                 :details  {:db-id       pos?
-                            :schema-name (sql.tx/session-schema driver/*driver*)
-                            :table-name  string?
-                            :model-id    pos?
-                            :stats       {:num-rows          2
-                                          :num-columns       2
-                                          :generated-columns 1
-                                          :size-mb           3.910064697265625E-5
-                                          :upload-seconds    pos?}}}
-                (last-audit-event :upload-create)))))))
+      (do-with-uploaded-example-csv!
+       {}
+       (fn [model]
+         (with-upload-table!
+           [_table (card->table model)]
+           (is (=? {:topic    :upload-create
+                    :user_id  (:id (mt/fetch-user :rasta))
+                    :model    "Table"
+                    :model_id pos?
+                    :details  {:db-id       pos?
+                               :schema-name (sql.tx/session-schema driver/*driver*)
+                               :table-name  string?
+                               :model-id    pos?
+                               :stats       {:num-rows          2
+                                             :num-columns       2
+                                             :generated-columns 1
+                                             :size-mb           3.910064697265625E-5
+                                             :upload-seconds    pos?}}}
+                   (last-audit-event :upload-create)))))))))
 
 (deftest ^:mb/once create-csv-upload!-failure-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (mt/with-empty-db
       (testing "Uploads must be enabled"
         (is (thrown-with-msg?
-              java.lang.Exception
-              #"^Uploads are not enabled\.$"
-              (upload-example-csv! :uploads-enabled false :schema-name "public", :table-prefix "uploaded_magic_"))))
+             java.lang.Exception
+             #"^Uploads are not enabled\.$"
+             (do-with-uploaded-example-csv!
+              {:uploads-enabled false :schema-name "public", :table-prefix "uploaded_magic_"}
+              identity))))
       (testing "Database ID must be valid"
         (is (thrown-with-msg?
-              java.lang.Exception
-              #"^The uploads database does not exist\.$"
-              (upload-example-csv! :db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"))))
+             java.lang.Exception
+             #"^The uploads database does not exist\.$"
+             (do-with-uploaded-example-csv!
+              {:db-id Integer/MAX_VALUE, :schema-name "public", :table-prefix "uploaded_magic_"}
+              identity))))
       (testing "Uploads must be supported"
         (mt/with-dynamic-redefs [driver.u/supports? (constantly false)]
           (is (thrown-with-msg?
-                java.lang.Exception
-                #"^Uploads are not supported on \w+ databases\."
-                (upload-example-csv! :schema-name "public", :table-prefix "uploaded_magic_")))))
+               java.lang.Exception
+               #"^Uploads are not supported on \w+ databases\."
+               (do-with-uploaded-example-csv!
+                {:schema-name "public", :table-prefix "uploaded_magic_"}
+                identity)))))
       (testing "User must have write permissions on the collection"
         (mt/with-non-admin-groups-no-root-collection-perms
           (is (thrown-with-msg?
-                java.lang.Exception
-                #"^You do not have curate permissions for this Collection\.$"
-                (upload-example-csv! :user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"))))))))
+               java.lang.Exception
+               #"^You do not have curate permissions for this Collection\.$"
+               (do-with-uploaded-example-csv!
+                {:user-id (mt/user->id :lucky) :schema-name "public", :table-prefix "uploaded_magic_"}
+                identity))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
@@ -1089,15 +1167,17 @@
                                                           (assoc filter-type-prop "exclusion"
                                                                  patterns-type-prop "public"))})
         (testing "Upload should fail if table can't be found after sync, for example because of schema filters"
-          (try (upload-example-csv! {:schema-name "public"})
-               (is (false? :should-not-be-reached))
+          (try (do-with-uploaded-example-csv!
+                {:schema-name "public"}
+                (fn [_model]
+                  (is (false? :should-not-be-reached))))
                (catch Exception e
                  (is (= {:status-code 422}
                         (ex-data e)))
                  (is (re-matches #"^The schema public is not syncable\.$"
                                  (.getMessage e))))))
         (testing "\nThe table should be deleted"
-          (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db {:database-name (:name (mt/db))})]
+          (is (false? (let [details (mt/dbdef->connection-details driver/*driver* :db data.impl/*dbdef-used-to-create-db*)]
                         (-> (jdbc/query (sql-jdbc.conn/connection-details->spec driver/*driver* details)
                                         ["SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_schema = 'public')"])
                             first vals first)))))))))
@@ -1202,7 +1282,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (mt/with-discard-model-updates [:model/Database]
+        (mt/with-discard-model-updates! [:model/Database]
           ;; start with uploads disabled for all databases
           (t2/update! :model/Database :uploads_enabled true {:uploads_enabled false})
           (testing "Updates fail if uploads are disabled for all databases."
@@ -1264,7 +1344,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (with-uploads-enabled
+        (with-uploads-enabled!
           (testing "Append should fail only if there are missing columns in the CSV file"
             (doseq [[csv-rows error-message]
                     {[""]
@@ -1384,7 +1464,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (with-uploads-enabled
+        (with-uploads-enabled!
           (testing "Append should succeed with a CSV with only the header"
             (let [csv-rows ["name"]]
               (with-upload-table!
@@ -1726,7 +1806,7 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
     (doseq [action (actions-to-test driver/*driver*)]
       (testing (action-testing-str action)
-        (with-uploads-enabled
+        (with-uploads-enabled!
           (testing "Append should handle new columns being added in the latest CSV"
             (with-upload-table! [table (create-upload-table!)]
              ;; Reorder as well for good measure

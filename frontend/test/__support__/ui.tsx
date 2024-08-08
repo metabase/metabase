@@ -15,11 +15,13 @@ import { Router, useRouterHistory } from "react-router";
 import { routerReducer, routerMiddleware } from "react-router-redux";
 import _ from "underscore";
 
-import { MetabaseProviderInternal } from "embedding-sdk/components/public/MetabaseProvider";
+import {
+  MetabaseProviderInternal,
+  type MetabaseProviderProps,
+} from "embedding-sdk/components/public/MetabaseProvider";
 import { sdkReducers } from "embedding-sdk/store";
 import type { SdkStoreState } from "embedding-sdk/store/types";
 import { createMockSdkState } from "embedding-sdk/test/mocks/state";
-import type { SDKConfig } from "embedding-sdk/types";
 import { Api } from "metabase/api";
 import { UndoListing } from "metabase/containers/UndoListing";
 import { baseStyle } from "metabase/css/core/base.styled";
@@ -49,7 +51,7 @@ export interface RenderWithProvidersOptions {
   withDND?: boolean;
   withUndos?: boolean;
   customReducers?: ReducerObject;
-  sdkConfig?: SDKConfig | null;
+  sdkProviderProps?: Partial<MetabaseProviderProps> | null;
   theme?: MantineThemeOverride;
 }
 
@@ -69,7 +71,7 @@ export function renderWithProviders(
     withDND = false,
     withUndos = false,
     customReducers,
-    sdkConfig = null,
+    sdkProviderProps = null,
     theme,
     ...options
   }: RenderWithProvidersOptions = {},
@@ -89,7 +91,7 @@ export function renderWithProviders(
   }
 
   // We need to call `useRouterHistory` to ensure the history has a `query` object,
-  // since some components and hooks like `use-sync-url-slug` rely on it to read/write query params.
+  // since some components and hooks rely on it to read/write query params.
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const browserHistory = useRouterHistory(createMemoryHistory)({
     entries: [initialRoute],
@@ -128,7 +130,11 @@ export function renderWithProviders(
   const wrapper = (props: any) => {
     if (mode === "sdk") {
       return (
-        <MetabaseProviderInternal {...props} config={sdkConfig} store={store} />
+        <MetabaseProviderInternal
+          {...props}
+          {...sdkProviderProps}
+          store={store}
+        />
       );
     }
 

@@ -64,7 +64,7 @@
    final-col-metadata
    insights-col-metadata))
 
-(mu/defn ^:private insights-xform :- fn?
+(mu/defn- insights-xform :- fn?
   [orig-metadata :- [:maybe :map]
    record!       :- ifn?
    rf            :- ifn?]

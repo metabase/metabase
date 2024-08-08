@@ -1,6 +1,6 @@
 import { useSensor, PointerSensor } from "@dnd-kit/core";
 import cx from "classnames";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import type {
   DragEndEvent,
@@ -10,6 +10,7 @@ import { SortableList } from "metabase/core/components/Sortable";
 import CS from "metabase/css/core/index.css";
 import type { ParametersListProps } from "metabase/parameters/components/ParametersList/types";
 import { getVisibleParameters } from "metabase/parameters/utils/ui";
+import { FilterButton } from "metabase/query_builder/components/ResponsiveParametersList.styled";
 import { Icon } from "metabase/ui";
 import type { Parameter, ParameterId } from "metabase-types/api";
 
@@ -25,7 +26,6 @@ export const ParametersList = ({
   dashboard,
   editingParameter,
   isFullscreen,
-  isNightMode,
   hideParameters,
   isEditing,
   vertical = false,
@@ -36,6 +36,9 @@ export const ParametersList = ({
   setEditingParameter,
   enableParameterRequiredBehavior,
 }: ParametersListProps) => {
+  const [showFilterList, setShowFilterList] = useState(true);
+  const [showRequiredFilters, setShowRequiredFilters] = useState(true);
+
   const pointerSensor = useSensor(PointerSensor, {
     activationConstraint: { distance: 15 },
   });
@@ -50,6 +53,18 @@ export const ParametersList = ({
         ),
     );
   }, [parameters, hideParameters, isEditing]);
+
+  const requiredFilters = useMemo(() => {
+    return parameters.filter(parameter => parameter.required);
+  }, [parameters]);
+
+  const hasNonHiddenParameters = useMemo(() => {
+    return parameters.some(
+      parameter =>
+        !parameter.name.startsWith("#hide") &&
+        !parameter.name.endsWith("#hide"),
+    );
+  }, [parameters]);
 
   const handleSortEnd = useCallback(
     ({ id, newIndex }: DragEndEvent) => {
@@ -69,7 +84,6 @@ export const ParametersList = ({
       className={cx({ [CS.mb2]: vertical })}
       isEditing={isEditing}
       isFullscreen={isFullscreen}
-      isNightMode={isNightMode}
       parameter={valuePopulatedParameter}
       parameters={parameters}
       question={question}
@@ -101,23 +115,86 @@ export const ParametersList = ({
     />
   );
 
-  return visibleValuePopulatedParameters.length > 0 ? (
-    <div
-      className={cx(
-        className,
-        CS.flex,
-        CS.alignEnd,
-        CS.flexWrap,
-        vertical ? CS.flexColumn : CS.flexRow,
+  const toggleFilterList = useCallback(() => {
+    setShowFilterList(show => !show);
+  }, []);
+
+  const toggleRequiredFilters = useCallback(() => {
+    setShowRequiredFilters(show => !show);
+  }, []);
+
+  return (
+    <>
+      {(hasNonHiddenParameters || requiredFilters.length > 0) && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            marginBottom: "10px",
+          }}
+        >
+          {hasNonHiddenParameters && (
+            <FilterButton
+              borderless
+              primary
+              icon="filter"
+              onClick={toggleFilterList}
+              style={{ marginRight: "10px" }}
+            >
+              {showFilterList
+                ? `Hide Filters (${visibleValuePopulatedParameters.length})`
+                : `Show Filters (${visibleValuePopulatedParameters.length})`}
+            </FilterButton>
+          )}
+          {requiredFilters.length > 0 && (
+            <FilterButton
+              borderless
+              primary
+              icon="filter"
+              onClick={toggleRequiredFilters}
+            >
+              {showRequiredFilters
+                ? `Hide Required Filters (${requiredFilters.length})`
+                : `Show Required Filters (${requiredFilters.length})`}
+            </FilterButton>
+          )}
+        </div>
       )}
-    >
-      <SortableList
-        items={visibleValuePopulatedParameters}
-        getId={getId}
-        renderItem={renderItem}
-        onSortEnd={handleSortEnd}
-        sensors={[pointerSensor]}
-      />
-    </div>
-  ) : null;
+      {showRequiredFilters && requiredFilters.length > 0 && (
+        <div
+          className={cx(
+            className,
+            CS.flex,
+            CS.alignEnd,
+            CS.flexWrap,
+            vertical ? CS.flexColumn : CS.flexRow,
+            "required-filters",
+          )}
+        >
+          {requiredFilters.map(parameter =>
+            renderItem({ item: parameter, id: parameter.id }),
+          )}
+        </div>
+      )}
+      {showFilterList && visibleValuePopulatedParameters.length > 0 && (
+        <div
+          className={cx(
+            className,
+            CS.flex,
+            CS.alignEnd,
+            CS.flexWrap,
+            vertical ? CS.flexColumn : CS.flexRow,
+          )}
+        >
+          <SortableList
+            items={visibleValuePopulatedParameters}
+            getId={getId}
+            renderItem={renderItem}
+            onSortEnd={handleSortEnd}
+            sensors={[pointerSensor]}
+          />
+        </div>
+      )}
+    </>
+  );
 };

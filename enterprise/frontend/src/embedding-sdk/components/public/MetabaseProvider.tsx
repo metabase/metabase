@@ -6,10 +6,12 @@ import { Provider } from "react-redux";
 import { AppInitializeController } from "embedding-sdk/components/private/AppInitializeController";
 import { SdkThemeProvider } from "embedding-sdk/components/private/SdkThemeProvider";
 import { DEFAULT_FONT } from "embedding-sdk/config";
+import type { SdkEventHandlersConfig } from "embedding-sdk/lib/events";
 import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
 import { store } from "embedding-sdk/store";
 import {
   setErrorComponent,
+  setEventHandlers,
   setLoaderComponent,
   setMetabaseClientUrl,
   setPlugins,
@@ -27,6 +29,7 @@ export interface MetabaseProviderProps {
   children: ReactNode;
   config: SDKConfig;
   pluginsConfig?: SdkPluginsConfig;
+  eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
 }
 
@@ -38,6 +41,7 @@ export const MetabaseProviderInternal = ({
   children,
   config,
   pluginsConfig,
+  eventHandlers,
   theme,
   store,
 }: InternalMetabaseProviderProps): JSX.Element => {
@@ -52,6 +56,10 @@ export const MetabaseProviderInternal = ({
   useEffect(() => {
     store.dispatch(setPlugins(pluginsConfig || null));
   }, [store, pluginsConfig]);
+
+  useEffect(() => {
+    store.dispatch(setEventHandlers(eventHandlers || null));
+  }, [store, eventHandlers]);
 
   useEffect(() => {
     store.dispatch(setLoaderComponent(config.loaderComponent ?? null));

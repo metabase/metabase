@@ -1,0 +1,42 @@
+diff --git a/node_modules/@bahmutov/cypress-esbuild-preprocessor/src/index.js b/node_modules/@bahmutov/cypress-esbuild-preprocessor/src/index.js
+index e3a3aa0..96a4eb5 100644
+--- a/node_modules/@bahmutov/cypress-esbuild-preprocessor/src/index.js
++++ b/node_modules/@bahmutov/cypress-esbuild-preprocessor/src/index.js
+@@ -80,13 +80,35 @@ const createBundler = (esBuildUserOptions = {}) => {
+     const customBuildPlugin = {
+       name: 'cypress-esbuild-watch-plugin',
+       setup(build) {
+-        build.onEnd(result => {
++        // throws an error when running in watch mode
++        // https://github.com/bahmutov/cypress-esbuild-preprocessor/pull/381
++        build.onEnd((result) => {
++          if (result.errors.length > 0) {
++            debug(
++              'watch on %s build failed, errors %o',
++              filePath,
++              result.errors,
++            )
++
++            bundled[filePath] = new Promise((resolve, reject) => {
++              esbuild
++                .formatMessages(result.errors, {
++                  kind: 'error',
++                  color: false,
++                })
++                .then((messages) => reject(new Error(messages.join('\n\n'))))
++            })
++
++            file.emit('rerun')
++            return
++          }
++
+           debug(
+             'watch on %s build succeeded, warnings %o',
+             filePath,
+             result.warnings,
+           )
+-          file.emit('rerun')
++          file.emit('rerun');
+         });
+       },
+     }

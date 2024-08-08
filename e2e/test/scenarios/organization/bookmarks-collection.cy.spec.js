@@ -1,15 +1,15 @@
-import { USERS, SAMPLE_DB_TABLES } from "e2e/support/cypress_data";
+import { SAMPLE_DB_TABLES, USERS } from "e2e/support/cypress_data";
 import {
   ADMIN_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
-  restore,
-  popover,
+  getSidebarSectionTitle,
   navigationSidebar,
+  popover,
+  restore,
   visitCollection,
 } from "e2e/support/helpers";
-import { getSidebarSectionTitle as getSectionTitle } from "e2e/support/helpers/e2e-collection-helpers";
 
 const adminFullName = USERS.admin.first_name + " " + USERS.admin.last_name;
 const adminPersonalCollectionName = adminFullName + "'s Personal Collection";
@@ -31,7 +31,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
 
     cy.wait("@fetchRootCollectionItems");
 
-    getSectionTitle("Collections");
+    getSidebarSectionTitle("Collections");
     cy.icon("bookmark").should("not.exist");
   });
 
@@ -42,12 +42,12 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.icon("bookmark").click();
 
     navigationSidebar().within(() => {
-      getSectionTitle(/Bookmarks/);
+      getSidebarSectionTitle(/Bookmarks/);
       cy.findAllByText("First collection").should("have.length", 2);
 
       // Once there is a list of bookmarks,
       // we add a heading to the list of collections below the list of bookmarks
-      getSectionTitle("Collections");
+      getSidebarSectionTitle("Collections");
     });
 
     // Rename bookmarked collection
@@ -126,7 +126,7 @@ describe("scenarios > organization > bookmarks > collection", () => {
       cy.icon("bookmark_filled").click({ force: true });
     });
 
-    getSectionTitle(/Bookmarks/).should("not.exist");
+    getSidebarSectionTitle(/Bookmarks/).should("not.exist");
   });
 
   it("can toggle bookmark list visibility", () => {
@@ -136,11 +136,11 @@ describe("scenarios > organization > bookmarks > collection", () => {
     cy.icon("bookmark").click();
 
     navigationSidebar().within(() => {
-      getSectionTitle(/Bookmarks/).click();
+      getSidebarSectionTitle(/Bookmarks/).click();
 
       cy.findByText(adminPersonalCollectionName).should("not.exist");
 
-      getSectionTitle(/Bookmarks/).click();
+      getSidebarSectionTitle(/Bookmarks/).click();
 
       cy.findByText(adminPersonalCollectionName);
     });
@@ -159,7 +159,7 @@ function addBookmarkTo(name) {
   cy.findByText("Bookmark").click();
 
   navigationSidebar().within(() => {
-    getSectionTitle(/Bookmarks/);
+    getSidebarSectionTitle(/Bookmarks/);
     cy.findByText(name);
   });
 }
@@ -170,7 +170,7 @@ function removeBookmarkFrom(name) {
   cy.findByText("Remove from bookmarks").click();
 
   navigationSidebar().within(() => {
-    getSectionTitle(/Bookmarks/).should("not.exist");
+    getSidebarSectionTitle(/Bookmarks/).should("not.exist");
     cy.findByText(name).should("not.exist");
   });
 }
@@ -211,7 +211,7 @@ function bookmarkPinnedItem(name) {
   cy.findByText("Bookmark").click();
 
   navigationSidebar().within(() => {
-    getSectionTitle(/Bookmarks/);
+    getSidebarSectionTitle(/Bookmarks/);
     cy.findByText(name);
   });
 }

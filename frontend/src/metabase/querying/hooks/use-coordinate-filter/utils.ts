@@ -1,8 +1,11 @@
-import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
+import {
+  getAvailableOperatorOptions,
+  getDefaultAvailableOperator,
+} from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
-import type { NumberValue } from "./types";
+import type { NumberValue, OperatorOption } from "./types";
 
 function isNotEmpty(value: NumberValue): value is number {
   return value !== "";
@@ -25,6 +28,12 @@ export function getOptionByOperator(
   operator: Lib.CoordinateFilterOperatorName,
 ) {
   return OPERATOR_OPTIONS[operator];
+}
+
+export function getDefaultOperator(
+  availableOptions: OperatorOption[],
+): Lib.CoordinateFilterOperatorName {
+  return getDefaultAvailableOperator(availableOptions, "between");
 }
 
 export function getAvailableColumns(

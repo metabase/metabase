@@ -186,9 +186,15 @@
           :in   `(let [~field ~(keyword (str "$$" (name field)))]
                    ~@body)}})
 
+(defn- scope-with-join-field
+  "Adjust `field-name` for fields coming from joins. For use in `->[lr]value` for `:field` and `:metadata/column`."
+  [field-name join-field source-alias]
+  (cond->> (or source-alias field-name)
+    join-field (str join-field \.)))
+
 (defmethod ->lvalue :metadata/column
-  [field]
-  (field->name field))
+  [{::keys [join-field source-alias] :as field}]
+  (scope-with-join-field (field->name field) join-field source-alias))
 
 (defmethod ->lvalue :expression
   [[_ expression-name {::add/keys [desired-alias]}]]
@@ -204,8 +210,7 @@
 
 (defmethod ->rvalue :metadata/column
   [{coercion :coercion-strategy, ::keys [source-alias join-field] :as field}]
-  (let [field-name (str \$ (cond->> (or source-alias (field->name field))
-                             join-field (str join-field \.)))]
+  (let [field-name (str \$ (scope-with-join-field (field->name field) join-field source-alias))]
     (cond
       (isa? coercion :Coercion/UNIXMicroSeconds->DateTime)
       {:$dateFromParts {:millisecond {$divide [field-name 1000]}, :year 1970, :timezone "UTC"}}
@@ -249,11 +254,13 @@
   (annotate/aggregation-name (:query *query*) (mbql.u/aggregation-at-index *query* index *nesting-level*)))
 
 (defmethod ->lvalue :field
-  [[_ id-or-name _props :as field]]
+  [[_ id-or-name {:keys [join-alias] ::add/keys [source-alias]} :as field]]
   (if (integer? id-or-name)
     (or (find-mapped-field-name field)
-        (->lvalue (lib.metadata/field (qp.store/metadata-provider) id-or-name)))
-    (name id-or-name)))
+        (->lvalue (assoc (lib.metadata/field (qp.store/metadata-provider) id-or-name)
+                         ::source-alias source-alias
+                         ::join-field (get-join-alias join-alias))))
+    (scope-with-join-field (name id-or-name) (get-join-alias join-alias) source-alias)))
 
 (defn- add-start-of-week-offset [expr offset]
   (cond
@@ -380,8 +387,7 @@
                                  ::join-field join-field)))
               (if-let [mapped (find-mapped-field-name field)]
                 (str \$ mapped)
-                (str \$ (cond->> (or source-alias (name id-or-name))
-                          join-field (str join-field \.)))))
+                (str \$ (scope-with-join-field (name id-or-name) join-field source-alias))))
       temporal-unit (with-rvalue-temporal-bucketing temporal-unit))))
 
 ;; Values clauses below; they only need to implement `->rvalue`
@@ -1002,7 +1008,7 @@
   (or (get-in field [2 ::add/desired-alias])
       (->lvalue field)))
 
-(mu/defn ^:private breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ::lib.schema.common/non-blank-string :any]]]
+(mu/defn- breakouts-and-ags->projected-fields :- [:maybe [:sequential [:tuple ::lib.schema.common/non-blank-string :any]]]
   "Determine field projections for MBQL breakouts and aggregations. Returns a sequence of pairs like
   `[projected-field-name source]`."
   [breakout-fields aggregations]
@@ -1250,7 +1256,7 @@
 
 ;;; ---------------------------------------------------- order-by ----------------------------------------------------
 
-(mu/defn ^:private order-by->$sort :- $SortStage
+(mu/defn- order-by->$sort :- $SortStage
   [order-by :- [:sequential ::mbql.s/OrderBy]]
   {$sort (into
           (ordered-map/ordered-map)
@@ -1359,7 +1365,7 @@
             handle-limit
             handle-page])))
 
-(mu/defn ^:private generate-aggregation-pipeline :- [:map
+(mu/defn- generate-aggregation-pipeline :- [:map
                                                      [:projections Projections]
                                                      [:query Pipeline]]
   "Generate the aggregation pipeline. Returns a sequence of maps representing each stage."
@@ -1391,15 +1397,10 @@
   "Parse a serialized native query. Like a normal JSON parse, but handles BSON/MongoDB extended JSON forms."
   [^String s]
   (try
-    ;; TODO: Fixme! In following expression we were previously creating BasicDBObject's. As part of Monger removal
-    ;;       in favor of plain mongo-java-driver we now create Documents. I believe following conversion was and is
-    ;;       responsible for https://github.com/metabase/metabase/issues/38181. When pipeline is deserialized,
-    ;;       we end up with vector of `Document`s into which are appended new query stages, which are clojure
-    ;;       structures. When we render the query in "view native query" in query builder, clojure structures
-    ;;       are transformed to json correctly. But documents are rendered to their string representation (screenshot
-    ;;       in the issue). Possible fix could be to represent native queries in ejson v2, which conforms to json rfc,
-    ;;       hence there would be no need for special bson values handling. That is to be further investigated.
-    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument org.bson.Document.))
+    ;; Only way to parse _ejson array_ using bson library is through `BsonArray/parse`. That results in sequence
+    ;; of `org.bson.BsonDocument`s. Currently `org.bson.Document` fits our needs better as it (1) implements `Map`
+    ;; and (2) converts `BsonValue`s to java types.
+    (mapv (fn [^org.bson.BsonValue v] (-> v .asDocument .toJson org.bson.Document/parse))
           (org.bson.BsonArray/parse s))
     (catch Throwable e
       (throw (ex-info (tru "Unable to parse query: {0}" (.getMessage e))

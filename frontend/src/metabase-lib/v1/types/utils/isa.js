@@ -111,9 +111,14 @@ export const isScope = isFieldType.bind(null, SCOPE);
 export const isCategory = isFieldType.bind(null, CATEGORY);
 export const isLocation = isFieldType.bind(null, LOCATION);
 
+const hasNonMetricName = col => {
+  const name = col.name.toLowerCase();
+  return name === "id" || name.endsWith("_id") || name.endsWith("-id");
+};
+
 export const isDimension = col => col && col.source !== "aggregation";
 export const isMetric = col =>
-  col && col.source !== "breakout" && isSummable(col);
+  col && col.source !== "breakout" && isSummable(col) && !hasNonMetricName(col);
 
 export const isFK = field => field && isTypeFK(field.semantic_type);
 export const isPK = field => field && isTypePK(field.semantic_type);

@@ -439,6 +439,10 @@
                (-> (mt/user-http-request :rasta :get 200 "user/current")
                    mt/boolean-ids-and-timestamps
                    (dissoc :is_qbnewb :first_login :last_login))))))
+    (testing "on a fresh instance, `has_question_and_dashboard` is `false`"
+      (mt/with-empty-h2-app-db
+        (is (false? (-> (mt/user-http-request :rasta :get 200 "user/current")
+                        :has_question_and_dashboard)))))
     (testing "Custom homepage"
       (testing "If id is set but not enabled it is not included"
         (mt/with-temporary-setting-values [custom-homepage false

@@ -57,7 +57,7 @@
 ;;; |                                            PUTTING IT ALL TOGETHER                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private sync-and-update! :- ms/IntGreaterThanOrEqualToZero
+(mu/defn- sync-and-update! :- ms/IntGreaterThanOrEqualToZero
   "Sync Field instances (i.e., rows in the Field table in the Metabase application DB) for a Table, and update metadata
   properties (e.g. base type and comment/remark) as needed. Returns number of Fields synced."
   [table       :- i/TableInstance
@@ -77,7 +77,7 @@
     (let [driver          (driver.u/database->driver database)
           schemas?        (driver.u/supports? driver :schemas database)
           fields-metadata (if schemas?
-                            (fetch-metadata/fields-metadata database :schema-names (sync-util/db->sync-schemas database))
+                            (fetch-metadata/fields-metadata database :schema-names (sync-util/sync-schemas database))
                             (fetch-metadata/fields-metadata database))]
       (transduce (comp
                   (partition-by (juxt :table-name :table-schema))

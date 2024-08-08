@@ -13431,7 +13431,7 @@ msgstr "添加度量"
 #: frontend/src/metabase/lib/core.js:173 frontend/src/metabase/lib/core.js:179
 #: frontend/src/metabase/lib/core.js:185 frontend/src/metabase/lib/core.js:191
 msgid "Profile"
-msgstr "侧写"
+msgstr "简介"
 
 #: frontend/src/metabase/visualizations/components/Visualization/LoadingView/LoadingView.tsx:32
 msgid "This is usually pretty fast but seems to be taking a while right now."
@@ -22552,7 +22552,7 @@ msgstr "这里有一些探索"
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:160
 msgid "A look at"
-msgstr "一看"
+msgstr "探索一下"
 
 #: frontend/src/metabase/home/components/HomeXraySection/HomeXraySection.tsx:161
 msgid "A summary of"
@@ -29068,7 +29068,7 @@ msgstr "所有[[this.short-name]]都是一样的。"
 
 #: resources/automagic_dashboards/table/EventTable.yaml
 msgid "A look at the [[this]] table"
-msgstr "看一看[[本]]表"
+msgstr "探索一下[[本]]表"
 
 #: resources/automagic_dashboards/table/TransactionTable/ByProduct.yaml
 msgid "Here's a closer look at [[this]] by products"

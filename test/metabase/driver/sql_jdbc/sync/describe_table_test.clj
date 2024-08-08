@@ -9,11 +9,11 @@
    [metabase.driver :as driver]
    [metabase.driver.mysql :as mysql]
    [metabase.driver.mysql-test :as mysql-test]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
-   [metabase.driver.sql-jdbc.sync.describe-table
-    :as sql-jdbc.describe-table]
+   [metabase.driver.sql-jdbc.sync.describe-table :as sql-jdbc.describe-table]
    [metabase.driver.sql-jdbc.sync.interface :as sql-jdbc.sync.interface]
    [metabase.driver.util :as driver.u]
    [metabase.models.table :refer [Table]]
@@ -220,7 +220,7 @@
      nil
      (fn [conn]
        (is (= ["id"]
-              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn (:name (mt/db)) (t2/select-one :model/Table (mt/id :venues)))))))))
+              (sql-jdbc.describe-table/get-table-pks driver/*driver* conn "test-data" (t2/select-one :model/Table (mt/id :venues)))))))))
 
 ;;; ------------------------------------------- Tests for netsed field columns --------------------------------------------
 
@@ -408,6 +408,57 @@
                           (mt/db)
                           {:name "big_json" :id (mt/id "big_json")})))))))))
 
+(mt/defdataset long-json
+  [["long_json_table"
+     ;; `short_json` and `long_json` have the same schema,
+     ;; in the first row, both have an "a" key.
+     ;; in the second row, both have a "b" key, except `long_json` has a longer value.
+    [{:field-name "short_json", :base-type :type/JSON}
+     {:field-name "long_json",  :base-type :type/JSON}]
+    [[(json/generate-string {:a "x"}) (json/generate-string {:a "x"})]
+     [(json/generate-string {:b "y"}) (json/generate-string {:b (apply str (repeat 10 "y"))})]]]])
+
+(deftest long-json-sample-json-query-test
+  (testing "Long JSON values should be omitted from the sample for describe-table (#45163)"
+    (mt/test-drivers (mt/normal-drivers-with-feature :nested-field-columns)
+      (when-not (mysql/mariadb? (mt/db))
+        (mt/with-temporary-setting-values [sql-jdbc.describe-table/nested-field-columns-value-length-limit
+                                           (dec (count (json/generate-string {:b (apply str (repeat 10 "y"))})))]
+          (mt/dataset long-json
+            (sync/sync-database! (mt/db) {:scan :schema})
+            (let [jdbc-spec   (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
+                  table       (t2/select-one :model/Table :db_id (mt/id) :name "long_json_table")
+                  json-fields (t2/select :model/Field :table_id (:id table) :name [:in ["short_json" "long_json"]])
+                  pks         ["id"]
+                  sample      (fn []
+                                (let [rows (#'sql-jdbc.describe-table/sample-json-reducible-query driver/*driver* jdbc-spec table json-fields pks)]
+                                  (into #{} (map #(update-vals % json/parse-string)) rows)))]
+              (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
+                       {:short_json {"b" "y"}, :long_json nil}}
+                     (sample)))
+              (testing "If driver.sql/json-field-length is not implemented for the driver don't omit the long value"
+                (letfn [(do-with-removed-method [thunk]
+                          (let [original-method (get-method driver.sql/json-field-length driver/*driver*)]
+                            (if (= original-method (get-method driver.sql/json-field-length :default))
+                              (thunk)
+                              (do (remove-method driver.sql/json-field-length driver/*driver*)
+                                  (thunk)
+                                  (defmethod driver.sql/json-field-length driver/*driver* [driver field]
+                                    (original-method driver field))))))]
+                  (do-with-removed-method
+                   (fn []
+                     (is (= #{{:short_json {"a" "x"}, :long_json {"a" "x"}}
+                              {:short_json {"b" "y"}, :long_json {"b" "yyyyyyyyyy"}}}
+                            (sample)))))))
+              (testing "The resulting synced fields exclude the field that corresponds to the long value"
+                (is (= #{"id"
+                         "short_json"
+                         "long_json"
+                         "short_json → a"
+                         "short_json → b"
+                         "long_json → a"} ; note there is no "long_json → b" because it was excluded from the sample
+                       (t2/select-fn-set :name :model/Field :table_id (:id table), :active true)))))))))))
+
 (mt/defdataset json-unwrap-bigint-and-boolean
   "Used for testing mysql json value unwrapping"
   [["bigint-and-bool-table"
@@ -488,30 +539,29 @@
           (when-not (mysql/mariadb? (mt/db))
             (sync/sync-database! (mt/db))
             (testing "if table has an pk, we fetch both first and last rows thus detect the change in type"
-              (is (= #{{:name              "json_col → int_turn_string"
-                        :database-type     "text"
-                        :base-type         :type/Text
-                        :database-position 0
-                        :json-unfolding    false
-                        :visibility-type   :normal
-                        :nfc-path          [:json_col "int_turn_string"]}}
-                     (sql-jdbc.sync/describe-nested-field-columns
-                      driver/*driver*
-                      (mt/db)
-                      (t2/select-one Table :db_id (mt/id) :name "json_with_pk"))))
-
+              (is (= [{:name              "json_col → int_turn_string"
+                       :database-type     "text"
+                       :base-type         :type/Text
+                       :database-position 0
+                       :json-unfolding    false
+                       :visibility-type   :normal
+                       :nfc-path          [:json_col "int_turn_string"]}]
+                     (into [] (sql-jdbc.sync/describe-nested-field-columns
+                               driver/*driver*
+                               (mt/db)
+                               (t2/select-one Table :db_id (mt/id) :name "json_with_pk")))))
               (testing "if table doesn't have pk, we fail to detect the change in type but it still syncable"
-                (is (= #{{:name              "json_col → int_turn_string"
-                          :database-type     "bigint"
-                          :base-type         :type/Integer
-                          :database-position 0
-                          :json-unfolding    false
-                          :visibility-type   :normal
-                          :nfc-path          [:json_col "int_turn_string"]}}
-                       (sql-jdbc.sync/describe-nested-field-columns
-                        driver/*driver*
-                        (mt/db)
-                        (t2/select-one Table :db_id (mt/id) :name "json_without_pk"))))))))))))
+                (is (= [{:name              "json_col → int_turn_string"
+                         :database-type     "bigint"
+                         :base-type         :type/Integer
+                         :database-position 0
+                         :json-unfolding    false
+                         :visibility-type   :normal
+                         :nfc-path          [:json_col "int_turn_string"]}]
+                       (into [] (sql-jdbc.sync/describe-nested-field-columns
+                                 driver/*driver*
+                                 (mt/db)
+                                 (t2/select-one Table :db_id (mt/id) :name "json_without_pk")))))))))))))
 
 (deftest describe-table-indexes-test
   (mt/test-drivers (set/intersection (mt/normal-drivers-with-feature :index-info)

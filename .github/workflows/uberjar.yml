@@ -139,7 +139,7 @@ jobs:
 
     - name: Retag and push images if master (oss)
       if: ${{ (github.ref_name == 'master') && matrix.edition == 'oss' }}
-      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss ${{ github.repository_owner }}/metabase-head:latest && docker push ${{ github.repository_owner }}/metabase-head:latest
+      run: docker tag localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss ${{ github.repository_owner }}/metabase:${{ github.ref_name }} && docker push ${{ github.repository_owner }}/metabase:${{ github.ref_name }}
 
     - name: Retag and push images if dev branch
       if: ${{ !(startsWith(github.ref_name,'master') || startsWith(github.ref_name,'backport')) && matrix.edition == 'ee' }}
@@ -161,7 +161,7 @@ jobs:
       env:
         TRIVY_OFFLINE_SCAN: true
       with:
-        image-ref: docker.io/${{ github.repository_owner }}/metabase-head:latest
+        image-ref: docker.io/${{ github.repository_owner }}/metabase:${{ github.ref_name }}
         format: sarif
         output: trivy-results.sarif
 
@@ -274,4 +274,4 @@ jobs:
         run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-ee-ubuntu ${{ github.repository_owner }}/metabase-enterprise-head:latest-ubuntu
       - name: Retag and push ubuntu-based images if master (oss)
         if: ${{ (matrix.edition == 'oss') && (github.ref_name == 'master') }}
-        run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss-ubuntu ${{ github.repository_owner }}/metabase-head:latest-ubuntu
+        run: regctl image copy localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-oss-ubuntu ${{ github.repository_owner }}/metabase:${{ github.ref_name }}-ubuntu

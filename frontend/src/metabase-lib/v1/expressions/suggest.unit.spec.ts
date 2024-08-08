@@ -289,11 +289,7 @@ describe("metabase/lib/expression/suggest", () => {
 
       it("should not provide help text for an unsupported function (metabase#39766)", () => {
         const metadata = createMockMetadata({
-          databases: [
-            createSampleDatabase({
-              features: ["foreign-keys"],
-            }),
-          ],
+          databases: [createSampleDatabase()],
         });
 
         expect(

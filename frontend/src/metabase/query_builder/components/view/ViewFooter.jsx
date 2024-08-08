@@ -13,7 +13,7 @@ import * as Lib from "metabase-lib";
 import { ExecutionTime } from "./ExecutionTime";
 import QuestionAlertWidget from "./QuestionAlertWidget";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
-import QuestionLastUpdated from "./QuestionLastUpdated";
+import { QuestionLastUpdated } from "./QuestionLastUpdated/QuestionLastUpdated";
 import QuestionRowCount from "./QuestionRowCount";
 import QuestionTimelineWidget from "./QuestionTimelineWidget";
 import ViewButton from "./ViewButton";
@@ -109,7 +109,9 @@ const ViewFooter = ({
             result,
             isObjectDetail,
           }) && <QuestionRowCount key="row_count" />,
-          <ExecutionTime key="execution_time" time={result.running_time} />,
+          ExecutionTime.shouldRender({ result }) && (
+            <ExecutionTime key="execution_time" time={result.running_time} />
+          ),
           QuestionLastUpdated.shouldRender({ result }) && (
             <QuestionLastUpdated
               key="last-updated"

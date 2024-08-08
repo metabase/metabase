@@ -29,7 +29,7 @@ title: DatetimeSubtract
 - "millisecond"
 
 `amount`:
-- A whole number or a decimal number.
+- An integer. You cannot use fractional values. For example, you cannot subtract "half a year" (0.5).
 - May be a negative number: `datetimeSubtract("2021-03-25", -1, "month")` will return `2021-04-25`.
 
 ## Calculating a start date
@@ -55,7 +55,7 @@ Say you want to check if the current datetime falls between a [start date](#calc
 | Event   | Arrive By                  | Depart At                   | On My Way     |
 |---------|----------------------------|-----------------------------|---------------|
 | Drinks  | November 12, 2022 6:30 PM  | November 12, 2022 6:00 PM   | No            |
-| Dinner  | November 12, 2022 8:00 PM  | November 12, 2022 7:30 PM   | Yes           | 
+| Dinner  | November 12, 2022 8:00 PM  | November 12, 2022 7:30 PM   | Yes           |
 | Dancing | November 13, 2022 12:00 AM | November 12, 2022 11:30 PM  | No            |
 
 **Depart At** is a custom column with the expression:
@@ -133,7 +133,7 @@ is equivalent to the Metabase `datetimeSubtract` expression:
 datetimeSubtract([Arrive By], 30, "minute")
 ```
 
-### Spreadsheets 
+### Spreadsheets
 
 Assuming the [events sample data](#calculating-a-start-date) is in a spreadsheet where "Arrive By" is in column A with a datetime format, the spreadsheet function
 

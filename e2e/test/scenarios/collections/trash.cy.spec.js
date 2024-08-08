@@ -1,6 +1,8 @@
 import {
   READ_ONLY_PERSONAL_COLLECTION_ID,
   FIRST_COLLECTION_ID,
+  ORDERS_COUNT_QUESTION_ID,
+  ORDERS_QUESTION_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
@@ -669,7 +671,7 @@ describe("scenarios > collections > trash", () => {
 
     cy.log("Make sure trash is selected for a trashed dashboard");
     cy.get("@dashboard").then(dashboard => {
-      cy.intercept("GET", `/api/dashboard/${dashboard.id}`).as("getDashboard");
+      cy.intercept("GET", `/api/dashboard/${dashboard.id}*`).as("getDashboard");
       visitDashboard(dashboard.id);
       cy.wait("@getDashboard");
       openNavigationSidebar();
@@ -687,6 +689,28 @@ describe("scenarios > collections > trash", () => {
       openNavigationSidebar();
       assertTrashSelectedInNavigationSidebar();
     });
+  });
+
+  it("should open only one context menu at a time (metabase#44910)", () => {
+    cy.request("PUT", `/api/card/${ORDERS_QUESTION_ID}`, { archived: true });
+    cy.request("PUT", `/api/card/${ORDERS_COUNT_QUESTION_ID}`, {
+      archived: true,
+    });
+    cy.visit("/trash");
+
+    toggleEllipsisMenuFor("Orders");
+    cy.findAllByRole("dialog")
+      .should("have.length", 1)
+      .and("contain", "Move")
+      .and("contain", "Restore")
+      .and("contain", "Delete permanently");
+
+    toggleEllipsisMenuFor("Orders, Count");
+    cy.findAllByRole("dialog")
+      .should("have.length", 1)
+      .and("contain", "Move")
+      .and("contain", "Restore")
+      .and("contain", "Delete permanently");
   });
 });
 

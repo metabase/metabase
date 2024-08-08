@@ -22,6 +22,7 @@ import Button from "metabase/core/components/Button";
 import CS from "metabase/css/core/index.css";
 import fitViewport from "metabase/hoc/FitViewPort";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { updateUserSetting } from "metabase/redux/settings";
 import type { IconName } from "metabase/ui";
 import {
   Modal as NewModal,
@@ -36,6 +37,7 @@ import {
   toggleHelpReference,
 } from "../../permissions";
 import { showRevisionChangedModal } from "../../selectors/data-permissions/revision";
+import { LegacyPermissionsModal } from "../LegacyPermissionsModal/LegacyPermissionsModal";
 import { ToolbarButton } from "../ToolbarButton";
 
 import { PermissionsEditBar } from "./PermissionsEditBar";
@@ -57,6 +59,7 @@ type PermissionsPageLayoutProps = {
   navigateToTab: (tab: string) => void;
   helpContent?: ReactNode;
   toolbarRightContent?: ReactNode;
+  showSplitPermsModal?: boolean;
 };
 
 const CloseSidebarButtonWithDefault = ({
@@ -77,9 +80,11 @@ function PermissionsPageLayout({
   route,
   toolbarRightContent,
   helpContent,
+  showSplitPermsModal = false,
 }: PermissionsPageLayoutProps) {
   const saveError = useSelector(state => state.admin.permissions.saveError);
   const showRefreshModal = useSelector(showRevisionChangedModal);
+
   const isHelpReferenceOpen = useSelector(getIsHelpReferenceOpen);
   const dispatch = useDispatch();
 
@@ -90,6 +95,12 @@ function PermissionsPageLayout({
   const handleToggleHelpReference = useCallback(() => {
     dispatch(toggleHelpReference());
   }, [dispatch]);
+
+  const handleDimissSplitPermsModal = () => {
+    dispatch(
+      updateUserSetting({ key: "show-updated-permission-modal", value: false }),
+    );
+  };
 
   return (
     <PermissionPageRoot>
@@ -159,6 +170,10 @@ function PermissionsPageLayout({
           </NewButton>
         </Group>
       </NewModal>
+      <LegacyPermissionsModal
+        isOpen={showSplitPermsModal}
+        onClose={handleDimissSplitPermsModal}
+      />
     </PermissionPageRoot>
   );
 }

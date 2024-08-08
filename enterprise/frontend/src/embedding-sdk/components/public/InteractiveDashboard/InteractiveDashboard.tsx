@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePrevious, useUnmount } from "react-use";
+import _ from "underscore";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
@@ -10,7 +11,10 @@ import {
 } from "embedding-sdk/hooks/private/use-sdk-dashboard-params";
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
-import { NAVIGATE_TO_NEW_CARD, reset } from "metabase/dashboard/actions";
+import {
+  NAVIGATE_TO_NEW_CARD,
+  reset as dashboardReset,
+} from "metabase/dashboard/actions";
 import { getNewCardUrl } from "metabase/dashboard/actions/getNewCardUrl";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { useEmbedTheme } from "metabase/dashboard/hooks";
@@ -18,6 +22,7 @@ import { useEmbedFont } from "metabase/dashboard/hooks/use-embed-font";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PublicOrEmbeddedDashboard } from "metabase/public/containers/PublicOrEmbeddedDashboard/PublicOrEmbeddedDashboard";
+import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 import { navigateBackToDashboard } from "metabase/query_builder/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { Box } from "metabase/ui";
@@ -26,11 +31,12 @@ import type { QuestionDashboardCard } from "metabase-types/api";
 
 import { InteractiveDashboardProvider } from "./context";
 
-export type InteractiveDashboardProps = SdkDashboardDisplayProps & {
-  questionHeight?: number;
-  plugins?: SdkPluginsConfig;
-  className?: string;
-};
+export type InteractiveDashboardProps = SdkDashboardDisplayProps &
+  PublicOrEmbeddedDashboardEventHandlersProps & {
+    questionHeight?: number;
+    plugins?: SdkPluginsConfig;
+    className?: string;
+  };
 
 const InteractiveDashboardInner = ({
   dashboardId,
@@ -41,6 +47,8 @@ const InteractiveDashboardInner = ({
   hiddenParameters = [],
   questionHeight,
   plugins,
+  onLoad,
+  onLoadWithoutCards,
   className,
 }: InteractiveDashboardProps) => {
   const {
@@ -71,12 +79,12 @@ const InteractiveDashboardInner = ({
   const previousDashboardId = usePrevious(dashboardId);
 
   useUnmount(() => {
-    dispatch(reset()); // reset "isNavigatingBackToDashboard" state
+    dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
   });
 
   useEffect(() => {
-    if (dashboardId !== previousDashboardId) {
-      dispatch(reset()); // reset "isNavigatingBackToDashboard" state
+    if (previousDashboardId && dashboardId !== previousDashboardId) {
+      dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
       setAdhocQuestionUrl(null);
     }
   }, [dashboardId, dispatch, previousDashboardId]);
@@ -105,7 +113,6 @@ const InteractiveDashboardInner = ({
 
       if (url) {
         dispatch({ type: NAVIGATE_TO_NEW_CARD, payload: { dashboardId } });
-
         setAdhocQuestionUrl(url);
       }
     }
@@ -144,8 +151,8 @@ const InteractiveDashboardInner = ({
           <PublicOrEmbeddedDashboard
             dashboardId={dashboardId}
             parameterQueryParams={initialParameterValues}
-            hideDownloadButton={displayOptions.hideDownloadButton}
             hideParameters={displayOptions.hideParameters}
+            background={displayOptions.background}
             titled={displayOptions.titled}
             cardTitled={withCardTitle}
             theme={theme}
@@ -159,6 +166,12 @@ const InteractiveDashboardInner = ({
             navigateToNewCardFromDashboard={
               handleNavigateToNewCardFromDashboard
             }
+            onLoad={onLoad}
+            onLoadWithoutCards={onLoadWithoutCards}
+            downloadsEnabled={withDownloads}
+            isNightMode={false}
+            onNightModeChange={_.noop}
+            hasNightModeToggle={false}
           />
         </InteractiveDashboardProvider>
       )}

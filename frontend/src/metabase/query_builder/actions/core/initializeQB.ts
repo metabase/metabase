@@ -48,7 +48,7 @@ type BlankQueryOptions = {
   segment?: string;
 };
 
-type QueryParams = BlankQueryOptions & {
+export type QueryParams = BlankQueryOptions & {
   slug?: string;
   objectId?: string;
 };
@@ -101,7 +101,7 @@ function filterBySegmentId(question: Question, segmentId: SegmentId) {
   return question.setQuery(newQuery);
 }
 
-function deserializeCard(serializedCard: string) {
+export function deserializeCard(serializedCard: string) {
   const card = deserializeCardFromUrl(serializedCard);
   if (card.dataset_query.database != null) {
     // Ensure older MBQL is supported
@@ -158,7 +158,7 @@ type ResolveCardsResult = {
   originalCard?: Card;
 };
 
-async function resolveCards({
+export async function resolveCards({
   cardId,
   deserializedCard,
   options,
@@ -187,7 +187,7 @@ async function resolveCards({
       );
 }
 
-function parseHash(hash?: string) {
+export function parseHash(hash?: string) {
   let options: BlankQueryOptions = {};
   let serializedCard;
 
@@ -240,7 +240,6 @@ export async function updateTemplateTagNames(
   return query;
 }
 
-// TODO: extract getting params from URL, then use clear part in SDK - InteractiveQuestion
 async function handleQBInit(
   dispatch: Dispatch,
   getState: GetState,
@@ -389,15 +388,6 @@ async function handleQBInit(
     );
   }
 }
-
-// Does the same thing as initializeQB, but doesn't catch errors.
-// This function is used for the SDK, and we want to use the errors
-// to determine loading states and show error messages
-export const initializeQBRaw =
-  (location: LocationDescriptorObject, params: QueryParams) =>
-  async (dispatch: Dispatch, getState: GetState) => {
-    await handleQBInit(dispatch, getState, { location, params });
-  };
 
 export const initializeQB =
   (location: LocationDescriptorObject, params: QueryParams) =>

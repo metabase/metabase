@@ -7,7 +7,12 @@ import {
   CollectionPickerModal,
   type CollectionPickerItem,
 } from "metabase/common/components/CollectionPicker";
-import type { CollectionId, CollectionItem } from "metabase-types/api";
+import type {
+  CollectionId,
+  CollectionItem,
+  RecentItem,
+  SearchResult,
+} from "metabase-types/api";
 
 interface MoveModalProps {
   title: string;
@@ -16,6 +21,24 @@ interface MoveModalProps {
   initialCollectionId: CollectionId;
   movingCollectionId?: CollectionId;
 }
+
+const makeRecentFilter = (
+  disableFn: ((item: CollectionPickerItem) => boolean) | undefined,
+) => {
+  return (recentItems: RecentItem[]) =>
+    recentItems.filter(
+      result => !disableFn?.(result as CollectionPickerItem) ?? true,
+    );
+};
+
+const makeSearchResultFilter = (
+  disableFn: ((item: CollectionPickerItem) => boolean) | undefined,
+) => {
+  return (searchResults: SearchResult[]) =>
+    searchResults.filter(
+      result => !disableFn?.(result as CollectionPickerItem) ?? true,
+    );
+};
 
 export const MoveModal = ({
   title,
@@ -29,9 +52,14 @@ export const MoveModal = ({
     ? (item: CollectionPickerItem) =>
         Boolean(
           item.id === movingCollectionId ||
-            item?.location?.split("/").includes(String(movingCollectionId)),
+            (item.effective_location ?? item?.location)
+              ?.split("/")
+              .includes(String(movingCollectionId)),
         )
     : undefined;
+
+  const searchResultFilter = makeSearchResultFilter(shouldDisableItem);
+  const recentFilter = makeRecentFilter(shouldDisableItem);
 
   return (
     <CollectionPickerModal
@@ -50,6 +78,8 @@ export const MoveModal = ({
         confirmButtonText: t`Move`,
       }}
       shouldDisableItem={shouldDisableItem}
+      searchResultFilter={searchResultFilter}
+      recentFilter={recentFilter}
       onClose={onClose}
     />
   );
@@ -76,12 +106,18 @@ export const BulkMoveModal = ({
   const shouldDisableItem = movingCollectionIds.length
     ? (item: CollectionPickerItem) => {
         const collectionItemFullPath =
-          item?.location?.split("/").map(String).concat(String(item.id)) ?? [];
+          (item?.effective_location ?? item?.location)
+            ?.split("/")
+            .map(String)
+            .concat(String(item.id)) ?? [];
         return (
           _.intersection(collectionItemFullPath, movingCollectionIds).length > 0
         );
       }
     : undefined;
+
+  const searchResultFilter = makeSearchResultFilter(shouldDisableItem);
+  const recentFilter = makeRecentFilter(shouldDisableItem);
 
   const title =
     selectedItems.length > 1
@@ -105,6 +141,8 @@ export const BulkMoveModal = ({
         confirmButtonText: t`Move`,
       }}
       shouldDisableItem={shouldDisableItem}
+      searchResultFilter={searchResultFilter}
+      recentFilter={recentFilter}
       onClose={onClose}
     />
   );

@@ -35,6 +35,46 @@
 ;;   but it may be more instructive to look at examples in our codebase.
 ;;
 ;;  <hr />
+;;
+;; ## How does defendpoint coersion work?
+;;
+;; The `defendpoint` macro uses the `auto-coerce` function to generate a let code which binds args to their decoded
+;; values. Values are decoded by their corresponding malli schema. n.b.: Only symbols in the arg->schema map will be
+;; coerced; additional aliases (eg. after the :as key) will not automatically be coerced.
+;;
+;; The exact coersion function [[mc/decode]], and uses the [[metabase.api.common.internal/defendpoint-transformer]],
+;; and gets called with the schema, value, and transformer. see: https://github.com/metosin/malli#value-transformation
+;;
+;; ### Here's an example repl session showing how it works:
+;;
+;; <pre><code>
+;; (require '[malli.core :as mc] '[malli.error :as me] '[malli.util :as mut] '[metabase.util.malli :as mu]
+;;          '[metabase.util.malli.describe :as umd] '[malli.provider :as mp] '[malli.generator :as mg]
+;;          '[malli.transform :as mtx] '[metabase.api.common.internal :refer [defendpoint-transformer]])
+;; </code></pre>
+;;
+;; To see how a schema will be transformed, call `mc/decode` with `defendpoint-transformer`.
+;;
+;; With the `:keyword` schema:
+;;
+;; <pre><code>
+;; (mc/decode :keyword "foo/bar" defendpoint-transformer)
+;; ;; => :foo/bar
+;; </code></pre>
+;;
+;; The schemas can get quite complex, ( see: https://github.com/metosin/malli#advanced-transformations ) so it's best
+;; to test them out in the REPL to see how they'll be transformed.
+;;
+;; Example:
+;; <pre><code>
+;; (def DecodableKwInt
+;;   [:int {:decode/string (fn kw-int->int-decoder [kw-int]
+;;                           (if (int? kw-int) kw-int (parse-long (name kw-int))))}])
+;;
+;; (mc/decode DecodableKwInt :123 defendpoint-transformer)
+;; ;; => 123
+;; </code></pre>
+;; <hr />
 
 (ns metabase.api.common
   "Dynamic variables and utility functions/macros for writing API functions."

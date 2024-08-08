@@ -122,6 +122,7 @@ class CurrentPicker extends Component {
         togglePicker={() => this.setState({ showUnits: !this.state.showUnits })}
         formatter={val => val}
         periods={DATE_PERIODS}
+        testId="current-date-unit-selector"
       />
     );
   }

@@ -383,7 +383,7 @@
   ;; 8 bytes for the CRC32 plus one for the underscore
   9)
 
-(mu/defn ^:private crc32-checksum :- [:string {:min 8, :max 8}]
+(mu/defn- crc32-checksum :- [:string {:min 8, :max 8}]
   "Return a 4-byte CRC-32 checksum of string `s`, encoded as an 8-character hex string."
   [s :- :string]
   (let [s #?(:clj (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
@@ -446,7 +446,7 @@
   [query :- :map]
   (= (first-stage-type query) :mbql.stage/native))
 
-(mu/defn ^:private escape-and-truncate :- :string
+(mu/defn- escape-and-truncate :- :string
   [database :- [:maybe ::lib.schema.metadata/database]
    s        :- :string]
   (->> s
@@ -454,7 +454,7 @@
        ;; truncate alias to 60 characters (actually 51 characters plus a hash).
        truncate-alias))
 
-(mu/defn ^:private unique-alias :- :string
+(mu/defn- unique-alias :- :string
   [database :- [:maybe ::lib.schema.metadata/database]
    original :- :string
    suffix   :- :string]

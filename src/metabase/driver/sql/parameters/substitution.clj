@@ -181,7 +181,7 @@
     {:replacement-snippet     (str/join ", " (map :replacement-snippet values))
      :prepared-statement-args (apply concat (map :prepared-statement-args values))}))
 
-(mu/defn ^:private maybe-parse-temporal-literal :- (lib.schema.common/instance-of-class java.time.temporal.Temporal)
+(mu/defn- maybe-parse-temporal-literal :- (lib.schema.common/instance-of-class java.time.temporal.Temporal)
   [x]
   (condp instance? x
     String   (u.date/parse x)
@@ -222,37 +222,37 @@
 
 ;;; ------------------------------------- Field Filter replacement snippet info --------------------------------------
 
-(mu/defn ^:private combine-replacement-snippet-maps :- ParamSnippetInfo
+(mu/defn- combine-replacement-snippet-maps :- ParamSnippetInfo
   "Combine multiple `replacement-snippet-maps` into a single map using a SQL `AND` clause."
   [replacement-snippet-maps :- [:maybe [:sequential ParamSnippetInfo]]]
   {:replacement-snippet     (str \( (str/join " AND " (map :replacement-snippet replacement-snippet-maps)) \))
    :prepared-statement-args (mapcat :prepared-statement-args replacement-snippet-maps)})
 
 ;; for relative dates convert the param to a `DateRange` record type and call `->replacement-snippet-info` on it
-(mu/defn ^:private date-range-field-filter->replacement-snippet-info :- ParamSnippetInfo
+(mu/defn- date-range-field-filter->replacement-snippet-info :- ParamSnippetInfo
   [driver value]
   (->> (params.dates/date-string->range value)
        params/map->DateRange
        (->replacement-snippet-info driver)))
 
-(mu/defn ^:private field-filter->equals-clause-sql :- ParamSnippetInfo
+(mu/defn- field-filter->equals-clause-sql :- ParamSnippetInfo
   [driver value]
   (-> (->replacement-snippet-info driver value)
       (update :replacement-snippet (partial str "= "))))
 
-(mu/defn ^:private field-filter-multiple-values->in-clause-sql :- ParamSnippetInfo
+(mu/defn- field-filter-multiple-values->in-clause-sql :- ParamSnippetInfo
   [driver values]
   (-> (->replacement-snippet-info driver (vec values))
       (update :replacement-snippet (partial format "IN (%s)"))))
 
-(mu/defn ^:private honeysql->replacement-snippet-info :- ParamSnippetInfo
+(mu/defn- honeysql->replacement-snippet-info :- ParamSnippetInfo
   "Convert `hsql-form` to a replacement snippet info map by passing it to HoneySQL's `format` function."
   [driver hsql-form]
   (let [[snippet & args] (sql.qp/format-honeysql driver hsql-form)]
     {:replacement-snippet     snippet
      :prepared-statement-args args}))
 
-(mu/defn ^:private field->clause :- mbql.s/field
+(mu/defn- field->clause :- mbql.s/field
   [driver     :- :keyword
    field      :- ::lib.schema.metadata/column
    param-type :- ::lib.schema.parameter/type
@@ -271,7 +271,7 @@
     ;; in case anyone needs to know we're compiling a Field filter.
     ::compiling-field-filter? true}])
 
-(mu/defn ^:private field->identifier :- ::lib.schema.common/non-blank-string
+(mu/defn- field->identifier :- ::lib.schema.common/non-blank-string
   "Return an approprate snippet to represent this `field` in SQL given its param type.
    For non-date Fields, this is just a quoted identifier; for dates, the SQL includes appropriately bucketing based on
    the `param-type`."
@@ -281,7 +281,7 @@
        (honeysql->replacement-snippet-info driver)
        :replacement-snippet))
 
-(mu/defn ^:private field-filter->replacement-snippet-info :- ParamSnippetInfo
+(mu/defn- field-filter->replacement-snippet-info :- ParamSnippetInfo
   "Return `[replacement-snippet & prepared-statement-args]` appropriate for a field filter parameter."
   [driver {{param-type :type, value :value, :as params} :value, field :field, :as _field-filter}]
   (assert (:id field) (format "Why doesn't Field have an ID?\n%s" (u/pprint-to-str field)))

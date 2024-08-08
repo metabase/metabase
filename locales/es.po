@@ -18453,11 +18453,11 @@ msgstr "ERROR {0}"
 
 #: metabase/cmd/copy.clj:183
 msgid "copied {0} instances."
-msgstr "...copiando instancias."
+msgstr "{0} instancias copiadas."
 
 #: metabase/cmd/copy.clj:187
 msgid "Copying instances of {0}..."
-msgstr "Copiar instancias de {0}..."
+msgstr "Copiando instancias de {0}..."
 
 #: metabase/cmd/copy.clj:192
 msgid "Error copying instances of {0}"
@@ -18473,7 +18473,7 @@ msgstr "Re-activando las restricciones de la DB..."
 
 #: metabase/cmd/copy.clj:349
 msgid "Setting Postgres sequence ids to proper values..."
-msgstr "Poner los ids de la secuencia de Postgres en los valores adecuados..."
+msgstr "Configurando los ids de la secuencia de Postgres en los valores adecuados..."
 
 #. make sure the source database is up-do-date
 #: metabase/cmd/copy.clj:386

@@ -152,7 +152,7 @@
   [_column-metadata]
   {::group-type :group-type/main})
 
-(mu/defn ^:private column-group-info :- [:map [::group-type GroupType]]
+(mu/defn- column-group-info :- [:map [::group-type GroupType]]
   "The value we should use to `group-by` inside [[group-columns]]."
   [column-metadata :- ::lib.schema.metadata/column]
   (column-group-info-method column-metadata))

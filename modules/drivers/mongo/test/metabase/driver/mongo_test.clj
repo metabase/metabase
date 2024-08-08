@@ -438,27 +438,30 @@
 (deftest sync-fields-test
   (mt/test-driver :mongo
     (testing "Test that Fields got synced correctly, and types are correct"
+      ;; Even though Mongo does not support foreign keys, there are few :type/FK semantic types. Why? Because those are
+      ;; added to test data manually (see the [[metabase.test.data.impl.get-or-create/create-database!]]) to enable
+      ;; implicit joins testing.
       (is (= [[{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
                {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}]
               [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
                {:semantic_type nil,             :base_type :type/Instant,  :name "date"}
-               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "user_id"}
-               {:semantic_type nil,             :base_type :type/Integer,  :name "venue_id"}]
+               {:semantic_type :type/FK,        :base_type :type/Integer,  :name "user_id"}
+               {:semantic_type :type/FK,        :base_type :type/Integer,  :name "venue_id"}]
               [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
                {:semantic_type nil,             :base_type :type/Instant,  :name "last_login"}
                {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
                {:semantic_type :type/Category,  :base_type :type/Text,     :name "password"}]
               [{:semantic_type :type/PK,        :base_type :type/Integer,  :name "_id"}
-               {:semantic_type :type/Category,  :base_type :type/Integer,  :name "category_id"}
+               {:semantic_type :type/FK,        :base_type :type/Integer,  :name "category_id"}
                {:semantic_type :type/Latitude,  :base_type :type/Float,    :name "latitude"}
                {:semantic_type :type/Longitude, :base_type :type/Float,    :name "longitude"}
                {:semantic_type :type/Name,      :base_type :type/Text,     :name "name"}
                {:semantic_type :type/Category,  :base_type :type/Integer,  :name "price"}]]
              (vec (for [table-name table-names]
                     (vec (for [field (t2/select [Field :name :base_type :semantic_type]
-                                       :active   true
-                                       :table_id (mt/id table-name)
-                                       {:order-by [:name]})]
+                                                :active   true
+                                                :table_id (mt/id table-name)
+                                                {:order-by [:name]})]
                            (into {} field))))))))))
 
 (tx/defdataset with-bson-ids

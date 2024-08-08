@@ -4,6 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.auth-provider :as auth-provider]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -659,3 +660,19 @@
           password-fields (filter #(contains? #{:password :secret} (get % :type)) all-fields)]
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
+
+(defn fetch-and-incorporate-auth-provider-details
+  "Incorporates auth-provider responses with db-details.
+
+  If you have a database you need to pass the database-id as some providers will need to save the response (e.g. refresh-tokens)."
+  ([driver db-details]
+   (fetch-and-incorporate-auth-provider-details driver nil db-details))
+  ([driver database-id {:keys [use-auth-provider auth-provider] :as db-details}]
+   (if use-auth-provider
+     (let [auth-provider (keyword auth-provider)]
+       (driver/incorporate-auth-provider-details
+        driver
+        auth-provider
+        (auth-provider/fetch-auth auth-provider database-id db-details)
+        db-details))
+     db-details)))

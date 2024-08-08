@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
 import {
@@ -13,14 +14,14 @@ import {
   createMockDashboard,
   createMockDashboardCard,
   createMockTokenFeatures,
+  createMockUser,
 } from "metabase-types/api/mocks";
-import type { DashboardSidebarName } from "metabase-types/store";
 import {
   createMockDashboardState,
   createMockLocation,
 } from "metabase-types/store/mocks";
 
-import { DashboardHeader } from "../DashboardHeader";
+import { DashboardHeader, type DashboardHeaderProps } from "../DashboardHeader";
 
 const DASHCARD = createMockDashboardCard();
 
@@ -99,71 +100,51 @@ export const setup = async ({
 
   fetchMock.get("path:/api/pulse/form_input", channelData);
 
-  const dashboardHeaderProps = {
-    isAdmin,
+  const dashboardHeaderProps: DashboardHeaderProps = {
     dashboard,
-    dashboardId: dashboard.id,
-    canManageSubscriptions: true,
-    isEditing: false,
     isFullscreen: false,
-    isNavBarOpen: false,
     isNightMode: false,
-    isDirty: false,
-    isAddParameterPopoverOpen: false,
     hasNightModeToggle: false,
     isAdditionalInfoVisible: false,
     refreshPeriod: 0,
-    addMarkdownDashCardToDashboard: jest.fn(),
-    addHeadingDashCardToDashboard: jest.fn(),
     setRefreshElapsedHook: jest.fn(),
-    addCardToDashboard: jest.fn(),
-    addLinkDashCardToDashboard: jest.fn(),
-    fetchDashboard: jest.fn(),
-    updateDashboardAndCards: jest.fn(),
-    setDashboardAttribute: jest.fn(),
-    onEditingChange: jest.fn(),
     onRefreshPeriodChange: jest.fn(),
     onNightModeChange: jest.fn(),
     onFullscreenChange: jest.fn(),
-    onSharingClick: jest.fn(),
-    onChangeLocation: jest.fn(),
-    toggleSidebar: jest.fn(),
-    sidebar: {
-      name: "" as DashboardSidebarName,
-      props: {},
-    },
     location: createMockLocation(),
-    setSidebar: jest.fn(),
-    closeSidebar: jest.fn(),
-    addActionToDashboard: jest.fn(),
-    databases: {},
-    params: { tabSlug: undefined },
-    addParameter: jest.fn(),
-    showAddParameterPopover: jest.fn(),
-    hideAddParameterPopover: jest.fn(),
   };
 
-  renderWithProviders(<DashboardHeader {...dashboardHeaderProps} />, {
-    storeInitialState: {
-      settings,
-      dashboard: createMockDashboardState({
-        dashboardId: dashboard.id,
-        dashboards: {
-          [dashboard.id]: {
-            ...dashboard,
-            dashcards: dashboard.dashcards.map(c => c.id),
+  renderWithProviders(
+    <Route
+      path="*"
+      component={() => <DashboardHeader {...dashboardHeaderProps} />}
+    ></Route>,
+    {
+      withRouter: true,
+      storeInitialState: {
+        currentUser: createMockUser({
+          is_superuser: isAdmin,
+        }),
+        settings,
+        dashboard: createMockDashboardState({
+          dashboardId: dashboard.id,
+          dashboards: {
+            [dashboard.id]: {
+              ...dashboard,
+              dashcards: dashboard.dashcards.map(c => c.id),
+            },
           },
-        },
-        dashcards: {
-          [DASHCARD.id]: {
-            ...DASHCARD,
-            isDirty: false,
-            isRemoved: false,
+          dashcards: {
+            [DASHCARD.id]: {
+              ...DASHCARD,
+              isDirty: false,
+              isRemoved: false,
+            },
           },
-        },
-      }),
+        }),
+      },
     },
-  });
+  );
 
   await waitForLoaderToBeRemoved();
 };
