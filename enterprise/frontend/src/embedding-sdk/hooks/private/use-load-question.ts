@@ -29,7 +29,12 @@ export interface LoadQuestionHookResult {
 
   runQuestion(): Promise<void>;
   loadQuestion(): LoadQuestionResult;
-  updateQuestion(question: Question): Promise<void>;
+
+  updateQuestion(
+    question: Question,
+    options?: { run?: boolean },
+  ): Promise<void>;
+
   navigateToNewCard(params: NavigateToNewCardParams): Promise<void>;
 }
 
@@ -90,7 +95,7 @@ export function useLoadQuestion({
   }, [dispatch]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
-    async (nextQuestion: Question) => {
+    async (nextQuestion: Question, { run = false }: { run?: boolean }) => {
       if (!question) {
         return;
       }
@@ -101,7 +106,8 @@ export function useLoadQuestion({
           previousQuestion: question,
           originalQuestion,
           cancelDeferred: deferred(),
-          onQuestionChange: () => setQuestionState({ question }),
+          onQuestionChange: question => setQuestionState({ question }),
+          run,
         }),
       );
 
@@ -117,6 +123,7 @@ export function useLoadQuestion({
           ...params,
           originalQuestion,
           cancelDeferred: deferred(),
+          onQuestionChange: question => setQuestionState({ question }),
         }),
       );
 

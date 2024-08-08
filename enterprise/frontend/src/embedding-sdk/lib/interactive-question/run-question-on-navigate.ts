@@ -1,18 +1,19 @@
+import { runQuestionQuerySdk } from "embedding-sdk/lib/interactive-question/run-question-query";
 import type {
   NavigateToNewCardParams,
   SdkQuestionState,
 } from "embedding-sdk/types/question";
 import { loadCard } from "metabase/lib/card";
+import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import Question from "metabase-lib/v1/Question";
 import { cardIsEquivalent } from "metabase-lib/v1/queries/utils/card";
 import type { Dispatch, GetState } from "metabase-types/store";
 
-import { updateQuestionSdk } from "./update-question";
-
 interface RunQuestionOnNavigateParams extends NavigateToNewCardParams {
   originalQuestion?: Question;
+  onQuestionChange: (question: Question) => void;
 }
 
 export const runQuestionOnNavigateSdk =
@@ -21,14 +22,18 @@ export const runQuestionOnNavigateSdk =
     dispatch: Dispatch,
     getState: GetState,
   ): Promise<SdkQuestionState | null> => {
-    let { nextCard, previousCard, originalQuestion } = params;
+    let {
+      nextCard,
+      previousCard,
+      originalQuestion,
+      cancelDeferred,
+      onQuestionChange,
+    } = params;
 
     // Do not reload questions with breakouts when clicking on a legend item
     if (previousCard === nextCard) {
       return null;
     }
-
-    const metadata = getMetadata(getState());
 
     // Fallback when a visualization legend is clicked
     if (cardIsEquivalent(previousCard, nextCard)) {
@@ -37,17 +42,16 @@ export const runQuestionOnNavigateSdk =
       nextCard = getCardAfterVisualizationClick(nextCard, previousCard);
     }
 
-    const previousQuestion = new Question(previousCard, metadata);
-    const nextQuestion = new Question(nextCard, metadata);
+    // Optimistic update the UI before we re-fetch the query metadata.
+    onQuestionChange(new Question(nextCard, getMetadata(getState())));
 
-    const result = await dispatch(
-      updateQuestionSdk({
-        previousQuestion,
-        nextQuestion,
-        originalQuestion,
-        onQuestionChange: () => {},
-      }),
-    );
+    dispatch(loadMetadataForCard(nextCard));
 
-    return result as SdkQuestionState;
+    const state = await runQuestionQuerySdk({
+      question: new Question(nextCard, getMetadata(getState())),
+      originalQuestion,
+      cancelDeferred,
+    });
+
+    return state as SdkQuestionState;
   };
