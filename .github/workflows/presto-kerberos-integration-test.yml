@@ -98,10 +98,8 @@ jobs:
 
             fs.writeFileSync('mba-compose.yml', newConfig);
 
-      - name: show new file
-        run: cat mba-compose.yml
+      - name: run mba
+        run: docker compose -f mba-compose.yml up -d
 
-      # - name: Run test script in MBA instance
-      #   run: >
-      #     mba --mb . --data-db postgres-data -n example.com \
-      #      run .github/scripts/run-presto-kerberos-integration-test.sh
+      - name: Run test script in MBA instance
+        run: docker compose -f composed.yaml exec metabase .github/scripts/run-presto-kerberos-integration-test.sh
