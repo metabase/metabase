@@ -29,6 +29,7 @@ export function getMetabaseCssVariables(theme: MantineTheme) {
       --mb-color-brand: ${theme.fn.themeColor("brand")};
       --mb-color-summarize: ${theme.fn.themeColor("summarize")};
       --mb-color-filter: ${theme.fn.themeColor("filter")};
+      ${getThemeSpecificCssVariables(theme)}
     }
   `;
 }
