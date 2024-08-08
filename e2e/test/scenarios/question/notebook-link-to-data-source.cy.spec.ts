@@ -75,8 +75,12 @@ describe("scenarios > notebook > link to data source", () => {
       "Deselecting columns should have no effect on the linked data source in new tab/window",
     );
     openNotebook();
-    // realHover does not work here
-    getNotebookStep("data").findByText("Reviews").trigger("mousemove");
+
+    cy.log("Make sure tooltip is being shown on hover");
+    getNotebookStep("data")
+      .findByText("Reviews")
+      .should("be.visible")
+      .realHover();
     cy.findByRole("tooltip").should(
       "have.text",
       `${METAKEY}+click to open in new tab`,
