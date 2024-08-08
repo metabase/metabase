@@ -1,6 +1,7 @@
 import allNegative from "./all-negative.json";
 import allSettings from "./all-settings.json";
 import allZeroMetric44847 from "./all-zero-metric-44847.json";
+import autoCompactTotal from "./auto-compact-total.json";
 import binnedDimension from "./binned-dimension.json";
 import booleanDimension from "./boolean-dimension.json";
 import colors from "./colors.json";
@@ -77,6 +78,7 @@ export const data = {
   invalidDimensionSetting44085,
   percentagesOnChartBooleanDimensionCrashes44085,
   allZeroMetric44847,
+  autoCompactTotal,
   noSingleColumnLegend45149,
   numericSQLColumnCrashes28568,
   missingLabelLargeSlice38424,
