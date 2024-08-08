@@ -38,6 +38,7 @@ export const NonAdminEmbedMenu = ({
       />
     ) : (
       <ViewFooterButton
+        data-testid="resource-embed-button"
         icon="share"
         onClick={() => setIsOpen(!isOpen)}
         disabled={isDisabled}
