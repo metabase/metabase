@@ -969,7 +969,7 @@ export function updateTemporalFilter(
 }
 
 /**
- * Returns indexes of stages from which columns should be exposed for filtering
+ * Returns indexes of stages from which columns are exposed for filtering
  */
 export function getFilterStageIndexes(query: Query): number[] {
   return stageCount(query) > 1 ? [-2, -1] : [-1];
