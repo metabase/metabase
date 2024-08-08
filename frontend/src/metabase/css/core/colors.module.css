@@ -3,12 +3,11 @@
  * frontend/src/metabase/ui/utils/colors.ts
  * frontend/src/metabase/styled-components/containers/GlobalStyles/GlobalStyles.tsx
  * frontend/src/metabase/styled-components/theme/css-variables.ts
- * .storybook/preview-head.html
  */
 :root {
   /* Semantic colors */
   --mb-color-brand: var(--mb-base-color-blue-40);
-  --mb-color-brand-light: #f9fbfc;
+  --mb-color-brand-light: #ddecfa;
   --mb-color-brand-lighter: #eef6fc;
   --mb-color-success: #84bb4c;
   --mb-color-summarize: #88bf4d;
