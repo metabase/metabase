@@ -25,20 +25,58 @@ describe("DashboardSharingMenu", () => {
   });
 
   describe("dashboard subscriptions", () => {
-    ["admin", "non-admin"].forEach(userType => {
-      it(`${userType}: should always show the "Subscriptions" menu item`, async () => {
-        setupDashboardSharingMenu({ isAdmin: userType === "admin" });
+    describe("admins", () => {
+      it("should show the 'Subscriptions' menu item if email and slack are not setup", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isEmailSetup: false,
+          isSlackSetup: false,
+        });
         await openMenu();
         expect(screen.getByText("Subscriptions")).toBeInTheDocument();
       });
 
-      it(`${userType}: should toggle the subscriptions sidebar on click`, async () => {
-        setupDashboardSharingMenu({ isAdmin: userType === "admin" });
+      it("should show the 'Subscriptions' menu item if email and slack are setup", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          isEmailSetup: true,
+          isSlackSetup: true,
+        });
+        await openMenu();
+        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+      });
+
+      it("Should toggle the subscriptions sidebar on click", async () => {
+        setupDashboardSharingMenu({ isAdmin: true });
         await openMenu();
         await userEvent.click(screen.getByText("Subscriptions"));
         expect(screen.getByTestId("fake-sidebar")).toHaveTextContent(
           "Sidebar: sharing",
         );
+      });
+    });
+
+    describe("non-admins", () => {
+      it("should show 'subscriptions' option when slack is set up", async () => {
+        setupDashboardSharingMenu({ isAdmin: false, isSlackSetup: true });
+        await openMenu();
+        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+      });
+
+      it("should show 'subscriptions' option when email is set up", async () => {
+        setupDashboardSharingMenu({ isAdmin: false, isEmailSetup: true });
+        await openMenu();
+        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+      });
+
+      it("should not show 'subscriptions' option when neither email nor slack are set up", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: false,
+          isEmailSetup: false,
+          isSlackSetup: false,
+        });
+        await openMenu();
+        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
       });
     });
   });

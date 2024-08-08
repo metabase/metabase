@@ -29,27 +29,25 @@ const FakeSidebar = () => {
   return null;
 };
 
-export function setupDashboardSharingMenu({
-  isPublicSharingEnabled = false,
+type SettingsProps = {
+  isEmbeddingEnabled?: boolean;
+  isPublicSharingEnabled?: boolean;
+  isEmailSetup?: boolean;
+  isSlackSetup?: boolean;
+  isAdmin?: boolean;
+  canManageSubscriptions?: boolean;
+  isEnterprise?: boolean;
+};
+
+const setupState = ({
   isEmbeddingEnabled = false,
-  hasPublicLink = false,
+  isPublicSharingEnabled = false,
   isEmailSetup = false,
   isSlackSetup = false,
   isAdmin = false,
   canManageSubscriptions = false,
   isEnterprise = false,
-  dashboard: dashboardOverrides = {},
-}: {
-  hasPublicLink?: boolean;
-  isEmbeddingEnabled?: boolean;
-  isEmailSetup?: boolean;
-  isSlackSetup?: boolean;
-  isPublicSharingEnabled?: boolean;
-  isAdmin?: boolean;
-  canManageSubscriptions?: boolean;
-  isEnterprise?: boolean;
-  dashboard?: Partial<Dashboard>;
-}) {
+}: SettingsProps) => {
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: isEnterprise,
     dashboard_subscription_filters: isEnterprise,
@@ -60,8 +58,8 @@ export function setupDashboardSharingMenu({
     "token-features": tokenFeatures,
     "enable-public-sharing": isPublicSharingEnabled,
     "enable-embedding": isEmbeddingEnabled,
-    "email-smtp-host": isEmailSetup ? "smtp.example.com" : null,
-    "slack-app-token": isSlackSetup ? "1234567890-abcdefg" : null,
+    "email-configured?": isEmailSetup,
+    "slack-token-valid?": isSlackSetup,
   });
 
   const user = createMockUser({
@@ -78,10 +76,37 @@ export function setupDashboardSharingMenu({
     } as User,
   });
 
+  return state;
+};
+
+export function setupDashboardSharingMenu({
+  isPublicSharingEnabled = false,
+  isEmbeddingEnabled = false,
+  isEmailSetup = false,
+  isSlackSetup = false,
+  isAdmin = false,
+  canManageSubscriptions = false,
+  isEnterprise = false,
+  hasPublicLink = false,
+  dashboard: dashboardOverrides = {},
+}: {
+  dashboard?: Partial<Dashboard>;
+  hasPublicLink?: boolean;
+} & SettingsProps) {
   const dashboard = createMockDashboard({
     name: "My Cool Dashboard",
     public_uuid: hasPublicLink && isPublicSharingEnabled ? "1337bad801" : null,
     ...dashboardOverrides,
+  });
+
+  const state = setupState({
+    isPublicSharingEnabled,
+    isEmbeddingEnabled,
+    isEmailSetup,
+    isSlackSetup,
+    isAdmin,
+    canManageSubscriptions,
+    isEnterprise,
   });
 
   if (isEnterprise) {
@@ -100,40 +125,25 @@ export function setupDashboardSharingMenu({
 export function setupQuestionSharingMenu({
   isPublicSharingEnabled = false,
   isEmbeddingEnabled = false,
-  hasPublicLink = false,
+  isEmailSetup = false,
+  isSlackSetup = false,
   isAdmin = false,
+  canManageSubscriptions = false,
   isEnterprise = false,
+  hasPublicLink = false,
   question: questionOverrides = {},
 }: {
-  hasPublicLink?: boolean;
-  isEmbeddingEnabled?: boolean;
-  isEmailSetup?: boolean;
-  isSlackSetup?: boolean;
-  isPublicSharingEnabled?: boolean;
-  isAdmin?: boolean;
-  canManageSubscriptions?: boolean;
-  isEnterprise?: boolean;
   question?: Partial<Card>;
-}) {
-  const tokenFeatures = createMockTokenFeatures({
-    advanced_permissions: isEnterprise,
-    dashboard_subscription_filters: isEnterprise,
-    audit_app: isEnterprise,
-  });
-
-  const settingValues = createMockSettings({
-    "token-features": tokenFeatures,
-    "enable-public-sharing": isPublicSharingEnabled,
-    "enable-embedding": isEmbeddingEnabled,
-  });
-
-  const user = createMockUser({
-    is_superuser: isAdmin,
-  });
-
-  const state = createMockState({
-    settings: mockSettings(settingValues),
-    currentUser: user,
+  hasPublicLink?: boolean;
+} & SettingsProps) {
+  const state = setupState({
+    isPublicSharingEnabled,
+    isEmbeddingEnabled,
+    isEmailSetup,
+    isSlackSetup,
+    isAdmin,
+    canManageSubscriptions,
+    isEnterprise,
   });
 
   const card = createMockCard({
