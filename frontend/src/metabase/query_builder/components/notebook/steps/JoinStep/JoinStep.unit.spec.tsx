@@ -1205,17 +1205,17 @@ describe("Notebook Editor > Join Step", () => {
         step: createMockNotebookStep({ query: getJoinedQuery() }),
       });
 
-      const previous = within(screen.getByLabelText("Left table")).getByText(
+      const lhsTable = within(screen.getByLabelText("Left table")).getByText(
         "Orders",
       );
-      const dataSource = within(screen.getByLabelText("Right table")).getByText(
+      const rhsTable = within(screen.getByLabelText("Right table")).getByText(
         "Products",
       );
 
-      fireEvent.click(previous, { metaKey: true });
+      fireEvent.click(lhsTable, { metaKey: true });
       expect(mockWindowOpen).not.toHaveBeenCalled();
 
-      fireEvent.click(dataSource, { metaKey: true });
+      fireEvent.click(rhsTable, { metaKey: true });
       expect(mockWindowOpen).toHaveBeenCalledTimes(1);
 
       mockWindowOpen.mockClear();
@@ -1226,11 +1226,11 @@ describe("Notebook Editor > Join Step", () => {
         step: createMockNotebookStep({ query: getJoinedQuery() }),
       });
 
-      const dataSource = within(screen.getByLabelText("Right table")).getByText(
+      const rhsTable = within(screen.getByLabelText("Right table")).getByText(
         "Products",
       );
 
-      fireEvent.click(dataSource, { ctrlKey: true });
+      fireEvent.click(rhsTable, { ctrlKey: true });
       expect(mockWindowOpen).toHaveBeenCalledTimes(1);
 
       mockWindowOpen.mockClear();
@@ -1241,7 +1241,7 @@ describe("Notebook Editor > Join Step", () => {
         step: createMockNotebookStep({ query: getJoinedQuery() }),
       });
 
-      const dataSource = within(screen.getByLabelText("Right table")).getByText(
+      const rhsTable = within(screen.getByLabelText("Right table")).getByText(
         "Products",
       );
       const middleClick = new MouseEvent("auxclick", {
@@ -1249,7 +1249,7 @@ describe("Notebook Editor > Join Step", () => {
         button: 1,
       });
 
-      fireEvent(dataSource, middleClick);
+      fireEvent(rhsTable, middleClick);
       expect(mockWindowOpen).toHaveBeenCalledTimes(1);
 
       mockWindowOpen.mockClear();
@@ -1265,30 +1265,32 @@ describe("Notebook Editor > Join Step", () => {
         button: 1,
       });
 
-      const lt = within(screen.getByLabelText("Left table")).getByText(
+      const lhsTable = within(screen.getByLabelText("Left table")).getByText(
         "Orders",
       );
-      const lc = within(screen.getByLabelText("Left column")).getByText(
+      const lhsColumn = within(screen.getByLabelText("Left column")).getByText(
         "Product ID",
       );
-      const rc = within(screen.getByLabelText("Right column")).getByText("ID");
+      const rhsColumn = within(screen.getByLabelText("Right column")).getByText(
+        "ID",
+      );
       const operator = within(
         screen.getByLabelText("Change operator"),
       ).getByText("=");
 
-      fireEvent.click(lt, { metaKey: true });
-      fireEvent.click(lc, { metaKey: true });
-      fireEvent.click(rc, { metaKey: true });
+      fireEvent.click(lhsTable, { metaKey: true });
+      fireEvent.click(lhsColumn, { metaKey: true });
+      fireEvent.click(rhsColumn, { metaKey: true });
       fireEvent.click(operator, { metaKey: true });
 
-      fireEvent.click(lt, { ctrlKey: true });
-      fireEvent.click(lc, { ctrlKey: true });
-      fireEvent.click(rc, { ctrlKey: true });
+      fireEvent.click(lhsTable, { ctrlKey: true });
+      fireEvent.click(lhsColumn, { ctrlKey: true });
+      fireEvent.click(rhsColumn, { ctrlKey: true });
       fireEvent.click(operator, { ctrlKey: true });
 
-      fireEvent(lt, middleClick);
-      fireEvent(lc, middleClick);
-      fireEvent(rc, middleClick);
+      fireEvent(lhsTable, middleClick);
+      fireEvent(lhsColumn, middleClick);
+      fireEvent(rhsColumn, middleClick);
       fireEvent(operator, middleClick);
 
       expect(mockWindowOpen).not.toHaveBeenCalled();
