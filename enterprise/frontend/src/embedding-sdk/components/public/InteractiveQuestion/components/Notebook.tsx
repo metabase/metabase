@@ -41,9 +41,9 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           updateQuestion={nextQuestion =>
             updateQuestion(nextQuestion, { run: false })
           }
-          runQuestionQuery={async () => {
+          runQuestionQuery={() => {
+            runQuestion();
             onApply();
-            await runQuestion();
           }}
           setQueryBuilderMode={() => {}}
           hasVisualizeButton={true}

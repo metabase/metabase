@@ -94,7 +94,7 @@ export function useLoadQuestion({
     });
 
     setQuestionState(state);
-  }, [dispatch]);
+  }, [dispatch, question, originalQuestion]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
     async (nextQuestion: Question, options: { run?: boolean }) => {
