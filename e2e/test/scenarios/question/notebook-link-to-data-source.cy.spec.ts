@@ -20,6 +20,7 @@ import {
   visualize,
   type NativeQuestionDetails,
 } from "e2e/support/helpers";
+import { METAKEY } from "metabase/lib/browser";
 
 const { ORDERS, PRODUCTS_ID, REVIEWS, REVIEWS_ID, PEOPLE_ID, PRODUCTS } =
   SAMPLE_DATABASE;
@@ -74,6 +75,13 @@ describe("scenarios > notebook > link to data source", () => {
       "Deselecting columns should have no effect on the linked data source in new tab/window",
     );
     openNotebook();
+    // realHover does not work here
+    getNotebookStep("data").findByText("Reviews").trigger("mousemove");
+    cy.findByRole("tooltip").should(
+      "have.text",
+      `${METAKEY}+click to open in new tab`,
+    );
+
     getNotebookStep("data").findByText("Reviews").click(clickConfig);
     cy.wait("@dataset"); // already intercepted in `visualize()`
 
@@ -86,6 +94,11 @@ describe("scenarios > notebook > link to data source", () => {
     );
 
     cy.findByTestId("qb-save-button").should("be.enabled");
+    cy.go("back");
+
+    cy.log("Tooltip should not linger open when we go back");
+    getNotebookStep("data").findByText("Reviews").should("be.visible");
+    cy.findByRole("tooltip").should("not.exist");
   });
 
   context("questions", () => {
