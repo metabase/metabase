@@ -111,4 +111,5 @@ WHERE NOT EXISTS (
       AND (dp.table_id = mt.id
            OR dp.table_id IS NULL)
       AND dp.perm_type = 'perms/data-access'
-);
+)
+AND pg.name != 'Administrators';

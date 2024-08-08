@@ -95,4 +95,5 @@ WHERE NOT EXISTS (
       AND (dp.table_id = mt.id
            OR dp.table_id IS NULL)
       AND dp.perm_type = 'perms/manage-table-metadata'
-);
+)
+AND pg.name != 'Administrators';
