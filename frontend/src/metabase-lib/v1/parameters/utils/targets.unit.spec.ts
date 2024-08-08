@@ -48,6 +48,8 @@ const metadata = createMockMetadata({
 
 const db = metadata.database(SAMPLE_DB_ID) as Database;
 
+const queryOrders = createQuery();
+
 const queryNonDateBreakout = createQueryWithClauses({
   aggregations: [{ operatorName: "count" }],
   breakouts: [{ tableName: "ORDERS", columnName: "QUANTITY" }],
@@ -219,7 +221,7 @@ describe("parameters/utils/targets", () => {
 
       describe("question", () => {
         it("returns columns from source table and implicitly joinable tables", () => {
-          const question = createQuestion(createQuery());
+          const question = createQuestion(queryOrders);
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -264,7 +266,7 @@ describe("parameters/utils/targets", () => {
       describe("model", () => {
         it("returns columns from source table and implicitly joinable tables", () => {
           const question = createModel(
-            createQuery(),
+            queryOrders,
             checkNotNull(createOrdersTable().fields),
           );
           const { query, stageIndex, columns } = getParameterColumns(
@@ -314,7 +316,7 @@ describe("parameters/utils/targets", () => {
 
       describe("question", () => {
         it("no breakouts - returns no columns", () => {
-          const question = createQuestion(createQuery());
+          const question = createQuestion(queryOrders);
           const { columns } = getParameterColumns(question, parameter);
 
           expect(columns).toHaveLength(0);
@@ -367,7 +369,7 @@ describe("parameters/utils/targets", () => {
       describe("model", () => {
         it("no breakouts - returns no columns", () => {
           const question = createModel(
-            createQuery(),
+            queryOrders,
             checkNotNull(createOrdersTable().fields),
           );
           const { columns } = getParameterColumns(question, parameter);
@@ -423,7 +425,7 @@ describe("parameters/utils/targets", () => {
 
       describe("question", () => {
         it("returns date columns from source table and implicitly joinable tables", () => {
-          const question = createQuestion(createQuery());
+          const question = createQuestion(queryOrders);
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -442,7 +444,7 @@ describe("parameters/utils/targets", () => {
       describe("model", () => {
         it("returns date columns from source table and implicitly joinable tables", () => {
           const question = createModel(
-            createQuery(),
+            queryOrders,
             checkNotNull(createOrdersTable().fields),
           );
           const { query, stageIndex, columns } = getParameterColumns(
