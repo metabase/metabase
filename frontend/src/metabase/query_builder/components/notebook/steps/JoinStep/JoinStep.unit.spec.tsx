@@ -1,3 +1,4 @@
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
@@ -171,6 +172,7 @@ function setup({
   searchItems?: CollectionItem[];
 } = {}) {
   const updateQuery = jest.fn();
+  const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
 
   setupDatabasesEndpoints(DATABASES);
   setupSearchEndpoints(searchItems);
@@ -236,7 +238,7 @@ function setup({
     };
   }
 
-  return { getRecentJoin };
+  return { getRecentJoin, mockWindowOpen };
 }
 
 describe("Notebook Editor > Join Step", () => {
@@ -1196,6 +1198,102 @@ describe("Notebook Editor > Join Step", () => {
 
       await userEvent.hover(screen.getByLabelText("Right table"));
       expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+
+    it("meta click should open the right table data source in a new window", () => {
+      const { mockWindowOpen } = setup({
+        step: createMockNotebookStep({ query: getJoinedQuery() }),
+      });
+
+      const lhsTable = within(screen.getByLabelText("Left table")).getByText(
+        "Orders",
+      );
+      const rhsTable = within(screen.getByLabelText("Right table")).getByText(
+        "Products",
+      );
+
+      fireEvent.click(lhsTable, { metaKey: true });
+      expect(mockWindowOpen).not.toHaveBeenCalled();
+
+      fireEvent.click(rhsTable, { metaKey: true });
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+
+      mockWindowOpen.mockClear();
+    });
+
+    it("ctrl click should open the right table data source in a new window", () => {
+      const { mockWindowOpen } = setup({
+        step: createMockNotebookStep({ query: getJoinedQuery() }),
+      });
+
+      const rhsTable = within(screen.getByLabelText("Right table")).getByText(
+        "Products",
+      );
+
+      fireEvent.click(rhsTable, { ctrlKey: true });
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+
+      mockWindowOpen.mockClear();
+    });
+
+    it("middle click should open the right table data source in a new window", () => {
+      const { mockWindowOpen } = setup({
+        step: createMockNotebookStep({ query: getJoinedQuery() }),
+      });
+
+      const rhsTable = within(screen.getByLabelText("Right table")).getByText(
+        "Products",
+      );
+      const middleClick = new MouseEvent("auxclick", {
+        bubbles: true,
+        button: 1,
+      });
+
+      fireEvent(rhsTable, middleClick);
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+
+      mockWindowOpen.mockClear();
+    });
+
+    it("opening in new window does not affect unrelated join step elements", () => {
+      const { mockWindowOpen } = setup({
+        step: createMockNotebookStep({ query: getJoinedQuery() }),
+      });
+
+      const middleClick = new MouseEvent("auxclick", {
+        bubbles: true,
+        button: 1,
+      });
+
+      const lhsTable = within(screen.getByLabelText("Left table")).getByText(
+        "Orders",
+      );
+      const lhsColumn = within(screen.getByLabelText("Left column")).getByText(
+        "Product ID",
+      );
+      const rhsColumn = within(screen.getByLabelText("Right column")).getByText(
+        "ID",
+      );
+      const operator = within(
+        screen.getByLabelText("Change operator"),
+      ).getByText("=");
+
+      fireEvent.click(lhsTable, { metaKey: true });
+      fireEvent.click(lhsColumn, { metaKey: true });
+      fireEvent.click(rhsColumn, { metaKey: true });
+      fireEvent.click(operator, { metaKey: true });
+
+      fireEvent.click(lhsTable, { ctrlKey: true });
+      fireEvent.click(lhsColumn, { ctrlKey: true });
+      fireEvent.click(rhsColumn, { ctrlKey: true });
+      fireEvent.click(operator, { ctrlKey: true });
+
+      fireEvent(lhsTable, middleClick);
+      fireEvent(lhsColumn, middleClick);
+      fireEvent(rhsColumn, middleClick);
+      fireEvent(operator, middleClick);
+
+      expect(mockWindowOpen).not.toHaveBeenCalled();
     });
   });
 });
