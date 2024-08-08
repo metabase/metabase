@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, type MouseEvent } from "react";
 import { useLatest } from "react-use";
 
 import {
@@ -15,6 +15,8 @@ import * as Lib from "metabase-lib";
 import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell } from "../NotebookCell";
+
+import { getUrl, openInNewTab } from "./utils";
 
 interface NotebookDataPickerProps {
   title: string;
@@ -66,6 +68,31 @@ export function NotebookDataPicker({
     onChangeRef.current?.(table, metadataProvider);
   };
 
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const isCtrlOrMetaClick =
+      (event.ctrlKey || event.metaKey) && event.button === 0;
+
+    if (isCtrlOrMetaClick) {
+      const url = getUrl({ query, table, stageIndex });
+
+      openInNewTab(url);
+    } else {
+      setIsOpen(true);
+    }
+  };
+
+  const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
+    const isMiddleClick = event.button === 1;
+
+    if (isMiddleClick) {
+      const url = getUrl({ query, table, stageIndex });
+
+      openInNewTab(url);
+    } else {
+      setIsOpen(true);
+    }
+  };
+
   return (
     <>
       <UnstyledButton
@@ -74,7 +101,8 @@ export function NotebookDataPicker({
         fw="inherit"
         p={NotebookCell.CONTAINER_PADDING}
         disabled={isDisabled}
-        onClick={() => setIsOpen(true)}
+        onClick={handleClick}
+        onAuxClick={handleAuxClick}
       >
         <Group spacing="xs">
           {tableInfo && <Icon name={getTableIcon(tableInfo)} />}

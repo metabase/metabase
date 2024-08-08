@@ -68,9 +68,9 @@
                   :let   [fk (u/lower-case-en fk)
                           action (get spec' (keyword fk))]]
             (testing (format "%s.%s is foreign key which is handled correctly" m fk)
-              ;; FIXME: serialization can guess where FK points by itself, but `collection_id` and `database_id` are
-              ;; specifying that themselves right now
-              (when-not (#{"collection_id" "database_id"} fk)
+              ;; FIXME: serialization can guess where FK points by itself, but `collection_id`,
+              ;; `database_id`, and `source_card_id` are specifying that themselves right now
+              (when-not (#{"collection_id" "database_id" "source_card_id"} fk)
                 (is (#{:skip
                        serdes/*export-fk*
                        serdes/*export-fk-keyed*

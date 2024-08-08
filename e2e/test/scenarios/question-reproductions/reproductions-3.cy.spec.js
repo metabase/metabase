@@ -2079,6 +2079,52 @@ describe("issue 45452", () => {
   });
 });
 
+describe("issue 41612", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.intercept("POST", "/api/card").as("createQuestion");
+  });
+
+  it("should not ignore chart viz settings when viewing raw results as a table (metabase#41612)", () => {
+    visitQuestionAdhoc(
+      {
+        display: "line",
+        dataset_query: {
+          type: "query",
+          database: SAMPLE_DB_ID,
+          query: {
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                { "base-type": "type/DateTime", "temporal-unit": "month" },
+              ],
+            ],
+            "source-table": ORDERS_ID,
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    queryBuilderMain().findByLabelText("Switch to data").click();
+    queryBuilderHeader().button("Save").click();
+    modal().button("Save").click();
+
+    cy.wait("@createQuestion").then(xhr => {
+      const card = xhr.request.body;
+      expect(card.visualization_settings["graph.metrics"]).to.deep.equal([
+        "count",
+      ]);
+      expect(card.visualization_settings["graph.dimensions"]).to.deep.equal([
+        "CREATED_AT",
+      ]);
+    });
+  });
+});
+
 function expectNoScrollbarContainer(element) {
   const hasScrollbarContainer =
     element.scrollHeight <= element.clientHeight &&
