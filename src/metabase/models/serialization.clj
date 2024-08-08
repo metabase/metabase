@@ -82,8 +82,8 @@
   {:arglists '([model-name instance])}
   (fn [model-name _instance] model-name))
 
-(defmethod entity-id :default [_ {:keys [entity_id]}]
-  (str/trim entity_id))
+(defmethod entity-id :default [_ instance]
+  (some-> instance :entity_id str/trim))
 
 (defn eid->id
   "Given model name and its entity id, returns it database-local id.
@@ -1545,23 +1545,25 @@
                                          :parent-id (:id *current*)}
                                         e)))))
      :import      (fn [lst]
-                    (let [parent-id (:id *current*)
-                          loaded    (for [ingested lst
-                                          ;; it's not always entity-id though, not for DashcardCardSeries
-                                          :let     [entity-id (get ingested key-field)]]
-                                      (let [ingested (assoc ingested
-                                                            backward-fk  parent-id
-                                                            ;; for a nested entity we pass our parent's data and our
-                                                            ;; data as a path
-                                                            :serdes/meta [{:model (name (t2/model *current*))
-                                                                           :id    (:entity_id *current*)}
-                                                                          {:model model-name
-                                                                           :id    entity-id}])
-                                            local    (load-find-local (:serdes/meta ingested))]
-                                        (load-one! ingested local)))]
-                      (if-not (seq loaded)
-                        (t2/delete! model backward-fk parent-id)
-                        (t2/delete! model backward-fk parent-id :id [:not-in (map :id loaded)]))))}))
+                    (let [parent-id (:id *current*)]
+                      ;; first clean up data so it doesn't conflict on any `unique` indexes
+                      (if (some->> (first lst)
+                                   (entity-id model-name))
+                        (t2/delete! model backward-fk (:id *current*) :entity_id [:not-in (map :entity_id lst)])
+                        (t2/delete! model backward-fk (:id *current*)))
+
+                      (doseq [ingested lst
+                              ;; it's not always entity-id though, not for DashcardCardSeries
+                              :let     [key-id (get ingested key-field)]]
+                        (let [ingested (assoc ingested
+                                              backward-fk  parent-id
+                                              ;; for a nested entity we pass our parent's data and our
+                                              ;; data as a path
+                                              :serdes/meta [(let [m (name (t2/model *current*))]
+                                                              {:model m :id (entity-id m *current*)})
+                                                            {:model model-name :id key-id}])
+                              local    (load-find-local (:serdes/meta ingested))]
+                          (load-one! ingested local)))))}))
 
 (defn parent-ref "Transformer for parent id for nested entities" []
   {::fk true :export (constantly nil) :import identity})

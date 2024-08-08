@@ -1282,3 +1282,20 @@
                 (serdes.load/load-metabase! (ingestion-in-memory extracted))
                 (is (= (:details (first dbs))
                        (t2/select-one-fn :details Database)))))))))))
+
+(deftest unique-dimensions-test
+  (ts/with-dbs [source-db dest-db]
+    (ts/with-db source-db
+      (mt/with-temp [:model/Dimension d1 {:name     "Some Dimension"
+                                          :field_id (mt/id :venues :price)
+                                          :type     "internal"}]
+        (let [ser (vec (serdes.extract/extract {:no-settings true}))]
+          (ts/with-db dest-db
+            (mt/with-temp [:model/Dimension d2 {:name     "Absolutely Other Dimension"
+                                                :field_id (mt/id :venues :price)
+                                                :type     "internal"}]
+              (serdes.load/load-metabase! (ingestion-in-memory ser))
+              (is (= (:entity_id d1)
+                     (t2/select-one-fn :entity_id :model/Dimension :field_id (mt/id :venues :price))))
+              (is (= nil
+                     (t2/select-one :model/Dimension :entity_id (:entity_id d2)))))))))))
