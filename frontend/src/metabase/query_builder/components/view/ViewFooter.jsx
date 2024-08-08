@@ -5,9 +5,10 @@ import { t } from "ttag";
 import ButtonBar from "metabase/components/ButtonBar";
 import CS from "metabase/css/core/index.css";
 import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
-import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
+import { ViewFooterSharingButton } from "metabase/query_builder/components/view/ViewFooterSharingButton";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { Group } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ExecutionTime } from "./ExecutionTime";
@@ -112,68 +113,69 @@ const ViewFooter = ({
           ExecutionTime.shouldRender({ result }) && (
             <ExecutionTime key="execution_time" time={result.running_time} />
           ),
-          QuestionLastUpdated.shouldRender({ result }) && (
-            <QuestionLastUpdated
-              key="last-updated"
-              className={cx(CS.hide, CS.smShow)}
-              result={result}
-            />
-          ),
-          QueryDownloadWidget.shouldRender({ result }) && (
-            <QueryDownloadWidget
-              key="download"
-              className={cx(CS.hide, CS.smShow)}
-              question={question}
-              result={result}
-              visualizationSettings={visualizationSettings}
-              dashcardId={question.card().dashcardId}
-              dashboardId={question.card().dashboardId}
-            />
-          ),
-          QuestionAlertWidget.shouldRender({
-            question,
-            visualizationSettings,
-          }) && (
-            <QuestionAlertWidget
-              key="alerts"
-              className={cx(CS.hide, CS.smShow)}
-              canManageSubscriptions={canManageSubscriptions}
-              question={question}
-              questionAlerts={questionAlerts}
-              onCreateAlert={() =>
-                question.isSaved()
-                  ? onOpenModal("create-alert")
-                  : onOpenModal("save-question-before-alert")
-              }
-            />
-          ),
-          type === "question" &&
-            !question.isArchived() &&
-            (question.isSaved() ? (
-              <EmbedMenu
-                key="embed"
-                resource={question}
-                resourceType="question"
-                hasPublicLink={!!question.publicUUID()}
-                onModalOpen={() => onOpenModal(MODAL_TYPES.EMBED)}
+          <Group key="button-group" spacing="sm" noWrap>
+            {QuestionLastUpdated.shouldRender({ result }) && (
+              <QuestionLastUpdated
+                key="last-updated"
+                className={cx(CS.hide, CS.smShow)}
+                result={result}
               />
-            ) : (
-              <ResourceEmbedButton
-                hasBackground={false}
-                onClick={() =>
-                  onOpenModal(MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED)
+            )}
+            {QueryDownloadWidget.shouldRender({ result }) && (
+              <QueryDownloadWidget
+                key="download"
+                className={cx(CS.hide, CS.smShow)}
+                question={question}
+                result={result}
+                visualizationSettings={visualizationSettings}
+                dashcardId={question.card().dashcardId}
+                dashboardId={question.card().dashboardId}
+              />
+            )}
+            {QuestionAlertWidget.shouldRender({
+              question,
+              visualizationSettings,
+            }) && (
+              <QuestionAlertWidget
+                key="alerts"
+                className={cx(CS.hide, CS.smShow)}
+                canManageSubscriptions={canManageSubscriptions}
+                question={question}
+                questionAlerts={questionAlerts}
+                onCreateAlert={() =>
+                  question.isSaved()
+                    ? onOpenModal("create-alert")
+                    : onOpenModal("save-question-before-alert")
                 }
               />
-            )),
-          QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
-            <QuestionTimelineWidget
-              key="timelines"
-              className={cx(CS.hide, CS.smShow)}
-              isShowingTimelineSidebar={isShowingTimelineSidebar}
-              onOpenTimelines={onOpenTimelines}
-              onCloseTimelines={onCloseTimelines}
-            />
-          ),
+            )}
+            {type === "question" &&
+              !question.isArchived() &&
+              (question.isSaved() ? (
+                <EmbedMenu
+                  key="embed"
+                  resource={question}
+                  resourceType="question"
+                  hasPublicLink={!!question.publicUUID()}
+                  onModalOpen={() => onOpenModal(MODAL_TYPES.EMBED)}
+                />
+              ) : (
+                <ViewFooterSharingButton
+                  onClick={() =>
+                    onOpenModal(MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED)
+                  }
+                />
+              ))}
+            {QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
+              <QuestionTimelineWidget
+                key="timelines"
+                className={cx(CS.hide, CS.smShow)}
+                isShowingTimelineSidebar={isShowingTimelineSidebar}
+                onOpenTimelines={onOpenTimelines}
+                onCloseTimelines={onCloseTimelines}
+              />
+            )}
+          </Group>,
         ]}
       />
     </ViewFooterRoot>
