@@ -72,7 +72,7 @@
   untangle. The FE currently ignores results metadata for ad-hoc queries, and thus cannot match up 'correct' Field
   refs like 'Products__CATEGORY'... for the time being we'll have to force ID refs even when we should be using
   nominal refs so as to not completely destroy the FE. Once we port more stuff over maybe we can fix this."
-  true)
+  false)
 
 (defn- ->card-metadata-column
   "Massage possibly-legacy Card results metadata into MLv2 ColumnMetadata. Note that `card` might be unavailable so we
