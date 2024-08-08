@@ -15,6 +15,10 @@ import {
   getPermissionRowPermissions,
   createTestRoles,
   selectPermissionRow,
+  savePermissions,
+  selectImpersonatedAttribute,
+  saveImpersonationSettings,
+  assertSameBeforeAndAfterSave,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -842,30 +846,6 @@ describeEE("scenarios > admin > permissions > view data > unrestricted", () => {
     });
   });
 });
-
-function savePermissions() {
-  cy.findByTestId("edit-bar").button("Save changes").click();
-  cy.findByRole("dialog").findByText("Yes").click();
-  cy.findByTestId("edit-bar").should("not.exist");
-}
-
-function selectImpersonatedAttribute(attribute) {
-  cy.findByRole("dialog").within(() => {
-    cy.findByTestId("select-button").click();
-  });
-
-  popover().findByText(attribute).click();
-}
-
-function saveImpersonationSettings() {
-  cy.findByRole("dialog").findByText("Save").click();
-}
-
-function assertSameBeforeAndAfterSave(assertionCallback) {
-  assertionCallback();
-  savePermissions();
-  assertionCallback();
-}
 
 function makeOrdersSandboxed() {
   modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Sandboxed");
