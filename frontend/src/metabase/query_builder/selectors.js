@@ -458,7 +458,7 @@ function areComposedEntitiesEquivalent({
   return isLastRunEquivalentToCurrent || isCurrentEquivalentToLastRun;
 }
 
-function areQueriesEquivalent({
+export function areQueriesEquivalent({
   originalQuestion,
   lastRunQuestion,
   currentQuestion,
@@ -594,19 +594,22 @@ export const getIsObjectDetail = createSelector(
   (mode, isZoomingSingleRow) => isZoomingSingleRow || mode?.name() === "object",
 );
 
+export function isQuestionDirty(question, originalQuestion) {
+  // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
+  // (it's necessary for datasets to behave like tables opened in simple mode)
+  // We need to escape the isDirty check as it will always be true in this case,
+  // and the page will always be covered with a 'rerun' overlay.
+  // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
+  if (!question || isAdHocModelQuestion(question, originalQuestion)) {
+    return false;
+  }
+
+  return question.isDirtyComparedToWithoutParameters(originalQuestion);
+}
+
 export const getIsDirty = createSelector(
   [getQuestion, getOriginalQuestion],
-  (question, originalQuestion) => {
-    // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
-    // (it's necessary for datasets to behave like tables opened in simple mode)
-    // We need to escape the isDirty check as it will always be true in this case,
-    // and the page will always be covered with a 'rerun' overlay.
-    // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (!question || isAdHocModelQuestion(question, originalQuestion)) {
-      return false;
-    }
-    return question.isDirtyComparedToWithoutParameters(originalQuestion);
-  },
+  isQuestionDirty,
 );
 
 export const getIsSavedQuestionChanged = createSelector(
@@ -625,18 +628,22 @@ export const getIsSavedQuestionChanged = createSelector(
   },
 );
 
+export function isQuestionRunnable(question, isDirty) {
+  if (!question) {
+    return false;
+  }
+
+  if (!question.isSaved() || isDirty) {
+    const { isEditable } = Lib.queryDisplayInfo(question.query());
+    return question.canRun() && isEditable;
+  }
+
+  return question.canRun();
+}
+
 export const getIsRunnable = createSelector(
   [getQuestion, getIsDirty],
-  (question, isDirty) => {
-    if (!question) {
-      return false;
-    }
-    if (!question.isSaved() || isDirty) {
-      const { isEditable } = Lib.queryDisplayInfo(question.query());
-      return question.canRun() && isEditable;
-    }
-    return question.canRun();
-  },
+  isQuestionRunnable,
 );
 
 export const getQuestionAlerts = createSelector(

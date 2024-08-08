@@ -27,7 +27,7 @@ const FilterInner = ({
   const { updateQuestion } = useInteractiveQuestionContext();
 
   const onQueryChange = (query: Lib.Query) =>
-    updateQuestion(question.setQuery(query));
+    updateQuestion(question.setQuery(query), { run: true });
 
   const {
     query,

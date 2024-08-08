@@ -22,6 +22,8 @@ type LoadQuestionResult = Promise<
 
 export interface LoadQuestionHookResult {
   question?: Question;
+  originalQuestion?: Question;
+
   queryResults?: any[];
 
   isQuestionLoading: boolean;
@@ -95,7 +97,9 @@ export function useLoadQuestion({
   }, [dispatch]);
 
   const [updateQuestionState, updateQuestion] = useAsyncFn(
-    async (nextQuestion: Question, { run = false }: { run?: boolean }) => {
+    async (nextQuestion: Question, options: { run?: boolean }) => {
+      const { run = false } = options ?? {};
+
       if (!question) {
         return;
       }
@@ -143,6 +147,8 @@ export function useLoadQuestion({
 
   return {
     question,
+    originalQuestion,
+
     queryResults,
 
     isQuestionLoading: loadQuestionState.loading,

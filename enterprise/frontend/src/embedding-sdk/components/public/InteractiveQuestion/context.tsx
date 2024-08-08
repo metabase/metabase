@@ -54,6 +54,8 @@ export const InteractiveQuestionProvider = ({
 }: InteractiveQuestionProviderProps) => {
   const {
     question,
+    originalQuestion,
+
     queryResults,
 
     isQuestionLoading,
@@ -83,6 +85,7 @@ export const InteractiveQuestionProvider = ({
     navigateToNewCard,
     plugins,
     question,
+    originalQuestion,
     queryResults,
     mode,
   };
