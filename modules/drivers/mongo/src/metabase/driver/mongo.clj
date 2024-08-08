@@ -5,6 +5,7 @@
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
+   [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -20,7 +21,6 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]
    [metabase.util :as u]
    [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
@@ -261,8 +261,10 @@
                         [#{} 0]
                         column-info))})))
 
+(def ^:private describe-table-sample-size 1000)
+
 (def top-level-query
-  [{"$sample" {"size" 2000}}
+  [{"$sample" {"size" describe-table-sample-size}}
    {"$project" {"doc" "$$ROOT"}}
    {"$project" {"fields" {"$objectToArray" "$doc"}}}
    {"$unwind" "$fields"}
@@ -281,64 +283,67 @@
     {"_id" 1
      "mostCommonType" 1}}])
 
-(defn build-path [path]
-  (str "$" (str/join "." path)))
+(defn- encode-path [path] (str/join "." path))
+(defn- decode-path [path] (str/split path #"\."))
 
-(defn build-nested-query [path]
-  [{"$project" {(str (str/join "::" path) "_fields") {"$objectToArray" (build-path path)}}}
-   {"$unwind" (str "$" (str/join "::" path) "_fields")}
+(defn- path-query [path]
+  [{"$project" {"path"   (encode-path path)
+                "fields" {"$objectToArray" (str "$" (str/join "." path))}}}
+   {"$unwind" "$fields"}
    {"$project"
-    {"fieldName" (str "$" (str/join "::" path) "_fields.k")
-     "fieldType" {"$type" (str "$" (str/join "::" path) "_fields.v")}}}
+    {"path"  "$path"
+     "field" "$fields.k"
+     "type"  {"$type" "$fields.v"}}}
    {"$group"
-    {"_id" {"field" "$fieldName"
-            "type" "$fieldType"}
+    {"_id" {"path"  "$path"
+            "field" "$field"
+            "type"  "$type"}
      "count" {"$sum" 1}}}
    {"$sort" {"_id.field" 1, "count" -1}}
    {"$group"
-    {"_id" "$_id.field"
+    {"_id" {"path"  "$_id.path"
+            "field" "$_id.field"}
      "mostCommonType" {"$first" "$_id.type"}}}
    {"$project"
-    {"_id" 0
-     "fieldName" "$_id"
+    {"_id"            0
+     "path"           "$_id.path"
+     "fieldName"      "$_id.field"
      "mostCommonType" 1}}])
 
+(defn- nested-level-query [parent-paths]
+  [{"$sample" {"size" describe-table-sample-size}}
+   {"$facet"
+    (into {}
+          (map-indexed (fn [idx path]
+                         ;; the key doesn't matter, since we rely on the order in the results
+                         ;; matching parent-paths
+                         [idx (path-query path)]))
+          parent-paths)}])
+
 (defn infer-schema [db table]
-  (letfn [(q! [q]
-            (mt/rows+column-names (qp/process-query {:database (:id db)
-                                                     :type     "native"
-                                                     :native   {:collection (:name table)
-                                                                :query      (json/generate-string q)}})))
-          (query-nested [parent-paths]
-            (let [result (q! [{"$sample" {"size" 2000}}
-                              {"$facet"
-                               (into {}
-                                     (map (fn [path]
-                                            [(str/join "::" path) (build-nested-query path)]))
-                                     parent-paths)}])
-                  types (zipmap (:columns result) (first (:rows result)))
-                  fields (mapcat (fn [[path fields]]
-                                   (map (fn [field]
-                                          (assoc field :path (conj (str/split path #"::") (:fieldName field))))
-                                        fields))
-                                 types)
-                  object-fields (filter #(= (:mostCommonType %) "object") fields)
-                  non-object-fields (remove #(= (:mostCommonType %) "object") fields)]
-              (if (seq object-fields)
-                (concat non-object-fields
-                        (mapcat #(query-nested [(:path %)])
-                                object-fields))
-                fields)))]
-    (let [root-result (q! top-level-query)
-          root-fields (map (fn [[field type]]
-                             {:fieldName field
-                              :mostCommonType type
-                              :path [field]})
-                           (:rows root-result))
-          object-fields (filter #(= (:mostCommonType %) "object") root-fields)
-          non-object-fields (remove #(= (:mostCommonType %) "object") root-fields)]
-      (concat non-object-fields
-              (query-nested (map #(vector (:fieldName %)) object-fields))))))
+  (let [q! (fn [q]
+             (:rows (:data (qp/process-query {:database (:id db)
+                                              :type     "native"
+                                              :native   {:collection (:name table)
+                                                         :query      (json/generate-string q)}}))))
+        query-nested (fn query-nested [parent-paths]
+                       (let [fields (flatten (first (q! (nested-level-query parent-paths))))
+                             {object-fields     true
+                              non-object-fields false} (group-by #(= (:mostCommonType %) "object") fields)
+                             nested-fields (mapcat #(query-nested [(:path %)]) object-fields)]
+                         (if (seq object-fields)
+                           (concat non-object-fields nested-fields)
+                           fields)))
+        top-level-fields (map (fn [[field type]]
+                                {:fieldName      field
+                                 :mostCommonType type
+                                 ;; TODO: this might change if we do nested fields in the top-level-query
+                                 :path           field})
+                              (q! top-level-query))
+        {object-fields     true
+         non-object-fields false} (group-by #(= (:mostCommonType %) "object") top-level-fields)]
+    (concat non-object-fields
+            (query-nested (map #(vector (:fieldName %)) object-fields)))))
 
 (defn type-alias->base-type [type-alias]
   ;; Mongo types from $type aggregation operation
@@ -374,6 +379,7 @@
                    (fn [idx {:keys [fieldName mostCommonType]}]
                      {:name              fieldName
                       :database-type     mostCommonType
+                      ;; TODO: parent-id
                       :base-type         (type-alias->base-type mostCommonType)
                       :database-position idx
                       :pk?               (= fieldName "_id")})
