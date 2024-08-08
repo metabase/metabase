@@ -88,16 +88,17 @@
      sql-token-patterns
      param-token-patterns)))
 
-(defn- param [& [k & more]]
-  (when (or (seq more)
-            (not (string? k)))
-    (throw (ex-info (tru "Invalid '{{...}}' clause: expected a param name")
-                    {:type qp.error-type/invalid-query})))
-  (let [k (str/trim k)]
-    (when (empty? k)
-      (throw (ex-info (tru "'{{...}}' clauses cannot be empty.")
+(defn- param [& parsed]
+  (let [[k & more] (combine-adjacent-strings parsed)]
+    (when (or (seq more)
+              (not (string? k)))
+      (throw (ex-info (tru "Invalid '{{...}}' clause: expected a param name")
                       {:type qp.error-type/invalid-query})))
-    (params/->Param k)))
+    (let [k (str/trim k)]
+      (when (empty? k)
+        (throw (ex-info (tru "'{{...}}' clauses cannot be empty.")
+                        {:type qp.error-type/invalid-query})))
+      (params/->Param k))))
 
 (defn- optional [& parsed]
   (when-not (some params/Param? parsed)

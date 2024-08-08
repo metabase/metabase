@@ -143,6 +143,7 @@
     (is (= ["'[[{{]]'"] (params.parse/parse "'[[{{]]'"))))
   (testing "Parse well-formed tokens in strings"
     (is (= ["'" (param "x") "'"] (params.parse/parse "'{{x}}'")))
+    (is (= ["'" (param "snippet: 'test'") "'"] (params.parse/parse "'{{snippet: 'test'}}'")))
     (is (= ["'{{" (param "x") "'"] (params.parse/parse "'{{{{x}}'")))
     (is (= ["'[[" (param "x") "'"] (params.parse/parse "'[[{{x}}'")))
     (is (= ["'" (optional (param "x")) "'"] (params.parse/parse "'[[{{x}}]]'"))))
