@@ -1,13 +1,13 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import {
   addHeadingDashCardToDashboard,
   addMarkdownDashCardToDashboard,
 } from "metabase/dashboard/actions";
-import { TextOptionsButton } from "metabase/dashboard/components/TextOptions/TextOptionsButton";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Tooltip } from "metabase/ui";
+import { Group, Icon, Menu, Text } from "metabase/ui";
 
 export const AddHeadingOrTextButton = () => {
   const dispatch = useDispatch();
@@ -36,14 +36,41 @@ export const AddHeadingOrTextButton = () => {
     }
   };
 
+  const TEXT_OPTIONS = [
+    {
+      title: t`Heading`,
+      action: onAddHeading,
+    },
+    {
+      title: t`Text`,
+      action: onAddMarkdownBox,
+    },
+  ];
+
   return (
-    <Tooltip label={t`Add a heading or text`}>
-      <span>
-        <TextOptionsButton
-          onAddMarkdown={onAddMarkdownBox}
-          onAddHeading={onAddHeading}
-        />
-      </span>
-    </Tooltip>
+    <Menu position="bottom-end">
+      <Menu.Target>
+        <ToolbarButton
+          tooltipLabel={t`Add a heading or text box`}
+          w="3rem"
+          data-element-id={t`Add a heading or text box`}
+          aria-label={t`Add a heading or text box`}
+        >
+          <Group spacing="xs" noWrap>
+            <Icon name="string" size={18} />
+            <Icon name="chevrondown" size={10} />
+          </Group>
+        </ToolbarButton>
+      </Menu.Target>
+      <Menu.Dropdown miw="auto">
+        {TEXT_OPTIONS.map(({ title, action }) => (
+          <Menu.Item key={title} onClick={action}>
+            <Text pr="xl" fw="bold">
+              {title}
+            </Text>
+          </Menu.Item>
+        ))}
+      </Menu.Dropdown>
+    </Menu>
   );
 };
