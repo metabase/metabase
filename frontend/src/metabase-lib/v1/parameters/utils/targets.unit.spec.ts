@@ -1,5 +1,7 @@
 import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
+import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -11,7 +13,6 @@ import {
 } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   Card,
-  FieldReference,
   ParameterDimensionTarget,
   StructuredDatasetQuery,
 } from "metabase-types/api";
@@ -30,8 +31,6 @@ import {
   createSampleDatabase,
   createSavedStructuredCard,
   createStructuredModelCard,
-  ORDERS,
-  ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   SAMPLE_DB_ID,
@@ -49,91 +48,60 @@ const metadata = createMockMetadata({
 
 const db = metadata.database(SAMPLE_DB_ID) as Database;
 
-const ordersQuantityField: FieldReference = [
-  "field",
-  ORDERS.QUANTITY,
-  {
-    "base-type": "type/Integer",
-  },
-];
+const queryNonDateBreakout = createQueryWithClauses({
+  aggregations: [{ operatorName: "count" }],
+  breakouts: [{ tableName: "ORDERS", columnName: "QUANTITY" }],
+});
 
-const ordersCreatedAtField: FieldReference = [
-  "field",
-  ORDERS.CREATED_AT,
-  {
-    "base-type": "type/DateTime",
-  },
-];
-
-const ordersCreatedAtMonthField: FieldReference = [
-  "field",
-  ORDERS.CREATED_AT,
-  {
-    "base-type": "type/DateTime",
-    "temporal-unit": "month",
-  },
-];
-
-const ordersCreatedAtYearField: FieldReference = [
-  "field",
-  ORDERS.CREATED_AT,
-  {
-    "base-type": "type/DateTime",
-    "temporal-unit": "year",
-  },
-];
-
-const productsCreatedAtField: FieldReference = [
-  "field",
-  PRODUCTS.CREATED_AT,
-  {
-    "base-type": "type/DateTime",
-  },
-];
-
-const queryNonDateBreakout: StructuredDatasetQuery = {
-  type: "query",
-  database: SAMPLE_DB_ID,
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [ordersQuantityField],
-  },
-};
-
-const query1DateBreakout: StructuredDatasetQuery = {
-  type: "query",
-  database: SAMPLE_DB_ID,
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [ordersCreatedAtField],
-  },
-};
-
-const query2DateBreakouts: StructuredDatasetQuery = {
-  type: "query",
-  database: SAMPLE_DB_ID,
-  query: {
-    "source-table": ORDERS_ID,
-    aggregation: [["count"]],
-    breakout: [ordersCreatedAtField, productsCreatedAtField],
-  },
-};
-
-const queryDateBreakoutsMultiStage: StructuredDatasetQuery = {
-  type: "query",
-  database: SAMPLE_DB_ID,
-  query: {
-    aggregation: [["count"]],
-    breakout: [ordersCreatedAtYearField],
-    "source-query": {
-      "source-table": ORDERS_ID,
-      aggregation: [["count"]],
-      breakout: [ordersCreatedAtMonthField],
+const query1DateBreakout = createQueryWithClauses({
+  aggregations: [{ operatorName: "count" }],
+  breakouts: [
+    {
+      tableName: "ORDERS",
+      columnName: "CREATED_AT",
+      temporalBucketName: "Month",
     },
-  },
-};
+  ],
+});
+
+const query2DateBreakouts = createQueryWithClauses({
+  aggregations: [{ operatorName: "count" }],
+  breakouts: [
+    {
+      tableName: "ORDERS",
+      columnName: "CREATED_AT",
+      temporalBucketName: "Month",
+    },
+    {
+      tableName: "PRODUCTS",
+      columnName: "CREATED_AT",
+      temporalBucketName: "Month",
+    },
+  ],
+});
+
+const queryDateBreakoutsMultiStage = createQueryWithClauses({
+  query: Lib.appendStage(
+    createQueryWithClauses({
+      aggregations: [{ operatorName: "count" }],
+      breakouts: [
+        {
+          tableName: "ORDERS",
+          columnName: "CREATED_AT",
+          temporalBucketName: "Month",
+        },
+      ],
+    }),
+  ),
+  aggregations: [{ operatorName: "count" }],
+  breakouts: [
+    {
+      tableName: "ORDERS",
+      columnName: "CREATED_AT",
+      temporalBucketName: "Year",
+    },
+  ],
+});
 
 describe("parameters/utils/targets", () => {
   describe("isDimensionTarget", () => {
@@ -251,7 +219,7 @@ describe("parameters/utils/targets", () => {
 
       describe("question", () => {
         it("returns columns from source table and implicitly joinable tables", () => {
-          const question = createQuestion();
+          const question = createQuestion(createQuery());
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -295,9 +263,10 @@ describe("parameters/utils/targets", () => {
 
       describe("model", () => {
         it("returns columns from source table and implicitly joinable tables", () => {
-          const question = createModel({
-            result_metadata: createOrdersTable().fields,
-          });
+          const question = createModel(
+            createQuery(),
+            checkNotNull(createOrdersTable().fields),
+          );
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -345,25 +314,21 @@ describe("parameters/utils/targets", () => {
 
       describe("question", () => {
         it("no breakouts - returns no columns", () => {
-          const question = createQuestion();
+          const question = createQuestion(createQuery());
           const { columns } = getParameterColumns(question, parameter);
 
           expect(columns).toHaveLength(0);
         });
 
         it("non-date breakout - returns no columns", () => {
-          const question = createQuestion({
-            dataset_query: queryNonDateBreakout,
-          });
+          const question = createQuestion(queryNonDateBreakout);
           const { columns } = getParameterColumns(question, parameter);
 
           expect(columns).toHaveLength(0);
         });
 
         it("1 date breakout - returns 1 date column", () => {
-          const question = createQuestion({
-            dataset_query: query1DateBreakout,
-          });
+          const question = createQuestion(query1DateBreakout);
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -374,9 +339,7 @@ describe("parameters/utils/targets", () => {
         });
 
         it("2 date breakouts - returns 2 date columns", () => {
-          const question = createQuestion({
-            dataset_query: query2DateBreakouts,
-          });
+          const question = createQuestion(query2DateBreakouts);
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -390,9 +353,7 @@ describe("parameters/utils/targets", () => {
         });
 
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
-          const question = createQuestion({
-            dataset_query: queryDateBreakoutsMultiStage,
-          });
+          const question = createQuestion(queryDateBreakoutsMultiStage);
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -405,53 +366,51 @@ describe("parameters/utils/targets", () => {
 
       describe("model", () => {
         it("no breakouts - returns no columns", () => {
-          const question = createModel({
-            result_metadata: createOrdersTable().fields,
-          });
+          const question = createModel(
+            createQuery(),
+            checkNotNull(createOrdersTable().fields),
+          );
           const { columns } = getParameterColumns(question, parameter);
 
           expect(columns).toHaveLength(0);
         });
 
         it("non-date breakout - returns no columns", () => {
-          const question = createModel({
-            dataset_query: queryNonDateBreakout,
-            result_metadata: [createOrdersQuantityField(), createCountField()],
-          });
+          const question = createModel(queryNonDateBreakout, [
+            createOrdersQuantityField(),
+            createCountField(),
+          ]);
           const { columns } = getParameterColumns(question, parameter);
 
           expect(columns).toHaveLength(0);
         });
 
         it("1 date breakout - returns 1 date column", () => {
-          const question = createModel({
-            dataset_query: query1DateBreakout,
-            result_metadata: [createOrdersCreatedAtField(), createCountField()],
-          });
+          const question = createModel(query1DateBreakout, [
+            createOrdersCreatedAtField(),
+            createCountField(),
+          ]);
           const { columns } = getParameterColumns(question, parameter);
 
           expect(columns).toHaveLength(0);
         });
 
         it("2 date breakouts - returns 2 date columns", () => {
-          const question = createModel({
-            dataset_query: query2DateBreakouts,
-            result_metadata: [
-              createOrdersCreatedAtField(),
-              createProductsCreatedAtField(),
-              createCountField(),
-            ],
-          });
+          const question = createModel(query2DateBreakouts, [
+            createOrdersCreatedAtField(),
+            createProductsCreatedAtField(),
+            createCountField(),
+          ]);
           const { columns } = getParameterColumns(question, parameter);
 
           expect(columns).toHaveLength(0);
         });
 
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
-          const question = createModel({
-            dataset_query: queryDateBreakoutsMultiStage,
-            result_metadata: [createOrdersCreatedAtField(), createCountField()],
-          });
+          const question = createModel(queryDateBreakoutsMultiStage, [
+            createOrdersCreatedAtField(),
+            createCountField(),
+          ]);
           const { columns } = getParameterColumns(question, parameter);
 
           expect(columns).toHaveLength(0);
@@ -464,7 +423,7 @@ describe("parameters/utils/targets", () => {
 
       describe("question", () => {
         it("returns date columns from source table and implicitly joinable tables", () => {
-          const question = createQuestion();
+          const question = createQuestion(createQuery());
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -482,9 +441,10 @@ describe("parameters/utils/targets", () => {
 
       describe("model", () => {
         it("returns date columns from source table and implicitly joinable tables", () => {
-          const question = createModel({
-            result_metadata: createOrdersTable().fields,
-          });
+          const question = createModel(
+            createQuery(),
+            checkNotNull(createOrdersTable().fields),
+          );
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -523,8 +483,10 @@ function createDateParameter() {
   });
 }
 
-function createQuestion(opts?: Partial<StructuredCard>) {
-  const card = createSavedStructuredCard(opts);
+function createQuestion(query: Lib.Query) {
+  const card = createSavedStructuredCard({
+    dataset_query: Lib.toLegacyQuery(query) as StructuredDatasetQuery,
+  });
 
   return new Question(card, metadata);
 }
@@ -540,14 +502,15 @@ function createCountField() {
   });
 }
 
-function createModel(opts: Partial<StructuredCard>) {
-  if (!("result_metadata" in opts)) {
-    throw new Error(
-      "result_metadata needs to be passed, otherwise test setup would be incorrect",
-    );
-  }
-
-  const card = createStructuredModelCard(opts);
+function createModel(
+  query: Lib.Query,
+  /* result_metadata needs to be passed, otherwise test setup would be incorrect */
+  result_metadata: StructuredCard["result_metadata"],
+) {
+  const card = createStructuredModelCard({
+    dataset_query: Lib.toLegacyQuery(query) as StructuredDatasetQuery,
+    result_metadata,
+  });
   const metadata = createMockMetadata({
     databases: [sampleDb, savedQuestionsDb],
     tables: [getModelVirtualTable(card)],
