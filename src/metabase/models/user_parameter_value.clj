@@ -30,27 +30,6 @@
   {:value {:in  mi/json-in
            :out json-out}})
 
-(mu/defn upsert!
-  "Upsert or delete parameter value set by the user."
-  [user-id      :- ms/PositiveInt
-   dashboard-id :- ms/PositiveInt
-   parameter-id :- ms/NonBlankString
-   value]
-  (if value
-    (t2/with-transaction [_conn]
-        (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
-                                                         :dashboard_id dashboard-id
-                                                         :parameter_id parameter-id}
-                              {:value value}))
-            (t2/insert! :model/UserParameterValue {:user_id      user-id
-                                                   :dashboard_id dashboard-id
-                                                   :parameter_id parameter-id
-                                                   :value        value})))
-    (t2/delete! :model/UserParameterValue
-                :user_id      user-id
-                :dashboard_id dashboard-id
-                :parameter_id parameter-id)))
-
 (mu/defn batched-upsert!
   "Delete param with nil value and upsert the rest."
   [user-id         :- ms/PositiveInt
