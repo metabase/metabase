@@ -1,7 +1,7 @@
 # this file uses MBA https://github.com/metabase/mba to spin up a Metabase
 # instance then runs the test script in the MBA instance sharing the same
 # network to interact with presto container
-#TODO: get rid of MBA and use actions/prepare-backend instead
+# TODO: get rid of MBA and use actions/prepare-backend instead
 
 name: Kerberized Presto Integration Test
 
