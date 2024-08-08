@@ -7,6 +7,7 @@ import {
   tableHeaderClick,
   pieSlices,
   leftSidebar,
+  chartPathWithFillColor,
 } from "e2e/support/helpers";
 
 const { PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
@@ -112,10 +113,7 @@ describe("scenarios > visualizations > pie chart", () => {
       .findByText("TOTAL")
       .should("be.visible");
 
-    // In CI the command below triggers earlier than the attempt to find "TOTAL" text above which leads to fail
-    cy.wait(100);
-
-    cy.findAllByTestId("legend-item").eq(0).realHover();
+    chartPathWithFillColor("#F9D45C").trigger("mousemove");
 
     cy.findByTestId("query-visualization-root")
       .findByText("DOOHICKEY THE QUICK BROWN FOX J…")
