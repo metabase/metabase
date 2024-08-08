@@ -30,6 +30,7 @@ export function downloadAndAssert(
     isEmbed,
     isDashboard,
     enableFormatting = true,
+    dismissStatus = true,
   } = {},
   callback,
 ) {
@@ -89,6 +90,10 @@ export function downloadAndAssert(
       fileType === "xlsx" && Object.assign(req, { encoding: "binary" });
 
       cy.request(req).then(({ body }) => {
+        if (dismissStatus) {
+          dismissDownloadStatus();
+        }
+
         const { SheetNames, Sheets } = xlsx.read(body, {
           // See the full list of Parsing options: https://github.com/SheetJS/sheetjs#parsing-options
           type: "binary",
