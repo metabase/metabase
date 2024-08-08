@@ -45,13 +45,9 @@ const originalColors = { ...colors };
  * @param appPalette color palette from the admin appearance settings
  */
 export function getEmbeddingColorPalette(
-  sdkColors?: MetabaseColors,
+  sdkColors: MetabaseColors = {},
   appPalette?: ColorPalette,
 ): ColorPalette {
-  if (!sdkColors) {
-    return originalColors;
-  }
-
   const mappedSdkColors = Object.fromEntries(
     Object.entries(sdkColors)
       .flatMap(([key, value]) => {
