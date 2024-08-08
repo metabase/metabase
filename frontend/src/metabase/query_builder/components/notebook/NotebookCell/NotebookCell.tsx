@@ -1,9 +1,7 @@
 import { forwardRef, isValidElement } from "react";
-import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { METAKEY } from "metabase/lib/browser";
-import { Icon, Tooltip } from "metabase/ui";
+import { Icon } from "metabase/ui";
 
 import type { BorderSide } from "./NotebookCell.styled";
 import {
@@ -30,7 +28,6 @@ interface NotebookCellItemProps {
   onClick?: React.MouseEventHandler;
   "data-testid"?: string;
   ref?: React.Ref<HTMLDivElement>;
-  hasTooltip?: boolean;
 }
 
 export const NotebookCellItem = forwardRef<
@@ -46,7 +43,6 @@ export const NotebookCellItem = forwardRef<
     rightContainerStyle,
     children,
     readOnly,
-    hasTooltip,
     ...restProps
   },
   ref,
@@ -66,21 +62,16 @@ export const NotebookCellItem = forwardRef<
       data-testid={restProps["data-testid"] ?? "notebook-cell-item"}
       ref={ref}
     >
-      <Tooltip
-        label={t`${METAKEY}+click to open in new tab`}
-        hidden={!hasTooltip}
+      <NotebookCellItemContentContainer
+        inactive={inactive}
+        disabled={disabled}
+        readOnly={readOnly}
+        color={color}
+        roundedCorners={mainContentRoundedCorners}
+        style={containerStyle}
       >
-        <NotebookCellItemContentContainer
-          inactive={inactive}
-          disabled={disabled}
-          readOnly={readOnly}
-          color={color}
-          roundedCorners={mainContentRoundedCorners}
-          style={containerStyle}
-        >
-          {children}
-        </NotebookCellItemContentContainer>
-      </Tooltip>
+        {children}
+      </NotebookCellItemContentContainer>
       {hasRightSide && (
         <NotebookCellItemContentContainer
           inactive={inactive}

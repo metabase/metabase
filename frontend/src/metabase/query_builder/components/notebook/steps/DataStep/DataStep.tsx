@@ -47,7 +47,6 @@ export const DataStep = ({
       <NotebookCellItem
         color={color}
         inactive={!table}
-        hasTooltip={!!table}
         right={
           canSelectTableColumns && (
             <DataFieldPopover

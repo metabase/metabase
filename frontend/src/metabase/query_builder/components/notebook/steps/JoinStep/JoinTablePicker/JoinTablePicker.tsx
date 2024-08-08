@@ -35,7 +35,6 @@ export function JoinTablePicker({
   return (
     <NotebookCellItem
       inactive={!table}
-      hasTooltip={!!table}
       readOnly={isReadOnly}
       disabled={isDisabled}
       color={color}
