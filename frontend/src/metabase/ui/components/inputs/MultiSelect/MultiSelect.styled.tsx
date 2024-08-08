@@ -109,7 +109,7 @@ export const getMultiSelectOverrides =
           backgroundColor: "var(--mb-color-background-selected)",
         },
         defaultValueRemove: {
-          color: theme.fn.themeColor("brand"),
+          color: "var(--mb-color-text-selected)",
           width: rem(12),
           height: rem(12),
           minWidth: rem(12),
