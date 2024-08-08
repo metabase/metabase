@@ -1065,5 +1065,3 @@ yarn
 Embedding SDK package build happens with Github actions if `embedding-sdk-build` label has been set on the PR.
 
 Published package will use a version from `package.template.json` + current date and commit short hash.
-
-TEST
