@@ -49,6 +49,13 @@ AllSettings.args = {
   renderingContext,
 };
 
+export const AutoCompactTotal = Template.bind({});
+AutoCompactTotal.args = {
+  rawSeries: data.autoCompactTotal as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Colors = Template.bind({});
 Colors.args = {
   rawSeries: data.colors as any,
@@ -199,6 +206,13 @@ NumDecimalPlacesChart.args = {
 export const NumDecimalPlacesLegend = Template.bind({});
 NumDecimalPlacesLegend.args = {
   rawSeries: data.numDecimalPlacesLegend as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
+export const TruncatedTotal = Template.bind({});
+TruncatedTotal.args = {
+  rawSeries: data.truncatedTotal as any,
   dashcardSettings: {},
   renderingContext,
 };

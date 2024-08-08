@@ -17,6 +17,7 @@ import {
   waitForLoaderToBeRemoved,
   within,
 } from "__support__/ui";
+import { METAKEY } from "metabase/lib/browser";
 import * as Lib from "metabase-lib";
 import { columnFinder, createQuery } from "metabase-lib/test-helpers";
 import type { CollectionItem, RecentItem } from "metabase-types/api";
@@ -173,7 +174,7 @@ function setup({
 
   setupDatabasesEndpoints(DATABASES);
   setupSearchEndpoints(searchItems);
-  setupRecentViewsAndSelectionsEndpoints(recentItems);
+  setupRecentViewsAndSelectionsEndpoints(recentItems, ["selections"]);
 
   function Wrapper() {
     const [query, setQuery] = useState(step.query);
@@ -1168,6 +1169,33 @@ describe("Notebook Editor > Join Step", () => {
       expect(
         screen.queryByLabelText("Remove condition"),
       ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("link to data source", () => {
+    it("should show the tooltip on hover only for the actual data source (right table)", async () => {
+      setup({ step: createMockNotebookStep({ query: getJoinedQuery() }) });
+
+      await expect(
+        userEvent.hover(
+          within(screen.getByLabelText("Left table")).getByText("Orders"),
+        ),
+      ).rejects.toThrow(/pointer-events: none/);
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+
+      await userEvent.hover(
+        within(screen.getByLabelText("Right table")).getByText("Products"),
+      );
+      expect(screen.getByRole("tooltip")).toHaveTextContent(
+        `${METAKEY}+click to open in new tab`,
+      );
+    });
+
+    it("should not show the tooltip when the right table data source is missing", async () => {
+      setup();
+
+      await userEvent.hover(screen.getByLabelText("Right table"));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
     });
   });
 });

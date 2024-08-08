@@ -5,6 +5,7 @@
    [clojure.math :as math]
    [clojure.math.combinatorics :as math.combo]
    [clojure.set :as set]
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [clojure.walk :as walk]
    [clojurewerkz.quartzite.jobs :as jobs]
@@ -2017,3 +2018,138 @@
       (is (= "true" (t2/select-one-fn :value :setting :key "enable-query-caching")))
       (is (= "100" (t2/select-one-fn :value :setting :key "query-caching-ttl-ratio")))
       (is (= "123" (t2/select-one-fn :value :setting :key "query-caching-min-ttl"))))))
+
+(def ^:private result-metadata-for-viz-settings
+  [{:name "C1"    :field_ref [:field 1 nil]}
+   {:name "C2"    :field_ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]}
+   {:name "C3"    :field_ref [:field 3 {:base-type :type/BigInteger :source-field 10}]}
+   {:name "C4"    :field_ref [:expression "Exp"]}
+   {:name "C5"    :field_ref [:field 5 {:temporal-unit :month}]}
+   {:name "C6"    :field_ref [:field 6 {:base-type :type/Float :binning {:strategy :num-bins :min-value 0 :max-value 160 :num-bins 8 :bin-width 20}}]}
+   {:name "C7"    :field_ref [:field "C7" {:base-type :type/BigInteger}]}
+   {:name "count" :field_ref [:aggregation 0]}])
+
+(def ^:private viz-settings-with-field-ref-keys
+  {:column_settings (-> {[:ref [:field 1 nil]]                                                  {:column_title "1"}
+                         [:ref [:field 2 {:base-type :type/BigInteger :join-alias "Products"}]] {:column_title "2"}
+                         [:ref [:field 3 {:base-type :type/BigInteger :source-field 10}]]       {:column_title "3"}
+                         [:ref [:expression "Exp"]]                                             {:column_title "4"}
+                         [:ref [:field 5 nil]]                                                  {:column_title "5"}
+                         [:ref [:field 6 {:base-type :type/Float}]]                             {:column_title "6"}
+                         [:name "C7"]                                                           {:column_title "7"}
+                         [:name "count"]                                                        {:column_title "8"}
+                         ;; unmatched column
+                         [:ref [:field 9 nil]]                                                  {:column_title "9"}}
+                        (update-keys json/generate-string))})
+
+(def ^:private viz-settings-with-name-keys
+  {:column_settings (-> {[:name "C1"]           {:column_title "1"}
+                         [:name "C2"]           {:column_title "2"}
+                         [:name "C3"]           {:column_title "3"}
+                         [:name "C4"]           {:column_title "4"}
+                         [:name "C5"]           {:column_title "5"}
+                         [:name "C6"]           {:column_title "6"}
+                         [:name "C7"]           {:column_title "7"}
+                         [:name "count"]        {:column_title "8"}
+                         ;; unmatched column
+                         [:ref [:field 9 nil]]  {:column_title "9"}}
+                        (update-keys json/generate-string))})
+
+(defn- keyword-except-column-key [key]
+  (if (str/starts-with? key "[") key (keyword key)))
+
+(deftest update-legacy-column-keys-in-card-viz-settings-test
+  (testing "v51.2024-08-07T10:00:00"
+    (impl/test-migrations ["v51.2024-08-07T10:00:00"] [migrate!]
+      (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
+                                              {:first_name  "Howard"
+                                               :last_name   "Hughes"
+                                               :email       "howard@aircraft.com"
+                                               :password    "superstrong"
+                                               :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-id (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                              {:name                   "My Saved Question"
+                                               :created_at             :%now
+                                               :updated_at             :%now
+                                               :creator_id             user-id
+                                               :display                "table"
+                                               :dataset_query          "{}"
+                                               :result_metadata        (json/generate-string result-metadata-for-viz-settings)
+                                               :visualization_settings (json/generate-string viz-settings-with-field-ref-keys)
+                                               :database_id            database-id
+                                               :collection_id          nil})]
+        (migrate!)
+        (testing "After the migration, column_settings are migrated to name-based keys"
+          (is (= viz-settings-with-name-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     (json/parse-string keyword-except-column-key)))))
+        (migrate! :down 49)
+        (testing "After reversing the migration, column_settings are restored to field ref-based keys"
+          (is (= viz-settings-with-field-ref-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_card]
+                                    :where  [:= :id card-id]})
+                     :visualization_settings
+                     (json/parse-string keyword-except-column-key)))))))))
+
+(deftest update-legacy-column-keys-in-dashboard-card-viz-settings-test
+  (testing "v51.2024-08-07T11:00:00"
+    (impl/test-migrations ["v51.2024-08-07T11:00:00"] [migrate!]
+      (let [user-id (t2/insert-returning-pks! (t2/table-name :model/User)
+                                              {:first_name  "Howard"
+                                               :last_name   "Hughes"
+                                               :email       "howard@aircraft.com"
+                                               :password    "superstrong"
+                                               :date_joined :%now})
+            database-id (t2/insert-returning-pks! (t2/table-name :model/Database)
+                                                  {:name       "DB"
+                                                   :engine     "h2"
+                                                   :created_at :%now
+                                                   :updated_at :%now
+                                                   :details    "{}"})
+            card-id (t2/insert-returning-pks! (t2/table-name :model/Card)
+                                              {:name                   "My Saved Question"
+                                               :created_at             :%now
+                                               :updated_at             :%now
+                                               :creator_id             user-id
+                                               :display                "table"
+                                               :dataset_query          "{}"
+                                               :result_metadata        (json/generate-string result-metadata-for-viz-settings)
+                                               :visualization_settings "{}"
+                                               :database_id            database-id
+                                               :collection_id          nil})
+            dashboard-id (t2/insert-returning-pks! :model/Dashboard {:name                "My Dashboard"
+                                                                     :creator_id          user-id
+                                                                     :parameters          []})
+            dashcard-id (t2/insert-returning-pks! :model/DashboardCard {:dashboard_id dashboard-id
+                                                                        :visualization_settings (json/generate-string viz-settings-with-field-ref-keys)
+                                                                        :card_id      card-id
+                                                                        :size_x       4
+                                                                        :size_y       4
+                                                                        :col          1
+                                                                        :row          1})]
+        (migrate!)
+        (testing "After the migration, column_settings are migrated to name-based keys"
+          (is (= viz-settings-with-name-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     (json/parse-string keyword-except-column-key)))))
+        (migrate! :down 49)
+        (testing "After reversing the migration, column_settings are restored to field ref-based keys"
+          (is (= viz-settings-with-field-ref-keys
+                 (-> (t2/query-one {:select [:visualization_settings]
+                                    :from   [:report_dashboardcard]
+                                    :where  [:= :id dashcard-id]})
+                     :visualization_settings
+                     (json/parse-string keyword-except-column-key)))))))))
