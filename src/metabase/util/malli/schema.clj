@@ -406,7 +406,7 @@
                   true m)))])
 
 (def File
-  "Schema for a file coming in HTTP from multipart/form-data"
+  "Schema for a file coming in HTTP request from multipart/form-data"
   [:map {:closed true}
    [:content-type string?]
    [:filename string?]

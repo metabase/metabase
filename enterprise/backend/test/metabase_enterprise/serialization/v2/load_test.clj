@@ -1181,12 +1181,9 @@
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))))))
 
 (deftest continue-on-error-test
-  (let [change-ser    (fn [ser changes]
-                        (vec (for [entity ser
-                                   :let   [change (get changes (:entity_id entity))]]
-                               (if change
-                                 (merge entity change)
-                                 entity))))
+  (let [change-ser    (fn [ser changes] ;; kind of like left-join, but right side is indexed
+                        (vec (for [entity ser]
+                               (merge entity (get changes (:entity_id entity))))))
         logs-contain? (fn [msg-re logs]
                         (some #(re-find msg-re %)
                               (->> logs

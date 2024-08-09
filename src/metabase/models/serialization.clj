@@ -370,7 +370,7 @@
   (fn [model-name _opts _instance] model-name))
 
 (defn log-and-extract-one
-  "Extracts a single entity; will replace `extract-one` as public interface once overrides are gone."
+  "Extracts a single entity; will replace `extract-one` as public interface once `extract-one` overrides are gone."
   [model opts instance]
   (log/infof "Extracting %s %s" model (:id instance))
   (try
