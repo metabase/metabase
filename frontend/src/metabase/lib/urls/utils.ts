@@ -1,3 +1,5 @@
+import api from "metabase/lib/api";
+
 export function appendSlug(path: string | number, slug?: string) {
   return slug ? `${path}-${slug}` : String(path);
 }
@@ -28,3 +30,24 @@ export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
     })
     .join("&");
 }
+
+export function getSubpathSafeUrl(url?: string) {
+  if (url === undefined) {
+    return;
+  }
+
+  return api.basename + url;
+}
+
+/**
+ * Metabase can be deployed on a subpath!
+ * If you're opening internal links in a new tab, make sure you're using subpath-safe URLs.
+ * @see {@link getSubpathSafeUrl}
+ */
+export const openInNewTab = (url?: string) => {
+  if (!url) {
+    return;
+  }
+
+  window.open(url, "_blank");
+};
