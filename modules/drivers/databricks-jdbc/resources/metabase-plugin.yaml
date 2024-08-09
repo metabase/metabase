@@ -1,0 +1,33 @@
+info:
+  name: Databricks JDBC driver
+  version: 1.0.0
+  description: Allows Metabase to connect to Databricks SQL werehouse
+# TODO: is the following dependency needed?
+dependencies:
+  - plugin: Metabase Spark SQL Driver
+driver:
+  - name: databricks-jdbc
+    display-name: Databricks JDBC
+    lazy-load: true
+    parent: sql-jdbc
+    connection-properties:
+      - host
+      - name: http-path 
+        display-name: HTTP path
+        required: true
+      - name: token
+        display-name: Personal Access Token
+        required: true 
+      - name: catalog
+        display-name: Catalog
+        default: default
+        required: true
+      - name: schema
+        display-name: Schema
+        default: default
+        required: true # does not have to be required
+init:
+  - step: load-namespace
+    namespace: metabase.driver.databricks-jdbc
+  - step: register-jdbc-driver
+    class: com.databricks.client.jdbc.Driver
