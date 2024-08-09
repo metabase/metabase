@@ -10,6 +10,9 @@
   '#{clojure.core/alter-var-root
      clojure.core/with-redefs
      clojure.core/with-redefs-fn
+     cljs.core/alter-var-root
+     cljs.core/with-redefs
+     cljs.core/with-redefs-fn
      metabase-enterprise.sandbox.test-util/with-gtaps!
      metabase-enterprise.sandbox.test-util/with-gtaps-for-user!
      metabase-enterprise.sandbox.test-util/with-user-attributes
@@ -88,6 +91,21 @@
      clojure.core/volatile!
      clojure.core/vreset!
      clojure.core/vswap!
+     cljs.core/assoc!
+     cljs.core/compare-and-set!
+     cljs.core/conj!
+     cljs.core/disj!
+     cljs.core/dissoc!
+     cljs.core/persistent!
+     cljs.core/pop!
+     cljs.core/reset!
+     cljs.core/reset-vals!
+     cljs.core/run!
+     cljs.core/swap!
+     cljs.core/swap-vals!
+     cljs.core/volatile!
+     cljs.core/vreset!
+     cljs.core/vswap!
      clojure.core.async/<!
      clojure.core.async/<!!
      clojure.core.async/>!
@@ -179,7 +197,9 @@
                                                    "Split it up into smaller tests! 🥰")
                                      :type :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests)))))))
 
-(defn deftest [{:keys [node cljc lang]}]
+(defn deftest
+  "Hook for deftest."
+  [{:keys [node cljc lang]}]
   ;; run [[deftest-check-parallel]] only once... if this is a `.cljc` file only run it for the `:clj` analysis, no point
   ;; in running it twice.
   (when (or (not cljc)
@@ -230,12 +250,16 @@
                                  :message "Use =? or malli= instead of schema="
                                  :type :metabase/warn-about-schema=)))))
 
-(defn is [{:keys [node lang]}]
+(defn is
+  "Hook for is."
+  [{:keys [node lang]}]
   (when (= lang :cljs)
     (warn-about-missing-test-expr-requires-in-cljs node))
   (warn-about-schema= node)
   {:node node})
 
-(defn use-fixtures [{:keys [node]}]
+(defn use-fixtures
+  "Hook for use-fixtures."
+  [{:keys [node]}]
   (warn-about-disallowed-parallel-forms node)
   {:node node})
