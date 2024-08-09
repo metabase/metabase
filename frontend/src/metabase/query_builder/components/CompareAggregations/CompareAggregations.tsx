@@ -11,6 +11,7 @@ import {
   ColumnPicker,
   OffsetInput,
   ReferenceAggregationPicker,
+  ComparisonTypePicker,
 } from "./components";
 import type { ColumnType } from "./types";
 import { canSubmit, getAggregations, getTitle } from "./utils";
@@ -25,6 +26,7 @@ interface Props {
 
 const DEFAULT_OFFSET = 1;
 const DEFAULT_COLUMNS: ColumnType[] = ["offset", "percent-diff-offset"];
+const DEFAULT_COMPARISON_TYPE = "values";
 const STEP_1_WIDTH = 378;
 const STEP_2_WIDTH = 472;
 
@@ -41,6 +43,9 @@ export const CompareAggregations = ({
   >(hasManyAggregations ? undefined : aggregations[0]);
   const [offset, setOffset] = useState<number | "">(DEFAULT_OFFSET);
   const [columns, setColumns] = useState<ColumnType[]>(DEFAULT_COLUMNS);
+  const [comparisonType, setComparisonType] = useState<ComparisonType>(
+    DEFAULT_COMPARISON_TYPE,
+  );
   const width = aggregation ? STEP_2_WIDTH : STEP_1_WIDTH;
 
   const title = useMemo(
@@ -88,6 +93,11 @@ export const CompareAggregations = ({
         <form onSubmit={handleSubmit}>
           <Stack p="lg" spacing="xl">
             <Stack spacing="md">
+              <ComparisonTypePicker
+                value={comparisonType}
+                onChange={setComparisonType}
+              />
+
               <OffsetInput
                 query={query}
                 stageIndex={stageIndex}
