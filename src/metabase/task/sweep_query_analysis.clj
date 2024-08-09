@@ -48,11 +48,11 @@
    (fn
      ([final-count] final-count)
      ([running-count ids]
-      (t2/delete! :model/QueryField :id [:in ids])
+      (t2/delete! :model/QueryAnalysis :id [:in ids])
       (+ running-count (count ids))))
    0
-   (t2/reducible-select [:model/QueryField :id]
-                        {:join  [[:report_card :c] [:= :c.id :query_field.card_id]]
+   (t2/reducible-select [:model/QueryAnalysis :id]
+                        {:join  [[:report_card :c] [:= :c.id :query_analysis.card_id]]
                          :where :c.archived})))
 
 (defn- sweep-query-analysis-loop!
@@ -66,16 +66,19 @@
                                  (query-analysis/analyze-sync! card-or-id))))
   ([first-time? analyze-fn]
    ;; prioritize cards that are missing analysis
+   (log/info "Calculating analysis for cards without any")
    (analyze-cards-without-query-fields! analyze-fn)
 
    ;; we run through all the existing analysis on our first run, as it may be stale due to an old macaw version, etc.
    (when first-time?
+     (log/info "Recalculating potentially stale analysis")
      ;; this will repeat the cards we've just back-filled, but in the steady state there should be none of those.
      ;; in the future, we will track versions, hashes, and timestamps to reduce the cost of this operation.
      (analyze-stale-cards! analyze-fn))
 
    ;; empty out useless records
-   (delete-orphan-analysis!)))
+   (log/info "Deleting analysis for archived cards")
+   (log/infof "Deleted analysis for %s cards" (delete-orphan-analysis!))))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Backfill QueryField for cards created earlier. Runs once per instance."}
