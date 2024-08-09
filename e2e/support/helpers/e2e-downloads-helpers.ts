@@ -134,6 +134,7 @@ type GetEndPointParams = Pick<
   DownloadAndAssertParams,
   "fileType" | "questionId" | "publicUuid" | "dashcardId" | "dashboardId"
 >;
+
 function getEndpoint({
   fileType,
   questionId,
