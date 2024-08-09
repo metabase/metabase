@@ -60,9 +60,25 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
     ${Object.entries(SDK_TO_MAIN_APP_COLORS_MAPPING).flatMap(
       ([_, metabaseColorNames]) => {
         return metabaseColorNames.map(metabaseColorName => {
-          return `--mb-color-${metabaseColorName}: ${theme.fn.themeColor(
+          /**
+           * Prevent returning the primary color when color is not found,
+           * so we could add a logic to fallback to the default color ourselves.
+           *
+           * We will only create CSS custom properties for colors that are defined
+           * in the palette, and additional colors overridden by the SDK.
+           *
+           * @see SDK_TO_MAIN_APP_COLORS_MAPPING
+           */
+          const color = theme.fn.themeColor(
             metabaseColorName,
-          )}`;
+            undefined,
+            false,
+          );
+          const colorExist = color !== metabaseColorName;
+
+          if (colorExist) {
+            return `--mb-color-${metabaseColorName}: ${color}`;
+          }
         });
       },
     )}

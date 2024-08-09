@@ -26,6 +26,10 @@ type NEW_SEMANTIC_COLOR =
   | "background-inverse"
   | "background-brand";
 
+/**
+ * Mapping of SDK colors to main app colors. There could be additional values
+ * for new semantic colors we add to colors.module.css
+ */
 export const SDK_TO_MAIN_APP_COLORS_MAPPING: Record<
   MappableSdkColor,
   (ColorName | NEW_SEMANTIC_COLOR)[]
