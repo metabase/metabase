@@ -109,10 +109,10 @@
                              first
                              (assoc :lib/type :operator/filter)))]
         (merge
+          drill-details
           {:lib/type   :metabase.lib.drill-thru/drill-thru
            :type       :drill-thru/column-filter
-           :initial-op initial-op}
-           drill-details)))))
+           :initial-op initial-op})))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/column-filter
   [_query _stage-number {:keys [initial-op]}]
