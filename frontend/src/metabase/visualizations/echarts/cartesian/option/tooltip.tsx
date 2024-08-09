@@ -52,8 +52,8 @@ const ChartItemTooltip = ({
 export const getTooltipOption = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
-  showMarkers: boolean = true,
-  showPreviousValueComparison: boolean = true,
+  showMarkers = true,
+  showPreviousValueComparison = true,
 ): TooltipOption => {
   return {
     trigger: "item",

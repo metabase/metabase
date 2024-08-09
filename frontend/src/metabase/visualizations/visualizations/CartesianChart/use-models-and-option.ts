@@ -18,8 +18,6 @@ import { getWaterfallChartOption } from "metabase/visualizations/echarts/cartesi
 import { useBrowserRenderingContext } from "metabase/visualizations/hooks/use-browser-rendering-context";
 import type { VisualizationProps } from "metabase/visualizations/types";
 
-import { getHoveredSeriesDataKey } from "./utils";
-
 export function useModelsAndOption({
   rawSeries,
   series: transformedSeries,
@@ -92,11 +90,6 @@ export function useModelsAndOption({
     [chartModel, chartMeasurements, timelineEvents, renderingContext],
   );
 
-  const hoveredSeriesDataKey = useMemo(
-    () => getHoveredSeriesDataKey(chartModel.seriesModels, hovered),
-    [chartModel.seriesModels, hovered],
-  );
-
   const selectedOrHoveredTimelineEventIds = useMemo(() => {
     const ids = [];
 
@@ -149,7 +142,6 @@ export function useModelsAndOption({
           settings,
           width,
           shouldAnimate,
-          hoveredSeriesDataKey,
           renderingContext,
         );
     }
@@ -160,7 +152,6 @@ export function useModelsAndOption({
     renderingContext,
     settings,
     timelineEventsModel,
-    hoveredSeriesDataKey,
     width,
     height,
     isPlaceholder,

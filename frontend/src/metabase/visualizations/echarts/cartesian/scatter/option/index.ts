@@ -105,7 +105,6 @@ export function getScatterPlotOption(
       chartMeasurements,
       settings,
       hasTimelineEvents,
-      null,
       renderingContext,
     ),
     tooltip: getTooltipOption(chartModel, settings, false, false),

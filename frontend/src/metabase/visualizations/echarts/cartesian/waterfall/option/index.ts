@@ -256,7 +256,6 @@ export const getWaterfallChartOption = (
       chartMeasurements,
       settings,
       hasTimelineEvents,
-      null,
       renderingContext,
     ),
     tooltip: getTooltipOption(chartModel, settings, false, false),

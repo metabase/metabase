@@ -6,10 +6,7 @@ import {
   POSITIVE_STACK_TOTAL_DATA_KEY,
   X_AXIS_DATA_KEY,
 } from "metabase/visualizations/echarts/cartesian/constants/dataset";
-import type {
-  DataKey,
-  CartesianChartModel,
-} from "metabase/visualizations/echarts/cartesian/model/types";
+import type { CartesianChartModel } from "metabase/visualizations/echarts/cartesian/model/types";
 import { buildAxes } from "metabase/visualizations/echarts/cartesian/option/axis";
 import { buildEChartsSeries } from "metabase/visualizations/echarts/cartesian/option/series";
 import { getTimelineEventsSeries } from "metabase/visualizations/echarts/cartesian/timeline-events/option";
@@ -51,7 +48,6 @@ export const getCartesianChartOption = (
   settings: ComputedVisualizationSettings,
   chartWidth: number,
   isAnimated: boolean,
-  hoveredSeriesDataKey: DataKey | null,
   renderingContext: RenderingContext,
 ): EChartsCoreOption => {
   const hasTimelineEvents = timelineEventsModel != null;
@@ -132,7 +128,6 @@ export const getCartesianChartOption = (
       chartMeasurements,
       settings,
       hasTimelineEvents,
-      hoveredSeriesDataKey,
       renderingContext,
     ),
     tooltip: getTooltipOption(chartModel, settings),
