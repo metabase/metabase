@@ -45,7 +45,7 @@ import {
   getLabelString,
   cronToScheduleSettings,
   scheduleSettingsToCron,
-  getStrategyValidationSchema,
+  getDefaultValueForField,
 } from "../utils";
 
 import {
@@ -94,14 +94,30 @@ export const StrategyForm = ({
   buttonLabels?: ButtonLabels;
   isInSidebar?: boolean;
 }) => {
-  const defaultStrategy: CacheStrategy = {
-    type: targetId === rootId ? "nocache" : "inherit",
-  };
+  const defaultStrategy: CacheStrategy = useMemo(
+    () => ({
+      type: targetId === rootId ? "nocache" : "inherit",
+    }),
+    [targetId],
+  );
+
+  // Remove default values from the form
+  const initialValues = useMemo(() => {
+    const strategy: any = { ...(savedStrategy ?? defaultStrategy) };
+    for (const fieldName in strategy) {
+      const value = strategy[fieldName as keyof CacheStrategy];
+      const defaultValue = getDefaultValueForField(strategy.type, fieldName);
+      if (defaultValue && value === defaultValue) {
+        delete strategy[fieldName as keyof CacheStrategy];
+      }
+    }
+    return strategy;
+  }, [savedStrategy, defaultStrategy]);
 
   return (
     <FormProvider<CacheStrategy>
       key={targetId}
-      initialValues={savedStrategy ?? defaultStrategy}
+      initialValues={initialValues}
       validationSchema={strategyValidationSchema}
       onSubmit={saveStrategy}
       onReset={onReset}
@@ -140,7 +156,9 @@ const StrategyFormBody = ({
   buttonLabels: ButtonLabels;
   isInSidebar?: boolean;
 }) => {
-  const { dirty, values, setFieldValue } = useFormikContext<CacheStrategy>();
+  const { isSubmitting, dirty, values, setFieldValue } =
+    useFormikContext<CacheStrategy>();
+
   const { setStatus } = useFormContext();
   const [wasDirty, setWasDirty] = useState(false);
 
@@ -163,6 +181,24 @@ const StrategyFormBody = ({
       setFieldValue("unit", CacheDurationUnit.Hours);
     }
   }, [selectedStrategyType, values, setFieldValue]);
+
+  useEffect(
+    function removeDefaultValuesFromForm() {
+      if (isSubmitting) {
+        for (const fieldName in values) {
+          const value = values[fieldName as keyof CacheStrategy];
+          const defaultValue = getDefaultValueForField(values.type, fieldName);
+          // Formik will initially record numbers as strings so we need a loose comparison
+          // eslint-disable-next-line eqeqeq
+          if (defaultValue && value == defaultValue) {
+            setFieldValue(fieldName, undefined);
+          }
+        }
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isSubmitting],
+  );
 
   const headingId = "strategy-form-heading";
 
@@ -499,16 +535,6 @@ const Field = ({
       </Stack>
     </label>
   );
-};
-
-const getDefaultValueForField = (
-  strategyType: CacheStrategyType,
-  fieldName?: string,
-) => {
-  const schema = getStrategyValidationSchema(
-    PLUGIN_CACHING.strategies[strategyType],
-  );
-  return fieldName ? schema.cast({})[fieldName] : "";
 };
 
 const MultiplierFieldSubtitle = () => (
