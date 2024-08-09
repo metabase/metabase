@@ -122,11 +122,11 @@
     ;; [[lib.drill-thru.column-filter/prepare-query-for-drill-addition]] handles this. (#34346)
     (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition
                                query stage-number column column-ref :filter)]
-      (merge {:lib/type   :metabase.lib.drill-thru/drill-thru
+      (merge drill-details
+             {:lib/type   :metabase.lib.drill-thru/drill-thru
               :type       :drill-thru/quick-filter
               :operators  (operators-for (:column drill-details) value)
-              :value      value}
-             drill-details))))
+              :value      value}))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]
