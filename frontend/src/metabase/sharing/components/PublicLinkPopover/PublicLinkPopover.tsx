@@ -1,11 +1,12 @@
 import { useAsync } from "react-use";
 import { t } from "ttag";
 
-import { PublicLinkCopyPanel } from "metabase/dashboard/components/PublicLinkPopover/PublicLinkCopyPanel";
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { useSelector } from "metabase/lib/redux";
 import { getUserIsAdmin } from "metabase/selectors/user";
 import { Box, Popover, Text, Title } from "metabase/ui";
+
+import { PublicLinkCopyPanel } from "./PublicLinkCopyPanel";
+import type { ExportFormatType } from "./types";
 
 export type PublicLinkPopoverProps = {
   target: JSX.Element;
@@ -55,7 +56,11 @@ export const PublicLinkPopover = ({
   };
 
   return (
-    <Popover opened={isOpen} onClose={isOpen ? onClose : undefined}>
+    <Popover
+      opened={isOpen}
+      onClose={isOpen ? onClose : undefined}
+      position="bottom-end"
+    >
       <Popover.Target>
         <Box onClick={isOpen ? onClose : undefined}>{target}</Box>
       </Popover.Target>

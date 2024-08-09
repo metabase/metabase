@@ -5,10 +5,11 @@ import { useState } from "react";
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
-import { DashboardPublicLinkPopover } from "metabase/dashboard/components/PublicLinkPopover/DashboardPublicLinkPopover";
 import type { Dashboard } from "metabase-types/api";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import { createMockState } from "metabase-types/store/mocks";
+
+import { DashboardPublicLinkPopover } from "./DashboardPublicLinkPopover";
 
 const SITE_URL = "http://metabase.test";
 const TEST_DASHBOARD_ID = 1;
@@ -39,8 +40,10 @@ const TestComponent = ({
 
 const setup = ({
   hasPublicLink = true,
+  isAdmin = true,
 }: {
   hasPublicLink?: boolean;
+  isAdmin?: boolean;
 } = {}) => {
   const TEST_DASHBOARD = createMockDashboard({
     id: TEST_DASHBOARD_ID,
@@ -50,7 +53,7 @@ const setup = ({
   setupDashboardPublicLinkEndpoints(TEST_DASHBOARD_ID);
 
   const state = createMockState({
-    currentUser: createMockUser({ is_superuser: true }),
+    currentUser: createMockUser({ is_superuser: isAdmin }),
     settings: mockSettings({
       "site-url": SITE_URL,
     }),
@@ -98,5 +101,11 @@ describe("DashboardPublicLinkPopover", () => {
         method: "DELETE",
       }),
     ).toHaveLength(1);
+  });
+
+  it("should not show non-admins the option to remove a public link", () => {
+    setup({ isAdmin: false });
+
+    expect(screen.queryByText("Remove public link")).not.toBeInTheDocument();
   });
 });

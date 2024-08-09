@@ -27,7 +27,6 @@ import {
   setEmbeddingParameter,
   assertEmbeddingParameter,
   multiAutocompleteInput,
-  dismissDownloadStatus,
   createDashboardWithTabs,
   createQuestion,
 } from "e2e/support/helpers";
@@ -538,7 +537,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
         assertSheetRowsCount(54)(sheet);
       },
     );
-    dismissDownloadStatus();
   });
 
   it("should send 'X-Metabase-Client' header for api requests", () => {

@@ -4,14 +4,10 @@ import { t } from "ttag";
 
 import ButtonBar from "metabase/components/ButtonBar";
 import CS from "metabase/css/core/index.css";
-import { EmbedMenu } from "metabase/dashboard/components/EmbedMenu";
-import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
 import QueryDownloadWidget from "metabase/query_builder/components/QueryDownloadWidget";
-import { MODAL_TYPES } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 
 import { ExecutionTime } from "./ExecutionTime";
-import { QuestionAlertWidget } from "./QuestionAlertWidget";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
 import { QuestionLastUpdated } from "./QuestionLastUpdated/QuestionLastUpdated";
 import QuestionRowCount from "./QuestionRowCount";
@@ -27,15 +23,12 @@ const ViewFooter = ({
   isShowingChartSettingsSidebar,
   isShowingRawTable,
   onOpenChartType,
-  onOpenModal,
   onCloseChartType,
   onOpenChartSettings,
   onCloseChartSettings,
   setUIControls,
   isObjectDetail,
-  questionAlerts,
   visualizationSettings,
-  canManageSubscriptions,
   isVisualized,
   isTimeseries,
   isShowingTimelineSidebar,
@@ -49,7 +42,6 @@ const ViewFooter = ({
   const { isEditable } = Lib.queryDisplayInfo(question.query());
   const hideChartSettings =
     (result.error && !isEditable) || question.isArchived();
-  const type = question.type();
 
   return (
     <ViewFooterRoot
@@ -130,41 +122,6 @@ const ViewFooter = ({
               dashboardId={question.card().dashboardId}
             />
           ),
-          QuestionAlertWidget.shouldRender({
-            question,
-            visualizationSettings,
-          }) && (
-            <QuestionAlertWidget
-              key="alerts"
-              className={cx(CS.hide, CS.smShow)}
-              canManageSubscriptions={canManageSubscriptions}
-              question={question}
-              questionAlerts={questionAlerts}
-              onCreateAlert={() =>
-                question.isSaved()
-                  ? onOpenModal("create-alert")
-                  : onOpenModal("save-question-before-alert")
-              }
-            />
-          ),
-          type === "question" &&
-            !question.isArchived() &&
-            (question.isSaved() ? (
-              <EmbedMenu
-                key="embed"
-                resource={question}
-                resourceType="question"
-                hasPublicLink={!!question.publicUUID()}
-                onModalOpen={() => onOpenModal(MODAL_TYPES.EMBED)}
-              />
-            ) : (
-              <ResourceEmbedButton
-                hasBackground={false}
-                onClick={() =>
-                  onOpenModal(MODAL_TYPES.SAVE_QUESTION_BEFORE_EMBED)
-                }
-              />
-            )),
           QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
             <QuestionTimelineWidget
               key="timelines"

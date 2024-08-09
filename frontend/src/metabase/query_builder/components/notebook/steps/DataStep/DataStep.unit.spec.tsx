@@ -8,6 +8,7 @@ import {
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import { METAKEY } from "metabase/lib/browser";
 import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
@@ -295,6 +296,28 @@ describe("DataStep", () => {
   });
 
   describe("link to data source", () => {
+    it("should show the tooltip on hover", async () => {
+      setup();
+
+      await userEvent.hover(screen.getByText("Orders"));
+      expect(screen.getByRole("tooltip")).toHaveTextContent(
+        `${METAKEY}+click to open in new tab`,
+      );
+    });
+
+    it("should not show the tooltip when there is no table selected", async () => {
+      setupEmptyQuery();
+
+      const modal = await screen.findByTestId("entity-picker-modal");
+      const closeButton = await screen.findByRole("button", { name: /close/i });
+
+      await userEvent.click(closeButton);
+      expect(modal).not.toBeInTheDocument();
+
+      await userEvent.hover(screen.getByText("Pick your starting data"));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+
     it("meta click should open the data source in a new window", () => {
       const { mockWindowOpen } = setup();
 

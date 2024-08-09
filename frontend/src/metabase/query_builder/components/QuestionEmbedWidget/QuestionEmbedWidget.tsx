@@ -1,4 +1,3 @@
-import type { ExportFormatType } from "metabase/dashboard/components/PublicLinkPopover/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { publicQuestion } from "metabase/lib/urls";
 import {
@@ -6,6 +5,7 @@ import {
   EmbedModalContent,
 } from "metabase/public/components/EmbedModal";
 import { getMetadata } from "metabase/selectors/metadata";
+import type { ExportFormatType } from "metabase/sharing/components/PublicLinkPopover/types";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import type { Card } from "metabase-types/api";
 import type { EmbedOptions } from "metabase-types/store";
