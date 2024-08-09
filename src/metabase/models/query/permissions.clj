@@ -218,20 +218,21 @@
   "Returns true when the query is accessible for the given perm-type and required-perms for individual tables, or the
   entire DB, false otherwise. Only throws if the permission format is incorrect."
   [{{gtap-perms :gtaps} ::perms, db-id :database :as _query} perm-type required-perms]
-  (if-let [db-or-table-perms (perm-type required-perms)]
-    ;; In practice, `view-data` will be defined at the table-level, and `create-queries` will either be table-level
-    ;; or :query-builder-and-native for the entire DB. But we should enforce whatever `required-perms` are provided,
-    ;; in case that ever changes.
-    (cond
-      (keyword? db-or-table-perms)
-      (has-perm-for-db? perm-type db-or-table-perms (perm-type gtap-perms) db-id)
+  (boolean
+   (if-let [db-or-table-perms (perm-type required-perms)]
+     ;; In practice, `view-data` will be defined at the table-level, and `create-queries` will either be table-level
+     ;; or :query-builder-and-native for the entire DB. But we should enforce whatever `required-perms` are provided,
+     ;; in case that ever changes.
+     (cond
+       (keyword? db-or-table-perms)
+       (has-perm-for-db? perm-type db-or-table-perms (perm-type gtap-perms) db-id)
 
-      (map? db-or-table-perms)
-      (has-perm-for-table? perm-type db-or-table-perms (perm-type gtap-perms) db-id)
+       (map? db-or-table-perms)
+       (has-perm-for-table? perm-type db-or-table-perms (perm-type gtap-perms) db-id)
 
-      :else
-      (throw (ex-info (tru "Invalid permissions format") required-perms)))
-    true))
+       :else
+       (throw (ex-info (tru "Invalid permissions format") required-perms)))
+     true)))
 
 (defn check-data-perms
   "Checks whether the current user has sufficient view data and query permissions to run `query`. Returns `true` if the
