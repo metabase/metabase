@@ -281,8 +281,9 @@
                      (when (not= depth max-depth)
                        {(str "depth" (inc depth) "Fields")
                         {"$cond" {"if"   {"$eq" [{"$type" (str "$depth" depth "Fields.v")}, "object"]}
-                                  "then" {"$objectToArray" (str "$depth" depth "Fields.v")}
-                                  "else" []}}}))}]
+                                  "then" {"$concatArrays" [[{"k" nil, "v" nil}]
+                                                           {"$objectToArray" (str "$depth" depth "Fields.v")}]}
+                                  "else" [{"k" nil, "v" nil}]}}}))}]
             (not= depth max-depth)
             (conj {"$unwind"
                    {"path"                       (str "$depth" (inc depth) "Fields")
@@ -294,8 +295,6 @@
                 next-field (str "depth" (inc depth) "Field")]
             [{"$match" (cond-> {current-field {"$ne" nil}}
                          (zero? depth) (assoc next-field nil)
-                         ;; if depth is max-depth, we need object fields for the next query
-                         (and (pos? depth) (not= depth max-depth)) (assoc current-type {"$ne" "object"})
                          (> depth 1) (dissoc next-field))}
              {"$group" {"_id" (into {"field" (str "$" current-field)
                                      "type"  (str "$" current-type)}
@@ -346,7 +345,7 @@
              {"$project"
               {"_id"            0
                "path"           {"$concat" ["$_id.path" "." "$_id.field"]}
-               "fieldName"      "$_id.field"
+               "field"          "$_id.field"
                "mostCommonType" 1}}])]
     [{"$sample" {"size" describe-table-sample-size}}
      {"$facet"
@@ -355,6 +354,9 @@
                            [idx (path-query path)]))
             parent-paths)}]))
 
+(defn path->depth [path]
+  (dec (count (str/split path #"\."))))
+
 (defn infer-schema [db table]
   (let [q! (fn [q]
              (:rows (:data (qp/process-query {:database (:id db)
@@ -362,12 +364,17 @@
                                               :native   {:collection (:name table)
                                                          :query      (json/generate-string q)}}))))
         query-nested (fn query-nested [paths]
-                       (let [fields (flatten (first (q! (nested-level-query paths))))
+                       (let [fields        (flatten (first (q! (nested-level-query paths))))
                              object-fields (filter #(= (:mostCommonType %) "object") fields)]
                          (concat fields (when (seq object-fields)
                                           (query-nested (map :path object-fields))))))
-        fields        (flatten (q! (root-query 0)))
-        object-fields (filter #(= (:mostCommonType %) "object") fields)]
+        query-depth   20 ; TODO: this number needs more testing
+        fields        (flatten (q! (root-query query-depth)))
+        ;; object-fields of the maximum depth need to be explored further
+        object-fields (filter (fn [x]
+                                (and (= (:mostCommonType x) "object")
+                                     (= (path->depth (:path x)) query-depth)))
+                              fields)]
     (concat fields
             (when (seq object-fields)
               (query-nested (map :path object-fields))))))
