@@ -18,7 +18,7 @@ import {
   NotebookButton,
   QuestionVisualization,
 } from "./components";
-import { InteractiveQuestionProvider } from "./context";
+import { InteractiveQuestionProviderWithLocation } from "./context";
 
 type InteractiveQuestionProps = PropsWithChildren<{
   questionId: CardId;
@@ -44,7 +44,7 @@ export const _InteractiveQuestion = ({
   );
 
   return (
-    <InteractiveQuestionProvider
+    <InteractiveQuestionProviderWithLocation
       location={location}
       params={params}
       componentPlugins={plugins}
@@ -57,7 +57,7 @@ export const _InteractiveQuestion = ({
           withTitle={withTitle}
         />
       )}
-    </InteractiveQuestionProvider>
+    </InteractiveQuestionProviderWithLocation>
   );
 };
 

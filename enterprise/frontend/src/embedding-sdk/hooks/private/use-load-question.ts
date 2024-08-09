@@ -28,8 +28,9 @@ export interface LoadQuestionHookResult {
 }
 
 export function useLoadQuestion({
-  location,
-  params,
+  cardId,
+  options,
+  deserializedCard,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
   const dispatch = useDispatch();
 
@@ -56,8 +57,9 @@ export function useLoadQuestion({
   const [loadQuestionState, loadQuestion] = useAsyncFn(async () => {
     const result = await dispatch(
       runQuestionOnLoadSdk({
-        location,
-        params,
+        options,
+        deserializedCard,
+        cardId,
         cancelDeferred: deferred(),
       }),
     );
@@ -65,7 +67,7 @@ export function useLoadQuestion({
     setQuestionResult(result);
 
     return result;
-  }, [dispatch, location, params]);
+  }, [dispatch, options, deserializedCard, cardId]);
 
   const { originalQuestion } = loadQuestionState.value ?? {};
 
