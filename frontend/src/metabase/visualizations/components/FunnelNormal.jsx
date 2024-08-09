@@ -29,20 +29,20 @@ export default class FunnelNormal extends Component {
   render() {
     const {
       className,
-      rawSeries,
+      series,
       gridSize,
       hovered,
       onHoverChange,
       onVisualizationClick,
       visualizationIsClickable,
       settings,
-      isPlaceholder,
     } = this.props;
 
-    const [series] = isPlaceholder ? this.props.series : rawSeries;
-    const {
-      data: { cols, rows },
-    } = series;
+    const [
+      {
+        data: { cols, rows },
+      },
+    ] = series;
 
     const dimensionIndex = cols.findIndex(
       col => col.name === settings["funnel.dimension"],

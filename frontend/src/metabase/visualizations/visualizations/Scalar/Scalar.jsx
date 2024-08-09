@@ -11,7 +11,6 @@ import ScalarValue, {
   ScalarWrapper,
   ScalarTitle,
 } from "metabase/visualizations/components/ScalarValue";
-import { TransformedVisualization } from "metabase/visualizations/components/TransformedVisualization";
 import { compactifyValue } from "metabase/visualizations/lib/scalar_utils";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
 import { fieldSetting } from "metabase/visualizations/lib/settings/utils";
@@ -19,11 +18,10 @@ import {
   getDefaultSize,
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
-import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { TYPE } from "metabase-lib/v1/types/constants";
 
 import { ScalarContainer, LabelIcon } from "./Scalar.styled";
 import { TITLE_ICON_SIZE } from "./constants";
-import { scalarToBarTransform } from "./scalars-bar-transform";
 import { getTitleLinesCount, getValueHeight, getValueWidth } from "./utils";
 
 // convert legacy `scalar.*` visualization settings to format options
@@ -52,6 +50,45 @@ export class Scalar extends Component {
 
   static isSensible({ cols, rows }) {
     return rows.length === 1 && cols.length === 1;
+  }
+
+  static transformSeries(series) {
+    if (series.length > 1) {
+      const cols = [
+        {
+          base_type: TYPE.Text,
+          display_name: t`Name`,
+          name: "name",
+          source: "query-transform",
+        },
+        { ...series[0].data.cols[0], name: "value" },
+      ];
+      const rows = series.map(singleSeries => [
+        singleSeries.card.name,
+        singleSeries.data.rows[0][0],
+      ]);
+
+      return [
+        {
+          card: {
+            ...series[0].card,
+            display: "funnel",
+            visualization_settings: {
+              "funnel.dimension": "name",
+              "funnel.metric": "value",
+              ...series[0].card.visualization_settings,
+              "graph.x_axis.labels_enabled": false,
+            },
+          },
+          data: {
+            rows,
+            cols,
+          },
+        },
+      ];
+    } else {
+      return series;
+    }
   }
 
   static checkRenderable([
@@ -149,18 +186,7 @@ export class Scalar extends Component {
       gridSize,
       totalNumGridCols,
       fontFamily,
-      rawSeries,
     } = this.props;
-
-    if (rawSeries.length > 1) {
-      return (
-        <TransformedVisualization
-          transformSeries={scalarToBarTransform}
-          originalProps={this.props}
-          VisualizationComponent={BarChart}
-        />
-      );
-    }
 
     const columnIndex = this._getColumnIndex(cols, settings);
     const value = rows[0] && rows[0][columnIndex];
