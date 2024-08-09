@@ -17,4 +17,4 @@ export const isChartsDebugLoggingEnabled =
   process.env.MB_LOG_CHARTS_DEBUG === "true";
 
 // eslint-disable-next-line no-undef
-export const isEmbeddingSdk = !!process.env.IS_EMBEDDING_SDK;
+export const isEmbeddingSdk = !!process.env.IS_EMBEDDING_SDK_BUILD;

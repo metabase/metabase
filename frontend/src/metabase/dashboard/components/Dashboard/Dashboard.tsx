@@ -22,7 +22,6 @@ import type {
 } from "metabase/dashboard/types";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import { isEmbeddingSdk } from "metabase/env";
 import { useDispatch } from "metabase/lib/redux";
 import type {
   CardId,
@@ -204,7 +203,7 @@ function Dashboard(props: DashboardProps) {
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
 
-  const hasScroll = useHasDashboardScroll({ isInitialized, isEmbeddingSdk });
+  const hasScroll = useHasDashboardScroll({ isInitialized });
 
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);

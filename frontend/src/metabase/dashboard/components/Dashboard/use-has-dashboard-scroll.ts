@@ -1,13 +1,12 @@
 import { useEffect, useState } from "react";
 
+import { isEmbeddingSdk } from "metabase/env";
 import { getMainElement } from "metabase/lib/dom";
 
 export const useHasDashboardScroll = ({
   isInitialized,
-  isEmbeddingSdk,
 }: {
   isInitialized: boolean;
-  isEmbeddingSdk?: boolean;
 }) => {
   const mainElement = !isEmbeddingSdk ? getMainElement() : undefined;
   const [hasScroll, setHasScroll] = useState(
@@ -28,7 +27,7 @@ export const useHasDashboardScroll = ({
     node?.addEventListener("scroll", handleScroll, { passive: true });
 
     return () => node?.removeEventListener("scroll", handleScroll);
-  }, [isEmbeddingSdk, isInitialized]);
+  }, [isInitialized]);
 
   return hasScroll;
 };
