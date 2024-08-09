@@ -43,7 +43,7 @@ describe("utils", () => {
       expect(openInNewTab("  ")).toBeUndefined();
     });
 
-    it("should dasdas", () => {
+    it("should open the provided link in a new tab", () => {
       openInNewTab("/baz");
 
       expect(mockWindowOpen).toHaveBeenCalledTimes(1);
