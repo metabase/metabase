@@ -26,6 +26,7 @@ import {
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 import { getDefaultAlert } from "metabase-lib/v1/Alert";
 import type Question from "metabase-lib/v1/Question";
+import type { User } from "metabase-types/api";
 
 import { AlertEditForm } from "./AlertEditForm";
 import { AlertEducationalScreen } from "./AlertEducationalScreen";
@@ -39,16 +40,17 @@ type CreateAlertModalContentProps = {
 
 type CreateAlertModalContentInnerProps = CreateAlertModalContentProps & {
   question: Question;
+  user: User;
 };
 
 export const CreateAlertModalContentInner = ({
   question,
+  user,
   onAlertCreated,
   onCancel,
 }: CreateAlertModalContentInnerProps) => {
   const visualizationSettings = useSelector(getVisualizationSettings);
   const isAdmin = useSelector(getUserIsAdmin);
-  const user = useSelector(getUser);
   const hasLoadedChannelInfo = useSelector(hasLoadedChannelInfoSelector);
   const hasConfiguredAnyChannel = useSelector(hasConfiguredAnyChannelSelector);
   const hasConfiguredEmailChannel = useSelector(
@@ -140,10 +142,13 @@ export const CreateAlertModalContent = (
   props: CreateAlertModalContentProps,
 ) => {
   const question = useSelector(getQuestion);
+  const user = useSelector(getUser);
 
-  if (!question) {
+  if (!question || !user) {
     return null;
   }
 
-  return <CreateAlertModalContentInner question={question} {...props} />;
+  return (
+    <CreateAlertModalContentInner question={question} user={user} {...props} />
+  );
 };
