@@ -39,7 +39,12 @@ export const PermissionHelpDescription = ({
           {name}
         </Title>
       </Flex>
-      {description && <Text>{description}</Text>}
+      {description &&
+        (typeof description === "string" ? (
+          <Text>{description}</Text>
+        ) : (
+          description
+        ))}
 
       {hasUpgradeNotice ? (
         <>

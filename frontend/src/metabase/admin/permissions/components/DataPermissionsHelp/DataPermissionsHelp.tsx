@@ -16,6 +16,7 @@ import {
   Text,
   Title,
   Icon,
+  List,
 } from "metabase/ui";
 
 import { hasPermissionValueInGraph } from "../../utils/graph/data-permissions";
@@ -120,7 +121,35 @@ export const DataPermissionsHelp = () => {
                 icon="permissions_limited"
                 iconColor="brand"
                 name={t`Sandboxed (Pro)`}
-                description={t`Let's you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
+                description={t`Lets you specify row and column-level permissions. Can be set up via user attributes and SSO.`}
+              />
+
+              <PermissionHelpDescription
+                hasUpgradeNotice={!isAdvancedPermissionsFeatureEnabled}
+                icon="close"
+                iconColor="danger"
+                name={t`Blocked (Pro)`}
+                description={
+                  <>
+                    <Text>{`The group can't view:`}</Text>
+                    <List mr="1rem">
+                      <List.Item>
+                        <Text>The schema/table when browsing data.</Text>
+                      </List.Item>
+                      <List.Item>
+                        <Text>
+                          Query-builder questions using that schema/table.
+                        </Text>
+                      </List.Item>
+                      <List.Item>
+                        <Text>
+                          ANY native questions querying the database, regardless
+                          of schema/table.
+                        </Text>
+                      </List.Item>
+                    </List>
+                  </>
+                }
               />
             </Stack>
           </Accordion.Panel>

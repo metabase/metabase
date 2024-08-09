@@ -60,6 +60,13 @@ const buildAccessPermission = (
     DataPermission.VIEW_DATA,
   );
 
+  const schemaValue = getTablesPermission(
+    permissions,
+    groupId,
+    entityId,
+    DataPermission.VIEW_DATA,
+  );
+
   const warning = getPermissionWarning(
     value,
     defaultGroupValue,
@@ -75,6 +82,7 @@ const buildAccessPermission = (
       "fields",
       defaultGroup,
       groupId,
+      undefined,
     ),
     ...PLUGIN_ADMIN_PERMISSIONS_TABLE_FIELDS_CONFIRMATIONS.map(confirmation =>
       confirmation(permissions, groupId, entityId, newValue),
@@ -104,6 +112,7 @@ const buildAccessPermission = (
         PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled(
           value,
           "fields",
+          schemaValue,
         )));
 
   return {
