@@ -18,7 +18,7 @@ export const getPopoverOverrides = (): MantineThemeOverride["components"] => ({
         overflow: "auto",
         background: "var(--mb-color-background)",
         borderColor: "var(--mb-color-border)",
-        color: "var(--mb-color-text-dark)",
+        color: "var(--mb-color-text-primary)",
       },
     }),
   },
