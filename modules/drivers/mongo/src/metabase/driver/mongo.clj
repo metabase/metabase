@@ -345,7 +345,7 @@
                "mostCommonType" {"$first" "$_id.type"}}}
              {"$project"
               {"_id"            0
-               "path"           "$_id.path"
+               "path"           {"$concat" ["$_id.path" "." "$_id.field"]}
                "fieldName"      "$_id.field"
                "mostCommonType" 1}}])]
     [{"$sample" {"size" describe-table-sample-size}}
@@ -355,28 +355,22 @@
                            [idx (path-query path)]))
             parent-paths)}]))
 
-;; Currently this only queries one level of nesting at a time. It could be optimized further to query N levels at a time.
 (defn infer-schema [db table]
   (let [q! (fn [q]
              (:rows (:data (qp/process-query {:database (:id db)
                                               :type     "native"
                                               :native   {:collection (:name table)
                                                          :query      (json/generate-string q)}}))))
-        query-nested (fn query-nested [parent-paths]
-                       (let [fields (flatten (first (q! (nested-level-query parent-paths))))
-                             {object-fields     true
-                              non-object-fields false} (group-by #(= (:mostCommonType %) "object") fields)
-                             nested-fields (mapcat #(query-nested [(:path %)]) object-fields)]
-                         (if (seq object-fields)
-                           (concat non-object-fields nested-fields)
-                           fields)))
-        fields-from-root (flatten (q! (root-query 20)))
-        {object-fields     true
-         non-object-fields false} (group-by #(= (:mostCommonType %) "object") fields-from-root)]
-    (concat non-object-fields
-            (if (seq object-fields)
-              (query-nested (map #(vector (:path %)) object-fields))
-              nil))))
+        query-nested (fn query-nested [paths]
+                       (let [fields (flatten (first (q! (nested-level-query paths))))
+                             object-fields (filter #(= (:mostCommonType %) "object") fields)]
+                         (concat fields (when (seq object-fields)
+                                          (query-nested (map :path object-fields))))))
+        fields        (flatten (q! (root-query 0)))
+        object-fields (filter #(= (:mostCommonType %) "object") fields)]
+    (concat fields
+            (when (seq object-fields)
+              (query-nested (map :path object-fields))))))
 
 (defn type-alias->base-type [type-alias]
   ;; Mongo types from $type aggregation operation
