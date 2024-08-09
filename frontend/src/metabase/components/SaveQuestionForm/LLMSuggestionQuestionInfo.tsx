@@ -1,5 +1,6 @@
-import { useSaveQuestionContext } from "metabase/containers/SaveQuestionModal/context";
 import { PLUGIN_LLM_AUTODESCRIPTION } from "metabase/plugins";
+
+import { useSaveQuestionContext } from "./context";
 
 export const LLMSuggestionQuestionInfo = () => {
   const { initialValues, question, setValues, values } =

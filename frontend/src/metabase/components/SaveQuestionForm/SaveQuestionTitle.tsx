@@ -1,5 +1,5 @@
-import { useSaveQuestionContext } from "metabase/containers/SaveQuestionModal/context";
-import { getTitle } from "metabase/containers/SaveQuestionModal/util";
+import { useSaveQuestionContext } from "./context";
+import { getTitle } from "./util";
 
 export const SaveQuestionTitle = () => {
   const { question, showSaveType, multiStep } = useSaveQuestionContext();

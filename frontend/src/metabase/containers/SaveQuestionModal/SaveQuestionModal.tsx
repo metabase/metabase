@@ -1,10 +1,14 @@
-import { SaveQuestionForm } from "metabase/containers/SaveQuestionModal/SaveQuestionForm";
-import { SaveQuestionProvider } from "metabase/containers/SaveQuestionModal/context";
+import {
+  SaveQuestionForm,
+  LLMSuggestionQuestionInfo,
+  SaveQuestionTitle,
+} from "metabase/components/SaveQuestionForm";
+import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
+import type {
+  SaveQuestionFormProps,
+  SaveQuestionProps,
+} from "metabase/components/SaveQuestionForm/types";
 import { Flex, Modal } from "metabase/ui";
-
-import { LLMSuggestionQuestionInfo } from "./LLMSuggestionQuestionInfo";
-import { SaveQuestionTitle } from "./SaveQuestionTitle";
-import type { SaveQuestionModalProps, SaveQuestionProps } from "./types";
 
 export const SaveQuestionModal = ({
   initialCollectionId,
@@ -14,7 +18,7 @@ export const SaveQuestionModal = ({
   onSave,
   originalQuestion,
   question,
-}: SaveQuestionProps & SaveQuestionModalProps) => (
+}: SaveQuestionProps & SaveQuestionFormProps) => (
   <SaveQuestionProvider
     question={question}
     originalQuestion={originalQuestion}

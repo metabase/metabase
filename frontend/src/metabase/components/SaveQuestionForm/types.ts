@@ -11,8 +11,6 @@ export type SaveQuestionProps = {
   initialCollectionId?: CollectionId | null;
 };
 
-export type SaveQuestionModalProps = SaveQuestionFormProps;
-
 export type FormValues = {
   saveType: "overwrite" | "create";
   collection_id: CollectionId | null | undefined;

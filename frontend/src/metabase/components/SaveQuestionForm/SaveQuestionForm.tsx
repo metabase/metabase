@@ -2,9 +2,7 @@ import { TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
-import { useSaveQuestionContext } from "metabase/containers/SaveQuestionModal/context";
-import type { SaveQuestionFormProps } from "metabase/containers/SaveQuestionModal/types";
-import { getPlaceholder } from "metabase/containers/SaveQuestionModal/util";
+import { getPlaceholder } from "metabase/components/SaveQuestionForm/util";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -15,6 +13,9 @@ import FormTextArea from "metabase/core/components/FormTextArea";
 import CS from "metabase/css/core/index.css";
 import { Form } from "metabase/forms";
 import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
+
+import { useSaveQuestionContext } from "./context";
+import type { SaveQuestionFormProps } from "./types";
 
 export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
   const { question, originalQuestion, showSaveType, values } =

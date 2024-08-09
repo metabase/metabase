@@ -8,19 +8,14 @@ import {
 } from "react";
 
 import { useListCollectionsQuery } from "metabase/api";
-import { SAVE_QUESTION_SCHEMA } from "metabase/containers/SaveQuestionModal/schema";
-import type {
-  FormValues,
-  SaveQuestionProps,
-} from "metabase/containers/SaveQuestionModal/types";
-import {
-  getInitialValues,
-  submitQuestion,
-} from "metabase/containers/SaveQuestionModal/util";
 import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import type Question from "metabase-lib/v1/Question";
+
+import { SAVE_QUESTION_SCHEMA } from "./schema";
+import type { FormValues, SaveQuestionProps } from "./types";
+import { getInitialValues, submitQuestion } from "./util";
 
 type SaveQuestionContextType = {
   question: Question;
