@@ -191,6 +191,7 @@ export const databaseApi = Api.injectEndpoints({
 export const {
   useListDatabasesQuery,
   useGetDatabaseQuery,
+  useGetDatabaseMetadataQuery,
   useListDatabaseSchemasQuery,
   useListSyncableDatabaseSchemasQuery,
   useListDatabaseSchemaTablesQuery,
