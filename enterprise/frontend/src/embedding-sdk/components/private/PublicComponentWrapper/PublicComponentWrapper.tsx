@@ -1,4 +1,4 @@
-import type { JSX } from "react";
+import type { DetailedHTMLProps, HTMLAttributes, JSX } from "react";
 import { t } from "ttag";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
@@ -9,9 +9,10 @@ import { getLoginStatus } from "embedding-sdk/store/selectors";
 
 export const PublicComponentWrapper = ({
   children,
+  ...props
 }: {
   children: JSX.Element;
-}) => {
+} & DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>) => {
   const loginStatus = useSdkSelector(getLoginStatus);
 
   let content = children;
@@ -32,5 +33,9 @@ export const PublicComponentWrapper = ({
     content = <SdkError message={loginStatus.error.message} />;
   }
 
-  return <PublicComponentStylesWrapper>{content}</PublicComponentStylesWrapper>;
+  return (
+    <PublicComponentStylesWrapper {...props}>
+      {content}
+    </PublicComponentStylesWrapper>
+  );
 };

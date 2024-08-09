@@ -6,11 +6,10 @@ import { PaginationControls } from "metabase/components/PaginationControls";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
 import Search from "metabase/entities/search";
+import { isEmbeddingSdk } from "metabase/env";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
-import { useSelector } from "metabase/lib/redux";
 import { PLUGIN_MODERATION } from "metabase/plugins";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type {
   CollectionId,
   SearchRequest,
@@ -46,8 +45,6 @@ export function QuestionList({
   hasCollections,
   showOnlyPublicCollections,
 }: QuestionListProps) {
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
-
   const [queryOffset, setQueryOffset] = useState(0);
   const { handleNextPage, handlePreviousPage, page, setPage } = usePagination();
 

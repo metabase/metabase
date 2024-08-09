@@ -1,6 +1,9 @@
+import styled from "@emotion/styled";
+import type { CSSProperties } from "react";
+
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { PublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -12,20 +15,30 @@ import {
 } from "metabase/dashboard/components/DashboardHeader/DashboardHeaderButtonRow/constants";
 import { getIsEditing } from "metabase/dashboard/selectors";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
-import { Box } from "metabase/ui";
 
 import { EditableDashboardView } from "./EditableDashboardView";
 import { InteractiveDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
+const StyledPublicComponentWrapper = styled(PublicComponentWrapper)`
+  height: 100vh;
+  background: var(--mb-color-bg-dashboard);
+
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  align-items: stretch;
+`;
+
 type EditableDashboardProps = {
   questionHeight?: number;
   plugins?: SdkPluginsConfig;
   className?: string;
+  style?: CSSProperties;
 } & Omit<SdkDashboardDisplayProps, "withTitle" | "hiddenParameters"> &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
-const EditableDashboardInner = ({
+export const EditableDashboard = ({
   dashboardId,
   initialParameterValues = {},
   withDownloads = true,
@@ -34,6 +47,7 @@ const EditableDashboardInner = ({
   onLoad,
   onLoadWithoutCards,
   className,
+  style,
 }: EditableDashboardProps) => {
   const {
     ref,
@@ -65,13 +79,7 @@ const EditableDashboardInner = ({
     : SDK_DASHBOARD_VIEW_ACTIONS;
 
   return (
-    <Box
-      w="100%"
-      h="100%"
-      ref={ref}
-      bg="var(--mb-color-bg-dashboard)"
-      className={className}
-    >
+    <StyledPublicComponentWrapper className={className} style={style} ref={ref}>
       {adhocQuestionUrl ? (
         <InteractiveAdHocQuestion
           questionPath={adhocQuestionUrl}
@@ -101,10 +109,6 @@ const EditableDashboardInner = ({
           />
         </InteractiveDashboardProvider>
       )}
-    </Box>
+    </StyledPublicComponentWrapper>
   );
 };
-
-export const EditableDashboard = withPublicComponentWrapper(
-  EditableDashboardInner,
-);
