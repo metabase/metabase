@@ -80,7 +80,9 @@ export function AggregationPicker({
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(isExpressionEditorInitiallyOpen(query, stageIndex, clause));
+  ] = useToggle(
+    isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
+  );
   const [isComparing, setIsComparing] = useState(false);
 
   // For really simple inline expressions like Average([Price]),
@@ -365,7 +367,13 @@ function isExpressionEditorInitiallyOpen(
   query: Lib.Query,
   stageIndex: number,
   clause: Lib.AggregationClause | undefined,
+  operators: Lib.AggregationOperator[],
 ): boolean {
+  if (!clause) {
+    return false;
+  }
+
+  const initialOperator = getInitialOperator(query, stageIndex, operators);
   const isCustomExpression = initialOperator === null;
   const displayInfo = Lib.displayInfo(query, stageIndex, clause);
   const hasCustomName = Boolean(displayInfo?.isNamed);
