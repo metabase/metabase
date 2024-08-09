@@ -6,6 +6,7 @@ export interface PieRow {
   key: string;
   name: string;
   color: string;
+  defaultColor: boolean;
 }
 
 export interface PieColumnDescriptors {

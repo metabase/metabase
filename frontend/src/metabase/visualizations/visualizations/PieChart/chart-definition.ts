@@ -128,10 +128,27 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
             key: dimensionValue,
             name: dimensionValue, // TODO implement renaming
             color,
+            defaultColor: true,
           };
         });
       },
+      getProps: (_series, vizSettings, onChange) => ({
+        onChangeSeriesColor: (sliceKey: string, color: string) => {
+          const pieRows = vizSettings["pie.rows"];
+          if (pieRows == null) {
+            throw Error("Missing `pie.rows` setting");
+          }
 
+          onChange(
+            pieRows.map(row => {
+              if (row.key !== sliceKey) {
+                return row;
+              }
+              return { ...row, color, defaultColor: false };
+            }),
+          );
+        },
+      }),
       readDependencies: ["pie.dimension", "pie.metric", "pie.colors"],
     },
     ...metricSetting("pie.metric", {
