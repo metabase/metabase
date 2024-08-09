@@ -6,6 +6,7 @@ import {
   NODATA_USER_ID,
 } from "e2e/support/cypress_sample_instance_data";
 import {
+  assertQueryBuilderRowCount,
   restore,
   withDatabase,
   startNewQuestion,
@@ -159,6 +160,7 @@ describeEE("postgres > user > query", { tags: "@external" }, () => {
 
         cy.findByText(CC_NAME);
         cy.findByText(/^Hudson$/);
+        assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
       });
     });
   });

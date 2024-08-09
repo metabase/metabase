@@ -10,6 +10,7 @@ import {
 import {
   addTextBox,
   editDashboard,
+  assertQueryBuilderRowCount,
   getDashboardCard,
   openQuestionsSidebar,
   popover,
@@ -654,9 +655,9 @@ describeEE("issue 29076", () => {
       },
     });
     cy.sandboxTable({
-      table_id: PRODUCTS_ID,
+      table_id: ORDERS_ID,
       attribute_remappings: {
-        attr_uid: ["dimension", ["field", PRODUCTS.ID, null]],
+        attr_uid: ["dimension", ["field", ORDERS.ID, null]],
       },
     });
     cy.signInAsSandboxedUser();
@@ -665,11 +666,18 @@ describeEE("issue 29076", () => {
   it("should be able to drilldown to a saved question in a dashboard with sandboxing (metabase#29076)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     cy.wait("@cardQuery");
+    // test that user is sandboxed - normal users has over 2000 rows
+    cy.findByTestId("dashcard-container")
+      .should("exist")
+      .within(() => {
+        cy.get("tbody > tr").should("have.length", 1);
+      });
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Orders").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Visualization").should("be.visible");
+    assertQueryBuilderRowCount(1); // test that user is sandboxed - normal users has over 2000 rows
   });
 });
 
