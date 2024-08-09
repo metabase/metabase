@@ -334,6 +334,5 @@ serdes/meta:
   label: most_viewed_tables
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: vUNKNOWN (901f705)
 type: question

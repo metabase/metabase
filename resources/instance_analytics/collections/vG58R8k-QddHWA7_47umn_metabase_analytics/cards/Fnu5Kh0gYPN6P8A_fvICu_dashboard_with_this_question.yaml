@@ -112,6 +112,5 @@ serdes/meta:
   label: dashboard_with_this_question
   model: Card
 initially_published_at: null
-last_used_at: null
 metabase_version: null
 type: question
