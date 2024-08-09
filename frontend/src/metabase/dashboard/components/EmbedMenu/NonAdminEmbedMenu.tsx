@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import type { EmbedMenuProps } from "metabase/dashboard/components/EmbedMenu/types";
 import {
   DashboardPublicLinkPopover,
@@ -9,6 +8,7 @@ import {
 } from "metabase/dashboard/components/PublicLinkPopover";
 import { useSelector } from "metabase/lib/redux";
 import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
+import { ViewFooterSharingButton } from "metabase/query_builder/components/view/ViewFooterSharingButton";
 import { getSetting } from "metabase/selectors/settings";
 
 export const NonAdminEmbedMenu = ({
@@ -37,9 +37,7 @@ export const NonAdminEmbedMenu = ({
         tooltip={isDisabled ? tooltipLabel : null}
       />
     ) : (
-      <ViewFooterButton
-        data-testid="resource-embed-button"
-        icon="share"
+      <ViewFooterSharingButton
         onClick={() => setIsOpen(!isOpen)}
         disabled={isDisabled}
         tooltipLabel={isDisabled ? tooltipLabel : null}

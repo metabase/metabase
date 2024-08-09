@@ -7,18 +7,23 @@ import {
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
 
-export const ViewFooterSharingButton = ({
-  onClick,
-}: Pick<ViewFooterButtonProps, "onClick">) => {
+export const ViewFooterSharingButton = (
+  viewFooterButtonProps: Omit<ViewFooterButtonProps, "icon" | "data-testid">,
+) => {
   const isPublicSharingEnabled = useSelector(state =>
     getSetting(state, "enable-public-sharing"),
   );
 
+  const tooltipLabel =
+    viewFooterButtonProps.tooltipLabel ??
+    (isPublicSharingEnabled ? t`Sharing` : t`Embedding`);
+
   return (
     <ViewFooterButton
       icon="share"
-      tooltipLabel={isPublicSharingEnabled ? t`Sharing` : t`Embedding`}
-      onClick={onClick}
+      data-testid="resource-embed-button"
+      tooltipLabel={tooltipLabel}
+      {...viewFooterButtonProps}
     />
   );
 };
