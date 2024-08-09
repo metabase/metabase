@@ -24,6 +24,7 @@ import type { ChartMeasurements } from "../chart-measurements/types";
 import { getBarSeriesDataLabelKey } from "../model/util";
 
 import { getGoalLineSeriesOption } from "./goal-line";
+import { getTooltipOption } from "./tooltip";
 import { getTrendLinesOption } from "./trend-line";
 
 export const getSharedEChartsOptions = (isAnimated: boolean) => ({
@@ -134,5 +135,6 @@ export const getCartesianChartOption = (
       hoveredSeriesDataKey,
       renderingContext,
     ),
+    tooltip: getTooltipOption(chartModel, settings),
   };
 };

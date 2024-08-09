@@ -13,6 +13,7 @@ import type { ScatterPlotModel } from "../../model/types";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
 import { getGoalLineSeriesOption } from "../../option/goal-line";
+import { getTooltipOption } from "../../option/tooltip";
 import { getTrendLinesOption } from "../../option/trend-line";
 import type { EChartsSeriesOption } from "../../option/types";
 import { getSeriesYAxisIndex } from "../../option/utils";
@@ -107,5 +108,6 @@ export function getScatterPlotOption(
       null,
       renderingContext,
     ),
+    tooltip: getTooltipOption(chartModel, settings, false, false),
   };
 }

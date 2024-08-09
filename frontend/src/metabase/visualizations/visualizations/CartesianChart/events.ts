@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
@@ -8,6 +9,19 @@ import {
   parseTimestamp,
 } from "metabase/lib/time-dayjs";
 import { checkNumber, isNotNull } from "metabase/lib/types";
+import { formatPercent } from "metabase/static-viz/lib/numbers";
+import type {
+  EChartsTooltipModel,
+  EChartsTooltipRow,
+} from "metabase/visualizations/components/ChartTooltip/EChartsTooltip";
+import { getRowFromDataPoint } from "metabase/visualizations/components/ChartTooltip/KeyValuePairChartTooltip/KeyValuePairChartTooltip";
+import {
+  getPercent,
+  getSortedRows,
+  getTotalValue,
+  groupExcessiveTooltipRows,
+} from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
+import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
 import {
   ORIGINAL_INDEX_DATA_KEY,
   X_AXIS_DATA_KEY,
@@ -24,8 +38,10 @@ import type {
   Datum,
   DimensionModel,
   SeriesModel,
+  StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import type { TimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/types";
+import { getMarkerColorClass } from "metabase/visualizations/echarts/tooltip";
 import type {
   EChartsSeriesMouseEvent,
   EChartsSeriesBrushEndEvent,
@@ -36,13 +52,11 @@ import {
   isRemappedToString,
 } from "metabase/visualizations/lib/renderer_utils";
 import { dimensionIsTimeseries } from "metabase/visualizations/lib/timeseries";
-import { formatValueForTooltip } from "metabase/visualizations/lib/tooltip";
 import { getFriendlyName } from "metabase/visualizations/lib/utils";
 import type {
   ComputedVisualizationSettings,
   DataPoint,
   OnChangeCardAndRun,
-  TooltipRowModel,
 } from "metabase/visualizations/types";
 import type { ClickObject, ClickObjectDimension } from "metabase-lib";
 import * as Lib from "metabase-lib";
@@ -55,8 +69,6 @@ import type {
   TimelineEvent,
   TimelineEventId,
 } from "metabase-types/api";
-
-import { DATETIME_ABSOLUTE_UNIT_COMPARISON } from "./constants";
 
 export const parseDataKey = (dataKey: DataKey) => {
   let cardId: Nullable<CardId> = null;
@@ -191,18 +203,13 @@ const getEventColumnsData = (
   return dataPoints;
 };
 
-const getTooltipFooterData = (
+const computeDiffWithPreviousPeriod = (
   chartModel: BaseCartesianChartModel,
-  display: string,
   seriesIndex: number,
   dataIndex: number,
-): DataPoint[] => {
-  if (
-    display === "scatter" ||
-    display === "waterfall" ||
-    !isTimeSeriesAxis(chartModel.xAxisModel)
-  ) {
-    return [];
+): string | null => {
+  if (!isTimeSeriesAxis(chartModel.xAxisModel)) {
+    return null;
   }
 
   const datum = chartModel.dataset[dataIndex];
@@ -214,7 +221,7 @@ const getTooltipFooterData = (
     chartModel.dataset[dataIndex - 1]?.[seriesModel.dataKey];
 
   if (previousValue == null) {
-    return [];
+    return null;
   }
   const previousDate = parseTimestamp(
     chartModel.dataset[dataIndex - 1][X_AXIS_DATA_KEY],
@@ -246,84 +253,12 @@ const getTooltipFooterData = (
   }
 
   if (!isOneIntervalAgo) {
-    return [];
+    return null;
   }
 
   const change = computeChange(previousValue, currentValue);
 
-  return [
-    {
-      key: DATETIME_ABSOLUTE_UNIT_COMPARISON[unit],
-      col: seriesModel.column,
-      value: formatChangeWithSign(change),
-    },
-  ];
-};
-
-const getStackedTooltipModel = (
-  chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
-  seriesIndex: number,
-  dataIndex: number,
-) => {
-  const hoveredSeries = chartModel.seriesModels[seriesIndex];
-  const seriesStack = chartModel.stackModels.find(stackModel =>
-    stackModel.seriesKeys.includes(hoveredSeries.dataKey),
-  );
-
-  if (!seriesStack) {
-    return undefined;
-  }
-
-  const column =
-    chartModel.leftAxisModel?.column ?? chartModel.rightAxisModel?.column;
-
-  const formatter = (value: unknown) =>
-    String(
-      formatValueForTooltip({
-        value,
-        settings,
-        column,
-      }),
-    );
-
-  const rows: (TooltipRowModel & { dataKey: DataKey })[] =
-    chartModel.seriesModels
-      .filter(seriesModel =>
-        seriesStack?.seriesKeys.includes(seriesModel.dataKey),
-      )
-      .map(seriesModel => {
-        return {
-          dataKey: seriesModel.dataKey,
-          name: seriesModel.name,
-          color: seriesModel.color,
-          value: chartModel.dataset[dataIndex][seriesModel.dataKey],
-          formatter,
-        };
-      });
-  const [headerRows, bodyRows] = _.partition(
-    rows,
-    row => row.dataKey === hoveredSeries.dataKey,
-  );
-
-  const dimensionValue = chartModel.dataset[dataIndex][X_AXIS_DATA_KEY];
-
-  const headerTitle = String(
-    formatValueForTooltip({
-      value: dimensionValue,
-      column: chartModel.dimensionModel.column,
-      settings,
-    }),
-  );
-
-  return {
-    headerTitle,
-    headerRows,
-    bodyRows: bodyRows.filter(row => row.value != null),
-    totalFormatter: formatter,
-    showTotal: true,
-    showPercentages: true,
-  };
+  return formatChangeWithSign(change);
 };
 
 export const canBrush = (
@@ -359,28 +294,8 @@ function getDataIndex(
   return originalDataIndex ?? echartsDataIndex;
 }
 
-const CIRCLE_PATH = "M1 0A1 1 0 1 1 1 -0.0001";
-
-// HACK: Native events may wrongly have the entire series path or the entire svg as target when hovering a single datum
-const isValidDatumElement = (
-  element: SVGElement | undefined,
-  seriesType: string,
-) => {
-  if (element?.nodeName === "svg") {
-    return false;
-  }
-
-  if (seriesType !== "line") {
-    return true;
-  }
-
-  return element?.getAttribute("d") === CIRCLE_PATH;
-};
-
-export const getSeriesHoverData = (
+export const getSeriesHovered = (
   chartModel: BaseCartesianChartModel,
-  settings: ComputedVisualizationSettings,
-  display: string,
   event: EChartsSeriesMouseEvent,
 ) => {
   const { dataIndex: echartsDataIndex, seriesId } = event;
@@ -394,37 +309,258 @@ export const getSeriesHoverData = (
     return;
   }
 
-  const target = event.event.event.target as SVGElement | undefined;
+  return {
+    index: seriesIndex,
+    datumIndex: dataIndex,
+  };
+};
 
-  // TODO: For some reason ECharts sometimes trigger series mouse move element with the root SVG as target
-  // Find a better fix
-  if (!isValidDatumElement(target, event.seriesType)) {
+export const getSeriesHoverData = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  echartsDataIndex: number,
+  seriesId: DataKey,
+) => {
+  const dataIndex = getDataIndex(
+    chartModel.transformedDataset,
+    echartsDataIndex,
+  );
+  const seriesIndex = findSeriesModelIndexById(chartModel, seriesId);
+
+  if (seriesIndex < 0 || dataIndex == null) {
     return;
   }
-
-  const data = getEventColumnsData(chartModel, seriesIndex, dataIndex);
-  const footerData = getTooltipFooterData(
-    chartModel,
-    display,
-    seriesIndex,
-    dataIndex,
-  );
-
-  const stackedTooltipModel =
-    settings["graph.tooltip_type"] === "series_comparison"
-      ? getStackedTooltipModel(chartModel, settings, seriesIndex, dataIndex)
-      : undefined;
 
   return {
     settings,
     isAlreadyScaled: true,
     index: seriesIndex,
     datumIndex: dataIndex,
-    event: event.event.event,
-    element: target,
-    data,
-    footerData,
-    stackedTooltipModel,
+  };
+};
+
+export const getTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  echartsDataIndex: number,
+  seriesDataKey: DataKey,
+  showMarkers: boolean,
+  showPreviousValueComparison: boolean,
+): EChartsTooltipModel | null => {
+  const dataIndex = getDataIndex(
+    chartModel.transformedDataset,
+    echartsDataIndex,
+  );
+
+  if (dataIndex == null) {
+    return null;
+  }
+  const datum = chartModel.dataset[dataIndex];
+  const seriesIndex = chartModel.seriesModels.findIndex(
+    seriesModel => seriesModel.dataKey === seriesDataKey,
+  );
+  const hoveredSeries = chartModel.seriesModels[seriesIndex];
+  const seriesStack = chartModel.stackModels.find(stackModel =>
+    stackModel.seriesKeys.includes(hoveredSeries.dataKey),
+  );
+
+  const shouldShowAllColumnValuesTooltip =
+    settings["graph.tooltip_type"] === "default";
+  if (shouldShowAllColumnValuesTooltip) {
+    return getAllColumnsTooltipModel(
+      chartModel,
+      settings,
+      dataIndex,
+      seriesDataKey,
+    );
+  }
+
+  const shouldShowStackedTooltip = seriesStack != null;
+  if (shouldShowStackedTooltip) {
+    return getStackedTooltipModel(
+      chartModel,
+      settings,
+      seriesStack,
+      seriesDataKey,
+      dataIndex,
+      datum,
+    );
+  }
+
+  return getSeriesOnlyTooltipModel(
+    chartModel,
+    settings,
+    datum,
+    dataIndex,
+    seriesDataKey,
+    showMarkers,
+    showPreviousValueComparison,
+  );
+};
+
+const getAllColumnsTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  dataIndex: number,
+  seriesDataKey: DataKey,
+): EChartsTooltipModel | null => {
+  const seriesIndex = findSeriesModelIndexById(chartModel, seriesDataKey);
+  const rows = getEventColumnsData(chartModel, seriesIndex, dataIndex)
+    .map(getRowFromDataPoint)
+    .map(dataPoint => {
+      return {
+        name: dataPoint.key,
+        values: [
+          formatValueForTooltip({
+            value: dataPoint.value,
+            column: dataPoint.col,
+            settings,
+          }),
+        ],
+      };
+    });
+
+  return {
+    rows,
+  };
+};
+
+export const getSeriesOnlyTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  datum: Datum,
+  dataIndex: number,
+  seriesDataKey: DataKey,
+  showMarkers: boolean,
+  showPreviousValueComparison: boolean,
+): EChartsTooltipModel | null => {
+  const header = String(
+    formatValueForTooltip({
+      value: datum[X_AXIS_DATA_KEY],
+      column: chartModel.dimensionModel.column,
+      settings,
+    }),
+  );
+
+  const rows: EChartsTooltipRow[] = chartModel.seriesModels.map(
+    (seriesModel, seriesIndex) => {
+      const prevValue = computeDiffWithPreviousPeriod(
+        chartModel,
+        seriesIndex,
+        dataIndex,
+      );
+      return {
+        isFocused:
+          chartModel.seriesModels.length > 1 &&
+          seriesModel.dataKey === seriesDataKey,
+        name: seriesModel.name,
+        markerColorClass: showMarkers
+          ? getMarkerColorClass(seriesModel.color)
+          : undefined,
+        values: [
+          formatValueForTooltip({
+            value: datum[seriesModel.dataKey],
+            column: seriesModel.column,
+            settings,
+            isAlreadyScaled: true,
+          }),
+          ...(showPreviousValueComparison ? [prevValue] : []),
+        ],
+      };
+    },
+  );
+
+  if (settings["legend.is_reversed"]) {
+    rows.reverse();
+  }
+
+  return {
+    header,
+    rows,
+  };
+};
+
+const MAX_STAKCED_TOOLTIP_ROWS = 8;
+
+export const getStackedTooltipModel = (
+  chartModel: BaseCartesianChartModel,
+  settings: ComputedVisualizationSettings,
+  seriesStack: StackModel,
+  seriesDataKey: DataKey,
+  dataIndex: number,
+  datum: Datum,
+): EChartsTooltipModel | null => {
+  const stackSeriesRows = getSortedRows(
+    chartModel.seriesModels
+      .filter(seriesModel =>
+        seriesStack?.seriesKeys.includes(seriesModel.dataKey),
+      )
+      .map(seriesModel => {
+        return {
+          name: seriesModel.name,
+          color: seriesModel.color,
+          value: chartModel.dataset[dataIndex][seriesModel.dataKey],
+          dataKey: seriesModel.dataKey,
+        };
+      }),
+  );
+
+  const [[topRow], restRows] = _.partition(
+    stackSeriesRows,
+    row => row.dataKey === seriesDataKey,
+  );
+
+  const formatter = (value: unknown) =>
+    String(
+      formatValueForTooltip({
+        value,
+        settings,
+        column:
+          chartModel.leftAxisModel?.column ?? chartModel.rightAxisModel?.column,
+      }),
+    );
+
+  const rowsTotal = getTotalValue([topRow], restRows);
+  const isShowingTotalSensible = stackSeriesRows.length > 1;
+  const groupedRows = groupExcessiveTooltipRows(
+    restRows,
+    MAX_STAKCED_TOOLTIP_ROWS,
+  );
+
+  const header = String(
+    formatValueForTooltip({
+      value: datum[X_AXIS_DATA_KEY],
+      column: chartModel.dimensionModel.column,
+      settings,
+    }),
+  );
+
+  const formattedTooltipRows: EChartsTooltipRow[] = [
+    topRow,
+    ...groupedRows.filter(row => row.value != null),
+  ].map(tooltipRow => {
+    return {
+      name: tooltipRow.name,
+      markerColorClass: tooltipRow.color
+        ? getMarkerColorClass(tooltipRow.color)
+        : undefined,
+      values: [
+        formatter(tooltipRow.value),
+        formatPercent(getPercent(rowsTotal, tooltipRow.value) ?? 0),
+      ],
+    };
+  });
+
+  return {
+    header,
+    rows: formattedTooltipRows,
+    footer: isShowingTotalSensible
+      ? {
+          name: t`Total`,
+          values: [formatter(rowsTotal), "100%"],
+          markerSymbol: "=",
+        }
+      : undefined,
   };
 };
 

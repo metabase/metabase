@@ -23,7 +23,7 @@ import {
   getBrushData,
   getGoalLineHoverData,
   getSeriesClickData,
-  getSeriesHoverData,
+  getSeriesHovered,
   getTimelineEventsForEvent,
   getTimelineEventsHoverData,
   hasSelectedTimelineEvents,
@@ -103,22 +103,8 @@ export const useChartEvents = (
             return;
           }
 
-          const hoveredData = getSeriesHoverData(
-            chartModel,
-            settings,
-            rawSeries[0].card.display,
-            event,
-          );
-
-          const isSameDatumHovered =
-            hoveredData?.index === hovered?.index &&
-            hoveredData?.datumIndex === hovered?.datumIndex;
-
-          if (isSameDatumHovered) {
-            return;
-          }
-
-          onHoverChange?.(hoveredData);
+          const hoveredObject = getSeriesHovered(chartModel, event);
+          onHoverChange?.(hoveredObject);
         },
       },
       {
@@ -186,7 +172,6 @@ export const useChartEvents = (
       onOpenQuestion,
       rawSeries,
       metadata,
-      hovered,
       selectedTimelineEventIds,
       settings,
       timelineEventsModel,
