@@ -377,7 +377,7 @@
     (extract-one model opts instance)
     (catch Exception e
       (when-not (or (:skip (ex-data e))
-                    (:skip-errors opts))
+                    (:continue-on-error opts))
         (throw (ex-info (format "Exception extracting %s %s" model (:id instance))
                         {:model     model
                          :id        (:id instance)

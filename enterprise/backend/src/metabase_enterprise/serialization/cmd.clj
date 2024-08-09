@@ -87,7 +87,7 @@
   [path :- :string
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]
-            [:skip-errors {:optional true} [:maybe :boolean]]]
+            [:continue-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?
              require-initialized-db?]
@@ -113,7 +113,7 @@
   [path :- :string
    opts :- [:map
             [:backfill? {:optional true} [:maybe :boolean]]
-            [:skip-errors {:optional true} [:maybe :int]]]]
+            [:continue-on-error {:optional true} [:maybe :int]]]]
   (let [start    (System/nanoTime)
         err      (atom nil)
         report   (try

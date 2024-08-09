@@ -187,7 +187,7 @@
 
 (defn ^:command ^:requires-init import
   {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
-   :arg-spec [[nil  "--skip-errors" "Do not break execution on errors."]]}
+   :arg-spec [["-e" "--continue-on-error" "Do not break execution on errors."]]}
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load! path (get-parsed-options #'import options)))
 
@@ -219,7 +219,7 @@
               ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]
               ["-f" "--include-field-values"     "Include field values along with field metadata."]
               ["-s" "--include-database-secrets" "Include database connection details (in plain text; use caution)."]
-              [nil  "--skip-errors"              "Do not break execution on errors."]]}
+              ["-e" "--continue-on-error"        "Do not break execution on errors."]]}
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump! path (get-parsed-options #'export options)))
 

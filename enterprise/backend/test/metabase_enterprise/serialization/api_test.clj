@@ -217,7 +217,7 @@
                       (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
                                                       {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                       {:file ba}
-                                                      :skip_errors true)
+                                                      :continue_on_error true)
                             log (slurp (io/input-stream res))]
                         (testing "3 header lines, then card+database+coll, error, then dashboard+coll"
                           (is (= #{"Dashboard" "Card" "Database" "Collection"}
@@ -264,7 +264,7 @@
                   (testing "Skipping errors /api/ee/serialization/export"
                     (let [res (-> (mt/user-http-request :crowberto :post 200 "ee/serialization/export"
                                                         :collection (:id coll) :data_model false :settings false
-                                                        :skip_errors true)
+                                                        :continue_on_error true)
                                   ;; consume response to remove on-disk data
                                   io/input-stream)]
                       (with-open [tar (open-tar res)]

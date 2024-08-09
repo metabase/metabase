@@ -32,8 +32,8 @@
        (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {})
               (cmd/import "/path/"))))
      (testing "with options"
-       (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {:skip-errors true})
-              (cmd/import "/path/" "--skip-errors")))))))
+       (is (= '(metabase-enterprise.serialization.cmd/v2-load! "/path/" {:continue-on-error true})
+              (cmd/import "/path/" "--continue-on-error")))))))
 
 (deftest dump-command-test
   (do-with-captured-call-enterprise-calls!
@@ -74,5 +74,8 @@
        ["--no-data-model"]
        {:no-data-model true}
 
-       ["--skip-errors"]
-       {:skip-errors true}))))
+       ["--continue-on-error"]
+       {:continue-on-error true}
+
+       ["-e"]
+       {:continue-on-error true}))))

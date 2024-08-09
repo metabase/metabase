@@ -1180,7 +1180,7 @@
           (is (= (:id dash1)
                  (t2/select-one-fn select-target DashboardCard :entity_id (:entity_id dc3)))))))))
 
-(deftest skip-errors-test
+(deftest continue-on-error-test
   (let [change-ser    (fn [ser changes]
                         (vec (for [entity ser
                                    :let   [change (get changes (:entity_id entity))]]
@@ -1205,9 +1205,9 @@
                                                  (extract-one model-name opts instance)))]
               (is (logs-contain? #"Skipping Card \d+ because of an error extracting it"
                                  (mt/with-log-messages-for-level ['metabase.models.serialization :warn]
-                                   (let [ser            (vec (serdes.extract/extract {:no-settings   true
-                                                                                      :no-data-model true
-                                                                                      :skip-errors   true}))
+                                   (let [ser            (vec (serdes.extract/extract {:no-settings       true
+                                                                                      :no-data-model     true
+                                                                                      :continue-on-error true}))
                                          {errors true
                                           others false} (group-by #(instance? Exception %) ser)]
                                      (is (= 1 (count errors)))
@@ -1218,6 +1218,6 @@
                 changed (change-ser ser {(:entity_id c2) {:collection_id "does-not-exist"}})]
             (is (logs-contain? #"Skipping deserialization error"
                                (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                                 (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:skip-errors true})]
+                                 (let [report (serdes.load/load-metabase! (ingestion-in-memory changed) {:continue-on-error true})]
                                    (is (= 1 (count (:errors report))))
                                    (is (= 3 (count (:seen report))))))))))))))
