@@ -393,7 +393,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
   });
 });
 
-function assertOrdersExport(length, dismissStatus = true) {
+function assertOrdersExport(length) {
   downloadAndAssert(
     {
       fileType: "xlsx",
@@ -401,7 +401,6 @@ function assertOrdersExport(length, dismissStatus = true) {
       dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
       dashboardId: ORDERS_DASHBOARD_ID,
       isDashboard: true,
-      dismissStatus,
     },
     sheet => {
       expect(sheet["A1"].v).to.eq("ID");
