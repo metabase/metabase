@@ -77,9 +77,9 @@ export function NotebookDataPicker({
 
     if (isCtrlOrMetaClick) {
       const url = getUrl({ query, table, stageIndex });
-      const safeUrl = Urls.getSubpathSafeUrl(url);
+      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
-      Urls.openInNewTab(safeUrl);
+      Urls.openInNewTab(subpathSafeUrl);
     } else {
       setIsOpen(true);
     }
@@ -90,9 +90,9 @@ export function NotebookDataPicker({
 
     if (isMiddleClick) {
       const url = getUrl({ query, table, stageIndex });
-      const safeUrl = Urls.getSubpathSafeUrl(url);
+      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
-      Urls.openInNewTab(safeUrl);
+      Urls.openInNewTab(subpathSafeUrl);
     } else {
       setIsOpen(true);
     }
