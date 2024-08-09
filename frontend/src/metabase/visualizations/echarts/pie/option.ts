@@ -40,13 +40,21 @@ function getTotalGraphicOption(
   const hasSufficientWidth = outerRadius * 2 >= DIMENSIONS.total.minWidth;
 
   if (hasSufficientWidth && settings["pie.show_total"]) {
+    const sliceValueOrTotal =
+      hoveredIndex != null
+        ? chartModel.slices[hoveredIndex].data.displayValue
+        : chartModel.total;
+
+    const valueWillOverflow =
+      renderingContext.measureText(formatters.formatMetric(sliceValueOrTotal), {
+        size: DIMENSIONS.total.valueFontSize,
+        family: renderingContext.fontFamily,
+        weight: DIMENSIONS.total.fontWeight,
+      }) > outerRadius; // innerRadius technically makes more sense, but looks too narrow in practice
+
     valueText = truncateText(
-      formatters.formatMetric(
-        hoveredIndex != null
-          ? chartModel.slices[hoveredIndex].data.displayValue
-          : chartModel.total,
-      ),
-      outerRadius, // innerRadius technically makes more sense, but looks too narrow in practice
+      formatters.formatMetric(sliceValueOrTotal, valueWillOverflow),
+      outerRadius,
       DIMENSIONS.total.valueFontSize,
     );
     labelText = truncateText(

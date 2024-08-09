@@ -24,7 +24,9 @@ describe("Transform Embedding Theme Override", () => {
       colors: {
         brand: expect.arrayContaining(["hotpink"]),
         "text-dark": expect.arrayContaining(["yellow"]),
+        "text-primary": expect.arrayContaining(["yellow"]),
         "text-light": expect.arrayContaining(["green"]),
+        "text-tertiary": expect.arrayContaining(["green"]),
       },
       other: {
         fontSize: "2rem",

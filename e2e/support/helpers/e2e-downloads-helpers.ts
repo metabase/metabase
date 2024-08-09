@@ -23,6 +23,7 @@ interface DownloadAndAssertParams {
   publicUuid?: string;
   dashboardId?: number;
   enableFormatting?: boolean;
+  dismissStatus?: boolean;
 }
 
 /**
@@ -42,6 +43,7 @@ export function downloadAndAssert(
     downloadMethod = "POST",
     isDashboard,
     enableFormatting = true,
+    dismissStatus = true,
   }: DownloadAndAssertParams,
   callback: (data: unknown) => void,
 ) {
@@ -97,6 +99,10 @@ export function downloadAndAssert(
       fileType === "xlsx" && Object.assign(req, { encoding: "binary" });
 
       cy.request(req).then(({ body }) => {
+        if (dismissStatus) {
+          dismissDownloadStatus();
+        }
+
         const { SheetNames, Sheets } = xlsx.read(body, {
           // See the full list of Parsing options: https://github.com/SheetJS/sheetjs#parsing-options
           type: "binary",
@@ -128,6 +134,7 @@ type GetEndPointParams = Pick<
   DownloadAndAssertParams,
   "fileType" | "questionId" | "publicUuid" | "dashcardId" | "dashboardId"
 >;
+
 function getEndpoint({
   fileType,
   questionId,
@@ -171,7 +178,8 @@ export function dismissDownloadStatus() {
   cy.findByTestId("status-root-container").within(() => {
     cy.findByRole("status").within(() => {
       cy.findAllByText("Download completed");
-      cy.findByLabelText("Dismiss").click();
+      cy.findByLabelText("Dismiss").as("dismissButton");
+      cy.get("@dismissButton").click();
     });
 
     cy.findByRole("status").should("not.exist");
