@@ -108,7 +108,7 @@ function getParameterPanelBackgroundColor(
   isSticky: boolean,
 ) {
   if (theme === "night") {
-    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-background)  ${
+    return `color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-bg-dashboard)  ${
       isSticky ? 15 : 100
     }%)`;
   }
@@ -119,7 +119,7 @@ function getParameterPanelBackgroundColor(
     }%)`;
   }
 
-  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-background)  ${
+  return `color-mix(in srgb, var(--mb-color-bg-white), var(--mb-color-bg-dashboard)  ${
     isSticky ? 15 : 100
   }%)`;
 }
