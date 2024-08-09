@@ -15,8 +15,6 @@ import type {
 } from "metabase/containers/SaveQuestionModal/types";
 import {
   getInitialValues,
-  getPlaceholder,
-  getTitle,
   submitQuestion,
 } from "metabase/containers/SaveQuestionModal/util";
 import { FormProvider } from "metabase/forms";
@@ -27,13 +25,12 @@ import type Question from "metabase-lib/v1/Question";
 type SaveQuestionContextType = {
   question: Question;
   originalQuestion: Question | null;
-  title: string;
-  nameInputPlaceholder: string;
   initialValues: FormValues;
   handleSubmit: (details: FormValues) => Promise<void>;
   values: FormValues;
   setValues: (values: FormValues) => void;
   showSaveType: boolean;
+  multiStep: boolean;
 };
 
 export const SaveQuestionContext =
@@ -44,7 +41,7 @@ export const SaveQuestionProvider = ({
   originalQuestion: latestOriginalQuestion,
   onCreate,
   onSave,
-  multiStep,
+  multiStep = false,
   initialCollectionId,
   children,
 }: PropsWithChildren<SaveQuestionProps>) => {
@@ -78,10 +75,6 @@ export const SaveQuestionProvider = ({
     originalQuestion != null &&
     originalQuestion.canWrite();
 
-  const cardType = question.type();
-  const title = getTitle(cardType, showSaveType, multiStep);
-  const nameInputPlaceholder = getPlaceholder(cardType);
-
   return (
     <FormProvider
       initialValues={{ ...initialValues }}
@@ -94,13 +87,12 @@ export const SaveQuestionProvider = ({
           value={{
             question,
             originalQuestion,
-            title,
-            nameInputPlaceholder,
             initialValues,
             handleSubmit,
             values,
             setValues,
             showSaveType,
+            multiStep,
           }}
         >
           {children}

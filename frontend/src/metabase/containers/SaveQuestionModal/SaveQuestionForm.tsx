@@ -4,6 +4,7 @@ import { t } from "ttag";
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
 import { useSaveQuestionContext } from "metabase/containers/SaveQuestionModal/context";
 import type { SaveQuestionFormProps } from "metabase/containers/SaveQuestionModal/types";
+import { getPlaceholder } from "metabase/containers/SaveQuestionModal/util";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -16,8 +17,10 @@ import { Form } from "metabase/forms";
 import { DEFAULT_MODAL_Z_INDEX } from "metabase/ui";
 
 export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
-  const { nameInputPlaceholder, originalQuestion, showSaveType, values } =
+  const { question, originalQuestion, showSaveType, values } =
     useSaveQuestionContext();
+
+  const nameInputPlaceholder = getPlaceholder(question.type());
 
   return (
     <Form>
