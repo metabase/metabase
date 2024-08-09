@@ -171,3 +171,15 @@
   (is (= 1.0 (insights/change -1 -2)))
   (is (= nil (insights/change -1 0)))
   (is (= 1.0 (insights/change 0 -1))))
+
+(deftest insights-with-custom-epxression-columns-test
+  (testing "If valid timeseries columns exist, insights should be computed even with custom expressions. (#46244)"
+    (is (some?
+         (transduce identity
+                    (insights/insights [{:base_type :type/DateTime}
+                                        {:base_type :type/Number}
+                                        ;; Any column with a base type that is not number or temporal previously
+                                        ;; prevented timeseries insights from being calculated
+                                        {:base_type :type/Text}])
+                    [["2024-08-09" 10.0 "weekday"]
+                     ["2024-08-10" 20.0 "weekend"]])))))

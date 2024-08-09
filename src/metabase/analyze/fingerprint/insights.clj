@@ -188,7 +188,7 @@
         x-position (:position datetime)
         xfn        #(some-> %
                             (nth x-position)
-                            ;; at this point in the pipeline, dates are still stings
+                            ;; at this point in the pipeline, dates are still strings
                             fingerprinters/->temporal
                             ->millis-from-epoch
                             ms->day)]
