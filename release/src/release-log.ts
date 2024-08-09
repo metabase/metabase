@@ -4,8 +4,6 @@ import { $ } from 'zx';
 
 import { issueNumberRegex } from './linked-issues';
 
-const NUM_COMMITS = 200;
-
 type CommitInfo = {
   version: string,
   message: string,
@@ -16,15 +14,14 @@ type CommitInfo = {
 const tablePageTemplate = fs.readFileSync('./src/tablePageTemplate.html', 'utf8');
 
 export async function gitLog(majorVersion: number) {
-  const { stdout } = await $`git log origin/release-x.${majorVersion}.x --pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah' -n ${NUM_COMMITS}`;
+  const { stdout } = await $`git log origin/release-x.${majorVersion}.x ..v1.${majorVersion}.0-RC1 --pretty='format:%(decorate:prefix=,suffix=)||%s||%H||%ah'`;
   const processedCommits = stdout.split('\n').map(processCommit);
-
   return buildTable(processedCommits, majorVersion);
 }
 
 function processCommit(commitLine: string): CommitInfo {
   const [refs, message, hash, date] = commitLine.split('||');
-  const version = refs?.match(/(v[\d\.-RCrc]+)/)?.[1] ?? '';
+  const version = refs?.match(/(v[\d\.\-RCrc]+)/)?.[1] ?? '';
 
   return { version, message, hash, date};
 }
