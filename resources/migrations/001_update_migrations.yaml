@@ -8080,7 +8080,6 @@ databaseChangeLog:
       id: v50.2024-07-09T20:04:02
       author: calherries
       comment: Add not null constraint for report_card.last_used_at
-      preConditions:
       changes:
         - addNotNullConstraint:
             tableName: report_card
@@ -8092,7 +8091,6 @@ databaseChangeLog:
       id: v50.2024-07-09T20:04:03
       author: calherries
       comment: Set default for report_card.last_used_at
-      preConditions:
       changes:
         - sql:
             dbms: postgresql,h2
