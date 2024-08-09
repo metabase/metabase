@@ -9,6 +9,7 @@ import {
 import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
@@ -18,7 +19,7 @@ import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell } from "../NotebookCell";
 
-import { getUrl, openInNewTab } from "./utils";
+import { getUrl } from "./utils";
 
 interface NotebookDataPickerProps {
   title: string;
@@ -76,8 +77,9 @@ export function NotebookDataPicker({
 
     if (isCtrlOrMetaClick) {
       const url = getUrl({ query, table, stageIndex });
+      const safeUrl = Urls.getSubpathSafeUrl(url);
 
-      openInNewTab(url);
+      Urls.openInNewTab(safeUrl);
     } else {
       setIsOpen(true);
     }
@@ -88,8 +90,9 @@ export function NotebookDataPicker({
 
     if (isMiddleClick) {
       const url = getUrl({ query, table, stageIndex });
+      const safeUrl = Urls.getSubpathSafeUrl(url);
 
-      openInNewTab(url);
+      Urls.openInNewTab(safeUrl);
     } else {
       setIsOpen(true);
     }
