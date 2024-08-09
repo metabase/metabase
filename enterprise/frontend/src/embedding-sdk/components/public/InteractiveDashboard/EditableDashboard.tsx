@@ -1,9 +1,8 @@
-import styled from "@emotion/styled";
 import type { CSSProperties } from "react";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import { InteractiveAdHocQuestion } from "embedding-sdk/components/private/InteractiveAdHocQuestion";
-import { PublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import { StyledPublicComponentWrapper } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard.styled";
 import {
   type SdkDashboardDisplayProps,
   useSdkDashboardParams,
@@ -19,16 +18,6 @@ import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/publi
 import { EditableDashboardView } from "./EditableDashboardView";
 import { InteractiveDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
-
-const StyledPublicComponentWrapper = styled(PublicComponentWrapper)`
-  height: 100vh;
-  background: var(--mb-color-bg-dashboard);
-
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-start;
-  align-items: stretch;
-`;
 
 type EditableDashboardProps = {
   questionHeight?: number;
