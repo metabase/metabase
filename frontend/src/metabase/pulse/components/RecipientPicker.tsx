@@ -1,5 +1,6 @@
 import cx from "classnames";
 import { t } from "ttag";
+import _ from "underscore";
 
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
@@ -18,7 +19,7 @@ interface RecipientPickerProps {
   users: User[];
   isNewPulse: boolean;
   onRecipientsChange: (recipients: User[]) => void;
-  autoFocus: boolean;
+  autoFocus?: boolean;
   invalidRecipientText: (domains: string) => string;
 }
 
@@ -36,18 +37,15 @@ export const RecipientPicker = ({
   };
 
   const _trackChange = (newRecipients: User[]) => {
-    // kind of hacky way to find the changed recipient
-    const previous = new Set(recipients.map(r => JSON.stringify(r)));
-    const next = new Set(newRecipients.map(r => JSON.stringify(r)));
-    const recipient =
-      [...next].filter(r => !previous.has(r))[0] ||
-      [...previous].filter(r => !next.has(r))[0];
+    const isAddition = newRecipients.length > recipients.length;
+
+    const recipient = isAddition
+      ? _.difference(newRecipients, recipients)[0]
+      : _.difference(recipients, newRecipients)[0];
 
     MetabaseAnalytics.trackStructEvent(
       isNewPulse ? "PulseCreate" : "PulseEdit",
-      newRecipients.length > recipients.length
-        ? "AddRecipient"
-        : "RemoveRecipient",
+      isAddition ? "AddRecipient" : "RemoveRecipient",
       recipient && (recipient.id ? "user" : "email"),
     );
   };
