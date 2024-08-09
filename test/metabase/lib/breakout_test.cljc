@@ -672,8 +672,8 @@
                            (lib/breakout  (meta/field-metadata :venues :category-id))
                            (lib/breakout  (meta/field-metadata :venues :price))
                            (lib/aggregate (lib/count)))
-          category   (m/find-first #(= (:name %) "CATEGORY_ID") (lib/visible-columns query))
-          price      (m/find-first #(= (:name %) "PRICE") (lib/visible-columns query))
+          category   (meta/field-metadata :venues :category-id)
+          price      (meta/field-metadata :venues :price)
           breakouts  (lib/breakouts query)]
         (is (= (count breakouts) 2))
         (is (=? category
