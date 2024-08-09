@@ -245,28 +245,7 @@ const config = {
   optimization: {
     runtimeChunk: "single",
     splitChunks: {
-      cacheGroups: {
-        vendors: {
-          test: /[\\/]node_modules[\\/](?!(sql-formatter|jspdf|html2canvas-pro)[\\/])/,
-          chunks: "all",
-          name: "vendor",
-        },
-        sqlFormatter: {
-          test: /[\\/]node_modules[\\/]sql-formatter[\\/]/,
-          chunks: "all",
-          name: "sql-formatter",
-        },
-        jspdf: {
-          test: /[\\/]node_modules[\\/]jspdf[\\/]/,
-          chunks: "all",
-          name: "jspdf",
-        },
-        html2canvas: {
-          test: /[\\/]node_modules[\\/]html2canvas-pro[\\/]/,
-          chunks: "all",
-          name: "html2canvas",
-        },
-      },
+      chunks: "all",
     },
     minimizer: [
       new TerserPlugin({
