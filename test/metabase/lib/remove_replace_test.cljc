@@ -463,6 +463,7 @@
                              {:cards [{:id          100
                                        :name        "Sum of Cans"
                                        :database-id (meta/id)
+                                       :table-id    (meta/id :venues)
                                        :dataset-query
                                        (-> lib.tu/venues-query
                                            (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
@@ -476,18 +477,18 @@
                                        [:count {:lib/uuid string?}]]}]}
               query))
       (is (=? {:stages [{:aggregation [[:metric {:lib/uuid string?} 100]
-                                       [:metric {:lib/uuid string?} 100]]}]}
-              (lib/replace-clause
-               query
-               (second (lib/aggregations query))
-               (first (lib/available-metrics query)))))
+                                         [:metric {:lib/uuid string?} 100]]}]}
+                (lib/replace-clause
+                 query
+                 (second (lib/aggregations query))
+                 (first (lib/available-metrics query)))))
       (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]
-                                       [:metric {:lib/uuid string?} 100]]}]}
-              (-> query
-                  (lib/replace-clause
-                   (second (lib/aggregations query))
-                   (first (lib/available-metrics query)))
-                  (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
+                                         [:metric {:lib/uuid string?} 100]]}]}
+                (-> query
+                    (lib/replace-clause
+                     (second (lib/aggregations query))
+                     (first (lib/available-metrics query)))
+                    (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
 (deftest ^:parallel replace-segment-test
   (testing "replacing with segment should work"

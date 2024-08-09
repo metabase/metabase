@@ -93,7 +93,7 @@
 
 (defn- aggregation-stage-index
   [stages]
-  (count (take-while :qp/stage-is-from-source-card stages)))
+  (count (take-while (complement (comp find-metric-ids :aggregation)) stages)))
 
 (defn- include-implicit-joins
   [query agg-stage-index metric-query]
@@ -108,9 +108,9 @@
 (defn splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
-  (let [agg-stage-index (aggregation-stage-index (:stages query))]
+  (let [agg-stage-index (aggregation-stage-index expanded-stages)]
     (if-let [lookup (->> expanded-stages
-                         (drop-while :qp/stage-is-from-source-card)
+                         (drop agg-stage-index)
                          first
                          :aggregation
                          (fetch-referenced-metrics query))]
@@ -237,10 +237,10 @@
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
   (let [query (lib.walk/walk
-                query
-                (fn [_query path-type path stage-or-join]
-                  (when (= path-type :lib.walk/join)
-                    (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
+               query
+               (fn [_query path-type path stage-or-join]
+                 (when (= path-type :lib.walk/join)
+                   (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
     (u/prog1
       (update query :stages #(adjust-metric-stages query nil %))
       (when-let [metric (lib.util.match/match-one <>
