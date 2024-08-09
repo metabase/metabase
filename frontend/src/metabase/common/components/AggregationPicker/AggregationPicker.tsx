@@ -10,6 +10,7 @@ import {
 } from "metabase/query_builder/components/CompareAggregations";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import type { SummarizeQueryChangeDetails } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -34,7 +35,10 @@ interface AggregationPickerProps {
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
   onClose?: () => void;
-  onQueryChange: (query: Lib.Query) => void;
+  onQueryChange: (
+    query: Lib.Query,
+    details: SummarizeQueryChangeDetails,
+  ) => void;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -115,10 +119,16 @@ export function AggregationPicker({
           clause,
           aggregation,
         );
-        onQueryChange(nextQuery);
+        onQueryChange(nextQuery, {
+          type: "update",
+          aggregations: [aggregation],
+        });
       } else {
         const nextQuery = Lib.aggregate(query, stageIndex, aggregation);
-        onQueryChange(nextQuery);
+        onQueryChange(nextQuery, {
+          type: "add",
+          aggregations: [aggregation],
+        });
       }
     },
     [query, stageIndex, clause, clauseIndex, onQueryChange],
@@ -262,7 +272,10 @@ export function AggregationPicker({
 
   const handleCompareSubmit = useCallback(
     (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => {
-      onQueryChange(query);
+      onQueryChange(query, {
+        type: "add",
+        aggregations,
+      });
 
       if (question) {
         trackColumnCompareViaShortcut(

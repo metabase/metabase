@@ -56,12 +56,10 @@ const SummarizeInner = ({
     query,
     stageIndex,
     aggregations,
-    handleAddAggregations,
     handleAddBreakout,
-    handleRemoveAggregation,
+    handleQueryChange,
     handleRemoveBreakout,
     handleReplaceBreakouts,
-    handleUpdateAggregation,
     handleUpdateBreakout,
     hasAggregations,
   } = useSummarizeQuery({
@@ -76,10 +74,7 @@ const SummarizeInner = ({
           query={query}
           stageIndex={stageIndex}
           aggregations={aggregations}
-          onAddAggregations={handleAddAggregations}
-          onUpdateAggregation={handleUpdateAggregation}
-          onRemoveAggregation={handleRemoveAggregation}
-          onQueryChange={onQueryChange}
+          onQueryChange={handleQueryChange}
         />
         <Divider my="lg" />
         {hasAggregations && (

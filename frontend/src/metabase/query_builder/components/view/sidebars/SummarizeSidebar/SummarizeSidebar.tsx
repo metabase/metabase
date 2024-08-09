@@ -30,9 +30,7 @@ export function SummarizeSidebar({
     stageIndex,
     aggregations,
     hasAggregations,
-    handleAddAggregations,
-    handleUpdateAggregation,
-    handleRemoveAggregation,
+    handleQueryChange,
     handleAddBreakout,
     handleUpdateBreakout,
     handleRemoveBreakout,
@@ -59,10 +57,7 @@ export function SummarizeSidebar({
         query={query}
         stageIndex={stageIndex}
         aggregations={aggregations}
-        onAddAggregations={handleAddAggregations}
-        onUpdateAggregation={handleUpdateAggregation}
-        onRemoveAggregation={handleRemoveAggregation}
-        onQueryChange={onQueryChange}
+        onQueryChange={handleQueryChange}
       />
       <Divider my="lg" />
       {hasAggregations && (

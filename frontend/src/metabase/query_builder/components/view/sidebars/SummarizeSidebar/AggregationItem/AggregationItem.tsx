@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
+import type { SummarizeQueryChangeDetails } from "../SummarizeContent";
 import { AggregationPicker } from "../SummarizeSidebar.styled";
 
 import { AggregationName, RemoveIcon, Root } from "./AggregationItem.styled";
@@ -12,8 +13,10 @@ interface AggregationItemProps {
   stageIndex: number;
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
-  onRemove: () => void;
-  onQueryChange: (query: Lib.Query) => void;
+  onQueryChange: (
+    query: Lib.Query,
+    details: SummarizeQueryChangeDetails,
+  ) => void;
 }
 
 export function AggregationItem({
@@ -21,7 +24,6 @@ export function AggregationItem({
   stageIndex,
   aggregation,
   aggregationIndex,
-  onRemove,
   onQueryChange,
 }: AggregationItemProps) {
   const [isOpened, setIsOpened] = useState(false);
@@ -32,6 +34,14 @@ export function AggregationItem({
     aggregation,
   );
 
+  const handleRemove = useCallback(() => {
+    const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
+    onQueryChange(nextQuery, {
+      type: "remove",
+      aggregations: [aggregation],
+    });
+  }, [query, stageIndex, aggregation, onQueryChange]);
+
   return (
     <Popover opened={isOpened} onChange={setIsOpened}>
       <Popover.Target>
@@ -41,7 +51,7 @@ export function AggregationItem({
           onClick={() => setIsOpened(!isOpened)}
         >
           <AggregationName>{displayName}</AggregationName>
-          <RemoveIcon name="close" onClick={onRemove} />
+          <RemoveIcon name="close" onClick={handleRemove} />
         </Root>
       </Popover.Target>
       <Popover.Dropdown>

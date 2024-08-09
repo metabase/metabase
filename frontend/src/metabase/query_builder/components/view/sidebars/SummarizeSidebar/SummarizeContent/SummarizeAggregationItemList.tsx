@@ -4,26 +4,22 @@ import type * as Lib from "metabase-lib";
 import { AddAggregationButton } from "../AddAggregationButton";
 import { AggregationItem } from "../AggregationItem";
 
+import type { SummarizeQueryChangeDetails } from "./use-summarize-query";
+
 type SummarizeAggregationItemListProps = {
   query: Lib.Query;
   stageIndex: number;
   aggregations: Lib.AggregationClause[];
-  onAddAggregations: (aggregations: Lib.Aggregable[]) => void;
-  onUpdateAggregation: (
-    aggregation: Lib.AggregationClause,
-    nextAggregation: Lib.Aggregable,
+  onQueryChange: (
+    query: Lib.Query,
+    details: SummarizeQueryChangeDetails,
   ) => void;
-  onRemoveAggregation: (aggregation: Lib.AggregationClause) => void;
-  onQueryChange: (query: Lib.Query) => void;
 } & GroupProps;
 
 export const SummarizeAggregationItemList = ({
   query,
   stageIndex,
   aggregations,
-  onAddAggregations,
-  onUpdateAggregation,
-  onRemoveAggregation,
   onQueryChange,
   ...containerProps
 }: SummarizeAggregationItemListProps) => (
@@ -41,10 +37,6 @@ export const SummarizeAggregationItemList = ({
         aggregation={aggregation}
         aggregationIndex={aggregationIndex}
         onQueryChange={onQueryChange}
-        onUpdate={nextAggregation =>
-          onUpdateAggregation(aggregation, nextAggregation)
-        }
-        onRemove={() => onRemoveAggregation(aggregation)}
       />
     ))}
     <AddAggregationButton
