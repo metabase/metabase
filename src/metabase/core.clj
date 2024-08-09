@@ -27,6 +27,7 @@
    [metabase.setup :as setup]
    [metabase.task :as task]
    [metabase.troubleshooting :as troubleshooting]
+   [metabase.usage :as usage]
    [metabase.util :as u]
    [metabase.util.log :as log])
   (:import
@@ -83,6 +84,7 @@
   []
   (log/info "Metabase Shutting Down ...")
   (task/stop-scheduler!)
+  (usage/stop!)
   (server/stop-web-server!)
   (prometheus/shutdown!)
   ;; This timeout was chosen based on a 30s default termination grace period in Kubernetes.
@@ -157,6 +159,7 @@
 
   (settings/migrate-encrypted-settings!)
   ;; start scheduler at end of init!
+  (usage/init!)
   (task/start-scheduler!)
   (init-status/set-complete!)
   (let [start-time (.getStartTime (ManagementFactory/getRuntimeMXBean))
