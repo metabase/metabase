@@ -10,6 +10,7 @@ import {
 } from "metabase/query_builder/components/CompareAggregations";
 import { ExpressionWidget } from "metabase/query_builder/components/expressions/ExpressionWidget";
 import { ExpressionWidgetHeader } from "metabase/query_builder/components/expressions/ExpressionWidgetHeader";
+import type { SummarizeQueryChangeDetails } from "metabase/query_builder/components/view/sidebars/SummarizeSidebar/SummarizeContent";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaShortcut } from "metabase/querying/analytics";
 import { getMetadata } from "metabase/selectors/metadata";
@@ -33,9 +34,11 @@ interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  onAdd: (aggregations: Lib.Aggregable[]) => void;
-  onSelect: (aggregation: Lib.Aggregable) => void;
   onClose?: () => void;
+  onQueryChange: (
+    query: Lib.Query,
+    details: SummarizeQueryChangeDetails,
+  ) => void;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -67,9 +70,8 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   hasExpressionInput = true,
-  onAdd,
-  onSelect,
   onClose,
+  onQueryChange,
 }: AggregationPickerProps) {
   const question = useSelector(getQuestion);
   const metadata = useSelector(getMetadata);
@@ -100,6 +102,25 @@ export function AggregationPicker({
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
+
+  const onSelect = useCallback(
+    function (aggregation: Lib.Aggregable) {
+      const isUpdate = clause != null && clauseIndex != null;
+      if (isUpdate) {
+        const nextQuery = Lib.replaceClause(
+          query,
+          stageIndex,
+          clause,
+          aggregation,
+        );
+        onQueryChange(nextQuery, { type: "update" });
+      } else {
+        const nextQuery = Lib.aggregate(query, stageIndex, aggregation);
+        onQueryChange(nextQuery, { type: "add" });
+      }
+    },
+    [query, stageIndex, clause, clauseIndex, onQueryChange],
+  );
 
   const sections = useMemo(() => {
     const sections: Section[] = [];
@@ -240,8 +261,8 @@ export function AggregationPicker({
   );
 
   const handleCompareSubmit = useCallback(
-    (aggregations: Lib.ExpressionClause[]) => {
-      onAdd(aggregations);
+    (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => {
+      onQueryChange(query, { type: "add" });
 
       if (question) {
         trackColumnCompareViaShortcut(
@@ -254,7 +275,7 @@ export function AggregationPicker({
 
       onClose?.();
     },
-    [query, stageIndex, question, onAdd, onClose],
+    [stageIndex, question, onClose, onQueryChange],
   );
 
   if (isComparing) {

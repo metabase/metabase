@@ -184,7 +184,7 @@ describe("CompareAggregations", () => {
       await userEvent.click(within(listBox).getByText("Previous value"));
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-      const [aggregations] = onSubmit.mock.lastCall;
+      const [_, aggregations] = onSubmit.mock.lastCall;
       expect(onSubmit).toHaveBeenCalled();
       expect(aggregations).toHaveLength(1);
     });
@@ -194,7 +194,7 @@ describe("CompareAggregations", () => {
 
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
-      const [aggregations] = onSubmit.mock.lastCall;
+      const [_, aggregations] = onSubmit.mock.lastCall;
       expect(onSubmit).toHaveBeenCalled();
       expect(aggregations).toHaveLength(2);
     });

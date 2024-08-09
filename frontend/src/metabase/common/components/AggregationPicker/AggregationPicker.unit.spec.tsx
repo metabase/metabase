@@ -152,8 +152,7 @@ function setup({
     ? Lib.selectedAggregationOperators(baseOperators, clause)
     : baseOperators;
 
-  const onSelect = jest.fn();
-  const onAdd = jest.fn();
+  const onQueryChange = jest.fn();
 
   renderWithProviders(
     <AggregationPicker
@@ -162,15 +161,14 @@ function setup({
       stageIndex={stageIndex}
       operators={operators}
       hasExpressionInput={hasExpressionInput}
-      onAdd={onAdd}
-      onSelect={onSelect}
+      onQueryChange={onQueryChange}
     />,
     { storeInitialState: state },
   );
 
   function getRecentClause(): Lib.Clause {
-    expect(onSelect).toHaveBeenCalledWith(expect.anything());
-    const [clause] = onSelect.mock.lastCall;
+    expect(onQueryChange).toHaveBeenCalledWith(expect.anything());
+    const [clause] = onQueryChange.mock.lastCall;
     return clause;
   }
 
@@ -183,8 +181,7 @@ function setup({
     query,
     stageIndex,
     getRecentClauseInfo,
-    onAdd,
-    onSelect,
+    onQueryChange,
   };
 }
 
@@ -392,22 +389,26 @@ describe("AggregationPicker", () => {
       expect(screen.getByText("Compare to the past")).toBeInTheDocument();
     });
 
-    it("calls 'onAdd' on submit", async () => {
-      const { onAdd } = setup({ query: createQueryWithCountAggregation() });
+    it("calls 'onQueryChange' on submit", async () => {
+      const { onQueryChange } = setup({
+        query: createQueryWithCountAggregation(),
+      });
 
       await userEvent.click(screen.getByText("Compare to the past"));
       await userEvent.click(screen.getByText("Done"));
 
-      expect(onAdd).toHaveBeenCalled();
+      expect(onQueryChange).toHaveBeenCalled();
     });
 
-    it("does not call 'onSelect' on submit", async () => {
-      const { onSelect } = setup({ query: createQueryWithCountAggregation() });
+    it("does not call 'onQueryChange' on submit", async () => {
+      const { onQueryChange } = setup({
+        query: createQueryWithCountAggregation(),
+      });
 
       await userEvent.click(screen.getByText("Compare to the past"));
       await userEvent.click(screen.getByText("Done"));
 
-      expect(onSelect).not.toHaveBeenCalled();
+      expect(onQueryChange).not.toHaveBeenCalled();
     });
   });
 });
