@@ -1,21 +1,19 @@
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import type { DashboardFullscreenControls } from "metabase/dashboard/types";
-
-import { FullScreenButtonIcon } from "../../DashboardActions.styled";
-import { DashboardHeaderButton } from "../DashboardHeader.styled";
 
 export const FullscreenToggle = ({
   isFullscreen,
   onFullscreenChange,
-}: DashboardFullscreenControls) => (
-  <Tooltip tooltip={isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`}>
-    <span>
-      <DashboardHeaderButton
-        icon={<FullScreenButtonIcon isFullscreen={isFullscreen} />}
-        onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
-      />
-    </span>
-  </Tooltip>
-);
+}: DashboardFullscreenControls) => {
+  const label = isFullscreen ? t`Exit fullscreen` : t`Enter fullscreen`;
+  return (
+    <ToolbarButton
+      tooltipLabel={label}
+      icon={isFullscreen ? "contract" : "expand"}
+      onClick={e => onFullscreenChange(!isFullscreen, !e.altKey)}
+      aria-label={label}
+    />
+  );
+};

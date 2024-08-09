@@ -1,8 +1,7 @@
 import { t } from "ttag";
 
-import Tooltip from "metabase/core/components/Tooltip";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { setSharing } from "metabase/dashboard/actions";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { getIsSharing } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
@@ -16,15 +15,23 @@ export const DashboardSubscriptionButton = () => {
     dispatch(setSharing(!isSharing));
   };
   return (
-    <Tooltip tooltip={t`Subscriptions`} key="dashboard-subscriptions">
-      <DashboardHeaderButton
-        icon="subscription"
-        disabled={!isSubscriptionsEnabled}
-        onClick={toggleSharing}
-        aria-label="subscriptions"
-      />
-    </Tooltip>
+    <ToolbarButton
+      tooltipLabel={t`Subscriptions`}
+      icon="subscription"
+      disabled={!isSubscriptionsEnabled}
+      onClick={toggleSharing}
+      aria-label="subscriptions"
+    />
   );
+};
+
+type ShouldRenderSubscriptionButtonProps = {
+  dashboard: Dashboard;
+  canManageSubscriptions: boolean;
+  formInput: any;
+  isAdmin: boolean;
+  isEditing: boolean;
+  isFullscreen: boolean;
 };
 
 export function shouldRenderSubscriptionButton({
@@ -34,14 +41,7 @@ export function shouldRenderSubscriptionButton({
   isAdmin,
   isEditing,
   isFullscreen,
-}: {
-  dashboard: Dashboard;
-  canManageSubscriptions: boolean;
-  formInput: any;
-  isAdmin: boolean;
-  isEditing: boolean;
-  isFullscreen: boolean;
-}) {
+}: ShouldRenderSubscriptionButtonProps) {
   const isLoaded = !!dashboard;
   const hasCards = isLoaded && dashboard.dashcards.length > 0;
 
@@ -52,15 +52,11 @@ export function shouldRenderSubscriptionButton({
       (dashCard: DashboardCard) =>
         !["text", "heading"].includes(dashCard.card.display),
     );
-
   const canCreateSubscription = hasDataCards && canManageSubscriptions;
-
   const emailConfigured = formInput?.channels?.email?.configured || false;
   const slackConfigured = formInput?.channels?.slack?.configured || false;
-
   const shouldShowSubscriptionsButton =
     emailConfigured || slackConfigured || isAdmin;
-
   return (
     !isEditing &&
     !dashboard?.archived &&

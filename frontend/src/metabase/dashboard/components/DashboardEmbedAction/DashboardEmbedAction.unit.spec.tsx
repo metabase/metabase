@@ -1,4 +1,6 @@
-import userEvent from "@testing-library/user-event";
+import userEvent, {
+  PointerEventsCheckLevel,
+} from "@testing-library/user-event";
 import { indexBy } from "underscore";
 
 import { renderWithProviders, screen } from "__support__/ui";
@@ -115,7 +117,10 @@ describe("DashboardEmbedAction", () => {
           isAdmin: false,
         });
 
-        await userEvent.hover(screen.getByLabelText("share icon"));
+        await userEvent.hover(screen.getByLabelText("share icon"), {
+          // The button is disabled so pointer events should be disabled
+          pointerEventsCheck: PointerEventsCheckLevel.Never,
+        });
         expect(
           await screen.findByText("Public links are disabled"),
         ).toBeInTheDocument();
@@ -128,7 +133,10 @@ describe("DashboardEmbedAction", () => {
           publicLinksEnabled: true,
         });
 
-        await userEvent.hover(screen.getByLabelText("share icon"));
+        await userEvent.hover(screen.getByLabelText("share icon"), {
+          // The button is disabled so pointer events should be disabled
+          pointerEventsCheck: PointerEventsCheckLevel.Never,
+        });
         expect(
           await screen.findByText("Ask your admin to create a public link"),
         ).toBeInTheDocument();

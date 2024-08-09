@@ -1,10 +1,9 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { addActionToDashboard } from "metabase/dashboard/actions";
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Icon, Tooltip } from "metabase/ui";
 
 export const AddActionElementButton = () => {
   const dispatch = useDispatch();
@@ -25,10 +24,11 @@ export const AddActionElementButton = () => {
   };
 
   return (
-    <Tooltip label={t`Add action button`}>
-      <DashboardHeaderButton onClick={onAddAction} aria-label={t`Add action`}>
-        <Icon name="click" size={18} />
-      </DashboardHeaderButton>
-    </Tooltip>
+    <ToolbarButton
+      aria-label={t`Add action`}
+      onClick={onAddAction}
+      icon="click"
+      tooltipLabel={t`Add action button`}
+    />
   );
 };

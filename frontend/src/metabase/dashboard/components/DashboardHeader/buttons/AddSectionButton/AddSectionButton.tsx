@@ -1,21 +1,20 @@
 import { t } from "ttag";
 
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { addSectionToDashboard } from "metabase/dashboard/actions";
-import {
-  DashboardHeaderButton,
-  SectionMenuItem,
-} from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
 import { SectionLayoutPreview } from "metabase/dashboard/components/DashboardHeader/SectionLayoutPreview";
 import { layoutOptions, type SectionLayout } from "metabase/dashboard/sections";
 import { getDashboard, getSelectedTabId } from "metabase/dashboard/selectors";
+import { darken } from "metabase/lib/colors";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { Flex, Icon, Menu, Tooltip } from "metabase/ui";
+import { Flex, Menu } from "metabase/ui";
+
+import AddSectionButtonS from "./AddSectionButton.module.css";
 
 export const AddSectionButton = () => {
   const dispatch = useDispatch();
   const dashboard = useSelector(getDashboard);
   const selectedTabId = useSelector(getSelectedTabId);
-
   const onAddSection = (sectionLayout: SectionLayout) => {
     if (dashboard) {
       dispatch(
@@ -27,29 +26,33 @@ export const AddSectionButton = () => {
       );
     }
   };
-
   return (
     <Menu position="bottom-end">
       <Menu.Target>
-        <span>
-          <Tooltip label={t`Add section`}>
-            <DashboardHeaderButton aria-label={t`Add section`}>
-              <Icon name="section" size={18} />
-            </DashboardHeaderButton>
-          </Tooltip>
-        </span>
+        <ToolbarButton
+          tooltipLabel={t`Add section`}
+          aria-label={t`Add section`}
+          icon="section"
+        />
       </Menu.Target>
       <Menu.Dropdown miw="100px">
-        <Flex direction="column" align="center" gap="md" p="12px">
+        <Flex
+          direction="column"
+          align="center"
+          gap="md"
+          p="12px"
+          className={AddSectionButtonS.AddSectionButton}
+        >
           {layoutOptions.map(layout => (
-            <SectionMenuItem
+            <Menu.Item
               key={layout.id}
+              bg={darken("bg-medium", 0.1)}
               onClick={() => onAddSection(layout)}
               aria-label={layout.label}
               p="14px"
             >
               <SectionLayoutPreview layout={layout} />
-            </SectionMenuItem>
+            </Menu.Item>
           ))}
         </Flex>
       </Menu.Dropdown>

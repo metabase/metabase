@@ -1,4 +1,6 @@
-import userEvent from "@testing-library/user-event";
+import userEvent, {
+  PointerEventsCheckLevel,
+} from "@testing-library/user-event";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import {
@@ -56,7 +58,10 @@ describe("ResourceEmbedButton", () => {
 
   it("should be disabled when disabled=true", async () => {
     const { onClick } = setup({ disabled: true });
-    await userEvent.click(screen.getByTestId("resource-embed-button"));
+    await userEvent.click(screen.getByTestId("resource-embed-button"), {
+      // The button is disabled so pointer events should be disabled
+      pointerEventsCheck: PointerEventsCheckLevel.Never,
+    });
 
     expect(screen.getByTestId("resource-embed-button")).toBeDisabled();
     expect(onClick).not.toHaveBeenCalled();
