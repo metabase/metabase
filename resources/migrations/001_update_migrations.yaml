@@ -6964,10 +6964,16 @@ databaseChangeLog:
 
   - changeSet:
       id: v50.2024-01-10T03:27:34
+      validCheckSum: ANY
       author: noahmoss
       comment: Migrate manage-database permissions from `permissions` to `data_permissions`
       changes:
         - sqlFile:
+            dbms: postgres
+            path: permissions/manage_database.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2,mysql,mariadb
             path: permissions/manage_database.sql
             relativeToChangelogFile: true
       rollback:

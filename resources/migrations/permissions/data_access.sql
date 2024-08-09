@@ -1,3 +1,4 @@
+ALTER TABLE data_permissions SET UNLOGGED;
 ALTER TABLE data_permissions DISABLE TRIGGER ALL;
 -- Insert DB-level permissions for cases where no table-level perms are set
 
