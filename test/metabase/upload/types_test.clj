@@ -152,7 +152,8 @@
            [" 2022-01-01 01:00:00.00-07:00 "  #t "2022-01-01T01:00-07:00" offset-dt-type]
            [" 2022-01-01T01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
            [" 2022-01-01t01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
-           [" 2022-01-01 01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]]]
+           [" 2022-01-01 01:00:00.00Z "       (t/offset-date-time "2022-01-01T01:00+00:00") offset-dt-type]
+           [" 2024-06-10T07:55:59+0000 "      (t/offset-date-time "2024-06-10T07:55:59+00:00") offset-dt-type]]]
     (let [settings    {:number-separators (or separators ".,")}
           type->check (#'upload-types/settings->type->check settings)
           value-type  (#'upload-types/value->type type->check string-value)
