@@ -7,9 +7,12 @@ import { Provider } from "react-redux";
 import { getStore } from "__support__/entities-store";
 import { getNextId } from "__support__/utils";
 import { NumberColumn, StringColumn } from "__support__/visualizations";
+import PopoverWithTrigger from "metabase/components/PopoverWithTrigger";
+import TippyPopoverWithTrigger from "metabase/components/PopoverWithTrigger/TippyPopoverWithTrigger";
 import { waitTimeContext } from "metabase/context/wait-time";
+import LegacyTooltip from "metabase/core/components/Tooltip";
 import { publicReducers } from "metabase/reducers-public";
-import { Box } from "metabase/ui";
+import { Box, Card, Text, Tooltip, Popover } from "metabase/ui";
 import TABLE_RAW_SERIES from "metabase/visualizations/components/TableSimple/stories-data/table-simple-orders-with-people.json";
 import {
   createMockCard,
@@ -276,6 +279,83 @@ TransparentThemeNoBackgroundScroll.decorators = [
   LightBackgroundDecorator,
   ScrollDecorator,
 ];
+
+// Other components compatibility test
+export function ComponentCompatibility() {
+  return (
+    // Loki doesn't take into account the tooltips and dropdowns dimensions.
+    // This padding is to make sure we cover the area of all of them.
+    <Box pb="50px">
+      <Tooltip
+        label={
+          <Text size="sm" c="var(--mb-color-text-primary)">
+            Label
+          </Text>
+        }
+        opened
+      >
+        <Card withBorder display="inline-block">
+          Mantine Tooltip
+        </Card>
+      </Tooltip>
+      <LegacyTooltip
+        tooltip={
+          <Text size="sm" c="var(--mb-color-text-primary)">
+            Label
+          </Text>
+        }
+        isOpen
+      >
+        <Card withBorder display="inline-block">
+          Legacy Tooltip
+        </Card>
+      </LegacyTooltip>
+      <Popover withArrow shadow="md" opened>
+        <Popover.Target>
+          <Card withBorder display="inline-block">
+            Mantine Popover
+          </Card>
+        </Popover.Target>
+        <Popover.Dropdown>
+          <Text size="sm" c="var(--mb-color-text-primary)">
+            Dropdown
+          </Text>
+        </Popover.Dropdown>
+      </Popover>
+      <TippyPopoverWithTrigger
+        isInitiallyVisible
+        triggerContent={
+          <Card withBorder display="inline-block">
+            Tippy Popover
+          </Card>
+        }
+        popoverContent={
+          <Text size="sm" c="var(--mb-color-text-primary)">
+            Dropdown
+          </Text>
+        }
+      />
+      <PopoverWithTrigger
+        isInitiallyOpen
+        triggerElement={
+          <Card withBorder display="inline-block">
+            Legacy Popover
+          </Card>
+        }
+      >
+        {() =>
+          function Inner({ maxHeight, ...props }: { maxHeight: number }) {
+            return (
+              <Text size="sm" c="var(--mb-color-text-primary)" {...props}>
+                Dropdownnnnn
+              </Text>
+            );
+          }
+        }
+      </PopoverWithTrigger>
+    </Box>
+  );
+}
 
 const EXPLICIT_SIZE_WAIT_TIME = 300;
 function ScrollDecorator(Story: Story) {

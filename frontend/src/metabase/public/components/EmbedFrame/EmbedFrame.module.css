@@ -25,7 +25,12 @@ body {
 }
 
 [data-metabase-theme="night"][data-metabase-theme="night"],
-[role="tooltip"] {
+/**
+  * role="tooltip" works with both legacy and Mantine popover,
+  * the legacy Popover however, has the role "tooltip", but with data-theme="popover",
+  * so we need to target exactly just tooltips.
+  */
+[role="tooltip"]:is([data-theme~="tooltip"], :global(.emotion-Tooltip-tooltip)) {
   --mb-color-text-primary: color-mix(
     in srgb,
     var(--mb-color-text-white) 90%,
