@@ -11,6 +11,11 @@
 
 (sql-jdbc.tx/add-test-extensions! :mysql)
 
+(defmethod sql.tx/create-db-sql :mysql
+  [driver {:keys [database-name]}]
+  (format "CREATE DATABASE %s CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+          (sql.tx/qualify-and-quote driver database-name)))
+
 (doseq [[base-type database-type] {:type/BigInteger     "BIGINT"
                                    :type/Boolean        "BOOLEAN"
                                    :type/Date           "DATE"
