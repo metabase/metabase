@@ -5,6 +5,7 @@
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
    [flatland.ordered.map :as ordered-map]
+   [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -18,6 +19,7 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
@@ -258,6 +260,163 @@
                             [(conj fields described-field) new-idx]))
                         [#{} 0]
                         column-info))})))
+
+(def ^:private describe-table-sample-size 1000)
+
+(defn- root-query [max-depth]
+  (let [project-nested-fields
+        (fn [depth]
+          (cond-> [{"$project"
+                    (merge
+                     ;; Include all fields from previous depths
+                     (into {} (mapcat
+                               (fn [i]
+                                 [[(str "depth" i "Field") 1]
+                                  [(str "depth" i "Type") 1]])
+                               (range depth)))
+                     ;; Project current depth field and type
+                     {(str "depth" depth "Field") (str "$depth" depth "Fields.k")
+                      (str "depth" depth "Type") {"$type" (str "$depth" depth "Fields.v")}}
+                     ;; Project next depth fields if they exist
+                     (when (not= depth max-depth)
+                       {(str "depth" (inc depth) "Fields")
+                        {"$cond" {"if"   {"$eq" [{"$type" (str "$depth" depth "Fields.v")}, "object"]}
+                                  "then" {"$objectToArray" (str "$depth" depth "Fields.v")}
+                                  "else" []}}}))}]
+            (not= depth max-depth)
+            (conj {"$unwind"
+                   {"path"                       (str "$depth" (inc depth) "Fields")
+                    "preserveNullAndEmptyArrays" true}})))
+        facet-stage
+        (fn [depth]
+          (let [current-field (str "depth" depth "Field")
+                current-type (str "depth" depth "Type")
+                next-field (str "depth" (inc depth) "Field")]
+            [{"$match" (cond-> {current-field {"$ne" nil}}
+                         (zero? depth) (assoc next-field nil)
+                         ;; if depth is max-depth, we need object fields for the next query
+                         (and (pos? depth) (not= depth max-depth)) (assoc current-type {"$ne" "object"})
+                         (> depth 1) (dissoc next-field))}
+             {"$group" {"_id" (into {"field" (str "$" current-field)
+                                     "type"  (str "$" current-type)}
+                                    (for [i (range depth)]
+                                      [(str "depth" i "Field") (str "$depth" i "Field")]))
+                        "count" {"$sum" 1}}}
+             {"$sort" (merge {"count" -1}
+                             (into {} (for [i (range (inc depth))]
+                                        [(str "_id." (if (= i depth) "field" (str "depth" i "Field"))) 1])))}
+             {"$group" {"_id" (into {} (for [i (range (inc depth))]
+                                         [(if (= i depth) "field" (str "depth" i "Field"))
+                                          (str "$_id." (if (= i depth) "field" (str "depth" i "Field")))]))
+                        "mostCommonType" {"$first" "$_id.type"}}}
+             {"$project" {"_id" 0
+                          "path" {"$concat" (interpose "." (for [i (range (inc depth))]
+                                                             (str "$_id." (if (= i depth) "field" (str "depth" i "Field")))))}
+                          "field" (str "$_id.field")
+                          "mostCommonType" 1}}]))
+        facets (into {} (map (juxt #(str "depth" %) facet-stage) (range (inc max-depth))))]
+    (concat [{"$sample" {"size" describe-table-sample-size}}
+             {"$project" {"doc" "$$ROOT"}}
+             {"$project" {"depth0Fields" {"$objectToArray" "$doc"}}}
+             {"$unwind" "$depth0Fields"}]
+            (mapcat project-nested-fields (range (inc max-depth)))
+            [{"$facet" facets}
+             {"$project" {"allFields" {"$concatArrays" (map #(str "$" %) (keys facets))}}}
+             {"$unwind" "$allFields"}])))
+
+(defn- nested-level-query [parent-paths]
+  (letfn [(path-query [path]
+            [{"$project" {"path"   path
+                          "fields" {"$objectToArray" (str "$" path)}}}
+             {"$unwind" "$fields"}
+             {"$project"
+              {"path"  "$path"
+               "field" "$fields.k"
+               "type"  {"$type" "$fields.v"}}}
+             {"$group"
+              {"_id" {"path"  "$path"
+                      "field" "$field"
+                      "type"  "$type"}
+               "count" {"$sum" 1}}}
+             {"$sort" {"_id.field" 1, "count" -1}}
+             {"$group"
+              {"_id" {"path"  "$_id.path"
+                      "field" "$_id.field"}
+               "mostCommonType" {"$first" "$_id.type"}}}
+             {"$project"
+              {"_id"            0
+               "path"           "$_id.path"
+               "fieldName"      "$_id.field"
+               "mostCommonType" 1}}])]
+    [{"$sample" {"size" describe-table-sample-size}}
+     {"$facet"
+      (into {}
+            (map-indexed (fn [idx path]
+                           [idx (path-query path)]))
+            parent-paths)}]))
+
+;; Currently this only queries one level of nesting at a time. It could be optimized further to query N levels at a time.
+(defn infer-schema [db table]
+  (let [q! (fn [q]
+             (:rows (:data (qp/process-query {:database (:id db)
+                                              :type     "native"
+                                              :native   {:collection (:name table)
+                                                         :query      (json/generate-string q)}}))))
+        query-nested (fn query-nested [parent-paths]
+                       (let [fields (flatten (first (q! (nested-level-query parent-paths))))
+                             {object-fields     true
+                              non-object-fields false} (group-by #(= (:mostCommonType %) "object") fields)
+                             nested-fields (mapcat #(query-nested [(:path %)]) object-fields)]
+                         (if (seq object-fields)
+                           (concat non-object-fields nested-fields)
+                           fields)))
+        fields-from-root (flatten (q! (root-query 20)))
+        {object-fields     true
+         non-object-fields false} (group-by #(= (:mostCommonType %) "object") fields-from-root)]
+    (concat non-object-fields
+            (if (seq object-fields)
+              (query-nested (map #(vector (:path %)) object-fields))
+              nil))))
+
+(defn type-alias->base-type [type-alias]
+  ;; Mongo types from $type aggregation operation
+  ;; https://www.mongodb.com/docs/manual/reference/operator/aggregation/type/#available-types
+  (get {"double"     :type/Float
+        "string"     :type/Text
+        "object"     :type/*     ; TODO: should this be type/Dictionary?
+        "array"      :type/Array
+        "binData"    :type/*
+        "undefined"  :type/*
+        "objectId"   :type/MongoBSONID
+        "bool"       :type/Boolean
+        "date"       :type/DateTime
+        "null"       :type/*
+        "regex"      :type/Text  ; Regular expressions are typically represented as strings
+        "dbPointer"  :type/*     ; Deprecated. TODO: should this be something else?
+        "javascript" :type/*     ; TODO: should this be text?
+        "symbol"     :type/Text  ; Deprecated. TODO: should this
+        "int"        :type/Integer
+        "timestamp"  :type/DateTime
+        "long"       :type/Integer
+        "decimal"    :type/Decimal
+        "minKey"     :type/* ; TODO: should this be something else?
+        "maxKey"     :type/*}
+        type-alias :type/*))
+
+(defmethod driver/describe-table :mongo
+  [_ database table]
+  (let [schema-data (infer-schema database table)]
+    {:schema nil
+     :name   (:name table)
+     :fields (set (map-indexed
+                   (fn [idx {:keys [field mostCommonType]}]
+                     {:name              field
+                      :database-type     mostCommonType
+                      ;; TODO: parent-id
+                      :base-type         (type-alias->base-type mostCommonType)
+                      :database-position idx
+                      :pk?               (= field "_id")})
+                   schema-data))}))
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :expression-aggregations         true
