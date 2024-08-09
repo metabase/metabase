@@ -118,7 +118,7 @@ export function getThemeSpecificCssVariables(theme: MantineTheme) {
   const getValue = (key: MetabaseComponentThemeKey) => {
     const value = get(theme.other, key);
 
-    return value as string;
+    return value as string | undefined;
   };
 
   return css`
