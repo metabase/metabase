@@ -213,7 +213,7 @@ const TBodyRow = ({
         const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
 
         if ((e.ctrlKey || e.metaKey) && e.button === 0) {
-          window.open(subpathSafeUrl, "_blank");
+          Urls.openInNewTab(subpathSafeUrl);
         } else {
           dispatch(push(url));
         }
