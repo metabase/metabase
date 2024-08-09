@@ -56,12 +56,10 @@ export function getEmbeddingThemeOverride(
       const color = theme.colors[name as MetabaseColor];
 
       if (color && typeof color === "string") {
-        const themeColorNames =
+        const themeColorName =
           SDK_TO_MAIN_APP_COLORS_MAPPING[name as MappableSdkColor];
 
-        for (const themeColorName of themeColorNames) {
-          override.colors[themeColorName] = colorTuple(color);
-        }
+        override.colors[themeColorName] = colorTuple(color);
       }
     }
   }
