@@ -9,6 +9,7 @@
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.mongo.connection :as mongo.connection]
+   [metabase.driver.mongo.conversion :as mongo.conversion]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.execute :as mongo.execute]
    [metabase.driver.mongo.json]
@@ -23,7 +24,7 @@
    [metabase.util.log :as log]
    [taoensso.nippy :as nippy])
   (:import
-   (com.mongodb.client MongoClient MongoDatabase)
+   (com.mongodb.client FindIterable MongoClient MongoDatabase)
    (org.bson.types ObjectId)))
 
 (set! *warn-on-reflection* true)
@@ -135,9 +136,9 @@
       (update :types (fn [types]
                        (update types (type field-value) u/safe-inc)))
       (update :semantic-types (fn [semantic-types]
-                               (if-let [st (val->semantic-type field-value)]
-                                 (update semantic-types st u/safe-inc)
-                                 semantic-types)))
+                                (if-let [st (val->semantic-type field-value)]
+                                  (update semantic-types st u/safe-inc)
+                                  semantic-types)))
       (update :nested-fields (fn [nested-fields]
                                (if (map? field-value)
                                  (find-nested-fields field-value nested-fields)
@@ -174,10 +175,10 @@
               :database-position idx}
        (= :_id field-kw)           (assoc :pk? true)
        (:semantic-types field-info) (assoc :semantic-type (->> (:semantic-types field-info)
-                                                             (filterv #(some? (first %)))
-                                                             (sort-by second)
-                                                             last
-                                                             first))
+                                                               (filterv #(some? (first %)))
+                                                               (sort-by second)
+                                                               last
+                                                               first))
        (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
 
 (defmethod driver/dbms-version :mongo
@@ -219,13 +220,28 @@
                     :value %}))
            set))))
 
-(defn- sample-documents [^MongoDatabase db table sort-direction]
-  (let [coll (mongo.util/collection db (:name table))]
-    (mongo.util/do-find coll {:keywordize true
-                              :limit metadata-queries/nested-field-sample-limit
-                              :skip 0
-                              :sort-criteria [[:_id sort-direction]]
-                              :batch-size 256})))
+(defn- sample-documents
+  "Perform find on collection. `sort-criteria` should be sequence of key value pairs (eg. vector of vectors), or
+   `ordered-map`. Keys are the column name. Keys could be keywords. `opts` could contain also `:keywordize`, which
+   is param for `from-document`."
+  [^MongoDatabase db table sort-direction]
+  (let [coll (mongo.util/collection db (:name table))
+        iterable (-> ^FindIterable (.find coll)
+                     (.limit metadata-queries/nested-field-sample-limit)
+                     (.skip 0)
+                     (.batchSize (int 32)) ; the maximum size of a MongoDB document is 16 MB
+                     (.sort (mongo.conversion/to-document (ordered-map/ordered-map [[:_id sort-direction]]))))]
+    (eduction (map #(mongo.conversion/from-document % {:keywordize true}))
+              (mongo.execute/cursor-reducible iterable))))
+
+(defn- concat-reducibles [& reducibles]
+  (reify clojure.lang.IReduceInit
+    (reduce [_ f init]
+      (reduce
+       (fn [acc reducible]
+         (reduce f acc reducible))
+       init
+       reducibles))))
 
 (defn- table-sample-column-info
   "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
@@ -242,7 +258,7 @@
            fields
            (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
      (ordered-map/ordered-map)
-     (concat (sample-documents db table 1) (sample-documents db table -1)))
+     (concat-reducibles (sample-documents db table 1) (sample-documents db table -1)))
     (catch Throwable t
       (log/error (format "Error introspecting collection: %s" (:name table)) t))))
 

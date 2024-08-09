@@ -2,11 +2,10 @@
   "Mongo specific utility functions -- mongo methods that we are using at various places wrapped into clojure
    functions."
   (:require
-   [flatland.ordered.map :as ordered-map]
    [metabase.driver.mongo.conversion :as mongo.conversion])
   (:import
    (com.mongodb MongoClientSettings)
-   (com.mongodb.client ClientSession FindIterable MongoClient MongoClients MongoCollection MongoDatabase)))
+   (com.mongodb.client ClientSession MongoClient MongoClients MongoCollection MongoDatabase)))
 
 (set! *warn-on-reflection* true)
 
@@ -57,20 +56,6 @@
   "Return vector of Documets describing indexes."
   [^MongoCollection coll & {:as opts}]
   (mongo.conversion/from-document (.listIndexes coll) opts))
-
-;; https://mongodb.github.io/mongo-java-driver/4.11/apidocs/mongodb-driver-sync/com/mongodb/client/MongoCollection.html#find()
-(defn do-find
-  "Perform find on collection. `sort-criteria` should be sequence of key value pairs (eg. vector of vectors), or
-   `ordered-map`. Keys are the column name. Keys could be keywords. `opts` could contain also `:keywordize`, which
-   is param for `from-document`."
-  [^MongoCollection coll
-   & {:keys [limit skip batch-size sort-criteria] :as opts}]
-  (->> (cond-> ^FindIterable (.find coll)
-         limit (.limit limit)
-         skip (.skip skip)
-         batch-size (.batchSize (int batch-size))
-         sort-criteria (.sort (mongo.conversion/to-document (ordered-map/ordered-map sort-criteria))))
-       (map #(mongo.conversion/from-document % opts))))
 
 (defn create-index
   "Create index."
