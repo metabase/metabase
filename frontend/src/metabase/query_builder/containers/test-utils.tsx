@@ -18,6 +18,7 @@ import {
   setupTimelinesEndpoints,
   setupPropertiesEndpoints,
   setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupCardQueryMetadataEndpoint,
   setupAdhocQueryMetadataEndpoint,
 } from "__support__/server-mocks";
@@ -246,6 +247,7 @@ export const setup = async ({
     createMockFieldValues({ field_id: Number(ORDERS.QUANTITY) }),
   );
   setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
 
   const metadata = createMockCardQueryMetadata({ databases: [TEST_DB] });
   setupAdhocQueryMetadataEndpoint(metadata);

@@ -5,7 +5,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -52,7 +52,7 @@ COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
 function setup({ mockCreateDashboardResponse = true } = {}) {
   mockGetBoundingClientRect();
   mockScrollBy();
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
   const onClose = jest.fn();
 
   const settings = mockSettings({});

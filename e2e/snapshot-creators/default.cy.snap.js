@@ -208,6 +208,15 @@ describe("snapshots", () => {
     });
   }
 
+  function logSelectModel(model_id, model) {
+    console.log("select collection:", model_id);
+    cy.request("Post", "/api/activity/recents", {
+      model_id,
+      model,
+      context: "selection",
+    });
+  }
+
   function createCollections() {
     function postCollection(name, parent_id, callback) {
       cy.request("POST", "/api/collection", {
@@ -217,14 +226,21 @@ describe("snapshots", () => {
       }).then(({ body }) => callback && callback(body));
     }
 
-    postCollection("First collection", undefined, firstCollection =>
+    postCollection("First collection", undefined, firstCollection => {
+      logSelectModel(firstCollection.id, "collection");
       postCollection(
         "Second collection",
         firstCollection.id,
-        secondCollection =>
-          postCollection("Third collection", secondCollection.id),
-      ),
-    );
+        secondCollection => {
+          logSelectModel(secondCollection.id, "collection");
+          postCollection(
+            "Third collection",
+            secondCollection.id,
+            thirdCollection => logSelectModel(thirdCollection.id, "collection"),
+          );
+        },
+      );
+    });
   }
 
   function createQuestionsAndDashboards({ ORDERS, ORDERS_ID }) {
@@ -241,6 +257,8 @@ describe("snapshots", () => {
       questionDetails,
       dashboardDetails,
       cardDetails: { size_x: 16, size_y: 8 },
+    }).then(({ body: { dashboard_id } }) => {
+      logSelectModel(dashboard_id, "dashboard");
     });
 
     // question 2: Orders, Count

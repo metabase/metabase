@@ -4,7 +4,7 @@ import { useState } from "react";
 import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
 import { createMockEntitiesState } from "__support__/store";
@@ -173,7 +173,7 @@ function setup({
 
   setupDatabasesEndpoints(DATABASES);
   setupSearchEndpoints(searchItems);
-  setupRecentViewsEndpoints(recentItems);
+  setupRecentViewsAndSelectionsEndpoints(recentItems);
 
   function Wrapper() {
     const [query, setQuery] = useState(step.query);

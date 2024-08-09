@@ -21,7 +21,7 @@
   (derive ::mi/write-policy.always-allow))
 
 (mr/def ::context
-  [:maybe [:enum :dashboard :question]])
+  [:maybe [:enum :dashboard :question :collection]])
 
 (t2/define-before-insert :model/ViewLog
   [log-entry]
