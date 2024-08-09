@@ -167,12 +167,21 @@ const getRoutes = (store, CanAccessSettings, IsAdmin) => (
         path="performance"
         component={createAdminRouteGuard("performance")}
       >
-        <IndexRoute title={t`Performance`} path="" component={PerformanceApp} />
-        <Route
-          title={t`Model persistence`}
-          path={PerformanceTabId.Models}
-          component={() => <PerformanceApp tabId={PerformanceTabId.Models} />}
-        />
+        <Route title={t`Performance`}>
+          <IndexRedirect to={PerformanceTabId.Databases} />
+          <Route
+            title={t`Database caching`}
+            path={PerformanceTabId.Databases}
+            component={() => (
+              <PerformanceApp tabId={PerformanceTabId.Databases} />
+            )}
+          />
+          <Route
+            title={t`Model persistence`}
+            path={PerformanceTabId.Models}
+            component={() => <PerformanceApp tabId={PerformanceTabId.Models} />}
+          />
+        </Route>
       </Route>
       <Route
         path="tools"
