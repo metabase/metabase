@@ -4,8 +4,8 @@
    [cheshire.core :as json]
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
+   [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
-   [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -354,10 +354,10 @@
                            [idx (path-query path)]))
             parent-paths)}]))
 
-(defn path->depth [path]
+(defn- path->depth [path]
   (dec (count (str/split path #"\."))))
 
-(defn infer-schema [db table]
+(defn- infer-schema [db table]
   (let [q! (fn [q]
              (:rows (:data (qp/process-query {:database (:id db)
                                               :type     "native"
@@ -379,12 +379,12 @@
             (when (seq object-fields)
               (query-nested (map :path object-fields))))))
 
-(defn type-alias->base-type [type-alias]
+(defn- type-alias->base-type [type-alias]
   ;; Mongo types from $type aggregation operation
   ;; https://www.mongodb.com/docs/manual/reference/operator/aggregation/type/#available-types
   (get {"double"     :type/Float
         "string"     :type/Text
-        "object"     :type/*     ; TODO: should this be type/Dictionary?
+        "object"     :type/Dictionary
         "array"      :type/Array
         "binData"    :type/*
         "undefined"  :type/*
@@ -395,7 +395,7 @@
         "regex"      :type/Text  ; Regular expressions are typically represented as strings
         "dbPointer"  :type/*     ; Deprecated. TODO: should this be something else?
         "javascript" :type/*     ; TODO: should this be text?
-        "symbol"     :type/Text  ; Deprecated. TODO: should this
+        "symbol"     :type/Text  ; Deprecated. TODO: should this be text?
         "int"        :type/Integer
         "timestamp"  :type/DateTime
         "long"       :type/Integer
@@ -405,19 +405,36 @@
         type-alias :type/*))
 
 (defmethod driver/describe-table :mongo
-  [_ database table]
-  (let [schema-data (infer-schema database table)]
+  [_driver database table]
+  (let [fields (infer-schema database table)
+        fields (->> fields
+                    (sort-by :path) ; WIP: good enough for now, but doesn't preserve behaviour from before
+                    (map-indexed (fn [idx x]
+                                   {:name              (:field x)
+                                    :database-type     (:mostCommonType x)
+                                    :base-type         (type-alias->base-type (:mostCommonType x))
+                                    :database-position idx
+                                    :path              (str/split (:path x) #"\.")
+                                    :depth             (path->depth (:path x))})))
+        ;; convert flat list of fields into deeply-nested map. :nested-fields are maps from field name to field data
+        fields (loop [depth      0
+                      new-fields {}]
+                 (if-some [fields-at-depth (not-empty (filter #(= (:depth %) depth) fields))]
+                   (recur (inc depth)
+                          (reduce (fn [acc field]
+                                    (assoc-in acc (interpose :nested-fields (:path field)) (dissoc field :path :depth)))
+                                  new-fields
+                                  fields-at-depth))
+                   new-fields))
+        ;; replace :nested-field maps with sets of nested fields
+        fields (:nested-fields (walk/postwalk (fn [x]
+                                                (if-let [nested-fields (:nested-fields x)]
+                                                  (assoc x :nested-fields (set (vals nested-fields)))
+                                                  x))
+                                              {:nested-fields fields}))]
     {:schema nil
      :name   (:name table)
-     :fields (set (map-indexed
-                   (fn [idx {:keys [field mostCommonType]}]
-                     {:name              field
-                      :database-type     mostCommonType
-                      ;; TODO: parent-id
-                      :base-type         (type-alias->base-type mostCommonType)
-                      :database-position idx
-                      :pk?               (= field "_id")})
-                   schema-data))}))
+     :fields fields}))
 
 (doseq [[feature supported?] {:basic-aggregations              true
                               :expression-aggregations         true
