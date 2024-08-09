@@ -44,15 +44,12 @@ export const getTitle = (
   stageIndex: number,
   aggregation?: Lib.AggregationClause | Lib.ExpressionClause,
 ): string => {
-  const period = getOffsetPeriod(query, stageIndex);
-
   if (!aggregation) {
-    return t`Compare one of these to the previous ${period}`;
+    return t`Compare one of these to the past`;
   }
 
   const info = Lib.displayInfo(query, stageIndex, aggregation);
-
-  return t`Compare “${info.displayName}” to previous ${period}`;
+  return t`Compare “${info.displayName}” to the past`;
 };
 
 export const getAggregations = (
@@ -93,3 +90,27 @@ export const canSubmit = (
   const areColumnsValid = columns.length > 0;
   return isPeriodValid && areColumnsValid;
 };
+
+export function canAddTemporalCompareAggregation(
+  query: Lib.Query,
+  stageIndex: number,
+): boolean {
+  const aggregations = Lib.aggregations(query, stageIndex);
+  if (aggregations.length === 0) {
+    // Hide the "Compare to the past" option if there are no aggregations
+    return false;
+  }
+
+  const breakoutableColumns = Lib.breakoutableColumns(query, stageIndex);
+  const hasAtLeastOneTemporalBreakoutColumn = breakoutableColumns.some(column =>
+    Lib.isTemporal(column),
+  );
+
+  if (!hasAtLeastOneTemporalBreakoutColumn) {
+    // Hide the "Compare to the past" option if there are no
+    // temporal columns to break out on
+    return false;
+  }
+
+  return true;
+}
