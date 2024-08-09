@@ -1,22 +1,31 @@
 (ns metabase.models.recent-views
   "The Recent Views table is used to track the most recent views of objects such as Cards, Models, Tables, Dashboards,
-  and Collections for each user. For an up to date list, see [[models-of-interest]].
+  and Collections for each user. For an up to date list, see [[rv-models]].
 
   It offers a simple API to add a recent view item, and fetch the list of recents.
 
   Adding Recent Items:
-     `(recent-views/update-users-recent-views! <user-id> <model> <model-id>)`
+     `(recent-views/update-users-recent-views! <user-id> <model> <model-id> <context>)`
        see: [[update-users-recent-views!]]
   Fetching Recent Items:
-     `(recent-view/get-list <user-id>)`
-       returns a sequence of [[Item]]
-       see also: [[get-list]]
+     `(recent-views/get-recents <user-id> <context>)`
+       returns a map like {:recents [Item]}
+       see also: [[get-recents]]
 
-  The recent items are partition into model buckets. So, when adding a recent item, duplicates will be removed, and if
-  there are more than [[*recent-views-stored-per-user-per-model*]] (20 currently) of any entity type, the oldest
-  one(s) will be deleted, so that the count stays at least 20.
+  The recent items are partitioned into model and context buckets. So, when adding a recent item, duplicates will be
+  removed, and if there are more than [[*recent-views-stored-per-user-per-model*]] (20 currently) of any entity type,
+  the oldest one(s) will be deleted, so that the count stays at least 20.
 
-  E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents."
+  Context:
+  We want to keep track of recents in multiple contexts. e.g. when selecting a value from the data-picker, that should
+  log a recent_view row with context=`selection`. At this time there are only `view` and `selection` contexts.
+
+  E.G., if you were to view lots of _cards_, it would not push collections and dashboards out of your recents.
+
+  [Metrics] TODO:
+  At some point in 2024, there was an attempt to add `metric` to the list of recent-view models. This
+  was never completed, and the code has not been hooked up. There is no query for metrics, despite there being a
+  `:metric` model in the `models-of-interest` list. This is a TODO to complete this work."
   (:require
    [clojure.set :as set]
    [java-time.api :as t]
@@ -30,10 +39,12 @@
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
-   [steffan-westcott.clj-otel.api.trace.span :as span]
    [toucan2.core :as t2]))
 
 (doto :model/RecentViews (derive :metabase/model))
+
+(t2/deftransforms :model/RecentViews
+  {:context mi/transform-keyword})
 
 (methodical/defmethod t2/table-name :model/RecentViews [_model] :recent_views)
 
@@ -50,21 +61,34 @@
 (defn- duplicate-model-ids
   "Returns a set of IDs of duplicate models in the RecentViews table. Duplicate means that the same model and model_id
    shows up more than once. This returns the ids for the copies that are not the most recent entry."
-  [user-id]
-  (->> (t2/select :model/RecentViews :user_id user-id {:order-by [[:timestamp :desc]]})
+  [user-id context]
+  (->> (t2/select :model/RecentViews
+                  :user_id user-id
+                  :context context
+                  {:order-by [[:timestamp :desc]]})
        (group-by (juxt :model :model_id))
        ;; skip the first row for each group, since it's the most recent
        (mapcat (fn [[_ rows]] (drop 1 rows)))
        (map :id)
        set))
 
-(def models-of-interest
+(def rv-models
   "These are models for which we will retrieve recency."
-  [:card :model ;; note: these are both stored in recent_views as "card", and a join with report_card is needed to
-                ;;       distinguish between them.
+  [:card :model ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
+                ;; needed to distinguish between them.
    :dashboard :table :collection])
 
-(defn- ids-to-prune-for-user+model [user-id model]
+(mu/defn rv-model->model
+  "Given a rv-model, returns the toucan model identifier for it."
+  [rvm :- (into [:enum] rv-models)]
+  (get {:model      :model/Card
+        :card       :model/Card
+        :dashboard  :model/Dashboard
+        :table      :model/Table
+        :collection :model/Collection}
+       rvm))
+
+(defn- ids-to-prune-for-user+model [user-id model context]
   (t2/select-fn-set :id
                     :model/RecentViews
                     {:select [:rv.id]
@@ -72,8 +96,10 @@
                      :where [:and
                              [:= :rv.model (get {:model "card"} model (name model))]
                              [:= :rv.user_id user-id]
-                             (when (#{:card :model} model)
+                             [:= :rv.context (h2x/literal (name context))]
+                             (when (#{:card :model} model) ;; TODO add metric
                                [:= :rc.type (cond (= model :card) (h2x/literal "question")
+                                                  ;; TODO add metric
                                                   (= model :model) (h2x/literal "model"))])]
                      :left-join [[:report_card :rc]
                                  [:and
@@ -84,38 +110,33 @@
                      :limit 100000
                      :offset *recent-views-stored-per-user-per-model*}))
 
-(defn- overflowing-model-buckets [user-id]
-  (into #{} (mapcat #(ids-to-prune-for-user+model user-id %)) models-of-interest))
+(defn- overflowing-model-buckets [user-id context]
+  (into #{} (mapcat #(ids-to-prune-for-user+model user-id % context)) rv-models))
 
 (defn ids-to-prune
   "Returns IDs to prune, which includes 2 things:
-  1. duplicated views for (user-id, model, model_id), this will return the IDs of the non-latest duplicates.
+  1. duplicated views for (user-id, model, model_id, context), this will return the IDs of all duplicates except the newest.
   2. views that are older than the most recent *recent-views-stored-per-user-per-model* views for the user. "
-  [user-id]
+  [user-id context]
   (set/union
-   (duplicate-model-ids user-id)
-   (overflowing-model-buckets user-id)))
+   (duplicate-model-ids user-id context)
+   (overflowing-model-buckets user-id context)))
 
 (mu/defn update-users-recent-views!
   "Updates the RecentViews table for a given user with a new view, and prunes old views."
-  [user-id  :- [:maybe ms/PositiveInt]
-   model    :- [:or
-                [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
-                :string]
-   model-id :- ms/PositiveInt]
+  [user-id :- [:maybe ms/PositiveInt]
+   model :- [:enum :model/Card :model/Table :model/Dashboard :model/Collection]
+   model-id :- ms/PositiveInt
+   context :- [:enum :view :selection]]
   (when user-id
-    (span/with-span!
-      {:name       "update-users-recent-views!"
-       :attributes {:model/id   model-id
-                    :user/id    user-id
-                    :model/name (u/lower-case-en model)}}
-      (t2/with-transaction [_conn]
-        (t2/insert! :model/RecentViews {:user_id  user-id
-                                        :model    (u/lower-case-en (name model))
-                                        :model_id model-id})
-        (let [ids-to-prune (ids-to-prune user-id)]
-          (when (seq ids-to-prune)
-            (t2/delete! :model/RecentViews :id [:in ids-to-prune])))))))
+    (t2/with-transaction [_conn]
+      (t2/insert! :model/RecentViews {:user_id user-id
+                                      :model (u/lower-case-en (name model))
+                                      :model_id model-id
+                                      :context (name context)})
+      (let [prune-ids (ids-to-prune user-id context)]
+        (when (seq prune-ids)
+          (t2/delete! :model/RecentViews :id [:in prune-ids]))))))
 
 (defn most-recently-viewed-dashboard-id
   "Returns ID of the most recently viewed dashboard for a given user within the last 24 hours, or `nil`."

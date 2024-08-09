@@ -1,22 +1,35 @@
 import type {
   RecentItem,
+  CreateRecentRequest,
+  RecentsResponse,
   PopularItem,
-  RecentItemsResponse,
   PopularItemsResponse,
+  RecentsRequest,
 } from "metabase-types/api";
 
 import { Api } from "./api";
-import { provideActivityItemListTags } from "./tags";
+import {
+  provideActivityItemListTags,
+  invalidateTags,
+  idTag,
+  TAG_TYPE_MAPPING,
+} from "./tags";
 
 export const activityApi = Api.injectEndpoints({
   endpoints: builder => ({
-    listRecentItems: builder.query<RecentItem[], void>({
-      query: () => ({
-        method: "GET",
-        url: "/api/activity/recent_views",
-      }),
-      transformResponse: (response: RecentItemsResponse) =>
-        response?.recent_views,
+    listRecents: builder.query<RecentItem[], RecentsRequest | void>({
+      query: ({ context } = { context: ["views"] }) => {
+        const contextParam = [...context]
+          .sort()
+          .map(ctx => `context=${ctx}`)
+          .join("&");
+
+        return {
+          method: "GET",
+          url: `/api/activity/recents?${contextParam}`,
+        };
+      },
+      transformResponse: (response: RecentsResponse) => response?.recents,
       providesTags: items => provideActivityItemListTags(items ?? []),
     }),
     listPopularItems: builder.query<PopularItem[], void>({
@@ -28,8 +41,28 @@ export const activityApi = Api.injectEndpoints({
         response?.popular_items,
       providesTags: items => provideActivityItemListTags(items ?? []),
     }),
+    logRecentItem: builder.mutation<void, Omit<CreateRecentRequest, "context">>(
+      {
+        query: ({ model_id, model }) => ({
+          method: "POST",
+          url: "/api/activity/recents",
+          body: {
+            model_id,
+            model,
+            context: "selection",
+          },
+        }),
+        invalidatesTags: (_, error, item) =>
+          invalidateTags(error, [
+            idTag(TAG_TYPE_MAPPING[item.model], item.model_id),
+          ]),
+      },
+    ),
   }),
 });
 
-export const { useListRecentItemsQuery, useListPopularItemsQuery } =
-  activityApi;
+export const {
+  useListRecentsQuery,
+  useListPopularItemsQuery,
+  useLogRecentItemMutation,
+} = activityApi;

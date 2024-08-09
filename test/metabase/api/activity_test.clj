@@ -235,3 +235,17 @@
                       :popular_items
                       (filter #(test-ids (:id %)))
                       (map (juxt :model :id))))))))))
+
+(deftest recents-endpoint-context-test
+  (testing "Context query param is required"
+    (is (= {:context "vector of enum of :selections, :views"}
+           (:errors (mt/user-http-request :crowberto :get 400 "activity/recents")))))
+  (testing "recent_views endpoint remains unchanged"
+    (is (= {:recent_views []}
+           (mt/user-http-request :crowberto :get 200 "activity/recent_views"))))
+  (testing "Context query param controls return values: views"
+    (is (= {:recents []}
+           (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))))
+  (testing "Context query param controls return values: selections"
+    (is (= {:recents []}
+           (mt/user-http-request :crowberto :get 200 "activity/recents?context=selections")))))

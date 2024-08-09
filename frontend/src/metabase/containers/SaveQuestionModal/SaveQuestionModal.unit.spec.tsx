@@ -8,7 +8,7 @@ import {
   setupCollectionByIdEndpoint,
   setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
-  setupRecentViewsEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import {
@@ -88,7 +88,7 @@ const setup = async (
     });
   }
 
-  setupRecentViewsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([]);
 
   const settings = mockSettings();
 

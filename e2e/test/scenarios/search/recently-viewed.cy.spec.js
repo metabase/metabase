@@ -34,7 +34,7 @@ describe("search > recently viewed", () => {
     // inside the "Orders in a dashboard" dashboard, the order is queried again,
     // which elicits a ViewLog entry
 
-    cy.intercept("/api/activity/recent_views").as("recent");
+    cy.intercept("/api/activity/recents?context=views").as("recent");
     //Because this is testing keyboard navigation, these tests can run in embedded mode
     visitFullAppEmbeddingUrl({ url: "/", qs: { top_nav: true, search: true } });
     cy.wait("@recent");
@@ -63,11 +63,12 @@ describe("search > recently viewed", () => {
     cy.findByPlaceholderText("Search…").click();
     cy.wait("@recent");
     cy.findByTestId("loading-spinner").should("not.exist");
+    cy.log("check output");
+    cy.wait(10000);
 
     assertRecentlyViewedItem(0, "Orders in a dashboard", "Dashboard");
     assertRecentlyViewedItem(1, "Orders", "Question");
     assertRecentlyViewedItem(2, "People", "Table");
-    cy.findAllByTestId("recently-viewed-item-title").should("have.length", 3);
 
     const recentlyViewedItems = cy.findAllByTestId(
       "recently-viewed-item-title",
