@@ -214,44 +214,33 @@
           breakouts        (lib/breakouts query)]
       (is (= 1 (count breakouts)))))
   (testing "should ignore duplicate breakouts with the same temporal bucket"
-    (let [base-query   (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column       (->> (lib/breakoutable-columns base-query)
-                               (m/find-first #(= (:name %) "BIRTH_DATE")))
-          month-bucket (->> (lib/available-temporal-buckets base-query column)
-                               (m/find-first #(= (:unit %) :month)))
-          query        (-> base-query
-                           (lib/breakout (lib/with-temporal-bucket column month-bucket))
-                           (lib/breakout (lib/with-temporal-bucket column month-bucket)))
-          breakouts    (lib/breakouts query)]
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column     (->> (lib/breakoutable-columns base-query)
+                           (m/find-first #(= (:name %) "BIRTH_DATE")))
+          query      (-> base-query
+                         (lib/breakout (lib/with-temporal-bucket column :month))
+                         (lib/breakout (lib/with-temporal-bucket column :month)))
+          breakouts  (lib/breakouts query)]
       (is (= 1 (count breakouts)))))
   (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
-    ;; With :year the ref options would be {:base-type :type/DateTime :effective-type :type/Integer}. As we lose
-    ;; :effective-type during convertion to legacy MBQL, when the query is converted back to pMBQL the
-    ;; :effective-type would be set to the :base-type, i.e. to :type/DateTime. However, the new breakout would have
-    ;; correct ref options. We need to compare breakouts in a way to handle this case.
-    (let [base-query  (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column      (->> (lib/breakoutable-columns base-query)
-                               (m/find-first #(= (:name %) "BIRTH_DATE")))
-          year-bucket (->> (lib/available-temporal-buckets base-query column)
-                           (m/find-first #(= (:unit %) :year)))
-          query       (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column year-bucket))
-                                         (lib.query/->legacy-MBQL)
-                                         (lib/query meta/metadata-provider))
-                                    (lib/with-temporal-bucket column year-bucket))
-          breakouts   (lib/breakouts query)]
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column     (->> (lib/breakoutable-columns base-query)
+                              (m/find-first #(= (:name %) "BIRTH_DATE")))
+          query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
+                                        (lib.query/->legacy-MBQL)
+                                        (lib/query meta/metadata-provider))
+                                   (lib/with-temporal-bucket column :year))
+          breakouts  (lib/breakouts query)]
       (is (= 1 (count breakouts)))))
   (testing "should allow multiple breakouts with different temporal buckets when converting from legacy MBQL"
-    (let [base-query      (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column          (->> (lib/breakoutable-columns base-query)
-                               (m/find-first #(= (:name %) "BIRTH_DATE")))
-          temporal-buckets (lib/available-temporal-buckets base-query column)
-          year-bucket      (m/find-first #(= (:unit %) :year) temporal-buckets)
-          month-bucket     (m/find-first #(= (:unit %) :month) temporal-buckets)
-          query            (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column year-bucket))
-                                              (lib.query/->legacy-MBQL)
-                                              (lib/query meta/metadata-provider))
-                                         (lib/with-temporal-bucket column month-bucket))
-          breakouts        (lib/breakouts query)]
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column     (->> (lib/breakoutable-columns base-query)
+                          (m/find-first #(= (:name %) "BIRTH_DATE")))
+          query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
+                                        (lib.query/->legacy-MBQL)
+                                        (lib/query meta/metadata-provider))
+                                   (lib/with-temporal-bucket column :month))
+          breakouts  (lib/breakouts query)]
       (is (= 2 (count breakouts))))))
 
 (deftest ^:parallel breakoutable-explicit-joins-test
@@ -708,14 +697,12 @@
                   (->> (lib/breakout-column query breakout)
                        (lib/binning))))))
   (testing "should set the temporal unit from the breakout clause"
-    (let [base-query   (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column       (->> (lib/breakoutable-columns base-query)
-                            (m/find-first #(= (:name %) "BIRTH_DATE")))
-          month-bucket (->> (lib/available-temporal-buckets base-query column)
-                            (m/find-first #(= (:unit %) :month)))
-          query        (->> (lib/with-temporal-bucket column month-bucket)
-                            (lib/breakout base-query))
-          breakout     (first (lib/breakouts query))]
+    (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+          column     (->> (lib/breakoutable-columns base-query)
+                          (m/find-first #(= (:name %) "BIRTH_DATE")))
+          query      (->> (lib/with-temporal-bucket column :month)
+                          (lib/breakout base-query))
+          breakout   (first (lib/breakouts query))]
           (is (=? {:unit :month}
                   (->> (lib/breakout-column query breakout)
                        (lib/temporal-bucket)))))))

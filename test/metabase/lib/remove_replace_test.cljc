@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -386,7 +387,27 @@
                               (lib/append-stage)
                               (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
                               (lib/replace-clause 0 (second breakouts) (meta/field-metadata :venues :price))
-                              (lib/breakouts 0)))))))
+                              (lib/breakouts 0)))))
+    (testing "should ignore duplicate breakouts"
+      (let [column    (meta/field-metadata :venues :price)
+            query     (-> lib.tu/venues-query
+                          (lib/breakout column))
+            breakouts (lib/breakouts query)]
+        (is (= 1 (-> query
+                     (lib/replace-clause 0 (first breakouts) column)
+                     (lib/breakouts)
+                     (count))))))
+    (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
+      (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
+            column     (->> (lib/breakoutable-columns base-query)
+                            (m/find-first #(= (:name %) "BIRTH_DATE")))
+            query      (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
+                             (lib.query/->legacy-MBQL)
+                             (lib/query meta/metadata-provider))]
+        (is (= 1 (-> query
+                     (lib/replace-clause 0 (first breakouts) (lib/with-temporal-bucket column :year))
+                     (lib/breakouts)
+                     (count))))))))
 
 (deftest ^:parallel replace-clause-fields-test
   (let [query (-> lib.tu/venues-query
