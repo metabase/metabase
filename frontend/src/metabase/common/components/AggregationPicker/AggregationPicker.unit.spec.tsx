@@ -384,26 +384,18 @@ describe("AggregationPicker", () => {
 
     it("displays the shortcut with correct label if there is 1 aggregation", () => {
       setup({ query: createQueryWithCountAggregation() });
-
-      expect(
-        screen.getByText("Compare “Count” to previous period ..."),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Compare to the past")).toBeInTheDocument();
     });
 
     it("displays the shortcut with correct label if there are multiple aggregation", () => {
       setup({ query: createQueryWithCountAndSumAggregations() });
-
-      expect(
-        screen.getByText("Compare to previous period ..."),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Compare to the past")).toBeInTheDocument();
     });
 
     it("calls 'onAdd' on submit", async () => {
       const { onAdd } = setup({ query: createQueryWithCountAggregation() });
 
-      await userEvent.click(
-        screen.getByText("Compare “Count” to previous period ..."),
-      );
+      await userEvent.click(screen.getByText("Compare to the past"));
       await userEvent.click(screen.getByText("Done"));
 
       expect(onAdd).toHaveBeenCalled();
@@ -412,9 +404,7 @@ describe("AggregationPicker", () => {
     it("does not call 'onSelect' on submit", async () => {
       const { onSelect } = setup({ query: createQueryWithCountAggregation() });
 
-      await userEvent.click(
-        screen.getByText("Compare “Count” to previous period ..."),
-      );
+      await userEvent.click(screen.getByText("Compare to the past"));
       await userEvent.click(screen.getByText("Done"));
 
       expect(onSelect).not.toHaveBeenCalled();
