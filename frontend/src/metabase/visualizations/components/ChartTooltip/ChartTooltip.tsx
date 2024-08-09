@@ -18,21 +18,26 @@ export interface ChartTooltipProps {
   settings: VisualizationSettings;
 }
 
+export const ChartTooltipContent = ({
+  hovered,
+  settings,
+}: ChartTooltipProps) => {
+  if (!hovered) {
+    return null;
+  }
+  if (!_.isEmpty(hovered.timelineEvents)) {
+    return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
+  }
+
+  if (hovered.stackedTooltipModel) {
+    return <StackedDataTooltip {...hovered.stackedTooltipModel} />;
+  }
+
+  return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;
+};
+
 const ChartTooltip = ({ hovered, settings }: ChartTooltipProps) => {
-  const tooltip = useMemo(() => {
-    if (!hovered) {
-      return null;
-    }
-    if (!_.isEmpty(hovered.timelineEvents)) {
-      return <TimelineEventTooltip hovered={hovered as HoveredTimelineEvent} />;
-    }
-
-    if (hovered.stackedTooltipModel) {
-      return <StackedDataTooltip {...hovered.stackedTooltipModel} />;
-    }
-
-    return <KeyValuePairChartTooltip hovered={hovered} settings={settings} />;
-  }, [hovered, settings]);
+  const tooltip = <ChartTooltipContent hovered={hovered} settings={settings} />;
 
   const isNotEmpty = useMemo(() => {
     if (!hovered) {

@@ -1,0 +1,86 @@
+/* This class should be set to the ECharts tooltip root element via option to override ECharts defaults */
+.ChartTooltipRoot {
+  font: unset !important;
+  background-color: var(--mb-color-bg-black) !important;
+  border: none !important;
+  padding: 0 !important;
+  color: var(--mb-color-text-white) !important;
+}
+
+.Table {
+  border-collapse: collapse;
+  margin: 0.25rem 0.5rem 0.5rem 0.5rem;
+}
+
+.TableNoHeader {
+  margin-top: 0.5rem;
+}
+
+.Header {
+  display: flex;
+  margin: 0.5rem 1rem 0 1rem;
+  font-weight: 400;
+  font-size: 12px;
+}
+
+.RowFocused {
+  background-color: color-mix(in srgb, var(--mb-color-bg-black) 87%, #fff);
+}
+
+.Cell {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 240px;
+  padding: 0.25rem 0;
+  vertical-align: middle;
+  text-align: right;
+}
+
+.Cell + .Cell {
+  padding-left: 0.5rem;
+}
+
+.Cell:first-of-type {
+  padding-left: 0.5rem;
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+
+.Cell:last-of-type {
+  padding-right: 0.5rem;
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+.NameCell {
+  font-weight: 400;
+  font-size: 14px;
+  text-align: left;
+}
+
+.MainValueCell {
+  font-size: 14px;
+}
+
+.SecondaryValueCell {
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--mb-color-text-light);
+}
+
+.IndicatorCell {
+  line-height: 12px;
+  text-align: center;
+}
+
+.Indicator {
+  border-radius: 100%;
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+}
+
+.FooterRow {
+  background-color: color-mix(in srgb, var(--mb-color-bg-black) 50%, #000);
+}

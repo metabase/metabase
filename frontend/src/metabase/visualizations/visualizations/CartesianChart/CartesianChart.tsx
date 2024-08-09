@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChartRenderingErrorBoundary } from "metabase/visualizations/components/ChartRenderingErrorBoundary";
 import LegendCaption from "metabase/visualizations/components/legend/LegendCaption";
 import { getLegendItems } from "metabase/visualizations/echarts/cartesian/model/legend";
+import { useCartesianChartSeriesColorsClasses } from "metabase/visualizations/echarts/tooltip";
 import type { VisualizationProps } from "metabase/visualizations/types";
 import {
   CartesianChartLegendLayout,
@@ -88,6 +89,7 @@ function _CartesianChart(props: VisualizationProps) {
   }, []);
 
   const canSelectTitle = !!onChangeCardAndRun;
+  const seriesColorsCss = useCartesianChartSeriesColorsClasses(chartModel);
 
   return (
     <CartesianChartRoot isQueryBuilder={isQueryBuilder}>
@@ -129,6 +131,7 @@ function _CartesianChart(props: VisualizationProps) {
           onInit={handleInit}
         />
       </CartesianChartLegendLayout>
+      {seriesColorsCss}
     </CartesianChartRoot>
   );
 }

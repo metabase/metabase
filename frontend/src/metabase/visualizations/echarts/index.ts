@@ -13,6 +13,7 @@ import {
   ToolboxComponent,
   DatasetComponent,
   GraphicComponent,
+  TooltipComponent,
 } from "echarts/components";
 import { use } from "echarts/core";
 import { LabelLayout } from "echarts/features";
@@ -35,5 +36,6 @@ export const registerEChartsModules = () => {
     BrushComponent,
     DatasetComponent,
     LabelLayout,
+    TooltipComponent,
   ]);
 };

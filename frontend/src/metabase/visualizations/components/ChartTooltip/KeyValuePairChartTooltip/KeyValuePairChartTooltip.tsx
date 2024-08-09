@@ -118,7 +118,7 @@ const getRows = (hovered: HoveredObject) => {
   return [];
 };
 
-const getRowFromDataPoint = (data: DataPoint) => ({
+export const getRowFromDataPoint = (data: DataPoint) => ({
   ...data,
   key: data.key || (data.col && getFriendlyName(data.col)),
 });
