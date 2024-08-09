@@ -135,7 +135,6 @@ SELECT
 FROM
   ConsistentPermissions cp;
 
-
 -- Insert DB-level view data permissions for all groups & DBs that don't have
 -- table-level permissions set.
 INSERT INTO
@@ -238,7 +237,6 @@ WHERE
       AND dp.db_id = md.id
       AND dp.perm_type = 'perms/view-data'
   );
-
 
 -- Remove table-level view-data permissions for groups that have DB-level permissions set
 DELETE FROM data_permissions

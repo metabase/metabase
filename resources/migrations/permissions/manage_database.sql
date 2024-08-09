@@ -21,3 +21,5 @@ WHERE pg.name != 'Administrators'
      WHERE dp.group_id = pg.id
        AND dp.db_id = md.id
        AND dp.perm_type = 'perms/manage-database');
+
+ALTER TABLE data_permissions SET LOGGED;

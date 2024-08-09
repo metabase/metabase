@@ -1,5 +1,4 @@
 -- Insert DB-level permissions with a check for table-level permissions
-ALTER TABLE data_permissions DISABLE TRIGGER ALL;
 
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT pg.id AS group_id,
@@ -40,8 +39,6 @@ WHERE pg.name != 'Administrators'
           ELSE FALSE
       END;
 
-ANALYZE data_permissions;
-
 WITH escaped_schema_table AS (
     SELECT
         mt.id AS table_id,
@@ -75,8 +72,6 @@ WHERE NOT EXISTS (
       AND dp.perm_type = 'perms/manage-table-metadata'
 );
 
-ANALYZE data_permissions;
-
 -- Insert 'no' permissions for any table and group combinations that weren't covered by the previous query
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT
@@ -98,5 +93,3 @@ WHERE NOT EXISTS (
       AND dp.perm_type = 'perms/manage-table-metadata'
 )
 AND pg.name != 'Administrators';
-
-ALTER TABLE data_permissions ENABLE TRIGGER ALL;
