@@ -44,6 +44,18 @@ export const getActionIconOverrides =
             },
           },
         }),
+        viewFooter: theme => ({
+          root: {
+            color: theme.fn.themeColor("text-medium"),
+            "&:hover": {
+              color: theme.fn.themeColor("brand"),
+            },
+            "&:disabled, &[data-disabled]": {
+              color: theme.fn.themeColor("text-light"),
+              backgroundColor: "transparent",
+            },
+          },
+        }),
       },
     },
   });
