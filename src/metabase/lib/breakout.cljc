@@ -10,6 +10,7 @@
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.ref :as lib.schema.ref]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.temporal-bucket :as lib.temporal-bucket]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
@@ -49,14 +50,10 @@
   ([query        :- ::lib.schema/query
     stage-number :- :int
     expr         :- some?]
-   (let [expr (lib.ref/ref (if (fn? expr)
-                             (expr query stage-number)
-                             expr))
-         existing-breakouts (breakouts query stage-number)
-         existing-breakout? (and (seq existing-breakouts) (some #(lib.equality/= % expr) existing-breakouts))]
-     (if existing-breakout?
-       query
-       (lib.util/add-summary-clause query stage-number :breakout expr)))))
+   (let [expr (if (fn? expr) (expr query stage-number) expr)]
+     (if (lib.schema.util/distinct-refs? (map lib.ref/ref (cons expr (breakouts query stage-number))))
+       (lib.util/add-summary-clause query stage-number :breakout expr)
+       query))))
 
 (mu/defn breakoutable-columns :- [:sequential ::lib.schema.metadata/column]
   "Get column metadata for all the columns that can be broken out by in
