@@ -36,7 +36,7 @@ export function getSubpathSafeUrl(url?: string) {
     return;
   }
 
-  return api.basename + url;
+  return api.basename + url.trim();
 }
 
 /**
