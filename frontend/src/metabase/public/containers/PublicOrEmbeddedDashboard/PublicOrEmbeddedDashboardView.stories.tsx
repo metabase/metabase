@@ -283,7 +283,9 @@ TransparentThemeNoBackgroundScroll.decorators = [
 // Other components compatibility test
 export function ComponentCompatibility() {
   return (
-    <div>
+    // Loki doesn't take into account the tooltips and dropdowns dimensions.
+    // This padding is to make sure we cover the area of all of them.
+    <Box pb="50px">
       <Tooltip
         label={
           <Text size="sm" c="var(--mb-color-text-primary)">
@@ -351,7 +353,7 @@ export function ComponentCompatibility() {
           }
         }
       </PopoverWithTrigger>
-    </div>
+    </Box>
   );
 }
 
