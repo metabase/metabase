@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { useSetting } from "metabase/common/hooks";
+import { useHasAnyNotificationChannel } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
@@ -14,12 +14,11 @@ export function DashboardSubscriptionMenuItem({
   onClick: () => void;
 }) {
   const isAdmin = useSelector(getUserIsAdmin);
-  const isEmailSetup = useSetting("email-configured?");
-  const isSlackSetup = useSetting("slack-token-valid?");
+  const hasNotificationChannel = useHasAnyNotificationChannel();
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   const showSubscriptions =
-    (isAdmin || isEmailSetup || isSlackSetup) && canManageSubscriptions;
+    (isAdmin || hasNotificationChannel) && canManageSubscriptions;
 
   if (!showSubscriptions) {
     return null;

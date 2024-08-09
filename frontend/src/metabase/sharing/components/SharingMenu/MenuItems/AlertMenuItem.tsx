@@ -1,12 +1,9 @@
 import { t } from "ttag";
 
 import { useListCardAlertsQuery, skipToken } from "metabase/api";
-import { useSetting } from "metabase/common/hooks";
+import { useHasAnyNotificationChannel } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import {
-  canManageSubscriptions as canManageSubscriptionsSelector,
-  getUserIsAdmin,
-} from "metabase/selectors/user";
+import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Menu, Center, Icon, Title } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
@@ -17,21 +14,14 @@ export function AlertMenuItem({
   question: Question;
   onClick: () => void;
 }) {
-  const isAdmin = useSelector(getUserIsAdmin);
-  const isEmailSetup = useSetting("email-configured?");
-  const isSlackSetup = useSetting("slack-token-valid?");
-  const hasDeliveryChannel = isEmailSetup || isSlackSetup;
+  const hasNotificationChannel = useHasAnyNotificationChannel();
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   const { data: questionAlerts, isLoading } = useListCardAlertsQuery({
     id: question.id() ?? skipToken,
   });
 
-  const showAlerts =
-    (isAdmin || hasDeliveryChannel) &&
-    question.canRun() &&
-    !isLoading &&
-    canManageSubscriptions;
+  const showAlerts = question.canRun() && !isLoading && canManageSubscriptions;
 
   if (!showAlerts) {
     return null;
@@ -49,10 +39,12 @@ export function AlertMenuItem({
             <Icon name={hasAlerts ? "alert_filled" : "alert"} />
           </Center>
         }
-        disabled={!hasDeliveryChannel}
+        disabled={!hasNotificationChannel}
         onClick={onClick}
       >
-        <Title order={4}>{hasAlerts ? t`Edit Alerts` : t`Create alert`}</Title>
+        <Title order={4} color="inherit">
+          {hasAlerts ? t`Edit alerts` : t`Create alert`}
+        </Title>
       </Menu.Item>
       <Menu.Divider />
     </>

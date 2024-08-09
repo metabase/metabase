@@ -1,5 +1,6 @@
 import type {
   CreateSubscriptionRequest,
+  ChannelApiResponse,
   DashboardSubscription,
   ListSubscriptionsRequest,
   UpdateSubscriptionRequest,
@@ -12,6 +13,7 @@ import {
   listTag,
   provideSubscriptionListTags,
   provideSubscriptionTags,
+  provideSubscriptionChannelListTags,
 } from "./tags";
 
 export const subscriptionApi = Api.injectEndpoints({
@@ -74,6 +76,13 @@ export const subscriptionApi = Api.injectEndpoints({
           idTag("subscription", id),
         ]),
     }),
+    getChannelInfo: builder.query<ChannelApiResponse, void>({
+      query: () => ({
+        method: "GET",
+        url: `/api/pulse/form_input`,
+      }),
+      providesTags: () => provideSubscriptionChannelListTags(),
+    }),
   }),
 });
 
@@ -83,4 +92,5 @@ export const {
   useCreateSubscriptionMutation,
   useUpdateSubscriptionMutation,
   useUnsubscribeMutation,
+  useGetChannelInfoQuery,
 } = subscriptionApi;

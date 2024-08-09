@@ -5,7 +5,6 @@ import _ from "underscore";
 
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
-import { getQuestionAlerts } from "metabase/query_builder/selectors";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { Alert } from "metabase-types/api";
@@ -13,21 +12,26 @@ import type { Alert } from "metabase-types/api";
 import { AlertListItem } from "./AlertListItem";
 
 type AlertListPopoverContentProps = {
+  questionAlerts?: Alert[];
   onCreate: () => void;
   onEdit: (alert: Alert) => void;
   onClose: () => void;
 };
 
 export const AlertListPopoverContent = ({
+  questionAlerts,
   onCreate,
   onEdit,
   onClose,
 }: AlertListPopoverContentProps) => {
-  const questionAlerts = useSelector(getQuestionAlerts);
   const user = useSelector(getUser);
 
   const [hasJustUnsubscribedFromOwnAlert, setHasJustUnsubscribedFromOwnAlert] =
     useState(false);
+
+  if (!questionAlerts) {
+    return null;
+  }
 
   const isCreatedByCurrentUser = (alert: Alert) => {
     return user ? alert.creator.id === user.id : false;
@@ -59,7 +63,7 @@ export const AlertListPopoverContent = ({
   const hasOwnAndOthers = hasOwnAlerts && othersAlerts.length > 0;
 
   return (
-    <div style={{ minWidth: 410 }}>
+    <div style={{ minWidth: 410 }} data-testid="alert-list-popover">
       <ul>
         {Object.values(sortedQuestionAlerts).map(alert => (
           <AlertListItem

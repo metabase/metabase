@@ -1,6 +1,7 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import { createMockAlert } from "metabase-types/api/mocks";
 
 import { setupQuestionSharingMenu, openMenu } from "./setup";
 
@@ -29,6 +30,104 @@ describe("QuestionSharingMenu", () => {
     });
 
     expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
+  });
+
+  describe("alerts", () => {
+    describe("admins", () => {
+      it("should show the 'Create alert' menu item if no alerts exist", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmailSetup: true,
+          alerts: [],
+        });
+        await openMenu();
+        expect(screen.getByText("Create alert")).toBeInTheDocument();
+      });
+
+      it("should show the 'Edit alerts' menu item if alerts exist", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmailSetup: true,
+          alerts: [createMockAlert()],
+        });
+        await openMenu();
+        expect(await screen.findByText("Edit alerts")).toBeInTheDocument();
+      });
+
+      it("clicking to edit alerts should open the alert popover", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmailSetup: true,
+          alerts: [createMockAlert()],
+        });
+        await openMenu();
+        await userEvent.click(screen.getByText("Edit alerts"));
+        expect(
+          await screen.findByTestId("alert-list-popover"),
+        ).toBeInTheDocument();
+      });
+
+      it("should show the alerts menu item disabled when no delivery channels are set up", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: true,
+          isEmailSetup: false,
+          isSlackSetup: false,
+        });
+        await openMenu();
+        const btn = screen.getByRole("menuitem", {
+          name: "alert icon Create alert",
+        });
+        expect(btn).toBeDisabled();
+      });
+    });
+
+    describe("non-admins", () => {
+      it("should show the 'Create alert' menu item if no alerts exist", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: false,
+          isEmailSetup: true,
+          alerts: [],
+        });
+        await openMenu();
+        expect(screen.getByText("Create alert")).toBeInTheDocument();
+      });
+
+      it("should show the 'Edit alerts' menu item if alerts exist", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: false,
+          isEmailSetup: true,
+          alerts: [createMockAlert()],
+        });
+        await openMenu();
+        expect(screen.getByText("Edit alerts")).toBeInTheDocument();
+      });
+
+      it("clicking to edit alerts should open the alert popover", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: false,
+          isEmailSetup: true,
+          alerts: [createMockAlert()],
+        });
+        await openMenu();
+        await userEvent.click(screen.getByText("Edit alerts"));
+        expect(
+          await screen.findByTestId("alert-list-popover"),
+        ).toBeInTheDocument();
+      });
+
+      it("should show the alerts menu item disabled when no delivery channels are set up", async () => {
+        setupQuestionSharingMenu({
+          isAdmin: false,
+          isEmailSetup: false,
+          isSlackSetup: false,
+        });
+        await openMenu();
+        const btn = screen.getByRole("menuitem", {
+          name: "alert icon Create alert",
+        });
+        expect(btn).toBeDisabled();
+      });
+    });
   });
 
   describe("public links", () => {
@@ -88,63 +187,26 @@ describe("QuestionSharingMenu", () => {
     });
 
     describe("non-admins", () => {
-      it('should show a "Public link" button item if public sharing is enabled and a public link exists already', async () => {
+      it('should show a "Public link" menu item if there is a public link for the question', async () => {
         setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: true,
         });
-        const sharingButton = screen.getByTestId("sharing-menu-button");
-
-        expect(sharingButton).toBeEnabled();
-        expect(sharingButton).toHaveAttribute("aria-label", "Public link");
+        await openMenu();
+        expect(screen.getByText("Public link")).toBeInTheDocument();
       });
 
-      it("clicking the sharing button should open the public link popover", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: false,
-          isPublicSharingEnabled: true,
-          hasPublicLink: true,
-        });
-
-        await userEvent.click(screen.getByTestId("sharing-menu-button"));
-
-        expect(
-          screen.getByTestId("public-link-popover-content"),
-        ).toBeInTheDocument();
-        expect(screen.getByTestId("public-link-input")).toHaveDisplayValue(
-          "http://localhost:3000/public/question/1337bad801",
-        );
-      });
-
-      it("should show a 'ask your admin to create a public link' tooltip if public sharing is disabled", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: false,
-          isPublicSharingEnabled: false,
-          hasPublicLink: true,
-        });
-        const sharingButton = screen.getByTestId("sharing-menu-button");
-
-        expect(sharingButton).toBeDisabled();
-        expect(sharingButton).toHaveAttribute(
-          "aria-label",
-          "Ask your admin to create a public link",
-        );
-      });
-
-      it("should show a 'ask your admin to create a public link' menu item if public sharing is enabled, but there is no existing public link", async () => {
+      it('should show an "Ask your admin to create a public link" menu item if there is no public link for the question', async () => {
         setupQuestionSharingMenu({
           isAdmin: false,
           isPublicSharingEnabled: true,
           hasPublicLink: false,
         });
-        const sharingButton = screen.getByTestId("sharing-menu-button");
-
-        expect(sharingButton).toBeDisabled();
-        expect(sharingButton).toHaveAttribute(
-          "aria-label",
-          "Ask your admin to create a public link",
-        );
+        await openMenu();
+        expect(
+          screen.getByText("Ask your admin to create a public link"),
+        ).toBeInTheDocument();
       });
     });
   });

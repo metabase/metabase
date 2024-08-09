@@ -62,6 +62,7 @@ export const AlertPopover = forwardRef(function _AlertPopover(
         <Popover.Target ref={ref}>{target}</Popover.Target>
         <Popover.Dropdown>
           <AlertListPopoverContent
+            questionAlerts={questionAlerts}
             onCreate={() => setShowingElement("create-modal")}
             onEdit={(alert: Alert) => {
               setEditingAlert(alert);

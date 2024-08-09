@@ -1,11 +1,22 @@
 import userEvent from "@testing-library/user-event";
 
 import { setupEnterprisePlugins } from "__support__/enterprise";
+import {
+  setupAlertsEndpoints,
+  setupUsersEndpoints,
+  setupNotificationChannelsEndpoints,
+} from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { renderWithProviders, screen } from "__support__/ui";
 import { useSelector } from "metabase/lib/redux";
 import Question from "metabase-lib/v1/Question";
-import type { Card, Dashboard, User } from "metabase-types/api";
+import type {
+  Alert,
+  Card,
+  Dashboard,
+  User,
+  UserListResult,
+} from "metabase-types/api";
 import {
   createMockCard,
   createMockDashboard,
@@ -37,6 +48,7 @@ type SettingsProps = {
   isAdmin?: boolean;
   canManageSubscriptions?: boolean;
   isEnterprise?: boolean;
+  card?: Card;
 };
 
 const setupState = ({
@@ -47,12 +59,18 @@ const setupState = ({
   isAdmin = false,
   canManageSubscriptions = false,
   isEnterprise = false,
+  card,
 }: SettingsProps) => {
   const tokenFeatures = createMockTokenFeatures({
     advanced_permissions: isEnterprise,
     dashboard_subscription_filters: isEnterprise,
     audit_app: isEnterprise,
   });
+
+  setupNotificationChannelsEndpoints({
+    slack: { configured: isEmailSetup },
+    email: { configured: isSlackSetup },
+  } as any);
 
   const settingValues = createMockSettings({
     "token-features": tokenFeatures,
@@ -72,6 +90,9 @@ const setupState = ({
       ...user,
       permissions: {
         can_access_subscription: canManageSubscriptions,
+      },
+      qb: {
+        card,
       },
     } as User,
   });
@@ -132,10 +153,18 @@ export function setupQuestionSharingMenu({
   isEnterprise = false,
   hasPublicLink = false,
   question: questionOverrides = {},
+  alerts = [],
 }: {
   question?: Partial<Card>;
   hasPublicLink?: boolean;
+  alerts?: Alert[];
 } & SettingsProps) {
+  const card = createMockCard({
+    name: "My Cool Question",
+    public_uuid: hasPublicLink && isPublicSharingEnabled ? "1337bad801" : null,
+    ...questionOverrides,
+  });
+
   const state = setupState({
     isPublicSharingEnabled,
     isEmbeddingEnabled,
@@ -144,13 +173,11 @@ export function setupQuestionSharingMenu({
     isAdmin,
     canManageSubscriptions,
     isEnterprise,
+    card,
   });
 
-  const card = createMockCard({
-    name: "My Cool Question",
-    public_uuid: hasPublicLink && isPublicSharingEnabled ? "1337bad801" : null,
-    ...questionOverrides,
-  });
+  setupAlertsEndpoints(card, alerts);
+  setupUsersEndpoints([state.currentUser] as UserListResult[]);
 
   if (isEnterprise) {
     setupEnterprisePlugins();
