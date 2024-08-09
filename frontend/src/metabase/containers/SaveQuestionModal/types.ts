@@ -1,15 +1,17 @@
 import type Question from "metabase-lib/v1/Question";
 import type { CollectionId } from "metabase-types/api";
 
-export type SaveQuestionModalProps = {
+export type SaveQuestionProps = {
   question: Question;
   originalQuestion: Question | null;
   onCreate: (question: Question) => Promise<void>;
   onSave: (question: Question) => Promise<void>;
-  onClose: () => void;
+
   multiStep?: boolean;
   initialCollectionId?: CollectionId | null;
 };
+
+export type SaveQuestionModalProps = SaveQuestionFormProps;
 
 export type FormValues = {
   saveType: "overwrite" | "create";
@@ -19,7 +21,5 @@ export type FormValues = {
 };
 
 export type SaveQuestionFormProps = {
-  values: FormValues;
-  showSaveType: boolean;
-  placeholder: string;
-} & Pick<SaveQuestionModalProps, "originalQuestion" | "onClose">;
+  onCancel: () => void;
+};
