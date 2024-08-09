@@ -4,7 +4,7 @@ title: "Organization overview"
 
 # Organization overview
 
-Tools for finding things and keeping your Metabase organized. 
+Tools for finding things and keeping your Metabase organized.
 
 ## [Basic exploration](./exploration.md)
 
@@ -16,7 +16,11 @@ Organize questions, dashboards, and models with collections.
 
 ## [History](./history.md)
 
-View changes to a question, dashboard or model, revert to previous versions, and archive outdated items.
+View changes to a question, dashboard or model and revert to previous versions.
+
+## [Delete and restore items](./delete-and-restore.md)
+
+Move outdated outdated questions, models, and dashboards to trash, or delete them permanently.
 
 ## [Data reference](./data-model-reference.md)
 

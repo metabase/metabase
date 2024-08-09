@@ -39,7 +39,7 @@ To add an Official badge to a collection, an admin can visit the collection and 
 [Administrators can give you different kinds of access](../permissions/collections.md) to each collection:
 
 - **View access:** you can see the collection and its contents, but you can't modify anything or put anything new into the collection.
-- **Curate access:** you can edit, move, or archive the collection and its contents. You can also move or save new things in it and create new collections inside of it, and can also pin items in the collection to the top of the screen. Only administrators can edit permissions for collections, however.
+- **Curate access:** you can edit, move, or delete the collection and its contents. You can also move or save new things in it and create new collections inside of it, and can also pin items in the collection to the top of the screen. Only administrators can edit permissions for collections, however.
 - **No access:** you can't see the collection or its contents. If you have access to a dashboard, but it contains questions that are saved in a collection you don't have access to, those questions will show a permissions notification instead of the chart or table.
 
 ## Your personal collection

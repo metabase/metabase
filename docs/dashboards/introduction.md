@@ -266,6 +266,11 @@ For [questions](../questions/start.md), dashboards, and [models](../data-modelin
 
 See [History](../exploration-and-organization/history.md).
 
+## Deleting a dashboard
+
+You can move a dashboard to Trash or permanently delete a dashboard that you no longer need.
+See [Archiving a dashboard](../exploration-and-organization/delete-and-restore.md).
+
 ## Tips on creating helpful dashboards
 
 To make a great dashboard, you first need to decide what you want the dashboard to tell about your data. What questions will give you insight into what you want to know? It helps to think of a topic or theme for your dashboard — something like “customer satisfaction,” or “second quarter sales goals".
