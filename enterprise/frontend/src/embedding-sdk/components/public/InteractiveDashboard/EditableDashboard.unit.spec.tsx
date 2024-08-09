@@ -9,19 +9,21 @@ import {
   setupCardEndpoints,
   setupCardQueryEndpoints,
   setupCardQueryMetadataEndpoint,
+  setupCollectionItemsEndpoint,
+  setupCollectionsEndpoints,
   setupDashboardEndpoints,
   setupDashboardQueryMetadataEndpoint,
 } from "__support__/server-mocks";
 import { setupDashcardQueryEndpoints } from "__support__/server-mocks/dashcard";
+import { setupPulseEndpoint } from "__support__/server-mocks/pulse";
 import { renderWithProviders, screen } from "__support__/ui";
-import { EditableDashboard } from "embedding-sdk";
-import type { EditableDashboardProps } from "embedding-sdk/components/public/InteractiveDashboard/EditableDashboard";
 import type { MetabaseProviderProps } from "embedding-sdk/components/public/MetabaseProvider";
 import { createMockJwtConfig } from "embedding-sdk/test/mocks/config";
 import { setupSdkState } from "embedding-sdk/test/server-mocks/sdk-init";
 import {
   createMockCard,
   createMockCardQueryMetadata,
+  createMockCollection,
   createMockDashboard,
   createMockDashboardCard,
   createMockDashboardQueryMetadata,
@@ -37,8 +39,12 @@ import {
 } from "metabase-types/api/mocks/presets";
 import { createMockDashboardState } from "metabase-types/store/mocks";
 
+import type { EditableDashboardProps } from "./EditableDashboard";
+import { EditableDashboard } from "./EditableDashboard";
+
 const TEST_DASHBOARD_ID = 1;
 const TEST_DB = createMockDatabase({ id: 1 });
+const TEST_COLLECTION = createMockCollection();
 
 const dataset_query = createMockStructuredDatasetQuery({
   query: { "source-table": ORDERS_ID },
@@ -80,6 +86,12 @@ const setup = async ({
 
   setupDashboardEndpoints(dashboard);
 
+  setupCollectionsEndpoints({ collections: [] });
+  setupCollectionItemsEndpoint({
+    collection: TEST_COLLECTION,
+    collectionItems: [],
+  });
+
   setupDashboardQueryMetadataEndpoint(
     dashboard,
     createMockDashboardQueryMetadata({
@@ -99,6 +111,8 @@ const setup = async ({
   setupDashcardQueryEndpoints(dashboardId, tableDashcard, createMockDataset());
 
   setupAlertsEndpoints(tableCard, []);
+
+  setupPulseEndpoint();
 
   const user = createMockUser();
 
