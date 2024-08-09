@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Stack } from "metabase/ui";
-import * as Lib from "metabase-lib";
+import type * as Lib from "metabase-lib";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
@@ -13,7 +13,12 @@ import {
   ReferenceAggregationPicker,
 } from "./components";
 import type { ColumnType } from "./types";
-import { canSubmit, getAggregations, getBreakout, getTitle } from "./utils";
+import {
+  canSubmit,
+  getBreakout,
+  getTitle,
+  updateQueryWithCompareOffsetAggregations,
+} from "./utils";
 
 interface Props {
   aggregations: Lib.AggregationClause[];
@@ -64,53 +69,25 @@ export const CompareAggregations = ({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
 
-    let nextQuery = query;
-
-    if (aggregation && offset !== "" && columnAndBucket) {
-      const column = Lib.withTemporalBucket(
-        columnAndBucket.column,
-        columnAndBucket.bucket,
-      );
-
-      let { breakoutIndex } = columnAndBucket;
-      if (breakoutIndex !== null) {
-        // replace the breakout
-        const breakout = Lib.breakouts(nextQuery, stageIndex)[breakoutIndex];
-        nextQuery = Lib.replaceClause(nextQuery, stageIndex, breakout, column);
-      } else {
-        // add the breakout
-        nextQuery = Lib.breakout(nextQuery, stageIndex, column);
-        breakoutIndex = Lib.breakouts(nextQuery, stageIndex).length - 1;
-      }
-
-      if (breakoutIndex !== 0) {
-        const breakouts = Lib.breakouts(nextQuery, stageIndex);
-
-        // move the breakout to the front
-        nextQuery = Lib.swapClauses(
-          nextQuery,
-          stageIndex,
-          breakouts[0],
-          breakouts[breakoutIndex],
-        );
-      }
-
-      const aggregations = getAggregations(
-        nextQuery,
-        stageIndex,
-        aggregation,
-        columns,
-        offset,
-      );
-
-      nextQuery = aggregations.reduce(
-        (query, aggregation) => Lib.aggregate(query, stageIndex, aggregation),
-        nextQuery,
-      );
-
-      onSubmit(nextQuery, aggregations);
-      onClose();
+    if (!aggregation || !columnAndBucket) {
+      return;
     }
+
+    const next = updateQueryWithCompareOffsetAggregations(
+      query,
+      stageIndex,
+      aggregation,
+      offset,
+      columns,
+      columnAndBucket,
+    );
+
+    if (!next) {
+      return;
+    }
+
+    onSubmit(next.query, next.addedAggregations);
+    onClose();
   };
 
   return (

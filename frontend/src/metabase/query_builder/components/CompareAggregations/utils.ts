@@ -139,3 +139,68 @@ export const canSubmit = (
   const areColumnsValid = columns.length > 0;
   return isPeriodValid && areColumnsValid;
 };
+
+type UpdatedQuery = {
+  query: Lib.Query;
+  addedAggregations: Lib.ExpressionClause[];
+};
+
+export function updateQueryWithCompareOffsetAggregations(
+  query: Lib.Query,
+  stageIndex: number,
+  aggregation: Lib.AggregationClause | Lib.ExpressionClause,
+  offset: "" | number,
+  columns: ColumnType[],
+  columnAndBucket: BreakoutColumnAndBucket,
+): UpdatedQuery | null {
+  if (!aggregation || offset === "" || !columnAndBucket) {
+    return null;
+  }
+
+  let nextQuery = query;
+  const column = Lib.withTemporalBucket(
+    columnAndBucket.column,
+    columnAndBucket.bucket,
+  );
+
+  let { breakoutIndex } = columnAndBucket;
+  if (breakoutIndex !== null) {
+    // replace the breakout
+    const breakout = Lib.breakouts(nextQuery, stageIndex)[breakoutIndex];
+    nextQuery = Lib.replaceClause(nextQuery, stageIndex, breakout, column);
+  } else {
+    // add the breakout
+    nextQuery = Lib.breakout(nextQuery, stageIndex, column);
+    breakoutIndex = Lib.breakouts(nextQuery, stageIndex).length - 1;
+  }
+
+  if (breakoutIndex !== 0) {
+    const breakouts = Lib.breakouts(nextQuery, stageIndex);
+
+    // move the breakout to the front
+    nextQuery = Lib.swapClauses(
+      nextQuery,
+      stageIndex,
+      breakouts[0],
+      breakouts[breakoutIndex],
+    );
+  }
+
+  const aggregations = getAggregations(
+    nextQuery,
+    stageIndex,
+    aggregation,
+    columns,
+    offset,
+  );
+
+  nextQuery = aggregations.reduce(
+    (query, aggregation) => Lib.aggregate(query, stageIndex, aggregation),
+    nextQuery,
+  );
+
+  return {
+    query: nextQuery,
+    addedAggregations: aggregations,
+  };
+}
