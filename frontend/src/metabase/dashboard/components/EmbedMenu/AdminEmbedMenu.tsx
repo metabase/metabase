@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { t } from "ttag";
 
-import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 import type {
   EmbedMenuModes,
   EmbedMenuProps,
@@ -12,6 +11,7 @@ import {
 } from "metabase/dashboard/components/PublicLinkPopover";
 import { useSelector } from "metabase/lib/redux";
 import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
+import { ViewFooterSharingButton } from "metabase/query_builder/components/view/ViewFooterSharingButton";
 import { getSetting } from "metabase/selectors/settings";
 import { Menu, Title, Text, Stack, Center, Icon } from "metabase/ui";
 
@@ -36,11 +36,7 @@ export const AdminEmbedMenu = ({
     resourceType === "dashboard" ? (
       <ResourceEmbedButton hasBackground={true} />
     ) : (
-      <ViewFooterButton
-        icon="share"
-        tooltipLabel={isPublicSharingEnabled ? t`Sharing` : t`Embedding`}
-        data-testid="resource-embed-button"
-      />
+      <ViewFooterSharingButton />
     );
 
   if (menuMode === "public-link-popover") {

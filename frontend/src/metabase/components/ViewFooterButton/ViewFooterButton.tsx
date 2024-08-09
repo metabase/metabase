@@ -2,7 +2,7 @@ import { type Ref, forwardRef, type HTMLAttributes } from "react";
 
 import {
   ActionIcon,
-  Box,
+  Center,
   Icon,
   Tooltip,
   type ActionIconProps,
@@ -21,11 +21,11 @@ export const ViewFooterButton = forwardRef(function _ViewFooterButton(
 ) {
   return (
     <Tooltip label={tooltipLabel}>
-      <Box>
+      <Center>
         <ActionIcon ref={ref} variant="viewFooter" {...actionIconProps}>
           <Icon size={18} name={icon} />
         </ActionIcon>
-      </Box>
+      </Center>
     </Tooltip>
   );
 });

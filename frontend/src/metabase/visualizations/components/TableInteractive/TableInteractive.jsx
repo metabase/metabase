@@ -29,7 +29,13 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { Box, Button as UIButton, Icon, DelayGroup } from "metabase/ui";
+import {
+  ThemeProvider,
+  Box,
+  Button as UIButton,
+  Icon,
+  DelayGroup,
+} from "metabase/ui";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -333,27 +339,29 @@ class TableInteractive extends Component {
 
     const content = (
       <EmotionCacheProvider>
-        <div style={{ display: "flex" }} ref={this.onMeasureHeaderRender}>
-          {cols.map((column, columnIndex) => (
-            <div className="fake-column" key={"column-" + columnIndex}>
-              {this.tableHeaderRenderer({
-                columnIndex,
-                rowIndex: 0,
-                key: "header",
-                style: {},
-                isVirtual: true,
-              })}
-              {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
-                this.cellRenderer({
-                  rowIndex,
+        <ThemeProvider>
+          <div style={{ display: "flex" }} ref={this.onMeasureHeaderRender}>
+            {cols.map((column, columnIndex) => (
+              <div className="fake-column" key={"column-" + columnIndex}>
+                {this.tableHeaderRenderer({
                   columnIndex,
-                  key: "row-" + rowIndex,
+                  rowIndex: 0,
+                  key: "header",
                   style: {},
-                }),
-              )}
-            </div>
-          ))}
-        </div>
+                  isVirtual: true,
+                })}
+                {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+                  this.cellRenderer({
+                    rowIndex,
+                    columnIndex,
+                    key: "row-" + rowIndex,
+                    style: {},
+                  }),
+                )}
+              </div>
+            ))}
+          </div>
+        </ThemeProvider>
       </EmotionCacheProvider>
     );
 
