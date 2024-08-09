@@ -25,11 +25,12 @@ Features currently supported:
 - theming with CSS variables
 - plugins for custom actions, overriding dashboard card menu items
 - subscribing to events
+- editing dashboards - requires upgrade to the next metabase platform version
 
 Features not yet supported:
 
 - letting users create new questions from scratch
-- creating and editing dashboards
+- creating dashboards
 
 # Changelog
 
@@ -432,7 +433,7 @@ After the SDK is configured, you can embed your dashboard using the `Interactive
 - **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question
   level.
 - **questionPlugins** `{ mapQuestionClickActions: Function } | null` – Additional mapper function to override or add
-  drill-down menu. [See this](#implementing-custom-actions) for more details
+  drill-down menu. [See this section](#implementing-custom-actions) for more details
 - **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all
   visible cards and their content.
 - **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads,
@@ -465,6 +466,27 @@ export default function App() {
   );
 }
 ```
+
+### Editable Dashboard
+
+Dashboards that support editing if a user has permissions for this, could be embedded using `EditableDashboard` component.
+
+#### Parameters
+
+- **dashboardId**: `number` (required) – The ID of the dashboard. This is the numerical ID when accessing a dashboard
+  link, i.e. `http://localhost:3000/dashboard/1-my-dashboard` where the ID is `1`
+- **initialParameterValues**: `Record<string, string | string[]>` – Query parameters for the dashboard. For a single
+  option, use a `string` value, and use a list of strings for multiple options.
+- **withDownloads**: `boolean | null` – Whether to hide the download button.
+- **questionHeight**: `number | null` – Height of a question component when drilled from the dashboard to a question
+  level.
+- **plugins** `{ dashcardMenu?: Object, mapQuestionClickActions?: Function } | null` – Additional mapper function to override or add
+  drill-down menu. [See this section](#implementing-custom-actions) for more details
+- **onLoad**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads with all
+  visible cards and their content.
+- **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads,
+  but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
+  loaded.
 
 ### Embedding the collection browser
 
