@@ -50,6 +50,10 @@ export const getActionIconOverrides =
             "&:hover": {
               color: theme.fn.themeColor("brand"),
             },
+            "&:disabled, &[data-disabled]": {
+              color: theme.fn.themeColor("text-light"),
+              backgroundColor: "transparent",
+            },
           },
         }),
       },
