@@ -126,7 +126,7 @@
               :type       :drill-thru/quick-filter
               :operators  (operators-for (:column drill-details) value)
               :value      value}
-              drill-details))))
+             drill-details))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]
