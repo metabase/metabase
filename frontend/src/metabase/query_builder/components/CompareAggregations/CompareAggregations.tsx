@@ -101,6 +101,7 @@ export const CompareAggregations = ({
               <OffsetInput
                 query={query}
                 stageIndex={stageIndex}
+                comparisonType={comparisonType}
                 value={offset}
                 onChange={setOffset}
               />
