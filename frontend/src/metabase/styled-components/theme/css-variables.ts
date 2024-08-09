@@ -77,7 +77,7 @@ function getSdkDesignSystemCssVariables(theme: MantineTheme) {
           const colorExist = color !== metabaseColorName;
 
           if (colorExist) {
-            return `--mb-color-${metabaseColorName}: ${color}`;
+            return `--mb-color-${metabaseColorName}: ${color};`;
           }
         });
       },
