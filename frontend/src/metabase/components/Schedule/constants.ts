@@ -56,8 +56,7 @@ export const getScheduleStrings = () => {
   const scheduleOptionNames = {
     // The context is needed because 'hourly' can be an adjective ('hourly
     // rate') or adverb ('update hourly'). Same with 'daily', 'weekly', and
-    // 'monthly'. This also provides the sort order: hourly < daily < weekly <
-    // monthly.
+    // 'monthly'.
     hourly: c("adverb").t`hourly`,
     daily: c("adverb").t`daily`,
     weekly: c("adverb").t`weekly`,
