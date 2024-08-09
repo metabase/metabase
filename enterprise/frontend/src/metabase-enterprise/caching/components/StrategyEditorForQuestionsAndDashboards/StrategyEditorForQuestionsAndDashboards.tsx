@@ -10,22 +10,14 @@ import { rootId } from "metabase/admin/performance/constants/simple";
 import { useCacheConfigs } from "metabase/admin/performance/hooks/useCacheConfigs";
 import { useConfirmIfFormIsDirty } from "metabase/admin/performance/hooks/useConfirmIfFormIsDirty";
 import { useSaveStrategy } from "metabase/admin/performance/hooks/useSaveStrategy";
-import {
-  skipToken,
-  useListCollectionsQuery,
-  useSearchQuery,
-} from "metabase/api";
+import { skipToken, useSearchQuery } from "metabase/api";
 import { StyledTable } from "metabase/common/components/Table";
 import type { ColumnItem } from "metabase/common/components/Table/types";
 import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
-import { Button, Center, Flex, Icon, Skeleton, Stack, Text } from "metabase/ui";
+import { Skeleton, Center, Button, Flex, Icon, Stack, Text } from "metabase/ui";
 import { Repeat } from "metabase/ui/components/feedback/Skeleton/Repeat";
-import type {
-  CacheableModel,
-  Collection,
-  CollectionEssentials,
-} from "metabase-types/api";
+import type { CacheableModel } from "metabase-types/api";
 import { CacheDurationUnit } from "metabase-types/api";
 
 import type {
@@ -112,32 +104,6 @@ const _StrategyEditorForQuestionsAndDashboards = ({
     [dashboardsResult.data, questionsResult.data],
   );
 
-  const { data: collections } = useListCollectionsQuery({});
-
-  const collectionsByIdWithAncestors = useMemo(() => {
-    const collectionsById = _.indexBy(collections || [], "id");
-    const collectionsWithAncestors: Collection[] =
-      collections?.map(collection => {
-        const effective_ancestors: CollectionEssentials[] =
-          collection.location
-            ?.split("/")
-            .filter(Boolean)
-            .map(id => {
-              const ancestor = collectionsById[id];
-              return { ...ancestor, id: id === "root" ? id : Number(id) };
-            }) || [];
-        return {
-          ...collection,
-          effective_ancestors,
-        };
-      }) || [];
-    const collectionsByIdWithAncestors = _.indexBy(
-      collectionsWithAncestors,
-      "id",
-    );
-    return collectionsByIdWithAncestors;
-  }, [collections]);
-
   const cacheableItems = useMemo(() => {
     const items = new Map<string, CacheableItem>();
     for (const config of configs) {
@@ -147,18 +113,14 @@ const _StrategyEditorForQuestionsAndDashboards = ({
       });
     }
 
-    // Hydrate data from the search results and collection results into the cacheable items
+    // Hydrate data from the search results into the cacheable items
     for (const result of dashboardsAndQuestions ?? []) {
       const normalizedModel =
         result.model === "card" ? "question" : result.model;
       const item = items.get(`${normalizedModel}${result.id}`);
       if (item) {
         item.name = result.name;
-        const collectionWithAncestors =
-          collectionsByIdWithAncestors[String(result.collection.id)];
-        item.collection =
-          { ...collectionWithAncestors, id: result.collection.id } ||
-          result.collection;
+        item.collection = result.collection;
         item.iconModel = result.model;
       }
     }
@@ -168,7 +130,7 @@ const _StrategyEditorForQuestionsAndDashboards = ({
     );
 
     return hydratedCacheableItems;
-  }, [configs, dashboardsAndQuestions, collectionsByIdWithAncestors]);
+  }, [configs, dashboardsAndQuestions]);
 
   useEffect(
     /** When the user configures an item to 'Use default' and that item
