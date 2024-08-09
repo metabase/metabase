@@ -6,7 +6,6 @@ const STAGE_INDEX = -1;
 
 export type SummarizeQueryChangeDetails = {
   type: "add" | "update" | "remove";
-  aggregations: Lib.Aggregable[];
 };
 
 interface UseSummarizeQueryProps {

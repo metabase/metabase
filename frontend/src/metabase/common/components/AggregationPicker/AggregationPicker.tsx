@@ -119,16 +119,10 @@ export function AggregationPicker({
           clause,
           aggregation,
         );
-        onQueryChange(nextQuery, {
-          type: "update",
-          aggregations: [aggregation],
-        });
+        onQueryChange(nextQuery, { type: "update" });
       } else {
         const nextQuery = Lib.aggregate(query, stageIndex, aggregation);
-        onQueryChange(nextQuery, {
-          type: "add",
-          aggregations: [aggregation],
-        });
+        onQueryChange(nextQuery, { type: "add" });
       }
     },
     [query, stageIndex, clause, clauseIndex, onQueryChange],
@@ -272,10 +266,7 @@ export function AggregationPicker({
 
   const handleCompareSubmit = useCallback(
     (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => {
-      onQueryChange(query, {
-        type: "add",
-        aggregations,
-      });
+      onQueryChange(query, { type: "add" });
 
       if (question) {
         trackColumnCompareViaShortcut(

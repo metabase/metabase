@@ -36,10 +36,7 @@ export function AggregationItem({
 
   const handleRemove = useCallback(() => {
     const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
-    onQueryChange(nextQuery, {
-      type: "remove",
-      aggregations: [aggregation],
-    });
+    onQueryChange(nextQuery, { type: "remove" });
   }, [query, stageIndex, aggregation, onQueryChange]);
 
   return (
