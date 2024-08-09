@@ -267,6 +267,8 @@ const config = {
           name: "html2canvas",
         },
       },
+      maxAsyncRequests: 30,
+      maxSize: 1024000,
     },
     minimizer: [
       new TerserPlugin({
