@@ -5,7 +5,9 @@
    [metabase.lib.core :as lib]
    [metabase.lib.drill-thru.test-util :as lib.drill-thru.tu]
    [metabase.lib.drill-thru.test-util.canned :as canned]
-   [metabase.lib.test-metadata :as meta]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.test-metadata :as meta]
+   [metabase.lib.test-util :as lib.tu]))
 
 (deftest ^:parallel zoom-availability-test
   (testing "zoom drill is available for cell clicks on non-FKs in tables with only 1 PK, and the PK in the result set"
@@ -75,6 +77,21 @@
     :expected    {:type      :drill-thru/zoom
                   :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
                   :many-pks? false}}))
+
+(deftest ^:parallel returns-zoom-source-card-test
+  (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
+                           meta/metadata-provider
+                           [(lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :orders)))])
+        query (lib/query metadata-provider (lib.metadata/card metadata-provider 1))]
+    (lib.drill-thru.tu/test-returns-drill
+     {:drill-type  :drill-thru/zoom
+      :click-type  :cell
+      :query-type  :unaggregated
+      :custom-query query
+      :column-name "QUANTITY"
+      :expected    {:type      :drill-thru/zoom
+                    :object-id (get-in lib.drill-thru.tu/test-queries ["ORDERS" :unaggregated :row "ID"])
+                    :many-pks? false}})))
 
 (deftest ^:parallel do-not-return-zoom-for-nil-test
   (testing "do not return zoom drills for nil cell values (#36130)"
