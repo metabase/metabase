@@ -3,10 +3,8 @@ import { useState } from "react";
 import { jt, t } from "ttag";
 
 import { unsubscribeFromAlert } from "metabase/alert/alert";
-import Modal from "metabase/components/Modal";
 import CS from "metabase/css/core/index.css";
 import { useDispatch, useSelector } from "metabase/lib/redux";
-import { UpdateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { getUser } from "metabase/selectors/user";
 import { Icon } from "metabase/ui";
 import type { Alert } from "metabase-types/api";
@@ -17,17 +15,15 @@ import { AlertScheduleText } from "./AlertScheduleText";
 type AlertListItemProps = {
   alert: Alert;
   highlight: boolean;
-  setMenuFreeze: (freeze: boolean) => void;
-  closeMenu: () => void;
   onUnsubscribe: (alert: Alert) => void;
+  onEdit: () => void;
 };
 
 export const AlertListItem = ({
   alert,
   highlight,
-  setMenuFreeze,
-  closeMenu,
   onUnsubscribe,
+  onEdit,
 }: AlertListItemProps) => {
   const user = useSelector(getUser);
 
@@ -36,7 +32,6 @@ export const AlertListItem = ({
   const [unsubscribingProgress, setUnsubscribingProgress] = useState<
     string | null
   >(null);
-  const [editing, setEditing] = useState(false);
 
   const handleUnsubscribe = async () => {
     try {
@@ -45,19 +40,6 @@ export const AlertListItem = ({
       onUnsubscribe(alert);
     } catch (e) {
       setUnsubscribingProgress(t`Failed to unsubscribe`);
-    }
-  };
-
-  const onEdit = () => {
-    setMenuFreeze(true);
-    setEditing(true);
-  };
-
-  const onEndEditing = (shouldCloseMenu = false) => {
-    setMenuFreeze(false);
-    setEditing(false);
-    if (shouldCloseMenu) {
-      closeMenu();
     }
   };
 
@@ -124,16 +106,6 @@ export const AlertListItem = ({
           )}
         </ul>
       </div>
-
-      {editing && (
-        <Modal full onClose={onEndEditing}>
-          <UpdateAlertModalContent
-            alert={alert}
-            onCancel={onEndEditing}
-            onAlertUpdated={() => onEndEditing(true)}
-          />
-        </Modal>
-      )}
     </li>
   );
 };

@@ -8,7 +8,6 @@ import QueryDownloadWidget from "metabase/query_builder/components/QueryDownload
 import * as Lib from "metabase-lib";
 
 import { ExecutionTime } from "./ExecutionTime";
-import { QuestionAlertWidget } from "./QuestionAlertWidget";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
 import { QuestionLastUpdated } from "./QuestionLastUpdated/QuestionLastUpdated";
 import QuestionRowCount from "./QuestionRowCount";
@@ -24,15 +23,12 @@ const ViewFooter = ({
   isShowingChartSettingsSidebar,
   isShowingRawTable,
   onOpenChartType,
-  onOpenModal,
   onCloseChartType,
   onOpenChartSettings,
   onCloseChartSettings,
   setUIControls,
   isObjectDetail,
-  questionAlerts,
   visualizationSettings,
-  canManageSubscriptions,
   isVisualized,
   isTimeseries,
   isShowingTimelineSidebar,
@@ -124,23 +120,6 @@ const ViewFooter = ({
               visualizationSettings={visualizationSettings}
               dashcardId={question.card().dashcardId}
               dashboardId={question.card().dashboardId}
-            />
-          ),
-          QuestionAlertWidget.shouldRender({
-            question,
-            visualizationSettings,
-          }) && (
-            <QuestionAlertWidget
-              key="alerts"
-              className={cx(CS.hide, CS.smShow)}
-              canManageSubscriptions={canManageSubscriptions}
-              question={question}
-              questionAlerts={questionAlerts}
-              onCreateAlert={() =>
-                question.isSaved()
-                  ? onOpenModal("create-alert")
-                  : onOpenModal("save-question-before-alert")
-              }
             />
           ),
           QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
