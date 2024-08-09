@@ -363,21 +363,20 @@
                                               :type     "native"
                                               :native   {:collection (:name table)
                                                          :query      (json/generate-string q)}}))))
-        nested-query (fn nested-query [paths]
-                       (let [fields        (flatten (first (q! (nested-level-query paths))))
-                             object-fields (filter #(= (:mostCommonType %) "object") fields)]
-                         (concat fields (when (seq object-fields)
-                                          (nested-query (map :path object-fields))))))
         query-depth   20 ; TODO: this number needs more testing
         fields        (flatten (q! (root-query query-depth)))
-        ;; object-fields of the maximum depth need to be explored further bynested-query
-        object-fields (filter (fn [x]
-                                (and (= (:mostCommonType x) "object")
-                                     (= (path->depth (:path x)) query-depth)))
-                              fields)]
-    (concat fields
-            (when (seq object-fields)
-              (nested-query (map :path object-fields))))))
+        ;; object-fields of the maximum depth need to be explored further
+        nested-fields (fn nested-fields [paths]
+                        (let [fields (flatten (first (q! (nested-level-query paths))))
+                              nested (when-let [object-fields (seq (filter #(= (:mostCommonType %) "object") fields))]
+                                       (nested-fields (map :path object-fields)))]
+                          (concat fields nested)))
+        nested        (when-let [fields-to-explore (seq (filter (fn [x]
+                                                                  (and (= (:mostCommonType x) "object")
+                                                                       (= (path->depth (:path x)) query-depth)))
+                                                                fields))]
+                        (nested-fields (map :path fields-to-explore)))]
+    (concat fields nested)))
 
 (defn- type-alias->base-type [type-alias]
   ;; Mongo types from $type aggregation operation
