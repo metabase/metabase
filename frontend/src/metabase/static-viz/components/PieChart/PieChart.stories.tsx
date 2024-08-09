@@ -49,6 +49,13 @@ AllSettings.args = {
   renderingContext,
 };
 
+export const AutoCompactTotal = Template.bind({});
+AutoCompactTotal.args = {
+  rawSeries: data.autoCompactTotal as any,
+  dashcardSettings: {},
+  renderingContext,
+};
+
 export const Colors = Template.bind({});
 Colors.args = {
   rawSeries: data.colors as any,

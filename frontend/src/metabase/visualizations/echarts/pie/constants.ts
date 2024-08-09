@@ -20,6 +20,7 @@ export const DIMENSIONS = {
     minWidth: 120,
     valueFontSize: 22,
     labelFontSize: 14,
+    fontWeight: 700,
   },
 };
 
