@@ -4,8 +4,8 @@ import { useDispatch, useSelector } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
+  canAddTemporalCompareAggregation,
   CompareAggregations,
-  getOffsetPeriod,
 } from "metabase/query_builder/components/CompareAggregations";
 import { getQuestion } from "metabase/query_builder/selectors";
 import { trackColumnCompareViaPlusModal } from "metabase/querying/analytics";
@@ -20,22 +20,18 @@ export const CompareAggregationsAction: LegacyDrill = ({
   const query = question.query();
   const stageIndex = -1;
   const { isEditable } = Lib.queryDisplayInfo(query);
-  const aggregations = Lib.aggregations(query, stageIndex);
 
   if (
     !clicked ||
     clicked.value !== undefined ||
     !clicked.columnShortcuts ||
     !isEditable ||
-    aggregations.length === 0
+    !canAddTemporalCompareAggregation(query, stageIndex)
   ) {
     return [];
   }
 
-  const title =
-    aggregations.length === 1
-      ? getTitle(query, stageIndex, aggregations[0])
-      : getTitle(query, stageIndex);
+  const title = t`Compare to the past`;
 
   const Popover = ({
     onChangeCardAndRun,
@@ -43,6 +39,7 @@ export const CompareAggregationsAction: LegacyDrill = ({
   }: ClickActionPopoverProps) => {
     const currentQuestion = useSelector(getQuestion);
     const dispatch = useDispatch();
+    const aggregations = Lib.aggregations(query, stageIndex);
 
     function handleSubmit(
       nextQuery: Lib.Query,
@@ -85,20 +82,4 @@ export const CompareAggregationsAction: LegacyDrill = ({
       popover: Popover,
     },
   ];
-};
-
-export const getTitle = (
-  query: Lib.Query,
-  stageIndex: number,
-  aggregation?: Lib.AggregationClause | Lib.ExpressionClause,
-): string => {
-  const period = getOffsetPeriod(query, stageIndex);
-
-  if (!aggregation) {
-    return t`Compare to previous ${period}`;
-  }
-
-  const info = Lib.displayInfo(query, stageIndex, aggregation);
-
-  return t`Compare “${info.displayName}” to previous ${period}`;
 };

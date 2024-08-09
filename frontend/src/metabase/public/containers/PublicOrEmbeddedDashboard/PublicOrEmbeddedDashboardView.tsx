@@ -42,6 +42,32 @@ import { EmbedFrame } from "../../components/EmbedFrame";
 
 import { DashboardContainer } from "./PublicOrEmbeddedDashboard.styled";
 
+interface PublicOrEmbeddedDashboardViewProps {
+  dashboard: Dashboard | null;
+  selectedTabId: SelectedTabId;
+  parameters: UiParameter[];
+  parameterValues: Record<string, ParameterValueOrArray>;
+  draftParameterValues: Record<string, ParameterValueOrArray | null>;
+  setParameterValue: HandleThunkActionCreator<
+    typeof setParameterValueDashboardAction
+  >;
+  setParameterValueToDefault: HandleThunkActionCreator<
+    typeof setParameterValueToDefaultDashboardAction
+  >;
+  dashboardId: DashboardId;
+  background: boolean;
+  bordered: boolean;
+  titled: boolean;
+  theme: DisplayTheme;
+  hideParameters: EmbedHideParameters;
+  navigateToNewCardFromDashboard?: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
+  slowCards: Record<number, boolean>;
+  cardTitled: boolean;
+  downloadsEnabled: boolean;
+}
+
 export function PublicOrEmbeddedDashboardView({
   dashboard,
   hasNightModeToggle,
@@ -68,31 +94,8 @@ export function PublicOrEmbeddedDashboardView({
   slowCards,
   cardTitled,
   downloadsEnabled,
-}: {
-  dashboard: Dashboard | null;
-  selectedTabId: SelectedTabId;
-  parameters: UiParameter[];
-  parameterValues: Record<string, ParameterValueOrArray>;
-  draftParameterValues: Record<string, ParameterValueOrArray | null>;
-  setParameterValue: HandleThunkActionCreator<
-    typeof setParameterValueDashboardAction
-  >;
-  setParameterValueToDefault: HandleThunkActionCreator<
-    typeof setParameterValueToDefaultDashboardAction
-  >;
-  dashboardId: DashboardId;
-  background: boolean;
-  bordered: boolean;
-  titled: boolean;
-  theme: DisplayTheme;
-  hideParameters: EmbedHideParameters;
-  navigateToNewCardFromDashboard?: (
-    opts: NavigateToNewCardFromDashboardOpts,
-  ) => void;
-  slowCards: Record<number, boolean>;
-  cardTitled: boolean;
-  downloadsEnabled: boolean;
-} & DashboardRefreshPeriodControls &
+}: PublicOrEmbeddedDashboardViewProps &
+  DashboardRefreshPeriodControls &
   DashboardNightModeControls &
   DashboardFullscreenControls) {
   const buttons = !isWithinIframe() ? (

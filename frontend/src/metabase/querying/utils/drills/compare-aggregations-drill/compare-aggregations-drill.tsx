@@ -1,8 +1,10 @@
+import { t } from "ttag";
+
 import { useDispatch } from "metabase/lib/redux";
 import { setUIControls } from "metabase/query_builder/actions";
 import {
+  canAddTemporalCompareAggregation,
   CompareAggregations,
-  getTitle,
 } from "metabase/query_builder/components/CompareAggregations";
 import { trackColumnCompareViaColumnHeader } from "metabase/querying/analytics";
 import type {
@@ -14,7 +16,7 @@ import * as Lib from "metabase-lib";
 export const compareAggregationsDrill: Drill<
   Lib.CompareAggregationsDrillThruInfo
 > = ({ drill, question, query, stageIndex, clicked }) => {
-  if (!clicked.column) {
+  if (!clicked.column || !canAddTemporalCompareAggregation(query, stageIndex)) {
     return [];
   }
 
@@ -54,7 +56,7 @@ export const compareAggregationsDrill: Drill<
   return [
     {
       name: "compare-aggregations",
-      title: getTitle(query, stageIndex, aggregation),
+      title: t`Compare to the past`,
       section: "compare-aggregations",
       icon: "lines",
       buttonType: "horizontal",

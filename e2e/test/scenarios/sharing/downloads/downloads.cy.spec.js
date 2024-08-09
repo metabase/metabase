@@ -30,7 +30,6 @@ import {
   startNewQuestion,
   visitDashboard,
   visualize,
-  dismissDownloadStatus,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -90,8 +89,6 @@ describe("scenarios > question > download", () => {
           accessed_via: "internal",
           export_type: fileType,
         });
-
-        dismissDownloadStatus();
       });
     });
   });
@@ -136,8 +133,6 @@ describe("scenarios > question > download", () => {
         },
       );
 
-      dismissDownloadStatus();
-
       downloadAndAssert(
         {
           ...opts,
@@ -160,9 +155,8 @@ describe("scenarios > question > download", () => {
         cy.findByTestId("legend-caption").realHover();
       });
 
-      assertOrdersExport(18760);
-
-      dismissDownloadStatus();
+      // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
+      assertOrdersExport(18760, false);
 
       editDashboard();
 
@@ -186,9 +180,8 @@ describe("scenarios > question > download", () => {
         cy.findByTestId("legend-caption").realHover();
       });
 
-      assertOrdersExport(1);
-
-      dismissDownloadStatus();
+      // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
+      assertOrdersExport(1, false);
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -262,8 +255,6 @@ describe("scenarios > question > download", () => {
                 assertSheetRowsCount(1)(sheet);
               },
             );
-
-            dismissDownloadStatus();
           });
         });
       });
@@ -402,7 +393,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
   });
 });
 
-function assertOrdersExport(length) {
+function assertOrdersExport(length, dismissStatus = true) {
   downloadAndAssert(
     {
       fileType: "xlsx",
@@ -410,6 +401,7 @@ function assertOrdersExport(length) {
       dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
       dashboardId: ORDERS_DASHBOARD_ID,
       isDashboard: true,
+      dismissStatus,
     },
     sheet => {
       expect(sheet["A1"].v).to.eq("ID");

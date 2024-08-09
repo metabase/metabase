@@ -22,8 +22,6 @@ const ORIGINAL_COLORS = [
 ];
 
 const CUSTOM_COLORS = [
-  "accent4",
-  "accent5",
   "bg-black",
   "bg-dark",
   "bg-light",
@@ -45,7 +43,7 @@ const CUSTOM_COLORS = [
   "text-white",
   "warning",
   "white",
-];
+] as const;
 
 function getColorShades(color: string): ColorShades {
   return Array(10).fill(color) as ColorShades;

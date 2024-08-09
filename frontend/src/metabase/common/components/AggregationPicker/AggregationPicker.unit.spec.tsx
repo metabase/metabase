@@ -381,18 +381,12 @@ describe("AggregationPicker", () => {
 
     it("displays the shortcut with correct label if there is 1 aggregation", () => {
       setup({ query: createQueryWithCountAggregation() });
-
-      expect(
-        screen.getByText("Compare “Count” to previous period ..."),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Compare to the past")).toBeInTheDocument();
     });
 
     it("displays the shortcut with correct label if there are multiple aggregation", () => {
       setup({ query: createQueryWithCountAndSumAggregations() });
-
-      expect(
-        screen.getByText("Compare to previous period ..."),
-      ).toBeInTheDocument();
+      expect(screen.getByText("Compare to the past")).toBeInTheDocument();
     });
 
     it("calls 'onQueryChange' on submit", async () => {
@@ -400,9 +394,7 @@ describe("AggregationPicker", () => {
         query: createQueryWithCountAggregation(),
       });
 
-      await userEvent.click(
-        screen.getByText("Compare “Count” to previous period ..."),
-      );
+      await userEvent.click(screen.getByText("Compare to the past"));
       await userEvent.click(screen.getByText("Done"));
 
       expect(onQueryChange).toHaveBeenCalled();
@@ -413,9 +405,7 @@ describe("AggregationPicker", () => {
         query: createQueryWithCountAggregation(),
       });
 
-      await userEvent.click(
-        screen.getByText("Compare “Count” to previous period ..."),
-      );
+      await userEvent.click(screen.getByText("Compare to the past"));
       await userEvent.click(screen.getByText("Done"));
 
       expect(onQueryChange).not.toHaveBeenCalled();
