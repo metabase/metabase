@@ -1,5 +1,5 @@
 import { css } from "@emotion/react";
-import { get } from "lodash";
+import { get } from "underscore";
 
 import type { MetabaseComponentTheme } from "embedding-sdk";
 import { color } from "metabase/lib/colors";
@@ -115,7 +115,17 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
  **/
 export function getThemeSpecificCssVariables(theme: MantineTheme) {
   // Get value from theme.other, which is typed as MetabaseComponentTheme
-  const getValue = (key: MetabaseComponentThemeKey) => get(theme.other, key);
+  const getValue = (key: MetabaseComponentThemeKey) => {
+    const value = get(theme.other, key);
+
+    if (value == null) {
+      throw new Error(
+        `[getThemeSpecificCssVariables] Could not find value for key "${key}" in theme.other`,
+      );
+    }
+
+    return value as string;
+  };
 
   return css`
     --mb-color-bg-dashboard: ${getValue("dashboard.backgroundColor")};

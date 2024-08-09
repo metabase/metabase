@@ -164,7 +164,12 @@ module.exports = {
         "depend/ban-dependencies": [
           "error",
           {
-            allowed: ["underscore", "moment"],
+            allowed: [
+              "underscore",
+              "moment",
+              "lodash.orderby",
+              "lodash.debounce",
+            ],
           },
         ],
       },

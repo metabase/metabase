@@ -1,4 +1,4 @@
-import { merge } from "lodash";
+import deepmerge from "deepmerge";
 
 import type {
   SdkDashCardMenuPluginsConfig,
@@ -17,11 +17,11 @@ const getDashcardMenu = (plugins: SdkPluginsConfig) => {
   if (typeof plugins?.dashboard?.dashcardMenu === "function") {
     return plugins?.dashboard?.dashcardMenu;
   }
-  return merge(
+  return deepmerge.all([
     {},
     DEFAULT_DASHCARD_MENU_ITEMS,
-    plugins?.dashboard?.dashcardMenu,
-  );
+    plugins?.dashboard?.dashcardMenu ?? {},
+  ]);
 };
 
 export const addDefaultDashboardPluginValues = (
