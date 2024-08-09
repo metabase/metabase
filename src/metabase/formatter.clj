@@ -8,6 +8,7 @@
    [hiccup.util]
    [metabase.formatter.datetime :as datetime]
    [metabase.public-settings :as public-settings]
+   [metabase.query-processor.streaming.common :as common]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
    [metabase.types :as types]
@@ -83,19 +84,35 @@
           figs (last (str/split val-string #"[\.0]+"))]
       (count figs))))
 
+(defn- qualify-keys
+  [m]
+  (update-keys m (fn [k] (keyword
+                          "metabase.shared.models.visualization-settings"
+                          (name k)))))
+
+;; TODO: use `metabase.query-processor.streaming.common/viz-settings-for-col` here, it's
+;; doing the same thing (unifying global settings, column settings, and viz-settings for the column.
+;; perhaps that implementation needs to move here, or to a new `metabase.formatter.common` or something?
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
   [{:keys [semantic_type effective_type base_type]
-    col-id :id field-ref :field_ref col-name :name :as _column}
+    col-id :id field-ref :field_ref col-name :name col-settings :settings :as col}
    viz-settings]
-  (let [col-id (or col-id (second field-ref))
+  (let [global-type-settings (common/global-type-settings col viz-settings)
+        col-id (or col-id (second field-ref))
         column-settings (-> (get viz-settings ::mb.viz/column-settings)
                             (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-        column-settings (or (get column-settings {::mb.viz/field-id col-id})
-                            (get column-settings {::mb.viz/column-name col-name}))
-        global-settings (::mb.viz/global-column-settings viz-settings)
+        column-settings (merge
+                         (or (get column-settings {::mb.viz/field-id col-id})
+                             (get column-settings {::mb.viz/column-name col-name}))
+                         (qualify-keys col-settings)
+                         global-type-settings)
+        global-settings (merge
+                         global-type-settings
+                         (::mb.viz/global-column-settings viz-settings))
         currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
+                                     (= (::mb.viz/number-style viz-settings) "currency")
                                      (and (nil? (::mb.viz/number-style column-settings))
                                           (or
                                            (::mb.viz/currency-style column-settings)
@@ -145,7 +162,7 @@
                                                    (false? (::mb.viz/currency-in-header column-settings)))]
                          (str (when prefix prefix)
                               (when (and inline-currency? (or (nil? currency-style)
-                                                       (= currency-style "symbol")))
+                                                              (= currency-style "symbol")))
                                 (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
                               (when (and inline-currency? (= currency-style "code"))
                                 (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))
