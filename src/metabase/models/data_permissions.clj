@@ -608,8 +608,7 @@
   "Sets a single permission to a specified value for a given group and database. If a permission value already exists
   for the specified group and object, it will be updated to the new value.
 
-  Block permissions (i.e. :perms/view-data :blocked) can only be set at the database-level, despite :perms/view-data
-  being a table-level permission."
+  Block permissions (i.e. :perms/view-data :blocked) can be set at the table or database-level."
   [group-or-id :- TheIdable
    db-or-id    :- TheIdable
    perm-type   :- PermissionType
@@ -727,7 +726,7 @@
   group and table, it will be updated to the new value.
 
   `table-perms` is a map from tables or table ID to the permission value for each table. All tables in the list must
-  belong to the same database.
+  belong to the same database, or this will throw.
 
   If this permission is currently set at the database-level, the database-level permission
   is removed and table-level rows are are added for all of its tables. Similarly, if setting a table-level permission to a value
@@ -739,9 +738,6 @@
     (throw (ex-info (tru "Permission type {0} cannot be set on tables." perm-type)
                     {perm-type (Permissions perm-type)})))
   (let [values (set (vals table-perms))]
-    (when (values :blocked)
-      (throw (ex-info (tru "Block permissions must be set at the database-level only.")
-                      {})))
     ;; if `table-perms` is empty, there's nothing to do
     (when (seq table-perms)
       (t2/with-transaction [_conn]

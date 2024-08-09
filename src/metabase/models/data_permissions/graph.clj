@@ -328,7 +328,8 @@
                                           ;; If the table is sandboxed, we set `view-data` to `unrestricted` since
                                           ;; sandboxes are stored separately in the `sandboxes` table
                                           :sandboxed              :unrestricted
-                                          :legacy-no-self-service :legacy-no-self-service))))]
+                                          :legacy-no-self-service :legacy-no-self-service
+                                          :blocked                :blocked))))]
     (data-perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
 
 (defn- update-schema-level-view-data-permissions!

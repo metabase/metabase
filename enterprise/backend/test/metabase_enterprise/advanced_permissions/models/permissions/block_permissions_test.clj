@@ -216,7 +216,7 @@
                        (check-block-perms)))
                   (is (thrown-with-msg?
                        clojure.lang.ExceptionInfo
-                       #"Blocked: you are not allowed to run queries against Database \d+"
+                       #"You do not have permissions to run this query"
                        (run-saved-question))))))))))))
 
 (deftest legacy-no-self-service-test
