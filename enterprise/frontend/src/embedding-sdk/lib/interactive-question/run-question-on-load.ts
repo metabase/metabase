@@ -1,6 +1,6 @@
 import type {
   LoadSdkQuestionParams,
-  SdkQuestionResult,
+  SdkQuestionState,
 } from "embedding-sdk/types/question";
 import * as Urls from "metabase/lib/urls";
 import {
@@ -20,7 +20,7 @@ export const runQuestionOnLoadSdk =
   async (
     dispatch: Dispatch,
     getState: GetState,
-  ): Promise<SdkQuestionResult & { originalQuestion?: Question }> => {
+  ): Promise<SdkQuestionState & { originalQuestion?: Question }> => {
     const cardId = Urls.extractEntityId(params.slug);
     const { options, serializedCard } = parseHash(location.hash);
 

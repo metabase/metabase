@@ -24,10 +24,10 @@ const FilterInner = ({
 }: {
   question: Question;
 } & FilterProps) => {
-  const { onQuestionChange } = useInteractiveQuestionContext();
+  const { updateQuestion } = useInteractiveQuestionContext();
 
   const onQueryChange = (query: Lib.Query) =>
-    onQuestionChange(question.setQuery(query));
+    updateQuestion(question.setQuery(query), { run: true });
 
   const {
     query,

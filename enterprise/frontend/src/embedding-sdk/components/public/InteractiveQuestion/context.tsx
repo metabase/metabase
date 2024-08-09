@@ -54,14 +54,17 @@ export const InteractiveQuestionProvider = ({
 }: InteractiveQuestionProviderProps) => {
   const {
     question,
+    originalQuestion,
+
     queryResults,
 
     isQuestionLoading,
     isQueryRunning,
 
+    runQuestion,
     loadQuestion,
-    onQuestionChange,
-    onNavigateToNewCard,
+    updateQuestion,
+    navigateToNewCard,
   } = useLoadQuestion({ location, params });
 
   const globalPlugins = useSdkSelector(getPlugins);
@@ -77,10 +80,12 @@ export const InteractiveQuestionProvider = ({
     resetQuestion: loadQuestion,
     onReset: onReset || loadQuestion,
     onNavigateBack,
-    onQuestionChange,
-    onNavigateToNewCard,
+    runQuestion,
+    updateQuestion,
+    navigateToNewCard,
     plugins,
     question,
+    originalQuestion,
     queryResults,
     mode,
   };
