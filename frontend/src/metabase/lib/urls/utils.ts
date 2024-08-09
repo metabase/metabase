@@ -31,12 +31,8 @@ export function getEncodedUrlSearchParams(query: Record<string, unknown>) {
     .join("&");
 }
 
-export function getSubpathSafeUrl(url?: string) {
-  if (url === undefined) {
-    return;
-  }
-
-  return api.basename + url.trim();
+export function getSubpathSafeUrl(url: string) {
+  return api.basename + url;
 }
 
 /**
@@ -44,10 +40,6 @@ export function getSubpathSafeUrl(url?: string) {
  * If you're opening internal links in a new tab, make sure you're using subpath-safe URLs.
  * @see {@link getSubpathSafeUrl}
  */
-export const openInNewTab = (url?: string) => {
-  if (!url) {
-    return;
-  }
-
+export const openInNewTab = (url: string) => {
   window.open(url, "_blank");
 };

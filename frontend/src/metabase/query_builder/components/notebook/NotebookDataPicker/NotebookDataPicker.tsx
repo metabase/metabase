@@ -71,31 +71,28 @@ export function NotebookDataPicker({
     onChangeRef.current?.(table, metadataProvider);
   };
 
+  const openDataSourceInNewTab = () => {
+    const url = getUrl({ query, table, stageIndex });
+
+    if (!url) {
+      return;
+    }
+
+    const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+    Urls.openInNewTab(subpathSafeUrl);
+  };
+
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isCtrlOrMetaClick =
       (event.ctrlKey || event.metaKey) && event.button === 0;
 
-    if (isCtrlOrMetaClick) {
-      const url = getUrl({ query, table, stageIndex });
-      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
-
-      Urls.openInNewTab(subpathSafeUrl);
-    } else {
-      setIsOpen(true);
-    }
+    isCtrlOrMetaClick ? openDataSourceInNewTab() : setIsOpen(true);
   };
 
   const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isMiddleClick = event.button === 1;
 
-    if (isMiddleClick) {
-      const url = getUrl({ query, table, stageIndex });
-      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
-
-      Urls.openInNewTab(subpathSafeUrl);
-    } else {
-      setIsOpen(true);
-    }
+    isMiddleClick ? openDataSourceInNewTab() : setIsOpen(true);
   };
 
   return (

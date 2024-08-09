@@ -18,36 +18,24 @@ describe("utils", () => {
   });
 
   describe("getSubpathSafeUrl", () => {
-    it("should return undefined if url is undefined", () => {
-      expect(getSubpathSafeUrl()).toBeUndefined();
-    });
-
-    it("should return basename if url is empty string", () => {
+    it("should return basename if url is an empty string", () => {
       expect(getSubpathSafeUrl("")).toBe(fakeBasename);
-      expect(getSubpathSafeUrl("  ")).toBe(fakeBasename);
     });
 
     it("should return subpath-safe url", () => {
       expect(getSubpathSafeUrl("/baz")).toBe(`${fakeBasename}/baz`);
-      expect(getSubpathSafeUrl("/baz   ")).toBe(`${fakeBasename}/baz`);
     });
   });
 
   describe("openInNewTab", () => {
-    it("should return undefined if url is undefined", () => {
-      expect(openInNewTab()).toBeUndefined();
-    });
+    it.each(["", "/", "/baz"])(
+      "should open the provided link in a new tab",
+      url => {
+        openInNewTab(url);
 
-    it("should return undefined if url is empty string", () => {
-      expect(openInNewTab("")).toBeUndefined();
-      expect(openInNewTab("  ")).toBeUndefined();
-    });
-
-    it("should open the provided link in a new tab", () => {
-      openInNewTab("/baz");
-
-      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
-      expect(mockWindowOpen).toHaveBeenCalledWith("/baz", "_blank");
-    });
+        expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+        expect(mockWindowOpen).toHaveBeenCalledWith(url, "_blank");
+      },
+    );
   });
 });
