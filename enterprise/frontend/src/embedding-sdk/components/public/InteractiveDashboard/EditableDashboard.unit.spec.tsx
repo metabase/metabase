@@ -1,5 +1,5 @@
 import { Box } from "@mantine/core";
-import { waitFor } from "@testing-library/react";
+import { waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import fetchMock from "fetch-mock";
 import { indexBy } from "underscore";
@@ -256,5 +256,27 @@ describe("EditableDashboard", () => {
 
     expect(onLoad).toHaveBeenCalledTimes(1);
     expect(onLoad).toHaveBeenLastCalledWith(dashboard);
+  });
+
+  it("should support dashboard editing", async () => {
+    await setup();
+
+    await waitFor(() => {
+      expect(screen.getByTestId("dashboard-header")).toBeInTheDocument();
+    });
+
+    const editButton = within(
+      screen.getByTestId("dashboard-header"),
+    ).getByLabelText(`pencil icon`);
+
+    expect(editButton).toBeInTheDocument();
+
+    await userEvent.click(editButton);
+
+    expect(
+      screen.getByText("You're editing this dashboard."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Cancel")).toBeInTheDocument();
+    expect(screen.getByText("Save")).toBeInTheDocument();
   });
 });
