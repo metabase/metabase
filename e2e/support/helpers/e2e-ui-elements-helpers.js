@@ -105,6 +105,10 @@ export function browseDatabases() {
   return navigationSidebar().findByLabelText("Browse databases");
 }
 
+export function notificationList() {
+  return cy.findByRole("list", { name: "undo-list" });
+}
+
 /**
  * Get the `fieldset` HTML element that we use as a filter widget container.
  *

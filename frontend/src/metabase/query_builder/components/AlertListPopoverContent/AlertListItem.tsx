@@ -13,7 +13,6 @@ import type { Alert } from "metabase-types/api";
 
 import { AlertCreatorTitle } from "./AlertCreatorTitle";
 import { AlertScheduleText } from "./AlertScheduleText";
-import { UnsubscribedListItem } from "./UnsubscribedListItem";
 
 type AlertListItemProps = {
   alert: Alert;
@@ -37,14 +36,12 @@ export const AlertListItem = ({
   const [unsubscribingProgress, setUnsubscribingProgress] = useState<
     string | null
   >(null);
-  const [hasJustUnsubscribed, setHasJustUnsubscribed] = useState(false);
   const [editing, setEditing] = useState(false);
 
   const handleUnsubscribe = async () => {
     try {
       setUnsubscribingProgress(t`Unsubscribing...`);
       await dispatch(unsubscribeFromAlert(alert));
-      setHasJustUnsubscribed(true);
       onUnsubscribe(alert);
     } catch (e) {
       setUnsubscribingProgress(t`Failed to unsubscribe`);
@@ -71,10 +68,6 @@ export const AlertListItem = ({
   const emailEnabled = emailChannel && emailChannel.enabled;
   const slackChannel = alert.channels.find(c => c.channel_type === "slack");
   const slackEnabled = slackChannel && slackChannel.enabled;
-
-  if (hasJustUnsubscribed) {
-    return <UnsubscribedListItem />;
-  }
 
   return (
     <li

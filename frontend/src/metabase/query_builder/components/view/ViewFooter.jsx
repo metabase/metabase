@@ -11,7 +11,7 @@ import { MODAL_TYPES } from "metabase/query_builder/constants";
 import * as Lib from "metabase-lib";
 
 import { ExecutionTime } from "./ExecutionTime";
-import QuestionAlertWidget from "./QuestionAlertWidget";
+import { QuestionAlertWidget } from "./QuestionAlertWidget";
 import QuestionDisplayToggle from "./QuestionDisplayToggle";
 import { QuestionLastUpdated } from "./QuestionLastUpdated/QuestionLastUpdated";
 import QuestionRowCount from "./QuestionRowCount";
