@@ -70,8 +70,7 @@
                                  (and (= (:lib/source column) :source/breakouts)
                                       (= adding :expression))))
                         {:query        query
-                         :stage-number stage-number
-                         :column       column}
+                         :stage-number stage-number}
 
                         ;; An extra stage is needed.
                         ;; If there's a later stage, then use it.
@@ -81,8 +80,7 @@
                         :else      {:query        (lib.stage/append-stage query)
                                     :stage-number -1})
         columns       (lib.filter/filterable-columns (:query base) (:stage-number base))
-        filter-column (or (:column base)
-                          (lib.equality/find-matching-column
+        filter-column (or (lib.equality/find-matching-column
                             (:query base) (:stage-number base) column-ref columns)
                           (and (:lib/source-uuid column)
                                (m/find-first #(= (:lib/source-uuid %) (:lib/source-uuid column))
