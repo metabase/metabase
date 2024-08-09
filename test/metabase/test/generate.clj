@@ -170,7 +170,8 @@
 (s/def ::pulse-card (s/keys :req-un [::id ::position]))
 
 (s/def ::channel_type ::not-empty-string)
-(s/def ::schedule_type ::not-empty-string)
+(s/def ::schedule_type (s/with-gen (s/and string? #(contains? #{"hourly" "weekly" "monthly"} %))
+                         #(gen/elements ["hourly" "weekly" "monthly"])))
 
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 (s/def ::pulse-channel-recipient (s/keys :req-un [::id]))

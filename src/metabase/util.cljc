@@ -1041,3 +1041,8 @@
   (reduce (fn [acc v] (assoc acc (kf v) v)) {} coll))
  ([kf vf coll]
   (reduce (fn [acc v] (assoc acc (kf v) (vf v))) {} coll)))
+
+(defn rfirst
+  "Return first item from Reducible"
+  [reducible]
+  (reduce (fn [_ fst] (reduced fst)) nil reducible))

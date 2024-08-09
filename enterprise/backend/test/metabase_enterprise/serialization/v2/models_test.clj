@@ -1,5 +1,6 @@
 (ns metabase-enterprise.serialization.v2.models-test
   (:require
+   [clojure.set :as set]
    [clojure.test :refer :all]
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
@@ -48,34 +49,36 @@
 (deftest serialization-complete-spec-test
   (mt/with-empty-h2-app-db
     ;; When serialization spec is defined, it describes every column
-    (doseq [m     serdes.models/exported-models
-            :let  [spec (serdes/make-spec m)]
-            :when spec]
+    (doseq [m    (-> (methods serdes/make-spec)
+                     (dissoc :default)
+                     keys)
+            :let [spec (serdes/make-spec m nil)]]
       (let [t      (t2/table-name (keyword "model" m))
             fields (u.conn/app-db-column-types (mdb/app-db) t)
-            spec'  (merge (zipmap (:copy spec) (repeat :copy))
-                          (zipmap (:skip spec) (repeat :skip))
-                          (:transform spec))]
-        (testing (format "%s should declare every column in serialization spec" m)
-          (is (= (->> (keys fields)
-                      (map u/lower-case-en)
-                      set)
-                 (->> (keys spec')
-                      (map name)
-                      set))))
+            spec'  (-> (merge (zipmap (:copy spec) (repeat :copy))
+                              (zipmap (:skip spec) (repeat :skip))
+                              (zipmap [:id :updated_at] (repeat :skip)) ; always skipped
+                              (:transform spec))
+                       ;; `nil`s are mostly fields which differ on `opts`
+                       (dissoc nil))]
+        (testing (format "%s has no duplicates in serialization spec\n" m)
+          (are [x y] (empty? (set/intersection (set x) (set y)))
+            (:copy spec) (:skip spec)
+            (:copy spec) (keys (:transform spec))
+            (:skip spec) (keys (:transform spec))))
+        (testing (format "%s should declare every column in serialization spec\n" m)
+          (is (set/subset?
+               (->> (keys fields)
+                    (map u/lower-case-en)
+                    set)
+               (->> (keys spec')
+                    (map name)
+                    set))))
         (testing "Foreign keys should be declared as such\n"
           (doseq [[fk _] (filter #(:fk (second %)) fields)
-                  :let   [fk (u/lower-case-en fk)
-                          action (get spec' (keyword fk))]]
+                  :let   [fk        (u/lower-case-en fk)
+                          transform (get spec' (keyword fk))]
+                  :when  (not= transform :skip)]
             (testing (format "%s.%s is foreign key which is handled correctly" m fk)
-              ;; FIXME: serialization can guess where FK points by itself, but `collection_id`,
-              ;; `database_id`, and `source_card_id` are specifying that themselves right now
-              (when-not (#{"collection_id" "database_id" "source_card_id"} fk)
-                (is (#{:skip
-                       serdes/*export-fk*
-                       serdes/*export-fk-keyed*
-                       serdes/*export-table-fk*
-                       serdes/*export-user*}
-                     (if (vector? action)
-                       (first action) ;; tuple of [ser des]
-                       action)))))))))))
+              ;; uses `(serdes/fk ...)` function
+              (is (::serdes/fk transform)))))))))
