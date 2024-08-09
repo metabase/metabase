@@ -208,7 +208,8 @@ If Metabase also needs to create tables, you'll need additional AWS Glue permiss
         "glue:DeleteTable",
         "glue:CreatePartition",
         "glue:DeletePartition",
-        "glue:UpdatePartition"
+        "glue:UpdatePartition",
+        "glue:GetCatalogImportStatus",
       ],
       "Resource": "*"
     }
