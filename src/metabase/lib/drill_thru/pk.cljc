@@ -37,7 +37,6 @@
    [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -74,7 +73,7 @@
                        :value  value}]})
       ;; 2) we clicked on a non-PK column: return a drill for ALL of the PK columns + values. Ignore any
       ;;   `nil` (`:null`) values.
-      (let [pk-columns (lib.metadata.calculation/primary-keys query)
+      (let [pk-columns (lib.drill-thru.common/primary-keys query)
             dimensions (for [pk-column pk-columns
                              :let      [value (->> row
                                                    (m/find-first #(-> % :column :name (= (:name pk-column))))

@@ -1,8 +1,13 @@
 (ns metabase.lib.drill-thru.common
   (:require
+   [metabase.lib.card :as lib.card]
    [metabase.lib.hierarchy :as lib.hierarchy]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
-   [metabase.lib.util :as lib.util]))
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.types.isa :as lib.types.isa]
+   [metabase.lib.util :as lib.util]
+   [metabase.util.malli :as mu]))
 
 (defn mbql-stage?
   "Is this query stage an MBQL stage?"
@@ -37,10 +42,20 @@
   ;; so the default is simply the drill-thru type.
   (select-keys drill-thru [:type :display-name]))
 
-(defn many-pks?
-  "Does the source table for this `query` have more than one primary key?"
-  [query]
-  (> (count (lib.metadata.calculation/primary-keys query)) 1))
+(mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
+  "Returns a list of primary keys for the source table or card of this query."
+  [query :- ::lib.schema/query]
+  (let [fields (or (when-let [table-id (lib.util/source-table-id query)]
+                     (lib.metadata/fields query table-id))
+                   (when-let [card-id (lib.util/source-card-id query)]
+                     (lib.card/saved-question-metadata query card-id))
+                   [])]
+    (into [] (filter lib.types.isa/primary-key?) fields)))
+
+(mu/defn many-pks?
+  "Does the source table or card for this `query` have more than one primary key?"
+  [query :- ::lib.schema/query]
+  (> (count (primary-keys query)) 1))
 
 (defn drill-value->js
   "Convert a drill value to a JS value"

@@ -36,7 +36,6 @@
   (:require
    [medley.core :as m]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
-   [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.drill-thru :as lib.schema.drill-thru]
    [metabase.lib.types.isa :as lib.types.isa]
@@ -65,7 +64,7 @@
       (when-not (= value :null)
         (zoom-drill* column value))
       ;; some other column was clicked. Find the PK column and create a filter for its value.
-      (let [[pk-column] (lib.metadata.calculation/primary-keys query)]
+      (let [[pk-column] (lib.drill-thru.common/primary-keys query)]
         (when-let [pk-value (->> row
                                  (m/find-first #(-> % :column :name (= (:name pk-column))))
                                  :value)]

@@ -13,7 +13,6 @@
    [metabase.lib.schema.expression :as lib.schema.expresssion]
    [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
-   [metabase.lib.types.isa :as lib.types.isa]
    [metabase.lib.util :as lib.util]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -568,13 +567,6 @@
     options        :- [:maybe VisibleColumnsOptions]]
    (let [options (merge (default-visible-columns-options query) options)]
      (visible-columns-method query stage-number x options))))
-
-(mu/defn primary-keys :- [:sequential ::lib.schema.metadata/column]
-  "Returns a list of primary keys for the source table of this query."
-  [query        :- ::lib.schema/query]
-  (if-let [table-id (lib.util/source-table-id query)]
-    (filter lib.types.isa/primary-key? (lib.metadata/fields query table-id))
-    []))
 
 (defn implicitly-joinable-columns
   "Columns that are implicitly joinable from some other columns in `column-metadatas`. To be joinable, the column has to
