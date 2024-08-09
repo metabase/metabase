@@ -241,6 +241,7 @@
     "fetch-mock": "^9.11.0",
     "fetch-mock-jest": "^1.5.1",
     "fork-ts-checker-webpack-plugin": "^9.0.2",
+    "get-nonce": "^1.0.1",
     "glob": "^7.1.1",
     "html-webpack-plugin": "5.5.0",
     "http-server": "^14.1.1",
