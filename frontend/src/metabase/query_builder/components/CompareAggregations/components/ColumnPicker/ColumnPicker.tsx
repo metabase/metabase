@@ -1,5 +1,6 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { forwardRef, useCallback, useEffect } from "react";
+import { forwardRef, useCallback } from "react";
+import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { Checkbox, Flex, MultiSelect, Text } from "metabase/ui";
@@ -28,7 +29,7 @@ export const ColumnPicker = ({ value, onChange, comparisonType }: Props) => {
     [onChange],
   );
 
-  useEffect(() => {
+  useDeepCompareEffect(() => {
     onChange(convertValues(value, comparisonType));
   }, [value, onChange, comparisonType]);
 
