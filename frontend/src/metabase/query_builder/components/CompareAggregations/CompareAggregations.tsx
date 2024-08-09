@@ -13,7 +13,7 @@ import {
   ReferenceAggregationPicker,
   ComparisonTypePicker,
 } from "./components";
-import type { ColumnType } from "./types";
+import type { ColumnType, ComparisonType } from "./types";
 import { canSubmit, getAggregations, getTitle } from "./utils";
 
 interface Props {
@@ -25,8 +25,8 @@ interface Props {
 }
 
 const DEFAULT_OFFSET = 1;
+const DEFAULT_COMPARISON_TYPE = "offset";
 const DEFAULT_COLUMNS: ColumnType[] = ["offset", "percent-diff-offset"];
-const DEFAULT_COMPARISON_TYPE = "values";
 const STEP_1_WIDTH = 378;
 const STEP_2_WIDTH = 472;
 
@@ -106,7 +106,11 @@ export const CompareAggregations = ({
                 onChange={setOffset}
               />
 
-              <ColumnPicker value={columns} onChange={setColumns} />
+              <ColumnPicker
+                value={columns}
+                onChange={setColumns}
+                comparisonType={comparisonType}
+              />
             </Stack>
 
             <Flex justify="flex-end">

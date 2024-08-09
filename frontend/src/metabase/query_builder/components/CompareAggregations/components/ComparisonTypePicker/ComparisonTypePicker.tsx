@@ -15,10 +15,10 @@ export function ComparisonTypePicker({ onChange, value }: Props) {
       <Input.Label>{t`How to compare`}</Input.Label>
       <Flex gap="sm">
         <Button
-          variant={value === "values" ? "filled" : "default"}
+          variant={value === "offset" ? "filled" : "default"}
           radius="xl"
           p="sm"
-          onClick={() => onChange("values")}
+          onClick={() => onChange("offset")}
         >{t`Compare values`}</Button>
         <Button
           variant={value === "moving-average" ? "filled" : "default"}

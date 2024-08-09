@@ -1,10 +1,10 @@
 import type { ComponentPropsWithoutRef } from "react";
-import { forwardRef, useCallback } from "react";
+import { forwardRef, useCallback, useEffect } from "react";
 import { t } from "ttag";
 
 import { Checkbox, Flex, MultiSelect, Text } from "metabase/ui";
 
-import type { ColumnType } from "../../types";
+import type { ColumnType, ComparisonType } from "../../types";
 
 import S from "./ColumnPicker.module.css";
 
@@ -15,29 +15,12 @@ interface ItemType {
 }
 
 interface Props {
+  comparisonType: ComparisonType;
   value: ColumnType[];
   onChange: (value: ColumnType[]) => void;
 }
 
-const COLUMN_OPTIONS: ItemType[] = [
-  {
-    example: "1826, 3004",
-    label: t`Previous value`,
-    value: "offset",
-  },
-  {
-    example: "+2.3%, -0.1%",
-    label: t`Percentage difference`,
-    value: "percent-diff-offset",
-  },
-  {
-    example: "+42, -3",
-    label: t`Value difference`,
-    value: "diff-offset",
-  },
-];
-
-export const ColumnPicker = ({ value, onChange }: Props) => {
+export const ColumnPicker = ({ value, onChange, comparisonType }: Props) => {
   const handleChange = useCallback(
     (values: string[]) => {
       onChange(values as ColumnType[]);
@@ -45,9 +28,13 @@ export const ColumnPicker = ({ value, onChange }: Props) => {
     [onChange],
   );
 
+  useEffect(() => {
+    onChange(convertValues(value, comparisonType));
+  }, [value, onChange, comparisonType]);
+
   return (
     <MultiSelect
-      data={COLUMN_OPTIONS}
+      data={getColumnOptions(comparisonType)}
       data-testid="column-picker"
       disableSelectedItemFiltering
       itemComponent={Item}
@@ -94,3 +81,62 @@ const Item = forwardRef<
     </div>
   );
 });
+
+function getColumnOptions(comparisonType: string): ItemType[] {
+  if (comparisonType === "offset") {
+    return [
+      {
+        example: "1826, 3004",
+        label: t`Previous value`,
+        value: "offset",
+      },
+      {
+        example: "+2.3%, -0.1%",
+        label: t`Percentage difference`,
+        value: "percent-diff-offset",
+      },
+      {
+        example: "+42, -3",
+        label: t`Value difference`,
+        value: "diff-offset",
+      },
+    ];
+  }
+  if (comparisonType === "moving-average") {
+    return [
+      {
+        example: "1826, 3004",
+        label: t`Moving average value`,
+        value: "moving-average",
+      },
+      {
+        example: "+2.3%, -0.1%",
+        label: t`Percentage difference with moving average`,
+        value: "percent-diff-moving-average",
+      },
+      {
+        example: "+42, -3",
+        label: t`Value difference with moving average`,
+        value: "diff-moving-average",
+      },
+    ];
+  }
+  return [];
+}
+
+function convertValues(
+  values: ColumnType[],
+  comparisonType: string,
+): ColumnType[] {
+  if (comparisonType === "offset") {
+    return values.map(
+      value => value.replace("moving-average", "offset") as ColumnType,
+    );
+  }
+  if (comparisonType === "moving-average") {
+    return values.map(
+      value => value.replace("offset", "moving-average") as ColumnType,
+    );
+  }
+  return [];
+}
