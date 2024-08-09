@@ -29,6 +29,7 @@ describe("utils", () => {
 
     it("should return subpath-safe url", () => {
       expect(getSubpathSafeUrl("/baz")).toBe(`${fakeBasename}/baz`);
+      expect(getSubpathSafeUrl("/baz   ")).toBe(`${fakeBasename}/baz`);
     });
   });
 
