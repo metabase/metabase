@@ -80,9 +80,7 @@ export function AggregationPicker({
   const [
     isEditingExpression,
     { turnOn: openExpressionEditor, turnOff: closeExpressionEditor },
-  ] = useToggle(
-    isExpressionEditorInitiallyOpen(query, stageIndex, clause, operators),
-  );
+  ] = useToggle(isExpressionEditorInitiallyOpen(query, stageIndex, clause));
   const [isComparing, setIsComparing] = useState(false);
 
   // For really simple inline expressions like Average([Price]),
@@ -108,9 +106,8 @@ export function AggregationPicker({
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
-    const isMetricBased = Lib.isMetricBased(query, stageIndex);
 
-    if (operators.length > 0 && !isMetricBased) {
+    if (operators.length > 0) {
       const operatorItems = operators.map(operator =>
         getOperatorListItem(query, stageIndex, operator),
       );
@@ -126,7 +123,7 @@ export function AggregationPicker({
     if (metrics.length > 0) {
       sections.push({
         key: "metrics",
-        name: isMetricBased ? t`Metrics` : t`Common Metrics`,
+        name: t`Common Metrics`,
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
@@ -368,18 +365,7 @@ function isExpressionEditorInitiallyOpen(
   query: Lib.Query,
   stageIndex: number,
   clause: Lib.AggregationClause | undefined,
-  operators: Lib.AggregationOperator[],
 ): boolean {
-  if (!clause) {
-    return (
-      Lib.isMetricBased(query, stageIndex) &&
-      Lib.availableMetrics(query, stageIndex)
-        .map(metric => Lib.displayInfo(query, stageIndex, metric))
-        .every(metricInfo => metricInfo.aggregationPosition != null)
-    );
-  }
-
-  const initialOperator = getInitialOperator(query, stageIndex, operators);
   const isCustomExpression = initialOperator === null;
   const displayInfo = Lib.displayInfo(query, stageIndex, clause);
   const hasCustomName = Boolean(displayInfo?.isNamed);

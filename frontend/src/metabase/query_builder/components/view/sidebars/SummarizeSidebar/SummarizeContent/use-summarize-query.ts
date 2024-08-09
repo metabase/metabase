@@ -124,5 +124,5 @@ export const useSummarizeQuery = ({
 
 function shouldAddDefaultAggregation(query: Lib.Query): boolean {
   const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  return aggregations.length === 0 && !Lib.isMetricBased(query, STAGE_INDEX);
+  return aggregations.length === 0;
 }
