@@ -4,10 +4,14 @@ import { t } from "ttag";
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
-import { getUserIsAdmin } from "metabase/selectors/user";
+import {
+  getUserIsAdmin,
+  canManageSubscriptions as canManageSubscriptionsSelector,
+} from "metabase/selectors/user";
 import { Flex } from "metabase/ui";
 import type Question from "metabase-lib/v1/Question";
 
+import { AlertMenuItem } from "./MenuItems/AlertMenuItem";
 import { EmbedMenuItem } from "./MenuItems/EmbedMenuItem";
 import { PublicLinkMenuItem } from "./MenuItems/PublicLinkMenuItem";
 import { SharingMenu, SharingButton } from "./SharingMenu";
@@ -25,12 +29,17 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
   const isAdmin = useSelector(getUserIsAdmin);
   const collection = question.collection();
   const isAnalytics = collection && isInstanceAnalyticsCollection(collection);
+  const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   if (isModel || isArchived || isAnalytics) {
     return null;
   }
 
-  if (!isAdmin && (!isPublicSharingEnabled || !hasPublicLink)) {
+  if (
+    !isAdmin &&
+    (!isPublicSharingEnabled || !hasPublicLink) &&
+    !canManageSubscriptions
+  ) {
     return (
       <SharingButton
         tooltip={t`Ask your admin to create a public link`}
@@ -39,7 +48,7 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
     );
   }
 
-  if (!isAdmin && hasPublicLink) {
+  if (!isAdmin && hasPublicLink && !canManageSubscriptions) {
     return (
       <Flex>
         <SharingButton
@@ -60,7 +69,10 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
   return (
     <Flex>
       <SharingMenu>
-        {/** Alerts will go here someday */}
+        <AlertMenuItem
+          question={question}
+          onClick={() => setModalType("question-alert")}
+        />
         <PublicLinkMenuItem
           hasPublicLink={hasPublicLink}
           onClick={() => setModalType("question-public-link")}

@@ -5,7 +5,9 @@ export type PublicLinkModalType =
 
 export type QuestionSharingModalType =
   | "question-public-link"
-  | "question-embed";
+  | "question-embed"
+  | "question-alert";
+
 export type DashboardSharingModalType =
   | "dashboard-public-link"
   | "dashboard-embed";
