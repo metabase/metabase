@@ -389,25 +389,24 @@
                               (lib/replace-clause 0 (second breakouts) (meta/field-metadata :venues :price))
                               (lib/breakouts 0)))))
     (testing "should ignore duplicate breakouts"
-      (let [column    (meta/field-metadata :venues :price)
-            query     (-> lib.tu/venues-query
-                          (lib/breakout column))
-            breakouts (lib/breakouts query)]
-        (is (= 1 (-> query
-                     (lib/replace-clause 0 (first breakouts) column)
-                     (lib/breakouts)
-                     (count))))))
+      (let [id-column    (meta/field-metadata :venues :id)
+            price-column (meta/field-metadata :venues :price)
+            query        (-> lib.tu/venues-query
+                             (lib/breakout id-column)
+                             (lib/breakout price-column))
+            breakouts    (lib/breakouts query)]
+        (is (= query (lib/replace-clause query (first breakouts) price-column)))))
     (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
-      (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
-            column     (->> (lib/breakoutable-columns base-query)
-                            (m/find-first #(= (:name %) "BIRTH_DATE")))
-            query      (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
+      (let [base-query  (lib/query meta/metadata-provider (meta/table-metadata :people))
+            column      (meta/field-metadata :people :birth-date)
+            query       (-> base-query
+                            (lib/breakout (lib/with-temporal-bucket column :year))
+                            (lib/breakout (lib/with-temporal-bucket column :month)))
+            query       (->> query
                              (lib.query/->legacy-MBQL)
                              (lib/query meta/metadata-provider))]
-        (is (= 1 (-> query
-                     (lib/replace-clause 0 (first breakouts) (lib/with-temporal-bucket column :year))
-                     (lib/breakouts)
-                     (count))))))))
+        (is (= query (lib/replace-clause query (first breakouts)
+                                         (lib/with-temporal-bucket column :month))))))))
 
 (deftest ^:parallel replace-clause-fields-test
   (let [query (-> lib.tu/venues-query

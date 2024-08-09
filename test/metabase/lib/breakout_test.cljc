@@ -180,8 +180,7 @@
 (deftest ^:parallel multiple-breakouts-for-the-same-column-test
   (testing "multiple breakout positions for the same column"
     (let [base-query         lib.tu/venues-query
-          column             (->> (lib/breakoutable-columns base-query)
-                                  (m/find-first #(= (:name %) "PRICE")))
+          column             (meta/field-metadata :venues :price)
           binning-strategies (lib/available-binning-strategies base-query column)
           query              (-> base-query
                                  (lib/breakout (lib/with-binning column (first binning-strategies)))
@@ -205,8 +204,7 @@
       (is (= 1 (count breakouts)))))
   (testing "should ignore duplicate breakouts with the same binning strategy"
     (let [base-query       (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column           (->> (lib/breakoutable-columns base-query)
-                                  (m/find-first #(= (:name %) "LATITUDE")))
+          column           (meta/field-metadata :people :latitude)
           binning-strategy (first (lib/available-binning-strategies base-query column))
           query            (-> base-query
                                (lib/breakout (lib/with-binning column binning-strategy))
@@ -215,8 +213,7 @@
       (is (= 1 (count breakouts)))))
   (testing "should ignore duplicate breakouts with the same temporal bucket"
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column     (->> (lib/breakoutable-columns base-query)
-                           (m/find-first #(= (:name %) "BIRTH_DATE")))
+          column     (meta/field-metadata :people :birth-date)
           query      (-> base-query
                          (lib/breakout (lib/with-temporal-bucket column :month))
                          (lib/breakout (lib/with-temporal-bucket column :month)))
@@ -224,8 +221,7 @@
       (is (= 1 (count breakouts)))))
   (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column     (->> (lib/breakoutable-columns base-query)
-                              (m/find-first #(= (:name %) "BIRTH_DATE")))
+          column     (meta/field-metadata :people :birth-date)
           query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
                                         (lib.query/->legacy-MBQL)
                                         (lib/query meta/metadata-provider))
@@ -234,8 +230,7 @@
       (is (= 1 (count breakouts)))))
   (testing "should allow multiple breakouts with different temporal buckets when converting from legacy MBQL"
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column     (->> (lib/breakoutable-columns base-query)
-                          (m/find-first #(= (:name %) "BIRTH_DATE")))
+          column     (meta/field-metadata :people :birth-date)
           query      (lib/breakout (->> (lib/breakout base-query (lib/with-temporal-bucket column :year))
                                         (lib.query/->legacy-MBQL)
                                         (lib/query meta/metadata-provider))
@@ -687,8 +682,7 @@
                 (lib.breakout/breakout-column query (second breakouts))))))
   (testing "should set the binning strategy from the breakout clause"
     (let [base-query       (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column           (->> (lib/breakoutable-columns base-query)
-                                (m/find-first #(= (:name %) "LATITUDE")))
+          column           (meta/field-metadata :people :latitude)
           binning-strategy (first (lib/available-binning-strategies base-query column))
           query            (->> (lib/with-binning column binning-strategy)
                                 (lib/breakout base-query))
@@ -698,8 +692,7 @@
                        (lib/binning))))))
   (testing "should set the temporal unit from the breakout clause"
     (let [base-query (lib/query meta/metadata-provider (meta/table-metadata :people))
-          column     (->> (lib/breakoutable-columns base-query)
-                          (m/find-first #(= (:name %) "BIRTH_DATE")))
+          column     (meta/field-metadata :people :birth-date)
           query      (->> (lib/with-temporal-bucket column :month)
                           (lib/breakout base-query))
           breakout   (first (lib/breakouts query))]
