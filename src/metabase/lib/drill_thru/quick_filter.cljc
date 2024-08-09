@@ -120,13 +120,13 @@
              (not (lib.types.isa/foreign-key? column)))
     ;; For aggregate columns, we want to introduce a new stage when applying the drill-thru.
     ;; [[lib.drill-thru.column-filter/prepare-query-for-drill-addition]] handles this. (#34346)
-    (let [adjusted (lib.drill-thru.column-filter/prepare-query-for-drill-addition
-                     query stage-number column column-ref :filter)]
+    (when-let [drill-details (lib.drill-thru.column-filter/prepare-query-for-drill-addition
+                               query stage-number column column-ref :filter)]
       (merge {:lib/type   :metabase.lib.drill-thru/drill-thru
               :type       :drill-thru/quick-filter
-              :operators  (operators-for (:column adjusted) value)
+              :operators  (operators-for (:column drill-details) value)
               :value      value}
-             adjusted))))
+              drill-details))))
 
 (defmethod lib.drill-thru.common/drill-thru-info-method :drill-thru/quick-filter
   [_query _stage-number drill-thru]
