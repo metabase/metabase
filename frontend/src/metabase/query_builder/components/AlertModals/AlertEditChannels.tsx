@@ -26,7 +26,7 @@ export const AlertEditChannels = ({
   const user = useSelector(getUser);
   const formInput = useSelector(getPulseFormInput);
 
-  const { data: users } = useListUsersQuery({});
+  const { data: { data: users = [] } = {} } = useListUsersQuery({});
 
   const dispatch = useDispatch();
 
