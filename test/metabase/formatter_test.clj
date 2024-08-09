@@ -65,7 +65,16 @@
                             ::mb.viz/decimals     2})))
       (is (= "1.2346E4" (fmt {::mb.viz/number-style "scientific"
                               ::mb.viz/decimals     4})))
-      (is (= "-1.23E4" (format  -12345 {::mb.viz/number-style "scientific"}))))
+      (is (= "1E0" (format 1 {::mb.viz/number-style "scientific"})))
+      (is (= "1.2E1" (format 12 {::mb.viz/number-style "scientific"})))
+      (is (= "1.23E2" (format 123 {::mb.viz/number-style "scientific"})))
+      (is (= "1.23E3" (format 1234 {::mb.viz/number-style "scientific"})))
+      (is (= "1.23E4" (format 12345 {::mb.viz/number-style "scientific"})))
+      (is (= "-1E0" (format -1 {::mb.viz/number-style "scientific"})))
+      (is (= "-1.2E1" (format -12 {::mb.viz/number-style "scientific"})))
+      (is (= "-1.23E2" (format -123 {::mb.viz/number-style "scientific"})))
+      (is (= "-1.23E3" (format -1234 {::mb.viz/number-style "scientific"})))
+      (is (= "-1.23E4" (format -12345 {::mb.viz/number-style "scientific"}))))
     (testing "Percentage"
       (is (= "1,234,554.32%" (fmt {::mb.viz/number-style "percent"})))
       (is (= "1.234.554,3200%"
