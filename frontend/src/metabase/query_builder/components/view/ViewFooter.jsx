@@ -116,14 +116,12 @@ const ViewFooter = ({
           <Group key="button-group" spacing="sm" noWrap>
             {QuestionLastUpdated.shouldRender({ result }) && (
               <QuestionLastUpdated
-                key="last-updated"
                 className={cx(CS.hide, CS.smShow)}
                 result={result}
               />
             )}
             {QueryDownloadWidget.shouldRender({ result }) && (
               <QueryDownloadWidget
-                key="download"
                 className={cx(CS.hide, CS.smShow)}
                 question={question}
                 result={result}
@@ -137,15 +135,14 @@ const ViewFooter = ({
               visualizationSettings,
             }) && (
               <QuestionAlertWidget
-                key="alerts"
                 className={cx(CS.hide, CS.smShow)}
                 canManageSubscriptions={canManageSubscriptions}
                 question={question}
                 questionAlerts={questionAlerts}
                 onCreateAlert={() =>
                   question.isSaved()
-                    ? onOpenModal("create-alert")
-                    : onOpenModal("save-question-before-alert")
+                    ? onOpenModal(MODAL_TYPES.CREATE_ALERT)
+                    : onOpenModal(MODAL_TYPES.SAVE_QUESTION_BEFORE_ALERT)
                 }
               />
             )}
@@ -153,7 +150,6 @@ const ViewFooter = ({
               !question.isArchived() &&
               (question.isSaved() ? (
                 <EmbedMenu
-                  key="embed"
                   resource={question}
                   resourceType="question"
                   hasPublicLink={!!question.publicUUID()}
@@ -168,7 +164,6 @@ const ViewFooter = ({
               ))}
             {QuestionTimelineWidget.shouldRender({ isTimeseries }) && (
               <QuestionTimelineWidget
-                key="timelines"
                 className={cx(CS.hide, CS.smShow)}
                 isShowingTimelineSidebar={isShowingTimelineSidebar}
                 onOpenTimelines={onOpenTimelines}
