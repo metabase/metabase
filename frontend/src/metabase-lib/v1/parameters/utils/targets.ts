@@ -147,7 +147,14 @@ export function buildTextTagTarget(tagName: string): ParameterTextTarget {
   return ["text-tag", tagName];
 }
 
-export function getParameterColumns(question: Question, parameter?: Parameter) {
+export function getParameterColumns(
+  question: Question,
+  parameter?: Parameter,
+): {
+  query: Lib.Query;
+  stageIndex: number;
+  columns: Lib.ColumnMetadata[];
+} {
   // treat the dataset/model question like it is already composed so that we can apply
   // dataset/model-specific metadata to the underlying dimension options
   const query =
@@ -157,19 +164,27 @@ export function getParameterColumns(question: Question, parameter?: Parameter) {
   const stageIndex = -1;
   const availableColumns =
     parameter && isTemporalUnitParameter(parameter)
-      ? Lib.breakouts(query, stageIndex).map(breakout =>
-          Lib.breakoutColumn(query, stageIndex, breakout),
-        )
-      : Lib.filterableColumns(query, stageIndex);
+      ? Lib.breakouts(query, stageIndex)
+          .map(breakout => Lib.breakoutColumn(query, stageIndex, breakout))
+          .map(column => ({ column, stageIndex }))
+      : getFilterableColumns(query);
   const filteredColumns = parameter
-    ? availableColumns.filter(
-        columnFilterForParameter(query, stageIndex, parameter),
+    ? availableColumns.filter(({ column, stageIndex }) =>
+        columnFilterForParameter(query, stageIndex, parameter)(column),
       )
     : availableColumns;
 
   return {
     query,
     stageIndex,
-    columns: filteredColumns,
+    columns: filteredColumns.map(({ column }) => column),
   };
+}
+
+function getFilterableColumns(query: Lib.Query) {
+  const stageIndexes = Lib.getFilterStageIndexes(query);
+  return stageIndexes.flatMap(stageIndex => {
+    const columns = Lib.filterableColumns(query, stageIndex);
+    return columns.map(column => ({ column, stageIndex }));
+  });
 }
