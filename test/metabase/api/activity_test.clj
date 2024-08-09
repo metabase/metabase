@@ -122,16 +122,7 @@
                                  [:event/card-query     {:card-id (:id archived)}]]]
             (events/publish-event! topic (assoc event :user-id (mt/user->id :crowberto))))
           (testing "No duplicates or archived items are returned."
-<<<<<<< HEAD
-            (let [recent-views (:recent_views (mt/user-http-request :crowberto :get 200 "activity/recent_views"))]
-              (is (= [{:model "table" :id (u/the-id table1) :name "rand-name"}
-                      {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
-                      {:model "card" :id (u/the-id card1) :name "rand-name"}
-                      {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
-                     (map #(select-keys % [:model :id :name]) recent-views))))))
-=======
-            (let [expected [{:model "metric" :id (u/the-id metric) :name "rand-metric-name"}
-                            {:model "table" :id (u/the-id table1) :name "rand-name"}
+            (let [expected [{:model "table" :id (u/the-id table1) :name "rand-name"}
                             {:model "dashboard" :id (u/the-id dash) :name "rand-name2"}
                             {:model "card" :id (u/the-id card1) :name "rand-name"}
                             {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
@@ -139,7 +130,6 @@
                   recent-views-2 (:recents (mt/user-http-request :crowberto :get 200 "activity/recents?context=views"))]
               (is (= expected (map #(select-keys % [:model :id :name]) recent-views)))
               (is (= expected (map #(select-keys % [:model :id :name]) recent-views-2))))))
->>>>>>> 7b849da346 (Make recents understand context (#43478))
         (mt/with-test-user :rasta
           (events/publish-event! :event/card-query {:card-id (:id dataset) :user-id (mt/user->id :rasta)})
           (events/publish-event! :event/card-query {:card-id (:id card1) :user-id (mt/user->id :crowberto)})
@@ -149,8 +139,6 @@
                    [{:model "dataset" :id (u/the-id dataset)}]
                    (reverse recent-views))))))))))
 
-<<<<<<< HEAD
-=======
 (deftest recent-card-read-views-test
   (clear-recent-views-for-user :crowberto)
   (mt/with-test-user :crowberto
@@ -265,7 +253,6 @@
                       {:model "dataset" :id (u/the-id dataset) :name "rand-name"}]
                      (map #(select-keys % [:model :id :name]) recent-views))))))))))
 
->>>>>>> 7b849da346 (Make recents understand context (#43478))
 (defn- create-views!
   "Insert views [user-id model model-id]. Views are entered a second apart with last view as most recent."
   [views]

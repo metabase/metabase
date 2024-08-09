@@ -173,7 +173,7 @@ function setup({
 
   setupDatabasesEndpoints(DATABASES);
   setupSearchEndpoints(searchItems);
-  setupRecentViewsAndSelectionsEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints(recentItems);
 
   function Wrapper() {
     const [query, setQuery] = useState(step.query);

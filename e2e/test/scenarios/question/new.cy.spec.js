@@ -61,6 +61,7 @@ describe("scenarios > question > new", () => {
 
       entityPickerModal().within(() => {
         tabsShouldBe("Models", ["Models", "Tables", "Saved questions"]);
+
         entityPickerModalTab("Search").should("not.exist");
 
         cy.findByPlaceholderText("Search…").type("  ").blur();

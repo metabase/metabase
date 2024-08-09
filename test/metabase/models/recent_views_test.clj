@@ -31,10 +31,10 @@
 
 (deftest simple-get-list-card-test
   (mt/with-temp
-    [:model/Collection {coll-id :id} {:name "my coll"}
-     :model/Database   {db-id :id}   {}
-     :model/Card       {card-id :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id)
+    [:model/Database   {db-id :id}           {:name "test-data" :initial_sync_status "incomplete"}
+     :model/Collection {coll-id :id}         {:name "my coll"}
+     :model/Card       {card-id         :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :can_write true,
              :name "name",
@@ -51,10 +51,10 @@
 
 (deftest simple-get-list-dataset-test
   (mt/with-temp
-    [:model/Collection {coll-id :id} {:name "my coll"}
-     :model/Database   {db-id :id}   {}
+    [:model/Database   {db-id :id}           {:name "test-data" :initial_sync_status "incomplete"}
+     :model/Collection {coll-id :id} {:name "my coll"}
      :model/Card       {card-id         :id} {:type "model" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
-    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id)
+    (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id :view)
     (is (= [{:description nil,
              :can_write true,
              :name "name",
