@@ -23,7 +23,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: 'snyk'
+          m2-cache-key: uberjar
       - uses: snyk/actions/setup@0.4.0
       - name: Generate all pom.xml
         run: .github/scripts/write-poms.sh

@@ -77,7 +77,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: 'kondo'
+          m2-cache-key: "kondo"
       - name: Install clj-kondo
         run: |
           curl -OL ${DOWNLOAD_URL}/v${CLJ_KONDO_VERSION}/clj-kondo-${CLJ_KONDO_VERSION}-linux-static-amd64.zip
@@ -103,7 +103,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: "eastwood"
+          m2-cache-key: uberjar
       - run: clojure -X:dev:ee:ee-dev:drivers:drivers-dev:test:eastwood
         name: Run Eastwood linter
 
@@ -167,7 +167,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: be-tests
+          m2-cache-key: uberjar
       # Depending on which files changed, we might either have to build static-viz
       # from scratch or download the previously built artifact
       - name: Build static-viz frontend
