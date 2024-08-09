@@ -1100,7 +1100,6 @@
           (let [extract (into [] (serdes.extract/extract {:no-settings true}))]
             (ts/with-db dest-db
               (serdes.load/load-metabase! (ingestion-in-memory extract))
-              ;; this really tests `serdes/load-find-local "DashboardCardSeries"`
               (testing "Both series get imported even though they point at the same card"
                 (is (= 2
                        (t2/count :model/DashboardCardSeries)))))))))))

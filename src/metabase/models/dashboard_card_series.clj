@@ -18,16 +18,9 @@
 
 (defmethod serdes/generate-path "DashboardCardSeries" [_ _] nil)
 
-(defmethod serdes/load-find-local "DashboardCardSeries" [path]
-  ;; they are coming in as [dashcard series] pair from `serdes/nested`
-  (let [[{dashcard-eid :id} {card-eid :id}] path]
-    (t2/select-one :model/DashboardCardSeries
-                   :dashboardcard_id {:from   [:report_dashboardcard]
-                                      :select [:id]
-                                      :where  [:= :entity_id dashcard-eid]}
-                   :card_id          {:from   [:report_card]
-                                      :select [:id]
-                                      :where  [:= :entity_id card-eid]})))
+(defmethod serdes/load-find-local "DashboardCardSeries" [_path]
+  ;; nested will remove all previous entries because they have no entity_id anyway
+  nil)
 
 ;; TODO: this is not used atm as `DashboardCard` has custom :export/:import defined; see comment there
 ;; to be implemented.
