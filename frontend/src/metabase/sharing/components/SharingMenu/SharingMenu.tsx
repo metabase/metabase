@@ -1,7 +1,7 @@
 import React, { forwardRef, type Ref } from "react";
 import { t } from "ttag";
 
-import { ToolbarButton } from "metabase/common/components/ToolbarButton";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { Menu } from "metabase/ui";
 
 export function SharingMenu({
