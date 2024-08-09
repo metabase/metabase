@@ -22,6 +22,11 @@ export type DashboardNightModeControls = {
   isNightMode: boolean;
 };
 
+export type DashboardDownloadControls = {
+  downloadsEnabled?: boolean;
+};
+
 export type DashboardDisplayOptionControls = DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
-  DashboardNightModeControls;
+  DashboardNightModeControls &
+  DashboardDownloadControls;

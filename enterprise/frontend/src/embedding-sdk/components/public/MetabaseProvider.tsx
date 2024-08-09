@@ -31,6 +31,7 @@ export interface MetabaseProviderProps {
   pluginsConfig?: SdkPluginsConfig;
   eventHandlers?: SdkEventHandlersConfig;
   theme?: MetabaseTheme;
+  className?: string;
 }
 
 interface InternalMetabaseProviderProps extends MetabaseProviderProps {
@@ -44,6 +45,7 @@ export const MetabaseProviderInternal = ({
   eventHandlers,
   theme,
   store,
+  className,
 }: InternalMetabaseProviderProps): JSX.Element => {
   const { fontFamily = DEFAULT_FONT } = theme ?? {};
 
@@ -77,7 +79,7 @@ export const MetabaseProviderInternal = ({
     <Provider store={store}>
       <EmotionCacheProvider>
         <SdkThemeProvider theme={theme}>
-          <AppInitializeController config={config}>
+          <AppInitializeController className={className} config={config}>
             {children}
           </AppInitializeController>
         </SdkThemeProvider>

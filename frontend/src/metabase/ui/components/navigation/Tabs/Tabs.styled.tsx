@@ -18,7 +18,7 @@ export const getTabsOverrides = (): MantineThemeOverride["components"] => ({
         maxWidth: "100%",
         "&:hover": {
           borderColor: theme.fn.themeColor("bg-medium"),
-          backgroundColor: theme.fn.themeColor("brand-lighter"),
+          backgroundColor: "var(--mb-color-brand-lighter)",
         },
         "&[data-active]": {
           color: theme.fn.themeColor("brand"),

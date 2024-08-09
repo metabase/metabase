@@ -8,12 +8,18 @@ const DEFAULT_MODAL_SPACING = "lg";
 export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {
     styles: theme => ({
+      root: {
+        color: "var(--mb-color-text-dark)",
+      },
       title: {
         fontSize: theme.fontSizes.xl,
         fontWeight: 700,
       },
       overlay: {
         backgroundColor: theme.fn.rgba(theme.fn.themeColor("bg-black"), 0.6),
+      },
+      content: {
+        backgroundColor: "var(--mb-color-background)",
       },
     }),
   },

@@ -1,10 +1,9 @@
+import type { Story } from "@storybook/react";
 import * as jose from "jose";
-import type { PropsWithChildren } from "react";
 
 import { MetabaseProvider, type SDKConfig } from "embedding-sdk";
 
 import { USERS } from "../../../../../e2e/support/cypress_data";
-
 const METABASE_INSTANCE_URL =
   (window as any).METABASE_INSTANCE_URL || "http://localhost:3000";
 const METABASE_JWT_SHARED_SECRET =
@@ -39,6 +38,8 @@ const DEFAULT_CONFIG: SDKConfig = {
   },
 };
 
-export const CommonStoryWrapper = ({ children }: PropsWithChildren) => (
-  <MetabaseProvider config={DEFAULT_CONFIG}>{children}</MetabaseProvider>
+export const CommonSdkStoryWrapper = (Story: Story) => (
+  <MetabaseProvider config={DEFAULT_CONFIG}>
+    <Story />
+  </MetabaseProvider>
 );

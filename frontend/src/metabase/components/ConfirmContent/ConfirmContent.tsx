@@ -1,3 +1,4 @@
+import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
@@ -39,7 +40,7 @@ const ConfirmContent = ({
   >
     <div>{content}</div>
 
-    <p className={CS.mb4}>{message}</p>
+    <p className={cx(CS.mb4, CS.textDark)}>{message}</p>
 
     <div className={CS.mlAuto}>
       <Button

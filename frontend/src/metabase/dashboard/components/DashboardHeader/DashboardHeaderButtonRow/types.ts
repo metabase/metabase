@@ -30,6 +30,7 @@ export type HeaderButtonProps = {
   canManageSubscriptions: boolean;
   formInput: any;
   isAdmin: boolean;
+  isEmbeddingSdk: boolean;
 } & DashboardHeaderButtonRowProps;
 
 export type DashboardActionButton = {

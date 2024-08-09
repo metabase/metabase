@@ -1,1 +1,2 @@
-export * from "./InteractiveDashboard";
+export { InteractiveDashboard } from "./InteractiveDashboard";
+export { EditableDashboard } from "./EditableDashboard";

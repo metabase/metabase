@@ -10,6 +10,6 @@ export const ListBox = styled(Box)<React.PropsWithChildren>`
   background-color: var(--mb-color-bg-light);
 
   &:last-child {
-    background-color: white;
+    background-color: var(--mb-color-background);
   }
 `;

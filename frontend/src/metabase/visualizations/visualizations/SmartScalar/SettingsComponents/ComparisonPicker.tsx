@@ -4,6 +4,7 @@ import { jt, t } from "ttag";
 import _ from "underscore";
 
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
+import CS from "metabase/css/core/index.css";
 import { rem, Menu, Stack, Text } from "metabase/ui";
 import type {
   DatasetColumn,
@@ -173,7 +174,7 @@ export function ComparisonPicker({
           }}
         >
           <DisplayName value={editedValue} option={selectedOption} />
-          <ExpandIcon name="chevrondown" size={14} />
+          <ExpandIcon className={CS.inline} name="chevrondown" size={14} />
         </ComparisonPickerButton>
       </Menu.Target>
 

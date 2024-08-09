@@ -149,6 +149,7 @@ module.exports = env => {
       }),
       new webpack.EnvironmentPlugin({
         EMBEDDING_SDK_VERSION,
+        IS_EMBEDDING_SDK_BUILD: true,
       }),
       new ForkTsCheckerWebpackPlugin({
         async: isDevMode,

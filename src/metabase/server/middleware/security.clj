@@ -192,6 +192,7 @@
      "Vary"                        "Origin"})
 
    {"Access-Control-Allow-Headers"   "*"
+    "Access-Control-Allow-Methods"   "*"
     "Access-Control-Expose-Headers"  "X-Metabase-Anti-CSRF-Token"}))
 
 (defn- first-embedding-app-origin

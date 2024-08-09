@@ -42,7 +42,7 @@ export const SelectItem = forwardRef(function SelectItem(
         },
         className,
       )}
-      color="text-dark"
+      c="text-dark"
       fz={getItemFontSize(size)}
       lh={getItemLineHeight(size)}
       p="sm"

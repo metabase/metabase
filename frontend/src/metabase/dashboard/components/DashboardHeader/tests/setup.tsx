@@ -16,10 +16,7 @@ import {
   createMockTokenFeatures,
   createMockUser,
 } from "metabase-types/api/mocks";
-import {
-  createMockDashboardState,
-  createMockLocation,
-} from "metabase-types/store/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { DashboardHeader, type DashboardHeaderProps } from "../DashboardHeader";
 
@@ -111,7 +108,7 @@ export const setup = async ({
     onRefreshPeriodChange: jest.fn(),
     onNightModeChange: jest.fn(),
     onFullscreenChange: jest.fn(),
-    location: createMockLocation(),
+    parameterQueryParams: {},
   };
 
   renderWithProviders(

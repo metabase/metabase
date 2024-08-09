@@ -8,8 +8,8 @@ import ColorS from "metabase/css/core/colors.module.css";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
 import type {
-  setParameterValueToDefault as setParameterValueToDefaultDashboardAction,
   setParameterValue as setParameterValueDashboardAction,
+  setParameterValueToDefault as setParameterValueToDefaultDashboardAction,
 } from "metabase/dashboard/actions";
 import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
 import { DashboardEmptyStateWithoutAddPrompt } from "metabase/dashboard/components/Dashboard/DashboardEmptyState/DashboardEmptyState";
@@ -19,9 +19,9 @@ import { DASHBOARD_DISPLAY_ACTIONS } from "metabase/dashboard/components/Dashboa
 import { DashboardTabs } from "metabase/dashboard/components/DashboardTabs";
 import type {
   DashboardFullscreenControls,
+  DashboardNightModeControls,
   DashboardRefreshPeriodControls,
   EmbedHideParameters,
-  DashboardNightModeControls,
 } from "metabase/dashboard/types";
 import { isActionDashCard } from "metabase/dashboard/utils";
 import { isWithinIframe } from "metabase/lib/dom";
