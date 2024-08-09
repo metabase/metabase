@@ -2,14 +2,15 @@ import cx from "classnames";
 
 import Radio from "metabase/core/components/Radio";
 import CS from "metabase/css/core/index.css";
+import type { Alert } from "metabase-types/api";
 
 type AlertSettingToggleProps = {
-  alert: any;
-  onAlertChange: (alert: any) => void;
+  alert: Alert;
+  onAlertChange: (alert: Alert) => void;
   title: string;
   trueText: string;
   falseText: string;
-  setting: string;
+  setting: keyof Alert;
 };
 
 export const AlertSettingToggle = ({

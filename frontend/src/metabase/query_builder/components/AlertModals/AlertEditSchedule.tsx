@@ -27,12 +27,7 @@ export const getSchedulePickerSendTimeText = (alert: Alert) => {
   }
 };
 
-export function AlertEditSchedule({
-  alert,
-  alertType,
-  schedule,
-  onScheduleChange,
-}: {
+type AlertEditScheduleProps = {
   alert: Alert;
   alertType: AlertType;
   schedule: ScheduleSettings;
@@ -40,7 +35,14 @@ export function AlertEditSchedule({
     nextSchedule: ScheduleSettings,
     change: ScheduleChangeProp,
   ) => void;
-}) {
+};
+
+export function AlertEditSchedule({
+  alert,
+  alertType,
+  schedule,
+  onScheduleChange,
+}: AlertEditScheduleProps) {
   return (
     <div>
       <h3 className={cx(CS.mt4, CS.mb3, CS.textDark)}>
