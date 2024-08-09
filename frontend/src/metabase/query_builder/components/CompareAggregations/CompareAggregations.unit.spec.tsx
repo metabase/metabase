@@ -46,10 +46,10 @@ describe("CompareAggregations", () => {
       setup({ query: queryWithCountAggregation });
 
       expect(
-        screen.getByText("Compare “Count” to previous period"),
+        screen.getByText("Compare “Count” to the past"),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText("Compare one of these to the previous period"),
+        screen.queryByText("Compare one of these to the past"),
       ).not.toBeInTheDocument();
     });
 
@@ -57,15 +57,13 @@ describe("CompareAggregations", () => {
       const { onClose } = setup({ query: queryWithCountAggregation });
 
       expect(
-        screen.getByText("Compare “Count” to previous period"),
+        screen.getByText("Compare “Count” to the past"),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText("Compare one of these to the previous period"),
+        screen.queryByText("Compare one of these to the past"),
       ).not.toBeInTheDocument();
 
-      await userEvent.click(
-        screen.getByText("Compare “Count” to previous period"),
-      );
+      await userEvent.click(screen.getByText("Compare “Count” to the past"));
 
       expect(onClose).toHaveBeenCalled();
     });
@@ -76,10 +74,10 @@ describe("CompareAggregations", () => {
       setup({ query: queryWithCountAndSumAggregations });
 
       expect(
-        screen.getByText("Compare one of these to the previous period"),
+        screen.getByText("Compare one of these to the past"),
       ).toBeInTheDocument();
       expect(
-        screen.queryByText("Compare “Count” to previous period"),
+        screen.queryByText("Compare “Count” to the past"),
       ).not.toBeInTheDocument();
       expect(screen.getByText("Count")).toBeInTheDocument();
       expect(screen.getByText("Sum of Price")).toBeInTheDocument();
@@ -93,27 +91,25 @@ describe("CompareAggregations", () => {
       await userEvent.click(screen.getByText("Count"));
 
       expect(
-        screen.getByText("Compare “Count” to previous period"),
+        screen.getByText("Compare “Count” to the past"),
       ).toBeInTheDocument();
 
-      await userEvent.click(
-        screen.getByText("Compare “Count” to previous period"),
-      );
+      await userEvent.click(screen.getByText("Compare “Count” to the past"));
 
       await userEvent.click(screen.getByText("Sum of Price"));
 
       expect(
-        screen.getByText("Compare “Sum of Price” to previous period"),
+        screen.getByText("Compare “Sum of Price” to the past"),
       ).toBeInTheDocument();
 
       await userEvent.click(
-        screen.getByText("Compare “Sum of Price” to previous period"),
+        screen.getByText("Compare “Sum of Price” to the past"),
       );
 
       expect(onClose).not.toHaveBeenCalled();
 
       await userEvent.click(
-        screen.getByText("Compare one of these to the previous period"),
+        screen.getByText("Compare one of these to the past"),
       );
 
       expect(onClose).toHaveBeenCalled();
