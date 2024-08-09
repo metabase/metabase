@@ -76,7 +76,8 @@
   (^File [secret driver?]
    (value->file!* secret driver? nil))
   (^File [{:keys [connection-property-name id value] :as secret} driver? ext?]
-   (if (= :file-path (:source secret))
+   (if (or (= :file-path (:source secret))
+           (= "private-key-file" connection-property-name))
      (let [secret-val          (value->string secret)
            ^File existing-file (File. secret-val)]
        (if (.exists existing-file)
