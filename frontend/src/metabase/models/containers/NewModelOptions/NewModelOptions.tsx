@@ -15,6 +15,7 @@ import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesE
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Center, Loader } from "metabase/ui";
 
 import {
   EducationalButton,
@@ -29,7 +30,7 @@ interface NewModelOptionsProps {
 }
 
 const NewModelOptions = ({ location }: NewModelOptionsProps) => {
-  const { data } = useListDatabasesQuery();
+  const { data, isFetching } = useListDatabasesQuery();
   const databases = data?.data ?? [];
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
@@ -43,6 +44,14 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  if (isFetching) {
+    return (
+      <Center style={{ flexGrow: 1, height: "100vh" }}>
+        <Loader size="lg" />
+      </Center>
+    );
+  }
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (
