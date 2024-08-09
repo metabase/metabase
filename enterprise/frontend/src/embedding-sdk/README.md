@@ -45,6 +45,17 @@ Features not yet supported:
 
 # Getting started
 
+## Quickstart
+
+Run `npx @metabase/embedding-sdk-react start` in your React project to get started.
+
+This will start a local Metabase instance with Docker and generate sample dashboard components from your data. First run of this command will take 1 - 2 minutes to install the dependencies.
+
+Prerequisites:
+
+- [Node.js 20.x LTS](https://nodejs.org/en) or higher
+- [Docker](https://docker.com)
+
 ## Start Metabase
 
 Currently, the SDK only works with Metabase version 50.

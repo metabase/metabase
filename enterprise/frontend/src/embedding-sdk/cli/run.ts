@@ -1,10 +1,14 @@
-import { METABASE_INSTANCE_SETUP_COMPLETE_MESSAGE } from "./constants/messages";
+import chalk from "chalk";
+
+import {
+  PREMIUM_TOKEN_REQUIRED_MESSAGE,
+  getMetabaseInstanceSetupCompleteMessage,
+} from "./constants/messages";
 import {
   addEmbeddingToken,
   checkIsDockerRunning,
   createApiKey,
   generateCredentials,
-  generateCodeSample,
   pollMetabaseInstance,
   setupMetabaseInstance,
   showMetabaseCliTitle,
@@ -14,6 +18,7 @@ import {
   addDatabaseConnectionStep,
   pickDatabaseTables,
   createModelsAndXrays,
+  generateReactComponentFiles,
 } from "./steps";
 import type { CliState } from "./types/cli";
 import { printEmptyLines, printInfo } from "./utils/print";
@@ -35,7 +40,10 @@ export const CLI_STEPS = [
   { id: "addDatabaseConnection", executeStep: addDatabaseConnectionStep },
   { id: "pickDatabaseTables", executeStep: pickDatabaseTables },
   { id: "createModelsAndXrays", executeStep: createModelsAndXrays },
-  { id: "generateCodeSample", executeStep: generateCodeSample },
+  {
+    id: "generateReactComponentFiles",
+    executeStep: generateReactComponentFiles,
+  },
 ] as const;
 
 export async function runCli() {
@@ -57,12 +65,10 @@ export async function runCli() {
     state = nextState;
   }
 
-  console.log(METABASE_INSTANCE_SETUP_COMPLETE_MESSAGE);
+  console.log(getMetabaseInstanceSetupCompleteMessage(state.instanceUrl ?? ""));
 
   if (!state.token) {
-    console.log(
-      "  Don't forget to add your premium token to your Metabase instance in the admin settings!",
-    );
+    console.log(chalk.bold(PREMIUM_TOKEN_REQUIRED_MESSAGE));
   }
 
   printEmptyLines(1);

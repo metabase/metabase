@@ -1,5 +1,5 @@
 import { uuid } from "metabase/lib/uuid";
-import type { Dashboard } from "metabase-types/api";
+import type { Dashboard, DashboardId } from "metabase-types/api";
 
 import { propagateErrorResponse } from "./propagate-error-response";
 
@@ -10,7 +10,9 @@ interface Options {
   instanceUrl: string;
 }
 
-export async function createXrayDashboardFromModel(options: Options) {
+export async function createXrayDashboardFromModel(
+  options: Options,
+): Promise<DashboardId> {
   const { modelId, instanceUrl, cookie = "" } = options;
 
   // Queries an auto-generated dashboard layout for the model

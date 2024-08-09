@@ -2,10 +2,12 @@ import fs from "fs/promises";
 
 import { input } from "@inquirer/prompts";
 
-import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
-import { generateRandomDemoPassword } from "embedding-sdk/cli/utils/generate-password";
-import { OUTPUT_STYLES, printEmptyLines } from "embedding-sdk/cli/utils/print";
 import { isEmail } from "metabase/lib/email";
+
+import type { CliStepMethod } from "../types/cli";
+import { addFileToGitIgnore } from "../utils/add-file-to-git-ignore";
+import { generateRandomDemoPassword } from "../utils/generate-password";
+import { OUTPUT_STYLES, printEmptyLines } from "../utils/print";
 
 export const generateCredentials: CliStepMethod = async state => {
   printEmptyLines();
@@ -18,9 +20,13 @@ export const generateCredentials: CliStepMethod = async state => {
 
   const password = generateRandomDemoPassword();
 
+  const credentialFile = "METABASE_LOGIN.json";
+
+  await addFileToGitIgnore(credentialFile);
+
   // Store the login credentials to a file.
   await fs.writeFile(
-    "./METABASE_LOGIN.json",
+    `./${credentialFile}`,
     JSON.stringify({ email, password }, null, 2),
   );
 

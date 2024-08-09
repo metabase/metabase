@@ -1,10 +1,9 @@
 import ora from "ora";
 
-import { createXrayDashboardFromModel } from "embedding-sdk/cli/utils/xray-models";
-import type { DashboardId } from "metabase-types/api";
-
 import type { CliStepMethod } from "../types/cli";
+import type { DashboardInfo } from "../types/dashboard";
 import { createModelFromTable } from "../utils/create-model-from-table";
+import { createXrayDashboardFromModel } from "../utils/xray-models";
 
 export const createModelsAndXrays: CliStepMethod = async state => {
   const { instanceUrl = "", databaseId, cookie = "", tables = [] } = state;
@@ -17,7 +16,7 @@ export const createModelsAndXrays: CliStepMethod = async state => {
 
   try {
     // Create a model for each table
-    const modelIds = await Promise.all(
+    const models = await Promise.all(
       tables.map(table =>
         createModelFromTable({
           table,
@@ -30,23 +29,23 @@ export const createModelsAndXrays: CliStepMethod = async state => {
 
     spinner.start("X-raying your data to create dashboards...");
 
-    const dashboardIds: DashboardId[] = [];
+    const dashboards: DashboardInfo[] = [];
 
     // We create dashboard sequentially to prevent multiple
     // "Automatically Generated Dashboards" collection from being created.
-    for (const modelId of modelIds) {
+    for (const model of models) {
       const dashboardId = await createXrayDashboardFromModel({
-        modelId,
+        modelId: model.modelId,
         instanceUrl,
         cookie,
       });
 
-      dashboardIds.push(dashboardId);
+      dashboards.push({ id: dashboardId, name: model.modelName });
     }
 
     spinner.succeed();
 
-    return [{ type: "done" }, { ...state, dashboardIds }];
+    return [{ type: "done" }, { ...state, dashboards }];
   } catch (error) {
     spinner.fail();
 
