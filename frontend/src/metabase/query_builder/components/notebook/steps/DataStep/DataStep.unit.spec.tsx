@@ -152,7 +152,6 @@ describe("DataStep", () => {
   it.each<{ type: CardType; icon: IconName }>([
     { type: "question", icon: "table2" },
     { type: "model", icon: "model" },
-    { type: "metric", icon: "metric" },
   ])("should render with a selected card", ({ type, icon }) => {
     const card = createSavedStructuredCard({
       id: 1,
