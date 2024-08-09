@@ -5,6 +5,8 @@ import {
   restore,
   setupSMTP,
   visitQuestion,
+  openTable,
+  openSharingMenu,
 } from "e2e/support/helpers";
 
 const { PEOPLE_ID } = SAMPLE_DATABASE;
@@ -108,7 +110,7 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
       .findByText("Your alert is all set up.")
       .should("be.visible");
 
-    clickAlertBell();
+    openSharingMenu("Create alert");
 
     cy.findByTestId("popover").within(() => {
       cy.findByText("You set up an alert").should("be.visible");
@@ -138,20 +140,15 @@ describe("scenarios > alert > email_alert", { tags: "@external" }, () => {
 
 function openAlertForQuestion(id) {
   visitQuestion(id);
-  cy.icon("bell").click();
-  cy.findByText("Set up an alert").click();
+  openSharingMenu("Create alert");
 }
 
 function toggleChannel(channel) {
   cy.findByText(channel).parent().find("input").click();
 }
 
-function clickAlertBell() {
-  cy.findByTestId("view-footer").icon("bell").click();
-}
-
 function saveAlert() {
-  clickAlertBell();
+  openSharingMenu("Create alert");
 
   cy.findByRole("dialog").within(() => {
     cy.findByLabelText("Name").type(" alert");

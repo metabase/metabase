@@ -14,6 +14,8 @@ import {
   setupSMTP,
   sidebar,
   undoToast,
+  openSharingMenu,
+  sharingMenu,
   visitDashboard,
   visitQuestion,
 } from "e2e/support/helpers";
@@ -72,10 +74,15 @@ describeEE("scenarios > admin > permissions > application", () => {
 
       it("revokes ability to create subscriptions and alerts and manage them", () => {
         visitDashboard(ORDERS_DASHBOARD_ID);
-        cy.icon("subscription").should("not.exist");
+
+        openSharingMenu();
+        sharingMenu()
+          .findByText(/subscri/i)
+          .should("not.exist");
 
         visitQuestion(ORDERS_QUESTION_ID);
-        cy.icon("bell").should("not.exist");
+        openSharingMenu();
+        sharingMenu().findByText(/alert/i).should("not.exist");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {
@@ -89,7 +96,10 @@ describeEE("scenarios > admin > permissions > application", () => {
         setupSMTP();
         cy.signInAsNormalUser();
         visitDashboard(ORDERS_DASHBOARD_ID);
-        cy.findByLabelText("subscriptions").click();
+        openSharingMenu();
+        sharingMenu()
+          .findByText(/subscri/i)
+          .should("be.visible");
 
         sidebar().findByText("Email this dashboard").should("exist");
       });
@@ -97,11 +107,8 @@ describeEE("scenarios > admin > permissions > application", () => {
       it("gives ability to create question alerts", () => {
         cy.signInAsNormalUser();
         visitQuestion(ORDERS_QUESTION_ID);
-        cy.icon("bell").click();
-        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-        cy.findByText(
-          "To send alerts, an admin needs to set up email integration.",
-        );
+        openSharingMenu();
+        sharingMenu().findByText(/alert/i).should("be.visible");
       });
     });
   });

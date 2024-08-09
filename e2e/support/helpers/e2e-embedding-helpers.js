@@ -1,6 +1,8 @@
 import { METABASE_SECRET_KEY } from "e2e/support/cypress_data";
 import { modal, popover } from "e2e/support/helpers/e2e-ui-elements-helpers";
 
+import { openSharingMenu } from "./e2e-sharing-helpers";
+
 /**
  * @typedef {object} QuestionResource
  * @property {number} question - ID of a question we are embedding
@@ -139,17 +141,14 @@ export function getEmbedModalSharingPane() {
 }
 
 export function openPublicLinkPopoverFromMenu() {
-  cy.icon("share").click();
+  openSharingMenu(/public link/i);
   cy.findByTestId("embed-header-menu")
     .findByTestId("embed-menu-public-link-item")
     .click();
 }
 
 export function openEmbedModalFromMenu() {
-  cy.icon("share").click();
-  cy.findByTestId("embed-header-menu")
-    .findByTestId("embed-menu-embed-modal-item")
-    .click();
+  openSharingMenu("Embed");
 }
 
 /**

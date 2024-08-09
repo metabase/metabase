@@ -10,12 +10,13 @@ import {
   modal,
   restore,
   setActionsEnabledForDB,
-  setTokenFeatures,
   setupSMTP,
   sidebar,
   visitDashboard,
   visitDashboardAndCreateTab,
   visitQuestion,
+  setTokenFeatures,
+  openSharingMenu,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -309,8 +310,7 @@ describeEE(
     it("should validate approved email domains for a question alert", () => {
       visitQuestion(ORDERS_QUESTION_ID);
 
-      cy.icon("bell").click();
-      cy.button("Set up an alert").click();
+      openSharingMenu("Create alert");
 
       cy.findByRole("heading", { name: "Email" })
         .closest("li")

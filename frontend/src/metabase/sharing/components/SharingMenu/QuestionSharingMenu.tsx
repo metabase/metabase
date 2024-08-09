@@ -65,6 +65,7 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
   }
 
   // TODO: handle prompt to save before sharing
+  // TODO: prompt admins to setup notification channels
 
   return (
     <Flex>

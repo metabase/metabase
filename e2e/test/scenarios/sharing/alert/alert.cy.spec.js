@@ -8,6 +8,8 @@ import {
   restore,
   setupSMTP,
   visitModel,
+  openSharingMenu,
+  sharingMenu,
   visitQuestion,
 } from "e2e/support/helpers";
 
@@ -22,7 +24,7 @@ describe("scenarios > alert", () => {
   describe("with nothing set", () => {
     it("should prompt you to add email/slack credentials", () => {
       visitQuestion(ORDERS_QUESTION_ID);
-      cy.icon("bell").click();
+      openSharingMenu("Create alert");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
@@ -34,7 +36,7 @@ describe("scenarios > alert", () => {
       cy.signInAsNormalUser();
 
       visitQuestion(ORDERS_QUESTION_ID);
-      cy.icon("bell").click();
+      openSharingMenu("Create alert");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText(
@@ -55,7 +57,7 @@ describe("scenarios > alert", () => {
 
         // Open the first alert screen and create an alert
         visitQuestion(ORDERS_QUESTION_ID);
-        cy.icon("bell").click();
+        openSharingMenu("Create alert");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("The wide world of alerts");
@@ -80,7 +82,7 @@ describe("scenarios > alert", () => {
         visitQuestion(ORDERS_COUNT_QUESTION_ID);
         cy.wait("@questionLoaded");
 
-        cy.icon("bell").click();
+        openSharingMenu("Create alert");
 
         // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Let's set up your alert");
@@ -97,7 +99,9 @@ describe("scenarios > alert", () => {
         .should("have.text", "Showing first 2,000 rows")
         .and("be.visible");
       cy.icon("download").should("exist");
-      cy.icon("bell").should("not.exist");
     });
+
+    openSharingMenu();
+    sharingMenu().findByText("Create alert").should("not.exist");
   });
 });

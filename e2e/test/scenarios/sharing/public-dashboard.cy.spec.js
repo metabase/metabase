@@ -13,6 +13,7 @@ import {
   setTokenFeatures,
   visitDashboard,
   visitPublicDashboard,
+  openSharingMenu,
 } from "e2e/support/helpers";
 
 const { PRODUCTS } = SAMPLE_DATABASE;
@@ -150,8 +151,7 @@ describe("scenarios > public > dashboard", () => {
 
     cy.signInAsNormalUser().then(() => {
       visitDashboard("@dashboardId");
-
-      cy.icon("share").click();
+      openSharingMenu("Public link");
 
       cy.findByTestId("public-link-popover-content").within(() => {
         cy.findByText("Public link").should("be.visible");

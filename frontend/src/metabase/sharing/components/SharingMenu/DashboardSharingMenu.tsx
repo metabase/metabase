@@ -41,6 +41,8 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
     return null;
   }
 
+  // TODO: prompt admins to setup notification channels
+
   return (
     <Flex>
       <SharingMenu>

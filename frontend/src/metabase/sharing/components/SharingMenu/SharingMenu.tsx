@@ -24,7 +24,7 @@ export function SharingMenu({
           disabled={hasNoChildren}
         />
       </Menu.Target>
-      <Menu.Dropdown>{children}</Menu.Dropdown>
+      <Menu.Dropdown data-testid="sharing-menu">{children}</Menu.Dropdown>
     </Menu>
   );
 }

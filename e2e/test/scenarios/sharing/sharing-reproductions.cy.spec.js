@@ -20,6 +20,10 @@ import {
   getIframeBody,
   modal,
   openAndAddEmailsToSubscriptions,
+  openSharingMenu,
+  createQuestionAndDashboard,
+  createQuestion,
+  getDashboardCard,
   openNewPublicLinkDropdown,
   openStaticEmbeddingModal,
   popover,
@@ -30,7 +34,9 @@ import {
   setFilter,
   setTokenFeatures,
   setupSMTP,
+  sharingMenuButton,
   sidebar,
+  tooltip,
   visitDashboard,
   visitEmbeddedPage,
   visitPublicDashboard,
@@ -965,7 +971,7 @@ describe("issue 17547", () => {
   });
 
   it("editing an alert should not delete it (metabase#17547)", () => {
-    cy.icon("bell").click();
+    openSharingMenu("Create alert");
     popover().within(() => {
       cy.findByText("Daily, 12:00 PM");
       cy.findByText("Edit").click();
@@ -977,7 +983,7 @@ describe("issue 17547", () => {
 
     cy.wait("@alertQuery");
 
-    cy.icon("bell").click();
+    openSharingMenu("Edit alerts");
     popover().within(() => {
       cy.findByText("Daily, 12:00 AM");
     });
@@ -993,13 +999,8 @@ describe("issue 16108", () => {
   it("should display a tooltip for CTA icons on an individual question (metabase#16108)", () => {
     visitQuestion(ORDERS_QUESTION_ID);
     cy.icon("download").realHover();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Download full results");
-    cy.icon("bell").realHover();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Get alerts");
-    cy.icon("share").realHover();
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Sharing");
+    tooltip().findByText("Download full results");
+    sharingMenuButton().realHover();
+    tooltip().findByText("Sharing");
   });
 });

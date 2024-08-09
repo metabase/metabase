@@ -13,11 +13,13 @@ import {
   openEmbedModalFromMenu,
   openNewPublicLinkDropdown,
   openPublicLinkPopoverFromMenu,
+  openSharingMenu,
   openStaticEmbeddingModal,
   popover,
   resetSnowplow,
   restore,
   setTokenFeatures,
+  sharingMenu,
   startNewQuestion,
   visitDashboard,
   visitQuestion,
@@ -87,7 +89,7 @@ import {
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
+            openSharingMenu("Embed");
             cy.findByTestId("embed-header-menu").should("be.visible");
           });
 
@@ -132,7 +134,7 @@ import {
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
+            openSharingMenu("Embed");
 
             assertValidPublicLink({
               resource,
@@ -156,9 +158,9 @@ import {
               visitResource(resource, id);
             });
 
-            cy.icon("share").click();
+            openSharingMenu();
 
-            cy.findByTestId("embed-menu-public-link-item").within(() => {
+            sharingMenu().within(() => {
               cy.findByText("Public links are off").should("be.visible");
               cy.findByText("Enable them in settings").should("be.visible");
             });

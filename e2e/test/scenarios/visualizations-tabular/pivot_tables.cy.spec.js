@@ -8,14 +8,21 @@ import {
   getNotebookStep,
   leftSidebar,
   main,
+  getIframeBody,
   modal,
   openNotebook,
   openPublicLinkPopoverFromMenu,
   openStaticEmbeddingModal,
+  modal,
+  createQuestion,
+  dashboardCards,
   popover,
   queryBuilderMain,
+  openNotebook,
+  getNotebookStep,
   restore,
   sidebar,
+  openSharingMenu,
   visitDashboard,
   visitIframe,
   visitQuestion,
@@ -681,7 +688,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
         it("should display pivot table in a public link", () => {
           if (test.case === "question") {
-            cy.icon("share").click();
+            sharingMenu("Create a public link");
             modal().within(() => {
               cy.findByText("Save").click();
             });
@@ -709,7 +716,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
 
         it("should display pivot table in an embed URL", () => {
           if (test.case === "question") {
-            cy.icon("share").click();
+            sharingMenu("Create a public link");
             modal().within(() => {
               cy.findByText("Save").click();
             });

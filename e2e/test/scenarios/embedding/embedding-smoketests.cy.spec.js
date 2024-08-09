@@ -7,9 +7,14 @@ import {
   modal,
   openStaticEmbeddingModal,
   restore,
-  visitDashboard,
-  visitIframe,
   visitQuestion,
+  visitDashboard,
+  modal,
+  visitIframe,
+  openStaticEmbeddingModal,
+  visitQuestion,
+  sharingMenuButton,
+  openSharingMenu,
 } from "e2e/support/helpers";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
@@ -34,10 +39,10 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
     cy.visit(`/model/${ORDERS_QUESTION_ID}`);
     cy.wait("@dataset");
 
+    sharingMenuButton().should("not.exist");
+
     cy.findByTestId("view-footer").within(() => {
       cy.icon("download").should("exist");
-      cy.icon("bell").should("not.exist");
-      cy.icon("share").should("not.exist");
     });
   });
 
@@ -324,7 +329,7 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  cy.icon("share").click();
+  openSharingMenu("Embed");
 
   cy.findByTestId("embed-menu-embed-modal-item").should("be.disabled");
 

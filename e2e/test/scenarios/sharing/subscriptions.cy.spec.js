@@ -21,7 +21,15 @@ import {
   restore,
   sendEmailAndAssert,
   sendEmailAndVisitIt,
+  clickSend,
+  viewEmailPage,
+  openPublicLinkPopoverFromMenu,
+  openEmbedModalFromMenu,
+  openSharingMenu,
+  getEmbedModalSharingPane,
   setFilter,
+  multiAutocompleteInput,
+  removeMultiAutocompleteValue,
   setTokenFeatures,
   setupSMTP,
   setupSubscriptionWithRecipients,
@@ -49,10 +57,7 @@ describe("scenarios > dashboard > subscriptions", () => {
     openPublicLinkPopoverFromMenu();
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
-    // close link popover
-    cy.icon("share").click();
-
-    openEmbedModalFromMenu();
+    openSharingMenu("Embed");
     getEmbedModalSharingPane().within(() => {
       cy.findByText("Public embed").should("be.visible");
       cy.findByText("Static embed").should("be.visible");
