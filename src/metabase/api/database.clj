@@ -64,6 +64,11 @@
      #(u/ignore-exceptions (driver/the-driver %))]]
    (deferred-tru "value must be a valid database engine.")))
 
+(defn- add-conn-uri-sensitive-exception
+  "Add redaction exception for `:conn-uri` detail, which is handled in `mi/to-json :model/Database` implementation."
+  [db]
+  (update db :details vary-meta assoc :sensitive-exceptions #{:conn-uri}))
+
 
 ;;; ----------------------------------------------- GET /api/database ------------------------------------------------
 
@@ -349,11 +354,13 @@
                             (= include "tables.fields") (map #(update % :fields filter-sensitive-fields))))))))
 
 (defn get-database
-  "Get a single Database with `id`."
+  "Get a single Database with `id`. Add sensitive exception for `:conn-uri` detail, handled
+  in `mi/to-json :model/Database`."
   [id {:keys [include include-editable-data-model? exclude-uneditable-details?]}]
   (let [filter-by-data-access?       (not (or include-editable-data-model? exclude-uneditable-details?))
         database                     (api/check-404 (t2/select-one Database :id id))]
     (cond-> database
+      true                         add-conn-uri-sensitive-exception
       filter-by-data-access?       api/read-check
       exclude-uneditable-details?  api/write-check
       true                         add-expanded-schedules
@@ -802,20 +809,22 @@
     (if valid?
       ;; no error, proceed with creation. If record is inserted successfuly, publish a `:database-create` event.
       ;; Throw a 500 if nothing is inserted
-      (u/prog1 (api/check-500 (first (t2/insert-returning-instances!
-                                      Database
-                                      (merge
-                                       {:name         name
-                                        :engine       engine
-                                        :details      details-or-error
-                                        :is_full_sync is_full_sync
-                                        :is_on_demand is_on_demand
-                                        :cache_ttl    cache_ttl
-                                        :creator_id   api/*current-user-id*}
-                                       (when schedules
-                                         (sync.schedules/schedule-map->cron-strings schedules))
-                                       (when (some? auto_run_queries)
-                                         {:auto_run_queries auto_run_queries})))))
+      (u/prog1 (api/check-500 (-> (t2/insert-returning-instances!
+                                   Database
+                                   (merge
+                                    {:name         name
+                                     :engine       engine
+                                     :details      details-or-error
+                                     :is_full_sync is_full_sync
+                                     :is_on_demand is_on_demand
+                                     :cache_ttl    cache_ttl
+                                     :creator_id   api/*current-user-id*}
+                                    (when schedules
+                                      (sync.schedules/schedule-map->cron-strings schedules))
+                                    (when (some? auto_run_queries)
+                                      {:auto_run_queries auto_run_queries})))
+                                  first
+                                  add-conn-uri-sensitive-exception))
         (events/publish-event! :event/database-create {:object <> :user-id api/*current-user-id*})
         (snowplow/track-event! ::snowplow/database-connection-successful
                                api/*current-user-id*
@@ -972,7 +981,8 @@
        (when (premium-features/enable-cache-granular-controls?)
          (t2/update! Database id {:cache_ttl cache_ttl}))
 
-       (let [db (t2/select-one Database :id id)]
+       (let [db (-> (t2/select-one Database :id id)
+                    add-conn-uri-sensitive-exception)]
          (events/publish-event! :event/database-update {:object db
                                                         :user-id api/*current-user-id*
                                                         :previous-object existing-database})

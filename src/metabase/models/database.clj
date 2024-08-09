@@ -391,10 +391,29 @@
             driver.u/default-sensitive-fields))
       driver.u/default-sensitive-fields))
 
+(defn- redact-sensitive-fields
+  "Redact sensitive fields from database, respecting `:sensitive-exceptions` metadata. Example of sensitive exceptions
+  usage is described in the docstring of the `mi/to-json :model/Database` implementation."
+  [{:keys [details] :as db}]
+  (let [sensitive-exceptions (-> details meta :sensitive-exceptions)
+        sensitive-fields (apply disj
+                                (sensitive-fields-for-db db)
+                                sensitive-exceptions)
+        keys-to-redact (filter sensitive-fields (keys details))]
+    (m/update-existing db :details merge
+                       (zipmap keys-to-redact
+                               (repeat (count keys-to-redact)
+                                       protected-password)))))
+
 (methodical/defmethod mi/to-json :model/Database
   "When encoding a Database as JSON remove the `details` for any User without write perms for the DB.
   Users with write perms can see the `details` but remove anything resembling a password. No one gets to see this in
   an API response!
+
+  Then, connection uri is a special case of sensitive field. It should be sent only in API responses of /database/:id
+  endpoints, to enable editing. Otherwise it should be treated as secret, as it can contain eg. password. That is
+  handled in [[redact-sensitive-fields]] by processing exceptions from sensitive fields. Those are added in API's
+  [[metabase.api.database/add-conn-uri-sensitive-exception]] in endpoints' code.
 
   Also remove settings that the User doesn't have read perms for."
   [db json-generator]
@@ -403,11 +422,7 @@
               (do (log/debug "Fully redacting database details during json encoding.")
                   (dissoc db :details))
               (do (log/debug "Redacting sensitive fields within database details during json encoding.")
-                  (update db :details (fn [details]
-                                        (reduce
-                                         #(m/update-existing %1 %2 (constantly protected-password))
-                                         details
-                                         (sensitive-fields-for-db db))))))]
+                  (redact-sensitive-fields db)))]
      (update db :settings
              (fn [settings]
                (when (map? settings)

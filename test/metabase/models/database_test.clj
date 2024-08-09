@@ -113,6 +113,7 @@
                         :details     {:additional-options            nil
                                       :ssl                           false
                                       :password                      "Password1234"
+                                      :conn-uri                      "can contain sensitive data"
                                       :tunnel-host                   "localhost"
                                       :port                          5432
                                       :dbname                        "mydb"
@@ -175,6 +176,7 @@
                                  "tunnel-enabled"                true
                                  "port"                          5432
                                  "password"                      "**MetabasePass**"
+                                 "conn-uri"                      "**MetabasePass**"
                                  "tunnel-host"                   "localhost"}
                   "settings"    {"database-enable-actions" true}
                   "id"          3}
