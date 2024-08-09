@@ -1,7 +1,12 @@
 import { createMockMetadata } from "__support__/metadata";
 import { checkNotNull } from "metabase/lib/types";
 import * as Lib from "metabase-lib";
-import { createQuery, createQueryWithClauses } from "metabase-lib/test-helpers";
+import {
+  columnFinder,
+  createQuery,
+  createQueryWithClauses,
+  getJoinQueryHelpers,
+} from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
@@ -30,8 +35,10 @@ import {
   createOrdersTable,
   createProductsCreatedAtField,
   createSampleDatabase,
+  ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
+  REVIEWS_ID,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
 import { isDimensionTarget } from "metabase-types/guards";
@@ -260,6 +267,13 @@ describe("parameters/utils/targets", () => {
             ["People", "User → Zip"],
           ]);
         });
+
+        it("TODO", () => {
+          const baseQuery = createBaseQuery();
+          expect(Lib.toLegacyQuery(baseQuery)).toMatchObject({
+            x: 1,
+          });
+        });
       });
 
       describe("model", () => {
@@ -463,6 +477,54 @@ describe("parameters/utils/targets", () => {
     });
   });
 });
+
+function createBaseQuery() {
+  const baseQuery = ordersJoinReviewsOnProductId();
+  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, 0));
+  const userBirthdayColumn = findColumn("PEOPLE", "BIRTH_DATE");
+
+  return createQueryWithClauses({
+    query: baseQuery,
+    expressions: [
+      {
+        name: "User's 18th birthday",
+        operator: "datetime-add",
+        args: [checkNotNull(userBirthdayColumn), 18, "year"],
+      },
+    ],
+    aggregations: [
+      { operatorName: "count" },
+      { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
+    ],
+    // TODO: breakouts
+  });
+}
+
+function ordersJoinReviewsOnProductId() {
+  const {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  } = getJoinQueryHelpers(queryOrders, 0, REVIEWS_ID);
+
+  const productsId = findLHSColumn("ORDERS", "PRODUCT_ID");
+  const reviewsProductId = findRHSColumn("REVIEWS", "PRODUCT_ID");
+
+  const stageIndex = -1;
+  const condition = Lib.joinConditionClause(
+    queryOrders,
+    stageIndex,
+    defaultOperator,
+    reviewsProductId,
+    productsId,
+  );
+  const join = Lib.joinClause(table, [condition], defaultStrategy);
+
+  const query = Lib.join(queryOrders, stageIndex, join);
+  return query;
+}
 
 function createUnitOfTimeParameter() {
   return createMockParameter({
