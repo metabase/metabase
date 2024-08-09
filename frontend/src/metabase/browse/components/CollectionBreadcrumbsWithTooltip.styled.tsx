@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
+import { RawMaybeLink } from "metabase/components/Badge/Badge.styled";
 import { ResponsiveChild } from "metabase/components/ResponsiveContainer/ResponsiveContainer";
-import Link from "metabase/core/components/Link";
 import { FixedSizeIcon, Flex, Group } from "metabase/ui";
 
 import { Ellipsis } from "./Ellipsis";
@@ -33,17 +33,21 @@ export const Breadcrumb = styled(ResponsiveChild)<{
   }}
 `;
 
-export const CollectionLink = styled(Link)`
+export const CollectionMaybeLink = styled(RawMaybeLink)<{
+  to?: string | undefined;
+}>`
+  ${props =>
+    props.to
+      ? `
   :hover {
     &,
     * {
-      color: var(--mb-color-brand);
-
-      .collection-path-separator {
         color: var(--mb-color-brand-alpha-88);
       }
     }
   }
+  `
+      : ""}
 `;
 
 export const InitialEllipsis = styled(Ellipsis)``;

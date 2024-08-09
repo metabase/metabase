@@ -3,6 +3,7 @@ import { t } from "ttag";
 
 import { useListApiKeysQuery } from "metabase/api";
 import { StyledTable } from "metabase/common/components/Table";
+import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import { DelayedLoadingAndErrorWrapper } from "metabase/components/LoadingAndErrorWrapper/DelayedLoadingAndErrorWrapper";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import CS from "metabase/css/core/index.css";
@@ -67,6 +68,8 @@ function ApiKeysTable({
 }) {
   const flatApiKeys = useMemo(() => apiKeys?.map(flattenApiKey), [apiKeys]);
 
+  const locale = useLocale();
+
   if (loading || error) {
     return <DelayedLoadingAndErrorWrapper loading={loading} error={error} />;
   }
@@ -80,6 +83,7 @@ function ApiKeysTable({
       data-testid="api-keys-table"
       columns={columns}
       rows={flatApiKeys}
+      locale={locale}
       rowRenderer={row => (
         <ApiKeyRow
           apiKey={row}

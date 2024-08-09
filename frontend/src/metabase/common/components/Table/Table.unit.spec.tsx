@@ -1,7 +1,7 @@
-import { screen, render } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { getIcon, queryIcon } from "__support__/ui";
+import { getIcon, queryIcon, render } from "__support__/ui";
 
 import { Table } from "./Table";
 
@@ -45,6 +45,22 @@ const sampleData: Pokemon[] = [
   },
 ];
 
+/** The Japanese words for blue and green are sorted differently in the ja-JP locale vs. the en-US locale */
+const sampleJapaneseData: Pokemon[] = [
+  {
+    id: 1,
+    name: "青いゼニガメ (Blue Squirtle)",
+    type: "Water",
+    generation: 1,
+  },
+  {
+    id: 2,
+    name: "緑のフシギダネ (Green Bulbasaur)",
+    type: "Grass",
+    generation: 1,
+  },
+];
+
 const sampleColumns = [
   {
     key: "name",
@@ -77,6 +93,7 @@ describe("common > components > Table", () => {
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
+        locale="en-US"
       />,
     );
     expect(screen.getByText("Name")).toBeInTheDocument();
@@ -91,6 +108,7 @@ describe("common > components > Table", () => {
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
+        locale="en-US"
       />,
     );
     expect(screen.getByText("Bulbasaur")).toBeInTheDocument();
@@ -108,6 +126,7 @@ describe("common > components > Table", () => {
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
+        locale="en-US"
       />,
     );
     const sortButton = screen.getByText("Name");
@@ -125,12 +144,53 @@ describe("common > components > Table", () => {
     firstRowShouldHaveText("Squirtle");
   });
 
+  it("should respect locales when sorting tables", async () => {
+    render(
+      <>
+        <Table
+          data-testid="japanese-table"
+          columns={sampleColumns}
+          rows={sampleJapaneseData}
+          rowRenderer={renderRow}
+          locale="ja-JP"
+        />
+        <Table
+          data-testid="english-table"
+          columns={sampleColumns}
+          rows={sampleJapaneseData}
+          rowRenderer={renderRow}
+          locale="en-US"
+        />
+      </>,
+    );
+
+    expect(queryIcon("chevrondown")).not.toBeInTheDocument();
+    expect(queryIcon("chevronup")).not.toBeInTheDocument();
+
+    const japaneseTable = await screen.findByTestId("japanese-table");
+    const englishTable = await screen.findByTestId("english-table");
+
+    // Sort both tables
+    await userEvent.click(await within(japaneseTable).findByText("Name"));
+    await userEvent.click(await within(englishTable).findByText("Name"));
+
+    // The locales affect the order of the rows:
+    const englishRows = within(englishTable).getAllByRole("row");
+    expect(englishRows[1]).toHaveTextContent("Green");
+    expect(englishRows[2]).toHaveTextContent("Blue");
+
+    const japaneseRows = within(japaneseTable).getAllByRole("row");
+    expect(japaneseRows[1]).toHaveTextContent("Blue");
+    expect(japaneseRows[2]).toHaveTextContent("Green");
+  });
+
   it("should sort on multiple columns", async () => {
     render(
       <Table
         columns={sampleColumns}
         rows={sampleData}
         rowRenderer={renderRow}
+        locale="en-US"
       />,
     );
     const sortNameButton = screen.getByText("Name");

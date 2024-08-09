@@ -9,7 +9,7 @@ import {
 import type { ScheduleComponentType } from "metabase/components/Schedule/constants";
 import type { CacheableModel } from "metabase-types/api";
 
-import { interceptRoutes } from "./helpers/e2e-performance-helpers";
+import { interceptPerformanceRoutes } from "./helpers/e2e-performance-helpers";
 import {
   cacheStrategyForm,
   getScheduleComponent,
@@ -26,7 +26,7 @@ import {
 describeEE("scenarios > admin > performance > schedule strategy", () => {
   beforeEach(() => {
     restore();
-    interceptRoutes();
+    interceptPerformanceRoutes();
     cy.signInAsAdmin();
     setTokenFeatures("all");
   });
