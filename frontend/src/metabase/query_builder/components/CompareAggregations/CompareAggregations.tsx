@@ -12,6 +12,7 @@ import {
   OffsetInput,
   ReferenceAggregationPicker,
   ComparisonTypePicker,
+  CurrentPerionInput,
 } from "./components";
 import type { ColumnType, ComparisonType } from "./types";
 import { canSubmit, getAggregations, getTitle } from "./utils";
@@ -46,6 +47,7 @@ export const CompareAggregations = ({
   const [comparisonType, setComparisonType] = useState<ComparisonType>(
     DEFAULT_COMPARISON_TYPE,
   );
+  const [includeCurrentPeriod, setIncludeCurrentPeriod] = useState(false);
   const width = aggregation ? STEP_2_WIDTH : STEP_1_WIDTH;
 
   const title = useMemo(
@@ -105,6 +107,13 @@ export const CompareAggregations = ({
                 value={offset}
                 onChange={setOffset}
               />
+
+              {comparisonType === "moving-average" && (
+                <CurrentPerionInput
+                  value={includeCurrentPeriod}
+                  onChange={setIncludeCurrentPeriod}
+                />
+              )}
 
               <ColumnPicker
                 value={columns}
