@@ -79,7 +79,10 @@
                                       [1000 1000 :xlsx-download]
                                       [1100000 1100000 :csv-download]
                                       [1100000 1100000 :json-download]
-                                      [1100000 qp.i/absolute-max-results :xlsx-download]]]
+                                      [1100000 qp.i/absolute-max-results :xlsx-download]
+                                      [nil qp.i/absolute-max-results :csv-download]
+                                      [nil qp.i/absolute-max-results :json-download]
+                                      [nil qp.i/absolute-max-results :xlsx-download]]]
       (testing (format "%s the absolute limit for %s"
                        (if (< expected qp.i/absolute-max-results)
                          "below"
@@ -91,4 +94,25 @@
                             {:type  :query
                              :query {}
                              :info  {:context context}})
-                           [:query :limit]))))))))
+                           [:query :limit])))))))
+  (testing "Apply appropriate maximum when download-row-limit is unset, but `(mbql.u/query->max-rows-limit query)` returns a value above absolute-max-results"
+    (doseq [[limit expected context] [[1000 1000 :csv-download]
+                                      [1000 1000 :json-download]
+                                      [1000 1000 :xlsx-download]
+                                      [1100000 1100000 :csv-download]
+                                      [1100000 1100000 :json-download]
+                                      [1100000 qp.i/absolute-max-results :xlsx-download]]]
+      (testing (format "%s the absolute limit for %s"
+                       (if (< expected qp.i/absolute-max-results)
+                         "below"
+                         "above")
+                       context)
+          (is (= expected
+                 (get-in (limit/add-default-limit
+                          {:type        :query
+                           :query       {}
+                           ;; setting a constraint here will result in `(mbql.u/query->max-rows-limit query)` returning that limit
+                           ;; so we can use this to check the behaviour of `limit/add-default-limit` when download-row-limit is unset
+                           :constraints (when limit {:max-results-bare-rows limit})
+                           :info        {:context context}})
+                         [:query :limit])))))))
