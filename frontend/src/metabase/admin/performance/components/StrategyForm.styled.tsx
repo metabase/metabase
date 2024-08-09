@@ -1,5 +1,6 @@
 import styled from "@emotion/styled";
 
+import { doNotForwardProps } from "metabase/common/utils/doNotForwardProps";
 import { Form } from "metabase/forms";
 import type { BoxProps } from "metabase/ui";
 import { Box, FixedSizeIcon, Group, Loader } from "metabase/ui";
@@ -26,7 +27,7 @@ export const StyledForm = styled(Form)`
   flex-grow: 1;
 `;
 
-export const FormBox = styled(Box)<
+export const FormBox = styled(Box, doNotForwardProps("isInSidebar"))<
   BoxProps & {
     isInSidebar?: boolean;
   }
@@ -45,7 +46,10 @@ export const FormBox = styled(Box)<
 `}
 `;
 
-export const StyledFormButtonsGroup = styled(Group)<{ isInSidebar?: boolean }>`
+export const StyledFormButtonsGroup = styled(
+  Group,
+  doNotForwardProps("isInSidebar"),
+)<{ isInSidebar?: boolean }>`
   padding-block: 1rem;
   gap: 1rem;
   background-color: var(--mb-color-bg-white);
