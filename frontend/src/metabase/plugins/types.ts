@@ -2,7 +2,7 @@ import type { ComponentType } from "react";
 
 import type { ConfirmationState } from "metabase/hooks/use-confirmation";
 import type Question from "metabase-lib/v1/Question";
-import type { Member, User } from "metabase-types/api";
+import type { CollectionId, Member, User } from "metabase-types/api";
 
 export interface AuthProvider {
   name: string;
@@ -56,6 +56,7 @@ export type PluginGroupManagersType = {
 
 export type LLMIndicatorProps = {
   question: Question;
+  initialCollectionId: CollectionId | null | undefined;
   onAccept: (values: { name?: string; description?: string }) => void;
 };
 
