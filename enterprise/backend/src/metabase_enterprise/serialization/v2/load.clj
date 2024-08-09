@@ -115,11 +115,10 @@
                 (try
                   (load-one! ctx item)
                   (catch Exception e
-                    (if skip-errors
-                      (do
-                        ;; eschew big and scary stacktrace
-                        (log/warnf "Skipping deserialization error: %s %s" (ex-message e) (ex-data e))
-                        (update ctx :errors conj e))
-                      (throw e)))))
+                    (when-not skip-errors
+                      (throw e))
+                    ;; eschew big and scary stacktrace
+                    (log/warnf "Skipping deserialization error: %s %s" (ex-message e) (ex-data e))
+                    (update ctx :errors conj e))))
               ctx
               contents))))

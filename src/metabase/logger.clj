@@ -115,31 +115,6 @@
        (.setLayout layout)
        (.setTarget out)))))
 
-#_
-(defn for-ns
-  "Create separate logger for a given namespace to fork out some logs."
-  ^AutoCloseable [ns out & [{:keys [additive level]
-                             :or   {additive true
-                                    level    Level/INFO}}]]
-  (let [config        (configuration)
-        parent-logger (effective-ns-logger ns)
-        appender      (make-appender out (find-logger-layout parent-logger))
-        logger        (LoggerConfig. (logger-name ns) level additive)]
-    (.start appender)
-    (.addAppender config appender)
-    (.addAppender logger appender (.getLevel logger) nil)
-    (.addLogger config (.getName logger) logger)
-    (.updateLoggers (context))
-
-    (reify AutoCloseable
-      (close [_]
-        (let [^AbstractConfiguration config (configuration)]
-          (.removeLogger config (.getName logger))
-          (.stop appender)
-          ;; this method is only present in AbstractConfiguration
-          (.removeAppender config (.getName appender))
-          (.updateLoggers (context)))))))
-
 (defn add-ns-logger
   "Add a logger for a given namespace to the configuration."
   [ns appender level additive]

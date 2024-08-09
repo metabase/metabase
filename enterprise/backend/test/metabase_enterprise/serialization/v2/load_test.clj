@@ -1203,7 +1203,7 @@
                                                (if (= (:entity_id instance) (:entity_id c1))
                                                  (throw (ex-info "Skip me" {}))
                                                  (extract-one model-name opts instance)))]
-              (is (logs-contain? #"Skipping \w+ \d+ because of an error extracting it"
+              (is (logs-contain? #"Skipping Card \d+ because of an error extracting it"
                                  (mt/with-log-messages-for-level ['metabase.models.serialization :warn]
                                    (let [ser            (vec (serdes.extract/extract {:no-settings   true
                                                                                       :no-data-model true

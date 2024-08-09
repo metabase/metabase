@@ -89,8 +89,8 @@
                          (tar-file-types f)))))
 
               (testing "On exception API returns log"
-                (let [extract-one serdes/extract-one]
-                  (with-redefs [serdes/extract-one (fn [model-name opts instance]
+                (let [extract-one (mt/dynamic-value serdes/extract-one)]
+                  (mt/with-dynamic-redefs [serdes/extract-one (fn [model-name opts instance]
                                                      (if (= (:entity_id instance) (:entity_id card))
                                                        (throw (ex-info "[test] deliberate error message" {:test true}))
                                                        (extract-one model-name opts instance)))]
@@ -144,7 +144,8 @@
                                 (.getName e))))))))
 
                 (testing "Snowplow export event was sent"
-                  (is (=? {"direction"       "export"
+                  (is (=? {"event"           "serialization"
+                           "direction"       "export"
                            "collection"      (str (:id coll))
                            "all_collections" false
                            "data_model"      false
@@ -172,7 +173,8 @@
                       (is (= (:name card)
                              (t2/select-one-fn :name :model/Card :id (:id card)))))
                     (testing "Snowplow import event was sent"
-                      (is (=? {"direction"     "import"
+                      (is (=? {"event"         "serialization"
+                               "direction"     "import"
                                "duration_ms"   pos?
                                "source"        "api"
                                "models"        "Card,Collection,Dashboard"
@@ -182,19 +184,19 @@
                                "error_message" nil}
                               (-> (snowplow-test/pop-event-data-and-user-id!) first :data))))))
 
-                (let [load-one! @#'v2.load/load-one!]
-                  (with-redefs [v2.load/load-one! (fn [ctx path & [modfn]]
-                                                    (load-one! ctx path
-                                                               (or modfn
-                                                                   (fn [ingested]
-                                                                     (cond-> ingested
-                                                                       (= (:entity_id ingested) (:entity_id card))
-                                                                       (assoc :collection_id "DoesNotExist"))))))]
+                (let [load-one! (mt/dynamic-value @#'v2.load/load-one!)]
+                  (mt/with-dynamic-redefs [v2.load/load-one! (fn [ctx path & [modfn]]
+                                                               (load-one! ctx path
+                                                                          (or modfn
+                                                                              (fn [ingested]
+                                                                                (cond-> ingested
+                                                                                  (= (:entity_id ingested) (:entity_id card))
+                                                                                  (assoc :collection_id "DoesNotExist"))))))]
                     (testing "ERROR /api/ee/serialization/import"
                       (let [res (binding [api.serialization/*additive-logging* false]
-                                    (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
-                                                          {:request-options {:headers {"content-type" "multipart/form-data"}}}
-                                                          {:file ba}))
+                                  (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
+                                                        {:request-options {:headers {"content-type" "multipart/form-data"}}}
+                                                        {:file ba}))
                             log (slurp (io/input-stream res))]
                         (testing "3 header lines, then cards+database+collection, then the error"
                           (is (= #{"Card" "Database" "Collection"}
@@ -202,6 +204,7 @@
                           (is (re-find #"Failed to read file for Collection DoesNotExist" log)))
                         (testing "Snowplow event about error was sent"
                           (is (=? {"success"       false
+                                   "event"         "serialization"
                                    "direction"     "import"
                                    "source"        "api"
                                    "duration_ms"   int?
@@ -214,7 +217,7 @@
                       (let [res (mt/user-http-request :crowberto :post 200 "ee/serialization/import"
                                                       {:request-options {:headers {"content-type" "multipart/form-data"}}}
                                                       {:file ba}
-                                                        :skip_errors true)
+                                                      :skip_errors true)
                             log (slurp (io/input-stream res))]
                         (testing "3 header lines, then card+database+coll, error, then dashboard+coll"
                           (is (= #{"Dashboard" "Card" "Database" "Collection"}
@@ -222,6 +225,7 @@
                           (is (re-find #"Failed to read file for Collection DoesNotExist" log)))
                         (testing "Snowplow event about error was sent"
                           (is (=? {"success"     true
+                                   "event"       "serialization"
                                    "direction"   "import"
                                    "source"      "api"
                                    "duration_ms" int?
@@ -230,11 +234,11 @@
                                    "models"      "Collection,Dashboard"}
                                   (-> (snowplow-test/pop-event-data-and-user-id!) first :data)))))))))
 
-              (let [extract-one serdes/extract-one]
-                (with-redefs [serdes/extract-one (fn [model-name opts instance]
-                                                   (if (= (:entity_id instance) (:entity_id card))
-                                                     (throw (ex-info "[test] deliberate error message" {:test true}))
-                                                     (extract-one model-name opts instance)))]
+              (let [extract-one (mt/dynamic-value serdes/extract-one)]
+                (mt/with-dynamic-redefs [serdes/extract-one (fn [model-name opts instance]
+                                                              (if (= (:entity_id instance) (:entity_id card))
+                                                                (throw (ex-info "[test] deliberate error message" {:test true}))
+                                                                (extract-one model-name opts instance)))]
                   (testing "ERROR /api/ee/serialization/export"
                     (binding [api.serialization/*additive-logging* false]
                       (is (-> (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
@@ -242,7 +246,8 @@
                               ;; consume response to remove on-disk data
                               io/input-stream)))
                     (testing "Snowplow event about error was sent"
-                      (is (=? {"direction"       "export"
+                      (is (=? {"event"           "serialization"
+                               "direction"       "export"
                                "duration_ms"     pos?
                                "source"          "api"
                                "count"           0
@@ -270,7 +275,8 @@
                                                      (count (line-seq (io/reader tar))))))
                             nil))))
                     (testing "Snowplow export event was sent"
-                      (is (=? {"direction"       "export"
+                      (is (=? {"event"           "serialization"
+                               "direction"       "export"
                                "collection"      (str (:id coll))
                                "all_collections" false
                                "data_model"      false

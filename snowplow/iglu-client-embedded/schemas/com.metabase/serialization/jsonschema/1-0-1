@@ -10,6 +10,12 @@
   "type": "object",
   "required": ["event", "source", "duration", "success"],
   "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": ["serialization"],
+      "maxLength": 1024
+    },
     "direction": {
       "description": "Is it import or export",
       "type": "string"

@@ -376,19 +376,18 @@
   (try
     (extract-one model opts instance)
     (catch Exception e
-      (if (or (:skip (ex-data e))
-              (:skip-errors opts))
-        (do
-          (log/warnf "Skipping %s %s because of an error extracting it: %s %s"
-                     model (:id instance) (.getMessage e) (dissoc (ex-data e) :skip))
-          ;; return error as an entity so it can be used in the report
-          e)
+      (when-not (or (:skip (ex-data e))
+                    (:skip-errors opts))
         (throw (ex-info (format "Exception extracting %s %s" model (:id instance))
                         {:model     model
                          :id        (:id instance)
                          :entity_id (:entity_id instance)
                          :cause     (.getMessage e)}
-                        e))))))
+                        e)))
+      (log/warnf "Skipping %s %s because of an error extracting it: %s %s"
+                 model (:id instance) (.getMessage e) (dissoc (ex-data e) :skip))
+      ;; return error as an entity so it can be used in the report
+      e)))
 
 (defmethod extract-all :default [model opts]
   (eduction (map (partial log-and-extract-one model opts))
