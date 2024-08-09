@@ -363,21 +363,21 @@
                                               :type     "native"
                                               :native   {:collection (:name table)
                                                          :query      (json/generate-string q)}}))))
-        query-nested (fn query-nested [paths]
+        nested-query (fn nested-query [paths]
                        (let [fields        (flatten (first (q! (nested-level-query paths))))
                              object-fields (filter #(= (:mostCommonType %) "object") fields)]
                          (concat fields (when (seq object-fields)
-                                          (query-nested (map :path object-fields))))))
+                                          (nested-query (map :path object-fields))))))
         query-depth   20 ; TODO: this number needs more testing
         fields        (flatten (q! (root-query query-depth)))
-        ;; object-fields of the maximum depth need to be explored further
+        ;; object-fields of the maximum depth need to be explored further bynested-query
         object-fields (filter (fn [x]
                                 (and (= (:mostCommonType x) "object")
                                      (= (path->depth (:path x)) query-depth)))
                               fields)]
     (concat fields
             (when (seq object-fields)
-              (query-nested (map :path object-fields))))))
+              (nested-query (map :path object-fields))))))
 
 (defn- type-alias->base-type [type-alias]
   ;; Mongo types from $type aggregation operation
