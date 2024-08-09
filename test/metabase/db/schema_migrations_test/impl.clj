@@ -109,6 +109,8 @@
             (parse-double (format "%d.%d" (* (parse-long major-version) 100) unix-timestamp))))
         (throw (ex-info (format "Invalid migration ID: %s" id) {:id id})))))
 
+(alter-var-root #'migration->number memoize)
+
 (deftest migration->number-test
   (is (= 356
          (migration->number 356)

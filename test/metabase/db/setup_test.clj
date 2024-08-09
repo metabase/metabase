@@ -55,14 +55,15 @@
                                              "SELECT name FROM report_dashboard ORDER BY name ASC;")))))))))))
 
 (deftest setup-fresh-db-test
-  (mt/test-drivers #{:h2 :mysql :postgres}
-    (testing "can setup a fresh db"
-      (mt/with-temp-empty-app-db [conn driver/*driver*]
-        (is (= :done
-               (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true true)))
-        (testing "migrations are executed in the order they are defined"
-          (is (= (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)
-                 (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]}))))))))
+  (with-bindings {#'liquibase/-test-only-*return-caching-parser* false}
+    (mt/test-drivers #{:h2 :mysql :postgres}
+      (testing "can setup a fresh db"
+        (mt/with-temp-empty-app-db [conn driver/*driver*]
+          (is (= :done
+                 (mdb.setup/setup-db! driver/*driver* (mdb.connection/data-source) true true)))
+          (testing "migrations are executed in the order they are defined"
+            (is (= (liquibase-test/liquibase-file->included-ids "migrations/001_update_migrations.yaml" driver/*driver*)
+                   (t2/select-pks-vec (liquibase/changelog-table-name conn) {:order-by [[:orderexecuted :asc]]})))))))))
 
 (deftest setup-db-no-auto-migrate-test
   (mt/test-drivers #{:h2 :mysql :postgres}

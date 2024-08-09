@@ -532,6 +532,12 @@ jobs:
       uses: ./.github/actions/test-driver
       with:
         junit-name: 'be-tests-mysql-latest-ee'
+    - name: Upload Test Results as artifact
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: junit-mysql-latest
+        path: ./target/junit/
     - name: Upload Test Results
       uses: ./.github/actions/upload-test-results
       if: always()
