@@ -29,7 +29,7 @@
     (if (field-values/inactive? field-values)
       (log/debugf "Field %s has not been used since %s. Skipping..."
                   (sync-util/name-for-logging field) (t/format "yyyy-MM-dd" (t/local-date-time (:last_used_at field-values))))
-      (field-values/create-or-update-full-field-values! field))))
+      (field-values/create-or-update-full-field-values! field :field-values field-values))))
 
 (defn- update-field-value-stats-count [counts-map result]
   (if (instance? Exception result)
