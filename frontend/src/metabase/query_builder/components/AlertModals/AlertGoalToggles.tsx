@@ -1,15 +1,24 @@
-/* eslint-disable react/prop-types */
 import { t } from "ttag";
 
+import { AlertSettingToggle } from "metabase/query_builder/components/AlertModals/AlertSettingToggle";
 import {
   ALERT_TYPE_PROGRESS_BAR_GOAL,
   ALERT_TYPE_TIMESERIES_GOAL,
 } from "metabase-lib/v1/Alert";
+import type { AlertType } from "metabase-lib/v1/Alert/types";
+import type { Alert } from "metabase-types/api";
 
-import { AlertAboveGoalToggle } from "./AlertAboveGoalToggle";
-import { AlertFirstOnlyToggle } from "./AlertFirstOnlyToggle";
+type AlertGoalTogglesProps = {
+  alertType: AlertType;
+  alert: Alert;
+  onAlertChange: (alert: Alert) => void;
+};
 
-export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
+export const AlertGoalToggles = ({
+  alertType,
+  alert,
+  onAlertChange,
+}: AlertGoalTogglesProps) => {
   const isTimeseries = alertType === ALERT_TYPE_TIMESERIES_GOAL;
   const isProgress = alertType === ALERT_TYPE_PROGRESS_BAR_GOAL;
 
@@ -20,7 +29,8 @@ export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
 
   return (
     <div>
-      <AlertAboveGoalToggle
+      <AlertSettingToggle
+        setting="alert_above_goal"
         alert={alert}
         onAlertChange={onAlertChange}
         title={
@@ -33,7 +43,8 @@ export const AlertGoalToggles = ({ alertType, alert, onAlertChange }) => {
           isTimeseries ? t`Goes below the goal line` : t`Goes below the goal`
         }
       />
-      <AlertFirstOnlyToggle
+      <AlertSettingToggle
+        setting="alert_first_only"
         alert={alert}
         onAlertChange={onAlertChange}
         title={
