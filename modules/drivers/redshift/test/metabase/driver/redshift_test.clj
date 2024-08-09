@@ -6,8 +6,6 @@
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
-   [metabase.driver.sql-jdbc.sync.describe-database
-    :as sql-jdbc.describe-database]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.models.database :refer [Database]]
    [metabase.models.field :refer [Field]]
@@ -357,7 +355,7 @@
              qual-tbl-nm
              qual-mview-nm)
             (is (some #(= mview-nm (:name %))
-                      (:tables (sql-jdbc.describe-database/describe-database :redshift database))))))))))
+                      (:tables (driver/describe-database :redshift database))))))))))
 
 (mt/defdataset unix-timestamps
   [["timestamps"
