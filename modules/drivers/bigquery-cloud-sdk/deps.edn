@@ -3,10 +3,10 @@
 
  :deps
  ;; TODO: figure out how to be able to leave off this version string and use the version from the BOM
- {com.google.cloud/google-cloud-bigquery      {:mvn/version "2.38.1"
+ {com.google.cloud/google-cloud-bigquery      {:mvn/version "2.42.0"
                                                ;; this appears to be dual licensed EPL, GPL2.0 but it's not super
                                                ;; clear so we're excluding it
                                                :exclusions [javax.annotation/javax.annotation-api]}
-  com.google.guava/guava                      {:mvn/version "33.1.0-jre"} ; specified separately so that Snyk is happy
-  com.google.code.gson/gson                   {:mvn/version "2.10.1"}
-  com.google.oauth-client/google-oauth-client {:mvn/version "1.35.0"}}}
+  com.google.guava/guava                      {:mvn/version "33.2.1-jre"} ; specified separately so that Snyk is happy
+  com.google.code.gson/gson                   {:mvn/version "2.11.1"}
+  com.google.oauth-client/google-oauth-client {:mvn/version "1.36.0"}}}

@@ -2,4 +2,4 @@
  ["src" "resources"]
 
  :deps
- {org.xerial/sqlite-jdbc {:mvn/version "3.45.2.0"}}}
+ {org.xerial/sqlite-jdbc {:mvn/version "3.46.0.1"}}}
