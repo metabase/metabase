@@ -941,7 +941,7 @@
       (to-array (lib.core/filterable-columns a-query stage-number)))))
 
 (defn ^:export filterable-column-operators
-  "Returns the filteroperators which can be used in a filter for `filterable-column`.
+  "Returns the filter operators which can be used in a filter for `filterable-column`.
 
   `filterable-column` must be column coming from [[filterable-columns]]; this won't work with columns from other sources
   like [[visible-columns]].
@@ -981,6 +981,29 @@
   > **Code health:** Healthy"
   [a-query stage-number]
   (to-array (lib.core/filters a-query stage-number)))
+
+;; ## Dashboard filtering
+;; This is a special case of filtering. While linking dashboard filters to a question, there's no way to choose the
+;; stage of interest. Currently we default to the last stage, but this is a bit clumsy if there's eg. a custom column
+;; added after an aggregation. It's much more likely that the interesting thing to filter is the *last stage with
+;; aggregations*. That is, filtering the *inputs* to aggregations rather than their *output*.
+
+;; Filtering the post-aggregation values is a legitimate thing to do, and there are plans to surface both of those
+;; sets of columns. But that requires UI changes, while we can improve the UX significantly by being smart about the
+;; stage number we return here.
+(defn ^:export dashboard-filter-stage-index
+  "Given `a-query`, return the `stage-number` which should be used for working with dashboard filters on this query.
+  (Eg. by [[filterable-columns]] and [[filter]].)
+
+  > **Code health:** Healthy, Single use."
+  [a-query]
+  (let [aggregated-stages (for [stage-number (-> a-query :stages count range)
+                                :when (or (seq (lib.core/aggregations a-query stage-number))
+                                          (seq (lib.core/breakouts    a-query stage-number)))]
+                            stage-number)]
+    (if (empty? aggregated-stages)
+      -1
+      (last aggregated-stages))))
 
 ;; TODO: find-filter-for-legacy-filter is dead code and should be removed.
 

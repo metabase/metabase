@@ -117,5 +117,6 @@
 
       :else
       (let [filter-clause (build-filter-clause query (assoc param :value param-value))
-            query         (mbql.u/add-filter-clause query filter-clause)]
+            [_ _ opts]    target
+            query         (mbql.u/add-filter-clause query (:stage-number opts) filter-clause)]
         (recur query rest)))))
