@@ -43,16 +43,17 @@
   "Transducer that samples a fixed number `n` of samples.
    https://en.wikipedia.org/wiki/Reservoir_sampling"
   [n]
-  (fn
-    ([] [[] 0])
-    ([[reservoir c] x]
-     (let [c   (inc c)
-           idx (rand-int c)]
-       (cond
-         (<= c n)  [(conj reservoir x) c]
-         (< idx n) [(assoc reservoir idx x) c]
-         :else     [reservoir c])))
-    ([[reservoir _]] reservoir)))
+  (memoize
+   (fn
+     ([] [[] 0])
+     ([[reservoir c] x]
+      (let [c   (inc c)
+            idx (rand-int c)]
+        (cond
+          (<= c n)  [(conj reservoir x) c]
+          (< idx n) [(assoc reservoir idx x) c]
+          :else     [reservoir c])))
+     ([[reservoir _]] reservoir))))
 
 (defn mae
   "Given two functions: (fŷ input) and (fy input), returning the predicted and actual values of y
@@ -135,10 +136,9 @@
               :formula))))
 
 (defn- timeseries?
-  [{:keys [numbers datetimes others]}]
+  [{:keys [numbers datetimes]}]
   (and (pos? (count numbers))
-       (= (count datetimes) 1)
-       (empty? others)))
+       (= (count datetimes) 1)))
 
 ;; We downsize UNIX timestamps to lessen the chance of overflows and numerical instabilities.
 (def ^Long ^:const ^:private ms-in-a-day (* 1000 60 60 24))
