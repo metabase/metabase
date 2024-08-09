@@ -1,6 +1,6 @@
 import type { ComponentStory } from "@storybook/react";
 
-import { CommonStoryWrapper } from "embedding-sdk/test/common-stories-utils";
+import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
 import { EditableDashboard } from "./EditableDashboard";
 
@@ -13,7 +13,7 @@ export default {
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [CommonStoryWrapper],
+  decorators: [CommonSdkStoryWrapper],
 };
 
 const Template: ComponentStory<typeof EditableDashboard> = args => {

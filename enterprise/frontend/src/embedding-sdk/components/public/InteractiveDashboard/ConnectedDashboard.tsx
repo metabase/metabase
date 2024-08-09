@@ -81,7 +81,7 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 type ReduxProps = ConnectedProps<typeof connector>;
 
-type EditableDashboardViewProps = {
+type ConnectedDashboardProps = {
   dashboardId: DashboardId;
   parameterQueryParams: Query;
 
@@ -97,28 +97,27 @@ type EditableDashboardViewProps = {
   DashboardRefreshPeriodControls &
   PublicOrEmbeddedDashboardEventHandlersProps;
 
-const EditableDashboardViewInner = ({
+const ConnectedDashboardInner = ({
   dashboard,
   onLoad,
   onLoadWithoutCards,
   onNavigateToNewCardFromDashboard,
   ...restProps
-}: EditableDashboardViewProps & ReduxProps) => {
+}: ConnectedDashboardProps & ReduxProps) => {
   useDashboardLoadHandlers({ dashboard, onLoad, onLoadWithoutCards });
 
   return (
     <Dashboard
       dashboard={dashboard}
+      {...restProps}
       isNightMode={false}
       onNightModeChange={_.noop}
       hasNightModeToggle={false}
-      onSetErrorPage={console.error}
-      {...restProps}
       navigateToNewCardFromDashboard={onNavigateToNewCardFromDashboard}
     />
   );
 };
 
-export const EditableDashboardView = connector(
-  EditableDashboardViewInner,
-) as React.FC<EditableDashboardViewProps>;
+export const ConnectedDashboard = connector(
+  ConnectedDashboardInner,
+) as React.FC<ConnectedDashboardProps>;

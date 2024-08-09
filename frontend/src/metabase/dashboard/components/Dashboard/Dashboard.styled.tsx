@@ -90,9 +90,7 @@ export const CardsContainer = styled(FullWidthContainer)`
 `;
 
 function getParametersWidgetBgColor(isNightMode: boolean) {
-  return isNightMode
-    ? "color-mix(in srgb, var(--mb-color-bg-black), var(--mb-color-embed-bg-color-override, var(--mb-color-bg-black))"
-    : "color-mix(in srgb, var(--mb-color-bg-light), var(--mb-color-embed-bg-color-override, var(--mb-color-bg-light))";
+  return isNightMode ? "var(--mb-color-bg-black)" : "var(--mb-color-bg-light)";
 }
 
 export const ParametersWidgetContainer = styled(FullWidthContainer)<{

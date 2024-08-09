@@ -1,9 +1,4 @@
-import type {
-  CSSProperties,
-  DetailedHTMLProps,
-  HTMLAttributes,
-  JSX,
-} from "react";
+import type { CSSProperties, JSX } from "react";
 import { t } from "ttag";
 
 import { PublicComponentStylesWrapper } from "embedding-sdk/components/private/PublicComponentStylesWrapper";
@@ -21,8 +16,8 @@ export const PublicComponentWrapper = ({
   children: JSX.Element;
   className?: string;
   style?: CSSProperties;
-  ref?: (element: HTMLElement | null) => void;
-} & DetailedHTMLProps<HTMLAttributes<HTMLDivElement>, HTMLDivElement>) => {
+  ref?: (element: HTMLDivElement | null) => void;
+}) => {
   const loginStatus = useSdkSelector(getLoginStatus);
 
   let content = children;

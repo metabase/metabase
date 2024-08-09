@@ -26,16 +26,16 @@ export const useCommonDashboardParams = ({
 
   const previousDashboardId = usePrevious(dashboardId);
 
+  useUnmount(() => {
+    dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
+  });
+
   useEffect(() => {
     if (previousDashboardId && dashboardId !== previousDashboardId) {
       dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
       setAdhocQuestionUrl(null);
     }
   }, [dashboardId, dispatch, previousDashboardId]);
-
-  useUnmount(() => {
-    dispatch(dashboardReset()); // reset "isNavigatingBackToDashboard" state
-  });
 
   const handleNavigateToNewCardFromDashboard = useCallback(
     ({

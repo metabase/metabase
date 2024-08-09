@@ -16,7 +16,6 @@ export type DashboardHeaderButtonRowProps = {
   collection?: Collection;
   isPublic?: boolean;
   isAnalyticsDashboard?: boolean;
-  isEmbeddingSdk?: boolean;
 } & DashboardRefreshPeriodControls &
   DashboardFullscreenControls &
   DashboardNightModeControls;
@@ -31,6 +30,7 @@ export type HeaderButtonProps = {
   canManageSubscriptions: boolean;
   formInput: any;
   isAdmin: boolean;
+  isEmbeddingSdk: boolean;
 } & DashboardHeaderButtonRowProps;
 
 export type DashboardActionButton = {

@@ -101,7 +101,6 @@ function getDesignSystemCssVariables(theme: MantineTheme) {
     --mb-color-success: ${theme.fn.themeColor("success")};
     --mb-color-summarize: ${theme.fn.themeColor("summarize")};
     --mb-color-warning: ${theme.fn.themeColor("warning")};
-    --mb-color-background: ${theme.fn.themeColor("bg-white")};
   `;
 }
 

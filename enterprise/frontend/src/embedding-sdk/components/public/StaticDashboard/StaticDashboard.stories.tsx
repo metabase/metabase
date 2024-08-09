@@ -1,7 +1,7 @@
 import type { ComponentStory } from "@storybook/react";
 
 import { StaticDashboard } from "embedding-sdk";
-import { CommonStoryWrapper } from "embedding-sdk/test/common-stories-utils";
+import { CommonSdkStoryWrapper } from "embedding-sdk/test/CommonSdkStoryWrapper";
 
 const DASHBOARD_ID = (window as any).DASHBOARD_ID || "1";
 
@@ -12,7 +12,7 @@ export default {
   parameters: {
     layout: "fullscreen",
   },
-  decorators: [CommonStoryWrapper],
+  decorators: [CommonSdkStoryWrapper],
 };
 
 const Template: ComponentStory<typeof StaticDashboard> = args => {

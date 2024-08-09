@@ -38,7 +38,7 @@ const DEFAULT_CONFIG: SDKConfig = {
   },
 };
 
-export const CommonStoryWrapper = (Story: Story) => (
+export const CommonSdkStoryWrapper = (Story: Story) => (
   <MetabaseProvider config={DEFAULT_CONFIG}>
     <Story />
   </MetabaseProvider>

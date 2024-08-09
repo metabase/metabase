@@ -9,9 +9,9 @@ import {
   getHasModelActionsEnabled,
   getIsEditing,
 } from "metabase/dashboard/selectors";
+import { isEmbeddingSdk } from "metabase/env";
 import { useSelector } from "metabase/lib/redux";
 import { getPulseFormInput } from "metabase/pulse/selectors";
-import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
@@ -38,7 +38,6 @@ export const DashboardHeaderButtonRow = ({
   const hasModelActionsEnabled = useSelector(getHasModelActionsEnabled);
 
   const isEditing = useSelector(getIsEditing);
-  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
 
   const buttonOptions = isEditing
     ? DASHBOARD_EDITING_ACTIONS

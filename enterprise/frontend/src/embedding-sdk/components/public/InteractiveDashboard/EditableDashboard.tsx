@@ -15,11 +15,11 @@ import {
 import { getIsEditing } from "metabase/dashboard/selectors";
 import type { PublicOrEmbeddedDashboardEventHandlersProps } from "metabase/public/containers/PublicOrEmbeddedDashboard/types";
 
-import { EditableDashboardView } from "./EditableDashboardView";
+import { ConnectedDashboard } from "./ConnectedDashboard";
 import { InteractiveDashboardProvider } from "./context";
 import { useCommonDashboardParams } from "./use-common-dashboard-params";
 
-type EditableDashboardProps = {
+export type EditableDashboardProps = {
   questionHeight?: number;
   plugins?: SdkPluginsConfig;
   className?: string;
@@ -83,7 +83,7 @@ export const EditableDashboard = ({
           onEditQuestion={onEditQuestion}
           dashboardActions={dashboardActions}
         >
-          <EditableDashboardView
+          <ConnectedDashboard
             dashboardId={dashboardId}
             parameterQueryParams={initialParameterValues}
             refreshPeriod={refreshPeriod}
