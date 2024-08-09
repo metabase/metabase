@@ -118,12 +118,6 @@ export function getThemeSpecificCssVariables(theme: MantineTheme) {
   const getValue = (key: MetabaseComponentThemeKey) => {
     const value = get(theme.other, key);
 
-    if (value == null) {
-      throw new Error(
-        `[getThemeSpecificCssVariables] Could not find value for key "${key}" in theme.other`,
-      );
-    }
-
     return value as string;
   };
 
