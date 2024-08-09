@@ -30,7 +30,7 @@ const ListItem = ({
         </div>
         <div className={S.itemBody}>
           <div className={S.itemTitle}>
-            <ListItemName tooltip={name} tooltipMaxWidth="100%">
+            <ListItemName tooltip={name} tooltipMaxWidth="20rem">
               <h3>{name}</h3>
             </ListItemName>
           </div>
