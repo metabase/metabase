@@ -234,7 +234,7 @@ describe("SummarizeSidebar", () => {
     ).toHaveLength(2);
   });
 
-  it("should show mulitple breakouts of the same column", async () => {
+  it("should show multiple breakouts of the same column", async () => {
     await setup({
       query: createQueryWithBreakoutsForSameColumn(),
     });
