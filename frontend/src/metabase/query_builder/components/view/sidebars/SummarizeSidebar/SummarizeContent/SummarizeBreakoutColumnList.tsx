@@ -14,7 +14,7 @@ type SummarizeBreakoutColumnListProps = {
     clause: Lib.BreakoutClause,
     column: Lib.ColumnMetadata,
   ) => void;
-  onRemoveBreakout: (column: Lib.ColumnMetadata) => void;
+  onRemoveBreakout: (clause: Lib.BreakoutClause) => void;
   onReplaceBreakouts: (column: Lib.ColumnMetadata) => void;
 } & StackProps;
 
@@ -40,7 +40,7 @@ export const SummarizeBreakoutColumnList = ({
       onAddBreakout={onAddBreakout}
       onUpdateBreakout={onUpdateBreakout}
       onRemoveBreakout={onRemoveBreakout}
-      onReplaceBreakout={onReplaceBreakouts}
+      onReplaceBreakouts={onReplaceBreakouts}
     />
   </Stack>
 );

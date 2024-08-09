@@ -5,7 +5,7 @@ import { Box, Flex } from "metabase/ui";
 import type { NotebookStepUiComponentProps } from "../types";
 
 import { AggregateStep } from "./AggregateStep";
-import BreakoutStep from "./BreakoutStep";
+import { BreakoutStep } from "./BreakoutStep";
 
 function SummarizeStep({
   color,

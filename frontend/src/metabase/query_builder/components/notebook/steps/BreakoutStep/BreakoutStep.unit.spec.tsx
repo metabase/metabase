@@ -11,7 +11,7 @@ import {
 
 import { createMockNotebookStep } from "../../test-utils";
 
-import BreakoutStep from "./BreakoutStep";
+import { BreakoutStep } from "./BreakoutStep";
 
 function createQueryWithBreakout() {
   const initialQuery = createQuery();

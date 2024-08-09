@@ -14,6 +14,7 @@
    [metabase.lib.options :as lib.options]
    [metabase.lib.ref :as lib.ref]
    [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.util :as lib.schema.util]
    [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.util :as u]
@@ -186,23 +187,27 @@
                                                (first replacement-clause))
                                             (= (last target-clause)
                                                (last replacement-clause))))
-          query (cond
-                  sync-breakout-ordering?
-                  (sync-order-by-options-with-breakout
-                   query
-                   stage-number
-                   target-clause
-                   (select-keys (second replacement-clause) [:binning :temporal-unit]))
+          new-query (cond
+                      sync-breakout-ordering?
+                      (sync-order-by-options-with-breakout
+                       query
+                       stage-number
+                       target-clause
+                       (select-keys (second replacement-clause) [:binning :temporal-unit]))
 
-                  changing-breakout?
-                  (remove-breakout-order-by query stage-number target-clause)
+                      changing-breakout?
+                      (remove-breakout-order-by query stage-number target-clause)
 
-                  :else
-                  query)]
-      (if location
-        (-> query
-            (remove-replace-location stage-number query location target-clause remove-replace-fn)
-            (normalize-fields-clauses location))
+                      :else
+                      query)
+          new-query (if location
+                      (-> new-query
+                          (remove-replace-location stage-number new-query location target-clause remove-replace-fn)
+                          (normalize-fields-clauses location))
+                      new-query)
+          new-stage (lib.util/query-stage new-query stage-number)]
+      (if (or (not changing-breakout?) (lib.schema.util/distinct-refs? (:breakout new-stage)))
+        new-query
         query))))
 
 (mu/defn remove-clause :- :metabase.lib.schema/query

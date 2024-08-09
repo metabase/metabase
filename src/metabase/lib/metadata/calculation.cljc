@@ -387,7 +387,7 @@
        {:is-temporal-extraction
         (and (contains? lib.schema.temporal-bucketing/datetime-extraction-units temporal-unit)
              (not (contains? lib.schema.temporal-bucketing/datetime-truncation-units temporal-unit)))})
-     (select-keys x-metadata [:breakout-position :order-by-position :filter-positions]))))
+     (select-keys x-metadata [:breakout-positions :order-by-position :filter-positions]))))
 
 (defmethod display-info-method :default
   [query stage-number x]
