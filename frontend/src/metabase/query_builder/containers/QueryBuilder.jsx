@@ -375,7 +375,6 @@ function QueryBuilder(props) {
       <View
         {...props}
         modal={uiControls.modal}
-        recentlySaved={uiControls.recentlySaved}
         onOpenModal={openModal}
         onCloseModal={closeModal}
         onSave={handleSave}
