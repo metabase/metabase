@@ -153,7 +153,7 @@ describe("UNIX nanoseconds", () => {
 });
 
 describe("YYYYMMDDHHMMSS", () => {
-  it("converts YYYYMMDDHHMMSSString->Temporal to YYYYMMDDHHMMSS → Time", () => {
+  it("converts YYYYMMDDHHMMSSString->Temporal to YYYYMMDDHHMMSS string → Temporal", () => {
     const original = "YYYYMMDDHHMMSSString->Temporal";
     const expected = "YYYYMMDDHHMMSS string → Temporal";
 
@@ -162,7 +162,7 @@ describe("YYYYMMDDHHMMSS", () => {
     expect(humanized).toBe(expected);
   });
 
-  it("converts YYYYMMDDHHMMSSBytes->Temporal to YYYYMMDDHHMMSS → Time", () => {
+  it("converts YYYYMMDDHHMMSSBytes->Temporal to YYYYMMDDHHMMSS bytes → Temporal", () => {
     const original = "YYYYMMDDHHMMSSBytes->Temporal";
     const expected = "YYYYMMDDHHMMSS bytes → Temporal";
 
