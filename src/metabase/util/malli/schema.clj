@@ -404,3 +404,11 @@
                       (reduced false)
                       true))
                   true m)))])
+
+(def File
+  "Schema for a file coming in HTTP request from multipart/form-data"
+  [:map {:closed true}
+   [:content-type string?]
+   [:filename string?]
+   [:size int?]
+   [:tempfile (InstanceOfClass java.io.File)]])

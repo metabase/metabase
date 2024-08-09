@@ -186,7 +186,8 @@
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load! path (get-parsed-options #'load options)))
 
 (defn ^:command ^:requires-init import
-  {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."}
+  {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
+   :arg-spec [["-e" "--continue-on-error" "Do not break execution on errors."]]}
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load! path (get-parsed-options #'import options)))
 
@@ -217,7 +218,8 @@
               ["-S" "--no-settings"              "Do not export settings.yaml"]
               ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]
               ["-f" "--include-field-values"     "Include field values along with field metadata."]
-              ["-s" "--include-database-secrets" "Include database connection details (in plain text; use caution)."]]}
+              ["-s" "--include-database-secrets" "Include database connection details (in plain text; use caution)."]
+              ["-e" "--continue-on-error"        "Do not break execution on errors."]]}
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump! path (get-parsed-options #'export options)))
 
