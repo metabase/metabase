@@ -210,8 +210,10 @@ const TBodyRow = ({
           return;
         }
         const url = Urls.model({ id, name });
+        const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+
         if ((e.ctrlKey || e.metaKey) && e.button === 0) {
-          window.open(url, "_blank");
+          Urls.openInNewTab(subpathSafeUrl);
         } else {
           dispatch(push(url));
         }

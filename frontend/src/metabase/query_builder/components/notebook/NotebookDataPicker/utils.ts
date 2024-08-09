@@ -36,11 +36,3 @@ export const getUrl = ({
     return Urls.tableRowsQuery(databaseId, tableId);
   }
 };
-
-export const openInNewTab = (link?: string) => {
-  if (!link) {
-    return;
-  }
-
-  window.open(link, "_blank");
-};
