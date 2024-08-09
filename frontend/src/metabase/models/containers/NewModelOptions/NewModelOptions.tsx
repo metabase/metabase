@@ -48,7 +48,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   if (isFetching) {
     return (
       <Center style={{ flexGrow: 1, height: "100vh" }}>
-        <Loader size="lg" />
+        <Loader size="lg" data-testid="loading-indicator" />
       </Center>
     );
   }
