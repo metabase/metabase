@@ -176,13 +176,16 @@ function getEndpoint({
  */
 export function ensureDownloadStatusDismissed() {
   cy.get("body").then(body => {
-    const hasStausContainer =
-      body.find("[data-testid=status-root-container]").length > 0;
+    const statusContainer = body.find("[data-testid=status-root-container]");
 
-    if (!hasStausContainer) {
+    const hasDownloadStatus =
+      statusContainer.length > 0 && statusContainer.text().includes("Download");
+    if (!hasDownloadStatus) {
+      cy.log("No download status popover");
       return;
     }
 
+    cy.log("Has download status popover, closing it");
     cy.findByTestId("status-root-container").within(() => {
       cy.findByRole("status").within(() => {
         cy.findAllByText("Download completed");
