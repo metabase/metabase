@@ -207,7 +207,7 @@ describeEE("scenarios > admin > permissions > data > downloads", () => {
         visitQuestion(id);
 
         downloadAndAssert(
-          { fileType: "xlsx", questionId: id, dismissStatus: false },
+          { fileType: "xlsx", questionId: id },
           assertSheetRowsCount(18760),
         );
       });
