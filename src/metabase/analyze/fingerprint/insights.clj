@@ -14,7 +14,10 @@
    [metabase.util.date-2 :as u.date]
    [redux.core :as redux])
   (:import
+   (java.util Random)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)))
+
+(set! *warn-on-reflection* true)
 
 (defn- last-n
   [n]
@@ -40,20 +43,21 @@
         :else                     (/ (- x2 x1) x1)))))
 
 (defn reservoir-sample
-  "Transducer that samples a fixed number `n` of samples.
-   https://en.wikipedia.org/wiki/Reservoir_sampling"
+  "Transducer that samples a fixed number `n` of samples consistently.
+   https://en.wikipedia.org/wiki/Reservoir_sampling. Uses java.util.Random
+  with a seed of `n` to ensure a consistent sample if a dataset has not changed."
   [n]
-  (memoize
-   (fn
-     ([] [[] 0])
-     ([[reservoir c] x]
-      (let [c   (inc c)
-            idx (rand-int c)]
-        (cond
-          (<= c n)  [(conj reservoir x) c]
-          (< idx n) [(assoc reservoir idx x) c]
-          :else     [reservoir c])))
-     ([[reservoir _]] reservoir))))
+  (let [rng (Random. n)]
+    (fn
+      ([] [[] 0])
+      ([[reservoir c] x]
+       (let [c   (inc c)
+             idx (.nextInt rng c)]
+         (cond
+           (<= c n)  [(conj reservoir x) c]
+           (< idx n) [(assoc reservoir idx x) c]
+           :else     [reservoir c])))
+      ([[reservoir _]] reservoir))))
 
 (defn mae
   "Given two functions: (fŷ input) and (fy input), returning the predicted and actual values of y
