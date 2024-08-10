@@ -169,21 +169,12 @@ function getEndpoint({
   };
 }
 
-/**
- * Upon successful export, we display a status popup that automatically closes after a set time.
- * However, Cypress sometimes hangs after file downloads, making it difficult to determine if
- * the status popup has already closed on its own or if we need to close it manually.
- */
 export function ensureDownloadStatusDismissed() {
-  cy.get("body").then(body => {
-    const statusContainer = body.find("[data-testid=status-root-container]");
-
-    const hasDownloadStatus =
-      statusContainer.length > 0 && statusContainer.text().includes("Download");
-    if (!hasDownloadStatus) {
-      cy.log("No download status popover");
-      return;
-    }
-    cy.findByLabelText("Dismiss").click();
-  });
+  // Upon successful export, we display a status popup that automatically closes after a set time.
+  //  However, Cypress sometimes hangs after file downloads, making it difficult to determine if
+  //  the status popup has already closed on its own or if we need to close it manually which makes
+  //  any attempts to close it flaky. As a workaround we wait until it gets removed by itself.
+  cy.findByTestId("status-root-container")
+    .contains("Download", { timeout: 10000 })
+    .should("not.exist");
 }
