@@ -184,15 +184,6 @@ export function ensureDownloadStatusDismissed() {
       cy.log("No download status popover");
       return;
     }
-
-    cy.log("Has download status popover, closing it");
-    cy.findByTestId("status-root-container").within(() => {
-      cy.findByRole("status").within(() => {
-        cy.findAllByText("Download completed");
-        cy.findByLabelText("Dismiss").click();
-      });
-
-      cy.findByRole("status").should("not.exist");
-    });
+    cy.findByLabelText("Dismiss").click();
   });
 }

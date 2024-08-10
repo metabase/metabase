@@ -108,7 +108,7 @@ describe("scenarios > visualizations > pie chart", () => {
       display: "pie",
     });
 
-    // Ensure chart renders before hovering the legend item
+    cy.log("Ensure chart renders before hovering the legend item");
     cy.findByTestId("query-visualization-root")
       .findByText("TOTAL")
       .should("be.visible");
