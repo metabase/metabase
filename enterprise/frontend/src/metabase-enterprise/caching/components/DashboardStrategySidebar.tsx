@@ -87,11 +87,7 @@ const DashboardStrategySidebar_Base = ({
           Caching settings
         </Title>
       </Flex>
-      <DelayedLoadingAndErrorWrapper
-        loadingMessages={[]}
-        loading={loading}
-        error={error}
-      >
+      <DelayedLoadingAndErrorWrapper loading={loading} error={error}>
         <StrategyForm
           targetId={dashboardId}
           targetModel="dashboard"
