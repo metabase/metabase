@@ -717,8 +717,8 @@ const TITLE_LOCALES_BN = {
     'bn' : 'মোট প্রাক-প্রাথমিক ৫+ বিদ্যালয়'
   },
   'admin.dashboard.ppe.dedicated.classroom.school' : {
-    'en' : 'Pre-primary specific Schools with classrooms',
-    'bn' : 'প্রাক-প্রাথমিকের নির্দিষ্ট শ্রেণীকক্ষবিশিষ্ট বিদ্যালয়'
+    'en' : 'Schools with dedicated pre-primary classrooms',
+    'bn' : 'প্রাক-প্রাথমিকের নির্দিষ্ট শ্রেণিকক্ষ বিশিষ্ট বিদ্যালয়'
   },
   'admin.dashboard.ppe.school.classroom.condition.wise' : {
     'en' : 'Condition of Pre-Primary Rooms',
@@ -730,15 +730,15 @@ const TITLE_LOCALES_BN = {
   },
   'admin.dashboard.ppe.monitoring.school.visited.count' : {
     'en' : 'School Inspection Completed',
-    'bn' : 'বিদ্যালয় পরিদর্শন হয়েছে'
+    'bn' : 'বিদ্যালয় পরিবীক্ষণ হয়েছে'
   },
   'admin.dashboard.ppe.monitoring.school.not.visited.count' : {
     'en' : 'School Inspection Pending',
-    'bn' : 'বিদ্যালয়ের পরিদর্শন বাকি'
+    'bn' : 'বিদ্যালয়ের পরিবীক্ষণ বাকি'
   },
   'admin.dashboard.ppe.monitoring.school.status' : {
-    'en' : 'Pre-Primary Classroom Status Statistics',
-    'bn' : 'প্রাক-প্রাথমিক শ্রেণীকক্ষের স্ট্যাটাস ভিত্তিক পরিসংখ্যান'
+    'en' : 'Pre-Primary Class Status Statistics',
+    'bn' : 'প্রাক-প্রাথমিক শ্রেণি স্ট্যাটাস ভিত্তিক পরিসংখ্যান'
   },
   'admin.dashboard.ppe.teacher.gender.statistics' : {
     'en' : 'Pre-Primary Teacher Gender Statistics',
