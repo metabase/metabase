@@ -134,6 +134,7 @@ type GetEndPointParams = Pick<
   DownloadAndAssertParams,
   "fileType" | "questionId" | "publicUuid" | "dashcardId" | "dashboardId"
 >;
+
 function getEndpoint({
   fileType,
   questionId,
@@ -177,7 +178,8 @@ export function dismissDownloadStatus() {
   cy.findByTestId("status-root-container").within(() => {
     cy.findByRole("status").within(() => {
       cy.findAllByText("Download completed");
-      cy.findByLabelText("Dismiss").click();
+      cy.findByLabelText("Dismiss").as("dismissButton");
+      cy.get("@dismissButton").click();
     });
 
     cy.findByRole("status").should("not.exist");
