@@ -3,9 +3,9 @@ import type { DurationInputArg2 } from "moment-timezone"; // eslint-disable-line
 import { useState } from "react";
 import { t } from "ttag";
 
-import TippyPopover from "metabase/components/Popover/TippyPopover";
 import CS from "metabase/css/core/index.css";
 import { isValidTimeInterval } from "metabase/lib/time";
+import { Popover } from "metabase/ui";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
 import {
   formatStartingFrom,
@@ -220,19 +220,22 @@ const RelativeDatePicker = (props: RelativeDatePickerProps) => {
         periods={ALL_PERIODS}
       />
       {showOptions ? (
-        <TippyPopover
-          visible={optionsVisible}
-          placement="bottom-start"
-          content={optionsContent}
+        <Popover
+          opened={optionsVisible}
           onClose={() => setOptionsVisible(false)}
+          position="bottom-start"
         >
-          <MoreButton
-            icon="ellipsis"
-            aria-label={t`Options`}
-            primaryColor={primaryColor}
-            onClick={() => setOptionsVisible(!optionsVisible)}
-          />
-        </TippyPopover>
+          <Popover.Target>
+            <MoreButton
+              icon="ellipsis"
+              aria-label={t`Options`}
+              primaryColor={primaryColor}
+              onClick={() => setOptionsVisible(!optionsVisible)}
+            />
+          </Popover.Target>
+
+          <Popover.Dropdown>{optionsContent}</Popover.Dropdown>
+        </Popover>
       ) : (
         <div />
       )}
