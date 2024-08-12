@@ -354,7 +354,7 @@
 ;;; |                                                    CRUD fns                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn- limit-max-char-len-rff :- ::qp.schema/rff
+(mu/defn limit-max-char-len-rff :- ::qp.schema/rff
   "Returns a rff that will stop when the total character length of the values exceeds `max-char-len`."
   [rff max-char-len]
   (fn [metadata]
