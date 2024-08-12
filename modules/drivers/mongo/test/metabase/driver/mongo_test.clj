@@ -6,7 +6,6 @@
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
-   [metabase.driver.mongo :as mongo]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.driver.mongo.util :as mongo.util]
@@ -27,8 +26,7 @@
    [metabase.util.log :as log]
    [metabase.xrays.automagic-dashboards.core :as magic]
    [taoensso.nippy :as nippy]
-   [toucan2.core :as t2]
-   [toucan2.tools.with-temp :as t2.with-temp])
+   [toucan2.core :as t2])
   (:import
    (org.bson.types ObjectId)))
 
@@ -96,7 +94,7 @@
              {:dbms_version  {:semantic-version [2 2134234]}
               :expected false}]]
       (testing (str "supports with " dbms_version)
-        (t2.with-temp/with-temp [Database db {:name "dummy", :engine "mongo", :dbms_version dbms_version}]
+        (mt/with-temp [Database db {:name "dummy", :engine "mongo", :dbms_version dbms_version}]
           (is (= expected
                  (driver/database-supports? :mongo :expressions db))))))
     (is (= #{:collection}
@@ -134,7 +132,7 @@
 (deftest ^:parallel nested-native-query-test
   (mt/test-driver :mongo
     (testing "Mbql query with nested native source query _returns correct results_ (#30112)"
-      (t2.with-temp/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
+      (mt/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
                                                                   :native   {:collection    "venues"
                                                                              :query         native-query}
                                                                   :database (mt/id)}}]
@@ -160,7 +158,7 @@
                            "    \"longitude\": \"$longitude\",\n"
                            "    \"price\": \"$price\"}\n"
                            "}]")]
-        (t2.with-temp/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
+        (mt/with-temp [Card {:keys [id]} {:dataset_query {:type     :native
                                                                     :native   {:collection    "venues"
                                                                                :query         query-str}
                                                                     :database (mt/id)}}]
@@ -618,13 +616,6 @@
                (rows-count {:query      "[{$match: {date: {$gte: ISODate(\"2015-12-20\")}}}]"
                             :collection "checkins"})))))))
 
-(deftest ^:parallel most-common-object-type-test
-  (is (= String
-         (#'mongo/most-common-object-type [[Float 20] [Integer 10] [String 30]])))
-  (testing "make sure it handles `nil` types correctly as well (#6880)"
-    (is (= nil
-           (#'mongo/most-common-object-type [[Float 20] [nil 40] [Integer 10] [String 30]])))))
-
 (deftest xrays-test
   (mt/test-driver :mongo
     (testing "make sure x-rays don't use features that the driver doesn't support"
@@ -639,7 +630,7 @@
     (testing (str "if we query a something an there are no values for the Field, the query should still return "
                   "successfully! (#8929 and #8894)")
       ;; add a temporary Field that doesn't actually exist to test data categories
-      (t2.with-temp/with-temp [Field _ {:name "parent_id", :table_id (mt/id :categories)}]
+      (mt/with-temp [Field _ {:name "parent_id", :table_id (mt/id :categories)}]
         ;; ok, now run a basic MBQL query against categories Table. When implicit Field IDs get added the `parent_id`
         ;; Field will be included
         (testing (str "if the column does not come back in the results for a given document we should fill in the "
