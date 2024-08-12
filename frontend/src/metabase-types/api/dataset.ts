@@ -74,14 +74,26 @@ export interface Dataset {
   row_count: number;
   running_time: number;
   json_query?: JsonQuery;
-  error_type?: string;
-  error?: {
-    status: number; // HTTP status code
-    data?: string;
-  };
+  error?: string;
+  error_type?: DatasetErrorType;
   context?: string;
   status?: string;
 }
+
+export type DatasetErrorType =
+  | "client"
+  | "missing-required-permissions"
+  | "bad-configuration"
+  | "invalid-query"
+  | "missing-required-parameter"
+  | "invalid-parameter"
+  | "unsupported-feature"
+  | "disabled-feature"
+  | "server"
+  | "timed-out"
+  | "qp"
+  | "driver"
+  | "db";
 
 export interface EmbedDatasetData {
   rows: RowValues[];

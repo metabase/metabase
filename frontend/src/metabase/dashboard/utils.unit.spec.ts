@@ -12,7 +12,6 @@ import {
   parseTabSlug,
   syncParametersAndEmbeddingParams,
 } from "metabase/dashboard/utils";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import {
   createMockDashboard,
@@ -181,7 +180,7 @@ describe("Dashboard utils", () => {
     it("should return the access restricted error when the error type is missing-required-permissions", () => {
       const error = getDashcardResultsError([
         createMockDataset({
-          error_type: SERVER_ERROR_TYPES.missingPermissions,
+          error_type: "missing-required-permissions",
         }),
       ]);
 
@@ -191,9 +190,8 @@ describe("Dashboard utils", () => {
     it("should return the access restricted error when the status code is 403", () => {
       const error = getDashcardResultsError([
         createMockDataset({
-          error: {
-            status: 403,
-          },
+          error: "Error",
+          error_type: "missing-required-permissions",
         }),
       ]);
 
@@ -204,9 +202,7 @@ describe("Dashboard utils", () => {
       const error = getDashcardResultsError([
         createMockDataset({}),
         createMockDataset({
-          error: {
-            status: 401,
-          },
+          error: "Error",
         }),
       ]);
 

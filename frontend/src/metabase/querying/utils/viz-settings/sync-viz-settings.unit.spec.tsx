@@ -424,7 +424,7 @@ describe("syncVizSettingsWithSeries", () => {
         query,
         newSeries.map(singleSeries => ({
           ...singleSeries,
-          error: { status: 500 },
+          error: "Error",
         })),
         oldSeries,
       );
@@ -438,7 +438,7 @@ describe("syncVizSettingsWithSeries", () => {
         newSeries,
         oldSeries.map(singleSeries => ({
           ...singleSeries,
-          error: { status: 500 },
+          error: "Error",
         })),
       );
       expect(newSettings).toEqual(oldSettings);

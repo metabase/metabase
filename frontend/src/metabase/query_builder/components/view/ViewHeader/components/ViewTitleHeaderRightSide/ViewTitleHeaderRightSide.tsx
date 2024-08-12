@@ -4,7 +4,6 @@ import { useCallback } from "react";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
 import MetabaseSettings from "metabase/lib/settings";
 import {
   SaveButton,
@@ -119,7 +118,7 @@ export function ViewTitleHeaderRightSide({
     !question.isArchived() &&
     isActionListVisible;
   const isMissingPermissions =
-    result?.error_type === SERVER_ERROR_TYPES.missingPermissions;
+    result?.error_type === "missing-required-permissions";
   const hasRunButton =
     isRunnable && !isNativeEditorOpen && !isMissingPermissions;
 

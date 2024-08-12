@@ -14,6 +14,7 @@ import {
   MetabaseApi,
   maybeUsePivotEndpoint,
 } from "metabase/services";
+import { getGenericErrorMessage } from "metabase/visualizations/lib/errors";
 import { getParameterValuesBySlug } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { applyParameters } from "metabase-lib/v1/queries/utils/card";
 
@@ -130,7 +131,10 @@ export const fetchCardData = createThunkAction(
         return {
           dashcard_id: dashcard.id,
           card_id: card.id,
-          result: { error: { status: 403 } },
+          result: {
+            error: getGenericErrorMessage(),
+            error_type: "missing-required-permissions",
+          },
         };
       }
 

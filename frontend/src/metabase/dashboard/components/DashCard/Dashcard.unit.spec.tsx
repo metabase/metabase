@@ -54,9 +54,7 @@ const erroringDashcardData = {
       running_time: 50,
       row_count: 0,
       status: "error",
-      error: {
-        status: 400,
-      },
+      error: "Error",
     }),
   },
 };

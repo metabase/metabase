@@ -63,10 +63,7 @@ const TEST_CARD_NO_COLLECTION_WRITE_ACCESS = createMockCard({
 const TEST_RESULT = createMockDataset();
 
 const TEST_RESULT_ERROR = createMockDataset({
-  error: {
-    status: 500,
-    data: "An error occurred",
-  },
+  error: "An error occurred",
 });
 
 interface SetupOpts {
