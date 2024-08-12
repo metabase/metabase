@@ -95,15 +95,24 @@
   [stages]
   (count (take-while (complement (comp find-metric-ids :aggregation)) stages)))
 
+(defn- add-join-aliases
+  [x source-field->join-alias]
+  (lib.util.match/replace x
+    [:field (opts :guard (every-pred (comp source-field->join-alias :source-field) (complement :join-alias))) _]
+    (assoc-in &match [1 :join-alias] (-> opts :source-field source-field->join-alias))))
+
 (defn- include-implicit-joins
   [query agg-stage-index metric-query]
   (let [metric-joins (lib/joins metric-query -1)
         existing-joins (into #{}
                              (map (juxt :fk-field-id :alias))
-                             (lib/joins query agg-stage-index))]
-    (reduce #(lib/join %1 agg-stage-index %2)
-            query
-            (remove (comp existing-joins (juxt :fk-field-id :alias)) metric-joins))))
+                             (lib/joins query agg-stage-index))
+        new-joins (remove (comp existing-joins (juxt :fk-field-id :alias)) metric-joins)
+        source-field->join-alias (into {} (map (juxt :fk-field-id :alias)) new-joins)
+        query-with-joins (reduce #(lib/join %1 agg-stage-index %2)
+                                 query
+                                 new-joins)]
+    (lib.util/update-query-stage query-with-joins agg-stage-index add-join-aliases source-field->join-alias)))
 
 (defn splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
