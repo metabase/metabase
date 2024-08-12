@@ -10,7 +10,7 @@ import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
 import * as Urls from "metabase/lib/urls";
-import NewModelOption from "metabase/models/components/NewModelOption";
+import { NewModelOption } from "metabase/models/components/NewModelOption";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
@@ -66,7 +66,6 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
               image="app/img/notebook_mode_illustration"
               title={t`Use the notebook editor`}
               description={t`This automatically inherits metadata from your source tables, and gives your models drill-through.`}
-              width={180}
               to={Urls.newQuestion({
                 mode: "query",
                 creationType: "custom_question",
@@ -90,7 +89,6 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
                 collectionId,
                 databaseId: lastUsedDatabaseId || undefined,
               })}
-              width={180}
             />
           </OptionsGridItem>
         )}
