@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { Grid } from "metabase/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
@@ -15,7 +16,6 @@ import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesE
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
 import { getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
-import { Center, Loader } from "metabase/ui";
 
 import {
   EducationalButton,
@@ -46,11 +46,7 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
 
   if (isFetching) {
-    return (
-      <Center style={{ flexGrow: 1, height: "100vh" }}>
-        <Loader size="lg" data-testid="loading-indicator" />
-      </Center>
-    );
+    return <DelayedLoadingSpinner />;
   }
 
   if (!hasDataAccess && !hasNativeWrite) {
