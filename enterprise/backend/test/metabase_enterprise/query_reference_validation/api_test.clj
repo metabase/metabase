@@ -155,7 +155,12 @@
                             :effective_ancestors [{:id "root" :name "Our analytics" :authority_level nil}
                                                   {:id coll-2
                                                    :name (t2/select-one-fn :name :model/Collection :id coll-2)
-                                                   :type nil}]}}]
+                                                   :type nil}]}}
+              {:collection {:id nil
+                            :name nil
+                            :authority_level nil
+                            :type nil
+                            :effective_ancestors []}}]
              (map #(select-keys % [:collection]) (:data (get!))))))))
 
 (deftest premium-feature-test
@@ -220,7 +225,10 @@
               :data
               [{:id     card-3
                 :name   "C"
-                :errors [{:type "unknown-table", :table "T3"}]}]}
+                :errors [{:type "unknown-table", :table "T3"}]}
+               {:id    card-5
+                :name "E"
+                :errors [{:type "unknown-table", :table "T5"}]}]}
              (-> (get! {:limit 3 :offset 2})
                  (select-keys [:total :limit :offset :data])
                  (with-data-keys [:id :name :errors])))))))
@@ -228,16 +236,16 @@
 (deftest sorting-test
   (testing "Lets you specify the sort key"
     (with-test-setup
-      (is (= {:total 3
+      (is (= {:total 4
               :data
-              [{:id card-5}
-               {:id card-3}
+              [{:id card-3}
                {:id card-2}
-               {:id card-1}]}
+               {:id card-1}
+               {:id card-5}]}
              (-> (get! {:sort_column "collection" :sort_direction "desc"})
                  (select-keys [:total :data])
                  (with-data-keys [:id]))))
-      (is (= {:total 3
+      (is (= {:total 4
               :data
               [{:id card-1}
                {:id card-2}
@@ -246,7 +254,7 @@
              (-> (get! {:sort_column "last_edited_at" :sort_direction "asc"})
                  (select-keys [:total :data])
                  (with-data-keys [:id]))))
-      (is (= {:total 3
+      (is (= {:total 4
               :data
               [{:id card-5}
                {:id card-3}
@@ -255,6 +263,7 @@
              (-> (get! {:sort_column "last_edited_at" :sort_direction "desc"})
                  (select-keys [:total :data])
                  (with-data-keys [:id]))))))
+
   (testing "Rejects bad keys"
     (with-test-setup
       (is (str/starts-with? (:sort_column
@@ -281,7 +290,7 @@
                    (select-keys [:total :data])
                    (with-data-keys [:id])))))
       (testing "we can look in the root coll (which recursively contains coll-2 and coll-3)"
-        (is (= {:total 3
+        (is (= {:total 4
                 :data
                 [{:id card-1}
                  {:id card-2}
