@@ -8,6 +8,7 @@ import {
 } from "metabase/dashboard/components/PublicLinkPopover";
 import { useSelector } from "metabase/lib/redux";
 import { ResourceEmbedButton } from "metabase/public/components/ResourceEmbedButton";
+import { ViewFooterSharingButton } from "metabase/query_builder/components/view/ViewFooterSharingButton";
 import { getSetting } from "metabase/selectors/settings";
 
 export const NonAdminEmbedMenu = ({
@@ -27,14 +28,21 @@ export const NonAdminEmbedMenu = ({
 
   const isDisabled = !isPublicSharingEnabled || !hasPublicLink;
 
-  const target = (
-    <ResourceEmbedButton
-      hasBackground={resourceType === "dashboard"}
-      onClick={() => setIsOpen(!isOpen)}
-      disabled={isDisabled}
-      tooltip={isDisabled ? tooltipLabel : null}
-    />
-  );
+  const target =
+    resourceType === "dashboard" ? (
+      <ResourceEmbedButton
+        hasBackground={true}
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={isDisabled}
+        tooltip={isDisabled ? tooltipLabel : null}
+      />
+    ) : (
+      <ViewFooterSharingButton
+        onClick={() => setIsOpen(!isOpen)}
+        disabled={isDisabled}
+        tooltipLabel={isDisabled ? tooltipLabel : null}
+      />
+    );
 
   return resourceType === "dashboard" ? (
     <DashboardPublicLinkPopover

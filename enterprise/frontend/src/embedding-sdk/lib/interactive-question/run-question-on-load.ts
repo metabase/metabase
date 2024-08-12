@@ -2,12 +2,7 @@ import type {
   LoadSdkQuestionParams,
   SdkQuestionResult,
 } from "embedding-sdk/types/question";
-import * as Urls from "metabase/lib/urls";
-import {
-  deserializeCard,
-  parseHash,
-  resolveCards,
-} from "metabase/query_builder/actions";
+import { resolveCards } from "metabase/query_builder/actions";
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import Question from "metabase-lib/v1/Question";
@@ -16,20 +11,22 @@ import type { Dispatch, GetState } from "metabase-types/store";
 import { runQuestionQuerySdk } from "./run-question-query";
 
 export const runQuestionOnLoadSdk =
-  ({ location, params, cancelDeferred }: LoadSdkQuestionParams) =>
+  ({
+    options,
+    deserializedCard,
+    cardId,
+    cancelDeferred,
+  }: LoadSdkQuestionParams) =>
   async (
     dispatch: Dispatch,
     getState: GetState,
   ): Promise<SdkQuestionResult & { originalQuestion?: Question }> => {
-    const cardId = Urls.extractEntityId(params.slug);
-    const { options, serializedCard } = parseHash(location.hash);
-
     const { card, originalCard } = await resolveCards({
       cardId,
       options,
       dispatch,
       getState,
-      deserializedCard: serializedCard && deserializeCard(serializedCard),
+      deserializedCard,
     });
 
     await dispatch(loadMetadataForCard(card));
