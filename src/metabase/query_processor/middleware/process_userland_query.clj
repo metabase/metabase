@@ -67,8 +67,9 @@
   (if-not context
     (log/warn "Cannot save QueryExecution, missing :context")
     (let [qe-id (t2/insert-returning-pk! :model/QueryExecution (dissoc query-execution :json_query))]
-      (grouper/submit! @field-usages-queue {:query_execution_id qe-id
-                                            :pmbql              pmbql}))))
+      (when pmbql
+        (grouper/submit! @field-usages-queue {:query_execution_id qe-id
+                                              :pmbql              pmbql})))))
 
 (defn- save-execution-metadata!
   "Save a `QueryExecution` row containing `execution-info`. Done asynchronously when a query is finished."
@@ -195,9 +196,12 @@
         (letfn [(rff* [metadata]
                   (let [preprocessed-query (:preprocessed_query metadata)
                         ;; we only need the preprocessed query to find field usages, so make sure we don't return it
-                        result             (rff (dissoc metadata :preprocessed_query))]
+                        result             (rff (dissoc metadata :preprocessed_query))
+                        ;; skip internal queries because it uses honeysql, not mbql
+                        pmbql              (when-not (qp.util/internal-query? query)
+                                             (lib/query (qp.store/metadata-provider) preprocessed-query))]
                         ;; temporarily disabled because it impacts query performance
-                    (add-and-save-execution-metadata-xform! execution-info (lib/query (qp.store/metadata-provider) preprocessed-query) result)))]
+                    (add-and-save-execution-metadata-xform! execution-info pmbql result)))]
           (try
             (qp query rff*)
             (catch Throwable e
