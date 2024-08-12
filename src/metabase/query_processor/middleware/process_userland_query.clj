@@ -42,7 +42,12 @@
             (try
               (t2/insert! :model/FieldUsage (mapcat
                                              (fn [{:keys [query_execution_id pmbql]}]
-                                               (map #(assoc % :query_execution_id query_execution_id) (field-usage/pmbql->field-usages pmbql)))
+                                               (try
+                                                 (map #(assoc % :query_execution_id query_execution_id) (field-usage/pmbql->field-usages pmbql))
+                                                 ;; one query fail shouldn't fail the whole batch
+                                                 (catch Exception e
+                                                   (log/error e "Error getting field usages from pmbql" pmbql)
+                                                   [])))
                                              inputs))
               (catch Throwable e
                 (log/error e "Error saving field usages"))))
@@ -177,7 +182,9 @@
 
   2. Record a ViewLog entry when running a query for a Card
 
-  3. Add extra info like `running_time` and `started_at` to the results"
+  3. Add extra info like `running_time` and `started_at` to the results
+
+  4. Submit a background job to analyze field usages"
   [qp :- ::qp.schema/qp]
   (mu/fn [query :- ::qp.schema/query
           rff   :- ::qp.schema/rff]

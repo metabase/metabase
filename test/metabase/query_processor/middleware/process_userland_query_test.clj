@@ -17,7 +17,6 @@
    [metabase.query-processor.util :as qp.util]
    [metabase.test :as mt]
    [methodical.core :as methodical]
-   #_
    [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
@@ -176,14 +175,13 @@
           (is (not @saved-query-execution?)))))))
 
 ;; temporarily disabled because it impacts query performance
-#_
 (deftest save-field-usage-test
   (testing "execute an userland query will capture field usages"
     (mt/test-helpers-set-global-values!
       (mt/with-model-cleanup [:model/FieldUsage]
         (mt/with-temporary-setting-values [synchronous-batch-updates true]
-          (mt/with-temp [:model/Field {field-id :id} {:table_id (mt/id :products)
-                                                      :name     "very_interesting_field"
+          (mt/with-temp [:model/Field {field-id :id} {:table_id  (mt/id :products)
+                                                      :name      "very_interesting_field"
                                                       :base_type :type/Integer}
                          :model/Card card            {:dataset_query (mt/mbql-query products
                                                                                     {:filter [:> [:field field-id nil] 1]})}]
