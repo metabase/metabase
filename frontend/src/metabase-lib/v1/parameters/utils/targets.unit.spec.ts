@@ -296,6 +296,15 @@ describe("parameters/utils/targets", () => {
           );
           const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
+          const summaryColumns = [
+            ["Orders", "Created At: Month"],
+            ["Products", "Created At: Year"],
+            ["Reviews", "Created At: Quarter"],
+            [undefined, "User's 18th birthday"],
+            [undefined, "Count"],
+            [undefined, "Sum of Total"],
+          ];
+
           expect(columnsInfos).toEqual([
             ...ordersColumns,
             [undefined, "User's 18th birthday"],
@@ -303,6 +312,7 @@ describe("parameters/utils/targets", () => {
             ...productsColumns,
             ...peopleColumns,
             ...productsColumns,
+            ...summaryColumns,
           ]);
         });
       });
@@ -329,8 +339,8 @@ describe("parameters/utils/targets", () => {
             ["Question", "Discount"],
             ["Question", "Created At"],
             ["Question", "Quantity"],
-            ...peopleColumns,
             ...productsColumns,
+            ...peopleColumns,
           ]);
         });
       });
@@ -480,9 +490,9 @@ describe("parameters/utils/targets", () => {
 
           expect(columnsInfos).toEqual([
             ["Question", "Created At"],
+            ["Products", "Product → Created At"],
             ["People", "User → Birth Date"],
             ["People", "User → Created At"],
-            ["Products", "Product → Created At"],
           ]);
         });
       });
