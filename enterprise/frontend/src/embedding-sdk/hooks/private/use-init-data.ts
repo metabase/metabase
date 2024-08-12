@@ -42,7 +42,7 @@ export const useInitData = ({ config }: InitDataLoaderParameters) => {
     // eslint-disable-next-line no-console
     console.log(
       // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
-      `Using Metabase Embedding SDK, version "${EMBEDDING_SDK_VERSION}"`,
+      `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
     );
   }, []);
 

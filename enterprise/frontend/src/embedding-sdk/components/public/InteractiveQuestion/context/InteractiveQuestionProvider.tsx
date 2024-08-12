@@ -45,8 +45,9 @@ type InteractiveQuestionProviderProps = PropsWithChildren<
 >;
 
 export const InteractiveQuestionProvider = ({
-  location,
-  params,
+  cardId,
+  options,
+  deserializedCard,
   componentPlugins,
   onReset,
   onNavigateBack,
@@ -62,14 +63,21 @@ export const InteractiveQuestionProvider = ({
     loadQuestion,
     onQuestionChange,
     onNavigateToNewCard,
-  } = useLoadQuestion({ location, params });
+  } = useLoadQuestion({
+    cardId,
+    options,
+    deserializedCard,
+  });
 
   const globalPlugins = useSdkSelector(getPlugins);
-  const plugins = componentPlugins || globalPlugins;
+
+  const combinedPlugins = useMemo(() => {
+    return { ...globalPlugins, ...componentPlugins };
+  }, [globalPlugins, componentPlugins]);
 
   const mode = useMemo(() => {
-    return question && getEmbeddingMode(question, plugins ?? undefined);
-  }, [question, plugins]);
+    return question && getEmbeddingMode(question, combinedPlugins ?? undefined);
+  }, [question, combinedPlugins]);
 
   const questionContext: InteractiveQuestionContextType = {
     isQuestionLoading,
@@ -79,7 +87,7 @@ export const InteractiveQuestionProvider = ({
     onNavigateBack,
     onQuestionChange,
     onNavigateToNewCard,
-    plugins,
+    plugins: combinedPlugins,
     question,
     queryResults,
     mode,
