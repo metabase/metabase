@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 
+import type { ColumnItem } from "metabase/querying/utils/filters";
 import { DelayGroup } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { TabPanelFilterItem } from "../TabPanelItem";
-import type { ColumnItem } from "../types";
 
 import { findColumnFilters, findVisibleFilters } from "./columns";
 

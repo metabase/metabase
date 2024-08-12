@@ -1,6 +1,5 @@
+import type { SegmentItem } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
-
-import type { SegmentItem } from "../types";
 
 export function addSegmentFilters(
   query: Lib.Query,

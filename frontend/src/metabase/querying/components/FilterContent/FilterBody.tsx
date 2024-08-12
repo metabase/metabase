@@ -1,8 +1,8 @@
+import type { GroupItem } from "metabase/querying/utils/filters";
 import type * as Lib from "metabase-lib";
 
 import { FilterEmptyState } from "./FilterEmptyState";
 import { TabContent } from "./TabContent";
-import type { GroupItem } from "./types";
 
 type FilterBodyProps = {
   groupItems: GroupItem[];

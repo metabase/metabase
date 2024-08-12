@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { GroupItem } from "metabase/querying/components/FilterContent";
+import type { GroupItem } from "metabase/querying/utils/filters";
 
 import { SEARCH_KEY } from "../constants";
 

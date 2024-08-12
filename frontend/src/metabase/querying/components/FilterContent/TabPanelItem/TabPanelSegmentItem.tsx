@@ -1,7 +1,7 @@
+import type { SegmentItem } from "metabase/querying/utils/filters";
 import type * as Lib from "metabase-lib";
 
 import { SegmentFilterEditor } from "../SegmentFilterEditor";
-import type { SegmentItem } from "../types";
 
 import { TabPanelItem } from "./TabPanelItem.styled";
 import { addSegmentFilters, removeSegmentFilters } from "./segments";

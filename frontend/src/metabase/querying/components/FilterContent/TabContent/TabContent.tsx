@@ -1,9 +1,9 @@
+import type { GroupItem } from "metabase/querying/utils/filters";
 import { Flex, Tabs } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
 import { TabList } from "../TabList";
 import { TabPanel } from "../TabPanel";
-import type { GroupItem } from "../types";
 
 export interface TabContentProps {
   query: Lib.Query;

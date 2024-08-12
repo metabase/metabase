@@ -1,6 +1,5 @@
+import type { GroupItem } from "metabase/querying/utils/filters";
 import { Icon, Tabs } from "metabase/ui";
-
-import type { GroupItem } from "../types";
 
 import { TabsListSidebar } from "./TabList.styled";
 

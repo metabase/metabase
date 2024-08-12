@@ -1,6 +1,5 @@
+import type { ColumnItem } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
-
-import type { ColumnItem } from "../types";
 
 function isCreationDateOrTimestamp(column: Lib.ColumnMetadata) {
   return Lib.isCreationDate(column) || Lib.isCreationTimestamp(column);
