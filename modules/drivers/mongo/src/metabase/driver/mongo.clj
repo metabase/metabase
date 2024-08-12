@@ -264,60 +264,58 @@
 (def ^:private describe-table-sample-size 1000)
 
 (defn- root-query [max-depth]
-  (let [project-nested-fields
+  (let [depth-k    (fn [depth] (str "depth" depth "K"))
+        depth-type (fn [depth] (str "depth" depth "Type"))
+        depth-kvs  (fn [depth] (str "depth" depth "KVs"))
+        project-nested-fields
         (fn [depth]
           (cond-> [{"$project"
                     (merge
                      ;; Include all fields from previous depths
                      (into {} (mapcat
                                (fn [i]
-                                 [[(str "depth" i "Field") 1]
-                                  [(str "depth" i "Type") 1]])
+                                 [[(depth-k i) 1]
+                                  [(depth-type i) 1]])
                                (range depth)))
                      ;; Project current depth field and type
-                     {(str "depth" depth "Field") (str "$depth" depth "Fields.k")
-                      (str "depth" depth "Type") {"$type" (str "$depth" depth "Fields.v")}}
+                     {(depth-k depth) (str "$" (depth-kvs depth) ".k")
+                      (depth-type depth)  {"$type" (str "$" (depth-kvs depth) ".v")}}
                      ;; Project next depth fields if they exist
                      (when (not= depth max-depth)
-                       {(str "depth" (inc depth) "Fields")
-                        {"$cond" {"if"   {"$eq" [{"$type" (str "$depth" depth "Fields.v")}, "object"]}
+                       {(depth-kvs (inc depth))
+                        {"$cond" {"if"   {"$eq" [{"$type" (str "$" (depth-kvs depth) ".v")}, "object"]}
                                   "then" {"$concatArrays" [[{"k" nil, "v" nil}]
-                                                           {"$objectToArray" (str "$depth" depth "Fields.v")}]}
+                                                           {"$objectToArray" (str "$" (depth-kvs depth) ".v")}]}
                                   "else" [{"k" nil, "v" nil}]}}}))}]
             (not= depth max-depth)
             (conj {"$unwind"
-                   {"path"                       (str "$depth" (inc depth) "Fields")
+                   {"path"                       (str "$" (depth-kvs (inc depth)))
                     "preserveNullAndEmptyArrays" true}})))
         facet-stage
         (fn [depth]
-          (let [current-field (str "depth" depth "Field")
-                current-type (str "depth" depth "Type")
-                next-field (str "depth" (inc depth) "Field")]
-            [{"$match" (cond-> {current-field {"$ne" nil}}
-                         (zero? depth) (assoc next-field nil)
-                         (> depth 1) (dissoc next-field))}
-             {"$group" {"_id" (into {"field" (str "$" current-field)
-                                     "type"  (str "$" current-type)}
-                                    (for [i (range depth)]
-                                      [(str "depth" i "Field") (str "$depth" i "Field")]))
-                        "count" {"$sum" 1}}}
-             {"$sort" (merge {"count" -1}
-                             (into {} (for [i (range (inc depth))]
-                                        [(str "_id." (if (= i depth) "field" (str "depth" i "Field"))) 1])))}
-             {"$group" {"_id" (into {} (for [i (range (inc depth))]
-                                         [(if (= i depth) "field" (str "depth" i "Field"))
-                                          (str "$_id." (if (= i depth) "field" (str "depth" i "Field")))]))
-                        "mostCommonType" {"$first" "$_id.type"}}}
-             {"$project" {"_id" 0
-                          "path" {"$concat" (interpose "." (for [i (range (inc depth))]
-                                                             (str "$_id." (if (= i depth) "field" (str "depth" i "Field")))))}
-                          "field" (str "$_id.field")
-                          "mostCommonType" 1}}]))
+          [{"$match" (cond-> {(depth-k depth) {"$ne" nil}}
+                       (zero? depth) (assoc (depth-k (inc depth)) nil))}
+           {"$group" {"_id" (into {(depth-type depth) (str "$" (depth-type depth))}
+                                  (for [i (range (inc depth))]
+                                    [(depth-k i) (str "$" (depth-k i))]))
+                      "count" {"$sum" 1}}}
+           {"$sort" (merge {"count" -1}
+                           (into {} (for [i (range (inc depth))]
+                                      [(str "_id." (depth-k i)) 1])))}
+           {"$group" {"_id" #_{(depth-k depth) (str "$_id." (depth-k depth))}
+                      (into {} (for [i (range (inc depth))]
+                                       [(depth-k i) (str "$_id." (depth-k i))]))
+                      "mostCommonType" {"$first" (str "$_id." (depth-type depth))}}}
+           {"$project" {"_id"            0
+                        "path"           {"$concat" (interpose "." (for [i (range (inc depth))]
+                                                                     (str "$_id." (depth-k i))))}
+                        "field"          (str "$_id." (depth-k depth))
+                        "mostCommonType" 1}}])
         facets (into {} (map (juxt #(str "depth" %) facet-stage) (range (inc max-depth))))]
     (concat [{"$sample" {"size" describe-table-sample-size}}
              {"$project" {"doc" "$$ROOT"}}
-             {"$project" {"depth0Fields" {"$objectToArray" "$doc"}}}
-             {"$unwind" "$depth0Fields"}]
+             {"$project" {(depth-kvs 0) {"$objectToArray" "$doc"}}}
+             {"$unwind" (str "$" (depth-kvs 0))}]
             (mapcat project-nested-fields (range (inc max-depth)))
             [{"$facet" facets}
              {"$project" {"allFields" {"$concatArrays" (map #(str "$" %) (keys facets))}}}
@@ -325,27 +323,27 @@
 
 (defn- nested-level-query [parent-paths]
   (letfn [(path-query [path]
-            [{"$project" {"path"   path
-                          "fields" {"$objectToArray" (str "$" path)}}}
-             {"$unwind" "$fields"}
+            [{"$project" {"path" path
+                          "kvs"  {"$objectToArray" (str "$" path)}}}
+             {"$unwind" "$kvs"}
              {"$project"
-              {"path"  "$path"
-               "field" "$fields.k"
-               "type"  {"$type" "$fields.v"}}}
+              {"path" "$path"
+               "k"    "$kvs.k"
+               "type" {"$type" "$kvs.v"}}}
              {"$group"
-              {"_id" {"path"  "$path"
-                      "field" "$field"
-                      "type"  "$type"}
+              {"_id" {"path" "$path"
+                      "k"    "$k"
+                      "type" "$type"}
                "count" {"$sum" 1}}}
-             {"$sort" {"_id.field" 1, "count" -1}}
+             {"$sort" {"_id.k" 1, "count" -1}}
              {"$group"
-              {"_id" {"path"  "$_id.path"
-                      "field" "$_id.field"}
+              {"_id"            {"path" "$_id.path"
+                                 "k"    "$_id.k"}
                "mostCommonType" {"$first" "$_id.type"}}}
              {"$project"
               {"_id"            0
-               "path"           {"$concat" ["$_id.path" "." "$_id.field"]}
-               "field"          "$_id.field"
+               "path"           {"$concat" ["$_id.path" "." "$_id.k"]}
+               "field"          "$_id.k"
                "mostCommonType" 1}}])]
     [{"$sample" {"size" describe-table-sample-size}}
      {"$facet"
@@ -407,7 +405,6 @@
   [_driver database table]
   (let [fields (infer-schema database table)
         fields (->> fields
-                    (sort-by :path) ; WIP: good enough for now, but doesn't preserve behaviour from before
                     (map-indexed (fn [idx x]
                                    {:name              (:field x)
                                     :database-type     (:mostCommonType x)
