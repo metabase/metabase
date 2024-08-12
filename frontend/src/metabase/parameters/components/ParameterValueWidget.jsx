@@ -155,7 +155,6 @@ class ParameterValueWidget extends Component {
           status="clear"
           onClick={() => {
             setValue(null);
-            close();
           }}
         />
       );
@@ -198,7 +197,6 @@ class ParameterValueWidget extends Component {
           status="clear"
           onClick={() => {
             setValue(null);
-            close();
           }}
         />
       );
