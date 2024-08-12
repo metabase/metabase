@@ -1,5 +1,6 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
+import { singularize } from "metabase/lib/formatting";
 import type {
   CardId,
   CardType,
@@ -36,17 +37,17 @@ import type {
   JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
+  MetadataProvider,
   MetricDisplayInfo,
   MetricMetadata,
-  MetadataProvider,
   OrderByClause,
   OrderByClauseDisplayInfo,
   Query,
-  SegmentMetadata,
+  QueryDisplayInfo,
   SegmentDisplayInfo,
+  SegmentMetadata,
   TableDisplayInfo,
   TableMetadata,
-  QueryDisplayInfo,
 } from "./types";
 import type Field from "./v1/metadata/Field";
 import type Metadata from "./v1/metadata/Metadata";
@@ -168,6 +169,10 @@ export function getColumnsFromColumnGroup(
   group: ColumnGroup,
 ): ColumnMetadata[] {
   return ML.columns_group_columns(group);
+}
+
+export function getColumnGroupName(groupInfo: ColumnGroupDisplayInfo) {
+  return groupInfo.fkReferenceName || singularize(groupInfo.displayName);
 }
 
 export function describeTemporalUnit(

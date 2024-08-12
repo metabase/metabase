@@ -1,7 +1,3 @@
-import {
-  appendStageIfAggregated,
-  getGroupItems,
-} from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -186,6 +182,6 @@ export function getParameterColumns(
 }
 
 function getFilterableColumns(query: Lib.Query) {
-  const groupItems = getGroupItems(appendStageIfAggregated(query));
+  const groupItems = Lib.filterGroups(Lib.appendStageIfSummarized(query));
   return groupItems.flatMap(group => group.columnItems);
 }

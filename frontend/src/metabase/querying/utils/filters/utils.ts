@@ -40,17 +40,8 @@ export function getDefaultAvailableOperator<T extends Lib.FilterOperatorName>(
   );
 }
 
-export function appendStageIfAggregated(query: Lib.Query) {
-  const aggregations = Lib.aggregations(query, -1);
-  const breakouts = Lib.breakouts(query, -1);
-
-  return aggregations.length > 0 && breakouts.length > 0
-    ? Lib.appendStage(query)
-    : query;
-}
-
 export function getGroupItems(query: Lib.Query): GroupItem[] {
-  const stageIndexes = Lib.getFilterStageIndexes(query);
+  const stageIndexes = Lib.filterStageIndexes(query);
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
@@ -88,7 +79,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
 }
 
 export function hasFilters(query: Lib.Query) {
-  const stageIndexes = Lib.getFilterStageIndexes(query);
+  const stageIndexes = Lib.filterStageIndexes(query);
   const filters = stageIndexes.flatMap(stageIndex =>
     Lib.filters(query, stageIndex),
   );
@@ -96,7 +87,7 @@ export function hasFilters(query: Lib.Query) {
 }
 
 export function removeFilters(query: Lib.Query) {
-  const stageIndexes = Lib.getFilterStageIndexes(query);
+  const stageIndexes = Lib.filterStageIndexes(query);
   return stageIndexes.reduce(
     (newQuery, stageIndex) => Lib.removeFilters(newQuery, stageIndex),
     query,

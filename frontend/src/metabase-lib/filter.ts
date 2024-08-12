@@ -1,22 +1,25 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { t } from "ttag";
 
 import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, TemporalUnit } from "metabase-types/api";
 
+import { aggregations } from "./aggregation";
+import { breakouts } from "./breakout";
 import {
   isBoolean,
-  isTime,
-  isTemporal,
   isCoordinate,
-  isStringOrStringLike,
   isNumeric,
+  isStringOrStringLike,
+  isTemporal,
+  isTime,
 } from "./column_types";
 import {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  DEFAULT_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
@@ -26,8 +29,14 @@ import {
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
-import { displayInfo } from "./metadata";
-import { removeClause, stageCount } from "./query";
+import {
+  displayInfo,
+  getColumnGroupName,
+  getColumnsFromColumnGroup,
+  groupColumns,
+} from "./metadata";
+import { appendStage, removeClause, stageCount } from "./query";
+import { availableSegments } from "./segments";
 import {
   availableTemporalBuckets,
   temporalBucket,
@@ -40,6 +49,8 @@ import type {
   ColumnMetadata,
   CoordinateFilterOperatorName,
   CoordinateFilterParts,
+  DefaultFilterOperatorName,
+  DefaultFilterParts,
   ExcludeDateBucketName,
   ExcludeDateFilterOperatorName,
   ExcludeDateFilterParts,
@@ -48,8 +59,6 @@ import type {
   ExpressionOperatorName,
   ExpressionOptions,
   ExpressionParts,
-  DefaultFilterOperatorName,
-  DefaultFilterParts,
   FilterClause,
   FilterOperator,
   FilterParts,
@@ -98,6 +107,62 @@ export function removeFilters(query: Query, stageIndex: number): Query {
     (newQuery, filter) => removeClause(newQuery, stageIndex, filter),
     query,
   );
+}
+
+export function appendStageIfSummarized(query: Query): Query {
+  const isSummarized =
+    aggregations(query, -1).length > 0 && breakouts(query, -1).length > 0;
+
+  return isSummarized ? appendStage(query) : query;
+}
+
+/**
+ * Returns indexes of stages from which columns are exposed for filtering
+ */
+export function filterStageIndexes(query: Query): number[] {
+  return stageCount(query) > 1 ? [-2, -1] : [-1];
+}
+
+/**
+ * Returns columns exposed for filtering, in groups
+ */
+export function filterGroups(query: Query) {
+  const stageIndexes = filterStageIndexes(query);
+
+  return stageIndexes.flatMap(stageIndex => {
+    const columns = filterableColumns(query, stageIndex);
+    const groups = groupColumns(columns);
+    const segments = availableSegments(query, stageIndex);
+
+    return groups.map((group, groupIndex) => {
+      const groupInfo = displayInfo(query, stageIndex, group);
+      const availableColumns = getColumnsFromColumnGroup(group);
+      const availableSegments = groupIndex === 0 ? segments : [];
+
+      return {
+        stageIndex,
+        groupIndex,
+        displayName: getColumnGroupName(groupInfo) || t`Summaries`,
+        columnItems: availableColumns.map(column => {
+          const columnInfo = displayInfo(query, stageIndex, column);
+          return {
+            column,
+            displayName: columnInfo.displayName,
+            stageIndex,
+          };
+        }),
+        segmentItems: availableSegments.map(segment => {
+          const segmentInfo = displayInfo(query, stageIndex, segment);
+          return {
+            segment,
+            displayName: segmentInfo.displayName,
+            stageIndex,
+            filterPositions: segmentInfo.filterPositions ?? [],
+          };
+        }),
+      };
+    });
+  });
 }
 
 export function filterArgsDisplayName(
@@ -966,11 +1031,4 @@ export function updateTemporalFilter(
     start,
     end,
   );
-}
-
-/**
- * Returns indexes of stages from which columns are exposed for filtering
- */
-export function getFilterStageIndexes(query: Query): number[] {
-  return stageCount(query) > 1 ? [-2, -1] : [-1];
 }
