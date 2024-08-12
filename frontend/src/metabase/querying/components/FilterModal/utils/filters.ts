@@ -7,15 +7,6 @@ import {
 import type { GroupItem } from "metabase/querying/components/FilterContent";
 import * as Lib from "metabase-lib";
 
-export function appendStageIfSummarized(query: Lib.Query) {
-  const aggregations = Lib.aggregations(query, -1);
-  const breakouts = Lib.breakouts(query, -1);
-
-  return aggregations.length > 0 && breakouts.length > 0
-    ? Lib.appendStage(query)
-    : query;
-}
-
 export function getGroupItems(query: Lib.Query): GroupItem[] {
   const stageIndexes = Lib.filterStageIndexes(query);
   return stageIndexes.flatMap(stageIndex => {
