@@ -128,39 +128,6 @@ export function getPermissionWarningModal(
   }
 }
 
-export function getWillEnableUnrestrictedViewAccessWarning(
-  permissions: GroupsPermissions,
-  groupId: number,
-  entityId: DatabaseEntityId | SchemaEntityId,
-  database: Database,
-  value: DataPermissionValue,
-) {
-  const hasCreateQueryAccess = value !== DataPermissionValue.NO;
-  if (!hasCreateQueryAccess) {
-    return;
-  }
-
-  const hasChildWithBlockedPermission = hasPermissionValueInSubgraph(
-    permissions,
-    groupId,
-    entityId,
-    database,
-    DataPermission.VIEW_DATA,
-    DataPermissionValue.BLOCKED,
-  );
-
-  if (hasChildWithBlockedPermission) {
-    const entityType = isSchemaEntityId(entityId) ? t`schema` : t`database`;
-
-    return {
-      title: t`Upgrade “View Data” to “Unrestricted” for this ${entityType}?`,
-      message: t`Your “Granular” permissions for “View Data” contains “Blocked” which restricts “Create Queries” permissions to “No”. Would you like to upgrade the permissions for this ${entityType} to “Unrestricted” to allow for this change?`,
-      confirmButtonText: t`Allow`,
-      cancelButtonText: t`Cancel`,
-    };
-  }
-}
-
 export function getWillRevokeNativeAccessWarningModal(
   permissions: GroupsPermissions,
   groupId: number,

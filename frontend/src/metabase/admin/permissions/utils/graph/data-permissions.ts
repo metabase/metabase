@@ -22,7 +22,7 @@ import type {
   TableEntityId,
 } from "../../types";
 import { DataPermission, DataPermissionValue } from "../../types";
-import { isSchemaEntityId } from "../data-entity-id";
+import { isSchemaEntityId, isTableEntityId } from "../data-entity-id";
 
 export const isRestrictivePermission = (value: DataPermissionValue) =>
   value === DataPermissionValue.NO ||
@@ -297,7 +297,7 @@ export function hasPermissionValueInSubgraph(
           {
             databaseId: entityId.databaseId,
             schemaName: schema.name,
-            tableId: table.id as number,
+            tableId: table.id,
           },
           permission,
         )
@@ -307,6 +307,8 @@ export function hasPermissionValueInSubgraph(
 }
 
 // return boolean if able to find if a value is present in all or a portion of the permissions graph
+// NOTE: default values are omitted from the graph, and given the way this function was written, it won't return
+// the right answer for those permissions. for now, those default values have been omitted from allowed values to avoid bugs
 export function hasPermissionValueInGraph(
   permissions:
     | GroupsPermissions
@@ -315,8 +317,8 @@ export function hasPermissionValueInGraph(
     | DataPermissionValue,
   permissionValue: Omit<
     DataPermissionValue,
-    DataPermissionValue.BLOCKED | DataPermissionValue.NO
-  >, // default values are omitted from the graph, use hasPermissionValueInSubgraph instead
+    DataPermissionValue.BLOCKED | DataPermissionValue.NO // omit default values
+  >,
 ): boolean {
   if (permissions === permissionValue) {
     return true;
@@ -430,28 +432,13 @@ export function restrictCreateQueriesPermissionsIfNeeded(
   }
 
   if (
-    entityId.tableId == null &&
-    entityId.schemaName == null &&
-    (isRestrictivePermission(value) ||
-      value === DataPermissionValue.LEGACY_NO_SELF_SERVICE)
+    isRestrictivePermission(value) ||
+    value === DataPermissionValue.LEGACY_NO_SELF_SERVICE
   ) {
-    permissions = updatePermission(
+    permissions = updateEntityPermission(
       permissions,
       groupId,
-      entityId.databaseId,
-      DataPermission.CREATE_QUERIES,
-      [],
-      DataPermissionValue.NO,
-    );
-  } else if (entityId.schemaName != null && isRestrictivePermission(value)) {
-    const updatePermissionFn =
-      entityId.tableId != null
-        ? updateFieldsPermission
-        : updateTablesPermission;
-    permissions = updatePermissionFn(
-      permissions,
-      groupId,
-      entityId as any,
+      entityId,
       DataPermissionValue.NO,
       database,
       DataPermission.CREATE_QUERIES,
@@ -644,4 +631,42 @@ export function updateSchemasPermission(
     value,
     schemaNamesOrNoSchema,
   );
+}
+
+export function updateEntityPermission(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: EntityId,
+  value: DataPermissionValue,
+  database: Database,
+  permission: DataPermission,
+) {
+  if (isTableEntityId(entityId)) {
+    return updateFieldsPermission(
+      permissions,
+      groupId,
+      entityId,
+      value,
+      database,
+      permission,
+    );
+  } else if (isSchemaEntityId(entityId)) {
+    return updateTablesPermission(
+      permissions,
+      groupId,
+      entityId,
+      value,
+      database,
+      permission,
+    );
+  } else {
+    return updateSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      value,
+      database,
+      permission,
+    );
+  }
 }
