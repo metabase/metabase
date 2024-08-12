@@ -4,7 +4,6 @@
    [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.models :refer [Field FieldValues Table]]
    [metabase.models.field-values :as field-values]
    [metabase.sync :as sync]
@@ -212,14 +211,14 @@
                                :type :sandbox
                                :hash_key "random-key"})
       (testing "adding more values even if it's exceed our cardinality limit, "
-        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 metadata-queries/absolute-max-distinct-values-limit)))
+        (one-off-dbs/insert-rows-and-sync! (one-off-dbs/range-str 50 (+ 100 field-values/*absolute-max-distinct-values-limit*)))
         (testing "has_field_values shouldn't change and has_more_values should be true"
           (is (= :list
                  (t2/select-one-fn :has_field_values Field
                                       :id (mt/id :blueberries_consumed :str)))))
         (testing "it should still have FieldValues, but the stored list has at most [metadata-queries/absolute-max-distinct-values-limit] elements"
-          (is (= {:values                (take metadata-queries/absolute-max-distinct-values-limit
-                                               (one-off-dbs/range-str (+ 100 metadata-queries/absolute-max-distinct-values-limit)))
+          (is (= {:values                (take field-values/*absolute-max-distinct-values-limit*
+                                               (one-off-dbs/range-str (+ 100 field-values/*absolute-max-distinct-values-limit*)))
                   :human_readable_values []
                   :has_more_values       true}
                  (into {} (t2/select-one [FieldValues :values :human_readable_values :has_more_values]
