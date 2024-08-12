@@ -110,7 +110,7 @@
 
 (defn- stripped-error [e]
   (let [m (ex-data e)]
-    (ex-info (ex-message e) (assoc m :msg (ex-message e)))))
+    (ex-info (ex-message e) m)))
 
 (mu/defn v2-load!
   "SerDes v2 load entry point.
