@@ -6,6 +6,7 @@
    [clojure.string :as str]
    [clojure.walk :as walk]
    [flatland.ordered.map :as ordered-map]
+   [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
@@ -314,12 +315,11 @@
                                                [(depth-idx i) (str "$_id." (depth-idx i))]])
                                             depths))
                         "mostCommonType" {"$first" (str "$_id." (depth-type depth))}}}
-             {"$sort" (into {}
-                            (map (fn [i] [(str "_id." (depth-idx i)) 1]) depths))}
              {"$project" {"_id"            0
                           "path"           {"$concat" (interpose "." (for [i depths]
                                                                        (str "$_id." (depth-k i))))}
                           "field"          (str "$_id." (depth-k depth))
+                          "index"          (str "$_id." (depth-idx depth))
                           "mostCommonType" 1}}]))
         all-depths (range (inc max-depth))
         facets (into {} (map (juxt #(str "depth" %) facet-stage) all-depths))]
@@ -355,11 +355,11 @@
                                  "k"     "$_id.k"
                                  "index" "$_id.index"}
                "mostCommonType" {"$first" "$_id.type"}}}
-             {"$sort" {"_id.index" 1}}
              {"$project"
               {"_id"            0
                "path"           {"$concat" ["$_id.path" "." "$_id.k"]}
                "field"          "$_id.k"
+               "index"          "$_id.index"
                "mostCommonType" 1}}])]
     [{"$sample" {"size" describe-table-sample-size}}
      {"$facet"
@@ -417,17 +417,35 @@
         "maxKey"     :type/*}
         type-alias :type/*))
 
+(defn- set-database-position
+  "Sets :database-position on all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
+  [fields i]
+  (->> fields
+       (sort-by :index) ; the array index of the key in the object
+       (reduce (fn [[fields i] field]
+                 (let [field             (assoc field :database-position i)
+                       i                 (inc i)
+                       nested-fields     (:nested-fields field)
+                       [nested-fields i] (if nested-fields
+                                           (set-database-position nested-fields i)
+                                           [nested-fields i])
+                       field             (-> field
+                                             (m/assoc-some :nested-fields nested-fields)
+                                             (dissoc :index))]
+                   [(conj fields field) i]))
+               [[] i])))
+
 (defmethod driver/describe-table :mongo
   [_driver database table]
   (let [fields (infer-schema database table)
         fields (->> fields
-                    (map-indexed (fn [idx x]
-                                   {:name              (:field x)
-                                    :database-type     (:mostCommonType x)
-                                    :base-type         (type-alias->base-type (:mostCommonType x))
-                                    :database-position idx
-                                    :path              (str/split (:path x) #"\.")
-                                    :depth             (path->depth (:path x))})))
+                    (map (fn [x]
+                           {:name              (:field x)
+                            :database-type     (:mostCommonType x)
+                            :index             (:index x)
+                            :base-type         (type-alias->base-type (:mostCommonType x))
+                            :path              (str/split (:path x) #"\.")
+                            :depth             (path->depth (:path x))})))
         ;; convert flat list of fields into deeply-nested map. :nested-fields are maps from field name to field data
         fields (loop [depth      0
                       new-fields {}]
@@ -443,7 +461,8 @@
                                                 (if-let [nested-fields (:nested-fields x)]
                                                   (assoc x :nested-fields (set (vals nested-fields)))
                                                   x))
-                                              {:nested-fields fields}))]
+                                              {:nested-fields fields}))
+        [fields _] (set-database-position fields 0)]
     {:schema nil
      :name   (:name table)
      :fields fields}))
