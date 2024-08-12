@@ -353,6 +353,13 @@
 
 ;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
 
+(defmethod serdes/generate-path "DashboardCard" [_ dashcard]
+  (remove nil?
+          [(serdes/infer-self-path "Dashboard" (t2/select-one 'Dashboard :id (:dashboard_id dashcard)))
+           (when (:dashboard_tab_id dashcard)
+             (serdes/infer-self-path "DashboardTab" (t2/select-one :model/DashboardTab :id (:dashboard_tab_id dashcard))))
+           (serdes/infer-self-path "DashboardCard" dashcard)]))
+
 (defmethod serdes/make-spec "DashboardCard" [_model-name opts]
   {:copy      [:col :entity_id :row :size_x :size_y]
    :skip      []

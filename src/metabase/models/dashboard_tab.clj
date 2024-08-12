@@ -58,6 +58,10 @@
    :position
    :created_at])
 
+(defmethod serdes/generate-path "DashboardTab" [_ dashcard]
+  [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
+   (serdes/infer-self-path "DashboardTab" dashcard)])
+
 (defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
   {:copy      [:entity_id :name :position]
    :skip      []
