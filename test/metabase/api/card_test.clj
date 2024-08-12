@@ -3630,21 +3630,85 @@
       (is (=? {:can_run_adhoc_query false}
               (mt/user-http-request :crowberto :get 200 (str "card/" (:id no-query))))))))
 
+(deftest data-and-collection-query-permissions-test
+  (mt/with-temp [:model/Collection collection  {}
+                 :model/Card       card        {:dataset_query {:database (mt/id)
+                                                                :type     :native
+                                                                :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
+                                                :database_id   (mt/id)
+                                                :collection_id (u/the-id collection)}]
+    (letfn [(process-query []
+              (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))
+            (blocked? [response] (or
+                                  (= "You don't have permissions to do that." response)
+                                  (re-matches #"Blocked: you are not allowed to run queries against Database \d+."
+                                              (:error response))))]
+      ;;    | Data perms | Collection perms | outcome
+      ;;    ------------ | ---------------- | --------
+      ;;    | no         | no               | blocked
+      ;;    | yes        | no               | blocked
+      ;;    | no         | yes              | blocked
+      ;;    | yes        | yes              | OK
+
+      (testing "Should NOT be able to run the parent Card with :blocked data-perms and no collection perms"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-collection-perms collection
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+            (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (is (not (mi/can-read? collection)))
+              (is (not (mi/can-read? card))))
+            (is (blocked? (process-query))))))
+
+      (testing "Should NOT be able to run the parent Card with valid data-perms and no collection perms"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-collection-perms collection
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+            (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (is (not (mi/can-read? collection)))
+              (is (not (mi/can-read? card))))
+            (is (blocked? (process-query))))))
+
+      (testing "SHOULD be able to run the parent Card with :blocked data-perms and valid collection perms"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-collection-perms collection
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (is (mi/can-read? collection))
+              (is (mi/can-read? card)))
+            (is (process-query)))))
+
+      ;; delete these in place so we can reset them below, you cannot set them twice in a row
+      (perms/revoke-collection-permissions! (perms-group/all-users) collection)
+
+      (testing "SHOULD be able to run the parent Card with valid data-perms and valid collection perms"
+        (mt/with-no-data-perms-for-all-users!
+          (mt/with-non-admin-groups-no-collection-perms collection
+            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+            (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
+            (mt/with-test-user :rasta
+              (is (mi/can-read? collection))
+              (is (mi/can-read? card)))
+            (is (= [[1] [2]] (mt/rows (process-query))))))))))
+
 (deftest nested-query-permissions-test
   (testing "Should be able to run a Card with another Card as its source query with just perms for the former (#15131)"
-    (mt/with-no-data-perms-for-all-users!
-      (mt/with-non-admin-groups-no-root-collection-perms
-        (mt/with-temp [:model/Collection allowed-collection    {}
-                       :model/Collection disallowed-collection {}
-                       :model/Card       parent-card           {:dataset_query {:database (mt/id)
-                                                                                :type     :native
-                                                                                :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
-                                                                :database_id   (mt/id)
-                                                                :collection_id (u/the-id disallowed-collection)}
-                       :model/Card       child-card            {:dataset_query {:database (mt/id)
-                                                                                :type     :query
-                                                                                :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
-                                                                :collection_id (u/the-id allowed-collection)}]
+    (mt/with-non-admin-groups-no-root-collection-perms
+      (mt/with-temp [:model/Collection allowed-collection    {}
+                     :model/Collection disallowed-collection {}
+                     :model/Card       parent-card           {:dataset_query {:database (mt/id)
+                                                                              :type     :native
+                                                                              :native   {:query "SELECT id FROM venues ORDER BY id ASC LIMIT 2;"}}
+                                                              :database_id   (mt/id)
+                                                              :collection_id (u/the-id disallowed-collection)}
+                     :model/Card       child-card            {:dataset_query {:database (mt/id)
+                                                                              :type     :query
+                                                                              :query    {:source-table (format "card__%d" (u/the-id parent-card))}}
+                                                              :collection_id (u/the-id allowed-collection)}]
+        (mt/with-no-data-perms-for-all-users!
+          (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
           (perms/grant-collection-read-permissions! (perms-group/all-users) allowed-collection)
           (letfn [(process-query-for-card [card]
                     (mt/user-http-request :rasta :post (format "card/%d/query" (u/the-id card))))]
@@ -3674,10 +3738,10 @@
                   (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
                       "Create queries = query-builder-and-native is sufficient to allow running the query")))
               (testing "view-data = unrestricted is sufficient to allow running the query"
-                  (mt/with-restored-data-perms!
-                    (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
-                    (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
-                        "view-data = unrestricted is sufficient to allow running the query"))))))))))
+                (mt/with-restored-data-perms!
+                  (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+                  (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
+                      "view-data = unrestricted is sufficient to allow running the query"))))))))))
 
 (deftest query-metadata-test
   (mt/with-temp
