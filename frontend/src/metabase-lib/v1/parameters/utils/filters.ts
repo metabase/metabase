@@ -117,11 +117,3 @@ function tagFilterForParameter(
   }
   return () => false;
 }
-
-export function appendStageIfSummarized(query: Lib.Query): Lib.Query {
-  const isSummarized =
-    Lib.aggregations(query, -1).length > 0 &&
-    Lib.breakouts(query, -1).length > 0;
-
-  return isSummarized ? Lib.appendStage(query) : query;
-}
