@@ -73,6 +73,7 @@ export const CompareAggregations = ({
         aggregation,
         columns,
         offset,
+        includeCurrentPeriod,
       );
       onSubmit(aggregations);
       onClose();
