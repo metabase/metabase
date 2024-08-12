@@ -15,6 +15,7 @@
    [clojure.set :as set]
    [clojure.test :refer :all]
    [dk.ative.docjure.spreadsheet :as spreadsheet]
+   [metabase.public-settings :as public-settings]
    [metabase.pulse :as pulse]
    [metabase.query-processor.streaming.csv :as qp.csv]
    [metabase.query-processor.streaming.xlsx :as qp.xlsx]
@@ -131,6 +132,15 @@
                      :model/PulseChannelRecipient _ {:pulse_channel_id pulse-channel-id
                                                      :user_id          (mt/user->id :rasta)}]
         (subscription-attachment* pulse)))))
+
+(defn all-outputs!
+  [card-or-dashcard export-format format-rows?]
+  (merge
+   (when-not (contains? card-or-dashcard :dashboard_id)
+     {:card-download    (card-download card-or-dashcard export-format format-rows?)
+      :alert-attachment (alert-attachment! card-or-dashcard export-format format-rows?)})
+   {:dashcard-download       (card-download card-or-dashcard export-format format-rows?)
+    :subscription-attachment (subscription-attachment! card-or-dashcard export-format format-rows?)}))
 
 (set! *warn-on-reflection* true)
 
@@ -598,3 +608,30 @@
                     :subscription-attachment subscription-header}
                    {:alert-attachment        (first alert-result)
                     :subscription-attachment (first subscription-result)}))))))))
+
+(deftest downloads-row-limit-test
+  (testing "Downloads row limit works."
+    (mt/with-temporary-setting-values [public-settings/download-row-limit 1050000]
+      (mt/dataset test-data
+        (mt/with-temp [:model/Card card {:display       :table
+                                         :dataset_query {:database (mt/id)
+                                                         :type     :native
+                                                         :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
+          (let [results (all-outputs! card :csv true)]
+            (is (= {:card-download           1050001
+                    :alert-attachment        1050001
+                    :dashcard-download       1050001
+                    :subscription-attachment 1050001}
+                     (update-vals results count))))))))
+  (testing "Downloads row limit default works."
+    (mt/dataset test-data
+      (mt/with-temp [:model/Card card {:display       :table
+                                       :dataset_query {:database (mt/id)
+                                                       :type     :native
+                                                       :native   {:query "SELECT 1 as A FROM generate_series(1,1100000);"}}}]
+        (let [results (all-outputs! card :csv true)]
+          (is (= {:card-download           1048576
+                  :alert-attachment        1048576
+                  :dashcard-download       1048576
+                  :subscription-attachment 1048576}
+                 (update-vals results count))))))))

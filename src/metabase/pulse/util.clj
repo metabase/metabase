@@ -27,10 +27,11 @@
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
                                 (qp/process-query
-                                 (qp/userland-query-with-default-constraints
-                                  (assoc query :middleware {:skip-results-metadata? true
-                                                            :process-viz-settings?  true
-                                                            :js-int-to-string?      false})
+                                 (qp/userland-query
+                                  (assoc query :middleware {:skip-results-metadata?            true
+                                                            :process-viz-settings?             true
+                                                            :js-int-to-string?                 false
+                                                            :add-default-userland-constraints? false})
                                   (merge (cond-> {:executed-by pulse-creator-id
                                                   :context     :pulse
                                                   :card-id     card-id}
@@ -74,19 +75,21 @@
                                           :dashcard dashcard
                                           :type     :card
                                           :result   (qp.dashboard/process-query-for-dashcard
-                                                      :dashboard-id  dashboard-id
-                                                      :card-id       card-id
-                                                      :dashcard-id   (u/the-id dashcard)
-                                                      :context       :dashboard-subscription
-                                                      :export-format :api
-                                                      :parameters    parameters
-                                                      :middleware    {:process-viz-settings? true
-                                                                      :js-int-to-string?     false}
-                                                      :make-run      (fn make-run [qp _export-format]
-                                                                       (^:once fn* [query info]
-                                                                               (qp
-                                                                                 (qp/userland-query-with-default-constraints query info)
-                                                                                 nil))))})
+                                                     :dashboard-id  dashboard-id
+                                                     :card-id       card-id
+                                                     :dashcard-id   (u/the-id dashcard)
+                                                     :context       :dashboard-subscription
+                                                     :export-format :api
+                                                     :parameters    parameters
+                                                     :constraints   {}
+                                                     :middleware    {:process-viz-settings?             true
+                                                                     :js-int-to-string?                 false
+                                                                     :add-default-userland-constraints? false}
+                                                     :make-run      (fn make-run [qp _export-format]
+                                                                      (^:once fn* [query info]
+                                                                       (qp
+                                                                        (qp/userland-query query info)
+                                                                        nil))))})
           result                       (result-fn card-id)
           series-results               (map (comp result-fn :id) multi-cards)]
       (when-not (and (get-in dashcard [:visualization_settings :card.hide_empty])
