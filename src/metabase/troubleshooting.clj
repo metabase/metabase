@@ -38,7 +38,7 @@
     :plan-alias (or (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :plan-alias) "")
     :version    config/mb-version-info
     :settings   {:report-timezone (driver/report-timezone)}}
-   (when (premium-features/is-hosted?)
+   (when-not (premium-features/is-hosted?)
      {:hosting-env                  (stats/environment-type)
       :application-database         (mdb/db-type)
       :application-database-details (t2/with-connection [^java.sql.Connection conn]
