@@ -3731,17 +3731,19 @@
                      clojure.lang.ExceptionInfo
                      #"You do not have permissions to run this query."
                      (mt/rows (process-query-for-card child-card)))
-                    "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db"))
-              (testing "create-queries = query-builder-and-native is sufficent to run the query"
-                (mt/with-restored-data-perms!
-                  (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
-                  (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
-                      "Create queries = query-builder-and-native is sufficient to allow running the query")))
-              (testing "view-data = unrestricted is sufficient to allow running the query"
+                    "Even if the user has can-write? on a Card, they should not be able to run it because they are blocked on Card's db")))
+            (testing "create-queries = query-builder-and-native is sufficent to run the query"
+              (mt/with-restored-data-perms!
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :blocked)
+                (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder-and-native)
+                (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
+                    "Create queries = query-builder-and-native is sufficient to allow running the query")))
+            (testing "view-data = unrestricted is sufficient to allow running the query"
                 (mt/with-restored-data-perms!
                   (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+                  (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
                   (is (= [[1] [2]] (mt/rows (process-query-for-card child-card)))
-                      "view-data = unrestricted is sufficient to allow running the query"))))))))))
+                      "view-data = unrestricted is sufficient to allow running the query")))))))))
 
 (deftest query-metadata-test
   (mt/with-temp
