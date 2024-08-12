@@ -166,14 +166,21 @@ function setup({
     { storeInitialState: state },
   );
 
-  function getRecentClause(): Lib.Clause {
-    expect(onQueryChange).toHaveBeenCalledWith(expect.anything());
-    const [clause] = onQueryChange.mock.lastCall;
-    return clause;
+  function getRecentClause(index: number = -1): Lib.Clause | undefined {
+    expect(onQueryChange).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+    );
+    const [query] = onQueryChange.mock.lastCall;
+    return Lib.aggregations(query, stageIndex).at(index);
   }
 
-  function getRecentClauseInfo() {
-    return Lib.displayInfo(query, stageIndex, getRecentClause());
+  function getRecentClauseInfo(index: number = -1) {
+    const clause = getRecentClause(index);
+    if (clause) {
+      return Lib.displayInfo(query, stageIndex, clause);
+    }
+    return null;
   }
 
   return {
@@ -317,7 +324,7 @@ describe("AggregationPicker", () => {
       await userEvent.type(screen.getByLabelText("Expression"), expression);
       await userEvent.type(screen.getByLabelText("Name"), expressionName);
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
-      expect(getRecentClauseInfo().displayName).toBe(expressionName);
+      expect(getRecentClauseInfo()?.displayName).toBe(expressionName);
     });
 
     it("should open the editor when a named expression without operator is used", async () => {
