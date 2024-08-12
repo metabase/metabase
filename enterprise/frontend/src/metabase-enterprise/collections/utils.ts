@@ -12,7 +12,6 @@ import type {
 
 import {
   COLLECTION_TYPES,
-  CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
   INSTANCE_ANALYTICS_COLLECTION,
   OFFICIAL_COLLECTION,
   REGULAR_COLLECTION,
@@ -39,14 +38,6 @@ export function getCollectionType({
     COLLECTION_TYPES?.[String(type || authority_level)] ?? REGULAR_COLLECTION
   );
 }
-
-export const getInstanceAnalyticsCustomCollection = (
-  collections: Collection[],
-) =>
-  collections?.find?.(
-    collection =>
-      collection.entity_id === CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID,
-  ) ?? null;
 
 export const getIcon = (item: ObjectWithModel): IconData => {
   if (getCollectionType({ type: item.type }).type === "instance-analytics") {

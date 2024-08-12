@@ -8,10 +8,10 @@ import { AddToDashSelectDashModal } from "metabase/containers/AddToDashSelectDas
 import { MoveModal } from "metabase/containers/MoveModal";
 import { SaveQuestionModal } from "metabase/containers/SaveQuestionModal";
 import { ROOT_COLLECTION } from "metabase/entities/collections/constants";
-import getInitialCollectionId from "metabase/entities/collections/getInitialCollectionId";
 import EntityCopyModal from "metabase/entities/containers/EntityCopyModal";
 import Questions from "metabase/entities/questions";
 import { useDispatch, useSelector } from "metabase/lib/redux";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { UpdateQuestionOpts } from "metabase/query_builder/actions/core/updateQuestion";
 import { CreateAlertModalContent } from "metabase/query_builder/components/AlertModals";
 import { ImpossibleToCreateModelModal } from "metabase/query_builder/components/ImpossibleToCreateModelModal";
@@ -74,9 +74,7 @@ export function QueryModals({
 }: QueryModalsProps) {
   const dispatch = useDispatch();
 
-  const initialCollectionId = useSelector(state =>
-    getInitialCollectionId(state, {}),
-  );
+  const initialCollectionId = PLUGIN_COLLECTIONS.useGetDefaultCollectionId();
   const questionWithParameters = useSelector(getQuestionWithParameters);
 
   const showAlertsAfterQuestionSaved = useCallback(() => {
