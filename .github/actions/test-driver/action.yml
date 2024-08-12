@@ -14,7 +14,7 @@ runs:
     - name: Prepare back-end environment
       uses: ./.github/actions/prepare-backend
       with:
-        m2-cache-key: uberjar
+        m2-cache-key: all-deps
     - name: Build static viz frontend
       run: yarn build-static-viz
       shell: bash

@@ -5,7 +5,7 @@ on:
   workflow_call:
     inputs:
       git_ref:
-        description: 'Valid git reference e.g. branches, tags, hashes'
+        description: "Valid git reference e.g. branches, tags, hashes"
         type: string
         required: true
       image_name:
@@ -25,22 +25,22 @@ jobs:
       MB_EDITION: ${{ matrix.edition }}
       INTERACTIVE: false
     steps:
-    - name: Check out the code
-      uses: actions/checkout@v4
-      with:
-        ref: ${{ inputs.git_ref }}
-    - name: Prepare front-end environment
-      uses: ./.github/actions/prepare-frontend
-    - name: Prepare back-end environment
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: uberjar
-    - name: Build
-      run: ./bin/build.sh
-    - name: Prepare uberjar artifact
-      uses: ./.github/actions/prepare-uberjar-artifact
-      with:
-        name: metabase-ee-uberjar
+      - name: Check out the code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.git_ref }}
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: all-deps
+      - name: Build
+        run: ./bin/build.sh
+      - name: Prepare uberjar artifact
+        uses: ./.github/actions/prepare-uberjar-artifact
+        with:
+          name: metabase-ee-uberjar
 
   check_jar_health:
     runs-on: ubuntu-22.04
@@ -52,21 +52,21 @@ jobs:
         edition: [ee]
         java-version: [11, 17]
     steps:
-    - name: Prepare JRE (Java Run-time Environment)
-      uses: actions/setup-java@v4
-      with:
-        java-package: jre
-        java-version: ${{ matrix.java-version }}
-        distribution: 'temurin'
-    - run: java -version
-    - uses: actions/download-artifact@v4
-      name: Retrieve uberjar artifact
-      with:
-        name: metabase-ee-uberjar
-    - name: Launch uberjar
-      run: java -jar ./target/uberjar/metabase.jar &
-    - name: Wait for Metabase to start
-      run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      - name: Prepare JRE (Java Run-time Environment)
+        uses: actions/setup-java@v4
+        with:
+          java-package: jre
+          java-version: ${{ matrix.java-version }}
+          distribution: "temurin"
+      - run: java -version
+      - uses: actions/download-artifact@v4
+        name: Retrieve uberjar artifact
+        with:
+          name: metabase-ee-uberjar
+      - name: Launch uberjar
+        run: java -jar ./target/uberjar/metabase.jar &
+      - name: Wait for Metabase to start
+        run: while ! curl 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
 
   containerize_test_and_push_container:
     runs-on: ubuntu-22.04
@@ -154,4 +154,4 @@ jobs:
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
-          sarif_file: 'trivy-results.sarif'
+          sarif_file: "trivy-results.sarif"

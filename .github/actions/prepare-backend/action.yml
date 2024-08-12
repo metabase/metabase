@@ -2,17 +2,17 @@ name: Prepare back-end environment
 inputs:
   java-version:
     required: true
-    default: '11'
+    default: "11"
   clojure-version:
     required: true
-    default: '1.11.1.1262'
+    default: "1.11.1.1262"
   m2-cache-key:
-    description: 'Key to cache M2 packages from Maven Central'
+    description: "Key to cache M2 packages from Maven Central"
     required: true
-    default: 'm2'
+    default: "m2"
     # options:
     # - m2 - default
-    # - uberjar - biggest - used for drivers and building a jar
+    # - all-deps - biggest - used for drivers and building a jar
     # - cljs - small - used for compiling cljs
 
 runs:
@@ -22,7 +22,7 @@ runs:
       uses: actions/setup-java@v4
       with:
         java-version: ${{ inputs.java-version }}
-        distribution: 'temurin'
+        distribution: "temurin"
     - name: Install Clojure CLI
       shell: bash
       run: |

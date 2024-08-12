@@ -3,16 +3,15 @@ name: "Snyk"
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
     paths:
-      - '**/deps.edn'
-      - '**/package.json'
-      - '.github/workflows/snyk.yml'
-      - '.github/scripts/write-poms.xml'
+      - "**/deps.edn"
+      - "**/package.json"
+      - ".github/workflows/snyk.yml"
+      - ".github/scripts/write-poms.xml"
   schedule:
-    - cron: '0 5 * * *'
-
+    - cron: "0 5 * * *"
 
 jobs:
   monitor:
@@ -23,7 +22,7 @@ jobs:
       - name: Prepare back-end environment
         uses: ./.github/actions/prepare-backend
         with:
-          m2-cache-key: uberjar
+          m2-cache-key: all-deps
       - uses: snyk/actions/setup@0.4.0
       - name: Generate all pom.xml
         run: .github/scripts/write-poms.sh

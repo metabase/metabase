@@ -3,25 +3,25 @@ name: Build scripts
 on:
   push:
     branches:
-      - 'master'
-      - 'release-**'
+      - "master"
+      - "release-**"
   pull_request:
 
 jobs:
   test-build-scripts:
     runs-on: ubuntu-22.04
     steps:
-    - uses: actions/checkout@v4
-    - name: Prepare back-end environment
-      timeout-minutes: 5
-      uses: ./.github/actions/prepare-backend
-      with:
-        m2-cache-key: uberjar
+      - uses: actions/checkout@v4
+      - name: Prepare back-end environment
+        timeout-minutes: 5
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: all-deps
 
-    - name: Run build and release script tests
-      run: clojure -X:dev:drivers:build:build-dev:build-test:ci
-      timeout-minutes: 15
-    - name: Run Liquibase migrations linter tests
-      run: clojure -M:test
-      working-directory: bin/lint-migrations-file
-      timeout-minutes: 15
+      - name: Run build and release script tests
+        run: clojure -X:dev:drivers:build:build-dev:build-test:ci
+        timeout-minutes: 15
+      - name: Run Liquibase migrations linter tests
+        run: clojure -M:test
+        working-directory: bin/lint-migrations-file
+        timeout-minutes: 15
