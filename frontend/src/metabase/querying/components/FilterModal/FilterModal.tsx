@@ -8,7 +8,7 @@ import * as Lib from "metabase-lib";
 import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
 import { SEARCH_KEY } from "./constants";
 import {
-  appendStageIfAggregated,
+  appendStageIfSummarized,
   getGroupItems,
   hasFilters,
   removeFilters,
@@ -29,7 +29,7 @@ export const useFilterContent = (
   onSubmit: (newQuery: Lib.Query) => void,
 ) => {
   const [query, setQuery] = useState(() =>
-    appendStageIfAggregated(initialQuery),
+    appendStageIfSummarized(initialQuery),
   );
   const queryRef = useRef(query);
   const [version, setVersion] = useState(1);
