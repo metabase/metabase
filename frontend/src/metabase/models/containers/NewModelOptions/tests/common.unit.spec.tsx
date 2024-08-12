@@ -17,14 +17,15 @@ describe("NewModelOptions (OSS)", () => {
 
   describe("has data access", () => {
     it("should render loading indicator when fetching databases (metabase#44813)", async () => {
+      setup({ databases: [createMockDatabase()] });
+      
       fetchMock.get(
         "path:/api/database",
         delay(2000).then(() => {
           return [createMockDatabase()];
         }),
+        { overwriteRoutes: true },
       );
-
-      setup({ databases: [createMockDatabase()] });
 
       expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
       expect(
