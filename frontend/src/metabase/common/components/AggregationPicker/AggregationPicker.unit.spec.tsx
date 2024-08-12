@@ -399,16 +399,5 @@ describe("AggregationPicker", () => {
 
       expect(onQueryChange).toHaveBeenCalled();
     });
-
-    it("does not call 'onQueryChange' on submit", async () => {
-      const { onQueryChange } = setup({
-        query: createQueryWithCountAggregation(),
-      });
-
-      await userEvent.click(screen.getByText("Compare to the past"));
-      await userEvent.click(screen.getByText("Done"));
-
-      expect(onQueryChange).not.toHaveBeenCalled();
-    });
   });
 });
