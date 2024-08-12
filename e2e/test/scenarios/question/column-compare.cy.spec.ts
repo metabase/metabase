@@ -524,20 +524,20 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       );
 
       verifySummarizeText({
-        itemName: "Compare “Count” to previous rows ...",
-        step2Title: "Compare “Count” to previous rows",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "rows above based on “Category”",
       });
 
       verifyPlusButtonText({
-        itemName: "Compare “Count” to previous rows",
-        step2Title: "Compare “Count” to previous rows",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "rows above based on “Category”",
       });
 
       verifyNotebookText({
-        itemName: "Compare “Count” to previous rows ...",
-        step2Title: "Compare “Count” to previous rows",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "rows above based on “Category”",
       });
 
@@ -585,20 +585,20 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       );
 
       verifySummarizeText({
-        itemName: "Compare “Count” to previous rows ...",
-        step2Title: "Compare “Count” to previous rows",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "rows above based on “Category”",
       });
 
       verifyPlusButtonText({
-        itemName: "Compare “Count” to previous rows",
-        step2Title: "Compare “Count” to previous rows",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "rows above based on “Category”",
       });
 
       verifyNotebookText({
-        itemName: "Compare “Count” to previous rows ...",
-        step2Title: "Compare “Count” to previous rows",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "rows above based on “Category”",
       });
 
@@ -647,8 +647,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       );
 
       verifySummarizeText({
-        itemName: "Compare “Count” to previous months ...",
-        step2Title: "Compare “Count” to previous months",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "months ago based on “Created At”",
       });
 
@@ -656,20 +656,20 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       verifyNoColumnCompareShortcut();
 
       verifyColumnDrillText({
-        itemName: "Compare “Count” to previous months",
-        step2Title: "Compare “Count” to previous months",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "months ago based on “Created At”",
       });
 
       verifyPlusButtonText({
-        itemName: "Compare “Count” to previous months",
-        step2Title: "Compare “Count” to previous months",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "months ago based on “Created At”",
       });
 
       verifyNotebookText({
-        itemName: "Compare “Count” to previous months ...",
-        step2Title: "Compare “Count” to previous months",
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
         offsetHelp: "months ago based on “Created At”",
       });
 
@@ -1060,7 +1060,8 @@ function verifyPlusButtonText(options: CheckTextOpts) {
 function verifyNotebookText(options: CheckTextOpts) {
   openNotebook();
   getNotebookStep("summarize")
-    .findByTestId("aggregate-step")
+    .findAllByTestId("aggregate-step")
+    .last()
     .icon("add")
     .click();
 
