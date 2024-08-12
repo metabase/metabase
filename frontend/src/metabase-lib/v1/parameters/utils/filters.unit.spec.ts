@@ -1,3 +1,13 @@
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
+import Dimension from "metabase-lib/v1/Dimension";
+import Field from "metabase-lib/v1/metadata/Field";
+import {
+  createMockParameter,
+  createMockTemplateTag,
+} from "metabase-types/api/mocks";
+import { PRODUCTS } from "metabase-types/api/mocks/presets";
+
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
@@ -5,7 +15,7 @@ import {
 
 describe("parameters/utils/field-filters", () => {
   describe("dimensionFilterForParameter", () => {
-    const field = {
+    const field = createMockField({
       isDate: () => false,
       isID: () => false,
       isCategory: () => false,
@@ -16,10 +26,11 @@ describe("parameters/utils/field-filters", () => {
       isNumber: () => false,
       isString: () => false,
       isLocation: () => false,
-    };
-    const typelessDimension = {
+    });
+
+    const typelessDimension = createMockDimension({
       field: () => field,
-    };
+    });
 
     [
       [
@@ -99,55 +110,75 @@ describe("parameters/utils/field-filters", () => {
       ],
     ].forEach(([parameter, dimension]) => {
       it(`should return a predicate that evaluates to true for a ${dimension.type} dimension when given a ${parameter.type} parameter`, () => {
-        const predicate = dimensionFilterForParameter(parameter);
+        const predicate = dimensionFilterForParameter(
+          createMockParameter(parameter),
+        );
         expect(predicate(typelessDimension)).toBe(false);
-        expect(predicate(dimension)).toBe(true);
+        expect(predicate(createMockDimension(dimension))).toBe(true);
       });
     });
 
     it("should return a predicate that evaluates to false for a coordinate dimension when given a number parameter", () => {
-      const coordinateDimension = {
+      const coordinateDimension = createMockDimension({
         field: () => ({
           ...field,
           isNumber: () => true,
           isCoordinate: () => true,
         }),
-      };
+      });
 
-      const predicate = dimensionFilterForParameter({ type: "number/between" });
+      const predicate = dimensionFilterForParameter(
+        createMockParameter({ type: "number/between" }),
+      );
       expect(predicate(coordinateDimension)).toBe(false);
     });
 
     it("should return a predicate that evaluates to false for a location dimension when given a category parameter", () => {
-      const locationDimension = {
+      const locationDimension = createMockDimension({
         field: () => ({
           ...field,
           isLocation: () => true,
         }),
-      };
+      });
 
-      const predicate = dimensionFilterForParameter({ type: "category" });
+      const predicate = dimensionFilterForParameter(
+        createMockParameter({ type: "category" }),
+      );
       expect(predicate(locationDimension)).toBe(false);
     });
   });
 
   describe("getTagOperatorFilterForParameter", () => {
     it("should return a predicate that evaluates to true for a template tag that has the same subtype operator as the given parameter", () => {
-      const predicate = getTagOperatorFilterForParameter({
-        type: "string/starts-with",
-      });
-      const templateTag1 = {
+      const predicate = getTagOperatorFilterForParameter(
+        createMockParameter({
+          type: "string/starts-with",
+        }),
+      );
+      const templateTag1 = createMockTemplateTag({
         "widget-type": "string/starts-with",
-      };
-      const templateTag2 = {
+      });
+      const templateTag2 = createMockTemplateTag({
         "widget-type": "foo/starts-with",
-      };
-      const templateTag3 = {
+      });
+      const templateTag3 = createMockTemplateTag({
         "widget-type": "string/ends-with",
-      };
+      });
       expect(predicate(templateTag1)).toBe(true);
       expect(predicate(templateTag2)).toBe(true);
       expect(predicate(templateTag3)).toBe(false);
     });
   });
 });
+
+function createMockField(mocks: Record<string, unknown>): Field {
+  return Object.assign(new Field(), mocks);
+}
+
+function createMockDimension(mocks: Record<string, unknown>): Dimension {
+  const metadata = createMockMetadata({});
+  const dimension = checkNotNull(
+    Dimension.parseMBQL(["field", PRODUCTS.CREATED_AT, null], metadata),
+  );
+  return Object.assign({}, dimension, mocks);
+}
