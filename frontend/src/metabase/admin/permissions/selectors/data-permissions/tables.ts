@@ -10,6 +10,7 @@ import {
   PLUGIN_ADVANCED_PERMISSIONS,
   PLUGIN_FEATURE_LEVEL_PERMISSIONS,
 } from "metabase/plugins";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Group, GroupsPermissions } from "metabase-types/api";
 
 import { DATA_PERMISSION_OPTIONS } from "../../constants/data-permissions";
@@ -24,6 +25,7 @@ import {
 import {
   getPermissionWarning,
   getPermissionWarningModal,
+  getViewDataPermissionsTooRestrictiveWarningModal,
   getWillRevokeNativeAccessWarningModal,
 } from "../confirmations";
 
@@ -116,6 +118,7 @@ const buildNativePermission = (
   isAdmin: boolean,
   permissions: GroupsPermissions,
   accessPermissionValue: DataPermissionValue,
+  database: Database,
 ): PermissionSectionConfig => {
   const dbValue = getSchemasPermission(
     permissions,
@@ -153,8 +156,15 @@ const buildNativePermission = (
     postActions: {
       controlled: () => navigateToGranularPermissions(groupId, entityId),
     },
-    confirmations: () => [
+    confirmations: (newValue: DataPermissionValue) => [
       getWillRevokeNativeAccessWarningModal(permissions, groupId, entityId),
+      getViewDataPermissionsTooRestrictiveWarningModal(
+        permissions,
+        groupId,
+        entityId,
+        database,
+        newValue,
+      ),
     ],
   };
 };
@@ -166,6 +176,7 @@ export const buildTablesPermissions = (
   permissions: GroupsPermissions,
   originalPermissions: GroupsPermissions,
   defaultGroup: Group,
+  database: Database,
 ): PermissionSectionConfig[] => {
   const accessPermission = buildAccessPermission(
     entityId,
@@ -182,6 +193,7 @@ export const buildTablesPermissions = (
     isAdmin,
     permissions,
     accessPermission.value,
+    database,
   );
 
   const hasAnyAccessOptions = accessPermission.options.length > 1;

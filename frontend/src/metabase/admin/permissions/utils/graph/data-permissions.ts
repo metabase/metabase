@@ -22,6 +22,7 @@ import type {
   TableEntityId,
 } from "../../types";
 import { DataPermission, DataPermissionValue } from "../../types";
+import { isSchemaEntityId } from "../data-entity-id";
 
 export const isRestrictivePermission = (value: DataPermissionValue) =>
   value === DataPermissionValue.NO ||
@@ -246,6 +247,65 @@ const getEntityPermission = (
   }
 };
 
+// subtypes to make testing easier and avoid using deprecated Database / Schema types
+type SchemaPartial = {
+  name: string;
+  getTables: () => { id: number | string }[];
+};
+type DatabaseParital = {
+  schemas?: SchemaPartial[];
+  schema(schemaName: string | undefined): SchemaPartial | null | undefined;
+};
+
+export function hasPermissionValueInSubgraph(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: DatabaseEntityId | SchemaEntityId,
+  database: DatabaseParital,
+  permission: DataPermission,
+  value: DataPermissionValue,
+) {
+  const schemasToSearch = _.compact(
+    isSchemaEntityId(entityId)
+      ? [database.schema(entityId.schemaName)]
+      : database.schemas,
+  );
+
+  if (schemasToSearch) {
+    const hasSchemaWithMatchingPermission = schemasToSearch.some(schema => {
+      const currVal = getTablesPermission(
+        permissions,
+        groupId,
+        { databaseId: entityId.databaseId, schemaName: schema.name },
+        permission,
+      );
+      return value === currVal;
+    });
+
+    if (hasSchemaWithMatchingPermission) {
+      return true;
+    }
+  }
+
+  return schemasToSearch.some(schema => {
+    return schema.getTables().some(table => {
+      return (
+        value ===
+        getFieldsPermission(
+          permissions,
+          groupId,
+          {
+            databaseId: entityId.databaseId,
+            schemaName: schema.name,
+            tableId: table.id as number,
+          },
+          permission,
+        )
+      );
+    });
+  });
+}
+
 // return boolean if able to find if a value is present in all or a portion of the permissions graph
 export function hasPermissionValueInGraph(
   permissions:
@@ -253,7 +313,10 @@ export function hasPermissionValueInGraph(
     | GroupPermissions
     | DatabasePermissions
     | DataPermissionValue,
-  permissionValue: DataPermissionValue,
+  permissionValue: Omit<
+    DataPermissionValue,
+    DataPermissionValue.BLOCKED | DataPermissionValue.NO
+  >, // default values are omitted from the graph, use hasPermissionValueInSubgraph instead
 ): boolean {
   if (permissions === permissionValue) {
     return true;

@@ -8,6 +8,7 @@ import {
 import {
   getFieldsPermission,
   getSchemasPermission,
+  hasPermissionValueInSubgraph,
 } from "metabase/admin/permissions/utils/graph";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -17,7 +18,7 @@ import type {
   ConcreteTableId,
 } from "metabase-types/api";
 
-import type { EntityId } from "../types";
+import type { DatabaseEntityId, EntityId, SchemaEntityId } from "../types";
 import { DataPermission, DataPermissionValue } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
@@ -127,6 +128,39 @@ export function getPermissionWarningModal(
   }
 }
 
+export function getWillEnableUnrestrictedViewAccessWarning(
+  permissions: GroupsPermissions,
+  groupId: number,
+  entityId: DatabaseEntityId | SchemaEntityId,
+  database: Database,
+  value: DataPermissionValue,
+) {
+  const hasCreateQueryAccess = value !== DataPermissionValue.NO;
+  if (!hasCreateQueryAccess) {
+    return;
+  }
+
+  const hasChildWithBlockedPermission = hasPermissionValueInSubgraph(
+    permissions,
+    groupId,
+    entityId,
+    database,
+    DataPermission.VIEW_DATA,
+    DataPermissionValue.BLOCKED,
+  );
+
+  if (hasChildWithBlockedPermission) {
+    const entityType = isSchemaEntityId(entityId) ? t`schema` : t`database`;
+
+    return {
+      title: t`Upgrade “View Data” to “Unrestricted” for this ${entityType}?`,
+      message: t`Your “Granular” permissions for “View Data” contains “Blocked” which restricts “Create Queries” permissions to “No”. Would you like to upgrade the permissions for this ${entityType} to “Unrestricted” to allow for this change?`,
+      confirmButtonText: t`Allow`,
+      cancelButtonText: t`Cancel`,
+    };
+  }
+}
+
 export function getWillRevokeNativeAccessWarningModal(
   permissions: GroupsPermissions,
   groupId: number,
@@ -157,38 +191,69 @@ export function getWillRevokeNativeAccessWarningModal(
   }
 }
 
-export function getRawQueryWarningModal(
+export function getViewDataPermissionsTooRestrictiveWarningModal(
   permissions: GroupsPermissions,
   groupId: Group["id"],
-  entityId: EntityId,
+  entityId: DatabaseEntityId | SchemaEntityId,
+  database: Database,
   value: DataPermissionValue,
 ) {
-  const nativePermission = getSchemasPermission(
-    permissions,
-    groupId,
-    entityId,
-    DataPermission.CREATE_QUERIES,
-  );
+  // if user sets 'Query builder and native' for a DB, warn them that view data permissions must be 'Unrestricted'
+  if (!isSchemaEntityId(entityId)) {
+    const nativePermission = getSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermission.CREATE_QUERIES,
+    );
 
-  const viewPermission = getSchemasPermission(
+    const viewPermission = getSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermission.VIEW_DATA,
+    );
+
+    if (
+      value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+      nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+      PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
+      ![
+        DataPermissionValue.UNRESTRICTED,
+        DataPermissionValue.IMPERSONATED,
+      ].includes(viewPermission)
+    ) {
+      return {
+        title: t`Allow native query editing?`,
+        message: t`This will also change this group's data access to Unrestricted for this database.`,
+        confirmButtonText: t`Allow`,
+        cancelButtonText: t`Cancel`,
+      };
+    }
+  }
+
+  // if user sets 'No' for a DB/Schema and a sub schema/tables contains 'Blocked' permissions, warn them
+  // that we'll automatically upgrade the DB/Schema to 'Unrestricted' view access
+  const hasCreateQueryAccess = value !== DataPermissionValue.NO;
+  if (!hasCreateQueryAccess) {
+    return;
+  }
+
+  const hasChildWithBlockedPermission = hasPermissionValueInSubgraph(
     permissions,
     groupId,
     entityId,
+    database,
     DataPermission.VIEW_DATA,
+    DataPermissionValue.BLOCKED,
   );
 
-  if (
-    value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
-    ![
-      DataPermissionValue.UNRESTRICTED,
-      DataPermissionValue.IMPERSONATED,
-    ].includes(viewPermission)
-  ) {
+  if (hasChildWithBlockedPermission) {
+    const entityType = isSchemaEntityId(entityId) ? t`schema` : t`database`;
+
     return {
-      title: t`Allow native query editing?`,
-      message: t`This will also change this group's data access to Unrestricted for this database.`,
+      title: t`Upgrade “View Data” to “Unrestricted” for this ${entityType}?`,
+      message: t`Your “Granular” permissions for “View Data” contains “Blocked” which restricts “Create Queries” access. Would you like to upgrade the permissions for this ${entityType} to “Unrestricted” to allow for this change?`,
       confirmButtonText: t`Allow`,
       cancelButtonText: t`Cancel`,
     };

@@ -14,6 +14,7 @@ import {
 } from "metabase/admin/permissions/utils/data-entity-id";
 import {
   getSchemasPermission,
+  hasPermissionValueInSubgraph,
   updateSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -66,10 +67,25 @@ export function upgradeViewPermissionsIfNeeded(
     DataPermission.VIEW_DATA,
   );
 
-  if (
+  const requiresUnrestrictedAccess =
     value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    dbPermission !== DataPermissionValue.IMPERSONATED
-  ) {
+    ![
+      DataPermissionValue.UNRESTRICTED,
+      DataPermissionValue.IMPERSONATED,
+    ].includes(dbPermission);
+
+  const isGrantingQueryAccessWithBlockedChild =
+    value !== DataPermissionValue.NO &&
+    hasPermissionValueInSubgraph(
+      permissions,
+      groupId,
+      entityId,
+      database,
+      DataPermission.VIEW_DATA,
+      DataPermissionValue.BLOCKED,
+    );
+
+  if (requiresUnrestrictedAccess || isGrantingQueryAccessWithBlockedChild) {
     permissions = updateSchemasPermission(
       permissions,
       groupId,
