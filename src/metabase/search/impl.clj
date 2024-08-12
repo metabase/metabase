@@ -1,6 +1,7 @@
 (ns metabase.search.impl
   (:require
    [cheshire.core :as json]
+   [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
    [medley.core :as m]
    [metabase.db :as mdb]
@@ -471,22 +472,22 @@
 
 (defn add-dataset-collection-hierarchy
   "Adds `collection_effective_ancestors` to *datasets* in the search results."
-  [search-results]
+  [ancestor-models search-results]
   (let [annotate     (fn [result]
-                        (cond-> result
-                          (= (:model result) "dataset")
-                          (assoc :collection_effective_ancestors
-                                 (->> (t2/hydrate
-                                       (if (nil? (:collection_id result))
-                                         collection/root-collection
-                                         {:location (:collection_location result)})
-                                       :effective_ancestors)
-                                      :effective_ancestors
-                                      ;; two pieces for backwards compatibility:
-                                      ;; - remove the root collection
-                                      ;; - remove the `personal_owner_id`
-                                      (remove collection.root/is-root-collection?)
-                                      (map #(dissoc % :personal_owner_id))))))]
+                       (cond-> result
+                         (contains? ancestor-models (:model result))
+                         (assoc :collection_effective_ancestors
+                                (->> (t2/hydrate
+                                      (if (nil? (:collection_id result))
+                                        collection/root-collection
+                                        {:location (:collection_location result)})
+                                      :effective_ancestors)
+                                     :effective_ancestors
+                                     ;; two pieces for backwards compatibility:
+                                     ;; - remove the root collection
+                                     ;; - remove the `personal_owner_id`
+                                     (remove collection.root/is-root-collection?)
+                                     (map #(dissoc % :personal_owner_id))))))]
     (map annotate search-results)))
 
 (defn- add-collection-effective-location
@@ -599,8 +600,8 @@
                             (filter #(pos? (:score %))))
         total-results       (cond->> (scoring/top-results reducible-results search.config/max-filtered-results xf)
                               true                           hydrate-user-metadata
-
-                              (:model-ancestors? search-ctx) (add-dataset-collection-hierarchy)
+                              true                           (add-dataset-collection-hierarchy
+                                                              (:ancestor-models search-ctx))
                               true                           (add-collection-effective-location)
                               true                           (map serialize))
         add-perms-for-col  (fn [item]
@@ -638,6 +639,7 @@
    [:table-db-id                         {:optional true} [:maybe ms/PositiveInt]]
    [:search-native-query                 {:optional true} [:maybe true?]]
    [:model-ancestors?                    {:optional true} [:maybe boolean?]]
+   [:ancestors?                          {:optional true} [:maybe boolean?]]
    [:verified                            {:optional true} [:maybe true?]]
    [:ids                                 {:optional true} [:maybe [:set ms/PositiveInt]]]])
 
@@ -656,6 +658,7 @@
            offset
            search-string
            model-ancestors?
+           ancestors?
            table-db-id
            search-native-query
            verified
@@ -670,7 +673,13 @@
         ctx    (cond-> {:archived?          (boolean archived)
                         :current-user-id    current-user-id
                         :current-user-perms current-user-perms
-                        :model-ancestors?   (boolean model-ancestors?)
+                        :ancestor-models   (set/union
+                                            (when model-ancestors? #{"dataset"})
+                                            (when ancestors? #{"dataset"
+                                                               "card"
+                                                               "dashboard"
+                                                               "metric"
+                                                               "collection"}))
                         :models             models
                         :search-string      search-string}
                  (some? created-at)                          (assoc :created-at created-at)

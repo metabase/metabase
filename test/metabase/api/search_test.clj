@@ -1504,7 +1504,18 @@
                                (filter #(= (:name %) "question"))
                                first
                                :collection)
-                          :effective_ancestors))))))
+                          :effective_ancestors))))
+    (testing "unless you pass `ancestors` instead!"
+      (mt/with-temp [Collection {top-col-id :id} {:name "top level col" :location "/"}
+                     Collection {mid-col-id :id} {:name "middle level col" :location (str "/" top-col-id "/")}
+                     Card {leaf-card-id :id} {:collection_id mid-col-id :name "leaf model"}
+                     Card {top-card-id :id} {:collection_id top-col-id :name "top model"}]
+        (is (= #{[leaf-card-id [{:name "top level col" :type nil :id top-col-id}]]
+                 [top-card-id []]}
+               (->> (mt/user-http-request :rasta :get 200 "search" :ancestors true :q "model")
+                    :data
+                    (map (juxt :id #(get-in % [:collection :effective_ancestors])))
+                    (into #{}))))))))
 
 (deftest model-ancestors-gets-ancestor-collections-4
   (testing "If `model_parents` is not passed, it doesn't get populated"

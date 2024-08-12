@@ -61,7 +61,7 @@
 
   A search query that has both filters applied will only return models and cards."
   [q archived created_at created_by table_db_id models last_edited_at last_edited_by
-   filter_items_in_personal_collection model_ancestors search_native_query verified ids]
+   filter_items_in_personal_collection model_ancestors ancestors search_native_query verified ids]
   {q                                   [:maybe ms/NonBlankString]
    archived                            [:maybe :boolean]
    table_db_id                         [:maybe ms/PositiveInt]
@@ -72,6 +72,7 @@
    last_edited_at                      [:maybe ms/NonBlankString]
    last_edited_by                      [:maybe (ms/QueryVectorOf ms/PositiveInt)]
    model_ancestors                     [:maybe :boolean]
+   ancestors                           [:maybe :boolean]
    search_native_query                 [:maybe true?]
    verified                            [:maybe true?]
    ids                                 [:maybe (ms/QueryVectorOf ms/PositiveInt)]}
@@ -91,6 +92,7 @@
          :last-edited-by                      (set last_edited_by)
          :limit                               mw.offset-paging/*limit*
          :model-ancestors?                    model_ancestors
+         :ancestors?                          ancestors
          :models                              models-set
          :offset                              mw.offset-paging/*offset*
          :search-native-query                 search_native_query

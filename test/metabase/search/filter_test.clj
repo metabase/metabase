@@ -7,10 +7,10 @@
    [metabase.test :as mt]))
 
 (def default-search-ctx
-  {:search-string       nil
-   :archived?           false
+  {:search-string      nil
+   :archived?          false
    :models             search.config/all-models
-   :model-ancestors?   false
+   :ancestor-models    #{}
    :current-user-id    1
    :current-user-perms #{"/"}})
 

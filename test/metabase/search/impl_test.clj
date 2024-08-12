@@ -64,7 +64,6 @@
                                                  :models             search.config/all-models
                                                  :current-user-id    (mt/user->id :crowberto)
                                                  :current-user-perms #{"/"}
-                                                 :model-ancestors?   false
                                                  :limit-int          100}))]
           ;; warm it up, in case the DB call depends on the order of test execution and it needs to
           ;; do some initialization

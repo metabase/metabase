@@ -102,7 +102,6 @@
    [:archived?          [:maybe :boolean]]
    [:current-user-id    pos-int?]
    [:current-user-perms [:set perms.u/PathSchema]]
-   [:model-ancestors?   :boolean]
    [:models             [:set SearchableModel]]
    [:search-string      [:maybe ms/NonBlankString]]
    ;;
@@ -117,6 +116,7 @@
    [:offset-int                          {:optional true} ms/Int]
    [:search-native-query                 {:optional true} true?]
    [:table-db-id                         {:optional true} ms/PositiveInt]
+   [:ancestor-models                     {:optional true} [:maybe [:set SearchableModel]]]
    ;; true to search for verified items only, nil will return all items
    [:verified                            {:optional true} true?]
    [:ids                                 {:optional true} [:set {:min 1} ms/PositiveInt]]])
