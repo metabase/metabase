@@ -264,6 +264,17 @@
 
 (def ^:private describe-table-sample-size 1000)
 
+(defn- sample-stages
+  "Query stages which get a sample of the data in the collection, of size `n`."
+  [n]
+  (let [start-n (quot n 2)
+        end-n   (- n start-n)]
+    [{"$facet"
+      {"start" [{"$limit" start-n}]
+       "end"   [{"$sort" {"_id" -1}} {"$limit" end-n}]}}
+     {"$project" {"sample" {"$concatArrays" ["$start" "$end"]}}}
+     {"$unwind" "$sample"}]))
+
 (defn- root-query [max-depth]
   (let [depth-k    (fn [depth] (str "depth" depth "K"))
         depth-type (fn [depth] (str "depth" depth "Type"))
@@ -323,9 +334,8 @@
                           "mostCommonType" 1}}]))
         all-depths (range (inc max-depth))
         facets (into {} (map (juxt #(str "depth" %) facet-stage) all-depths))]
-    (concat [{"$sample" {"size" describe-table-sample-size}}
-             {"$project" {"doc" "$$ROOT"}}
-             {"$project" {(depth-kvs 0) {"$objectToArray" "$doc"}}}
+    (concat (sample-stages describe-table-sample-size)
+            [{"$project" {(depth-kvs 0) {"$objectToArray" "$sample"}}}
              {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}]
             (mapcat project-nested-fields all-depths)
             [{"$facet" facets}
@@ -361,12 +371,14 @@
                "field"          "$_id.k"
                "index"          "$_id.index"
                "mostCommonType" 1}}])]
-    [{"$sample" {"size" describe-table-sample-size}}
-     {"$facet"
-      (into {}
-            (map-indexed (fn [idx path]
-                           [idx (path-query path)]))
-            parent-paths)}]))
+    (concat (sample-stages describe-table-sample-size)
+            [{"$replaceRoot" {"newRoot" "$sample"}}
+             {"$project" {"sample" 0}}
+             {"$facet"
+              (into {}
+                    (map-indexed (fn [idx path]
+                                   [idx (path-query path)]))
+                    parent-paths)}])))
 
 (defn- path->depth [path]
   (dec (count (str/split path #"\."))))
