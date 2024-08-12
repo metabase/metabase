@@ -30,9 +30,9 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
     setTokenFeatures("all");
   });
 
-  it("should allow saving 'blocked' and disable create queries dropdown when set", () => {
-    const g = "All Users";
+  const g = "All Users";
 
+  it("should allow saving 'blocked' and disable create queries dropdown when set", () => {
     cy.visit(
       `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`, // table level
     );
@@ -62,6 +62,40 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
       assertPermissionForItem(g, CREATE_QUERIES_PERM_IDX, "No", true);
       assertPermissionForItem(g, DOWNLOAD_PERM_IDX, "No", true);
     });
+  });
+
+  it("should prevent user from upgrading db/schema create query permissions if a child schema/table contains blocked permissions", () => {
+    cy.visit(
+      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
+    ); // table level
+    modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Blocked");
+
+    selectSidebarItem("All Users");
+    modifyPermission(
+      "Sample Database",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder only",
+    );
+    assertPermissionForItem(
+      "Sample Database",
+      DATA_ACCESS_PERM_IDX,
+      "Granular",
+    );
+
+    modal()
+      .should("exist")
+      .within(() => {
+        cy.findByText(
+          "Upgrade “View Data” to “Unrestricted” for this database?",
+        ).should("exist");
+        cy.findByText("Allow").click();
+      });
+
+    assertPermissionForItem(
+      "Sample Database",
+      DATA_ACCESS_PERM_IDX,
+      "Can view",
+    );
   });
 });
 
