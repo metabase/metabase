@@ -383,3 +383,11 @@
   "Helper for creating a schema that coerces single-value to a vector. Useful for coercing query parameters."
   [schema]
   [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} schema])
+
+(def File
+  "Schema for a file coming in HTTP request from multipart/form-data"
+  [:map {:closed true}
+   [:content-type string?]
+   [:filename string?]
+   [:size int?]
+   [:tempfile (InstanceOfClass java.io.File)]])
