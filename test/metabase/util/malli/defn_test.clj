@@ -2,12 +2,23 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [malli.core :as mc]
    [malli.experimental :as mx]
    [metabase.test :as mt]
    [metabase.util.malli :as mu]
    [metabase.util.malli.defn :as mu.defn]
    [metabase.util.malli.fn :as mu.fn]))
+
+(defn- deanon-fn-names
+  "Walk the form and remove the numeric part in symbols like `symbol12345`."
+  [form]
+  (walk/postwalk
+   #(if-some [[_ prefix] (when (symbol? %)
+                           (re-matches #"(.+?)\d+" (str %)))]
+      (symbol prefix)
+      %)
+   form))
 
 (deftest ^:parallel annotated-docstring-test
   (are [fn-tail expected] (= expected
@@ -168,21 +179,21 @@
       (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly false)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
-                    "Inputs: []\n  Return: :int" (clojure.core/fn [] "foo"))
-                 expansion)))))
+                    "Inputs: []\n  Return: :int" (clojure.core/fn f [] "foo"))
+                 (deanon-fn-names expansion))))))
     (testing "returns an instrumented fn"
       (mt/with-dynamic-redefs [mu.fn/instrument-ns? (constantly true)]
         (let [expansion (macroexpand `(mu/defn ~'f :- :int [] "foo"))]
           (is (= '(def f
                     "Inputs: []\n  Return: :int"
                     (clojure.core/let
-                        [&f (clojure.core/fn [] "foo")]
+                        [&f (clojure.core/fn f [] "foo")]
                       (clojure.core/fn
                         ([]
                          (try
                            (clojure.core/->> (&f) (metabase.util.malli.fn/validate-output {:fn-name 'f} :int))
                            (catch java.lang.Exception error (throw (metabase.util.malli.fn/fixup-stacktrace error))))))))
-                 expansion)))))))
+                 (deanon-fn-names expansion))))))))
 
 
 (mu/defn- ^:extra-metadata private-foo :- :int
