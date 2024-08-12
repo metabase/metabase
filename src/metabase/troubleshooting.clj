@@ -12,22 +12,19 @@
 (defn system-info
   "System info we ask for for bug reports"
   []
-  (->> (select-keys (System/getProperties)
-                    (concat
-                     (when-not (premium-features/is-hosted?)
-                       ["os.name"
-                        "os.version"])
-                     ["file.encoding"
-                      "java.runtime.name"
-                      "java.runtime.version"
-                      "java.vendor"
-                      "java.vendor.url"
-                      "java.version"
-                      "java.vm.name"
-                      "java.vm.version"
-                      "user.language"
-                      "user.timezone"]))
-       (into (sorted-map))))
+  (into (sorted-map)
+        (select-keys (System/getProperties) ["java.runtime.name"
+                                             "java.runtime.version"
+                                             "java.vendor"
+                                             "java.vendor.url"
+                                             "java.version"
+                                             "java.vm.name"
+                                             "java.vm.version"
+                                             "os.name"
+                                             "os.version"
+                                             "user.language"
+                                             "user.timezone"
+                                             "file.encoding"])))
 
 (defn metabase-info
   "Make it easy for the user to tell us what they're using"
@@ -37,11 +34,11 @@
     :run-mode   (config/config-kw :mb-run-mode)
     :plan-alias (or (some-> (premium-features/premium-embedding-token) premium-features/fetch-token-status :plan-alias) "")
     :version    config/mb-version-info
-    :settings   {:report-timezone (driver/report-timezone)}}
+    :settings   {:report-timezone (driver/report-timezone)}
+    :hosting-env                  (stats/environment-type)
+    :application-database         (mdb/db-type)}
    (when-not (premium-features/is-hosted?)
-     {:hosting-env                  (stats/environment-type)
-      :application-database         (mdb/db-type)
-      :application-database-details (t2/with-connection [^java.sql.Connection conn]
+     {:application-database-details (t2/with-connection [^java.sql.Connection conn]
                                       (let [metadata (.getMetaData conn)]
                                         {:database    {:name    (.getDatabaseProductName metadata)
                                                        :version (.getDatabaseProductVersion metadata)}
