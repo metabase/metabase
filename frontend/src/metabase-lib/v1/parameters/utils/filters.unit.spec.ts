@@ -1,5 +1,5 @@
-import type Dimension from "metabase-lib/v1/Dimension";
-import type Field from "metabase-lib/v1/metadata/Field";
+import Dimension from "metabase-lib/v1/Dimension";
+import Field from "metabase-lib/v1/metadata/Field";
 import {
   createMockParameter,
   createMockTemplateTag,
@@ -12,7 +12,7 @@ import {
 
 describe("parameters/utils/field-filters", () => {
   describe("dimensionFilterForParameter", () => {
-    const field = {
+    const field = createMockField({
       isDate: () => false,
       isID: () => false,
       isCategory: () => false,
@@ -23,10 +23,11 @@ describe("parameters/utils/field-filters", () => {
       isNumber: () => false,
       isString: () => false,
       isLocation: () => false,
-    } as Field;
-    const typelessDimension = {
+    });
+
+    const typelessDimension = createMockDimension({
       field: () => field,
-    } as Dimension;
+    });
 
     [
       [
@@ -110,18 +111,18 @@ describe("parameters/utils/field-filters", () => {
           createMockParameter(parameter),
         );
         expect(predicate(typelessDimension)).toBe(false);
-        expect(predicate(dimension as unknown as Dimension)).toBe(true);
+        expect(predicate(createMockDimension(dimension))).toBe(true);
       });
     });
 
     it("should return a predicate that evaluates to false for a coordinate dimension when given a number parameter", () => {
-      const coordinateDimension = {
+      const coordinateDimension = createMockDimension({
         field: () => ({
           ...field,
           isNumber: () => true,
           isCoordinate: () => true,
         }),
-      } as Dimension;
+      });
 
       const predicate = dimensionFilterForParameter(
         createMockParameter({ type: "number/between" }),
@@ -130,12 +131,12 @@ describe("parameters/utils/field-filters", () => {
     });
 
     it("should return a predicate that evaluates to false for a location dimension when given a category parameter", () => {
-      const locationDimension = {
+      const locationDimension = createMockDimension({
         field: () => ({
           ...field,
           isLocation: () => true,
         }),
-      } as Dimension;
+      });
 
       const predicate = dimensionFilterForParameter(
         createMockParameter({ type: "category" }),
@@ -166,3 +167,14 @@ describe("parameters/utils/field-filters", () => {
     });
   });
 });
+
+function createMockField(mocks: Record<string, unknown>): Field {
+  return Object.assign(new Field(), mocks);
+}
+
+function createMockDimension(mocks: Record<string, unknown>): Dimension {
+  return Object.assign(
+    new Dimension(undefined, [], undefined, undefined, undefined),
+    mocks,
+  );
+}
