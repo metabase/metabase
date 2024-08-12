@@ -5,11 +5,9 @@
    [cheshire.generate :as json.generate]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [flatland.ordered.map :as ordered-map]
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
-   [metabase.driver.common :as driver.common]
    [metabase.driver.mongo.connection :as mongo.connection]
    [metabase.driver.mongo.database :as mongo.db]
    [metabase.driver.mongo.execute :as mongo.execute]
@@ -106,83 +104,6 @@
   (mongo.connection/with-mongo-client [_ database]
     (do-sync-fn)))
 
-(defn- val->semantic-type [field-value]
-  (cond
-    ;; 1. url?
-    (and (string? field-value)
-         (u/url? field-value))
-    :type/URL
-
-    ;; 2. json?
-    (and (string? field-value)
-         (or (str/starts-with? field-value "{")
-             (str/starts-with? field-value "[")))
-    (when-let [j (u/ignore-exceptions (json/parse-string field-value))]
-      (when (or (map? j)
-                (sequential? j))
-        :type/SerializedJSON))))
-
-(defn- find-nested-fields [field-value nested-fields]
-  (loop [[k & more-keys] (keys field-value)
-         fields nested-fields]
-    (if-not k
-      fields
-      (recur more-keys (update fields k (partial update-field-attrs (k field-value)))))))
-
-(defn- update-field-attrs [field-value field-def]
-  (-> field-def
-      (update :count u/safe-inc)
-      (update :len #(if (string? field-value)
-                      (+ (or % 0) (count field-value))
-                      %))
-      (update :types (fn [types]
-                       (update types (type field-value) u/safe-inc)))
-      (update :semantic-types (fn [semantic-types]
-                               (if-let [st (val->semantic-type field-value)]
-                                 (update semantic-types st u/safe-inc)
-                                 semantic-types)))
-      (update :nested-fields (fn [nested-fields]
-                               (if (map? field-value)
-                                 (find-nested-fields field-value nested-fields)
-                                 nested-fields)))))
-
-(defn- most-common-object-type
-  "Given a sequence of tuples like [Class <number-of-occurances>] return the Class with the highest number of
-  occurances. The basic idea here is to take a sample of values for a Field and then determine the most common type
-  for its values, and use that as the Metabase base type. For example if we have a Field called `zip_code` and it's a
-  number 90% of the time and a string the other 10%, we'll just call it a `:type/Number`."
-  ^Class [field-types]
-  (when (seq field-types)
-    (first (apply max-key second field-types))))
-
-(defn- class->base-type [^Class klass]
-  (if (isa? klass org.bson.types.ObjectId)
-    :type/MongoBSONID
-    (driver.common/class->base-type klass)))
-
-(defn- describe-table-field [field-kw field-info idx]
-  (let [most-common-object-type  (most-common-object-type (:types field-info))
-        [nested-fields idx-next]
-        (reduce
-         (fn [[nested-fields idx] nested-field]
-           (let [[nested-field idx-next] (describe-table-field nested-field
-                                                               (nested-field (:nested-fields field-info))
-                                                               idx)]
-             [(conj nested-fields nested-field) idx-next]))
-         [#{} (inc idx)]
-         (keys (:nested-fields field-info)))]
-    [(cond-> {:name              (name field-kw)
-              :database-type     (some-> most-common-object-type .getName)
-              :base-type         (class->base-type most-common-object-type)
-              :database-position idx}
-       (= :_id field-kw)           (assoc :pk? true)
-       (:semantic-types field-info) (assoc :semantic-type (->> (:semantic-types field-info)
-                                                             (filterv #(some? (first %)))
-                                                             (sort-by second)
-                                                             last
-                                                             first))
-       (:nested-fields field-info) (assoc :nested-fields nested-fields)) idx-next]))
-
 (defmethod driver/dbms-version :mongo
   [_driver database]
   (mongo.connection/with-mongo-database [db database]
@@ -221,46 +142,6 @@
                    {:type  :normal-column-index
                     :value %}))
            set))))
-
-(defn- sample-documents [^MongoDatabase db table sort-direction]
-  (let [coll (mongo.util/collection db (:name table))]
-    (mongo.util/do-find coll {:keywordize true
-                              :limit metadata-queries/nested-field-sample-limit
-                              :skip 0
-                              :sort-criteria [[:_id sort-direction]]
-                              :batch-size 256})))
-
-(defn- table-sample-column-info
-  "Sample the rows (i.e., documents) in `table` and return a map of information about the column keys we found in that
-   sample. The results will look something like:
-
-      {:_id      {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil},
-       :severity {:count 200, :len nil, :types {java.lang.Long 200}, :semantic-types nil, :nested-fields nil}}"
-  [^MongoDatabase db table]
-  (try
-    (reduce
-     (fn [field-defs row]
-       (loop [[k & more-keys] (keys row), fields field-defs]
-         (if-not k
-           fields
-           (recur more-keys (update fields k (partial update-field-attrs (k row)))))))
-     (ordered-map/ordered-map)
-     (concat (sample-documents db table 1) (sample-documents db table -1)))
-    (catch Throwable t
-      (log/error (format "Error introspecting collection: %s" (:name table)) t))))
-
-(defmethod driver/describe-table :mongo
-  [_ database table]
-  (mongo.connection/with-mongo-database [^MongoDatabase db database]
-    (let [column-info (table-sample-column-info db table)]
-      {:schema nil
-       :name   (:name table)
-       :fields (first
-                (reduce (fn [[fields idx] [field info]]
-                          (let [[described-field new-idx] (describe-table-field field info idx)]
-                            [(conj fields described-field) new-idx]))
-                        [#{} 0]
-                        column-info))})))
 
 (def ^:private describe-table-sample-size 1000)
 
@@ -389,7 +270,9 @@
                                               :type     "native"
                                               :native   {:collection (:name table)
                                                          :query      (json/generate-string q)}}))))
-        query-depth   20 ; TODO: this number needs more testing
+        ;; query-depth's value involves a trade-off. The lower the query-depth the faster root-query executes.
+        ;; however it can mean we have to do more nested-level-query executions.
+        query-depth   4
         fields        (flatten (q! (root-query query-depth)))
         ;; object-fields of the maximum depth need to be explored further
         nested-fields (fn nested-fields [paths]
