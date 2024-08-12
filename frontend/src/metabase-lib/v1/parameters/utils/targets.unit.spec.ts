@@ -35,7 +35,6 @@ import {
   createOrdersTable,
   createProductsCreatedAtField,
   createSampleDatabase,
-  ORDERS_ID,
   PRODUCTS,
   PRODUCTS_ID,
   REVIEWS_ID,
@@ -496,7 +495,26 @@ function createBaseQuery() {
       { operatorName: "count" },
       { operatorName: "sum", tableName: "ORDERS", columnName: "TOTAL" },
     ],
-    // TODO: breakouts
+    breakouts: [
+      {
+        tableName: "ORDERS",
+        columnName: "CREATED_AT",
+        temporalBucketName: "Month",
+      },
+      {
+        tableName: "PRODUCTS",
+        columnName: "CREATED_AT",
+        temporalBucketName: "Year",
+      },
+      {
+        tableName: "REVIEWS",
+        columnName: "CREATED_AT",
+        temporalBucketName: "Quarter",
+      },
+      {
+        columnName: "User's 18th birthday",
+      },
+    ],
   });
 }
 
