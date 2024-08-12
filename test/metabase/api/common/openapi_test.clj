@@ -5,6 +5,7 @@
    [malli.json-schema :as mjs]
    [metabase.api.common :as api]
    [metabase.api.common.openapi :as openapi]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]))
 
 ;;; inner helpers
@@ -36,9 +37,11 @@
 
 (api/defendpoint ^:multipart POST "/:id/upload"
   "docstring"
-  [id :as {raw-params :params}]
-  {id ms/PositiveInt}
-  {:data (get-in raw-params ["file" :tempfile])})
+  [id :as {{:strs [file]} :multipart-params}]
+  {id   ms/PositiveInt
+   file (mu/with ms/File
+                 {:description "File to upload"})}
+  {:id id :data file})
 
 (api/defendpoint POST "/export"
   "docstring"
@@ -96,14 +99,17 @@
                           :schema   {:$ref "#/components/schemas/metabase.lib.schema.common~1non-blank-string"}}]}}
           (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id)))
   (is (=? {:post
-           {:parameters [{:in          :path
-                          :name        :id
-                          :required    true
-                          :description some?
-                          :schema      {:type    "integer"
-                                        :minimum 1}}]
-            ;; TODO: no :requestBody since we did not spec anything, would be nice to be able to spec files
-            }}
+           {:parameters  [{:in          :path
+                           :name        :id
+                           :required    true
+                           :description some?
+                           :schema      {:type    "integer"
+                                         :minimum 1}}]
+            :requestBody {:content {"multipart/form-data"
+                                    {:schema
+                                     {:type       "object"
+                                      :properties {:file {}}
+                                      :required   [:file]}}}}}}
           (#'openapi/defendpoint->path-item nil "/{id}" #'POST_:id_upload)))
   (is (=? {:post
            {:parameters [{:in       :query

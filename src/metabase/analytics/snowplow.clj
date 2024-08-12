@@ -45,7 +45,7 @@
    ::action        "1-0-0"
    ::embed_share   "1-0-0"
    ::llm_usage     "1-0-0"
-   ::serialization "1-0-0"})
+   ::serialization "1-0-1"})
 
 (def ^:private event->schema
   "The schema to use for each analytics event."
