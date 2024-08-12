@@ -140,7 +140,15 @@ export class GuiQueryEditor extends Component {
         <div className={CS.mx2}>
           <Popover opened={this.state.isFilterPopoverOpen}>
             <Popover.Target>
-              <Box>{addFilterButton}</Box>
+              <Box
+                onClick={() =>
+                  this.setState({
+                    isFilterPopoverOpen: !this.state.isFilterPopoverOpen,
+                  })
+                }
+              >
+                {addFilterButton}
+              </Box>
             </Popover.Target>
             <Popover.Dropdown>
               <FilterPopover
