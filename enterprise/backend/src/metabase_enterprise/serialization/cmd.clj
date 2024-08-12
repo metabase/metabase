@@ -87,7 +87,8 @@
   `opts` are passed to [[v2.load/load-metabase]]."
   [path :- :string
    opts :- [:map
-            [:backfill? {:optional true} [:maybe :boolean]]]
+            [:backfill? {:optional true} [:maybe :boolean]]
+            [:continue-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?
              require-initialized-db?]
@@ -112,7 +113,8 @@
    opts are passed to load-metabase"
   [path :- :string
    opts :- [:map
-            [:backfill? {:optional true} [:maybe :boolean]]]]
+            [:backfill? {:optional true} [:maybe :boolean]]
+            [:continue-on-error {:optional true} [:maybe :int]]]]
   (let [start    (System/nanoTime)
         err      (atom nil)
         report   (try
@@ -128,6 +130,7 @@
                             :count         (if (contains? imported "Setting")
                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
                                              (count (:seen report)))
+                            :error_count   (count (:errors report))
                             :success       (nil? @err)
                             :error_message (some-> @err str)})
     (when @err
@@ -243,12 +246,12 @@
       (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
   (let [start  (System/nanoTime)
         err    (atom nil)
+        opts   (cond-> opts
+                 (seq collection-ids)
+                 (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
         report (try
                  (serdes/with-cache
-                   (-> (cond-> opts
-                         (seq collection-ids)
-                         (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
-                       v2.extract/extract
+                   (-> (v2.extract/extract opts)
                        (v2.storage/store! path)))
                  (catch Exception e
                    (reset! err e)))]
@@ -257,6 +260,7 @@
                             :source          "cli"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
+                            :error_count     (count (:errors report))
                             :collection      (str/join "," collection-ids)
                             :all_collections (and (empty? collection-ids)
                                                   (not (:no-collections opts)))
