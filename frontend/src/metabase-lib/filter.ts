@@ -1,4 +1,5 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
+import { t } from "ttag";
 
 import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, TemporalUnit } from "metabase-types/api";
@@ -142,7 +143,7 @@ export function filterGroups(query: Query) {
         stageIndex,
         groupIndex,
         groupInfo,
-        displayName: getColumnGroupName(groupInfo),
+        displayName: getColumnGroupName(groupInfo) || t`Summaries`,
         columnItems: availableColumns.map(column => {
           const columnInfo = displayInfo(query, stageIndex, column);
           return {
