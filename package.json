@@ -289,7 +289,7 @@
     "react-refresh": "^0.13.0",
     "reg-cli": "^0.17.7",
     "semver": "^7.6.3",
-    "shadow-cljs": "2.27.4",
+    "shadow-cljs": "^2.28.12",
     "source-map-loader": "^4.0.1",
     "storybook-addon-pseudo-states": "^3.1.1",
     "stylelint": "^16.2.1",
