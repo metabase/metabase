@@ -23,6 +23,10 @@ import {
   createSavedStructuredCard,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import {
+  createMockEmbedState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../test-utils";
 
@@ -52,7 +56,10 @@ const createQueryWithBreakout = () => {
 
 const setup = (
   step = createMockNotebookStep(),
-  { readOnly = false }: { readOnly?: boolean } = {},
+  {
+    readOnly = false,
+    isEmbeddingSdk = false,
+  }: { readOnly?: boolean; isEmbeddingSdk?: boolean } = {},
 ) => {
   const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
 
@@ -60,6 +67,10 @@ const setup = (
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
   setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+
+  const storeInitialState = createMockState({
+    embed: createMockEmbedState({ isEmbeddingSdk }),
+  });
 
   renderWithProviders(
     <DataStep
@@ -72,6 +83,7 @@ const setup = (
       reportTimezone="UTC"
       updateQuery={updateQuery}
     />,
+    { storeInitialState },
   );
 
   const getNextQuery = (): Lib.Query => {
@@ -364,6 +376,53 @@ describe("DataStep", () => {
         await screen.findByTestId("entity-picker-modal"),
       ).toBeInTheDocument();
       expect(mockWindowOpen).not.toHaveBeenCalled();
+    });
+
+    describe("embedding SDK context", () => {
+      it("should not show the tooltip", async () => {
+        setup(createMockNotebookStep(), { isEmbeddingSdk: true });
+
+        await userEvent.hover(screen.getByText("Orders"));
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      });
+
+      it.each([{ metaKey: true }, { ctrlKey: true }])(
+        "meta/ctrl click should not open the data source",
+        async clickConfig => {
+          const { mockWindowOpen } = setup(createMockNotebookStep(), {
+            isEmbeddingSdk: true,
+          });
+
+          const dataSource = screen.getByText("Orders");
+          fireEvent.click(dataSource, clickConfig);
+
+          expect(
+            await screen.findByTestId("entity-picker-modal"),
+          ).toBeInTheDocument();
+          expect(mockWindowOpen).not.toHaveBeenCalled();
+          mockWindowOpen.mockClear();
+        },
+      );
+
+      it("middle click should not open the data source", async () => {
+        const { mockWindowOpen } = setup(createMockNotebookStep(), {
+          isEmbeddingSdk: true,
+        });
+
+        const dataSource = screen.getByText("Orders");
+        const middleClick = new MouseEvent("auxclick", {
+          bubbles: true,
+          button: 1,
+        });
+
+        fireEvent(dataSource, middleClick);
+
+        expect(
+          await screen.findByTestId("entity-picker-modal"),
+        ).toBeInTheDocument();
+        expect(mockWindowOpen).not.toHaveBeenCalled();
+        mockWindowOpen.mockClear();
+      });
     });
   });
 });
