@@ -140,6 +140,7 @@
     "@loki/create-async-callback": "^0.35.0",
     "@pmmmwh/react-refresh-webpack-plugin": "0.5.10",
     "@sinonjs/fake-timers": "^9.1.2",
+    "@size-limit/preset-app": "^11.1.4",
     "@storybook/addon-a11y": "^6.5.16",
     "@storybook/addon-actions": "6.5.16",
     "@storybook/addon-essentials": "6.5.16",
@@ -292,6 +293,7 @@
     "reg-cli": "^0.17.7",
     "semver": "^7.6.3",
     "shadow-cljs": "^2.28.12",
+    "size-limit": "^11.1.4",
     "source-map-loader": "^4.0.1",
     "storybook-addon-pseudo-states": "^3.1.1",
     "stylelint": "^16.2.1",
@@ -447,5 +449,43 @@
   },
   "browserslist": [
     "defaults"
+  ],
+  "size-limit": [
+    {
+      "name": "vendor",
+      "path": [
+        "resources/frontend_client/app/dist/vendor.*.js",
+        "!resources/frontend_client/app/dist/vendor-styles.*.js"
+      ],
+      "running": false,
+      "brotli": false
+    },
+    {
+      "name": "app-main",
+      "path": [
+        "resources/frontend_client/app/dist/app-main.*.js",
+        "!resources/frontend_client/app/dist/*hot*.js"
+      ],
+      "running": false,
+      "brotli": false
+    },
+    {
+      "name": "app-embed",
+      "path": [
+        "resources/frontend_client/app/dist/app-embed.*.js",
+        "!resources/frontend_client/app/dist/*hot*.js"
+      ],
+      "running": false,
+      "brotli": false
+    },
+    {
+      "name": "app-public",
+      "path": [
+        "resources/frontend_client/app/dist/app-public.*.js",
+        "!resources/frontend_client/app/dist/*hot*.js"
+      ],
+      "running": false,
+      "brotli": false
+    }
   ]
 }
