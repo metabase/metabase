@@ -288,8 +288,8 @@ describe("parameters/utils/targets", () => {
           ]);
         });
 
-        it("1 stage complex query", () => {
-          const question = createQuestion(createBaseQuery());
+        it("complex 1-stage query", () => {
+          const question = createQuestion(createComplex1StageQuery());
           const { query, stageIndex, columns } = getParameterColumns(
             question,
             parameter,
@@ -490,7 +490,7 @@ describe("parameters/utils/targets", () => {
   });
 });
 
-function createBaseQuery() {
+function createComplex1StageQuery() {
   const baseQuery = ordersJoinReviewsOnProductId();
   const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, 0));
   const userBirthdayColumn = findColumn("PEOPLE", "BIRTH_DATE");
