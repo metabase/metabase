@@ -61,7 +61,7 @@ export const columnFinder =
       const displayInfo = Lib.displayInfo(query, 0, column);
 
       // for non-table columns - aggregations, custom columns
-      if (!displayInfo.table) {
+      if (!displayInfo.table || tableName == null) {
         return displayInfo.name === columnName;
       }
 
@@ -170,7 +170,7 @@ type AggregationClauseOpts =
 
 interface BreakoutClauseOpts {
   columnName: string;
-  tableName: string;
+  tableName?: string;
   temporalBucketName?: string;
   binningStrategyName?: string;
 }
