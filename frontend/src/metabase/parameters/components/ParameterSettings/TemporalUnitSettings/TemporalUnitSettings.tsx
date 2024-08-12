@@ -118,7 +118,9 @@ function TemporalUnitDropdown({
               disabled={isDisabled}
               onChange={() => handleUnitToggle(unit)}
             />
-            <Text ml="sm">{Lib.describeTemporalUnit(unit)}</Text>
+            <Text ml="sm" c="inherit">
+              {Lib.describeTemporalUnit(unit)}
+            </Text>
           </label>
         );
       })}
