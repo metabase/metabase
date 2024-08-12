@@ -1,5 +1,5 @@
 import type { FormEvent } from "react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
 import { Box, Button, Flex, Stack } from "metabase/ui";
@@ -55,6 +55,16 @@ export const CompareAggregations = ({
     [query, stageIndex, aggregation],
   );
 
+  const handleComparisonTypeChange = useCallback(
+    (comparisonType: ComparisonType) => {
+      setComparisonType(comparisonType);
+      if (comparisonType === "moving-average" && offset === 1) {
+        setOffset(2);
+      }
+    },
+    [offset],
+  );
+
   const handleBack = () => {
     if (hasManyAggregations && aggregation) {
       setAggregation(undefined);
@@ -98,7 +108,7 @@ export const CompareAggregations = ({
             <Stack spacing="md">
               <ComparisonTypePicker
                 value={comparisonType}
-                onChange={setComparisonType}
+                onChange={handleComparisonTypeChange}
               />
 
               <OffsetInput

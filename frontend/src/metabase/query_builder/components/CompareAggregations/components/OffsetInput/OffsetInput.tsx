@@ -48,7 +48,7 @@ export const OffsetInput = ({
           wrapper: S.wrapper,
         }}
         label={t`Compare to`}
-        min={1}
+        min={comparisonType === "offset" ? 1 : 2}
         precision={0}
         size="md"
         step={1}
