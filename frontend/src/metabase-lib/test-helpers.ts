@@ -56,7 +56,10 @@ export function createQuery({
 
 export const columnFinder =
   (query: Lib.Query, columns: Lib.ColumnMetadata[]) =>
-  (tableName: string, columnName: string): Lib.ColumnMetadata => {
+  (
+    tableName: string | undefined | null,
+    columnName: string,
+  ): Lib.ColumnMetadata => {
     const column = columns.find(column => {
       const displayInfo = Lib.displayInfo(query, 0, column);
 

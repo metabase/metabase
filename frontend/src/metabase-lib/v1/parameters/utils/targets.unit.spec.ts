@@ -110,6 +110,54 @@ const queryDateBreakoutsMultiStage = createQueryWithClauses({
   ],
 });
 
+const ordersColumns = [
+  ["Orders", "Created At"],
+  ["Orders", "Discount"],
+  ["Orders", "ID"],
+  ["Orders", "Product ID"],
+  ["Orders", "Quantity"],
+  ["Orders", "Subtotal"],
+  ["Orders", "Tax"],
+  ["Orders", "Total"],
+  ["Orders", "User ID"],
+];
+
+const productsColumns = [
+  ["Products", "Product → Category"],
+  ["Products", "Product → Created At"],
+  ["Products", "Product → Ean"],
+  ["Products", "Product → ID"],
+  ["Products", "Product → Price"],
+  ["Products", "Product → Rating"],
+  ["Products", "Product → Title"],
+  ["Products", "Product → Vendor"],
+];
+
+const peopleColumns = [
+  ["People", "User → Address"],
+  ["People", "User → Birth Date"],
+  ["People", "User → City"],
+  ["People", "User → Created At"],
+  ["People", "User → Email"],
+  ["People", "User → ID"],
+  ["People", "User → Latitude"],
+  ["People", "User → Longitude"],
+  ["People", "User → Name"],
+  ["People", "User → Password"],
+  ["People", "User → Source"],
+  ["People", "User → State"],
+  ["People", "User → Zip"],
+];
+
+const reviewsJoinProductsColumns = [
+  ["Reviews", "Reviews - Product → Body"],
+  ["Reviews", "Reviews - Product → Created At"],
+  ["Reviews", "Reviews - Product → ID"],
+  ["Reviews", "Reviews - Product → Product ID"],
+  ["Reviews", "Reviews - Product → Rating"],
+  ["Reviews", "Reviews - Product → Reviewer"],
+];
+
 describe("parameters/utils/targets", () => {
   describe("isDimensionTarget", () => {
     it("should return false for non-dimension targets", () => {
@@ -234,44 +282,28 @@ describe("parameters/utils/targets", () => {
           const columnsInfos = getColumnsInfos(query, stageIndex, columns);
 
           expect(columnsInfos).toEqual([
-            ["Orders", "Created At"],
-            ["Orders", "Discount"],
-            ["Orders", "ID"],
-            ["Orders", "Product ID"],
-            ["Orders", "Quantity"],
-            ["Orders", "Subtotal"],
-            ["Orders", "Tax"],
-            ["Orders", "Total"],
-            ["Orders", "User ID"],
-            ["Products", "Product → Category"],
-            ["Products", "Product → Created At"],
-            ["Products", "Product → Ean"],
-            ["Products", "Product → ID"],
-            ["Products", "Product → Price"],
-            ["Products", "Product → Rating"],
-            ["Products", "Product → Title"],
-            ["Products", "Product → Vendor"],
-            ["People", "User → Address"],
-            ["People", "User → Birth Date"],
-            ["People", "User → City"],
-            ["People", "User → Created At"],
-            ["People", "User → Email"],
-            ["People", "User → ID"],
-            ["People", "User → Latitude"],
-            ["People", "User → Longitude"],
-            ["People", "User → Name"],
-            ["People", "User → Password"],
-            ["People", "User → Source"],
-            ["People", "User → State"],
-            ["People", "User → Zip"],
+            ...ordersColumns,
+            ...productsColumns,
+            ...peopleColumns,
           ]);
         });
 
-        it("TODO", () => {
-          const baseQuery = createBaseQuery();
-          expect(Lib.toLegacyQuery(baseQuery)).toMatchObject({
-            x: 1,
-          });
+        it("1 stage complex query", () => {
+          const question = createQuestion(createBaseQuery());
+          const { query, stageIndex, columns } = getParameterColumns(
+            question,
+            parameter,
+          );
+          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+
+          expect(columnsInfos).toEqual([
+            ...ordersColumns,
+            [undefined, "User's 18th birthday"],
+            ...reviewsJoinProductsColumns,
+            ...productsColumns,
+            ...peopleColumns,
+            ...productsColumns,
+          ]);
         });
       });
 
@@ -297,27 +329,8 @@ describe("parameters/utils/targets", () => {
             ["Question", "Discount"],
             ["Question", "Created At"],
             ["Question", "Quantity"],
-            ["People", "User → Address"],
-            ["People", "User → Birth Date"],
-            ["People", "User → City"],
-            ["People", "User → Created At"],
-            ["People", "User → Email"],
-            ["People", "User → ID"],
-            ["People", "User → Latitude"],
-            ["People", "User → Longitude"],
-            ["People", "User → Name"],
-            ["People", "User → Password"],
-            ["People", "User → Source"],
-            ["People", "User → State"],
-            ["People", "User → Zip"],
-            ["Products", "Product → Category"],
-            ["Products", "Product → Created At"],
-            ["Products", "Product → Ean"],
-            ["Products", "Product → ID"],
-            ["Products", "Product → Price"],
-            ["Products", "Product → Rating"],
-            ["Products", "Product → Title"],
-            ["Products", "Product → Vendor"],
+            ...peopleColumns,
+            ...productsColumns,
           ]);
         });
       });
