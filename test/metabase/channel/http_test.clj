@@ -242,9 +242,6 @@
                                             :method      "get"
                                             :auth-method "none"})))))))
 
-(deftest ^:parallel can-connect-details-with-undefined-key-test
-  (testing "throws an error if the details include an undefined key"))
-
 (deftest ^:parallel send!-test
   (testing "basic send"
     (with-captured-http-requests [requests]
