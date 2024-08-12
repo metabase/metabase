@@ -45,8 +45,9 @@ type InteractiveQuestionProviderProps = PropsWithChildren<
 >;
 
 export const InteractiveQuestionProvider = ({
-  location,
-  params,
+  cardId,
+  options,
+  deserializedCard,
   componentPlugins,
   onReset,
   onNavigateBack,
@@ -62,7 +63,11 @@ export const InteractiveQuestionProvider = ({
     loadQuestion,
     onQuestionChange,
     onNavigateToNewCard,
-  } = useLoadQuestion({ location, params });
+  } = useLoadQuestion({
+    cardId,
+    options,
+    deserializedCard,
+  });
 
   const globalPlugins = useSdkSelector(getPlugins);
 
