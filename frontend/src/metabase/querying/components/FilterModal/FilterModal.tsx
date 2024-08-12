@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 
+import { getColumnGroupIcon } from "metabase/common/utils/column-groups";
 import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import { Flex, Modal } from "metabase/ui";
@@ -9,7 +10,6 @@ import { appendStageIfSummarized } from "metabase-lib/v1/parameters/utils/filter
 import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
 import { SEARCH_KEY } from "./constants";
 import {
-  getGroupItems,
   getModalTitle,
   getModalWidth,
   hasFilters,
@@ -34,7 +34,13 @@ export const useFilterContent = (
   const queryRef = useRef(query);
   const [version, setVersion] = useState(1);
   const [isChanged, setIsChanged] = useState(false);
-  const groupItems = useMemo(() => getGroupItems(query), [query]);
+  const groupItems = useMemo(() => {
+    return Lib.filterGroups(query).map(group => ({
+      ...group,
+      key: `${group.stageIndex}-${group.groupIndex}`,
+      icon: getColumnGroupIcon(group.groupInfo) || "sum",
+    }));
+  }, [query]);
   const [tab, setTab] = useState<string | null>(groupItems[0]?.key);
   const canRemoveFilters = useMemo(() => hasFilters(query), [query]);
   const [searchText, setSearchText] = useState("");

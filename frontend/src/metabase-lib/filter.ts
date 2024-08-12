@@ -3,6 +3,8 @@ import moment from "moment-timezone"; // eslint-disable-line no-restricted-impor
 import * as ML from "cljs/metabase.lib.js";
 import type { DatasetColumn, TemporalUnit } from "metabase-types/api";
 
+import { aggregations } from "./aggregation";
+import { breakouts } from "./breakout";
 import {
   isBoolean,
   isCoordinate,
@@ -26,8 +28,14 @@ import {
 } from "./constants";
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
-import { displayInfo } from "./metadata";
-import { removeClause, stageCount } from "./query";
+import {
+  displayInfo,
+  getColumnGroupName,
+  getColumnsFromColumnGroup,
+  groupColumns,
+} from "./metadata";
+import { appendStage, removeClause, stageCount } from "./query";
+import { availableSegments } from "./segments";
 import {
   availableTemporalBuckets,
   temporalBucket,
@@ -100,11 +108,61 @@ export function removeFilters(query: Query, stageIndex: number): Query {
   );
 }
 
+export function appendStageIfSummarized(query: Query): Query {
+  const isSummarized =
+    aggregations(query, -1).length > 0 && breakouts(query, -1).length > 0;
+
+  return isSummarized ? appendStage(query) : query;
+}
+
 /**
  * Returns indexes of stages from which columns are exposed for filtering
  */
 export function filterStageIndexes(query: Query): number[] {
   return stageCount(query) > 1 ? [-2, -1] : [-1];
+}
+
+/**
+ * Returns columns exposed for filtering, in groups
+ */
+export function filterGroups(query: Query) {
+  const stageIndexes = filterStageIndexes(query);
+
+  return stageIndexes.flatMap(stageIndex => {
+    const columns = filterableColumns(query, stageIndex);
+    const groups = groupColumns(columns);
+    const segments = availableSegments(query, stageIndex);
+
+    return groups.map((group, groupIndex) => {
+      const groupInfo = displayInfo(query, stageIndex, group);
+      const availableColumns = getColumnsFromColumnGroup(group);
+      const availableSegments = groupIndex === 0 ? segments : [];
+
+      return {
+        stageIndex,
+        groupIndex,
+        groupInfo,
+        displayName: getColumnGroupName(groupInfo),
+        columnItems: availableColumns.map(column => {
+          const columnInfo = displayInfo(query, stageIndex, column);
+          return {
+            column,
+            displayName: columnInfo.displayName,
+            stageIndex,
+          };
+        }),
+        segmentItems: availableSegments.map(segment => {
+          const segmentInfo = displayInfo(query, stageIndex, segment);
+          return {
+            segment,
+            displayName: segmentInfo.displayName,
+            stageIndex,
+            filterPositions: segmentInfo.filterPositions ?? [],
+          };
+        }),
+      };
+    });
+  });
 }
 
 export function filterArgsDisplayName(
