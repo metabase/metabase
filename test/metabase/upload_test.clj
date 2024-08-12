@@ -236,14 +236,17 @@
 
 (deftest ^:parallel detect-schema-offset-datetimes-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
-    (testing "Dates"
-      (is (=? {:offset_datetime offset-dt-type
-               :not_datetime   vchar-type}
-              (detect-schema-with-csv-rows
-               ["Offset Datetime,Not Datetime"
-                "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"
-                "2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"
-                "2022-01-01T00:00:00Z,2023-02-29T00:00:00-01:00"]))))))
+    (let [good-versus-bad-rows ["2022-01-01T00:00:00-01:00,2023-02-29T00:00:00-01:00"
+                                "2022-01-01T00:00:00-0100,2023-02-29T00:00:00-0100"
+                                "2022-01-01T00:00:00Z,2023-02-29T00:00:00-01:00"]]
+      (testing "Dates"
+        (doseq [additional-row good-versus-bad-rows]
+          (is (=? {:offset_datetime offset-dt-type
+                   :not_datetime   vchar-type}
+                  (detect-schema-with-csv-rows
+                   (conj ["Offset Datetime,Not Datetime"
+                          "2022-01-01T00:00:00-01:00,2023-02-28T00:00:00-01:00"]
+                         additional-row)))))))))
 
 (deftest ^:parallel unique-table-name-test
   (mt/test-drivers (mt/normal-drivers-with-feature :uploads)
