@@ -1,9 +1,12 @@
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
 import Dimension from "metabase-lib/v1/Dimension";
 import Field from "metabase-lib/v1/metadata/Field";
 import {
   createMockParameter,
   createMockTemplateTag,
 } from "metabase-types/api/mocks";
+import { PRODUCTS } from "metabase-types/api/mocks/presets";
 
 import {
   dimensionFilterForParameter,
@@ -173,8 +176,9 @@ function createMockField(mocks: Record<string, unknown>): Field {
 }
 
 function createMockDimension(mocks: Record<string, unknown>): Dimension {
-  return Object.assign(
-    new Dimension(undefined, [], undefined, undefined, undefined),
-    mocks,
+  const metadata = createMockMetadata({});
+  const dimension = checkNotNull(
+    Dimension.parseMBQL(["field", PRODUCTS.CREATED_AT, null], metadata),
   );
+  return Object.assign({}, dimension, mocks);
 }
