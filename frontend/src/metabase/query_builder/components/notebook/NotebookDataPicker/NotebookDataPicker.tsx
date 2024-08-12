@@ -9,6 +9,7 @@ import {
 import { METAKEY } from "metabase/lib/browser";
 import { useDispatch, useStore } from "metabase/lib/redux";
 import { checkNotNull } from "metabase/lib/types";
+import * as Urls from "metabase/lib/urls";
 import { loadMetadataForTable } from "metabase/questions/actions";
 import { getMetadata } from "metabase/selectors/metadata";
 import type { IconName } from "metabase/ui";
@@ -18,7 +19,7 @@ import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell } from "../NotebookCell";
 
-import { getUrl, openInNewTab } from "./utils";
+import { getUrl } from "./utils";
 
 interface NotebookDataPickerProps {
   title: string;
@@ -70,29 +71,28 @@ export function NotebookDataPicker({
     onChangeRef.current?.(table, metadataProvider);
   };
 
+  const openDataSourceInNewTab = () => {
+    const url = getUrl({ query, table, stageIndex });
+
+    if (!url) {
+      return;
+    }
+
+    const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+    Urls.openInNewTab(subpathSafeUrl);
+  };
+
   const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isCtrlOrMetaClick =
       (event.ctrlKey || event.metaKey) && event.button === 0;
 
-    if (isCtrlOrMetaClick) {
-      const url = getUrl({ query, table, stageIndex });
-
-      openInNewTab(url);
-    } else {
-      setIsOpen(true);
-    }
+    isCtrlOrMetaClick ? openDataSourceInNewTab() : setIsOpen(true);
   };
 
   const handleAuxClick = (event: MouseEvent<HTMLButtonElement>) => {
     const isMiddleClick = event.button === 1;
 
-    if (isMiddleClick) {
-      const url = getUrl({ query, table, stageIndex });
-
-      openInNewTab(url);
-    } else {
-      setIsOpen(true);
-    }
+    isMiddleClick ? openDataSourceInNewTab() : setIsOpen(true);
   };
 
   return (
