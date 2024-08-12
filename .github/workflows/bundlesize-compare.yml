@@ -14,6 +14,10 @@ jobs:
       CI_JOB_NUMBER: 1
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+      - name: Setup node.js
+        uses: actions/setup-node@v4
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
       - name: Prepare back-end environment
