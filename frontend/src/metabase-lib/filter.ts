@@ -5,18 +5,18 @@ import type { DatasetColumn, TemporalUnit } from "metabase-types/api";
 
 import {
   isBoolean,
-  isTime,
-  isTemporal,
   isCoordinate,
-  isStringOrStringLike,
   isNumeric,
+  isStringOrStringLike,
+  isTemporal,
+  isTime,
 } from "./column_types";
 import {
   BOOLEAN_FILTER_OPERATORS,
   COORDINATE_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
   EXCLUDE_DATE_BUCKETS,
   EXCLUDE_DATE_FILTER_OPERATORS,
-  DEFAULT_FILTER_OPERATORS,
   NUMBER_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   SPECIFIC_DATE_FILTER_OPERATORS,
@@ -27,7 +27,7 @@ import {
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
 import { displayInfo } from "./metadata";
-import { removeClause } from "./query";
+import { removeClause, stageCount } from "./query";
 import {
   availableTemporalBuckets,
   temporalBucket,
@@ -40,6 +40,8 @@ import type {
   ColumnMetadata,
   CoordinateFilterOperatorName,
   CoordinateFilterParts,
+  DefaultFilterOperatorName,
+  DefaultFilterParts,
   ExcludeDateBucketName,
   ExcludeDateFilterOperatorName,
   ExcludeDateFilterParts,
@@ -48,8 +50,6 @@ import type {
   ExpressionOperatorName,
   ExpressionOptions,
   ExpressionParts,
-  DefaultFilterOperatorName,
-  DefaultFilterParts,
   FilterClause,
   FilterOperator,
   FilterParts,
@@ -98,6 +98,13 @@ export function removeFilters(query: Query, stageIndex: number): Query {
     (newQuery, filter) => removeClause(newQuery, stageIndex, filter),
     query,
   );
+}
+
+/**
+ * Returns indexes of stages from which columns are exposed for filtering
+ */
+export function filterStageIndexes(query: Query): number[] {
+  return stageCount(query) > 1 ? [-2, -1] : [-1];
 }
 
 export function filterArgsDisplayName(
