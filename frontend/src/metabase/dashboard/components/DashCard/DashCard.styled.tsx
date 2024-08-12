@@ -1,6 +1,8 @@
 import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
+import { getDashboardBodyBgColor } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
+
 export interface DashCardRootProps {
   isNightMode: boolean;
   isUsuallySlow: boolean;
@@ -24,7 +26,7 @@ const rootTransparentBackgroundStyle = css`
 `;
 
 const hiddenBackgroundStyle = css`
-  background: var(--mb-color-bg-light);
+  background: ${getDashboardBodyBgColor(false)};
   box-shadow: none !important;
 `;
 
