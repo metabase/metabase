@@ -26,8 +26,8 @@
   (doseq [fv-type [:sandbox :linked-filter]]
     (testing "create a new field values and fix up the human readable values"
       (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and
-                                                                                       [:> $id 3]
-                                                                                       [:< $id 6]]})}}}
+                                                                                        [:> $id 3]
+                                                                                        [:< $id 6]]})}}}
         ;; the categories-id doesn't have a field values, we fake it with a full fieldvalues to make it easier to test
         (t2/insert! FieldValues {:type                  :full
                                  :field_id              (mt/id :categories :id)
@@ -68,8 +68,8 @@
 
     (testing "make sure the Fieldvalues respect [field-values/*total-max-length*]"
       (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:and
-                                                                                       [:> $id 3]
-                                                                                       [:< $id 6]]})}}}
+                                                                                        [:> $id 3]
+                                                                                        [:< $id 6]]})}}}
         (binding [field-values/*total-max-length* 5]
           (is (= ["Asian"]
                  (:values (params.field-values/get-or-create-advanced-field-values!

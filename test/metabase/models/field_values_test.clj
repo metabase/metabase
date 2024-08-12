@@ -3,10 +3,8 @@
   (:require
    [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
-   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
-   [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.models.database :refer [Database]]
    [metabase.models.dimension :refer [Dimension]]
@@ -151,18 +149,28 @@
         (is (= expected
                (#'field-values/field-should-have-field-values? input)))))))
 
-(deftest distinct-values-test
-  (with-redefs [metadata-queries/field-distinct-values (constantly [[1] [2] [3] [4]])]
-    (is (= {:values          [[1] [2] [3] [4]]
-            :has_more_values false}
-           (#'field-values/distinct-values {}))))
+(defn distinct-field-values
+  [id]
+  (field-values/distinct-values (t2/select-one :model/Field id)))
 
-  (testing "(#2332) check that if field values are long we only store a subset of it"
-    (with-redefs [metadata-queries/field-distinct-values (constantly [["AAAA"] [(str/join (repeat (+ 100 field-values/*total-max-length*) "A"))]])]
-      (testing "The total length of stored values must less than our max-length-limit"
-        (is (= {:values          [["AAAA"]]
-                :has_more_values true}
-              (#'field-values/distinct-values {})))))))
+(deftest distinct-values-test
+  (testing "Correctly get distinct field values for text fields"
+    (is (= {:values [["Doohickey"] ["Gadget"] ["Gizmo"] ["Widget"]]
+            :has_more_values false}
+           (distinct-field-values (mt/id :products :category)))))
+  (testing "Correctly get distinct field values for non-text fields"
+    (is (= {:values [[1] [2] [3] [4] [5]]
+            :has_more_values false}
+           (distinct-field-values (mt/id :reviews :rating)))))
+  (testing "if the values of field exceeds max-char-len, return a subset of it (#2332)"
+    (binding [field-values/*total-max-length* 16]
+      (is (= {:values          [["Doohickey"] ["Gadget"]]
+              :has_more_values true}
+             (distinct-field-values (mt/id :products :category)))))
+    (binding [field-values/*total-max-length* 3]
+      (is (= {:values          [[1] [2] [3]]
+              :has_more_values true}
+             (distinct-field-values (mt/id :reviews :rating)))))))
 
 (deftest clear-field-values-for-field!-test
   (mt/with-temp [Database    {database-id :id} {}
