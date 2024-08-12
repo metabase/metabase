@@ -20,10 +20,13 @@
   [:or :string :keyword])
 
 (def ^:private HTTPDetails
-  [:map
+  [:map {:closed true}
    [:url                           ms/Url]
    [:auth-method                   [:enum "none" "header" "query-param" "request-body"]]
    [:auth-info    {:optional true} [:map-of string-or-keyword :any]]
+   ;; used by the frontend to display the auth info properly
+   [:fe-form-type {:optional true} [:enum "api-key" "bearer" "basic"]]
+   ;; request method
    [:method       {:optional true} [:enum "get" "post" "put"]]])
 
 (def ^:private HTTPChannel
