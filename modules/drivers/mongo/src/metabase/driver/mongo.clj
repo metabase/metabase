@@ -328,7 +328,7 @@
                                              (m/assoc-some :nested-fields nested-fields)
                                              (dissoc :index))]
                    [(conj fields field) i]))
-               [[] i])))
+               [#{} i])))
 
 (defmethod driver/describe-table :mongo
   [_driver database table]
