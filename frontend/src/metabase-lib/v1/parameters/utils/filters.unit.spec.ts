@@ -1,3 +1,10 @@
+import type Dimension from "metabase-lib/v1/Dimension";
+import type Field from "metabase-lib/v1/metadata/Field";
+import {
+  createMockParameter,
+  createMockTemplateTag,
+} from "metabase-types/api/mocks";
+
 import {
   dimensionFilterForParameter,
   getTagOperatorFilterForParameter,
@@ -16,10 +23,10 @@ describe("parameters/utils/field-filters", () => {
       isNumber: () => false,
       isString: () => false,
       isLocation: () => false,
-    };
+    } as Field;
     const typelessDimension = {
       field: () => field,
-    };
+    } as Dimension;
 
     [
       [
@@ -99,9 +106,11 @@ describe("parameters/utils/field-filters", () => {
       ],
     ].forEach(([parameter, dimension]) => {
       it(`should return a predicate that evaluates to true for a ${dimension.type} dimension when given a ${parameter.type} parameter`, () => {
-        const predicate = dimensionFilterForParameter(parameter);
+        const predicate = dimensionFilterForParameter(
+          createMockParameter(parameter),
+        );
         expect(predicate(typelessDimension)).toBe(false);
-        expect(predicate(dimension)).toBe(true);
+        expect(predicate(dimension as unknown as Dimension)).toBe(true);
       });
     });
 
@@ -112,9 +121,11 @@ describe("parameters/utils/field-filters", () => {
           isNumber: () => true,
           isCoordinate: () => true,
         }),
-      };
+      } as Dimension;
 
-      const predicate = dimensionFilterForParameter({ type: "number/between" });
+      const predicate = dimensionFilterForParameter(
+        createMockParameter({ type: "number/between" }),
+      );
       expect(predicate(coordinateDimension)).toBe(false);
     });
 
@@ -124,27 +135,31 @@ describe("parameters/utils/field-filters", () => {
           ...field,
           isLocation: () => true,
         }),
-      };
+      } as Dimension;
 
-      const predicate = dimensionFilterForParameter({ type: "category" });
+      const predicate = dimensionFilterForParameter(
+        createMockParameter({ type: "category" }),
+      );
       expect(predicate(locationDimension)).toBe(false);
     });
   });
 
   describe("getTagOperatorFilterForParameter", () => {
     it("should return a predicate that evaluates to true for a template tag that has the same subtype operator as the given parameter", () => {
-      const predicate = getTagOperatorFilterForParameter({
-        type: "string/starts-with",
-      });
-      const templateTag1 = {
+      const predicate = getTagOperatorFilterForParameter(
+        createMockParameter({
+          type: "string/starts-with",
+        }),
+      );
+      const templateTag1 = createMockTemplateTag({
         "widget-type": "string/starts-with",
-      };
-      const templateTag2 = {
+      });
+      const templateTag2 = createMockTemplateTag({
         "widget-type": "foo/starts-with",
-      };
-      const templateTag3 = {
+      });
+      const templateTag3 = createMockTemplateTag({
         "widget-type": "string/ends-with",
-      };
+      });
       expect(predicate(templateTag1)).toBe(true);
       expect(predicate(templateTag2)).toBe(true);
       expect(predicate(templateTag3)).toBe(false);
