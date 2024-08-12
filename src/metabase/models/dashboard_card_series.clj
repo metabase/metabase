@@ -18,10 +18,6 @@
 
 (defmethod serdes/generate-path "DashboardCardSeries" [_ _] nil)
 
-(defmethod serdes/load-find-local "DashboardCardSeries" [_path]
-  ;; nested will remove all previous entries because they have no entity_id anyway
-  nil)
-
 ;; TODO: this is not used atm as `DashboardCard` has custom :export/:import defined; see comment there
 ;; to be implemented.
 (defmethod serdes/make-spec "DashboardCardSeries" [_model-name _opts]

@@ -27,7 +27,8 @@
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log]
    [toucan2.core :as t2]
-   [toucan2.model :as t2.model]))
+   [toucan2.model :as t2.model]
+   [toucan2.realize :as t2.realize]))
 
 (set! *warn-on-reflection* true)
 
@@ -196,7 +197,9 @@
   `(generate-path \"ModelName\" entity)`
 
   The path is a vector of maps, root first and this entity itself last. Each map looks like:
-  `{:model \"ModelName\" :id \"entity ID, identity hash, or custom ID\" :label \"optional human label\"}`"
+  `{:model \"ModelName\" :id \"entity ID, identity hash, or custom ID\" :label \"optional human label\"}`
+
+  Nested models with no entity_id need to return nil for generate-path."
   {:arglists '([model-name instance])}
   (fn [model-name _instance] model-name))
 
@@ -222,7 +225,7 @@
          (m/assoc-some :label (some-> label (u/slugify {:unicode? true}))))]))
 
 (defmethod generate-path :default [model-name entity]
-  ;; This default works for most models, but needs overriding for nested ones.
+  ;; This default works for most models, but needs overriding for those that don't rely on entity_id.
   (maybe-labeled model-name entity :name))
 
 ;;; # Export Process
@@ -745,6 +748,7 @@
   [model id-hash]
   (->> (t2/reducible-select model)
        (into [] (comp (filter #(= id-hash (identity-hash %)))
+                      (map t2.realize/realize)
                       (take 1)))
        first))
 
@@ -1545,25 +1549,37 @@
                                          :parent-id (:id *current*)}
                                         e)))))
      :import      (fn [lst]
-                    (let [parent-id (:id *current*)]
-                      ;; first clean up data so it doesn't conflict on any `unique` indexes
-                      (if (some->> (first lst)
-                                   (entity-id model-name))
-                        (t2/delete! model backward-fk (:id *current*) :entity_id [:not-in (map :entity_id lst)])
-                        (t2/delete! model backward-fk (:id *current*)))
+                    (let [parent-id (:id *current*)
+                          first-eid (some->> (first lst)
+                                             (entity-id model-name))
+                          enrich    (fn [ingested]
+                                      (-> ingested
+                                          (assoc backward-fk parent-id)
+                                          (update :serdes/meta #(or % [{:model model-name :id (get ingested key-field)}]))))]
+                      (cond
+                        (nil? first-eid) ; no entity id, just drop existing stuff
+                        (do (t2/delete! model backward-fk parent-id)
+                            (doseq [ingested lst]
+                              (load-one! (enrich ingested) nil)))
 
-                      (doseq [ingested lst
-                              ;; it's not always entity-id though, not for DashcardCardSeries
-                              :let     [key-id (get ingested key-field)]]
-                        (let [ingested (assoc ingested
-                                              backward-fk  parent-id
-                                              ;; for a nested entity we pass our parent's data and our
-                                              ;; data as a path
-                                              :serdes/meta [(let [m (name (t2/model *current*))]
-                                                              {:model m :id (entity-id m *current*)})
-                                                            {:model model-name :id key-id}])
-                              local    (load-find-local (:serdes/meta ingested))]
-                          (load-one! ingested local)))))}))
+                        (entity-id? first-eid) ; proper entity id, match by them
+                        (do (t2/delete! model backward-fk parent-id :entity_id [:not-in (map :entity_id lst)])
+                            (doseq [ingested lst
+                                    :let     [ingested (enrich ingested)
+                                              local    (lookup-by-id model (entity-id model-name ingested))]]
+                              (load-one! ingested local)))
+
+                        :else           ; identity hash
+                        (let [incoming  (set (map #(entity-id model-name %) lst))
+                              local     (->> (t2/reducible-select model backward-fk parent-id)
+                                             (into [] (map t2.realize/realize))
+                                             (m/index-by identity-hash))
+                              to-delete (into [] (comp (filter #(contains? incoming (key %)))
+                                                       (map #(:id (val %))))
+                                              local)]
+                          (t2/delete! model :id [:in (map :id to-delete)])
+                          (doseq [ingested lst]
+                            (load-one! (enrich ingested) (get local (entity-id model-name ingested))))))))}))
 
 (defn parent-ref "Transformer for parent id for nested entities" []
   {::fk true :export (constantly nil) :import identity})

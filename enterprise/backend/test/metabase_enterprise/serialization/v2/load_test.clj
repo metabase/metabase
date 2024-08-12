@@ -1,5 +1,6 @@
 (ns ^:mb/once metabase-enterprise.serialization.v2.load-test
   (:require
+   [clojure.string :as str]
    [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase-enterprise.serialization.test-util :as ts]
@@ -1298,3 +1299,45 @@
                      (t2/select-one-fn :entity_id :model/Dimension :field_id (mt/id :venues :price))))
               (is (= nil
                      (t2/select-one :model/Dimension :entity_id (:entity_id d2)))))))))))
+
+(deftest nested-identity-hashes-test ;; tests serdes/nested behavior for identity hashes
+  (let [ids (atom {})]
+    (ts/with-dbs [source-db dest-db]
+      (ts/with-db source-db
+        (mt/with-temp [:model/Collection    coll {:name "Coll"}
+                       :model/Dashboard     dash {:name "Dash"}
+                       :model/Card          c1   {:name "Card 1"}
+                       :model/DashboardCard dc1  {:dashboard_id (:id dash)
+                                                  :card_id      (:id c1)}]
+          (testing "Store deserialized data ids in preparation for test"
+            (let [ser1 (vec (serdes.extract/extract {:no-settings true}))]
+              (ts/with-db dest-db
+                (serdes.load/load-metabase! (ingestion-in-memory ser1))
+                (reset! ids
+                        (vec
+                         (for [[_name e] {:coll coll :dash dash :c1 c1 :dc1 dc1}]
+                           [(t2/model e) (:id (t2/select-one (t2/model e) :entity_id (:entity_id e)))]))))))
+
+          (testing "Convert everything to using identity hashes"
+            (t2/update! :model/Collection :id (:id coll) {:entity_id (serdes/identity-hash coll)})
+            (t2/update! :model/Dashboard :id (:id dash) {:entity_id (serdes/identity-hash dash)})
+            (t2/update! :model/Card :id (:id c1) {:entity_id (serdes/identity-hash c1)})
+            (t2/update! :model/DashboardCard :id (:id dc1) {:entity_id (serdes/identity-hash dc1)}))
+
+          (is (= 8 (count (serdes/entity-id "Card"
+                                            (t2/select-one [:model/Card :entity_id] :id (:id c1))))))
+
+          (testing "Identity hashes end up in target db in place of entity ids"
+            (let [ser2 (vec (serdes.extract/extract {:no-settings true :no-data-model true}))]
+              (testing "\nWe exported identity hashes"
+                (doseq [e ser2
+                        :when (:entity_id e)]
+                  (is (= 8 (count (-> e :entity_id str/trim))))))
+              (ts/with-db dest-db
+                (serdes.load/load-metabase! (ingestion-in-memory ser2))
+                (testing "\nAll entities (including nested dashcards) were updated"
+                  (doseq [[model id] @ids
+                          :let       [e (t2/select-one model :id id)]]
+                    (testing (format "%s has identity hash in the db" model)
+                      (is (= (serdes/identity-hash e)
+                             (serdes/entity-id (name model) e))))))))))))))
