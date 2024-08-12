@@ -18,10 +18,7 @@ jobs:
           ref: ${{ github.head_ref }}
       - name: Prepare front-end environment
         uses: ./.github/actions/prepare-frontend
-      - name: Prepare back-end environment
-        uses: ./.github/actions/prepare-backend
-        with:
-          m2-cache-key: cljs
+
       - uses: andresz1/size-limit-action@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
