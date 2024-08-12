@@ -417,7 +417,6 @@ export const PLUGIN_ADVANCED_PERMISSIONS = {
   isAccessPermissionDisabled: (
     _value: string,
     _subject: "schemas" | "tables" | "fields",
-    _parentValue: string,
   ) => false,
   isRestrictivePermission: (_value: string) => false,
   shouldShowViewDataColumn: false,

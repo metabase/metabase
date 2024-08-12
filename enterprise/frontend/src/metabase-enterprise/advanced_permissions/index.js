@@ -99,16 +99,9 @@ if (hasPremiumFeature("advanced_permissions")) {
     return null;
   };
 
-  PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled = (
-    value,
-    subject,
-    parentValue,
-  ) => {
+  PLUGIN_ADVANCED_PERMISSIONS.isAccessPermissionDisabled = (value, subject) => {
     if (subject === "tables" || subject === "fields") {
-      return (
-        parentValue === DataPermissionValue.BLOCKED ||
-        value === DataPermissionValue.IMPERSONATED
-      );
+      return value === DataPermissionValue.IMPERSONATED;
     } else {
       return false;
     }
