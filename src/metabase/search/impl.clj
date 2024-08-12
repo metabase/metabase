@@ -7,7 +7,9 @@
    [metabase.db.query :as mdb.query]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.core :as lib]
+   [metabase.api.common :as api]
    [metabase.models.collection :as collection]
+   [metabase.models.collection-permissions :as collection-perms]
    [metabase.models.collection.root :as collection.root]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database :as database]
@@ -113,19 +115,18 @@
    {:keys [current-user-perms
            filter-items-in-personal-collection
            archived]} :- SearchContext]
-  (let [visible-collections      (collection/permissions-set->visible-collection-ids
-                                  current-user-perms
+  (let [collection-id-col        (if (= model "collection")
+                                   :collection.id
+                                   :collection_id)
+        collection-filter-clause (collection-perms/honeysql-filter-clause
+                                  ;; FIXME: we should pass the user-id around instead of `current-user-perms`
+                                  api/*current-user-id*
                                   {:include-archived-items :all
                                    :include-trash-collection? true
                                    :permission-level (if archived
                                                        :write
-                                                       :read)})
-        collection-id-col        (if (= model "collection")
-                                   :collection.id
-                                   :collection_id)
-        collection-filter-clause (collection/visible-collection-ids->honeysql-filter-clause
-                                  collection-id-col
-                                  visible-collections)]
+                                                       :read)
+                                   :collection-id-field collection-id-col})]
     (cond-> honeysql-query
       true
       (sql.helpers/where collection-filter-clause (perms/audit-namespace-clause :collection.namespace nil))

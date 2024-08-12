@@ -19,6 +19,7 @@
    [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
+   [metabase.models.collection-permissions :as collection-perms]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.database
     :as database
@@ -178,9 +179,7 @@
                                            ;; always return metrics for now
                                            [:in :type [(u/qualified-name card-type) "metric"]]
                                            [:in :database_id ids-of-dbs-that-support-source-queries]
-                                           (collection/visible-collection-ids->honeysql-filter-clause
-                                            (collection/permissions-set->visible-collection-ids
-                                             @api/*current-user-permissions-set*))]
+                                           (collection-perms/honeysql-filter-clause api/*current-user-id*)]
                                           additional-constraints)
                           :order-by [[:%lower.name :asc]]}))))
 

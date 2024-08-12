@@ -8908,6 +8908,75 @@ databaseChangeLog:
         - customChange:
             class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
+  - changeSet:
+      id: v51.2024-08-12T10:00:18
+      author: johnswanson
+      comment: Add collection_permissions table
+      changes:
+        - createTable:
+            tableName: collection_permissions
+            remarks: A table to store collection permissions
+            columns:
+              - column:
+                  remarks: The ID of the permission
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+                    nullable: false
+              - column:
+                  remarks: The ID of the associated permission group
+                  name: group_id
+                  type: int
+                  constraints:
+                    nullable: false
+                    referencedTableName: permissions_group
+                    referencedColumnNames: id
+                    foreignKeyName: fk_data_permissions_ref_permissions_group
+                    deleteCascade: true
+              - column:
+                  remarks: The type of the permission
+                  name: perm_type
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+              - column:
+                  remarks: The collection namespace
+                  name: collection_namespace
+                  type: varchar(254)
+                  constraints:
+                    nullable: true
+              - column:
+                  remarks: A collection ID
+                  name: collection_id
+                  type: int
+                  constraints:
+                    nullable: true
+                    referencedTableName: collection
+                    referencedColumnNames: id
+                    foreignKeyName: fk_collection_permissions_ref_collection_id
+                    deleteCascade: true
+              - column:
+                  remarks: The value this permission is set to.
+                  name: perm_value
+                  type: varchar(64)
+                  constraints:
+                    nullable: false
+      validCheckSum: ANY
+
+
+  - changeSet:
+      id: v51.2024-08-12T10:02:49
+      validCheckSum: ANY
+      author: johnswanson
+      comment: Migrate to `collection_permissions`
+      rollback: # not needed, will be deleted with the table
+      changes:
+        - sqlFile:
+            path: permissions/collections.sql
+            relativeToChangelogFile: true
+
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 
 ########################################################################################################################

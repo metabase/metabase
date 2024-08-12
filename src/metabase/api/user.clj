@@ -3,6 +3,7 @@
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
    [honey.sql.helpers :as sql.helpers]
+   [metabase.models.collection-permissions :as collection-perms]
    [java-time.api :as t]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
@@ -299,9 +300,9 @@
   "True when the user has permissions for at least one un-archived question and one un-archived dashboard, excluding
   internal/automatically-loaded content."
   [user]
-  (let [coll-ids-filter (collection/visible-collection-ids->honeysql-filter-clause
-                          :collection_id
-                          (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))
+  (let [coll-ids-filter (collection-perms/honeysql-filter-clause
+                         api/*current-user-id*
+                         {:collection-id-field :collection_id})
         entity-exists? (fn [model] (t2/exists? model
                                     {:where [:and
                                              [:= :archived false]

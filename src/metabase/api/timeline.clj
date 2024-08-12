@@ -2,6 +2,7 @@
   "/api/timeline endpoints."
   (:require
    [compojure.core :refer [DELETE GET POST PUT]]
+   [metabase.models.collection-permissions :as collection-perms]
    [metabase.api.common :as api]
    [metabase.models.collection :as collection]
    [metabase.models.collection.root :as collection.root]
@@ -46,8 +47,7 @@
         timelines (->> (t2/select Timeline
                          {:where    [:and
                                      [:= :archived archived?]
-                                     (collection/visible-collection-ids->honeysql-filter-clause
-                                      (collection/permissions-set->visible-collection-ids @api/*current-user-permissions-set*))]
+                                     (collection-perms/honeysql-filter-clause api/*current-user-id*)]
                           :order-by [[:%lower.name :asc]]})
                        (map collection.root/hydrate-root-collection))]
     (cond->> (t2/hydrate timelines :creator [:collection :can_write])

@@ -15,7 +15,8 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan2.core :as t2]))
+   [toucan2.core :as t2]
+   [metabase.models.collection-permissions :as collection-perms]))
 
 (set! *warn-on-reflection* true)
 
@@ -67,11 +68,9 @@
                                     [:and
                                      [:= :type "model"]
                                      [:= :archived false]
-                                     ;; action permission keyed off of model permission
-                                     (collection/visible-collection-ids->honeysql-filter-clause
-                                      :collection_id
-                                      (collection/permissions-set->visible-collection-ids
-                                       @api/*current-user-permissions-set*))]}))]
+                                     (collection-perms/honeysql-filter-clause
+                                      api/*current-user-id*
+                                      {:collection-id-field :collection_id})]}))]
       (actions-for models))))
 
 (api/defendpoint GET "/public"
