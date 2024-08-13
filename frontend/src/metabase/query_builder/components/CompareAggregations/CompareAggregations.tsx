@@ -59,7 +59,7 @@ export const CompareAggregations = ({
     (comparisonType: ComparisonType) => {
       setComparisonType(comparisonType);
       setColumns(convertColumnTypes(columns, comparisonType));
-      if (comparisonType === "moving-average" && offset <= 1) {
+      if (comparisonType === "moving-average" && offset !== "" && offset <= 1) {
         setOffset(2);
       }
     },
