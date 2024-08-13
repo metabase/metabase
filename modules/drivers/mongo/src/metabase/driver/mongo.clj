@@ -300,14 +300,14 @@
         "undefined"  :type/*
         "objectId"   :type/MongoBSONID
         "bool"       :type/Boolean
-        "date"       :type/DateTime
+        "date"       :type/Instant
         "null"       :type/*
         "regex"      :type/Text  ; Regular expressions are typically represented as strings
         "dbPointer"  :type/*     ; Deprecated. TODO: should this be something else?
         "javascript" :type/*     ; TODO: should this be text?
         "symbol"     :type/Text  ; Deprecated. TODO: should this be text?
         "int"        :type/Integer
-        "timestamp"  :type/DateTime
+        "timestamp"  :type/Instant
         "long"       :type/Integer
         "decimal"    :type/Decimal
         "minKey"     :type/* ; TODO: should this be something else?
