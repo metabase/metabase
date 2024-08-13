@@ -123,11 +123,6 @@ function MainNavbarView({
     ({ id, can_write }) => (id === null || id === "root") && can_write,
   );
 
-  const [[trashCollection], collectionsWithoutTrash] = useMemo(
-    () => _.partition(collections, c => c.type === "trash"),
-    [collections],
-  );
-
   return (
     <ErrorBoundary>
       <SidebarContentRoot>
@@ -169,7 +164,7 @@ function MainNavbarView({
                 handleCreateNewCollection={handleCreateNewCollection}
               />
               <Tree
-                data={collectionsWithoutTrash}
+                data={collections}
                 selectedId={collectionItem?.id}
                 onSelect={onItemSelect}
                 TreeNode={SidebarCollectionLink}
