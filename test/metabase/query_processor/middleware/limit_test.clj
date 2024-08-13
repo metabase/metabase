@@ -113,6 +113,6 @@
                            :query       {}
                            ;; setting a constraint here will result in `(mbql.u/query->max-rows-limit query)` returning that limit
                            ;; so we can use this to check the behaviour of `limit/add-default-limit` when download-row-limit is unset
-                           :constraints (when limit {:max-results-bare-rows limit})
+                           :constraints {:max-results-bare-rows limit}
                            :info        {:context context}})
                          [:query :limit])))))))
