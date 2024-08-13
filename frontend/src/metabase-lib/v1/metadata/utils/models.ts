@@ -1,7 +1,6 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type Database from "metabase-lib/v1/metadata/Database";
-import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
 import { findColumnIndexesForColumnSettings } from "metabase-lib/v1/queries/utils/dataset";
 import type {
@@ -101,22 +100,23 @@ export function checkCanBeModel(question: Question) {
     .every(isSupportedTemplateTagForModel);
 }
 
-export function isAdHocModelQuestion(
+export function isAdHocModelOrMetricQuestion(
   question?: Question,
   originalQuestion?: Question,
 ) {
-  if (!question || !originalQuestion) {
-    return false;
+  if (
+    question &&
+    originalQuestion &&
+    question.id() === originalQuestion.id() &&
+    originalQuestion.type() !== "question"
+  ) {
+    return Lib.areLegacyQueriesEqual(
+      question.datasetQuery(),
+      originalQuestion.composeQuestion().datasetQuery(),
+    );
   }
 
-  const isModel =
-    question.type() !== "question" || originalQuestion.type() !== "question";
-  const isSameQuestion = question.id() === originalQuestion.id();
-  const isSelfReferencing =
-    Lib.sourceTableOrCardId(question.query()) ===
-    getQuestionVirtualTableId(originalQuestion.id());
-
-  return isModel && isSameQuestion && isSelfReferencing;
+  return false;
 }
 
 export function checkCanRefreshModelCache(

@@ -44,7 +44,7 @@ import {
 } from "metabase/visualizations/lib/table";
 import { getColumnExtent } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { isID, isPK, isFK } from "metabase-lib/v1/types/utils/isa";
 import { memoizeClass } from "metabase-lib/v1/utils";
 
@@ -214,8 +214,8 @@ class TableInteractive extends Component {
     const isDataChange =
       data && nextData && !_.isEqual(data.cols, nextData.cols);
     const isDatasetStatusChange =
-      isAdHocModelQuestion(nextQuestion, question) ||
-      isAdHocModelQuestion(question, nextQuestion);
+      isAdHocModelOrMetricQuestion(nextQuestion, question) ||
+      isAdHocModelOrMetricQuestion(question, nextQuestion);
 
     if (isDataChange && !isDatasetStatusChange) {
       this.resetColumnWidths();
