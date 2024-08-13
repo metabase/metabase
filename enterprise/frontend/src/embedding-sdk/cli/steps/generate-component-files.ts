@@ -51,7 +51,7 @@ export const generateReactComponentFiles: CliStepMethod = async state => {
   // Generate analytics.css sample styles.
   await fs.writeFile(`${path}/analytics.css`, ANALYTICS_CSS_SNIPPET);
 
-  // Generate index.ts file with all the component exports.
+  // Generate index.js file with all the component exports.
   const exportIndexContent = sampleComponents
     .map(file => `export * from "./${file.name}";`)
     .join("\n")
