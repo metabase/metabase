@@ -788,7 +788,6 @@
                                                            ;; If the previous database-level permission can't be set at
                                                            ;; the table-level, we need to provide a new default
                                                            :query-builder-and-native :query-builder
-                                                           :blocked                  :unrestricted
                                                            existing-db-perm-value)
                                             :db_id       db-id
                                             :table_id    (:id table)
