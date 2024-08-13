@@ -1,13 +1,37 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertQueryBuilderRowCount,
+  createQuestion,
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
+  openNotebook,
   popover,
   restore,
   startNewQuestion,
+  type StructuredQuestionDetails,
   visualize,
 } from "e2e/support/helpers";
+
+const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
+
+const breakoutQuestionDetails: StructuredQuestionDetails = {
+  query: {
+    "source-table": ORDERS_ID,
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "year" },
+      ],
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month-of-year" },
+      ],
+    ],
+  },
+};
 
 describe("scenarios > question > multiple column breakouts", () => {
   beforeEach(() => {
@@ -16,7 +40,7 @@ describe("scenarios > question > multiple column breakouts", () => {
   });
 
   describe("notebook", () => {
-    it("should create a query with multiple breakouts", () => {
+    it("should allow to create a query with multiple breakouts", () => {
       startNewQuestion();
       entityPickerModal().within(() => {
         entityPickerModalTab("Tables").click();
@@ -44,6 +68,17 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
       visualize();
       assertQueryBuilderRowCount(49);
+    });
+
+    it("should allow to sort by breakout columns", () => {
+      createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+      openNotebook();
+      getNotebookStep("summarize").findByText("Sort").click();
+      popover().findByText("Created At: Year").click();
+      getNotebookStep("sort").button("Change direction").click();
+      getNotebookStep("sort").icon("add").click();
+      popover().findByText("Created At: Month of year").click();
+      visualize();
     });
   });
 });
