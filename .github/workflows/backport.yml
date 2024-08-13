@@ -118,10 +118,10 @@ jobs:
               if [ -n "${SQUASHED_COMMIT}" ]; then
                 echo "found commit ${SQUASHED_COMMIT}"
                 git cherry-pick ${SQUASHED_COMMIT}
+              else
+                echo "No squashed commit found for PR #${ORIGINAL_PULL_REQUEST_NUMBER}"
+                exit 1
               fi
-
-              echo "No squashed commit found for PR #${ORIGINAL_PULL_REQUEST_NUMBER}"
-              exit 1
             fi
 
           else
