@@ -293,12 +293,37 @@ describe("BreakoutStep", () => {
       await userEvent.click(await screen.findByText("Tax: 10 bins"));
       const option = await screen.findByRole("option", { name: "Tax" });
       await userEvent.click(within(option).getByLabelText("Binning strategy"));
-      await userEvent.click(await screen.findByText("Auto bin"));
+      await userEvent.click(await screen.findByText("100 bins"));
 
       const breakouts = getNextBreakouts();
       expect(breakouts).toHaveLength(2);
-      expect(breakouts[0].displayName).toBe("Tax: Auto binned");
+      expect(breakouts[0].displayName).toBe("Tax: 100 bins");
       expect(breakouts[1].displayName).toBe("Tax: 50 bins");
+    });
+
+    it("should allow to remove a breakout for a column with an existing breakout but with a different binning strategy", async () => {
+      const query = createQueryWithClauses({
+        breakouts: [
+          {
+            tableName: "ORDERS",
+            columnName: "TAX",
+            binningStrategyName: "10 bins",
+          },
+          {
+            tableName: "ORDERS",
+            columnName: "TAX",
+            binningStrategyName: "50 bins",
+          },
+        ],
+      });
+      const { getNextBreakouts } = setup(createMockNotebookStep({ query }));
+
+      const clause = await screen.findByText("Tax: 50 bins");
+      await userEvent.click(within(clause).getByLabelText("close icon"));
+
+      const breakouts = getNextBreakouts();
+      expect(breakouts).toHaveLength(1);
+      expect(breakouts[0].displayName).toBe("Tax: 10 bins");
     });
 
     it("should allow to add a breakout for a column with an existing breakout but with a different temporal bucket", async () => {
@@ -322,12 +347,12 @@ describe("BreakoutStep", () => {
           {
             tableName: "ORDERS",
             columnName: "CREATED_AT",
-            binningStrategyName: "Year",
+            temporalBucketName: "Year",
           },
           {
             tableName: "ORDERS",
             columnName: "CREATED_AT",
-            binningStrategyName: "Month",
+            temporalBucketName: "Month",
           },
         ],
       });
@@ -340,8 +365,33 @@ describe("BreakoutStep", () => {
 
       const breakouts = getNextBreakouts();
       expect(breakouts).toHaveLength(2);
-      expect(breakouts[0].displayName).toBe("Tax: Year");
-      expect(breakouts[1].displayName).toBe("Tax: Quarter");
+      expect(breakouts[0].displayName).toBe("Created At: Year");
+      expect(breakouts[1].displayName).toBe("Created At: Quarter");
+    });
+
+    it("should allow to remove a breakout for a column with an existing breakout but with a different temporal bucket", async () => {
+      const query = createQueryWithClauses({
+        breakouts: [
+          {
+            tableName: "ORDERS",
+            columnName: "CREATED_AT",
+            temporalBucketName: "Year",
+          },
+          {
+            tableName: "ORDERS",
+            columnName: "CREATED_AT",
+            temporalBucketName: "Month",
+          },
+        ],
+      });
+      const { getNextBreakouts } = setup(createMockNotebookStep({ query }));
+
+      const clause = await screen.findByText("Created At: Month");
+      await userEvent.click(within(clause).getByLabelText("close icon"));
+
+      const breakouts = getNextBreakouts();
+      expect(breakouts).toHaveLength(1);
+      expect(breakouts[0].displayName).toBe("Created At: Year");
     });
   });
 });
