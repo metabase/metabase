@@ -243,7 +243,7 @@ describe("SummarizeSidebar", () => {
     ).toHaveLength(2);
   });
 
-  it("should allow to modify temporal units for breakouts of the same column", async () => {
+  it("should allow to modify temporal buckets for breakouts of the same column", async () => {
     const { getNextBreakouts } = await setup({
       query: createQueryWithBreakoutsForSameColumn(),
     });
@@ -260,6 +260,19 @@ describe("SummarizeSidebar", () => {
     expect(getNextBreakouts()).toMatchObject([
       { displayName: "Created At: Quarter" },
       { displayName: "Created At: Quarter of year" },
+    ]);
+  });
+
+  it("should ignore attempts to create duplicate breakouts by changing the temporal bucket for one of the breakouts", async () => {
+    const { getNextBreakouts } = await setup({
+      query: createQueryWithBreakoutsForSameColumn(),
+    });
+
+    await userEvent.click(await screen.findByText("by year"));
+    await userEvent.click(await screen.findByText("Month of year"));
+    expect(getNextBreakouts()).toMatchObject([
+      { displayName: "Created At: Year" },
+      { displayName: "Created At: Month of year" },
     ]);
   });
 
