@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.channel.core :as channel]
+   [metabase.channel.http-test :as channel.http-test]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.test :as mt]
    [toucan2.core :as t2]))
@@ -102,7 +103,18 @@
     (is (= {:errors {:email "Invalid email"}}
            (mt/user-http-request :crowberto :post 400 "channel"
                                  (assoc default-test-channel :details {:return-type  "throw"
-                                                                       :return-value {:errors {:email "Invalid email"}}}))))))
+                                                                       :return-value {:errors {:email "Invalid email"}}})))))
+
+  (testing "error if channel details include undefined key"
+    (channel.http-test/with-server [url [channel.http-test/get-200]]
+      (is (= {:errors {:xyz ["disallowed key"]}}
+             (mt/user-http-request :crowberto :post 400 "channel"
+                                   (assoc default-test-channel
+                                          :type        "channel/http"
+                                          :details     {:url         (str url (:path channel.http-test/get-200))
+                                                        :method      "get"
+                                                        :auth-method "none"
+                                                        :xyz         "alo"})))))))
 
 (deftest ensure-channel-is-namespaced-test
   (testing "POST /api/channel return 400 if channel type is not namespaced"
