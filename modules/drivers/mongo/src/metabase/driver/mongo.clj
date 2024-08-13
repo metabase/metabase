@@ -143,8 +143,6 @@
                     :value %}))
            set))))
 
-(def ^:private describe-table-sample-size 1000)
-
 (defn- sample-stages
   "Query stages which get a sample of the data in the collection, of size `n`. Half of the sample is from the first
    inserted documents and the other half from the last inserted documents."
@@ -158,11 +156,11 @@
        "pipeline" [{"$sort" {"_id" -1}}
                    {"$limit" end-n}]}}]))
 
-(defn- root-query [collection-name max-depth]
+(defn- root-query [collection-name sample-size max-depth]
   (let [depth-k    (fn [depth] (str "depth" depth "K"))
         depth-type (fn [depth] (str "depth" depth "Type"))
         depth-idx  (fn [depth] (str "depth" depth "Index"))
-        depth-kvs  (fn [depth] (str "depth" depth "KVs"))
+        depth-kvs  (fn [depth] (str "depth" depth "Kvs"))
         project-nested-fields
         (fn [depth]
           (cond-> [{"$project"
@@ -217,7 +215,7 @@
                           "mostCommonType" 1}}]))
         all-depths (range (inc max-depth))
         facets (into {} (map (juxt #(str "depth" %) facet-stage) all-depths))]
-    (vec (concat (sample-stages collection-name describe-table-sample-size)
+    (vec (concat (sample-stages collection-name sample-size)
                  [{"$project" {(depth-kvs 0) {"$objectToArray" "$$ROOT"}}}
                   {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}]
                  (mapcat project-nested-fields all-depths)
@@ -225,7 +223,7 @@
                   {"$project" {"allFields" {"$concatArrays" (mapv #(str "$" %) (keys facets))}}}
                   {"$unwind" "$allFields"}]))))
 
-(defn- nested-level-query [collection-name parent-paths]
+(defn- nested-level-query [collection-name parent-paths sample-size]
   (letfn [(path-query [path]
             [{"$project" {"path" path
                           "kvs"  {"$objectToArray" (str "$" path)}}}
@@ -254,7 +252,7 @@
                "k"              "$_id.k"
                "index"          "$_id.index"
                "mostCommonType" 1}}])]
-    (concat (sample-stages collection-name describe-table-sample-size)
+    (concat (sample-stages collection-name sample-size)
             [{"$replaceRoot" {"newRoot" "$$ROOT"}}
              {"$project" {"sample" 0}}
              {"$facet"
@@ -268,6 +266,7 @@
 
 (defn- infer-schema [db table]
   (let [collection-name (:name table)
+        sample-size metadata-queries/nested-field-sample-limit
         q! (fn [q]
              (:rows (:data (qp/process-query {:database (:id db)
                                               :type     "native"
@@ -276,9 +275,9 @@
         ;; query-depth's value involves a trade-off. The lower the query-depth the faster root-query executes.
         ;; however the lower it is, the more we might have to do more nested-level-query executions.
         query-depth   4
-        fields        (flatten (q! (root-query collection-name query-depth)))
+        fields        (flatten (q! (root-query collection-name sample-size query-depth)))
         nested-fields (fn nested-fields [paths]
-                        (let [fields (flatten (first (q! (nested-level-query  collection-name paths))))
+                        (let [fields (flatten (first (q! (nested-level-query collection-name sample-size paths))))
                               nested (when-let [object-fields (seq (filter #(= (:mostCommonType %) "object") fields))]
                                        (nested-fields (map :path object-fields)))]
                           (concat fields nested)))

@@ -436,10 +436,10 @@
              ["Silvereye" "cherries" nil]]]]
           ;; do a full sync on the DB to get the correct semantic type info
           (sync/sync-database! (mt/db))
-          (is (= #{{:name "_id", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type :type/PK}
-                   {:name "favorite_snack", :database_type "java.lang.String", :base_type :type/Text, :semantic_type :type/Category}
-                   {:name "name", :database_type "java.lang.String", :base_type :type/Text, :semantic_type :type/Name}
-                   {:name "max_wingspan", :database_type "java.lang.Long", :base_type :type/Integer, :semantic_type nil}}
+          (is (= #{{:name "_id", :database_type "long", :base_type :type/Integer, :semantic_type :type/PK}
+                   {:name "favorite_snack", :database_type "string", :base_type :type/Text, :semantic_type :type/Category}
+                   {:name "name", :database_type "string", :base_type :type/Text, :semantic_type :type/Name}
+                   {:name "max_wingspan", :database_type "long", :base_type :type/Integer, :semantic_type nil}}
                  (into #{}
                        (map (partial into {}))
                        (t2/select [Field :name :database_type :base_type :semantic_type]
