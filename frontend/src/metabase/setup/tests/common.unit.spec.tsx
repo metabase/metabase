@@ -5,6 +5,8 @@ import userEvent from "@testing-library/user-event";
 import { screen } from "__support__/ui";
 import { createMockSettingDefinition } from "metabase-types/api/mocks";
 
+import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "../constants";
+
 import {
   clickNextStep,
   expectSectionsToHaveLabelsInOrder,
@@ -193,6 +195,63 @@ describe("setup (OSS)", () => {
       expect(flags).toEqual({
         "embedding-homepage": "visible",
         "setup-license-active-at-setup": false,
+      });
+    });
+
+    describe("newsletter step", () => {
+      let originalSendBeacon: typeof window.navigator.sendBeacon;
+
+      beforeEach(() => {
+        originalSendBeacon = window.navigator.sendBeacon;
+        window.navigator.sendBeacon = jest.fn();
+      });
+
+      afterEach(() => {
+        window.navigator.sendBeacon = originalSendBeacon;
+        jest.clearAllMocks();
+      });
+
+      it("should call navigator.sendBeacon if the user checked the box", async () => {
+        await setup();
+        await skipWelcomeScreen();
+        await skipLanguageStep();
+        await submitUserInfoStep();
+        await selectUsageReason("self-service-analytics");
+        await clickNextStep();
+        await screen.getByText("I'll add my data later").click();
+        await screen.getByText("Finish").click();
+
+        screen
+          .getByText(
+            "Get infrequent emails about new releases and feature updates.",
+          )
+          .click();
+
+        screen.getByText("Take me to Metabase").click();
+
+        const formData = new FormData();
+        formData.append("EMAIL", "john@example.org"); // email from user step
+        formData.append(SUBSCRIBE_TOKEN, "");
+
+        expect(window.navigator.sendBeacon).toHaveBeenCalledWith(
+          SUBSCRIBE_URL,
+          formData,
+        );
+      });
+
+      it("should *NOT* call navigator.sendBeacon if the user has not checked the box", async () => {
+        await setup();
+        await skipWelcomeScreen();
+        await skipLanguageStep();
+        await submitUserInfoStep();
+        await selectUsageReason("self-service-analytics");
+        await clickNextStep();
+        await screen.getByText("I'll add my data later").click();
+        await screen.getByText("Finish").click();
+
+        screen.getByText("Take me to Metabase").click();
+
+        expect(window.navigator.sendBeacon).not.toHaveBeenCalled();
       });
     });
   });
