@@ -8325,6 +8325,7 @@ databaseChangeLog:
                       GROUP BY dashboard_id, parameter_id, user_id
                   ) AS max_ids
               );
+      rollback: # nothing to do, since the table will be deleted
 
   - changeSet:
       id: v50.2024-08-08T20:04:05
