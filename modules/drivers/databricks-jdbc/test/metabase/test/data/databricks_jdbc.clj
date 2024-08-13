@@ -79,7 +79,7 @@
 ;; Following implementation does not attemp to .setAutoCommit, that is not supported by Databricks jdbc driver.
 (defmethod load-data/do-insert! :databricks-jdbc
   [driver spec table-identifier row-or-rows]
-  (let [statements (ddl/insert-rows-ddl-statements driver table-identifier row-or-rows)]
+  (let [statements (ddl/insert-rows-dml-statements driver table-identifier row-or-rows)]
     (sql-jdbc.execute/do-with-connection-with-options
      driver
      spec
@@ -92,11 +92,6 @@
                 (log/infof "Error inserting data: %s" (u/pprint-to-str 'red statements))
                 (jdbc/print-sql-exception-chain e)
                 (throw e)))))))
-
-;; TODO: Verify all datasets can be created using this implementation!
-(defmethod load-data/load-data! :databricks-jdbc
-  [& args]
-  (apply load-data/load-data-maybe-add-ids! args))
 
 (defmethod execute/execute-sql! :databricks-jdbc [& args]
   (apply execute/sequentially-execute-sql! args))
