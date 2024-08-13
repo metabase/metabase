@@ -2,6 +2,7 @@
   (:require
    [cheshire.core :as json]
    [metabase.api.common :as api]
+   [metabase.db :as mdb]
    [metabase.models.interface :as mi]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
@@ -30,6 +31,30 @@
   {:value {:in  mi/json-in
            :out json-out}})
 
+(defn- batched-upsert!*
+  [rows]
+  (let [rows (map #(update % :value mi/json-in) rows)]
+    (case (mdb/db-type)
+      :postgres
+      (t2/query {:insert-into   :user_parameter_value
+                 :values        rows
+                 :on-conflict   [:user_id :dashboard_id :parameter_id]
+                 :do-update-set :value})
+
+      :mysql
+      (t2/query {:insert-into             :user_parameter_value
+                 :values                  rows
+                 ;:on-conflict             ;[:user_id :dashboard_id :parameter_id]
+                 :on-duplicate-key-update {:value [:values :value]}})
+
+      :h2 ;; sorry h2
+      (doseq [{:keys [user_id dashboard_id parameter_id value] :as row} rows]
+        (or (pos? (t2/update! :model/UserParameterValue {:user_id      user_id
+                                                         :dashboard_id dashboard_id
+                                                         :parameter_id parameter_id}
+                              {:value value}))
+            (t2/insert! :model/UserParameterValue row))))))
+
 (mu/defn batched-upsert!
   "Delete param with nil value and upsert the rest."
   [user-id         :- ms/PositiveInt
@@ -41,15 +66,12 @@
         to-delete      (filter to-delete-pred parameters)
         to-upsert      (filter (complement to-delete-pred) parameters)]
     (t2/with-transaction [_conn]
-      (doseq [{:keys [id value]} to-upsert]
-        (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
-                                                         :dashboard_id dashboard-id
-                                                         :parameter_id id}
-                              {:value value}))
-            (t2/insert! :model/UserParameterValue {:user_id      user-id
-                                                   :dashboard_id dashboard-id
-                                                   :parameter_id id
-                                                   :value        value})))
+      (batched-upsert!* (map (fn [{:keys [id value]}]
+                               {:user_id      user-id
+                                :dashboard_id dashboard-id
+                                :parameter_id id
+                                :value        value})
+                             to-upsert))
       (when (seq to-delete)
         (t2/delete! :model/UserParameterValue
                     :user_id user-id

@@ -2463,3 +2463,56 @@
         (testing "After the migration, fields are deactivated correctly"
           (doseq [[active? field] active+field]
             (is (= active? (t2/select-one-fn :active :metabase_field (:id field))))))))))
+
+(deftest delete-duplicated-user-parameter-value-test
+  (testing "Migration v50.2024-08-08T20:04:04"
+    (impl/test-migrations "v50.2024-08-08T20:04:04" [migrate!]
+      (let [user-id (:id (create-raw-user! (mt/random-email)))
+            dashboard-id (t2/insert-returning-pk! :report_dashboard {:name       "A dashboard"
+                                                                     :creator_id user-id
+                                                                     :parameters "[]"
+                                                                     :created_at :%now
+                                                                     :updated_at :%now})
+            upv-1        (t2/insert-returning-pk! :user_parameter_value {:user_id user-id
+                                                                         :parameter_id "param-1"
+                                                                         :dashboard_id dashboard-id
+                                                                         :value        "1"})
+            upv-1-dup    (t2/insert-returning-pk! :user_parameter_value {:user_id user-id
+                                                                         :parameter_id "param-1"
+                                                                         :dashboard_id dashboard-id
+                                                                         :value        "2"})
+            upv-2        (t2/insert-returning-pk! :user_parameter_value {:user_id user-id
+                                                                         :parameter_id "param-2"
+                                                                         :dashboard_id dashboard-id
+                                                                         :value        "3"})
+            upvs         (fn []
+                           (set (t2/select [:user_parameter_value :id :dashboard_id :parameter_id :user_id :value]
+                                           :dashboard_id dashboard-id)))]
+        (is (= #{{:id           upv-1
+                  :dashboard_id dashboard-id
+                  :parameter_id "param-1"
+                  :user_id      user-id
+                  :value        "1"}
+                 {:id           upv-1-dup
+                  :dashboard_id dashboard-id
+                  :parameter_id "param-1"
+                  :user_id      user-id
+                  :value        "2"}
+                 {:id           upv-2
+                  :dashboard_id dashboard-id
+                  :parameter_id "param-2"
+                  :user_id      user-id
+                  :value        "3"}}
+             (upvs)))
+        (migrate!)
+        (is (= #{{:id           upv-1-dup
+                  :dashboard_id dashboard-id
+                  :parameter_id "param-1"
+                  :user_id      user-id
+                  :value        "2"}
+                 {:id           upv-2
+                  :dashboard_id dashboard-id
+                  :parameter_id "param-2"
+                  :user_id      user-id
+                  :value        "3"}}
+             (upvs)))))))

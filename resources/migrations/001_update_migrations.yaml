@@ -8300,20 +8300,41 @@ databaseChangeLog:
       rollback: # nothing to do, since this is backwards compatible
 
   - changeSet:
-      id: v50.2024-08-08T20:04:03
+      id: v50.2024-08-08T20:04:04
       author: qnkhuat
-      comment: Added 0.50.0 - Add index on user_parameter_value(user_id, parameter_id, dashboard_id)
+      comment: Added 0.50.0 - Delete duplicated user parameter value so we can add unique index
       changes:
-        - createIndex:
+        - sql:
+            dbms: postgresql,h2
+            sql: >-
+              DELETE FROM user_parameter_value
+              WHERE id NOT IN (
+                  SELECT MAX(id)
+                  FROM user_parameter_value
+                  GROUP BY dashboard_id, parameter_id, user_id
+              );
+        - sql:
+            dbms: mysql,mariadb
+            sql: >-
+              DELETE FROM user_parameter_value
+              WHERE id NOT IN (
+                  SELECT id
+                  FROM (
+                      SELECT MAX(id) AS id
+                      FROM user_parameter_value
+                      GROUP BY dashboard_id, parameter_id, user_id
+                  ) AS max_ids
+              );
+
+  - changeSet:
+      id: v50.2024-08-08T20:04:05
+      author: qnkhuat
+      comment: Added 0.50.0 - Add unique index on user_parameter_value(user_id, parameter_id, dashboard_id)
+      changes:
+        - addUniqueConstraint:
             tableName: user_parameter_value
-            indexName: idx_user_parameter_value_user_id_dashboard_id_parameter_id
-            columns:
-              - column:
-                  name: user_id
-              - column:
-                  name: dashboard_id
-              - column:
-                  name: parameter_id
+            columnNames: user_id, dashboard_id, parameter_id
+            constraintName: unique_user_parameter_value_user_id_dashboard_id_parameter_id
 
   - changeSet:
       id: v51.2024-05-13T15:30:57
