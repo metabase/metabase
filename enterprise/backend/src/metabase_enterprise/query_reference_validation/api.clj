@@ -78,6 +78,19 @@
     {:data (map (comp present add-errors) (t2/hydrate cards [:collection :effective_ancestors] :creator))
      :total (t2/count :model/Card (dissoc card-query :limit :offset))}))
 
+(defn- invalid-cards [sort_column sort_direction collection_id]
+  (let [collection (if (nil? collection_id)
+                     collection/root-collection
+                     (t2/select-one :model/Collection :id collection_id))
+        collection-ids (conj (collection/descendant-ids collection) collection_id)]
+    (merge (cards-with-reference-errors {:sort-column (or sort_column default-sort-column)
+                                         :sort-direction (or sort_direction default-sort-direction)
+                                         :collection-ids (set collection-ids)
+                                         :limit mw.offset-paging/*limit*
+                                         :offset mw.offset-paging/*offset*})
+           {:limit mw.offset-paging/*limit*
+            :offset mw.offset-paging/*offset*})))
+
 (api/defendpoint GET "/invalid-cards"
   "List of cards that have an invalid reference in their query. Shape of each card is standard, with the addition of an
   `errors` key. Supports pagination (`offset` and `limit`), so it returns something in the shape:
@@ -92,17 +105,7 @@
   {sort_column    [:maybe (into [:enum] valid-sort-columns)]
    sort_direction [:maybe (into [:enum] valid-sort-directions)]
    collection_id  [:maybe ms/PositiveInt]}
-  (let [collection (if (nil? collection_id)
-                     collection/root-collection
-                     (t2/select-one :model/Collection :id collection_id))
-        collection-ids (conj (collection/descendant-ids collection) collection_id)]
-    (merge (cards-with-reference-errors {:sort-column (or sort_column default-sort-column)
-                                         :sort-direction (or sort_direction default-sort-direction)
-                                         :collection-ids (set collection-ids)
-                                         :limit mw.offset-paging/*limit*
-                                         :offset mw.offset-paging/*offset*})
-           {:limit mw.offset-paging/*limit*
-            :offset mw.offset-paging/*offset*})))
+  (invalid-cards sort_column sort_direction collection_id))
 
 (defn +check-setting
   "Middleware that gates this API behind the associated feature flag"
