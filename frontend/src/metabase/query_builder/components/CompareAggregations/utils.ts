@@ -150,7 +150,7 @@ export function updateQueryWithCompareOffsetAggregations(
   columns: ColumnType[],
   columnAndBucket: BreakoutColumnAndBucket,
 ): UpdatedQuery | null {
-  if (!aggregation || offset === "" || !columnAndBucket) {
+  if (!aggregation || offset === "") {
     return null;
   }
 
