@@ -1,0 +1,78 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Serialization operation",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "database",
+    "format": "jsonschema",
+    "version": "1-0-1"
+  },
+  "type": "object",
+  "required": ["event", "source", "duration", "success"],
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": ["serialization"],
+      "maxLength": 1024
+    },
+    "direction": {
+      "description": "Is it import or export",
+      "type": "string"
+      "enum": ["import", "export"],
+      "maxLength": 6
+    },
+    "source": {
+      "description": "The way serialization was triggered",
+      "type": "string",
+      "enum": ["cli", "api"]
+    },
+    "duration_ms": {
+      "description": "Time in milliseconds it took to execute",
+      "type": "integer"
+    },
+    "success": {
+      "description": "If serialization succeeded or failed",
+      "type": "boolean"
+    },
+    "error_message": {
+      "description": "Why serialization failed",
+      "type": "string",
+      "maxLength": 1024
+    },
+    "count": {
+      "description": "Total count of serialized entities",
+      "type": "integer"
+    },
+    "error_count": {
+      "description": "Number of errors occured during serialization (if they were skipped)",
+      "type": "integer"
+    },
+    "models": {
+      "description": "Which models were imported",
+      "type": "string",
+      "maxLength": 1024
+    },
+    "collection": {
+      "description": "Which collections were exported",
+      "type": ["string", "null"],
+      "maxLength": 1024
+    },
+    "all_collections": {
+      "description": "If all collections were exported",
+      "type": "boolean"
+    },
+    "settings": {
+      "description": "If settings were exported",
+      "type": "boolean"
+    },
+    "field_values": {
+      "description": "If field values were exported",
+      "type": "boolean"
+    },
+    "secrets": {
+      "description": "If database secrets were included in export",
+      "type": "boolean"
+    }
+  }
+}

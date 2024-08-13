@@ -139,8 +139,8 @@
     (deparameterized-fn-form (parse-fn-tail '[:- :int [x :- :int] (inc x)]))
     ;; =>
     (fn [x] (inc x))"
-  [parsed]
-  `(core/fn ~@(deparameterized-fn-tail parsed)))
+  [parsed & [fn-name]]
+  `(core/fn ~@(when fn-name [fn-name]) ~@(deparameterized-fn-tail parsed)))
 
 (def ^:dynamic *enforce*
   "Whether [[validate-input]] and [[validate-output]] should validate things or not. In Cljc code, you can
@@ -293,8 +293,8 @@
 
     (mc/-instrument {:schema [:=> [:cat :int :any] :any]}
                     (fn [x y] (+ 1 2)))"
-  [error-context parsed]
-  `(let [~'&f ~(deparameterized-fn-form parsed)]
+  [error-context parsed & [fn-name]]
+  `(let [~'&f ~(deparameterized-fn-form parsed fn-name)]
      (core/fn ~@(instrumented-fn-tail error-context (fn-schema parsed)))))
 
 ;; ------------------------------ Skipping Namespace Enforcement in prod ------------------------------
