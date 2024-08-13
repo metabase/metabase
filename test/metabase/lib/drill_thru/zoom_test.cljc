@@ -81,7 +81,7 @@
 (deftest ^:parallel returns-zoom-source-card-test
   (let [metadata-provider (lib.tu/metadata-provider-with-cards-for-queries
                            meta/metadata-provider
-                           [(lib/query meta/metadata-provider (lib.metadata/table meta/metadata-provider (meta/id :orders)))])
+                           [(lib/query meta/metadata-provider (meta/table-metadata :orders))])
         query (lib/query metadata-provider (lib.metadata/card metadata-provider 1))]
     (lib.drill-thru.tu/test-returns-drill
      {:drill-type  :drill-thru/zoom
