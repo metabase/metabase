@@ -97,6 +97,7 @@ export function downloadAndAssert(
       fileType === "xlsx" && Object.assign(req, { encoding: "binary" });
 
       cy.request(req).then(({ body }) => {
+        ensureDownloadStatusDismissed();
         const { SheetNames, Sheets } = xlsx.read(body, {
           // See the full list of Parsing options: https://github.com/SheetJS/sheetjs#parsing-options
           type: "binary",
@@ -128,6 +129,7 @@ type GetEndPointParams = Pick<
   DownloadAndAssertParams,
   "fileType" | "questionId" | "publicUuid" | "dashcardId" | "dashboardId"
 >;
+
 function getEndpoint({
   fileType,
   questionId,
@@ -167,13 +169,12 @@ function getEndpoint({
   };
 }
 
-export function dismissDownloadStatus() {
-  cy.findByTestId("status-root-container").within(() => {
-    cy.findByRole("status").within(() => {
-      cy.findAllByText("Download completed");
-      cy.findByLabelText("Dismiss").click();
-    });
-
-    cy.findByRole("status").should("not.exist");
-  });
+export function ensureDownloadStatusDismissed() {
+  // Upon successful export, we display a status popup that automatically closes after a set time.
+  //  However, Cypress sometimes hangs after file downloads, making it difficult to determine if
+  //  the status popup has already closed on its own or if we need to close it manually which makes
+  //  any attempts to close it flaky. As a workaround we wait until it gets removed by itself.
+  cy.findByTestId("status-root-container")
+    .contains("Download", { timeout: 10000 })
+    .should("not.exist");
 }

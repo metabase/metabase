@@ -49,7 +49,9 @@ function setup({
       columnGroups={Lib.groupColumns(columns)}
       hasBinning={hasBinning}
       hasTemporalBucketing={hasTemporalBucketing}
-      checkIsColumnSelected={item => item.breakoutPosition === 0}
+      checkIsColumnSelected={({ breakoutPositions = [] }) =>
+        breakoutPositions.length > 0
+      }
       onSelect={onSelect}
       onClose={onClose}
     />,

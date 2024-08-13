@@ -115,7 +115,7 @@ export const ModelsTable = ({
   }, [isLargeDataset, showLoadingManyRows, sortedModels]);
 
   return (
-    <Table aria-label={skeleton ? undefined : "Table of models"}>
+    <Table aria-label={skeleton ? undefined : t`Table of models`}>
       <colgroup>
         {/* <col> for Name column */}
         <ModelNameColumn containerName={itemsTableContainerName} />
@@ -210,8 +210,10 @@ const TBodyRow = ({
           return;
         }
         const url = Urls.model({ id, name });
+        const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+
         if ((e.ctrlKey || e.metaKey) && e.button === 0) {
-          window.open(url, "_blank");
+          Urls.openInNewTab(subpathSafeUrl);
         } else {
           dispatch(push(url));
         }

@@ -458,6 +458,12 @@
         (log/errorf e "Error parsing %s objects: %s" object-type (ex-message e))
         nil))))
 
+(defn- card->metric-card
+  [card]
+  (-> card
+      (select-keys [:id :table-id :name :description :archived :dataset-query :source-card-id])
+      (assoc :lib/type :metadata/metric)))
+
 (defn- metric-cards
   [delayed-cards]
   (when-let [cards @delayed-cards]
@@ -465,11 +471,7 @@
           (keep (fn [[id card]]
                   (when (and card (= (:type @card) :metric) (not (:archived @card)))
                     (let [card @card]
-                      [id (-> card
-                              (select-keys [:id :table-id :name :description :archived
-                                            :dataset-query])
-                              (assoc :lib/type :metadata/metric)
-                              delay)]))))
+                      [id (-> card card->metric-card delay)]))))
           cards)))
 
 (defn- parse-metadata [metadata]
@@ -513,7 +515,20 @@
     (into []
           (keep (fn [[_id dlay]]
                   (when-let [object (some-> dlay deref)]
-                    (when (= (:table-id object) table-id)
+                    (when (and (= (:table-id object) table-id)
+                               (or (not= metadata-type :metadata/metric)
+                                   (nil? (:source-card-id object))))
+                      object))))
+          (some-> metadata k deref))))
+
+(defn- metadatas-for-card
+  [metadata metadata-type card-id]
+  (let [k (case metadata-type
+            :metadata/metric :metrics)]
+    (into []
+          (keep (fn [[_id dlay]]
+                  (when-let [object (some-> dlay deref)]
+                    (when (= (:source-card-id object) card-id)
                       object))))
           (some-> metadata k deref))))
 
@@ -536,9 +551,8 @@
         (tables metadata database-id))
       (metadatas-for-table [_this metadata-type table-id]
         (metadatas-for-table metadata metadata-type table-id))
-      (metadatas-for-tables [_this metadata-type table-ids]
-        ;; since this is already all in memory, we don't worry about batching
-        (map #(metadatas-for-table metadata metadata-type %) table-ids))
+      (metadatas-for-card [_this metadata-type card-id]
+        (metadatas-for-card metadata metadata-type card-id))
       (setting [_this setting-key]
         (setting unparsed-metadata setting-key))
 

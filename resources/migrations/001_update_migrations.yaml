@@ -6831,6 +6831,21 @@ databaseChangeLog:
             indexName: idx_data_permissions_group_id
 
   - changeSet:
+      id: v50.2024-01-10T03:27:20
+      author: noahmoss
+      comment: Analyze permissions table in preparation for subsequent migrations
+      validCheckSum: ANY
+      runInTransaction: false
+      changes:
+        - sql:
+            sql: ANALYZE permissions;
+            dbms: postgresql
+        - sql:
+            sql: ANALYZE TABLE permissions;
+            dbms: mysql,mariadb
+      rollback: # not needed
+
+  - changeSet:
       id: v50.2024-01-10T03:27:29
       author: noahmoss
       comment: Drop foreign key constraint on sandboxes.permissions_id
@@ -6851,10 +6866,16 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:30
       author: noahmoss
       comment: Migrate data-access permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_data_access.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -6887,10 +6908,16 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:32
       author: noahmoss
       comment: Migrate download-results permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_download_results.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -6910,10 +6937,16 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:33
       author: noahmoss
       comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_manage_table_metadata.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -7041,6 +7074,7 @@ databaseChangeLog:
                   name: db_id
               - column:
                   name: perm_value
+      rollback: # not needed
 
   - changeSet:
       id: v50.2024-02-26T22:15:53
@@ -7065,6 +7099,7 @@ databaseChangeLog:
                   name: table_id
               - column:
                   name: perm_value
+      rollback: # not needed
 
   - changeSet:
       id: v50.2024-02-26T22:15:54
@@ -8256,19 +8291,18 @@ databaseChangeLog:
               column:
                 name: dashboard_id
 
-  # last_used_at is used to determine if a report card is stale and should be cleaned up
-  # if the card is imported with serialization, we don't want to automatically clean up
-  # newly imported cards, and we don't want to have to make it nullable.
+  # After this migration, last_used_at becomes the lowest timestamp after which we know that
+  # the card has not been used. last_used_at will be used to determine if a report
+  # card is stale and should be cleaned up if the card is imported with serialization.
+  # Because we weren't collecting last_used_at before, we have to populate all existing cards
+  # with the current timestamp to provide a "lower bound" after which the card has not been used.
   - changeSet:
-      id: v50.2024-07-09T20:04:01
+      id: v50.2024-07-09T20:04:00
       author: calherries
       comment: Populate default value for report_card.last_used_at
       changes:
         - sql:
-            sql: >-
-              UPDATE report_card
-              SET last_used_at = current_timestamp
-              WHERE last_used_at IS NULL;
+            sql: UPDATE report_card SET last_used_at = current_timestamp
       rollback: # nothing to do, since this is backwards compatible
 
   - changeSet:
@@ -8840,6 +8874,74 @@ databaseChangeLog:
             columnDataType: varchar(254) # matching metabase_table.name
             columnName: table
             remarks: This value is null if the field does not exist, and macaw could not determine the table
+
+  - changeSet:
+      id: v51.2024-08-05T16:00:00
+      author: metamben
+      comment: Add source card reference to report_card to support metrics based models and questions
+      preConditions:
+        - not:
+          - columnExists:
+              tableName: report_card
+              columnName: source_card_id
+      changes:
+        - addColumn:
+            tableName: report_card
+            columns:
+              - column:
+                  name: source_card_id
+                  remarks: The ID of the model or question this card is based on
+                  type: int
+
+  - changeSet:
+      id: v51.2024-08-05T16:00:01
+      author: metamben
+      comment: Add FK constraint to report_card.source_card_id
+      preConditions:
+      changes:
+        - addForeignKeyConstraint:
+            baseTableName: report_card
+            baseColumnNames: source_card_id
+            referencedTableName: report_card
+            referencedColumnNames: id
+            constraintName: fk_report_card_source_card_id_ref_report_card_id
+            nullable: true
+            deleteCascade: true
+
+  - changeSet:
+      id: v51.2024-08-05T16:00:02
+      author: metamben
+      comment: Index report_card.source_card_id
+      rollback: # not necessary, will be removed with the table
+      preConditions:
+        - not:
+            - indexExists:
+                tableName: report_card
+                indexName: idx_report_card_source_card_id
+      changes:
+        - createIndex:
+            tableName: report_card
+            indexName: idx_report_card_source_card_id
+            columns:
+              column:
+                name: source_card_id
+
+
+  - changeSet:
+      id: v51.2024-08-07T10:00:00
+      author: ranquild
+      comment: Remove field refs from report_card.visualization_settings.column_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInCardVizSettings"
+
+  - changeSet:
+      id: v51.2024-08-07T11:00:00
+      author: ranquild
+      comment: Remove field refs from report_dashboardcard.visualization_settings.column_settings
+      changes:
+        - customChange:
+            class: "metabase.db.custom_migrations.MigrateLegacyColumnKeysInDashboardCardVizSettings"
 
   # >>>>>>>>>> DO NOT ADD NEW MIGRATIONS BELOW THIS LINE! ADD THEM ABOVE <<<<<<<<<<
 

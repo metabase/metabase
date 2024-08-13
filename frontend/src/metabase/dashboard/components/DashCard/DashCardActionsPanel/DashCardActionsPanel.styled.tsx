@@ -22,7 +22,7 @@ export const DashCardActionsPanelContainer = styled("div", {
 })<DashCardActionsPanelContainerProps>`
   padding: 0.125em 0.25em;
   position: absolute;
-  background: white;
+  background: var(--mb-color-bg-dashboard-card);
   transform: translateY(-50%);
   top: 0;
   right: 20px;

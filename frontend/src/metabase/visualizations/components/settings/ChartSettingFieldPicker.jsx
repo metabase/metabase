@@ -3,7 +3,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { keyForSingleSeries } from "metabase/visualizations/lib/settings/series";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 
 import {
   SettingsIcon,

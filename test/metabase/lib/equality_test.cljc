@@ -291,7 +291,7 @@
   (let [query (-> lib.tu/venues-query
                   (lib/breakout (meta/field-metadata :venues :id)))
         filterable-cols (lib/filterable-columns query)
-        matched-from-col (lib.equality/find-matching-column query -1 (m/find-first :breakout-position (lib/breakoutable-columns query)) filterable-cols)
+        matched-from-col (lib.equality/find-matching-column query -1 (m/find-first :breakout-positions (lib/breakoutable-columns query)) filterable-cols)
         matched-from-ref (lib.equality/find-matching-column query -1 (first (lib/breakouts query)) filterable-cols)]
     (is (=?
           {:id (meta/id :venues :id)}
