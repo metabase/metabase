@@ -1074,6 +1074,7 @@ application is located in the same directory as Metabase directory:
 }
 ```
 
+
 And then you can install the package using npm or yarn:
 
 ```bash
