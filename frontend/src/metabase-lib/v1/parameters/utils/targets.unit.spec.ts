@@ -275,11 +275,8 @@ describe("parameters/utils/targets", () => {
       describe("question", () => {
         it("returns columns from source table and implicitly joinable tables", () => {
           const question = createQuestion(queryOrders);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
             ...ordersColumns,
@@ -290,11 +287,8 @@ describe("parameters/utils/targets", () => {
 
         it("complex 1-stage query", () => {
           const question = createQuestion(createComplex1StageQuery());
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           const summaryColumns = [
             ["Orders", "Created At: Month"],
@@ -323,11 +317,8 @@ describe("parameters/utils/targets", () => {
             queryOrders,
             checkNotNull(createOrdersTable().fields),
           );
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
             ["Question", "ID"],
@@ -366,22 +357,16 @@ describe("parameters/utils/targets", () => {
 
         it("1 date breakout - returns 1 date column", () => {
           const question = createQuestion(query1DateBreakout);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([["Orders", "Created At"]]);
         });
 
         it("2 date breakouts - returns 2 date columns", () => {
           const question = createQuestion(query2DateBreakouts);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
             ["Orders", "Created At"],
@@ -391,11 +376,8 @@ describe("parameters/utils/targets", () => {
 
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
           const question = createQuestion(queryDateBreakoutsMultiStage);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([["Orders", "Created At: Month"]]);
         });
@@ -461,11 +443,8 @@ describe("parameters/utils/targets", () => {
       describe("question", () => {
         it("returns date columns from source table and implicitly joinable tables", () => {
           const question = createQuestion(queryOrders);
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
             ["Orders", "Created At"],
@@ -482,11 +461,8 @@ describe("parameters/utils/targets", () => {
             queryOrders,
             checkNotNull(createOrdersTable().fields),
           );
-          const { query, stageIndex, columns } = getParameterColumns(
-            question,
-            parameter,
-          );
-          const columnsInfos = getColumnsInfos(query, stageIndex, columns);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
 
           expect(columnsInfos).toEqual([
             ["Question", "Created At"],
@@ -628,10 +604,13 @@ function getModelVirtualTable(card: Card) {
 
 function getColumnsInfos(
   query: Lib.Query,
-  stageIndex: number,
-  columns: Lib.ColumnMetadata[],
+  columns: {
+    stageIndex: number;
+    column: Lib.ColumnMetadata;
+    group: Lib.ColumnGroup;
+  }[],
 ) {
-  return columns.map(column => {
+  return columns.map(({ column, stageIndex }) => {
     const info = Lib.displayInfo(query, stageIndex, column);
     return [info.table?.displayName, info.longDisplayName];
   });
