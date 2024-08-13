@@ -41,9 +41,9 @@ export const useSummarizeQuery = ({
       const newAggregations = Lib.aggregations(nextQuery, STAGE_INDEX);
       if (newAggregations.length === 0) {
         setHasDefaultAggregation(false);
+      } else {
+        handleChange(nextQuery);
       }
-
-      handleChange(nextQuery);
     },
     [handleChange],
   );
