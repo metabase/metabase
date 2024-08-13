@@ -11030,14 +11030,14 @@ eslint-plugin-cypress@^2.12.1:
   dependencies:
     globals "^11.12.0"
 
-eslint-plugin-depend@^0.10.0:
-  version "0.10.0"
-  resolved "https://registry.yarnpkg.com/eslint-plugin-depend/-/eslint-plugin-depend-0.10.0.tgz#b92b614467c291e42c3815e42b2134d3952660af"
-  integrity sha512-ERt7CCVY8uo3aYVu0nzpoJ+IyA4iLaRw/NEoKIrK9B3bMtL/urGeJRS5IVRI3ueQjSqUSOt0z8CSi5OcUbHfsw==
+eslint-plugin-depend@^0.9.0:
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/eslint-plugin-depend/-/eslint-plugin-depend-0.9.0.tgz#966af1287abc6e73b3467b4c4472b1ed8ef950b3"
+  integrity sha512-LApHjbTFvzuZR2hpHt67ehawywGpmLAQV0Th65oiTssmXk2UcbXdsr0+hCQFdV+C30HMZHSwofL0BSzLveNACA==
   dependencies:
     fd-package-json "^1.2.0"
     module-replacements "^2.1.0"
-    semver "^7.6.3"
+    semver "^7.6.0"
 
 eslint-plugin-import@^2.29.1:
   version "2.29.1"
@@ -20990,7 +20990,7 @@ semver@^7.3.8:
   dependencies:
     lru-cache "^6.0.0"
 
-semver@^7.5.0, semver@^7.6.3:
+semver@^7.5.0, semver@^7.6.0, semver@^7.6.3:
   version "7.6.3"
   resolved "https://registry.yarnpkg.com/semver/-/semver-7.6.3.tgz#980f7b5550bc175fb4dc09403085627f9eb33143"
   integrity sha512-oVekP1cKtI+CTDvHWYFUcMtsK/00wmAEfyqKfNdARm8u1wNVhSgaX7A8d4UuIlUI5e84iEwOhs7ZPYRmzU9U6A==
