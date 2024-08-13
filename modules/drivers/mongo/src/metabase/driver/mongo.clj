@@ -206,13 +206,16 @@
                                               [[(depth-k i)   (str "$_id." (depth-k i))]
                                                [(depth-idx i) (str "$_id." (depth-idx i))]])
                                             depths))
-                        "mostCommonType" {"$first" (str "$_id." (depth-type depth))}}}
-             {"$project" {"_id"            0
-                          "path"           {"$concat" (vec (interpose "." (for [i depths]
-                                                                            (str "$_id." (depth-k i)))))}
-                          "k"              (str "$_id." (depth-k depth))
-                          "index"          (str "$_id." (depth-idx depth))
-                          "mostCommonType" 1}}]))
+                        "types" {"$push" {"type" (str "$_id." (depth-type depth))
+                                          "count" "$count"}}}}
+             {"$project" {"_id"                  0
+                          "path"                 {"$concat" (vec (interpose "." (for [i depths]
+                                                                                  (str "$_id." (depth-k i)))))}
+                          "k"                    (str "$_id." (depth-k depth))
+                          "index"                (str "$_id." (depth-idx depth))
+                          "mostCommonType"       {"$cond" {"if"   {"$eq"     [{"$arrayElemAt" ["$types.type", 0]}, "null"]}
+                                                           "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
+                                                           "else" {"$arrayElemAt" ["$types.type", 0]}}}}}]))
         all-depths (range (inc max-depth))
         facets (into {} (map (juxt #(str "depth" %) facet-stage) all-depths))]
     (vec (concat (sample-stages collection-name sample-size)
@@ -264,6 +267,12 @@
 (defn- path->depth [path]
   (dec (count (str/split path #"\."))))
 
+(def root-query-depth
+  "query-depth's value involves a trade-off. The lower the query-depth the faster root-query executes.
+   however the lower it is, the more we might have to do more nested-level-query executions.
+   root-query-depth 4"
+  4)
+
 (defn- infer-schema [db table]
   (let [collection-name (:name table)
         sample-size metadata-queries/nested-field-sample-limit
@@ -272,10 +281,7 @@
                                               :type     "native"
                                               :native   {:collection collection-name
                                                          :query      (json/generate-string q)}}))))
-        ;; query-depth's value involves a trade-off. The lower the query-depth the faster root-query executes.
-        ;; however the lower it is, the more we might have to do more nested-level-query executions.
-        query-depth   4
-        fields        (flatten (q! (root-query collection-name sample-size query-depth)))
+        fields        (flatten (q! (root-query collection-name sample-size root-query-depth)))
         nested-fields (fn nested-fields [paths]
                         (let [fields (flatten (first (q! (nested-level-query collection-name sample-size paths))))
                               nested (when-let [object-fields (seq (filter #(= (:mostCommonType %) "object") fields))]
@@ -283,7 +289,7 @@
                           (concat fields nested)))
         nested        (when-let [fields-to-explore (seq (filter (fn [x]
                                                                   (and (= (:mostCommonType x) "object")
-                                                                       (= (path->depth (:path x)) query-depth)))
+                                                                       (= (path->depth (:path x)) root-query-depth)))
                                                                 fields))]
                         (nested-fields (map :path fields-to-explore)))]
     (concat fields nested)))
