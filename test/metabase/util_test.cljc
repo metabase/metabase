@@ -1,15 +1,18 @@
 (ns ^:mb/once metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
-   #?@(:clj [[metabase.test :as mt]])
+   #?@(:clj [[metabase.test :as mt]
+             [malli.generator :as mg]])
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   #_:clj-kondo/ignore
-   [malli.generator :as mg]
-   [metabase.util :as u]))
+   [metabase.util :as u])
+  #?(:clj (:import [java.time DayOfWeek Month])))
+
+#?(:clj (set! *warn-on-reflection* true))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -215,7 +218,7 @@
 
 (deftest ^:parallel snake-key-test
   (is (= {:num_cans 2, :lisp_case? {:nested_maps? true}}
-         (u/snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
+         (u/deep-snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
 
 (deftest ^:parallel one-or-many-test
   (are [input expected] (= expected
@@ -275,27 +278,6 @@
               (u/capitalize-en "ibis")
               (u/capitalize-en "IBIS")
               (u/capitalize-en "Ibis"))))))
-
-(deftest ^:parallel parse-currency-test
-  (are [s expected] (= expected
-                       (u/parse-currency s))
-    nil             nil
-    ""              nil
-    "   "           nil
-    "$1,000"        1000.0M
-    "$1,000,000"    1000000.0M
-    "$1,000.00"     1000.0M
-    "€1.000"        1000.0M
-    "€1.000,00"     1000.0M
-    "€1.000.000,00" 1000000.0M
-    "-£127.54"      -127.54M
-    "-127,54 €"     -127.54M
-    "kr-127,54"     -127.54M
-    "€ 127,54-"     -127.54M
-    "¥200"          200.0M
-    "¥200."         200.0M
-    "$.05"          0.05M
-    "0.05"          0.05M))
 
 (deftest ^:parallel email->domain-test
   (are [domain email] (= domain
@@ -426,14 +408,27 @@
     (is (= {:m true}
            (meta (u/assoc-default ^:m {:x 0} :y 1 :z 2 :a nil))))))
 
-(deftest ^:parallel classify-changes-test
+(deftest ^:parallel row-diff-test
   (testing "classify correctly"
-    (is (= {:to-update [{:id 2 :name "c3"} {:id 4 :name "c4"}]
+    (is (= {:to-update [{:id 2 :name "c3"}]
             :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
-            :to-create [{:id -1 :name "-c1"}]}
-           (u/classify-changes
-             [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
-             [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))))
+            :to-create [{:id -1 :name "-c1"}]
+            :to-skip   [{:id 4 :name "c4"}]}
+           (u/row-diff
+            [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
+            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))
+    (is (= {:to-skip   [{:god_id 10, :name "Zeus", :job "God of Thunder"}]
+            :to-delete [{:id 2, :god_id 20, :name "Odin", :job "God of Thunder"}]
+            :to-update [{:god_id 30, :name "Osiris", :job "God of Afterlife"}]
+            :to-create [{:god_id 40, :name "Perun", :job "God of Thunder"}]}
+           (u/row-diff [{:id 1 :god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:id 2 :god_id 20 :name "Odin" :job "God of Thunder"}
+                        {:id 3 :god_id 30 :name "Osiris" :job "God of Fertility"}]
+                       [{:god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:god_id 30 :name "Osiris" :job "God of Afterlife"}
+                        {:god_id 40 :name "Perun" :job "God of Thunder"}]
+                       {:id-fn   :god_id
+                        :to-compare #(dissoc % :id :god_id)})))))
 
 (deftest ^:parallel empty-or-distinct?-test
   (are [xs expected] (= expected
@@ -495,3 +490,57 @@
        (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
              sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
          (= expected sum)))))
+
+#?(:clj
+   (deftest ^:parallel case-enum-test
+     (testing "case does not work"
+       (is (= 3 (case Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
+     (testing "case-enum works"
+       (is (= 2 (u/case-enum Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
+     (testing "checks for type of cases"
+       (is (thrown? Exception #"`case-enum` only works.*"
+                    (u/case-enum Month/JANUARY
+                      Month/JANUARY    1
+                      DayOfWeek/SUNDAY 2))))))
+
+(deftest ^:parallel truncate-string-to-byte-count-test
+  (letfn [(truncate-string-to-byte-count [s byte-length]
+            (let [truncated (#'u/truncate-string-to-byte-count s byte-length)]
+              (is (<= (#'u/string-byte-count truncated) byte-length))
+              (is (str/starts-with? s truncated))
+              truncated))]
+    (doseq [[s max-length->expected] {"12345"
+                                      {1  "1"
+                                       2  "12"
+                                       3  "123"
+                                       4  "1234"
+                                       5  "12345"
+                                       6  "12345"
+                                       10 "12345"}
+
+                                      "가나다라"
+                                      {1  ""
+                                       2  ""
+                                       3  "가"
+                                       4  "가"
+                                       5  "가"
+                                       6  "가나"
+                                       7  "가나"
+                                       8  "가나"
+                                       9  "가나다"
+                                       10 "가나다"
+                                       11 "가나다"
+                                       12 "가나다라"
+                                       13 "가나다라"
+                                       15 "가나다라"
+                                       20 "가나다라"}}
+            [max-length expected] max-length->expected]
+      (testing (pr-str (list `lib.util/truncate-string-to-byte-count s max-length))
+        (is (= expected
+               (truncate-string-to-byte-count s max-length)))))))

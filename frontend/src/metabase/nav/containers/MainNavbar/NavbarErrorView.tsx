@@ -1,6 +1,5 @@
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
 import { Icon, Text } from "metabase/ui";
 
 import {
@@ -16,7 +15,7 @@ export function NavbarErrorView() {
         <Text
           fw={400}
           mt="0.5rem"
-          color={color("text-light")}
+          color="text-light"
           size="lg"
         >{t`An error occurred`}</Text>
       </LoadingAndErrorContent>

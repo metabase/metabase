@@ -4,6 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.auth-provider :as auth-provider]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -124,7 +125,27 @@
   ;; Don't set the timeout too low -- I've had Circle fail when the timeout was 1000ms on *one* occasion.
   :default    (if config/is-test?
                 3000
-                10000))
+                10000)
+  :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
+        In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
+        as the connections via tunnels have more overhead than connections without.")
+
+;; This is normally set via the env var `MB_DB_QUERY_TIMEOUT_MINUTES`
+(defsetting db-query-timeout-minutes
+  "By default, this is 20 minutes."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
+  ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
+  ;; code
+  :default    (if config/is-prod?
+                20
+                3)
+  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
+  If you have long-running queries, you might consider increasing this value.
+  Adjusting the timeout does not impact Metabase’s frontend.
+  Please be aware that other services (like Nginx) may still drop long-running queries.")
 
 (defn- connection-error? [^Throwable throwable]
   (and (some? throwable)
@@ -206,11 +227,46 @@
 ;;; |                                             Available Drivers Info                                             |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(def supports?-timeout-ms
+  "The maximum time in milliseconds that [[supports?]] should take to execute. This should be enough for a driver to
+   query the database and check if it supports a feature under normal circumstances, but not so high that it delays
+   critical metabase features that use this check."
+  5000)
+
+(def ^:dynamic *memoize-supports?*
+  "If true, [[supports?]] is memoized for the application DB. Memoization is disabled in dev and test mode by default to avoid
+   accidental coupling between tests."
+  (not (or config/is-test? config/is-dev?)))
+
+(def ^:private supports?*
+  (fn [driver feature database]
+    (try
+      (u/with-timeout supports?-timeout-ms
+        (driver/database-supports? driver feature database))
+      (catch Throwable e
+        (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (name feature) (:name database)))
+        false))))
+
+(def ^:private memoized-supports?*
+  (memoize/memo
+   (-> supports?*
+       (vary-meta assoc ::memoize/args-fn (fn [[driver feature database]]
+                                            [driver feature (mdb/unique-identifier) (:id database) (:updated_at database)])))))
+
+(defn supports?
+  "A defensive wrapper around [[database-supports?]]. It adds logging, caching, and error handling to avoid crashing the app
+   if this method takes a long time to execute or throws an exception. This is useful because `supports?` is used in so many
+   critical places in the app, and we don't want a single driver to crash the app if it throws an exception, or delay the user
+   if it takes a long time to execute."
+  [driver feature database]
+  (let [f (if *memoize-supports?* memoized-supports?* supports?*)]
+    (f driver feature database)))
+
 (defn features
   "Return a set of all features supported by `driver` with respect to `database`."
   [driver database]
   (set (for [feature driver/features
-             :when (driver/database-supports? driver feature database)]
+             :when (supports? driver feature database)]
          feature)))
 
 (defn available-drivers
@@ -466,7 +522,7 @@
   #{"athena"
     "bigquery-cloud-sdk"
     "druid"
-    "googleanalytics"
+    "druid-jdbc"
     "h2"
     "mongo"
     "mysql"
@@ -624,3 +680,19 @@
           password-fields (filter #(contains? #{:password :secret} (get % :type)) all-fields)]
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
+
+(defn fetch-and-incorporate-auth-provider-details
+  "Incorporates auth-provider responses with db-details.
+
+  If you have a database you need to pass the database-id as some providers will need to save the response (e.g. refresh-tokens)."
+  ([driver db-details]
+   (fetch-and-incorporate-auth-provider-details driver nil db-details))
+  ([driver database-id {:keys [use-auth-provider auth-provider] :as db-details}]
+   (if use-auth-provider
+     (let [auth-provider (keyword auth-provider)]
+       (driver/incorporate-auth-provider-details
+        driver
+        auth-provider
+        (auth-provider/fetch-auth auth-provider database-id db-details)
+        db-details))
+     db-details)))

@@ -1,0 +1,20 @@
+.button {
+  justify-content: space-between !important;
+  font-weight: normal;
+}
+
+button.root {
+  &:hover {
+    background: none;
+  }
+
+  &:hover .button {
+    color: var(--mb-color-text-dark);
+  }
+
+  &.open,
+  &:focus-visible {
+    border-color: var(--mb-color-brand);
+    outline: none;
+  }
+}

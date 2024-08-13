@@ -14,7 +14,6 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -22,7 +21,8 @@
    [metabase.util.log :as log])
   (:import
    (java.sql Connection DatabaseMetaData)
-   (java.time OffsetDateTime ZonedDateTime)))
+   (java.time OffsetDateTime ZonedDateTime)
+   [java.util UUID]))
 
 (set! *warn-on-reflection* true)
 
@@ -32,10 +32,13 @@
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(doseq [[feature supported?] {:datetime-diff             true
-                              :foreign-keys              true
-                              :nested-fields             false
-                              :test/jvm-timezone-setting false}]
+(doseq [[feature supported?] {:datetime-diff                 true
+                              :nested-fields                 false
+                              :uuid-type                     true
+                              :connection/multiple-databases true
+                              :identifiers-with-spaces       false
+                              :metadata/key-constraints      false
+                              :test/jvm-timezone-setting     false}]
   (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -98,6 +101,7 @@
     :float                               :type/Float
     :integer                             :type/Integer
     :int                                 :type/Integer
+    :uuid                                :type/UUID
     :map                                 :type/*
     :smallint                            :type/Integer
     :string                              :type/Text
@@ -124,6 +128,14 @@
     "time"
     (fn read-column-as-LocalTime [] (.getObject rs i java.time.LocalTime))
 
+    "uuid"
+    (fn read-column-as-UUID []
+      (when-let [s (.getObject rs i)]
+        (try
+          (UUID/fromString s)
+          (catch IllegalArgumentException _
+            s))))
+
     "timestamp with time zone"
     (fn read-column-as-ZonedDateTime []
       (when-let [s (.getString rs i)]
@@ -144,7 +156,7 @@
   column, and you can only have `timestamp` columns when actually creating them."
   false)
 
-(defmethod unprepare/unprepare-value [:athena OffsetDateTime]
+(defmethod sql.qp/inline-value [:athena OffsetDateTime]
   [_driver t]
   ;; Timestamp literals do not support offsets, or at least they don't in `INSERT INTO ...` statements. I'm not 100%
   ;; sure what the correct thing to do here is then. The options are either:
@@ -161,7 +173,7 @@
     ;; when not loading data we can actually use timestamp with offset info.
     (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t))))
 
-(defmethod unprepare/unprepare-value [:athena ZonedDateTime]
+(defmethod sql.qp/inline-value [:athena ZonedDateTime]
   [driver t]
   ;; This format works completely fine for literals e.g.
   ;;
@@ -174,8 +186,13 @@
   ;; Athena (despite Athena only partially supporting TIMESTAMP WITH TIME ZONE) then you can use the commented out impl
   ;; to do it. That should work ok because it converts it to a UTC then to a LocalDateTime. -- Cam
   (if *loading-data*
-    (unprepare/unprepare-value driver (t/offset-date-time t))
+    (sql.qp/inline-value driver (t/offset-date-time t))
     (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t))))
+
+(defmethod sql.qp/inline-value [:athena UUID]
+  [_driver uuid]
+  ;; since we inline, we need to cast to string to uuid
+  (format "cast('%s' as uuid)" uuid))
 
 ;;; for some evil reason Athena expects `OFFSET` *before* `LIMIT`, unlike every other database in the known universe; so
 ;;; we'll have to have a custom implementation of `:page` here and do our own version of `:offset` that comes before
@@ -348,11 +365,14 @@
 
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
-  [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
+  [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog]
   (try
-    (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
+    (with-open [rs (.getColumns metadata catalog schema table-name nil)]
       (let [columns (jdbc/metadata-result rs)]
-        (if (table-has-nested-fields? columns)
+        (if (or (table-has-nested-fields? columns)
+                ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
+                ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
+                (empty? columns))
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver columns))))
     (catch Throwable e
@@ -432,13 +452,13 @@
      (let [metadata (.getMetaData conn)]
        {:tables (fast-active-tables driver metadata details)}))))
 
-; Unsure if this is the right way to approach building the parameterized query...but it works
-(defn- prepare-query [driver {query :native, :as outer-query}]
-  (cond-> outer-query
-    (seq (:params query))
-    (merge {:native {:params nil
-                     :query (unprepare/unprepare driver (cons (:query query) (:params query)))}})))
+(defmethod sql.qp/format-honeysql :athena
+  [driver honeysql-form]
+  (binding [driver/*compile-with-inline-parameters* true]
+    ((get-method sql.qp/format-honeysql :sql) driver honeysql-form)))
 
 (defmethod driver/execute-reducible-query :athena
   [driver query context respond]
-  ((get-method driver/execute-reducible-query :sql-jdbc) driver (prepare-query driver query) context respond))
+  (assert (empty? (get-in query [:native :params]))
+          "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))

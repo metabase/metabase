@@ -2,11 +2,12 @@
   "Tests for MBQL aggregations."
   (:require
    [clojure.test :refer :all]
-   [metabase.models.field :refer [Field]]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.query-processor.store :as qp.store]
    [metabase.query-processor.test-util :as qp.test-util]
    [metabase.test :as mt]
-   [metabase.test.data :as data]
-   [metabase.test.util :as tu]))
+   [metabase.util :as u]))
 
 (deftest ^:parallel no-aggregation-test
   (mt/test-drivers (mt/normal-drivers)
@@ -62,11 +63,11 @@
     (testing "standard deviation aggregations"
       (let [query (mt/mbql-query venues {:aggregation [[:stddev $latitude]]})]
         (mt/with-native-query-testing-context query
-          (is (= {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
-                  :rows [[3.4]]}
-                 (qp.test-util/rows-and-cols
-                  (mt/format-rows-by [1.0]
-                    (mt/process-query query))))))))))
+          (is (=? {:cols [(qp.test-util/aggregate-col :stddev :venues :latitude)]
+                   :rows [[3.4]]}
+                  (qp.test-util/rows-and-cols
+                   (mt/format-rows-by [1.0]
+                     (mt/process-query query))))))))))
 
 (deftest ^:parallel standard-deviation-unsupported-test
   (mt/test-drivers (mt/normal-drivers-without-feature :standard-deviation-aggregations)
@@ -141,19 +142,25 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:count] [:count]]})))))))
 
-(deftest field-settings-for-aggregate-fields-test
+(deftest ^:parallel field-settings-for-aggregate-fields-test
   (testing "Does `:settings` show up for aggregate Fields?"
-    (tu/with-temp-vals-in-db Field (data/id :venues :price) {:settings {:is_priceless false}}
+    (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      {:fields [{:id       (mt/id :venues :price)
+                                                 :settings {:is_priceless false}}]})
       (let [results (mt/run-mbql-query venues
                       {:aggregation [[:sum $price]]})]
-        (is (= (assoc (qp.test-util/aggregate-col :sum :venues :price)
-                      :settings {:is_priceless false})
-               (or (-> results mt/cols first)
-                   results)))))))
+        (is (=? (assoc (qp.test-util/aggregate-col :sum :venues :price)
+                       :settings {:is_priceless false})
+                (or (-> results mt/cols first)
+                    results)))))))
 
-(deftest semantic-type-for-aggregate-fields-test
+(deftest ^:parallel semantic-type-for-aggregate-fields-test
   (testing "Does `:semantic-type` show up for aggregate Fields? (#38022)"
-    (tu/with-temp-vals-in-db Field (data/id :venues :price) {:semantic_type :type/Currency}
+    (qp.store/with-metadata-provider (lib.tu/merged-mock-metadata-provider
+                                      (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+                                      {:fields [{:id            (mt/id :venues :price)
+                                                 :semantic-type :type/Currency}]})
       (let [price [:field (mt/id :venues :price) nil]]
         (doseq [[aggregation expected-semantic-type]
                 [[[:sum price] :type/Currency]
@@ -194,6 +201,37 @@
                (mt/run-mbql-query venues
                  {:aggregation [[:distinct $name]
                                 [:distinct $price]]})))))))
+
+(deftest ^:synchronized complex-distinct-aggregation-test
+  (mt/test-drivers
+   ;; TODO: This test was added in PR #44442 fixing issue  #35425. Enable this test for other drivers _while_ fixing
+   ;;       the issue #14523.
+   #_(mt/normal-drivers) #{:mongo}
+   (testing "Aggregation as `Count / Distinct([SOME_FIELD])` returns expected results (#35425)"
+     (every?
+      (fn [[_id c d c-div-d more-complex]]
+        (testing "Simple division"
+          (is (= (u/round-to-decimals 2 (double (/ c d)))
+                 (u/round-to-decimals 2 (double c-div-d)))))
+        (testing "More complex expression"
+          (is (= (u/round-to-decimals 2 (double (/
+                                                 (- c (* d 10))
+                                                 (+ d (- c (- d 7))))))
+                 (u/round-to-decimals 2 (double more-complex))))))
+      (mt/rows
+       (mt/run-mbql-query
+        venues
+        {:aggregation [[:aggregation-options [:count] {:name "A"}]
+                       [:aggregation-options [:distinct $price] {:name "B"}]
+                       [:aggregation-options [:/ [:count] [:distinct $price]] {:name "C"}]
+                       [:aggregation-options [:/
+                                              [:- [:count] [:* [:distinct $price] 10]]
+                                              [:+
+                                               [:distinct $price]
+                                               [:- [:count] [:- [:distinct $price] 7]]]] {:name "D"}]]
+         :breakout [$category_id]
+         :order-by [[:asc $id]]
+         :limit 5}))))))
 
 (deftest ^:parallel aggregate-boolean-without-type-test
   (testing "Legacy breakout on boolean field should work correctly (#34286)"

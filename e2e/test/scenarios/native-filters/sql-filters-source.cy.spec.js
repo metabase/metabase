@@ -13,6 +13,11 @@ import {
   visitPublicQuestion,
   visitQuestion,
   setTokenFeatures,
+  setSearchBoxFilterType,
+  multiAutocompleteInput,
+  multiAutocompleteValue,
+  checkFilterListSourceHasValue,
+  setConnectedFieldSource,
 } from "e2e/support/helpers";
 
 import * as FieldFilter from "./helpers/e2e-field-filter-helpers";
@@ -304,7 +309,7 @@ describe("scenarios > filters > sql filters > values source", () => {
     });
   });
 
-  describe("static list source", () => {
+  describe("static list source (dropdown)", () => {
     it("should be able to use a static list source in the query builder", () => {
       openNativeEditor();
       SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
@@ -318,38 +323,247 @@ describe("scenarios > filters > sql filters > values source", () => {
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
+      cy.findByLabelText("Tag").should("contain.text", "1018947080336");
       SQLFilter.runQuery("cardQuery");
     });
 
     it("should be able to use a static list source when embedded", () => {
-      cy.createNativeQuestion(getListDimensionTargetQuestion()).then(
-        ({ body: { id: targetQuestionId } }) => {
-          visitEmbeddedPage(getQuestionResource(targetQuestionId));
-        },
-      );
+      cy.createNativeQuestion(
+        getListDimensionTargetQuestion({
+          values: ["1018947080336", "7663515285824"],
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
+      cy.findByLabelText("Tag").should("contain.text", "1018947080336");
     });
 
     it("should be able to use a static list source when public", () => {
-      cy.createNativeQuestion(getListDimensionTargetQuestion()).then(
-        ({ body: { id: targetQuestionId } }) => {
-          visitPublicQuestion(targetQuestionId);
-        },
-      );
+      cy.createNativeQuestion(
+        getListDimensionTargetQuestion({
+          values: ["1018947080336", "7663515285824"],
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitPublicQuestion(targetQuestionId);
+      });
 
       FieldFilter.openEntryForm();
       checkFilterValueNotInList("0001664425970");
       FieldFilter.selectFilterValueFromList("1018947080336");
+      cy.findByLabelText("Tag").should("contain.text", "1018947080336");
+    });
+  });
+
+  describe("static list source with custom labels (dropdown)", () => {
+    it("should be able to use a static list source in the query builder", () => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+      FieldFilter.mapTo({ table: "Products", field: "Ean" });
+      FieldFilter.setWidgetType("String");
+      setFilterListSource({
+        values: [["1018947080336", "Custom Label"], "7663515285824"],
+      });
+      saveQuestion("SQL filter");
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
+      checkFilterValueNotInList("1018947080336");
+      FieldFilter.selectFilterValueFromList("Custom Label");
+      cy.findByLabelText("Tag").should("contain.text", "Custom Label");
+      SQLFilter.runQuery("cardQuery");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createNativeQuestion(
+        getListDimensionTargetQuestion({
+          values: [["1018947080336", "Custom Label"], "7663515285824"],
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
+      checkFilterValueNotInList("1018947080336");
+      FieldFilter.selectFilterValueFromList("Custom Label");
+      cy.findByLabelText("Tag").should("contain.text", "Custom Label");
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createNativeQuestion(
+        getListDimensionTargetQuestion({
+          values: [["1018947080336", "Custom Label"], "7663515285824"],
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitPublicQuestion(targetQuestionId);
+      });
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("0001664425970");
+      checkFilterValueNotInList("1018947080336");
+      FieldFilter.selectFilterValueFromList("Custom Label");
+      cy.findByLabelText("Tag").should("contain.text", "Custom Label");
+    });
+  });
+
+  describe("static list source (search box)", () => {
+    it("should be able to use a static list source in the query builder", () => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+      FieldFilter.mapTo({ table: "Products", field: "Ean" });
+      FieldFilter.setWidgetType("String");
+
+      setSearchBoxFilterType();
+      setFilterListSource({
+        values: ["1018947080336", "7663515285824"],
+      });
+      saveQuestion("SQL filter");
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("101");
+      popover().last().findByText("1018947080336").click();
+
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "1018947080336");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "1018947080336");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createNativeQuestion(
+        getListDimensionTargetQuestion({
+          values_query_type: "search",
+          values: ["1018947080336", "7663515285824"],
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("101");
+      popover().last().findByText("1018947080336").click();
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "1018947080336");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "1018947080336");
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createNativeQuestion(
+        getListDimensionTargetQuestion({
+          values_query_type: "search",
+          values: ["1018947080336", "7663515285824"],
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitPublicQuestion(targetQuestionId);
+      });
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("101");
+      popover().last().findByText("1018947080336").click();
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "1018947080336");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "1018947080336");
+    });
+  });
+
+  describe("static list source with custom labels (search box)", () => {
+    it("should be able to use a static list source in the query builder", () => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Field Filter");
+      FieldFilter.mapTo({ table: "Products", field: "Ean" });
+      FieldFilter.setWidgetType("String");
+
+      setSearchBoxFilterType();
+      setFilterListSource({
+        values: [["1018947080336", "Custom Label"], "7663515285824"],
+      });
+      saveQuestion("SQL filter");
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("Custom Label");
+      popover().last().findByText("1018947080336").should("not.exist");
+      popover().last().findByText("Custom Label").click();
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "Custom Label");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Custom Label");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createNativeQuestion(
+        getListDimensionTargetQuestion({
+          values_query_type: "search",
+          values: [["1018947080336", "Custom Label"], "7663515285824"],
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("Custom Label");
+      popover().last().findByText("1018947080336").should("not.exist");
+      popover().last().findByText("Custom Label").click();
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "Custom Label");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Custom Label");
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createNativeQuestion(
+        getListDimensionTargetQuestion({
+          values_query_type: "search",
+          values: [["1018947080336", "Custom Label"], "7663515285824"],
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitPublicQuestion(targetQuestionId);
+      });
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("Custom Label");
+      popover().last().findByText("1018947080336").should("not.exist");
+      popover().last().findByText("Custom Label").click();
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "Custom Label");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Custom Label");
     });
   });
 });
 
 describeEE("scenarios > filters > sql filters > values source", () => {
   beforeEach(() => {
-    restore();
+    restore("default-ee");
     cy.signInAsAdmin();
     setTokenFeatures("all");
     cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
@@ -361,7 +575,10 @@ describeEE("scenarios > filters > sql filters > values source", () => {
   it("should sandbox parameter values in questions", () => {
     cy.updatePermissionsGraph({
       [COLLECTION_GROUP]: {
-        [SAMPLE_DB_ID]: { data: { schemas: "all" } },
+        [SAMPLE_DB_ID]: {
+          "view-data": "unrestricted",
+          "create-queries": "query-builder",
+        },
       },
     });
 
@@ -389,6 +606,267 @@ describeEE("scenarios > filters > sql filters > values source", () => {
     checkFilterValueNotInList("Gadget");
     checkFilterValueNotInList("Doohickey");
     FieldFilter.selectFilterValueFromList("Gizmo");
+  });
+});
+
+describe("scenarios > filters > sql filters > values source > number parameter", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", "/api/setting/enable-public-sharing", { value: true });
+    cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("GET", "/api/session/properties").as("sessionProperties");
+    cy.intercept("PUT", "/api/card/*").as("updateQuestion");
+    cy.intercept("POST", "/api/card/*/query").as("cardQuery");
+    cy.intercept("POST", "/api/dataset/parameter/values").as("parameterValues");
+    cy.intercept("GET", "/api/card/*/params/*/values").as(
+      "cardParameterValues",
+    );
+  });
+
+  describe("static list source (dropdown)", () => {
+    it("should be able to use a static list source in the query builder", () => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery("SELECT {{ x }}");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Number");
+
+      setDropdownFilterType();
+      setFilterListSource({
+        values: [["10", "Ten"], ["20", "Twenty"], "30"],
+      });
+      saveQuestion("SQL filter");
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("10");
+      FieldFilter.selectFilterValueFromList("Twenty");
+      cy.findByLabelText("X").should("contain.text", "Twenty");
+      SQLFilter.runQuery("cardQuery");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "list",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("10");
+      FieldFilter.selectFilterValueFromList("Twenty");
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "list",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitPublicQuestion(targetQuestionId);
+      });
+
+      FieldFilter.openEntryForm();
+      checkFilterValueNotInList("10");
+      FieldFilter.selectFilterValueFromList("Twenty");
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+  });
+
+  describe("static list source with custom labels (dropdown)", () => {
+    it("should be able to use a static list source in the query builder", () => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery("SELECT * FROM {{ tag }}");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Number");
+      setSearchBoxFilterType();
+      setFilterListSource({
+        values: [["10", "Ten"], ["20", "Twenty"], "30"],
+      });
+      saveQuestion("SQL filter");
+
+      FieldFilter.openEntryForm();
+      multiAutocompleteInput().type("Tw");
+      checkFilterValueNotInList("10");
+      checkFilterValueNotInList("20");
+      popover().last().findByText("Twenty").click();
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+      SQLFilter.runQuery("cardQuery");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "search",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
+
+      FieldFilter.openEntryForm();
+      multiAutocompleteInput().type("Tw");
+      checkFilterValueNotInList("10");
+      checkFilterValueNotInList("20");
+
+      popover().last().findByText("Twenty").click();
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+
+    it("should be able to use a static list source when public", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "search",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitPublicQuestion(targetQuestionId);
+      });
+
+      FieldFilter.openEntryForm();
+      multiAutocompleteInput().type("Tw");
+      checkFilterValueNotInList("10");
+      checkFilterValueNotInList("20");
+
+      popover().last().findByText("Twenty").click();
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+  });
+
+  describe("static list source (search box)", () => {
+    it("should be able to use a static list source in the query builder", () => {
+      openNativeEditor();
+      SQLFilter.enterParameterizedQuery("SELECT {{ tag }}");
+      SQLFilter.openTypePickerFromDefaultFilterType();
+      SQLFilter.chooseType("Number");
+
+      setSearchBoxFilterType();
+      setFilterListSource({
+        values: [["10", "Ten"], ["20", "Twenty"], "30"],
+      });
+      saveQuestion("SQL filter");
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("Tw");
+      popover().last().findByText("Twenty").click();
+
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "Twenty");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+
+    it("should be able to use a static list source when embedded", () => {
+      cy.createNativeQuestion(
+        getNumberTargetQuestion({
+          parameter: {
+            values_query_type: "search",
+            values_source_type: "static-list",
+            values_source_config: {
+              values: [["10", "Ten"], ["20", "Twenty"], "30"],
+            },
+          },
+        }),
+      ).then(({ body: { id: targetQuestionId } }) => {
+        visitEmbeddedPage(getQuestionResource(targetQuestionId));
+      });
+
+      FieldFilter.openEntryForm();
+
+      multiAutocompleteInput().type("Twenty");
+      popover().last().findByText("Twenty").click();
+      multiAutocompleteValue(0)
+        .should("be.visible")
+        .should("contain", "Twenty");
+      popover().button("Add filter").click();
+
+      cy.findByLabelText("Tag").should("contain.text", "Twenty");
+    });
+  });
+
+  it("should show the values when picking the default value", () => {
+    openNativeEditor();
+    SQLFilter.enterParameterizedQuery("SELECT {{ x }}");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Number");
+
+    setDropdownFilterType();
+    setFilterListSource({
+      values: [["10", "Ten"], ["20", "Twenty"], "30"],
+    });
+
+    cy.findByTestId("sidebar-content")
+      .findByPlaceholderText("Select a default value…")
+      .click();
+
+    popover().findByText("Twenty").click();
+
+    saveQuestion("SQL filter");
+
+    cy.findByLabelText("X").should("contain.text", "Twenty");
+    SQLFilter.runQuery("cardQuery");
+  });
+
+  it("should clear the value type and config when changing the template tag type and restore them when changing the type back", () => {
+    openNativeEditor();
+    SQLFilter.enterParameterizedQuery("SELECT * FROM PRODUCTS WHERE {{tag}}");
+    SQLFilter.openTypePickerFromDefaultFilterType();
+    SQLFilter.chooseType("Text");
+    setSearchBoxFilterType();
+    setFilterListSource({
+      values: ["Foo", "Bar"],
+    });
+    saveQuestion("SQL filter");
+
+    SQLFilter.openTypePickerFromSelectedFilterType("Text");
+    SQLFilter.chooseType("Number");
+
+    cy.get("[data-checked='true']").should("have.text", "Input box");
+
+    setSearchBoxFilterType();
+    checkFilterListSourceHasValue({ values: [] });
+
+    SQLFilter.openTypePickerFromSelectedFilterType("Number");
+    SQLFilter.chooseType("Field Filter");
+    setConnectedFieldSource("Orders", "Total");
+
+    SQLFilter.openTypePickerFromSelectedFilterType("Number");
+    SQLFilter.chooseType("Text");
+    cy.get("[data-checked='true']").should("have.text", "Search box");
+    checkFilterListSourceHasValue({ values: ["Foo", "Bar"] });
   });
 });
 
@@ -466,6 +944,21 @@ const getNativeTextTargetQuestion = questionId => {
   });
 };
 
+const getNumberTargetQuestion = ({ tag, parameter }) => {
+  return getTargetQuestion({
+    query: "SELECT {{tag}}",
+    tag: {
+      type: "number",
+      ...tag,
+    },
+    parameter: {
+      type: "number/=",
+      target: ["variable", ["template-tag", "tag"]],
+      ...parameter,
+    },
+  });
+};
+
 const getDimensionTargetQuestion = ({ tag, parameter }) => {
   return getTargetQuestion({
     query: "SELECT * FROM PRODUCTS WHERE {{tag}}",
@@ -513,15 +1006,19 @@ const getNativeDimensionTargetQuestion = questionId => {
   });
 };
 
-const getListDimensionTargetQuestion = () => {
+const getListDimensionTargetQuestion = ({
+  values_query_type = "list",
+  values,
+}) => {
   return getDimensionTargetQuestion({
     tag: {
       dimension: ["field", PRODUCTS.EAN, null],
     },
     parameter: {
+      values_query_type,
       values_source_type: "static-list",
       values_source_config: {
-        values: ["1018947080336", "7663515285824"],
+        values,
       },
     },
   });
@@ -536,13 +1033,17 @@ const updateQuestion = () => {
 };
 
 const checkFilterValueInList = value => {
-  popover().within(() => {
-    cy.findByText(value).should("exist");
-  });
+  popover()
+    .last()
+    .within(() => {
+      cy.findByText(value).should("exist");
+    });
 };
 
 const checkFilterValueNotInList = value => {
-  popover().within(() => {
-    cy.findByText(value).should("not.exist");
-  });
+  popover()
+    .last()
+    .within(() => {
+      cy.findByText(value).should("not.exist");
+    });
 };

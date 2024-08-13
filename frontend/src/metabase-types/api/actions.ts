@@ -164,3 +164,7 @@ export type ActionFormOption = {
 export interface WritebackActionListQuery {
   "model-id"?: CardId;
 }
+
+export interface GetActionRequest {
+  id: number;
+}

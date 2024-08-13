@@ -1,7 +1,6 @@
 (ns metabase.sync.interface
   "Schemas and constants used by the sync code."
   (:require
-   [clojure.string :as str]
    [malli.util :as mut]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.util.malli.registry :as mr]
@@ -96,13 +95,6 @@
   "Schema for an individual entry in `FKMetadata`."
   [:ref ::TableFKMetadataEntry])
 
-(mr/def ::TableFKMetadata
-  [:maybe [:set TableFKMetadataEntry]])
-
-(def TableFKMetadata
-  "Schema for the expected output of `describe-table-fks`."
-  [:ref ::TableFKMetadata])
-
 (mr/def ::FKMetadataEntry
   [:map
    [:fk-table-name    ::lib.schema.common/non-blank-string]
@@ -121,13 +113,7 @@
 ;; out from the ns declaration when running `cljr-clean-ns`. Plus as a bonus in the future we could add additional
 ;; validations to these, e.g. requiring that a Field have a base_type
 
-(mr/def ::no-kebab-case-keys
-  [:fn
-   {:error/message "Map should not contain any kebab-case keys"}
-   (fn [m]
-     (every? (fn [k]
-               (not (str/includes? k "-")))
-             (keys m)))])
+(mr/def ::no-kebab-case-keys (ms/MapWithNoKebabKeys))
 
 (mr/def ::DatabaseInstance
   [:and

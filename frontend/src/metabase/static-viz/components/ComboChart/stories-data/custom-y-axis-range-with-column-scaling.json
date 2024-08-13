@@ -1,0 +1,345 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "view_count": 1,
+      "collection_position": null,
+      "table_id": 2,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": {
+            "date_style": "MMMM D, YYYY"
+          },
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            15,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 15,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 9998,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2016-04-30T18:56:13.352Z",
+                "latest": "2020-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 744,
+                "q1": 1681.5,
+                "q3": 6020,
+                "max": 6578,
+                "sd": 2473.8528654711863,
+                "avg": 3752
+              }
+            }
+          }
+        }
+      ],
+      "creator": {
+        "email": "admin@metabase.com",
+        "first_name": "Admin",
+        "last_login": "2024-05-30T18:14:07.800004-04:00",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Admin",
+        "date_joined": "2023-04-11T19:46:02.904734-04:00",
+        "common_name": "Admin Admin"
+      },
+      "initially_published_at": null,
+      "can_write": true,
+      "trashed_from_collection_id": null,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "Orders, Count, Grouped by Created At: Year",
+      "last_query_start": null,
+      "dashboard_count": 0,
+      "last_used_at": null,
+      "type": "question",
+      "average_query_time": null,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-06-04T15:43:08.96687-04:00",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 2,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              15,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ]
+          ]
+        }
+      },
+      "id": 248,
+      "parameter_mappings": [],
+      "display": "line",
+      "entity_id": "XjNYVjb11QqmtwlGqwlFM",
+      "collection_preview": true,
+      "last-edit-info": {
+        "id": 1,
+        "email": "admin@metabase.com",
+        "first_name": "Admin",
+        "last_name": "Admin",
+        "timestamp": "2024-06-04T15:43:08.978345-04:00"
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["CREATED_AT"],
+        "column_settings": {
+          "[\"name\",\"count\"]": {
+            "scale": 0.1
+          }
+        },
+        "graph.y_axis.auto_range": false,
+        "graph.y_axis.max": 800,
+        "graph.y_axis.min": -50,
+        "graph.metrics": ["count"]
+      },
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "metabase_version": "v0.1.7-SNAPSHOT (7e225ae)",
+      "parameters": [],
+      "created_at": "2024-06-04T15:43:08.96687-04:00",
+      "parameter_usage_count": 0,
+      "public_uuid": null
+    },
+    "data": {
+      "rows": [
+        ["2022-01-01T00:00:00-05:00", 744],
+        ["2023-01-01T00:00:00-05:00", 3610],
+        ["2024-01-01T00:00:00-05:00", 5834],
+        ["2025-01-01T00:00:00-05:00", 6578],
+        ["2026-01-01T00:00:00-05:00", 1994]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 2,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": {
+            "date_style": "MMMM D, YYYY"
+          },
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            15,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 15,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 9998,
+              "nil%": 0.0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2016-04-30T18:56:13.352Z",
+                "latest": "2020-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" GROUP BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Indiana/Indianapolis",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "CREATED_AT",
+            "settings": {
+              "date_style": "MMMM D, YYYY"
+            },
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              15,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 15,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 9998,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2016-04-30T18:56:13.352Z",
+                  "latest": "2020-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0.0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 744.0,
+                  "q1": 1681.5,
+                  "q3": 6020.0,
+                  "max": 6578.0,
+                  "sd": 2473.8528654711863,
+                  "avg": 3752.0
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 6578,
+          "unit": "year",
+          "offset": -25762.853706205584,
+          "last-change": -0.6968683490422621,
+          "col": "count",
+          "slope": 1.496422622443016,
+          "last-value": 1994,
+          "best-fit": [
+            "+",
+            -296041.58974439814,
+            ["*", 30315.165006472598, ["log", "x"]]
+          ]
+        }
+      ]
+    },
+    "cached": false,
+    "database_id": 1,
+    "started_at": "2024-06-04T15:43:17.385329292-04:00",
+    "json_query": {
+      "constraints": {
+        "max-results": 10000,
+        "max-results-bare-rows": 2000
+      },
+      "type": "query",
+      "middleware": {
+        "js-int-to-string?": true,
+        "ignore-cached-results?": false,
+        "process-viz-settings?": false,
+        "userland-query?": true
+      },
+      "cache-strategy": null,
+      "viz-settings": null,
+      "database": 1,
+      "query": {
+        "source-table": 2,
+        "aggregation": [["count"]],
+        "breakout": [
+          [
+            "field",
+            15,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ]
+        ]
+      }
+    },
+    "average_execution_time": null,
+    "status": "completed",
+    "context": "question",
+    "row_count": 5,
+    "running_time": 44
+  }
+]

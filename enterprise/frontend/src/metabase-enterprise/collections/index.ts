@@ -20,6 +20,8 @@ import {
   getCollectionType,
   isRegularCollection,
   getInstanceAnalyticsCustomCollection,
+  getIcon,
+  filterOutItemsFromInstanceAnalytics,
 } from "./utils";
 
 if (hasPremiumFeature("official_collections")) {
@@ -28,6 +30,8 @@ if (hasPremiumFeature("official_collections")) {
   PLUGIN_COLLECTIONS.REGULAR_COLLECTION = REGULAR_COLLECTION;
 
   PLUGIN_COLLECTIONS.AUTHORITY_LEVEL = AUTHORITY_LEVELS;
+
+  PLUGIN_COLLECTIONS.getIcon = getIcon;
 
   PLUGIN_COLLECTIONS.getAuthorityLevelMenuItems = (
     collection: Collection,
@@ -57,6 +61,9 @@ if (hasPremiumFeature("official_collections")) {
       ];
     }
   };
+
+  PLUGIN_COLLECTIONS.filterOutItemsFromInstanceAnalytics =
+    filterOutItemsFromInstanceAnalytics;
 
   PLUGIN_COLLECTION_COMPONENTS.FormCollectionAuthorityLevelPicker =
     FormCollectionAuthorityLevel;

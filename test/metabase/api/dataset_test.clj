@@ -115,7 +115,9 @@
                   :cache_hash   false
                   :database_id  (mt/id)
                   :started_at   true
-                  :running_time true}
+                  :running_time true
+                  :embedding_client nil
+                  :embedding_version nil}
                  (format-response (most-recent-query-execution-for-query query)))))))))
 
 (deftest failure-test
@@ -216,10 +218,14 @@
                            (count (csv/read-csv result)))))))]
         (mt/with-no-data-perms-for-all-users!
           (testing "with data perms"
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/download-results :one-million-rows)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
             (do-test))
           (testing "with collection perms only"
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :no-self-service)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/download-results :one-million-rows)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :no)
             (do-test)))))))
 
 (deftest formatted-results-ignore-query-constraints
@@ -277,7 +283,8 @@
       ;; give all-users *partial* permissions for the DB, so we know we're checking more than just read permissions for
       ;; the Database
       (mt/with-no-data-perms-for-all-users!
-        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/data-access :unrestricted)
+        (data-perms/set-table-permission! (perms-group/all-users) (mt/id :categories) :perms/create-queries :query-builder)
+        (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
         (is (malli= [:map
                      [:status [:= "failed"]]
                      [:error  [:= "You do not have permissions to run this query."]]]
@@ -322,7 +329,8 @@
         (mt/with-temp-copy-of-db
           ;; Give All Users permissions to see the `venues` Table, but not ad-hoc native perms
           (mt/with-no-data-perms-for-all-users!
-            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/data-access :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/create-queries :query-builder)
             (is (malli= [:map
                          [:permissions-error? [:= true]]
                          [:message            [:= "You do not have permissions to run this query."]]]
@@ -435,14 +443,14 @@
                         "Sum of Quantity"
                         "test-expr"]
                        (map :display_name cols)))
-                (is (= {:base_type       "type/Integer"
-                        :effective_type  "type/Integer"
-                        :name            "pivot-grouping"
-                        :display_name    "pivot-grouping"
-                        :expression_name "pivot-grouping"
-                        :field_ref       ["expression" "pivot-grouping"]
-                        :source          "breakout"}
-                       (nth cols 3))))
+                (is (=? {:base_type       "type/Integer"
+                         :effective_type  "type/Integer"
+                         :name            "pivot-grouping"
+                         :display_name    "pivot-grouping"
+                         :expression_name "pivot-grouping"
+                         :field_ref       ["expression" "pivot-grouping"]
+                         :source          "breakout"}
+                        (nth cols 3))))
               (is (= [nil nil nil 7 18760 69540 "wheeee"] (last rows))))))))))
 
 (deftest ^:parallel pivot-filter-dataset-test
@@ -652,3 +660,26 @@
                        (format "dataset/%s?format_rows=%s" (name export-format) apply-formatting?)
                        :query (json/generate-string q))
                       ((get output-helper export-format))))))))))
+
+(deftest ^:parallel query-metadata-test
+  (testing "MBQL query"
+    (is (=? {:databases [{:id (mt/id)}]
+             :tables    [{:id (mt/id :products)}]
+             :fields    empty?}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                   (mt/mbql-query products)))))
+  (testing "Parameterized native query"
+    (is (=? {:databases [{:id (mt/id)}]
+             :tables    empty?
+             :fields    [{:id (mt/id :people :id)}]}
+            (mt/user-http-request :crowberto :post 200 "dataset/query_metadata"
+                                   {:database (mt/id)
+                                    :type     :native
+                                    :native   {:query "SELECT COUNT(*) FROM people WHERE {{id}}"
+                                               :template-tags
+                                               {"id" {:name         "id"
+                                                      :display-name "Id"
+                                                      :type         :dimension
+                                                      :dimension    [:field (mt/id :people :id) nil]
+                                                      :widget-type  :id
+                                                      :default      nil}}}})))))

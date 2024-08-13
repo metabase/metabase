@@ -18,7 +18,7 @@ export interface ObjectDetailHeaderProps {
   }[];
   canZoom: boolean;
   objectName: string;
-  objectId: ObjectId | null | unknown;
+  objectId: ObjectId | null;
   canZoomPreviousRow: boolean;
   canZoomNextRow?: boolean;
   showControls?: boolean;

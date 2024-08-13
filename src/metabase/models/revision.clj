@@ -36,7 +36,12 @@
 
 (defmethod revert-to-revision! :default
   [model id _user-id serialized-instance]
-  (t2/update! model id serialized-instance))
+  (let [valid-columns   (keys (t2/select-one (t2/table-name model) :id id))
+        ;; Only include fields that we know are on the model in the current version of Metabase! Otherwise we'll get
+        ;; an error if a field in an earlier version has since been dropped, but is still present in the revision.
+        ;; This is best effort — other kinds of schema changes could still break the ability to revert successfully.
+        revert-instance (select-keys serialized-instance valid-columns)]
+    (t2/update! model id revert-instance)))
 
 (defmulti diff-map
   "Return a map describing the difference between `object-1` and `object-2`."
@@ -94,9 +99,7 @@
   [{:keys [model] :as revision}]
   ;; in some cases (such as tests) we have 'fake' models that cannot be resolved normally; don't fail entirely in
   ;; those cases
-  (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol (case model
-                                                                     "Metric" "LegacyMetric"
-                                                                     model))))]
+  (let [model (u/ignore-exceptions (t2.model/resolve-model (symbol model)))]
     (cond-> revision
       model (update :object (partial mi/do-after-select model)))))
 
@@ -163,9 +166,7 @@
   "Get the revisions for `model` with `id` in reverse chronological order."
   [model :- [:fn toucan-model?]
    id    :- pos-int?]
-  (let [model-name (case model
-                     :model/LegacyMetric "Metric"
-                     (name model))]
+  (let [model-name (name model)]
     (t2/select Revision :model model-name :model_id id {:order-by [[:id :desc]]})))
 
 (mu/defn revisions+details
@@ -191,9 +192,7 @@
                                         [:user-id                       pos-int?]
                                         [:is-creation? {:optional true} [:maybe :boolean]]
                                         [:message      {:optional true} [:maybe :string]]]]
-  (let [entity-name (case entity
-                      :model/LegacyMetric "Metric"
-                      (name entity))
+  (let [entity-name (name entity)
         serialized-object (serialize-instance entity id (dissoc object :message))
         last-object       (t2/select-one-fn :object Revision :model entity-name :model_id id {:order-by [[:id :desc]]})]
     ;; make sure we still have a map after calling out serialization function
@@ -222,9 +221,7 @@
             [:revision-id pos-int?]
             [:entity      [:fn toucan-model?]]]]
   (let [{:keys [id user-id revision-id entity]} info
-        model-name (case entity
-                     :model/LegacyMetric "Metric"
-                     (name entity))
+        model-name (name entity)
         serialized-instance (t2/select-one-fn :object Revision :model model-name :model_id id :id revision-id)]
     (t2/with-transaction [_conn]
       ;; Do the reversion of the object

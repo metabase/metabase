@@ -41,6 +41,7 @@
    [metabase.db.schema-migrations-test.impl
     :as schema-migrations-test.impl]
    [metabase.driver.ddl.interface :as ddl.i]
+   [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.test.data.impl :as data.impl]
@@ -55,7 +56,12 @@
 ;; These functions offer a generic way to get bits of info like Table + Field IDs from any of our many driver/dataset
 ;; combos.
 
-(defn db
+(mu/defn db :- [:map
+                [:id       ::lib.schema.id/database]
+                [:engine   :keyword]
+                [:name     :string]
+                [:settings [:map
+                            [:database-source-dataset-name :string]]]]
   "Return the current database.
    Relies on the dynamic variable [[metabase.test.data.impl/*db-fn*]], which can be rebound with [[with-db]]."
   []
@@ -187,19 +193,22 @@
   [table-name & [query]]
   `(run-mbql-query* (mbql-query ~table-name ~(or query {}))))
 
+(def ^:private FormattableName
+  [:or
+   :keyword
+   :string
+   :symbol
+   [:fn
+    {:error/message (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? "
+                         "(Change the form to `$table.field`, or specify a top-level default Table to "
+                         "`$ids` or `mbql-query`.)")}
+    (constantly false)]])
+
 (mu/defn format-name :- :string
   "Format a SQL schema, table, or field identifier in the correct way for the current database by calling the current
   driver's implementation of [[ddl.i/format-name]]. (Most databases use the default implementation of `identity`; H2
   uses [[clojure.string/upper-case]].) This function DOES NOT quote the identifier."
-  [a-name :- [:or
-              :keyword
-              :string
-              :symbol
-              [:fn
-               {:error/message (str "Cannot format `nil` name -- did you use a `$field` without specifying its Table? "
-                                    "(Change the form to `$table.field`, or specify a top-level default Table to "
-                                    "`$ids` or `mbql-query`.)")}
-               (constantly false)]]]
+  [a-name :- FormattableName]
   (ddl.i/format-name (tx/driver) (name a-name)))
 
 (defn id

@@ -73,7 +73,7 @@
                   (update :stages update-stages)))]
       (update card :dataset-query update-query))))
 
-(mu/defn ^:private card :- ::lib.schema.metadata/card
+(mu/defn- card :- ::lib.schema.metadata/card
   [metadata-providerable :- ::lib.schema.metadata/metadata-providerable
    card-id               :- ::lib.schema.id/card]
   (let [card (or (lib.metadata/card metadata-providerable card-id)
@@ -92,7 +92,7 @@
                          :card-database-id   (:database-id card)}))))
     (normalize-card-query metadata-providerable card)))
 
-(mu/defn ^:private resolve-source-cards-in-stage :- [:maybe ::lib.schema/stages]
+(mu/defn- resolve-source-cards-in-stage :- [:maybe ::lib.schema/stages]
   [query     :- ::lib.schema/query
    stage     :- ::lib.schema/stage
    dep-graph :- (lib.schema.common/instance-of-class clojure.lang.Volatile)]

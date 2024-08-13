@@ -1,10 +1,13 @@
 import type {
+  CardId,
   DatasetColumn,
   DatabaseId,
   FieldId,
   FieldValuesType,
   RowValue,
   TableId,
+  SchemaId,
+  TemporalUnit,
 } from "metabase-types/api";
 
 import type {
@@ -17,7 +20,9 @@ import type {
   SPECIFIC_DATE_FILTER_OPERATORS,
   RELATIVE_DATE_BUCKETS,
   TIME_FILTER_OPERATORS,
+  DEFAULT_FILTER_OPERATORS,
 } from "./constants";
+import type { ColumnExtractionTag } from "./extractions";
 
 /**
  * An "opaque type": this technique gives us a way to pass around opaque CLJS values that TS will track for us,
@@ -38,18 +43,15 @@ export type CardMetadata = unknown & { _opaque: typeof CardMetadata };
 declare const SegmentMetadata: unique symbol;
 export type SegmentMetadata = unknown & { _opaque: typeof SegmentMetadata };
 
-declare const LegacyMetricMetadata: unique symbol;
-export type LegacyMetricMetadata = unknown & {
-  _opaque: typeof LegacyMetricMetadata;
+declare const MetricMetadata: unique symbol;
+export type MetricMetadata = unknown & {
+  _opaque: typeof MetricMetadata;
 };
 
 declare const AggregationClause: unique symbol;
 export type AggregationClause = unknown & { _opaque: typeof AggregationClause };
 
-export type Aggregable =
-  | AggregationClause
-  | LegacyMetricMetadata
-  | ExpressionClause;
+export type Aggregable = AggregationClause | MetricMetadata | ExpressionClause;
 
 declare const AggregationOperator: unique symbol;
 export type AggregationOperator = unknown & {
@@ -94,6 +96,16 @@ export type Clause =
   | JoinCondition
   | OrderByClause;
 
+export type ClauseType =
+  | "data"
+  | "joins"
+  | "expressions"
+  | "filters"
+  | "aggregation"
+  | "breakout"
+  | "order-by"
+  | "limit";
+
 export type Limit = number | null;
 
 declare const ColumnMetadata: unique symbol;
@@ -105,21 +117,8 @@ export type ColumnGroup = unknown & { _opaque: typeof ColumnGroup };
 declare const Bucket: unique symbol;
 export type Bucket = unknown & { _opaque: typeof Bucket };
 
-export type BucketName =
-  | "minute"
-  | "hour"
-  | "day"
-  | "week"
-  | "quarter"
-  | "month"
-  | "year"
-  | "day-of-week"
-  | "month-of-year"
-  | "quarter-of-year"
-  | "hour-of-day";
-
 export type BucketDisplayInfo = {
-  shortName: BucketName;
+  shortName: TemporalUnit;
   displayName: string;
   default?: boolean;
   selected?: boolean;
@@ -132,6 +131,10 @@ export type TableDisplayInfo = {
   isSourceTable: boolean;
   isFromJoin: boolean;
   isImplicitlyJoinable: boolean;
+  schema: SchemaId;
+  isQuestion?: boolean;
+  isModel?: boolean;
+  isMetric?: boolean;
 };
 
 export type CardDisplayInfo = TableDisplayInfo;
@@ -157,7 +160,7 @@ export type ColumnDisplayInfo = {
   table?: TableInlineDisplayInfo;
   fingerprint?: FingerprintDisplayInfo;
 
-  breakoutPosition?: number;
+  breakoutPositions?: number[];
   filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses
@@ -187,13 +190,16 @@ export type TextFingerprintDisplayInfo = {
   percentUrl: number;
 };
 
+// We're setting the values here as unknown even though
+// the API will return numbers most of the time, because
+// sometimes it doesn't!
 export type NumberFingerprintDisplayInfo = {
-  avg: number;
-  max: number;
-  min: number;
-  q1: number;
-  q3: number;
-  sd: number;
+  avg: unknown;
+  max: unknown;
+  min: unknown;
+  q1: unknown;
+  q3: unknown;
+  sd: unknown;
 };
 
 export type DateTimeFingerprintDisplayInfo = {
@@ -224,12 +230,12 @@ export type AggregationOperatorDisplayInfo = {
   selected?: boolean;
 };
 
-export type LegacyMetricDisplayInfo = {
+export type MetricDisplayInfo = {
   name: string;
   displayName: string;
   longDisplayName: string;
   description: string;
-  selected?: boolean;
+  aggregationPosition?: number;
 };
 
 export type ClauseDisplayInfo = Pick<
@@ -251,6 +257,9 @@ export type OrderByClauseDisplayInfo = ClauseDisplayInfo & {
 
 export type ExpressionOperatorName =
   | "+"
+  | "-"
+  | "*"
+  | "/"
   | "="
   | "!="
   | ">"
@@ -269,9 +278,11 @@ export type ExpressionOperatorName =
   | "concat"
   | "interval"
   | "time-interval"
+  | "relative-time-interval"
   | "relative-datetime"
   | "inside"
-  | "segment";
+  | "segment"
+  | "offset";
 
 export type ExpressionArg = null | boolean | number | string | ColumnMetadata;
 
@@ -314,6 +325,8 @@ export type ExcludeDateFilterOperatorName =
 
 export type TimeFilterOperatorName = typeof TIME_FILTER_OPERATORS[number];
 
+export type DefaultFilterOperatorName = typeof DEFAULT_FILTER_OPERATORS[number];
+
 export type RelativeDateBucketName = typeof RELATIVE_DATE_BUCKETS[number];
 
 export type ExcludeDateBucketName = typeof EXCLUDE_DATE_BUCKETS[number];
@@ -328,12 +341,13 @@ export type FilterOperatorDisplayInfo = {
 export type FilterParts =
   | StringFilterParts
   | NumberFilterParts
+  | CoordinateFilterParts
   | BooleanFilterParts
   | SpecificDateFilterParts
   | RelativeDateFilterParts
   | ExcludeDateFilterParts
   | TimeFilterParts
-  | CoordinateFilterParts;
+  | DefaultFilterParts;
 
 export type StringFilterParts = {
   operator: StringFilterOperatorName;
@@ -369,6 +383,7 @@ export type SpecificDateFilterParts = {
   operator: SpecificDateFilterOperatorName;
   column: ColumnMetadata;
   values: Date[];
+  hasTime: boolean;
 };
 
 export type RelativeDateFilterParts = {
@@ -404,6 +419,11 @@ export type TimeFilterParts = {
   values: Date[];
 };
 
+export type DefaultFilterParts = {
+  operator: DefaultFilterOperatorName;
+  column: ColumnMetadata;
+};
+
 export type JoinConditionOperatorDisplayInfo = {
   displayName: string;
   shortName: string;
@@ -429,6 +449,8 @@ export type DrillThruType =
   | "drill-thru/automatic-insights"
   | "drill-thru/column-extract"
   | "drill-thru/column-filter"
+  | "drill-thru/combine-columns"
+  | "drill-thru/compare-aggregations"
   | "drill-thru/distribution"
   | "drill-thru/fk-details"
   | "drill-thru/fk-filter"
@@ -446,21 +468,27 @@ export type DrillThruType =
 
 export type BaseDrillThruInfo<Type extends DrillThruType> = { type: Type };
 
-export type ColumnExtraction = {
-  key: ColumnExtractionKey;
-  displayName: string;
+declare const ColumnExtraction: unique symbol;
+export type ColumnExtraction = unknown & {
+  _opaque: typeof ColumnExtraction;
 };
 
-declare const ColumnExtractionKey: unique symbol;
-export type ColumnExtractionKey = unknown & {
-  _opaque: typeof ColumnExtractionKey;
+export type ColumnExtractionInfo = {
+  tag: ColumnExtractionTag;
+  displayName: string;
 };
 
 export type ColumnExtractDrillThruInfo =
   BaseDrillThruInfo<"drill-thru/column-extract"> & {
     displayName: string;
-    extractions: ColumnExtraction[];
+    extractions: ColumnExtractionInfo[];
   };
+
+export type CompareAggregationsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/compare-aggregations">;
+
+export type CombineColumnsDrillThruInfo =
+  BaseDrillThruInfo<"drill-thru/combine-columns">;
 
 export type QuickFilterDrillThruOperator =
   | "="
@@ -527,6 +555,8 @@ export type ZoomTimeseriesDrillThruInfo =
 
 export type DrillThruDisplayInfo =
   | ColumnExtractDrillThruInfo
+  | CombineColumnsDrillThruInfo
+  | CompareAggregationsDrillThruInfo
   | QuickFilterDrillThruInfo
   | PKDrillThruInfo
   | ZoomDrillThruInfo
@@ -545,6 +575,10 @@ export type FilterDrillDetails = {
   query: Query;
   stageIndex: number;
   column: ColumnMetadata;
+};
+
+export type AggregationDrillDetails = {
+  aggregation: AggregationClause;
 };
 
 export type PivotType = "category" | "location" | "time";
@@ -566,7 +600,9 @@ export interface ClickObject {
   event?: MouseEvent;
   element?: Element;
   seriesIndex?: number;
+  cardId?: CardId;
   settings?: Record<string, unknown>;
+  columnShortcuts?: boolean;
   origin?: {
     row: RowValue;
     cols: DatasetColumn[];

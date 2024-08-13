@@ -12,9 +12,10 @@ import Select, { Option } from "metabase/core/components/Select";
 import AdminS from "metabase/css/admin.module.css";
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
-import { uuid } from "metabase/lib/utils";
+import { uuid } from "metabase/lib/uuid";
 import { SettingsApi, GeoJSONApi } from "metabase/services";
 import LeafletChoropleth from "metabase/visualizations/components/LeafletChoropleth";
+import { computeMinimalBounds } from "metabase/visualizations/lib/mapping";
 
 import SettingHeader from "../SettingHeader";
 
@@ -96,14 +97,29 @@ export default class CustomGeoJSONWidget extends Component {
 
       for (const feature of geoJson.features) {
         if (!feature.properties) {
-          throw t`Invalid custom GeoJSON: feature is misssing properties`;
+          throw t`Invalid custom GeoJSON: feature is missing properties`;
         }
+      }
+
+      const bounds = computeMinimalBounds(geoJson.features);
+      const northEast = bounds.getNorthEast();
+      const southWest = bounds.getSouthWest();
+
+      if (
+        [
+          [northEast.lat, northEast.lng],
+          [southWest.lat, southWest.lng],
+        ].every(
+          ([lat, lng]) => lat < -90 || lat > 90 || lng < -180 || lng > 180,
+        )
+      ) {
+        throw t`Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude`;
       }
     }
 
     if (geoJson.type === "Feature") {
       if (!geoJson.properties) {
-        throw t`Invalid custom GeoJSON: feature is misssing properties`;
+        throw t`Invalid custom GeoJSON: feature is missing properties`;
       }
     }
   };

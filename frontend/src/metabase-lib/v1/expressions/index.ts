@@ -68,7 +68,7 @@ export function parseMetric(
   metricName: string,
   { query, stageIndex }: { query: Lib.Query; stageIndex: number },
 ) {
-  const metrics = Lib.availableLegacyMetrics(query, stageIndex);
+  const metrics = Lib.availableMetrics(query, stageIndex);
 
   const metric = metrics.find(metric => {
     const displayInfo = Lib.displayInfo(query, stageIndex, metric);
@@ -128,40 +128,30 @@ export function formatSegmentName(
 export function parseDimension(
   name: string,
   {
-    reference,
     query,
     stageIndex,
+    expressionIndex,
   }: {
-    reference: string;
     query: Lib.Query;
     stageIndex: number;
     source: string;
+    expressionIndex: number | undefined;
   },
 ) {
-  const columns = Lib.expressionableColumns(query, stageIndex);
+  const columns = Lib.expressionableColumns(query, stageIndex, expressionIndex);
 
-  return columns
-    .filter(column => {
-      const displayInfo = Lib.displayInfo(query, stageIndex, column);
+  return columns.find(column => {
+    const displayInfo = Lib.displayInfo(query, stageIndex, column);
 
-      const nameWithSeparator = getDisplayNameWithSeparator(
+    return EDITOR_FK_SYMBOLS.symbols.some(separator => {
+      const displayName = getDisplayNameWithSeparator(
         displayInfo.longDisplayName,
+        separator,
       );
 
-      return nameWithSeparator !== reference;
-    })
-    .find(column => {
-      const displayInfo = Lib.displayInfo(query, stageIndex, column);
-
-      return EDITOR_FK_SYMBOLS.symbols.some(separator => {
-        const displayName = getDisplayNameWithSeparator(
-          displayInfo.longDisplayName,
-          separator,
-        );
-
-        return displayName === name;
-      });
+      return displayName === name;
     });
+  });
 }
 
 export function formatLegacyDimensionName(
@@ -341,7 +331,7 @@ export function isMetric(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     expr[0] === "metric" &&
-    expr.length === 2 &&
+    (expr.length === 2 || expr.length === 3) &&
     typeof expr[1] === "number"
   );
 }
@@ -357,4 +347,8 @@ export function isSegment(expr: unknown): boolean {
 
 export function isCase(expr: unknown): boolean {
   return Array.isArray(expr) && expr[0] === "case"; // && _.all(expr.slice(1), isValidArg)
+}
+
+export function isOffset(expr: unknown): boolean {
+  return Array.isArray(expr) && expr[0] === "offset";
 }

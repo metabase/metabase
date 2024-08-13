@@ -15,9 +15,9 @@ import { PLUGIN_ADMIN_USER_FORM_FIELDS } from "metabase/plugins";
 import { Button } from "metabase/ui";
 import type { User } from "metabase-types/api";
 
-const localUserScmeha = Yup.object({
-  first_name: Yup.string().max(100, Errors.maxLength).default(""),
-  last_name: Yup.string().max(100, Errors.maxLength).default(""),
+const localUserSchema = Yup.object({
+  first_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
+  last_name: Yup.string().nullable().max(100, Errors.maxLength).default(null),
   email: Yup.string().email().required(Errors.required),
 });
 
@@ -37,7 +37,7 @@ export const UserForm = ({
   return (
     <FormProvider
       initialValues={initialValues}
-      validationSchema={localUserScmeha}
+      validationSchema={localUserSchema}
       enableReinitialize
       onSubmit={onSubmit}
     >

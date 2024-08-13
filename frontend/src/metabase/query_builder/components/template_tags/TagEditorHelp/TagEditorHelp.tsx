@@ -7,7 +7,7 @@ import ExternalLink from "metabase/core/components/ExternalLink";
 import CS from "metabase/css/core/index.css";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
-import { uuid } from "metabase/lib/utils";
+import { uuid } from "metabase/lib/uuid";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { DatabaseId, NativeDatasetQuery } from "metabase-types/api";

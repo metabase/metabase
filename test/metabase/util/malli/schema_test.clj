@@ -42,7 +42,7 @@
            {:schema        ms/FieldSemanticTypeKeywordOrString
             :failed-cases  [1 :type/FK]
             :success-cases [:type/Category "type/Category"]}
-           {:schema        ms/Field
+           {:schema        ms/LegacyFieldOrExpressionReference
             :failed-cases  [[:aggregation 0] [:field "name" {}]]
             :success-cases [[:field 3 nil] ["field" "name" {:base-type :type/Float}]]}
            {:schema        ms/Map
@@ -57,9 +57,6 @@
            {:schema        ms/IntString
             :failed-cases  [:a "a" "1.5"]
             :success-cases ["1"]}
-           {:schema        ms/BooleanString
-            :failed-cases  [:false :true true "f" "t"]
-            :success-cases ["true" "false"]}
            {:schema        ms/TemporalString
             :failed-cases  ["random string"]
             :success-cases ["2019-10-28T13:14:15" "2019-10-28"]}

@@ -6,6 +6,7 @@
    [metabase.connection-pool :as connection-pool]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.interface :as mi]
@@ -84,7 +85,12 @@
   :visibility :internal
   :type       :integer
   :default    15
-  :audit      :getter)
+  :audit      :getter
+  :doc "Change this to a higher value if you notice that regular usage consumes all or close to all connections.
+
+When all connections are in use then Metabase will be slower to return results for queries, since it would have to wait for an available connection before processing the next query in the queue.
+
+For setting the maximum, see [MB_APPLICATION_DB_MAX_CONNECTION_POOL_SIZE](#mb_application_db_max_connection_pool_size).")
 
 (setting/defsetting jdbc-data-warehouse-unreturned-connection-timeout-seconds
   "Kill connections if they are unreturned after this amount of time. In theory this should not be needed because the QP
@@ -165,12 +171,18 @@
   (let [details-with-tunnel (driver/incorporate-ssh-tunnel-details  ;; If the tunnel is disabled this returned unchanged
                              driver
                              (update details :port #(or % (default-ssh-tunnel-target-port driver))))
-        spec                (connection-details->spec driver details-with-tunnel)
+        details-with-auth   (driver.u/fetch-and-incorporate-auth-provider-details
+                             driver
+                             id
+                             details-with-tunnel)
+        spec                (connection-details->spec driver details-with-auth)
         properties          (data-warehouse-connection-pool-properties driver database)]
     (merge
-      (connection-pool-spec spec properties)
-      ;; also capture entries related to ssh tunneling for later use
-      (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host]))))
+     (connection-pool-spec spec properties)
+     ;; also capture entries related to ssh tunneling for later use
+     (select-keys spec [:tunnel-enabled :tunnel-session :tunnel-tracker :tunnel-entrance-port :tunnel-entrance-host])
+     ;; remember when the password expires
+     (select-keys details-with-auth [:password-expiry-timestamp]))))
 
 (defn- destroy-pool! [database-id pool-spec]
   (log/debug (u/format-color :red "Closing old connection pool for database %s ..." database-id))
@@ -185,7 +197,7 @@
   database-id->jdbc-spec-hash
   (atom {}))
 
-(mu/defn ^:private jdbc-spec-hash
+(mu/defn- jdbc-spec-hash
   "Computes a hash value for the JDBC connection spec based on `database`'s `:details` map, for the purpose of
   determining if details changed and therefore the existing connection pool needs to be invalidated."
   [{driver :engine, :keys [details], :as database} :- [:maybe :map]]
@@ -221,6 +233,10 @@
 
 (defn- log-jdbc-spec-hash-change-msg! [db-id]
   (log/warn (u/format-color :yellow "Hash of database %s details changed; marking pool invalid to reopen it" db-id))
+  nil)
+
+(defn- log-password-expiry! [db-id]
+  (log/warn (u/format-color :yellow "Password of database %s expired; marking pool invalid to reopen it" db-id))
   nil)
 
 (defn db->pooled-connection-spec
@@ -261,6 +277,12 @@
                                                     jdbc-spec-hash))))
                             (when log-invalidation?
                               (log-jdbc-spec-hash-change-msg! db-id))
+
+                            (let [{:keys [password-expiry-timestamp]} details]
+                              (and (int? password-expiry-timestamp)
+                                   (<= password-expiry-timestamp (System/currentTimeMillis))))
+                            (when log-invalidation?
+                              (log-password-expiry! db-id))
 
                             (nil? (:tunnel-session details)) ; no tunnel in use; valid
                             details
@@ -305,7 +327,10 @@
   [driver details f]
   (let [details (update details :port #(or % (default-ssh-tunnel-target-port driver)))]
     (ssh/with-ssh-tunnel [details-with-tunnel details]
-      (let [spec (connection-details->spec driver details-with-tunnel)]
+      (let [details-with-auth (driver.u/fetch-and-incorporate-auth-provider-details
+                               driver
+                               details-with-tunnel)
+            spec (connection-details->spec driver details-with-auth)]
         (f spec)))))
 
 (defmacro with-connection-spec-for-testing-connection

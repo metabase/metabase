@@ -36,14 +36,14 @@ export function FieldSet({
             CS.textUppercase,
             CS.px1,
             CS.textNoWrap,
-            CS.textMedium,
+            CS.textSecondary,
           )}
         >
           {legend}
           {required && <span>&nbsp;*</span>}
         </legend>
       )}
-      <div data-testid="field-set-content" className="w-full">
+      <div data-testid="field-set-content" className={CS.wFull}>
         {children}
       </div>
     </fieldset>

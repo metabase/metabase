@@ -16,7 +16,7 @@ const TestComponent = ({ settingName }: { settingName: keyof Settings }) => {
   );
 };
 
-describe("useTableListQuery", () => {
+describe("useSetting", () => {
   it("should get a string setting", async () => {
     renderWithProviders(<TestComponent settingName={"admin-email"} />);
     expect(screen.getByText('"admin@metabase.test"')).toBeInTheDocument();
@@ -51,7 +51,7 @@ describe("useTableListQuery", () => {
   });
 
   it("should get an empty setting", async () => {
-    renderWithProviders(<TestComponent settingName={"uploads-schema-name"} />);
+    renderWithProviders(<TestComponent settingName={"email-smtp-host"} />);
     expect(screen.getByText("null")).toBeInTheDocument();
     expect(screen.getByText("object")).toBeInTheDocument();
     expect(screen.getByText("isNull")).toBeInTheDocument();

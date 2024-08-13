@@ -1,10 +1,12 @@
 import { Link } from "react-router";
 import { t, jt } from "ttag";
+import _ from "underscore";
 
 import ExternalLink from "metabase/core/components/ExternalLink";
 import { Anchor, Button, Icon, Text, List } from "metabase/ui";
 
 import type { EmbedHomepageViewProps } from "./EmbedHomepageView";
+import { trackEmbeddingHomepageQuickstartClick } from "./analytics";
 
 export const InteractiveTabContent = ({
   embeddingAutoEnabled,
@@ -12,6 +14,7 @@ export const InteractiveTabContent = ({
   exampleDashboardId,
   licenseActiveAtSetup,
   learnMoreInteractiveEmbedUrl,
+  initialTab,
 }: EmbedHomepageViewProps) => {
   return (
     <>
@@ -55,7 +58,12 @@ export const InteractiveTabContent = ({
         <List.Item>{t`Customize the look and feel of your application to match your brand.`}</List.Item>
       </List>
 
-      <ExternalLink href={interactiveEmbeddingQuickstartUrl}>
+      <ExternalLink
+        href={interactiveEmbeddingQuickstartUrl}
+        // ExternalLink stops clicks events by default
+        onClickCapture={_.noop}
+        onClick={() => trackEmbeddingHomepageQuickstartClick(initialTab)}
+      >
         <Button
           variant="filled"
           mb="sm"

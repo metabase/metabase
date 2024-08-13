@@ -7,9 +7,10 @@ import {
   startNewNativeQuestion,
   runNativeQuery,
   entityPickerModal,
+  focusNativeEditor,
+  createQuestion,
+  createNativeQuestion,
 } from "e2e/support/helpers";
-
-import * as SQLFilter from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 describe("scenarios > question > native subquery", () => {
   beforeEach(() => {
@@ -78,6 +79,7 @@ describe("scenarios > question > native subquery", () => {
         openQuestionActions();
         cy.findByTestId("move-button").click();
         entityPickerModal().within(() => {
+          cy.findByRole("tab", { name: /Collections/ }).click();
           cy.findByText("Bobby Tables's Personal Collection").click();
           cy.button("Move").click();
         });
@@ -275,7 +277,7 @@ describe("scenarios > question > native subquery", () => {
     );
 
     visitQuestion("@toplevelQuestionId");
-    cy.get("#main-data-grid .cellData").should("have.text", "41");
+    cy.get("#main-data-grid [data-testid=cell-data]").should("have.text", "41");
   });
 
   it("should be able to reference a nested question (metabase#25988)", () => {
@@ -287,13 +289,13 @@ describe("scenarios > question > native subquery", () => {
       },
     };
 
-    cy.createQuestion(questionDetails).then(
+    createQuestion(questionDetails).then(
       ({ body: { id: nestedQuestionId } }) => {
         const tagID = `#${nestedQuestionId}`;
         cy.intercept("GET", `/api/card/${nestedQuestionId}`).as("loadQuestion");
 
         startNewNativeQuestion();
-        SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+        focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
         cy.wait("@loadQuestion");
         cy.findByTestId("sidebar-header-title").should(
           "have.text",
@@ -301,33 +303,27 @@ describe("scenarios > question > native subquery", () => {
         );
 
         runNativeQuery();
-
-        cy.get(".cellData").should("contain", "37.65");
+        cy.findAllByTestId("cell-data").should("contain", "37.65");
       },
     );
   });
 
-  it(
-    "should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)",
-    { tags: "@flaky" },
-    () => {
-      const questionDetails = {
-        name: "28218",
-        native: { query: "select 1;" }, // semicolon is important here
-      };
+  it("should be able to reference a saved native question that ends with a semicolon `;` (metabase#28218)", () => {
+    const questionDetails = {
+      name: "28218",
+      native: { query: "select 1;" }, // semicolon is important here
+    };
 
-      cy.createNativeQuestion(questionDetails).then(
-        ({ body: { id: baseQuestionId } }) => {
-          const tagID = `#${baseQuestionId}`;
+    createNativeQuestion(questionDetails).then(
+      ({ body: { id: baseQuestionId } }) => {
+        const tagID = `#${baseQuestionId}`;
 
-          startNewNativeQuestion();
-          SQLFilter.enterParameterizedQuery(`SELECT * FROM {{${tagID}`);
+        startNewNativeQuestion();
+        focusNativeEditor().type(`SELECT * FROM {{${tagID}`);
 
-          runNativeQuery();
-
-          cy.get(".cellData").should("contain", "1");
-        },
-      );
-    },
-  );
+        runNativeQuery();
+        cy.findAllByTestId("cell-data").should("contain", "1");
+      },
+    );
+  });
 });

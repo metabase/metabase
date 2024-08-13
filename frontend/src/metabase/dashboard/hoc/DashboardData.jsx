@@ -7,7 +7,7 @@ import _ from "underscore";
 import * as dashboardActions from "metabase/dashboard/actions";
 import {
   getDashboardComplete,
-  getCardData,
+  getDashcardDataMap,
   getSlowCards,
   getParameters,
   getParameterValues,
@@ -19,7 +19,7 @@ import { setErrorPage } from "metabase/redux/app";
 const mapStateToProps = (state, props) => {
   return {
     dashboard: getDashboardComplete(state, props),
-    dashcardData: getCardData(state, props),
+    dashcardData: getDashcardDataMap(state, props),
     selectedTabId: getSelectedTabId(state),
     slowCards: getSlowCards(state, props),
     parameters: getParameters(state, props),
@@ -110,7 +110,6 @@ export const DashboardData = ComposedComponent =>
 
         if (!_.isEqual(nextProps.selectedTabId, this.props.selectedTabId)) {
           this.props.fetchDashboardCardData();
-          this.props.fetchDashboardCardMetadata();
           return;
         }
       }

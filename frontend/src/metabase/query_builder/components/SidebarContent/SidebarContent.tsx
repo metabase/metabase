@@ -24,6 +24,7 @@ type Props = {
   doneButtonText?: string;
   footer?: ReactNode;
   children?: ReactNode;
+  "data-testid"?: string;
 };
 
 function SidebarContent({
@@ -41,9 +42,10 @@ function SidebarContent({
     </FooterButton>
   ) : null,
   children,
+  "data-testid": dataTestId,
 }: Props) {
   return (
-    <SidebarContentRoot className={className}>
+    <SidebarContentRoot data-testid={dataTestId} className={className}>
       <SidebarContentMain data-testid="sidebar-content">
         {(title || icon || onBack) && (
           <SidebarHeader

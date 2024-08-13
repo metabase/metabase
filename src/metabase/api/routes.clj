@@ -10,6 +10,7 @@
    [metabase.api.bookmark :as api.bookmark]
    [metabase.api.cache :as api.cache]
    [metabase.api.card :as api.card]
+   [metabase.api.cloud-migration :as api.cloud-migration]
    [metabase.api.collection :as api.collection]
    [metabase.api.common :as api :refer [defroutes context]]
    [metabase.api.dashboard :as api.dashboard]
@@ -21,7 +22,6 @@
    [metabase.api.geojson :as api.geojson]
    [metabase.api.google :as api.google]
    [metabase.api.ldap :as api.ldap]
-   [metabase.api.legacy-metric :as api.legacy-metric]
    [metabase.api.login-history :as api.login-history]
    [metabase.api.metabot :as api.metabot]
    [metabase.api.model-index :as api.model-index]
@@ -48,7 +48,6 @@
    [metabase.api.tiles :as api.tiles]
    [metabase.api.timeline :as api.timeline]
    [metabase.api.timeline-event :as api.timeline-event]
-   [metabase.api.transform :as api.transform]
    [metabase.api.user :as api.user]
    [metabase.api.util :as api.util]
    [metabase.config :as config]
@@ -99,7 +98,7 @@
                                      :description "Metabase API"}]})
       (respond path))))
 
-(defroutes ^{:doc "Ring routes for API endpoints."} routes
+(defroutes ^{:doc "Ring routes for API endpoints.", :arglists '([request] [request respond raise])} routes
   ee-routes
   #'GET_docs*
   (context "/action"               [] (+auth api.action/routes))
@@ -108,6 +107,7 @@
   (context "/automagic-dashboards" [] (+auth api.magic/routes))
   (context "/bookmark"             [] (+auth api.bookmark/routes))
   (context "/card"                 [] (+auth api.card/routes))
+  (context "/cloud-migration"      [] (+auth api.cloud-migration/routes))
   (context "/collection"           [] (+auth api.collection/routes))
   (context "/dashboard"            [] (+auth api.dashboard/routes))
   (context "/database"             [] (+auth api.database/routes))
@@ -118,7 +118,6 @@
   (context "/geojson"              [] api.geojson/routes)
   (context "/google"               [] (+auth api.google/routes))
   (context "/ldap"                 [] (+auth api.ldap/routes))
-  (context "/legacy-metric"        [] (+auth api.legacy-metric/routes))
   (context "/login-history"        [] (+auth api.login-history/routes))
   (context "/metabot"              [] (+auth api.metabot/routes))
   (context "/model-index"          [] (+auth api.model-index/routes))
@@ -147,7 +146,6 @@
   (context "/tiles"                [] (+auth api.tiles/routes))
   (context "/timeline"             [] (+auth api.timeline/routes))
   (context "/timeline-event"       [] (+auth api.timeline-event/routes))
-  (context "/transform"            [] (+auth api.transform/routes))
   (context "/user"                 [] (+auth api.user/routes))
   (context "/api-key"              [] (+auth api.api-key/routes))
   (context "/util"                 [] api.util/routes)

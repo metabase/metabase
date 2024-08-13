@@ -11,12 +11,14 @@
    `sad-toucan-incidents` PUBLIC.INCIDENTS.TIMESTAMP | <unique-session-schema>.sad_toucan_incidents.timestamp"
   (:require
    [clojure.string :as str]
+   [clojure.test :refer :all]
    [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.ddl.interface :as ddl.i]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
+   [metabase.test.data.impl :as data.impl]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql.ddl :as ddl]
@@ -121,27 +123,26 @@
   [^java.sql.Connection conn schemas]
   (let [threshold (t/minus (t/instant) (t/hours hours-before-expired-threshold))]
     (with-open [stmt (.createStatement conn)]
-      (let [classify! (fn [schema-name]
-                        (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"
-                                               schema-name)
-                                   rset (.executeQuery stmt sql)]
-                               (if (.next rset)
-                                 (let [date-string (.getString rset "value")
-                                       created-at  (java.time.Instant/parse date-string)]
-                                   (if (t/before? created-at threshold)
-                                     :expired
-                                     :recent))
-                                 :lacking-created-at))
-                             (catch com.amazon.redshift.util.RedshiftException e
-                               (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
-                                 :old-style-cache
-                                 (do (log/error e "Error classifying cache schema")
-                                     :unknown-error)))
-                             (catch Exception e
-                               (log/error e "Error classifying cache schema")
-                               :unknown-error)))]
-
-        (group-by classify! schemas)))))
+      (let [classify (fn [schema-name]
+                       (try (let [sql (format "select value from %s.cache_info where key = 'created-at'"
+                                              schema-name)]
+                              (with-open [rset (.executeQuery stmt sql)]
+                                (if (.next rset)
+                                  (let [date-string (.getString rset "value")
+                                        created-at  (java.time.Instant/parse date-string)]
+                                    (if (t/before? created-at threshold)
+                                      :expired
+                                      :recent))
+                                  :lacking-created-at)))
+                            (catch com.amazon.redshift.util.RedshiftException e
+                              (if (re-find #"relation .* does not exist" (or (ex-message e) ""))
+                                :old-style-cache
+                                (do (log/error e "Error classifying cache schema")
+                                    :unknown-error)))
+                            (catch Exception e
+                              (log/error e "Error classifying cache schema")
+                              :unknown-error)))]
+        (group-by classify schemas)))))
 
 (defn- delete-old-schemas!
   "Remove unneeded schemas from redshift. Local databases are thrown away after a test run. Shared cloud instances do
@@ -219,10 +220,11 @@
 (defmethod driver/describe-database :redshift
   [driver database]
   (if *override-describe-database-to-filter-by-db-name?*
-    (let [r (original-describe-database driver database)]
+    (let [r                (original-describe-database driver database)
+          phyiscal-db-name (data.impl/database-source-dataset-name database)]
       (update r :tables (fn [tables]
                           (into #{}
-                                (filter #(or (tx/qualified-by-db-name? (:name database) (:name %))
+                                (filter #(or (tx/qualified-by-db-name? phyiscal-db-name (:name %))
                                              ;; the `extsales` table is used for testing external tables
                                              (= (:name %) "extsales")))
                                 tables))))
@@ -233,3 +235,23 @@
   ;; Redshift is case-insensitive for identifiers and returns them in lower-case by default from system tables, even if
   ;; you create the tables with upper-case characters.
   (u/lower-case-en s))
+
+(defmethod tx/dataset-already-loaded? :redshift
+  [driver dbdef]
+  ;; check and make sure the first table in the dbdef has been created.
+  (let [session-schema (unique-session-schema)
+        tabledef       (first (:table-definitions dbdef))
+        ;; table-name should be something like test_data_venues
+        table-name     (tx/db-qualified-table-name (:database-name dbdef) (:table-name tabledef))]
+    (sql-jdbc.execute/do-with-connection-with-options
+     driver
+     (sql-jdbc.conn/connection-details->spec driver @db-connection-details)
+     {:write? false}
+     (fn [^java.sql.Connection conn]
+       (with-open [rset (.getTables (.getMetaData conn)
+                                    #_catalog        (tx/db-test-env-var-or-throw :redshift :db)
+                                    #_schema-pattern session-schema
+                                    #_table-pattern  table-name
+                                    #_types          (into-array String ["TABLE"]))]
+         ;; if the ResultSet returns anything we know the table is already loaded.
+         (.next rset))))))

@@ -3,8 +3,6 @@ export const STRING_FILTER_OPERATORS = [
   "!=",
   "contains",
   "does-not-contain",
-  "is-null",
-  "not-null",
   "is-empty",
   "not-empty",
   "starts-with",
@@ -63,6 +61,8 @@ export const TIME_FILTER_OPERATORS = [
   "is-null",
   "not-null",
 ] as const;
+
+export const DEFAULT_FILTER_OPERATORS = ["is-null", "not-null"] as const;
 
 export const RELATIVE_DATE_BUCKETS = [
   "minute",

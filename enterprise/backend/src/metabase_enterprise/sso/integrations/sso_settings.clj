@@ -4,6 +4,7 @@
   information. Separating out this information creates a better dependency graph and avoids circular dependencies."
   (:require
    [malli.core :as mc]
+   [metabase-enterprise.scim.api :as scim]
    [metabase.integrations.common :as integrations.common]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting :refer [define-multi-setting-impl]]
@@ -28,6 +29,11 @@ don''t have one.")
   :type    :boolean
   :default true
   :feature :sso-saml
+  :getter  (fn []
+             (if (scim/scim-enabled)
+               ;; Disable SAML provisioning automatically when SCIM is enabled
+               false
+               (setting/get-value-of-type :boolean :saml-user-provisioning-enabled?)))
   :audit   :getter)
 
 (defsetting jwt-user-provisioning-enabled?
@@ -47,11 +53,11 @@ don''t have one.")
 
 (defsetting saml-identity-provider-uri
   (deferred-tru "This is the URL where your users go to log in to your identity provider. Depending on which IdP you''re
-using, this usually looks like https://your-org-name.example.com or https://example.com/app/my_saml_app/abc123/sso/saml")
+using, this usually looks like `https://your-org-name.example.com` or `https://example.com/app/my_saml_app/abc123/sso/saml`")
   :feature :sso-saml
   :audit   :getter)
 
-(mu/defn ^:private validate-saml-idp-cert
+(mu/defn- validate-saml-idp-cert
   "Validate that an encoded identity provider certificate is valid, or throw an Exception."
   [idp-cert-str :- :string]
   (try
@@ -74,7 +80,7 @@ open it in a text editor, then copy and paste the certificate's contents here.")
 
 (defsetting saml-identity-provider-issuer
   (deferred-tru "This is a unique identifier for the IdP. Often referred to as Entity ID or simply 'Issuer'. Depending
-on your IdP, this usually looks something like http://www.example.com/141xkex604w0Q5PN724v")
+on your IdP, this usually looks something like `http://www.example.com/141xkex604w0Q5PN724v`")
   :feature :sso-saml
   :audit   :getter)
 
@@ -167,6 +173,18 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
                (setting/get-value-of-type :boolean :saml-enabled)
                false)))
 
+(defsetting saml-slo-enabled
+  (deferred-tru "Is SAML Single Log Out enabled?")
+  :type    :boolean
+  :default false
+  :feature :sso-saml
+  :audit   :getter
+  :export? false
+  :getter  (fn []
+             (if (saml-enabled)
+               (setting/get-value-of-type :boolean :saml-slo-enabled)
+               false)))
+
 (defsetting jwt-identity-provider-uri
   (deferred-tru "URL of JWT based login page")
   :feature :sso-jwt
@@ -221,7 +239,8 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :feature :sso-jwt
   :audit   :getter
   :setter  (comp (partial setting/set-value-of-type! :json :jwt-group-mappings)
-                 (partial mu/validate-throw validate-group-mappings)))
+                 (partial mu/validate-throw validate-group-mappings))
+  :doc "JSON object containing JWT to Metabase group mappings, where keys are JWT groups and values are lists of Metabase groups IDs.")
 
 (defsetting jwt-configured
   (deferred-tru "Are the mandatory JWT settings configured?")
@@ -242,7 +261,9 @@ on your IdP, this usually looks something like http://www.example.com/141xkex604
   :getter  (fn []
              (if (jwt-configured)
                (setting/get-value-of-type :boolean :jwt-enabled)
-               false)))
+               false))
+  :doc "When set to true, will enable JWT authentication with the options configured in the MB_JWT_* variables.
+        This is for JWT SSO authentication, and has nothing to do with Static embedding, which is MB_EMBEDDING_SECRET_KEY.")
 
 (define-multi-setting-impl integrations.common/send-new-sso-user-admin-email? :ee
   :getter (fn [] (setting/get-value-of-type :boolean :send-new-sso-user-admin-email?))

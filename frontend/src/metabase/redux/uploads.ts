@@ -14,6 +14,8 @@ import type { Dispatch, State } from "metabase-types/store";
 import type { FileUploadState } from "metabase-types/store/upload";
 import { UploadMode } from "metabase-types/store/upload";
 
+export const UPLOAD_DATA_FILE_TYPES = [".csv", ".tsv"];
+
 export const UPLOAD_FILE_TO_COLLECTION = "metabase/collection/UPLOAD_FILE";
 export const UPLOAD_FILE_START = "metabase/collection/UPLOAD_FILE_START";
 export const UPLOAD_FILE_END = "metabase/collection/UPLOAD_FILE_END";

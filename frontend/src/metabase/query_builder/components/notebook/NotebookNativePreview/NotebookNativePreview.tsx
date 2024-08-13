@@ -34,12 +34,12 @@ export const NotebookNativePreview = (): JSX.Element => {
   const engineType = getEngineNativeType(engine);
 
   const sourceQuery = question.query();
-  const canRun = Lib.canRun(sourceQuery);
+  const canRun = Lib.canRun(sourceQuery, question.type());
   const payload = Lib.toLegacyQuery(sourceQuery);
   const { data, error, isFetching } = useGetNativeDatasetQuery(payload);
 
   const showLoader = isFetching;
-  const showError = !isFetching && canRun && error;
+  const showError = !isFetching && canRun && !!error;
   const showQuery = !isFetching && canRun && !error;
   const showEmptySidebar = !canRun;
 
@@ -60,7 +60,7 @@ export const NotebookNativePreview = (): JSX.Element => {
   const getErrorMessage = (error: unknown) =>
     typeof error === "string" ? error : undefined;
 
-  const borderStyle = `1px solid ${color("border")}`;
+  const borderStyle = "1px solid var(--mb-color-border)";
 
   return (
     <Box
@@ -68,7 +68,7 @@ export const NotebookNativePreview = (): JSX.Element => {
       data-testid="native-query-preview-sidebar"
       w="100%"
       h="100%"
-      bg={color("white")}
+      bg="bg-white"
       display="flex"
       style={{ flexDirection: "column" }}
     >
@@ -108,6 +108,9 @@ export const NotebookNativePreview = (): JSX.Element => {
               fontSize={12}
               style={{ backgroundColor: color("bg-light") }}
               showPrintMargin={false}
+              setOptions={{
+                highlightGutterLine: false,
+              }}
             />
           </NativeQueryEditorRoot>
         )}

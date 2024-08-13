@@ -1,6 +1,7 @@
 (ns metabase.db.connection-test
   (:require
    [clojure.test :refer :all]
+   [metabase.db.connection :as mdb.connection]
    [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]
    [toucan2.core :as t2]
@@ -131,3 +132,9 @@
           (catch Exception e
             (when-not (is-transaction-exception? e)
               (throw e))))))))
+
+(deftest ^:parallel transaction-isolation-level-test
+  (testing "We should always use READ_COMMITTED for the app DB (#44505)"
+    (with-open [conn (.getConnection mdb.connection/*application-db*)]
+      (is (= java.sql.Connection/TRANSACTION_READ_COMMITTED
+             (.getTransactionIsolation conn))))))

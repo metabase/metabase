@@ -1,6 +1,8 @@
-import { KBarProvider, useKBar } from "kbar";
+import fetchMock from "fetch-mock";
+import { useKBar } from "kbar";
 import { useEffect } from "react";
-import { withRouter, type WithRouterProps } from "react-router";
+import { Route, withRouter, type WithRouterProps } from "react-router";
+import _ from "underscore";
 
 import {
   setupDatabasesEndpoints,
@@ -10,21 +12,24 @@ import {
 import {
   renderWithProviders,
   screen,
-  mockGetBoundingClientRect,
   within,
   waitFor,
+  mockScrollTo,
+  mockScrollIntoView,
 } from "__support__/ui";
 import { getAdminPaths } from "metabase/admin/app/reducers";
+import type { RecentItem, Settings } from "metabase-types/api";
 import {
   createMockCollection,
   createMockCollectionItem,
   createMockDatabase,
-  createMockModelObject,
-  createMockRecentItem,
+  createMockRecentCollectionItem,
+  createMockRecentTableItem,
 } from "metabase-types/api/mocks";
 import {
   createMockAdminAppState,
   createMockAdminState,
+  createMockSettingsState,
 } from "metabase-types/store/mocks";
 
 import { useCommandPaletteBasicActions } from "../hooks/useCommandPaletteBasicActions";
@@ -73,43 +78,55 @@ const dashboard = createMockCollectionItem({
   model: "dashboard",
   name: "Bar Dashboard",
   collection: collection_1,
+  description: "Such Bar. Much Wow.",
 });
 
-const recents_1 = createMockRecentItem({
+const recents_1 = createMockRecentCollectionItem({
+  ..._.pick(model_1, "id", "name"),
   model: "dataset",
-  model_object: createMockModelObject({
-    ...model_1,
-    collection_id: null,
-  }),
+  moderated_status: "verified",
+  parent_collection: {
+    id: null,
+    name: "Our analytics",
+  },
 });
-
-const recents_2 = createMockRecentItem({
+const recents_2 = createMockRecentCollectionItem({
+  ..._.pick(dashboard, "id", "name"),
   model: "dashboard",
-  model_object: createMockModelObject({
-    ...dashboard,
-    collection_id: dashboard.collection?.id,
-    collection_name: dashboard.collection?.name,
-  }),
+  parent_collection: {
+    id: dashboard.collection?.id as number,
+    name: dashboard.collection?.name as string,
+  },
 });
 
-mockGetBoundingClientRect();
+mockScrollTo();
+mockScrollIntoView();
 
-const setup = ({ query }: { query?: string } = {}) => {
+const setup = ({
+  query,
+  settings = {},
+  recents = [recents_1, recents_2],
+}: {
+  query?: string;
+  settings?: Partial<Settings>;
+  recents?: RecentItem[];
+} = {}) => {
   setupDatabasesEndpoints([DATABASE]);
   setupSearchEndpoints([model_1, model_2, dashboard]);
-  setupRecentViewsEndpoints([recents_1, recents_2]);
+  setupRecentViewsEndpoints(recents);
 
   renderWithProviders(
-    <KBarProvider>
-      <TestComponent q={query} isLoggedIn />
-    </KBarProvider>,
+    <Route path="/" component={() => <TestComponent q={query} isLoggedIn />} />,
     {
+      withKBar: true,
+      withRouter: true,
       storeInitialState: {
         admin: createMockAdminState({
           app: createMockAdminAppState({
             paths: getAdminPaths(),
           }),
         }),
+        settings: createMockSettingsState(settings),
       },
     },
   );
@@ -137,6 +154,11 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toHaveTextContent("lame collection");
+
+    expect(
+      await screen.findByRole("link", { name: "Bar Dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/1-bar-dashboard");
+
     expect(
       await screen.findByRole("option", { name: "Foo Question" }),
     ).toHaveTextContent("Our analytics");
@@ -149,6 +171,27 @@ describe("PaletteResults", () => {
     ).toBeInTheDocument();
   });
 
+  it("should show recent items with the same name", async () => {
+    setup({
+      recents: [
+        createMockRecentCollectionItem({
+          model: "dataset",
+          name: "My Awesome Data",
+        }),
+        createMockRecentTableItem({
+          model: "table",
+          display_name: "My Awesome Data",
+        }),
+      ],
+    });
+
+    expect(await screen.findByText("Recent items")).toBeInTheDocument();
+
+    expect(
+      await screen.findAllByRole("option", { name: "My Awesome Data" }),
+    ).toHaveLength(2);
+  });
+
   it("should allow you to search entities, and provide a docs link", async () => {
     setup({ query: "Bar" });
 
@@ -157,8 +200,20 @@ describe("PaletteResults", () => {
     });
 
     expect(
+      await screen.findByRole("option", { name: /View and filter/i }),
+    ).toBeInTheDocument();
+
+    expect(
       await screen.findByRole("option", { name: "Bar Dashboard" }),
     ).toBeInTheDocument();
+
+    expect(
+      await screen.findByRole("link", { name: "Bar Dashboard" }),
+    ).toHaveAttribute("href", "/dashboard/1-bar-dashboard");
+
+    expect(
+      await screen.findByRole("option", { name: "Bar Dashboard" }),
+    ).toHaveTextContent("Such Bar. Much Wow.");
     expect(
       await screen.findByText('Search documentation for "Bar"'),
     ).toBeInTheDocument();
@@ -180,6 +235,9 @@ describe("PaletteResults", () => {
     expect(
       await screen.findByRole("option", { name: "Bar Question" }),
     ).toHaveTextContent("lame collection");
+
+    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
+    expect(fetchMock.calls("path:/api/search").length).toBe(2);
   });
 
   it("should provide links to settings pages", async () => {
@@ -192,5 +250,36 @@ describe("PaletteResults", () => {
     setup({ query: "permi" });
     expect(await screen.findByText("Admin")).toBeInTheDocument();
     expect(await screen.findByText("Permissions")).toBeInTheDocument();
+  });
+
+  it("should not compute search results if 'search-typeahead-enabled' is diabled", async () => {
+    setup({ query: "ques", settings: { "search-typeahead-enabled": false } });
+    expect(
+      await screen.findByRole("option", { name: /View search results/ }),
+    ).toBeInTheDocument();
+
+    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
+    expect(fetchMock.calls("path:/api/search").length).toBe(1);
+  });
+
+  it("should provide a link to docs with the proper url param", async () => {
+    setup({ query: "model" });
+    expect(
+      await screen.findByRole("link", { name: /Search documentation/ }),
+    ).toHaveAttribute("href", expect.stringContaining("?query=model"));
+
+    // One call is always made to determine if the instance has models inside useCommandPaletteBasicActions
+    expect(fetchMock.calls("path:/api/search").length).toBe(2);
+  });
+
+  it("should not allow you to select or click disabled items", async () => {
+    setup({ query: "modelsssss" });
+    expect(await screen.findByLabelText(/No results/)).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(
+      await screen.findByLabelText(/Search documentation/),
+    ).toHaveAttribute("aria-disabled", "false");
   });
 });

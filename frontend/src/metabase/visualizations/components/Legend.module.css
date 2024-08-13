@@ -2,7 +2,7 @@
 legend item needs to be in the scope in order to control the font size in
 fullscreen dashboard mode
 */
-:global(.LegendItem) {
+.LegendItem {
   font-weight: bold;
   transition: opacity 0.25s linear;
   opacity: 1;
@@ -13,7 +13,7 @@ fullscreen dashboard mode
   margin-bottom: 0.25em;
 }
 
-.LegendItem:global(.muted) {
+.LegendItem.LegendItemMuted {
   opacity: 0.4;
 }
 
@@ -34,6 +34,6 @@ fullscreen dashboard mode
   margin-top: 1em;
 }
 
-.DashCard :global(.LegendItem) {
+.DashCard.LegendItem {
   font-size: 12px;
 }

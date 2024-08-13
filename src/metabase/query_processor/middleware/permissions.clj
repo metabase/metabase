@@ -3,12 +3,12 @@
   (:require
    [metabase.api.common
     :refer [*current-user-id* *current-user-permissions-set*]]
+   [metabase.audit :as audit]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.interface :as mi]
-   [metabase.models.permissions :as perms]
    [metabase.models.query.permissions :as query-perms]
    [metabase.public-settings.premium-features :refer [defenterprise]]
    [metabase.query-processor.error-type :as qp.error-type]
@@ -41,7 +41,7 @@
   metabase-enterprise.advanced-permissions.models.permissions.block-permissions
   [_query])
 
-(mu/defn ^:private check-card-read-perms
+(mu/defn- check-card-read-perms
   "Check that the current user has permissions to read Card with `card-id`, or throw an Exception. "
   [database-id :- ::lib.schema.id/database
    card-id     :- ::lib.schema.id/card]
@@ -54,7 +54,7 @@
                                     :card-id card-id})))]
       (log/tracef "Required perms to run Card: %s" (pr-str (mi/perms-objects-set card :read)))
       (when-not (mi/can-read? card)
-        (throw (perms-exception (tru "You do not have permissions to view Card {0}." card-id)
+        (throw (perms-exception (tru "You do not have permissions to view Card {0}." (pr-str card-id))
                                 (mi/perms-objects-set card :read)
                                 {:card-id *card-id*}))))))
 
@@ -82,10 +82,10 @@
   (when *current-user-id*
     (log/tracef "Checking query permissions. Current user permissions = %s"
                 (pr-str (data-perms/permissions-for-user *current-user-id*)))
-    (when (= perms/audit-db-id database-id)
+    (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
     (let [card-id (or *card-id* (:qp/source-card-id outer-query))
-          required-perms (query-perms/required-perms outer-query :already-preprocessed? true)]
+          required-perms (query-perms/required-perms-for-query outer-query :already-preprocessed? true)]
       (cond
         card-id
         (do
@@ -131,7 +131,7 @@
     (check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms
              outer-query
-             (query-perms/required-perms outer-query :already-preprocessed? true)
+             (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
              :throw-exceptions? false)
     (check-block-permissions outer-query)))
 
@@ -155,7 +155,8 @@
   [{database-id :database, :as _query}]
   (or
    (not *current-user-id*)
-   (data-perms/user-has-permission-for-database? *current-user-id* :perms/native-query-editing :yes database-id)))
+   (= (data-perms/full-db-permission-for-user *current-user-id* :perms/create-queries database-id)
+      :query-builder-and-native)))
 
 (defn check-current-user-has-adhoc-native-query-perms
   "Check that the current user (if bound) has adhoc native query permissions to run `query`, or throw an
@@ -163,4 +164,4 @@
   to native.)"
   [{database-id :database, :as query}]
   (when-not (current-user-has-adhoc-native-query-perms? query)
-    (throw (perms-exception {database-id {:perms/native-query-editing :yes}}))))
+    (throw (perms-exception {database-id {:perms/create-queries :query-builder-and-native}}))))

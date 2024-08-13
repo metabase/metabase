@@ -3,6 +3,7 @@
    [clojure.spec.alpha :as s]
    [metabase-enterprise.advanced-config.file.interface :as advanced-config.file.i]
    [metabase.models.setting :as setting]
+   [metabase.util :as u]
    [metabase.util.log :as log]))
 
 (defmethod advanced-config.file.i/section-spec :settings
@@ -14,4 +15,6 @@
   (log/info "Setting setting values from config file")
   (doseq [[setting-name setting-value] settings]
     (log/infof "Setting value for Setting %s" setting-name)
-    (setting/set! setting-name setting-value)))
+    (if (setting/registered? setting-name)
+      (setting/set! setting-name setting-value)
+      (log/warn (u/format-color :yellow "Ignoring unknown setting in config: %s." (name setting-name))))))

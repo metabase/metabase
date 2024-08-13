@@ -29,7 +29,7 @@
 
 (def ^:private AirgapToken
   "Similar to RemoteCheckedToken, but starts with 'airgap_'."
-  #"airgap_[0-9a-f]*")
+  #"airgap_.+")
 
 (def ^:private TokenStr
   [:or
@@ -73,7 +73,7 @@
                 f
                 :ttl/threshold (u/minutes->ms 5))
       lock     (Object.)]
-  (defn- cached-active-users-count
+  (defn cached-active-users-count
     "Primarily used for the settings because we don't wish it to be 100%. (HUH?)"
     []
     (locking lock
@@ -84,6 +84,7 @@
   :visibility :admin
   :type       :integer
   :audit      :never
+  :setter     :none
   :default    0
   :getter     (fn []
                 (if-not ((requiring-resolve 'metabase.db/db-is-set-up?))
@@ -103,6 +104,7 @@
    [:status                         [:string {:min 1}]]
    [:error-details {:optional true} [:maybe [:string {:min 1}]]]
    [:features      {:optional true} [:sequential [:string {:min 1}]]]
+   [:plan-alias    {:optional true} :string]
    [:trial         {:optional true} :boolean]
    [:valid-thru    {:optional true} [:string {:min 1}]]
    [:max-users     {:optional true} pos-int?]
@@ -132,7 +134,7 @@
 ;;;;;;;;;;;;;;;;;;;; Airgap Tokens ;;;;;;;;;;;;;;;;;;;;
 (declare decode-airgap-token)
 
-(mu/defn ^:private max-users-allowed
+(mu/defn max-users-allowed
   "Returns the max users value from an airgapped key, or nil indicating there is no limt."
   [] :- [:or pos-int? :nil]
   (when-let [token (premium-embedding-token)]
@@ -147,7 +149,7 @@
     (when (> (t2/count :model/User :is_active true, :type :personal) max-users)
       (throw (Exception. (trs "You have reached the maximum number of users ({0}) for your plan. Please upgrade to add more users." max-users))))))
 
-(mu/defn ^:private fetch-token-status* :- TokenStatus
+(mu/defn- fetch-token-status* :- TokenStatus
   "Fetch info about the validity of `token` from the MetaStore."
   [token :- TokenStr]
   ;; NB that we fetch any settings from this thread, not inside on of the futures in the inner fetch calls.  We
@@ -217,7 +219,7 @@
 
 (declare token-valid-now?)
 
-(mu/defn ^:private valid-token->features* :- [:set ms/NonBlankString]
+(mu/defn- valid-token->features* :- [:set ms/NonBlankString]
   [token :- TokenStr]
   (let [{:keys [valid status features error-details] :as token-status} (fetch-token-status token)]
     ;; if token isn't valid throw an Exception with the `:status` message
@@ -253,6 +255,7 @@
   :setter     :none
   :getter     (fn [] (some-> (premium-embedding-token) (fetch-token-status))))
 
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             SETTING & RELATED FNS                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -260,6 +263,7 @@
 (defsetting premium-embedding-token     ; TODO - rename this to premium-features-token?
   (deferred-tru "Token for premium features. Go to the MetaStore to get yours!")
   :audit :never
+  :sensitive? true
   :setter
   (fn [new-value]
     ;; validate the new value if we're not unsetting it
@@ -279,6 +283,11 @@
         (throw (ex-info (.getMessage e) (merge
                                          {:message (.getMessage e), :status-code 400}
                                          (ex-data e)))))))) ; merge in error-details if present
+
+(defn is-airgapped?
+  "Returns true if the current instance is airgapped."
+  []
+  (mc/validate AirgapToken (premium-embedding-token)))
 
 (let [cached-logger (memoize/ttl
                      ^{::memoize/args-fn (fn [[token _e]] [token])}
@@ -410,6 +419,10 @@
   "Should we enable advanced configuration for Google Sign-In authentication?"
   :sso-google)
 
+(define-premium-feature enable-scim?
+  "Should we enable user/group provisioning via SCIM?"
+  :scim)
+
 (defn enable-any-sso?
   "Should we enable any SSO-based authentication?"
   []
@@ -459,6 +472,18 @@
   "Enable automatic descriptions of questions and dashboards by LLMs?"
   :llm-autodescription)
 
+(define-premium-feature ^{:added "0.51.0"} enable-query-reference-validation?
+  "Enable the Query Validator Tool?"
+  :query-reference-validation)
+
+(define-premium-feature enable-upload-management?
+  "Should we allow admins to clean up tables created from uploads?"
+  :upload-management)
+
+(define-premium-feature has-attached-dwh?
+  "Does the Metabase Cloud instance have an internal data warehouse attached?"
+  :attached-dwh)
+
 (defsetting is-hosted?
   "Is the Metabase instance running in the cloud?"
   :type       :boolean
@@ -486,6 +511,10 @@
   "Should we various other enhancements, e.g. NativeQuerySnippet collection permissions?"
   :enhancements
   :getter #(and config/ee-available? (has-any-features?)))
+
+(define-premium-feature ^{:added "0.51.0"} enable-collection-cleanup?
+  "Should we enable Collection Cleanup?"
+  :collection-cleanup)
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             Defenterprise Macro                                                |
@@ -524,18 +553,19 @@
   availability of EE code and the necessary premium feature. Returns a fn which, when invoked, applies its args to one
   of the EE implementation, the OSS implementation, or the fallback function."
   [ee-ns ee-fn-name]
-  (fn [& args]
-    (u/ignore-exceptions (classloader/require ee-ns))
-    (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
-      (cond
-        (and ee (check-feature feature))
-        (apply ee args)
+  (let [try-require-ee-ns-once (delay (u/ignore-exceptions (classloader/require ee-ns)))]
+    (fn [& args]
+      @try-require-ee-ns-once
+      (let [{:keys [ee oss feature fallback]} (get @registry ee-fn-name)]
+        (cond
+          (and ee (check-feature feature))
+          (apply ee args)
 
-        (and ee (fn? fallback))
-        (apply fallback args)
+          (and ee (fn? fallback))
+          (apply fallback args)
 
-        :else
-        (apply oss args)))))
+          :else
+          (apply oss args))))))
 
 (defn- validate-ee-args
   "Throws an exception if the required :feature option is not present."

@@ -155,9 +155,7 @@
    [:options {:optional true} ::options]])
 
 #?(:clj
-   (defn instance-of-class
-     "Convenience for defining a Malli schema for an instance of a particular Class."
-     [& classes]
+   (defn- instance-of-class* [& classes]
      [:fn {:error/message (str "instance of "
                                (str/join " or "
                                          (map #(.getName ^Class %) classes)))}
@@ -165,3 +163,8 @@
         (some (fn [klass]
                 (instance? klass x))
               classes))]))
+
+#?(:clj
+   (def ^{:arglists '([& classes])} instance-of-class
+     "Convenience for defining a Malli schema for an instance of a particular Class."
+     (memoize instance-of-class*)))

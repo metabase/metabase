@@ -8,10 +8,11 @@
   (:require
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.debug :as qp.debug]
    [metabase.query-processor.execute :as qp.execute]
-   [metabase.query-processor.middleware.catch-exceptions :as catch-exceptions]
+   [metabase.query-processor.middleware.catch-exceptions :as qp.catch-exceptions]
    [metabase.query-processor.middleware.enterprise :as qp.middleware.enterprise]
-   [metabase.query-processor.middleware.process-userland-query :as process-userland-query]
+   [metabase.query-processor.middleware.process-userland-query :as qp.process-userland-query]
    [metabase.query-processor.postprocess :as qp.postprocess]
    [metabase.query-processor.preprocess :as qp.preprocess]
    [metabase.query-processor.reducible :as qp.reducible]
@@ -35,12 +36,13 @@
   ;;
   ;; ↓↓↓ POST-PROCESSING ↓↓↓ happens from TOP TO BOTTOM
   [#'qp.middleware.enterprise/handle-audit-app-internal-queries-middleware
-   #'process-userland-query/process-userland-query-middleware
+   #'qp.process-userland-query/process-userland-query-middleware
    ;; userland queries only: catch Exceptions and return a special error response
-   #'catch-exceptions/catch-exceptions])
+   #'qp.catch-exceptions/catch-exceptions])
 ;; ↑↑↑ PRE-PROCESSING ↑↑↑ happens from BOTTOM TO TOP
 
 (defn- process-query** [query rff]
+  (qp.debug/debug> (list `process-query query))
   (let [preprocessed (qp.preprocess/preprocess query)
         compiled     (qp.compile/attach-compiled-query preprocessed)
         rff          (qp.postprocess/post-processing-rff preprocessed rff)]

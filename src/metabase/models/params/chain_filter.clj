@@ -126,7 +126,7 @@
      (types/temporal-field? (t2/select-one [Field :base_type :semantic_type] :id field-id)))
    :ttl/threshold (u/minutes->ms 10)))
 
-(mu/defn ^:private filter-clause
+(mu/defn- filter-clause
   "Generate a single MBQL `:filter` clause for a Field and `value` (or multiple values, if `value` is a collection)."
   [source-table-id
    {:keys [field-id op value options]} :- Constraint]
@@ -377,7 +377,7 @@
 
 (def ^:private max-results 1000)
 
-(mu/defn ^:private chain-filter-mbql-query
+(mu/defn- chain-filter-mbql-query
   "Generate the MBQL query powering `chain-filter`."
   [field-id                          :- ms/PositiveInt
    constraints                       :- [:maybe Constraints]
@@ -430,7 +430,7 @@
 
 ;;; ------------------------ Chain filter (powers GET /api/dashboard/:id/params/:key/values) -------------------------
 
-(mu/defn ^:private unremapped-chain-filter :- ms/FieldValuesResult
+(mu/defn- unremapped-chain-filter :- ms/FieldValuesResult
   "Chain filtering without all the fancy remapping stuff on top of it."
   [field-id    :- ms/PositiveInt
    constraints :- [:maybe Constraints]
@@ -439,6 +439,8 @@
     (log/debugf "Chain filter MBQL query:\n%s" (u/pprint-to-str 'magenta mbql-query))
     (try
       (let [query-limit (get-in mbql-query [:query :limit])
+            ;; FIXME: this can OOM for text column if each value are too large. See #46411
+            ;; Consider using the [[field-values/distinct-text-field-rff] rff]
             values      (qp/process-query mbql-query (constantly conj))]
         {:values          values
          ;; It's unlikely that we don't have a query-limit, but better safe than sorry and default it true
@@ -458,7 +460,7 @@
   "Schema for the map of actual value -> human-readable value. Cannot be empty."
   [:map-of {:min 1} :any [:maybe :string]])
 
-(mu/defn ^:private human-readable-remapping-map :- [:maybe HumanReadableRemappingMap]
+(mu/defn- human-readable-remapping-map :- [:maybe HumanReadableRemappingMap]
   [field-id :- ms/PositiveInt]
   (when-let [{orig :values, remapped :human_readable_values} (t2/select-one [FieldValues :values :human_readable_values]
                                                                             {:where [:and
@@ -469,7 +471,7 @@
     (when (seq remapped)
       (zipmap orig remapped))))
 
-(mu/defn ^:private add-human-readable-values
+(mu/defn- add-human-readable-values
   "Convert result `values` (a sequence of 1-tuples) to a sequence of `[v human-readable]` pairs by finding the
   matching remapped values from `v->human-readable`."
   [values            :- [:sequential ms/NonRemappedFieldValue]
@@ -610,7 +612,7 @@
                          :field       field-name
                          :base-type   base-type}))))))
 
-(mu/defn ^:private unremapped-chain-filter-search
+(mu/defn- unremapped-chain-filter-search
   [field-id    :- ms/PositiveInt
    constraints :- [:maybe Constraints]
    query       :- ms/NonBlankString
@@ -629,7 +631,7 @@
                                (str/includes? (u/lower-case-en remapped) query))]
       orig)))
 
-(mu/defn ^:private human-readable-values-remapped-chain-filter-search
+(mu/defn- human-readable-values-remapped-chain-filter-search
   "Chain filter search, but for Fields that have human-readable values defined (e.g. you've went in and specified that
   enum value `1` should be displayed as `BIRD_TYPE_TOUCAN`). `v->human-readable` is a map of actual values in the
   database (e.g. `1`) to the human-readable version (`BIRD_TYPE_TOUCAN`)."

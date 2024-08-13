@@ -9,6 +9,7 @@ import {
   getFullName,
   popover,
   modal,
+  entityPickerModal,
 } from "e2e/support/helpers";
 
 const { admin } = USERS;
@@ -462,11 +463,11 @@ describe("scenarios > organization > timelines > collection", () => {
 
       cy.visit("/collection/root/timelines");
       openMenu("Our analytics events");
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Move timeline").click();
+      popover().findByText("Move timeline").click();
 
-      modal().within(() => {
-        cy.findByText("My personal collection").click();
+      entityPickerModal().within(() => {
+        cy.findByRole("tab", { name: /Collections/ }).click();
+        cy.findByText("Bobby Tables's Personal Collection").click();
         cy.button("Move").click();
         cy.wait("@updateTimeline");
       });

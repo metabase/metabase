@@ -1,21 +1,13 @@
 import { createMockMetadata } from "__support__/metadata";
 import Aggregation from "metabase-lib/v1/queries/structured/Aggregation";
-import { createMockMetric } from "metabase-types/api/mocks";
 import {
   createSampleDatabase,
   ORDERS,
   ORDERS_ID,
 } from "metabase-types/api/mocks/presets";
 
-const TOTAL_ORDER_VALUE_METRIC = createMockMetric({
-  id: 1,
-  name: "Total Order Value",
-  table_id: ORDERS_ID,
-});
-
 const metadata = createMockMetadata({
   databases: [createSampleDatabase()],
-  metrics: [TOTAL_ORDER_VALUE_METRIC],
 });
 
 const query = metadata
@@ -57,14 +49,6 @@ describe("Aggregation", () => {
         ]).displayName(),
       ).toEqual("named");
     });
-    it("should format saved metric", () => {
-      expect(
-        aggregationForMBQL([
-          "metric",
-          TOTAL_ORDER_VALUE_METRIC.id,
-        ]).displayName(),
-      ).toEqual("Total Order Value");
-    });
     it("should format aggregation with aggregation-options but not display-name", () => {
       expect(
         aggregationForMBQL([
@@ -103,11 +87,6 @@ describe("Aggregation", () => {
           ["sum", ["field", ORDERS.TOTAL, null]],
           { "display-name": "named" },
         ]).isValid(),
-      ).toBe(true);
-    });
-    it("should be true for saved metric", () => {
-      expect(
-        aggregationForMBQL(["metric", TOTAL_ORDER_VALUE_METRIC.id]).isValid(),
       ).toBe(true);
     });
     it("should be true for aggregation with aggregation-options but not display-name", () => {

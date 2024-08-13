@@ -5,7 +5,6 @@
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
-   [metabase.util.date-2 :as u.date]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
@@ -30,7 +29,7 @@
   [:dashboard_tab_id])
 
 (methodical/defmethod t2.hydrate/batched-hydrate [:default :tab-cards]
-  "Given a list of tabs, return a seq of ordered tabs, in which each tabs contain a seq of orderd cards."
+  "Given a list of tabs, return a seq of ordered tabs, in which each tabs contain a seq of ordered cards."
   [_model _k tabs]
   (assert (= 1 (count (set (map :dashboard_id tabs)))), "All tabs must belong to the same dashboard")
   (let [dashboard-id      (:dashboard_id (first tabs))
@@ -59,17 +58,15 @@
    :position
    :created_at])
 
-;; DashboardTabs are not serialized as their own, separate entities. They are inlined onto their parent Dashboards.
 (defmethod serdes/generate-path "DashboardTab" [_ dashcard]
   [(serdes/infer-self-path "Dashboard" (t2/select-one :model/Dashboard :id (:dashboard_id dashcard)))
    (serdes/infer-self-path "DashboardTab" dashcard)])
 
-(defmethod serdes/load-xform "DashboardTab"
-  [dashtab]
-  (-> dashtab
-      (dissoc :serdes/meta)
-      (update :dashboard_id serdes/*import-fk* :model/Dashboard)
-      (update :created_at   #(if (string? %) (u.date/parse %) %))))
+(defmethod serdes/make-spec "DashboardTab" [_model-name _opts]
+  {:copy      [:entity_id :name :position]
+   :skip      []
+   :transform {:created_at   (serdes/date)
+               :dashboard_id (serdes/parent-ref)}})
 
 ;;; -------------------------------------------------- CRUD fns ------------------------------------------------------
 
@@ -118,7 +115,7 @@
   [dashboard-id current-tabs new-tabs]
   (let [{:keys [to-create
                 to-update
-                to-delete]} (u/classify-changes current-tabs new-tabs)
+                to-delete]} (u/row-diff current-tabs new-tabs)
         to-delete-ids       (map :id to-delete)
         _                   (when-let [to-delete-ids (seq to-delete-ids)]
                               (delete-tabs! to-delete-ids))

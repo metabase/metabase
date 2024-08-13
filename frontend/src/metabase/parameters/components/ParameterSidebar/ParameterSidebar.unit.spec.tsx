@@ -1,7 +1,7 @@
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 
-import { renderWithProviders, screen } from "__support__/ui";
+import { act, renderWithProviders, screen } from "__support__/ui";
 import { createMockUiParameter } from "metabase-lib/v1/parameters/mock";
 import type { UiParameter } from "metabase-lib/v1/parameters/types";
 
@@ -11,12 +11,14 @@ interface SetupOpts {
   initialParameter: UiParameter;
   nextParameter?: UiParameter;
   otherParameters: UiParameter[];
+  hasMapping?: boolean;
 }
 
 const setup = ({
   initialParameter,
   nextParameter,
   otherParameters,
+  hasMapping,
 }: SetupOpts): {
   clickNextParameterButton: () => Promise<void>;
 } => {
@@ -26,6 +28,7 @@ const setup = ({
     initialParameter,
     nextParameter,
     otherParameters,
+    hasMapping = false,
   }: SetupOpts) => {
     const [parameter, setParameter] = useState(initialParameter);
 
@@ -45,6 +48,7 @@ const setup = ({
           parameter={parameter}
           otherParameters={otherParameters}
           onChangeName={onChangeName}
+          onChangeType={jest.fn()}
           onChangeDefaultValue={jest.fn()}
           onChangeIsMultiSelect={jest.fn()}
           onChangeQueryType={jest.fn()}
@@ -52,10 +56,11 @@ const setup = ({
           onChangeSourceConfig={jest.fn()}
           onChangeFilteringParameters={jest.fn()}
           onRemoveParameter={jest.fn()}
+          onChangeTemporalUnits={jest.fn()}
           onShowAddParameterPopover={jest.fn()}
           onClose={jest.fn()}
           onChangeRequired={jest.fn()}
-          getEmbeddedParameterVisibility={() => null}
+          hasMapping={hasMapping}
         />
       </div>
     );
@@ -66,6 +71,7 @@ const setup = ({
       initialParameter={initialParameter}
       nextParameter={nextParameter}
       otherParameters={otherParameters}
+      hasMapping={hasMapping}
     />,
   );
 
@@ -105,7 +111,9 @@ describe("ParameterSidebar", () => {
     // expect there to be an error message with the text "This label is already in use"
     const error = /this label is already in use/i;
     expect(screen.getByText(error)).toBeInTheDocument();
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     // when the input blurs, the value should have reverted to the original
     expect(labelInput).toHaveValue("Foo");
     // the error message should disappear
@@ -113,7 +121,9 @@ describe("ParameterSidebar", () => {
 
     // sanity check with another value
     await fillValue(labelInput, "Bar");
-    labelInput.blur();
+    act(() => {
+      labelInput.blur();
+    });
     expect(labelInput).toHaveValue("Bar");
   });
 
@@ -185,6 +195,44 @@ describe("ParameterSidebar", () => {
           name: "Label",
         }),
       ).toHaveValue("Bar");
+    });
+  });
+
+  describe("disconnect from cards", () => {
+    it("renders button when there is mapping", () => {
+      const initialParameter = createMockUiParameter({
+        id: "id1",
+        name: "Foo",
+        slug: "foo",
+        sectionId: "string",
+      });
+
+      setup({
+        initialParameter,
+        otherParameters: [],
+        hasMapping: true,
+      });
+
+      expect(screen.getByText("Disconnect from cards")).toBeInTheDocument();
+    });
+
+    it("doesn't render button when there is no mapping", () => {
+      const initialParameter = createMockUiParameter({
+        id: "id1",
+        name: "Foo",
+        slug: "foo",
+        sectionId: "string",
+      });
+
+      setup({
+        initialParameter,
+        otherParameters: [],
+        hasMapping: false,
+      });
+
+      expect(
+        screen.queryByText("Disconnect from cards"),
+      ).not.toBeInTheDocument();
     });
   });
 });

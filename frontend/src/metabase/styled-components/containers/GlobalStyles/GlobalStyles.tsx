@@ -1,8 +1,12 @@
 import { css, Global } from "@emotion/react";
 
-import { alpha, color } from "metabase/lib/colors";
+import { baseStyle, rootStyle } from "metabase/css/core/base.styled";
+import { defaultFontFiles } from "metabase/css/core/fonts.styled";
+import { getSitePath } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { aceEditorStyles } from "metabase/query_builder/components/NativeQueryEditor/NativeQueryEditor.styled";
+import { getMetabaseCssVariables } from "metabase/styled-components/theme/css-variables";
+import { useMantineTheme } from "metabase/ui";
 import { saveDomImageStyles } from "metabase/visualizations/lib/save-chart-image";
 
 import { getFont, getFontFiles } from "../../selectors";
@@ -11,19 +15,20 @@ export const GlobalStyles = (): JSX.Element => {
   const font = useSelector(getFont);
   const fontFiles = useSelector(getFontFiles);
 
+  const sitePath = getSitePath();
+  const theme = useMantineTheme();
+
   const styles = css`
+    ${getMetabaseCssVariables(theme)}
     :root {
-      --default-font-family: "${font}";
-      --color-brand: ${color("brand")};
-      --color-brand-alpha-04: ${alpha("brand", 0.04)};
-      --color-brand-alpha-88: ${alpha("brand", 0.88)};
-      --color-focus: ${color("focus")};
+      --mb-default-font-family: "${font}";
     }
 
+    ${defaultFontFiles({ baseUrl: sitePath })}
     ${fontFiles?.map(
       file => css`
         @font-face {
-          font-family: "${font}";
+          font-family: "Custom";
           src: url(${encodeURI(file.src)}) format("${file.fontFormat}");
           font-weight: ${file.fontWeight};
           font-style: normal;
@@ -31,9 +36,14 @@ export const GlobalStyles = (): JSX.Element => {
         }
       `,
     )}
-
     ${aceEditorStyles}
     ${saveDomImageStyles}
+    body {
+      font-size: 0.875em;
+      ${rootStyle}
+    }
+
+    ${baseStyle}
   `;
 
   return <Global styles={styles} />;

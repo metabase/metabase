@@ -1,8 +1,12 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { useCollectionQuery, useSearchListQuery } from "metabase/common/hooks";
-import { PERSONAL_COLLECTIONS } from "metabase/entities/collections";
+import {
+  skipToken,
+  useGetCollectionQuery,
+  useListCollectionItemsQuery,
+} from "metabase/api";
+import { PERSONAL_COLLECTIONS } from "metabase/entities/collections/constants";
 import { useSelector } from "metabase/lib/redux";
 import { getUser, getUserIsAdmin } from "metabase/selectors/user";
 
@@ -32,32 +36,35 @@ export const RootItemList = ({
   isFolder,
   isCurrentLevel,
   shouldDisableItem,
+  shouldShowItem,
 }: CollectionItemListProps) => {
   const isAdmin = useSelector(getUserIsAdmin);
   const currentUser = useSelector(getUser);
 
   const { data: personalCollection, isLoading: isLoadingPersonalCollecton } =
-    useCollectionQuery({
-      id: currentUser?.personal_collection_id,
-      enabled: !!currentUser?.personal_collection_id,
-    });
+    useGetCollectionQuery(
+      currentUser?.personal_collection_id
+        ? { id: currentUser.personal_collection_id }
+        : skipToken,
+    );
 
   const {
     data: personalCollectionItems,
     isLoading: isLoadingPersonalCollectionItems,
-  } = useSearchListQuery({
-    query: {
-      collection: currentUser?.personal_collection_id,
-      models: ["collection"],
-    },
-    enabled: !!currentUser?.personal_collection_id,
-  });
+  } = useListCollectionItemsQuery(
+    currentUser?.personal_collection_id
+      ? {
+          id: currentUser?.personal_collection_id,
+          models: ["collection"],
+        }
+      : skipToken,
+  );
 
   const {
     data: rootCollection,
     isLoading: isLoadingRootCollecton,
     error: rootCollectionError,
-  } = useCollectionQuery({ id: "root" });
+  } = useGetCollectionQuery({ id: "root" });
 
   const data = useMemo(() => {
     const collectionsData: CollectionPickerItem[] = [];
@@ -95,7 +102,7 @@ export const RootItemList = ({
     ) {
       collectionsData.push({
         ...personalCollection,
-        here: personalCollectionItems?.length ? ["collection"] : [],
+        here: personalCollectionItems?.data.length ? ["collection"] : [],
         model: "collection",
         can_write: true,
       });
@@ -129,6 +136,7 @@ export const RootItemList = ({
       isFolder={isFolder}
       isCurrentLevel={isCurrentLevel}
       shouldDisableItem={shouldDisableItem}
+      shouldShowItem={shouldShowItem}
     />
   );
 };

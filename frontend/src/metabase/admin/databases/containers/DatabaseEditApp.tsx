@@ -58,7 +58,7 @@ interface DatabaseEditAppProps {
     databaseId: DatabaseId,
     isDetailView: boolean,
   ) => Promise<void>;
-  saveDatabase: (database: DatabaseData) => void;
+  saveDatabase: (database: DatabaseData) => Database;
   updateDatabase: (
     database: { id: DatabaseId } & Partial<DatabaseType>,
   ) => Promise<void>;
@@ -141,11 +141,12 @@ function DatabaseEditApp(props: DatabaseEditAppProps) {
   ];
   const handleSubmit = async (database: DatabaseData) => {
     try {
-      await saveDatabase(database);
-
+      const savedDB = await saveDatabase(database);
       if (addingNewDatabase) {
         scheduleCallback(() => {
-          onChangeLocation("/admin/databases?created=true");
+          onChangeLocation(
+            `/admin/databases?created=true&createdDbId=${savedDB.id}`,
+          );
         });
       }
     } catch (error) {

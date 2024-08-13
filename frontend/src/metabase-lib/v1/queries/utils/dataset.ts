@@ -1,46 +1,28 @@
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
-import type {
-  DatasetColumn,
-  DatasetData,
-  TableColumnOrderSetting,
-} from "metabase-types/api";
+import type { DatasetData, TableColumnOrderSetting } from "metabase-types/api";
+
+import type { DatasetColumnReference } from "./column-key";
 
 export const datasetContainsNoResults = (data: DatasetData) =>
   data.rows == null || data.rows.length === 0;
 
-export function getColumnSettingKey({
-  key,
-  name,
-  fieldRef,
-}: TableColumnOrderSetting) {
-  return key ?? getColumnKey({ name, field_ref: normalize(fieldRef) });
-}
-
 export function findColumnIndexesForColumnSettings(
-  columns: DatasetColumn[],
+  columns: DatasetColumnReference[],
   columnSettings: TableColumnOrderSetting[],
 ) {
   const columnIndexByKey = new Map(
-    columns.map((column, index) => [getColumnKey(column), index]),
+    columns.map((column, index) => [column.name, index]),
   );
   return columnSettings.map(
-    columnSetting =>
-      columnIndexByKey.get(getColumnSettingKey(columnSetting)) ?? -1,
+    columnSetting => columnIndexByKey.get(columnSetting.name) ?? -1,
   );
 }
 
 export function findColumnSettingIndexesForColumns(
-  columns: DatasetColumn[],
+  columns: DatasetColumnReference[],
   columnSettings: TableColumnOrderSetting[],
 ) {
   const columnSettingIndexByKey = new Map(
-    columnSettings.map((columnSetting, index) => [
-      getColumnSettingKey(columnSetting),
-      index,
-    ]),
+    columnSettings.map((columnSetting, index) => [columnSetting.name, index]),
   );
-  return columns.map(
-    column => columnSettingIndexByKey.get(getColumnKey(column)) ?? -1,
-  );
+  return columns.map(column => columnSettingIndexByKey.get(column.name) ?? -1);
 }

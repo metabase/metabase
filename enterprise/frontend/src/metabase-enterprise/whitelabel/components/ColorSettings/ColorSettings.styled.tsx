@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 export const SettingRoot = styled.div`
@@ -12,13 +11,13 @@ export interface SettingTitleProps {
 }
 
 export const SettingTitle = styled.div<SettingTitleProps>`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   margin-bottom: ${props => (props.hasDescription ? "0.5rem" : "1rem")};
 `;
 
 export const SettingDescription = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-bottom: 1rem;
 `;
 

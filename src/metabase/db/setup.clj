@@ -104,7 +104,7 @@
          (liquibase/release-lock-if-needed! liquibase)
          (throw e))))))
 
-(mu/defn ^:private verify-db-connection
+(mu/defn- verify-db-connection
   "Test connection to application database with `data-source` and throw an exception if we have any troubles
   connecting."
   [db-type     :- :keyword
@@ -120,13 +120,13 @@
       (log/infof "Successfully verified %s %s application database connection. %s"
                  (.getDatabaseProductName metadata) (.getDatabaseProductVersion metadata) (u/emoji "✅")))))
 
-(mu/defn ^:private error-if-downgrade-required!
+(mu/defn- error-if-downgrade-required!
   [data-source :- (ms/InstanceOfClass javax.sql.DataSource)]
   (log/info (u/format-color 'cyan "Checking if a database downgrade is required..."))
   (with-open [conn (.getConnection ^javax.sql.DataSource data-source)]
     (liquibase/with-liquibase [liquibase conn]
       (let [latest-available (liquibase/latest-available-major-version liquibase)
-            latest-applied (liquibase/latest-applied-major-version conn)]
+            latest-applied   (liquibase/latest-applied-major-version conn (.getDatabase liquibase))]
         ;; `latest-applied` will be `nil` for fresh installs
         (when (and latest-applied (< latest-available latest-applied))
           (throw (ex-info
@@ -141,7 +141,7 @@
                        (trs "See: https://www.metabase.com/docs/latest/installation-and-operation/upgrading-metabase#rolling-back-an-upgrade"))
                   {})))))))
 
-(mu/defn ^:private run-schema-migrations!
+(mu/defn- run-schema-migrations!
   "Run through our DB migration process and make sure DB is fully prepared"
   [data-source   :- (ms/InstanceOfClass javax.sql.DataSource)
    auto-migrate? :- :boolean]
@@ -165,6 +165,20 @@
          (verify-db-connection db-type data-source)
          (error-if-downgrade-required! data-source)
          (run-schema-migrations! data-source auto-migrate?))))
+  :done)
+
+(defn release-migration-locks!
+  "Wait up to `timeout-seconds` for the current process to release all migration locks, otherwise force release them."
+  [data-source timeout-seconds]
+  (let [sleep-ms   100
+        timeout-ms (* 1000 timeout-seconds)]
+    (case (liquibase/wait-for-all-locks sleep-ms timeout-ms)
+      :none nil
+      :done (log/info "Migration lock(s) have been released")
+      :timed-out (do (log/warn "Releasing liquibase locks on shutdown")
+                     ;; There's an infinitesimal chance that we released the lock and another server took it between
+                     ;; the timeout, and the mutations we now make to these lock tables - but we can't detect that.
+                     (liquibase/release-concurrent-locks! data-source))))
   :done)
 
 ;;;; Toucan Setup.

@@ -28,26 +28,33 @@
     (testing "should still infer types even if the initial value(s) are `nil` (#4256, #6924)"
       (is (= [:type/Integer]
              (transduce identity (#'annotate/base-type-inferer {:cols [{}]})
-                        (concat (repeat 1000 [nil]) [[1] [2]])))))
+                        (concat (repeat 1000 [nil]) [[1] [2]])))))))
 
+(deftest ^:parallel native-column-info-test-2
+  (testing "native column info"
     (testing "should use default `base_type` of `type/*` if there are no non-nil values in the sample"
       (is (= [:type/*]
              (transduce identity (#'annotate/base-type-inferer {:cols [{}]})
-                        [[nil]]))))
+                        [[nil]]))))))
 
+(deftest ^:parallel native-column-info-test-3
+  (testing "native column info"
     (testing "should attempt to infer better base type if driver returns :type/* (#12150)"
       ;; `merged-column-info` handles merging info returned by driver & inferred by annotate
       (is (= [:type/Integer]
              (transduce identity (#'annotate/base-type-inferer {:cols [{:base_type :type/*}]})
-                        [[1] [2] [nil] [3]]))))
+                        [[1] [2] [nil] [3]]))))))
 
+(deftest ^:parallel native-column-info-test-4
+  (testing "native column info"
     (testing "should disambiguate duplicate names"
-      (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field "a" {:base-type :type/Integer}]}
-              {:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field "a_2" {:base-type :type/Integer}]}]
-             (annotate/column-info
-              {:type :native}
-              {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
-               :rows [[1 nil]]}))))))
+      (qp.store/with-metadata-provider meta/metadata-provider
+        (is (= [{:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field "a" {:base-type :type/Integer}]}
+                {:name "a", :display_name "a", :base_type :type/Integer, :source :native, :field_ref [:field "a_2" {:base-type :type/Integer}]}]
+               (annotate/column-info
+                {:type :native}
+                {:cols [{:name "a" :base_type :type/Integer} {:name "a" :base_type :type/Integer}]
+                 :rows [[1 nil]]})))))))
 
 (deftest ^:parallel col-info-field-ids-test
   (testing {:base-type "make sure columns are comming back the way we'd expect for :field clauses"}
@@ -460,7 +467,7 @@
                        :source         :aggregation
                        :field_ref      [:aggregation 0]}]}
               (add-column-info
-               (lib.tu.macros/mbql-query venues {:aggregation [[:metric "ga:totalEvents"]]})
+               (lib.tu.macros/mbql-query venues {:aggregation [[:metric 1]]})
                {:cols [{:name "totalEvents", :display_name "Total Events", :base_type :type/Text}]}))))))
 
 (deftest ^:parallel col-info-for-aggregation-clause-test-4

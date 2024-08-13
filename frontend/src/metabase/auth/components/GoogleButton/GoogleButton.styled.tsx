@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 
 export const GoogleButtonRoot = styled.div`
   display: flex;
@@ -11,7 +10,7 @@ export const GoogleButtonRoot = styled.div`
 `;
 
 export const AuthError = styled.div`
-  color: ${color("error")};
+  color: var(--mb-color-error);
   text-align: center;
 `;
 
@@ -21,9 +20,9 @@ export const AuthErrorRoot = styled.div`
 
 export const TextLink = styled(Link)`
   cursor: pointer;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

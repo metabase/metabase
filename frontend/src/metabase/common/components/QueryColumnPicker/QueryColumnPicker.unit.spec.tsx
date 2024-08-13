@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { render, screen, within, fireEvent } from "__support__/ui";
+import { screen, within, fireEvent, renderWithProviders } from "__support__/ui";
 import * as Lib from "metabase-lib";
 import { createQuery, columnFinder } from "metabase-lib/test-helpers";
 
@@ -41,7 +41,7 @@ function setup({
   const sampleColumn = findColumn("ORDERS", "ID");
   const sampleColumnInfo = Lib.displayInfo(query, 0, sampleColumn);
 
-  render(
+  renderWithProviders(
     <QueryColumnPicker
       {...props}
       query={query}
@@ -49,7 +49,9 @@ function setup({
       columnGroups={Lib.groupColumns(columns)}
       hasBinning={hasBinning}
       hasTemporalBucketing={hasTemporalBucketing}
-      checkIsColumnSelected={item => item.breakoutPosition === 0}
+      checkIsColumnSelected={({ breakoutPositions = [] }) =>
+        breakoutPositions.length > 0
+      }
       onSelect={onSelect}
       onClose={onClose}
     />,

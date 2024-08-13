@@ -1,8 +1,11 @@
 import { updateIn } from "icepick";
 import { t } from "ttag";
 
-import { cardApi } from "metabase/api";
-import { canonicalCollectionId } from "metabase/collections/utils";
+import { cardApi, datasetApi } from "metabase/api";
+import {
+  canonicalCollectionId,
+  isRootTrashCollection,
+} from "metabase/collections/utils";
 import Collections, {
   getCollectionType,
   normalizedCollection,
@@ -13,18 +16,21 @@ import {
   entityCompatibleQuery,
   undo,
 } from "metabase/lib/entities";
+import { compose, withAction, withNormalize } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   API_UPDATE_QUESTION,
   SOFT_RELOAD_CARD,
 } from "metabase/query_builder/actions/core/types";
+import { DatabaseSchema, FieldSchema, TableSchema } from "metabase/schema";
 import {
   getMetadata,
   getMetadataUnfiltered,
 } from "metabase/selectors/metadata";
 
-import forms from "./questions/forms";
+const FETCH_METADATA = "metabase/entities/questions/FETCH_METADATA";
+const FETCH_ADHOC_METADATA = "metabase/entities/questions/FETCH_ADHOC_METADATA";
 
 /**
  * @deprecated use "metabase/api" instead
@@ -59,12 +65,48 @@ const Questions = createEntity({
       entityCompatibleQuery(id, dispatch, cardApi.endpoints.deleteCard),
   },
 
+  actions: {
+    fetchMetadata: compose(
+      withAction(FETCH_METADATA),
+      withNormalize({
+        databases: [DatabaseSchema],
+        tables: [TableSchema],
+        fields: [FieldSchema],
+      }),
+    )(
+      ({ id } = {}) =>
+        dispatch =>
+          entityCompatibleQuery(
+            id,
+            dispatch,
+            cardApi.endpoints.getCardQueryMetadata,
+            { forceRefetch: false },
+          ),
+    ),
+    fetchAdhocMetadata: compose(
+      withAction(FETCH_ADHOC_METADATA),
+      withNormalize({
+        databases: [DatabaseSchema],
+        tables: [TableSchema],
+        fields: [FieldSchema],
+      }),
+    )(
+      query => dispatch =>
+        entityCompatibleQuery(
+          query,
+          dispatch,
+          datasetApi.endpoints.getAdhocQueryMetadata,
+          { forceRefetch: false },
+        ),
+    ),
+  },
+
   objectActions: {
     setArchived: (card, archived, opts) =>
       Questions.actions.update(
         { id: card.id },
         { archived },
-        undo(opts, getLabel(card), archived ? t`archived` : t`unarchived`),
+        undo(opts, getLabel(card), archived ? t`trashed` : t`restored`),
       ),
 
     setCollection: (card, collection, opts) => {
@@ -74,10 +116,12 @@ const Questions = createEntity({
             { id: card.id },
             {
               collection_id: canonicalCollectionId(collection && collection.id),
+              archived: isRootTrashCollection(collection),
             },
             undo(opts, getLabel(card), t`moved`),
           ),
         );
+
         dispatch(
           Collections.actions.fetchList(
             {
@@ -89,6 +133,7 @@ const Questions = createEntity({
         );
 
         const updatedCard = result?.payload?.question;
+
         if (updatedCard) {
           dispatch({ type: API_UPDATE_QUESTION, payload: updatedCard });
         }
@@ -171,13 +216,15 @@ const Questions = createEntity({
     const type = object && getCollectionType(object.collection_id, getState());
     return type && `collection=${type}`;
   },
-
-  forms,
 });
 
 function getLabel(card) {
   if (card.type === "model" || card.model === "dataset") {
     return t`model`;
+  }
+
+  if (card.type === "metric" || card.model === "metric") {
+    return t`metric`;
   }
 
   return t`question`;
@@ -193,15 +240,13 @@ export function getIcon(card) {
       tooltip: type.tooltip,
     };
   }
-  /**
-   * `card.dataset` is still used here because this very function is used
-   * by getIcon in frontend/src/metabase/entities/bookmarks.js, which passes
-   * a bookmark instead of a card to this function.
-   *
-   * `dataset` flag in boomarks will be migrated in https://github.com/metabase/metabase/issues/38807
-   */
-  if (card.dataset || card.type === "model" || card.model === "dataset") {
+
+  if (card.type === "model" || card.model === "dataset") {
     return { name: "model" };
+  }
+
+  if (card.type === "metric" || card.model === "metric") {
+    return { name: "metric" };
   }
 
   const visualization = require("metabase/visualizations").default.get(

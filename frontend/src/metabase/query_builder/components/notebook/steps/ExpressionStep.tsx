@@ -45,11 +45,11 @@ export const ExpressionStep = ({
       items={expressions}
       renderName={renderExpressionName}
       readOnly={readOnly}
-      renderPopover={({ item, index: expressionPosition, onClose }) => (
+      renderPopover={({ item, index: expressionIndex, onClose }) => (
         <ExpressionWidget
           query={query}
           stageIndex={stageIndex}
-          expressionPosition={expressionPosition}
+          expressionIndex={expressionIndex}
           name={
             item
               ? Lib.displayInfo(query, stageIndex, item).displayName

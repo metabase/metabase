@@ -37,6 +37,8 @@
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.lib.util :as lib.util]
    [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
@@ -56,7 +58,7 @@
 
 ;;;; Pre-processing
 
-(mu/defn ^:private fields->field-id->remapping-dimension :- [:maybe [:map-of ::lib.schema.id/field ExternalRemappingDimension]]
+(mu/defn- fields->field-id->remapping-dimension :- [:maybe [:map-of ::lib.schema.id/field ExternalRemappingDimension]]
   "Given a sequence of field clauses (from the `:fields` clause), return a map of `:field-id` clause (other clauses
   are ineligable) to a remapping dimension information for any Fields that have an `external` type dimension remapping."
   [fields :- [:maybe [:sequential mbql.s/Field]]]
@@ -89,7 +91,7 @@
    [:new-field-clause      mbql.s/field]
    [:dimension             ExternalRemappingDimension]])
 
-(mu/defn ^:private remap-column-infos :- [:maybe [:sequential RemapColumnInfo]]
+(mu/defn- remap-column-infos :- [:maybe [:sequential RemapColumnInfo]]
   "Return tuples of `:field-id` clauses, the new remapped column `:fk->` clauses that the Field should be remapped to
   and the Dimension that suggested the remapping, which is used later in this middleware for post-processing. Order is
   important here, because the results are added to the `:fields` column in order. (TODO - why is it important, if they
@@ -97,10 +99,7 @@
   [fields :- [:maybe [:sequential mbql.s/Field]]]
   (when-let [field-id->remapping-dimension (fields->field-id->remapping-dimension fields)]
     ;; Reconstruct how we uniquify names in [[metabase.query-processor.middleware.annotate]]
-    ;;
-    ;; Not sure this isn't broken. Probably better to have [[metabase.query-processor.util.add-alias-info]] do the name
-    ;; deduplication instead.
-    (let [name-generator (mbql.u/unique-name-generator)
+    (let [name-generator (lib.util/unique-name-generator (qp.store/metadata-provider))
           unique-name    (fn [field-id]
                            (assert (pos-int? field-id) (str "Invalid Field ID: " (pr-str field-id)))
                            (let [field (lib.metadata/field (qp.store/metadata-provider) field-id)]
@@ -121,7 +120,7 @@
                                           :field-name                (-> dimension :field-id unique-name)
                                           :human-readable-field-name (-> dimension :human-readable-field-id unique-name))}))))))
 
-(mu/defn ^:private add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- [:maybe [:sequential mbql.s/Field]]
+(mu/defn- add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id :- [:maybe [:sequential mbql.s/Field]]
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` to any Field clauses that are
   remapped-from."
   [infos  :- [:maybe [:sequential RemapColumnInfo]]
@@ -134,7 +133,7 @@
            new-field-dimension-id (mbql.u/update-field-options assoc ::original-field-dimension-id new-field-dimension-id))))
      fields)))
 
-(mu/defn ^:private add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id :- [:maybe [:sequential mbql.s/Field]]
+(mu/defn- add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id :- [:maybe [:sequential mbql.s/Field]]
   "Rewrite existing `:fields` in a query. Add `::new-field-dimension-id` to any existing remap-to Fields that *would*
   have been added if they did not already exist."
   [infos  :- [:maybe [:sequential RemapColumnInfo]]
@@ -151,7 +150,7 @@
                 options (mbql.u/update-field-options merge options))))
           fields)))
 
-(mu/defn ^:private add-fk-remaps-rewrite-existing-fields :- [:maybe [:sequential mbql.s/Field]]
+(mu/defn- add-fk-remaps-rewrite-existing-fields :- [:maybe [:sequential mbql.s/Field]]
   "Rewrite existing `:fields` in a query. Add `::original-field-dimension-id` and ::new-field-dimension-id` where
   appropriate."
   [infos  :- [:maybe [:sequential RemapColumnInfo]]
@@ -160,7 +159,7 @@
        (add-fk-remaps-rewrite-existing-fields-add-original-field-dimension-id infos)
        (add-fk-remaps-rewrite-existing-fields-add-new-field-dimension-id infos)))
 
-(mu/defn ^:private add-fk-remaps-rewrite-order-by :- [:maybe [:sequential ::mbql.s/OrderBy]]
+(mu/defn- add-fk-remaps-rewrite-order-by :- [:maybe [:sequential ::mbql.s/OrderBy]]
   "Order by clauses that include an external remapped column should be replace that original column in the order by with
   the newly remapped column. This should order by the text of the remapped column vs. the id of the source column
   before the remapping"
@@ -220,7 +219,7 @@
       (cond-> query
         (seq source-query-remaps) (assoc ::remaps source-query-remaps)))))
 
-(mu/defn ^:private add-fk-remaps :- QueryAndRemaps
+(mu/defn- add-fk-remaps :- QueryAndRemaps
   "Add any Fields needed for `:external` remappings to the `:fields` clause of the query, and update `:order-by` and
   `breakout` clauses as needed. Returns a map with `:query` (the updated query) and `:remaps` (a sequence
   of [[:sequential ExternalRemappingDimension]] information maps)."
@@ -272,13 +271,13 @@
 
 ;;;; Metadata
 
-(mu/defn ^:private merge-metadata-for-internally-remapped-column :- [:maybe [:sequential :map]]
+(mu/defn- merge-metadata-for-internally-remapped-column :- [:maybe [:sequential :map]]
   "If one of the internal remapped columns says it's remapped from this column, merge in the `:remapped_to` info."
   [columns                :- [:maybe [:sequential :map]]
    {:keys [col-index to]} :- InternalDimensionInfo]
   (update (vec columns) col-index assoc :remapped_to to))
 
-(mu/defn ^:private merge-metadata-for-internal-remaps :- [:maybe [:sequential :map]]
+(mu/defn- merge-metadata-for-internal-remaps :- [:maybe [:sequential :map]]
   [columns                      :- [:maybe [:sequential :map]]
    {:keys [internal-only-dims]} :- [:maybe InternalColumnsInfo]]
   (reduce
@@ -309,7 +308,7 @@
 ;;     :options       {::new-field-dimension-id 1000}
 ;;     :name          "NAME"
 ;;     :display_name  "Sender ID"}
-(mu/defn ^:private merge-metadata-for-externally-remapped-column* :- :map
+(mu/defn- merge-metadata-for-externally-remapped-column* :- :map
   [columns
    {{::keys [original-field-dimension-id new-field-dimension-id]} :options
     :as                                          column} :- :map
@@ -353,20 +352,20 @@
     (when (not= column <>)
       (log/tracef "Added metadata:\n%s" (u/pprint-to-str 'green (second (data/diff column <>)))))))
 
-(mu/defn ^:private merge-metadata-for-externally-remapped-column :- [:maybe [:sequential :map]]
+(mu/defn- merge-metadata-for-externally-remapped-column :- [:maybe [:sequential :map]]
   [columns :- [:maybe [:sequential :map]] dimension :- ExternalRemappingDimension]
   (log/tracef "Merging metadata for external dimension\n%s" (u/pprint-to-str 'yellow (into {} dimension)))
   (mapv #(merge-metadata-for-externally-remapped-column* columns % dimension)
         columns))
 
-(mu/defn ^:private merge-metadata-for-external-remaps :- [:maybe [:sequential :map]]
+(mu/defn- merge-metadata-for-external-remaps :- [:maybe [:sequential :map]]
   [columns :- [:maybe [:sequential :map]] remapping-dimensions :- [:maybe [:sequential ExternalRemappingDimension]]]
   (reduce
    merge-metadata-for-externally-remapped-column
    columns
    remapping-dimensions))
 
-(mu/defn ^:private add-remapping-info :- [:maybe [:sequential :map]]
+(mu/defn- add-remapping-info :- [:maybe [:sequential :map]]
   "Add `:display_name`, `:remapped_to`, and `:remapped_from` keys to columns for the results, needed by the frontend.
   To get this critical information, this uses the `remapping-dimensions` info saved by the pre-processing portion of
   this middleware for external remappings, and the internal-only remapped columns handled by post-processing
@@ -423,11 +422,11 @@
   metadata we get back when running a native query against a DB that doesn't return type metadata for query
   results (such as MongoDB, since it isn't strongly typed)."
   [:merge
-   lib.metadata/ColumnMetadata
+   ::lib.schema.metadata/column
    [:map
     [:base-type {:optional true} ::lib.schema.common/base-type]]])
 
-(mu/defn ^:private col->dim-map :- [:maybe InternalDimensionInfo]
+(mu/defn- col->dim-map :- [:maybe InternalDimensionInfo]
   "Given a `:col` map from the results, return a map of information about the `internal` dimension used for remapping
   it."
   [idx :- ::lib.schema.common/int-greater-than-or-equal-to-zero
@@ -444,7 +443,7 @@
                                              remap-from
                                              (infer-human-readable-values-type human-readable-values))})))
 
-(mu/defn ^:private make-row-map-fn :- [:maybe fn?]
+(mu/defn- make-row-map-fn :- [:maybe fn?]
   "Return a function that will add internally-remapped values to each row in the results. (If there is no remapping to
   be done, this function returns `nil`.)"
   [dims :- [:maybe [:sequential InternalDimensionInfo]]]
@@ -455,7 +454,7 @@
       (fn [row]
         (into (vec row) (f row))))))
 
-(mu/defn ^:private internal-columns-info :- InternalColumnsInfo
+(mu/defn- internal-columns-info :- InternalColumnsInfo
   "Info about the internal-only columns we add to the query."
   [cols :- [:maybe [:sequential ColumnMetadataWithOptionalBaseType]]]
   ;; hydrate Dimensions and FieldValues for all of the columns in the results, then make a map of dimension info for
@@ -465,7 +464,7 @@
      ;; Get the entries we're going to add to `:cols` for each of the remapped values we add
      :internal-only-cols (map :new-column internal-only-dims)}))
 
-(mu/defn ^:private add-remapped-to-and-from-metadata
+(mu/defn- add-remapped-to-and-from-metadata
   "Add remapping info `:remapped_from` and `:remapped_to` to each existing column in the results metadata, and add
   entries for each newly added column to the end of `:cols`."
   [metadata                                             :- [:map
@@ -477,7 +476,7 @@
                                (add-remapping-info remapping-dimensions internal-cols-info)
                                (concat internal-only-cols)))))
 
-(mu/defn ^:private remap-results-xform
+(mu/defn- remap-results-xform
   "Munges results for remapping after the query has been executed. For internal remappings, a new column needs to be
   added and each row flowing through needs to include the remapped data for the new column. For external remappings
   the column information needs to be updated with what it's being remapped from and the user specified name for the

@@ -123,6 +123,12 @@ One great feature of Cypress is that you can use the Chrome inspector after each
 You might run into problems when running Cypress on M1 machine.
 This is caused by the `@bahmutov/cypress-esbuild-preprocessor` that is using `esbuild` as a dependency. The error might look [like this](https://github.com/evanw/esbuild/issues/1819#issuecomment-1018771557). [The solution](https://github.com/evanw/esbuild/issues/1819#issuecomment-1080720203) is to install NodeJS using one of the Node version managers like [nvm](https://github.com/nvm-sh/nvm) or [n](https://github.com/tj/n).
 
+Another issue you will almost surely face is the inability to connect to our Mongo QA Database. You can solve it by providing the following env:
+
+```shell
+export EXPERIMENTAL_DOCKER_DESKTOP_FORCE_QEMU=1
+```
+
 ### Running tests that depend on Docker images
 
 A subset of our tests depend on the external services that are available through the Docker images. At the time of this writing, those are the three supported external QA databases, Webmail, Snowplow and LDAP servers. It's tedious to have all these Docker containers running locally. An escape hatch is provided for people who do not care about these tests, but still need to run specs containing them locally. Run this command:
@@ -166,6 +172,14 @@ Cypress._.times(N, ()=> {
   });
 });
 ```
+
+### Embedding SDK tests
+
+Tests located in `e2e/test/scenarios/embedding-sdk` are used to run automated checks for the Embedding SDK.
+
+Embedding SDK is a library, and not an application. We use Storybook to host public components, and we run tests against it.
+
+In order to run stories used for tests locally, please check [storybook setup docs](https://github.com/metabase/metabase/blob/master/enterprise/frontend/src/embedding-sdk/README.md#storybook)
 
 ## DB Snapshots
 

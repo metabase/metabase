@@ -5,6 +5,7 @@ import { setupEnterpriseTest } from "__support__/enterprise";
 import {
   setupCollectionsEndpoints,
   setupCollectionItemsEndpoint,
+  setupRecentViewsAndSelectionsEndpoints,
 } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
@@ -48,15 +49,13 @@ const COLLECTION = {
 };
 COLLECTION.CHILD.location = `/${COLLECTION.PARENT.id}/`;
 
-function setup({
-  isCachingEnabled = false,
-  mockCreateDashboardResponse = true,
-} = {}) {
+function setup({ mockCreateDashboardResponse = true } = {}) {
   mockGetBoundingClientRect();
   mockScrollBy();
+  setupRecentViewsAndSelectionsEndpoints([]);
   const onClose = jest.fn();
 
-  const settings = mockSettings({ "enable-query-caching": isCachingEnabled });
+  const settings = mockSettings({});
 
   if (mockCreateDashboardResponse) {
     fetchMock.post(`path:/api/dashboard`, (url, options) => options.body);
@@ -101,7 +100,7 @@ function setup({
 }
 
 describe("CreateDashboardModal", () => {
-  afterAll(() => {
+  afterEach(() => {
     jest.restoreAllMocks();
   });
 
@@ -140,7 +139,6 @@ describe("CreateDashboardModal", () => {
   describe("Cache TTL field", () => {
     describe("OSS", () => {
       it("is not shown", () => {
-        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),
@@ -154,7 +152,6 @@ describe("CreateDashboardModal", () => {
       });
 
       it("is not shown", () => {
-        setup({ isCachingEnabled: true });
         expect(screen.queryByText("More options")).not.toBeInTheDocument();
         expect(
           screen.queryByText("Cache all question results for"),

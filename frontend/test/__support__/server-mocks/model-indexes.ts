@@ -14,14 +14,21 @@ export function setupModelIndexEndpoints(
       overwriteRoutes: false,
     },
     indexes,
+    { name: `getModelIndexes-${modelId}` },
   );
 
   indexes.forEach(index => {
-    fetchMock.delete(`path:/api/model-index/${index.id}`, 200);
+    fetchMock.delete(`path:/api/model-index/${index.id}`, 200, {
+      name: `deleteModelIndex`,
+    });
   });
 
-  fetchMock.post(`path:/api/model-index`, async url => {
-    const lastCall = fetchMock.lastCall(url);
-    return createMockModelIndex(await lastCall?.request?.json());
-  });
+  fetchMock.post(
+    `path:/api/model-index`,
+    async url => {
+      const lastCall = fetchMock.lastCall(url);
+      return createMockModelIndex(await lastCall?.request?.json());
+    },
+    { name: `createModelIndex` },
+  );
 }

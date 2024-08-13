@@ -3,8 +3,9 @@
    and returns that metadata (which can be passed *back* to the backend when saving a Card) as well
    as a checksum in the API response."
   (:require
-   [metabase.analyze.query-results :as qr]
+   [metabase.analyze :as analyze]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.reducible :as qp.reducible]
    [metabase.query-processor.schema :as qp.schema]
@@ -31,7 +32,7 @@
     ;; if its DB doesn't support nested queries in the first place
     (when (and metadata
                driver/*driver*
-               (driver/database-supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
+               (driver.u/supports? driver/*driver* :nested-queries (lib.metadata/database (qp.store/metadata-provider)))
                card-id
                ;; don't want to update metadata when we use a Card as a source Card.
                (not (:qp/source-card-id query)))
@@ -54,21 +55,22 @@
    (fn [{final-base-type :base_type, :as final-col} {our-base-type :base_type, :as insights-col}]
      (merge
       (select-keys final-col [:id :description :display_name :semantic_type :fk_target_field_id
-                              :settings :field_ref :name :base_type :effective_type
+                              :settings :field_ref :base_type :effective_type
                               :coercion_strategy :visibility_type])
       insights-col
+      {:name (:name final-col)} ; The final cols have correctly disambiguated ID_2 names, but the insights cols don't.
       (when (= our-base-type :type/*)
         {:base_type final-base-type})))
    final-col-metadata
    insights-col-metadata))
 
-(mu/defn ^:private insights-xform :- fn?
+(mu/defn- insights-xform :- fn?
   [orig-metadata :- [:maybe :map]
    record!       :- ifn?
    rf            :- ifn?]
   (qp.reducible/combine-additional-reducing-fns
    rf
-   [(qr/insights-rf orig-metadata)]
+   [(analyze/insights-rf orig-metadata)]
    (fn combine [result {:keys [metadata insights]}]
      (let [metadata (merge-final-column-metadata (-> result :data :cols) metadata)]
        (record! metadata)
@@ -76,6 +78,8 @@
              (map? result)
              (update :data
                      assoc
+                     ;; TODO: We agreed on the name `:result_metadata` everywhere, and this needs updating.
+                     ;; It'll definitely break things on the FE, so a coordinated change is needed.
                      :results_metadata {:columns metadata}
                      :insights         insights)))))))
 

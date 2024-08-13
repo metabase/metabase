@@ -15,6 +15,7 @@
    [metabase.driver.common :as driver.common]
    [metabase.driver.mysql.actions :as mysql.actions]
    [metabase.driver.mysql.ddl :as mysql.ddl]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -22,7 +23,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.query-processor.store :as qp.store]
@@ -64,9 +64,13 @@
                               :now                                    true
                               :percentile-aggregations                false
                               :persist-models                         true
-                              :regex                                  false
                               :schemas                                false
-                              :uploads                                true}]
+                              :uploads                                true
+                              :identifiers-with-spaces                true
+                              ;; MySQL doesn't let you have lag/lead in the same part of a query as a `GROUP BY`; to
+                              ;; fully support `offset` we need to do some kooky query transformations just for MySQL
+                              ;; and make this work.
+                              :window-functions/offset                false}]
   (defmethod driver/database-supports? [:mysql feature] [_driver _feature _db] supported?))
 
 ;; This is a bit of a lie since the JSON type was introduced for MySQL since 5.7.8.
@@ -254,6 +258,10 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod driver.sql/json-field-length :mysql
+  [_ json-field-identifier]
+  [:length [:cast json-field-identifier :char]])
 
 (defmethod sql.qp/unix-timestamp->honeysql [:mysql :seconds] [_ _ expr]
   [:from_unixtime expr])
@@ -477,7 +485,7 @@
     :DATETIME   :type/DateTime
     :DECIMAL    :type/Decimal
     :DOUBLE     :type/Float
-    :ENUM       :type/*
+    :ENUM       :type/MySQLEnum
     :FLOAT      :type/Float
     :INT        :type/Integer
     :INTEGER    :type/Integer
@@ -519,7 +527,14 @@
    :characterEncoding    "UTF8"
    :characterSetResults  "UTF8"
    ;; GZIP compress packets sent between Metabase server and MySQL/MariaDB database
-   :useCompression       true})
+   :useCompression       true
+   ;; record transaction isolation level and auto-commit locally, and avoid hitting the DB if we do something like
+   ;; `.setTransactionIsolation()` to something we previously set it to. Since we do this every time we run a
+   ;; query (see [[metabase.driver.sql-jdbc.execute/set-best-transaction-level!]]) this should speed up things a bit by
+   ;; removing that overhead. See also
+   ;; https://dev.mysql.com/doc/connector-j/en/connector-j-connp-props-performance-extensions.html#cj-conn-prop_useLocalSessionState
+   ;; and #44507
+   :useLocalSessionState true})
 
 (defn- maybe-add-program-name-option [jdbc-spec additional-options-map]
   ;; connectionAttributes (if multiple) are separated by commas, so values that contain spaces are OK, so long as they
@@ -647,7 +662,7 @@
       "UTC"
       offset)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetTime]
+(defmethod sql.qp/inline-value [:mysql OffsetTime]
   [_ t]
   ;; MySQL doesn't support timezone offsets in literals so pass in a local time literal wrapped in a call to convert
   ;; it to the appropriate timezone
@@ -655,13 +670,13 @@
           (t/format "HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql OffsetDateTime]
+(defmethod sql.qp/inline-value [:mysql OffsetDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)
           (format-offset t)))
 
-(defmethod unprepare/unprepare-value [:mysql ZonedDateTime]
+(defmethod sql.qp/inline-value [:mysql ZonedDateTime]
   [_ t]
   (format "convert_tz('%s', '%s', @@session.time_zone)"
           (t/format "yyyy-MM-dd HH:mm:ss.SSS" t)

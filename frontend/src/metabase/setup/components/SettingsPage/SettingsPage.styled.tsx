@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import {
   breakpointMinMedium,
   breakpointMinSmall,
@@ -12,7 +11,7 @@ export const PageHeader = styled.header`
   align-items: center;
   padding: 1rem 0;
   margin-bottom: 4rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const PageBody = styled.div`

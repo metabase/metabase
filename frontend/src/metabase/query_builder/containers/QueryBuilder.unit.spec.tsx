@@ -1,5 +1,7 @@
 import userEvent from "@testing-library/user-event";
+import type { MockCall } from "fetch-mock";
 import fetchMock from "fetch-mock";
+import { setupJestCanvasMock } from "jest-canvas-mock";
 
 import {
   screen,
@@ -27,6 +29,7 @@ registerVisualizations();
 describe("QueryBuilder", () => {
   afterEach(() => {
     jest.resetAllMocks();
+    setupJestCanvasMock();
   });
 
   describe("rendering", () => {
@@ -123,7 +126,7 @@ describe("QueryBuilder", () => {
 
         const executionTime = await screen.findByTestId("execution-time");
         expect(executionTime).toBeInTheDocument();
-        expect(executionTime).toHaveTextContent("123 ms");
+        expect(executionTime).toHaveTextContent("123ms");
       });
 
       it("renders query execution time for native questions", async () => {
@@ -136,7 +139,7 @@ describe("QueryBuilder", () => {
 
         const executionTime = await screen.findByTestId("execution-time");
         expect(executionTime).toBeInTheDocument();
-        expect(executionTime).toHaveTextContent("123 ms");
+        expect(executionTime).toHaveTextContent("123ms");
       });
     });
   });
@@ -199,20 +202,15 @@ describe("QueryBuilder", () => {
         await screen.findByRole("button", { name: ".csv" }),
       );
 
-      expect(
-        mockDownloadEndpoint.called((url, options) => {
-          const { body: urlSearchParams } = options;
-          const query =
-            urlSearchParams instanceof URLSearchParams
-              ? JSON.parse(urlSearchParams.get("query") ?? "{}")
-              : {};
-
-          return (
-            url.includes("/api/dataset/csv") &&
-            query?.native.query === "SELECT 1"
-          );
-        }),
-      ).toBe(true);
+      const [url, options] = mockDownloadEndpoint.lastCall() as MockCall;
+      const body = await Promise.resolve(options?.body);
+      const urlSearchParams = new URLSearchParams(body as string);
+      expect(url).toEqual(expect.stringContaining("/api/dataset/csv"));
+      const query =
+        urlSearchParams instanceof URLSearchParams
+          ? JSON.parse(urlSearchParams.get("query") ?? "{}")
+          : {};
+      expect(query?.native.query).toEqual("SELECT 1");
     });
   });
 });

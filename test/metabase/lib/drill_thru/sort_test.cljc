@@ -18,8 +18,9 @@
   (testing "sort is available on column headers only"
     (canned/canned-test
       :drill-thru/sort
-      (fn [_test-case context {:keys [click]}]
+      (fn [test-case context {:keys [click]}]
         (and (= click :header)
+             (not (:native? test-case))
              (not (lib.types.isa/structured? (:column context))))))))
 
 (deftest ^:parallel sort-e2e-test

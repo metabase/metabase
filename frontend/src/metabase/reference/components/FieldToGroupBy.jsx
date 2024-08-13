@@ -12,7 +12,6 @@ import S from "./FieldToGroupBy.module.css";
 
 const FieldToGroupBy = ({
   className,
-  metric,
   field,
   icon,
   iconClass,
@@ -38,7 +37,6 @@ const FieldToGroupBy = ({
 );
 FieldToGroupBy.propTypes = {
   className: PropTypes.string,
-  metric: PropTypes.object.isRequired,
   field: PropTypes.object.isRequired,
   iconClass: PropTypes.string,
   onClick: PropTypes.func,

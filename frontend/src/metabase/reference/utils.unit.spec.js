@@ -5,7 +5,6 @@ import { TYPE } from "metabase-lib/v1/types/constants";
 import {
   createMockDatabase,
   createMockField,
-  createMockMetric,
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -99,8 +98,6 @@ describe("Reference utils.js", () => {
   describe("getQuestion()", () => {
     const tableId = 5;
     const dbId = 7;
-    const metric = createMockMetric({ table_id: tableId });
-    const metricId = metric.id;
     const segment = createMockSegment({ table_id: tableId });
     const segmentId = segment.id;
     const field = createMockField({ table_id: tableId });
@@ -108,7 +105,6 @@ describe("Reference utils.js", () => {
     const table = createMockTable({
       id: tableId,
       fields: [field],
-      metrics: [metric],
       segments: [segment],
     });
     const database = createMockDatabase({ id: dbId, tables: [table] });
@@ -219,38 +215,6 @@ describe("Reference utils.js", () => {
           display: "pie",
           breakout: [["field", fieldId, { "base-type": "type/Text" }]],
           aggregation: [["count"]],
-        }),
-      );
-    });
-
-    it("should generate correct question for metric raw data", () => {
-      const question = getQuestion({
-        dbId,
-        tableId,
-        metricId,
-        metadata,
-      });
-
-      expect(question).toEqual(
-        getNewQuestion({
-          aggregation: [["metric", metricId]],
-        }),
-      );
-    });
-
-    it("should generate correct question for metric group by fields", () => {
-      const question = getQuestion({
-        dbId,
-        tableId,
-        fieldId,
-        metricId,
-        metadata,
-      });
-
-      expect(question).toEqual(
-        getNewQuestion({
-          aggregation: [["metric", metricId]],
-          breakout: [["field", fieldId, { "base-type": "type/Text" }]],
         }),
       );
     });

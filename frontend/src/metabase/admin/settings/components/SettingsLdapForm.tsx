@@ -9,9 +9,9 @@ import GroupMappingsWidget from "metabase/admin/settings/containers/GroupMapping
 import { updateLdapSettings } from "metabase/admin/settings/settings";
 import type { SettingElement } from "metabase/admin/settings/types";
 import Breadcrumbs from "metabase/components/Breadcrumbs";
-import { FormSection } from "metabase/containers/FormikForm";
 import CS from "metabase/css/core/index.css";
 import {
+  FormSection,
   Form,
   FormErrorMessage,
   FormProvider,
@@ -230,7 +230,7 @@ const getAttributeValues = (
   values: SettingValues,
   defaultableAttrs: Set<string>,
 ): LdapFormValues => {
-  return Object.fromEntries(
+  const attributeValues = Object.fromEntries(
     ldapAttributes.map(key => [
       key,
       defaultableAttrs.has(key)
@@ -238,6 +238,15 @@ const getAttributeValues = (
         : values[key],
     ]),
   );
+
+  return {
+    ...attributeValues,
+    // ldap port is number | null, we need to edit as a string if it is a number
+    "ldap-port":
+      typeof attributeValues["ldap-port"] === "number"
+        ? String(attributeValues["ldap-port"])
+        : attributeValues["ldap-port"],
+  };
 };
 
 const mapDispatchToProps = {

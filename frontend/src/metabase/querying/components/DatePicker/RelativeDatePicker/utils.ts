@@ -5,10 +5,17 @@ import type {
   RelativeIntervalDirection,
   RelativeDatePickerValue,
   DatePickerTruncationUnit,
+  DatePickerValue,
 } from "../types";
 
 import { DEFAULT_VALUE } from "./constants";
 import type { DateIntervalValue, DateOffsetIntervalValue } from "./types";
+
+export function isRelativeValue(
+  value?: DatePickerValue,
+): value is RelativeDatePickerValue {
+  return value?.type === "relative";
+}
 
 export function isIntervalValue(
   value: RelativeDatePickerValue,

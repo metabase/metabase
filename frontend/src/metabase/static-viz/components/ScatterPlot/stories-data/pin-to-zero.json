@@ -1,0 +1,424 @@
+[
+  {
+    "card": {
+      "cache_invalidated_at": null,
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 5,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "quarter",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "quarter"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+          "semantic_type": "type/Source",
+          "coercion_strategy": null,
+          "name": "SOURCE",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            45,
+            {
+              "base-type": "type/Text",
+              "source-field": 43
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 45,
+          "visibility_type": "normal",
+          "display_name": "User → Source",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 31,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 228,
+                "q1": 288.5,
+                "q3": 330.2679491924311,
+                "max": 349,
+                "sd": 29.54544522144375,
+                "avg": 310.3
+              }
+            }
+          }
+        }
+      ],
+      "initially_published_at": null,
+      "can_write": true,
+      "database_id": 1,
+      "enable_embedding": false,
+      "collection_id": null,
+      "query_type": "query",
+      "name": "scatter-pin-to-zero",
+      "last_query_start": null,
+      "dashboard_count": 0,
+      "type": "question",
+      "average_query_time": null,
+      "creator_id": 1,
+      "moderation_reviews": [],
+      "updated_at": "2024-04-23T05:21:07.553583Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [["count"]],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ],
+            [
+              "field",
+              45,
+              {
+                "base-type": "type/Text",
+                "source-field": 43
+              }
+            ]
+          ],
+          "filter": [
+            "between",
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ],
+            "2024-01-01T00:00Z",
+            "2025-10-01T00:00Z"
+          ]
+        }
+      },
+      "id": 182,
+      "parameter_mappings": [],
+      "display": "scatter",
+      "entity_id": "WIK1d7IpvM9y9wWuxP-Uf",
+      "collection_preview": true,
+      "visualization_settings": {
+        "graph.y_axis.unpin_from_zero": false,
+        "stackable.stack_type": null,
+        "graph.dimensions": ["CREATED_AT", "SOURCE"],
+        "graph.metrics": ["count"]
+      },
+      "collection": null,
+      "metabase_version": "v0.48.1-SNAPSHOT (df01716)",
+      "parameters": [],
+      "created_at": "2024-04-23T05:21:07.553583Z",
+      "parameter_usage_count": 0,
+      "public_uuid": null
+    },
+    "data": {
+      "rows": [
+        ["2024-01-01T00:00:00-03:00", "Affiliate", 228],
+        ["2024-01-01T00:00:00-03:00", "Facebook", 281],
+        ["2024-01-01T00:00:00-03:00", "Google", 259],
+        ["2024-01-01T00:00:00-03:00", "Organic", 257],
+        ["2024-01-01T00:00:00-03:00", "Twitter", 281],
+        ["2024-04-01T00:00:00-03:00", "Affiliate", 260],
+        ["2024-04-01T00:00:00-03:00", "Facebook", 307],
+        ["2024-04-01T00:00:00-03:00", "Google", 276],
+        ["2024-04-01T00:00:00-03:00", "Organic", 281],
+        ["2024-04-01T00:00:00-03:00", "Twitter", 290],
+        ["2024-07-01T00:00:00-03:00", "Affiliate", 287],
+        ["2024-07-01T00:00:00-03:00", "Facebook", 302],
+        ["2024-07-01T00:00:00-03:00", "Google", 329],
+        ["2024-07-01T00:00:00-03:00", "Organic", 313],
+        ["2024-07-01T00:00:00-03:00", "Twitter", 291],
+        ["2024-10-01T00:00:00-03:00", "Affiliate", 271],
+        ["2024-10-01T00:00:00-03:00", "Facebook", 333],
+        ["2024-10-01T00:00:00-03:00", "Google", 331],
+        ["2024-10-01T00:00:00-03:00", "Organic", 329],
+        ["2024-10-01T00:00:00-03:00", "Twitter", 328],
+        ["2025-01-01T00:00:00-03:00", "Affiliate", 326],
+        ["2025-01-01T00:00:00-03:00", "Facebook", 332],
+        ["2025-01-01T00:00:00-03:00", "Google", 348],
+        ["2025-01-01T00:00:00-03:00", "Organic", 339],
+        ["2025-01-01T00:00:00-03:00", "Twitter", 345],
+        ["2025-04-01T00:00:00-03:00", "Affiliate", 311],
+        ["2025-04-01T00:00:00-03:00", "Facebook", 326],
+        ["2025-04-01T00:00:00-03:00", "Google", 319],
+        ["2025-04-01T00:00:00-03:00", "Organic", 321],
+        ["2025-04-01T00:00:00-03:00", "Twitter", 338],
+        ["2025-07-01T00:00:00-03:00", "Affiliate", 325],
+        ["2025-07-01T00:00:00-03:00", "Facebook", 349],
+        ["2025-07-01T00:00:00-03:00", "Google", 329],
+        ["2025-07-01T00:00:00-03:00", "Organic", 328],
+        ["2025-07-01T00:00:00-03:00", "Twitter", 310],
+        ["2025-10-01T00:00:00-03:00", "Affiliate", 308],
+        ["2025-10-01T00:00:00-03:00", "Facebook", 346],
+        ["2025-10-01T00:00:00-03:00", "Google", 319],
+        ["2025-10-01T00:00:00-03:00", "Organic", 349],
+        ["2025-10-01T00:00:00-03:00", "Twitter", 310]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "quarter",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "quarter"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+          "semantic_type": "type/Source",
+          "table_id": 3,
+          "coercion_strategy": null,
+          "name": "SOURCE",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "fk_field_id": 43,
+          "field_ref": [
+            "field",
+            45,
+            {
+              "base-type": "type/Text",
+              "source-field": 43
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 45,
+          "position": 8,
+          "visibility_type": "normal",
+          "display_name": "User → Source",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 7.4084
+              }
+            }
+          },
+          "base_type": "type/Text",
+          "source_alias": "PEOPLE__via__USER_ID"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('quarter', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", \"PEOPLE__via__USER_ID\".\"SOURCE\" AS \"PEOPLE__via__USER_ID__SOURCE\", COUNT(*) AS \"count\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PEOPLE\" AS \"PEOPLE__via__USER_ID\" ON \"PUBLIC\".\"ORDERS\".\"USER_ID\" = \"PEOPLE__via__USER_ID\".\"ID\" WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= timestamp '2024-01-01 00:00:00.000') AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < timestamp '2026-01-01 00:00:00.000') GROUP BY DATE_TRUNC('quarter', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\"), \"PEOPLE__via__USER_ID\".\"SOURCE\" ORDER BY DATE_TRUNC('quarter', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC, \"PEOPLE__via__USER_ID\".\"SOURCE\" ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Pacific/Guam",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "quarter",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "quarter"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "description": "The channel through which we acquired this user. Valid values include: Affiliate, Facebook, Google, Organic and Twitter",
+            "semantic_type": "type/Source",
+            "coercion_strategy": null,
+            "name": "SOURCE",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              45,
+              {
+                "base-type": "type/Text",
+                "source-field": 43
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 45,
+            "visibility_type": "normal",
+            "display_name": "User → Source",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 7.4084
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 31,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 228,
+                  "q1": 288.5,
+                  "q3": 330.2679491924311,
+                  "max": 349,
+                  "sd": 29.54544522144375,
+                  "avg": 310.3
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

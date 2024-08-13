@@ -3,7 +3,6 @@ import _ from "underscore";
 import api, { GET, PUT, POST, DELETE } from "metabase/lib/api";
 import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
 import Question from "metabase-lib/v1/Question";
-import { injectTableMetadata } from "metabase-lib/v1/metadata/utils/tables";
 import { normalizeParameters } from "metabase-lib/v1/parameters/utils/parameter-values";
 import { isNative } from "metabase-lib/v1/queries/utils/card";
 import { getPivotColumnSplit } from "metabase-lib/v1/queries/utils/pivot";
@@ -182,8 +181,6 @@ export const DashboardApi = {
   get: GET("/api/dashboard/:dashId"),
   update: PUT("/api/dashboard/:id"),
   delete: DELETE("/api/dashboard/:dashId"),
-  favorite: POST("/api/dashboard/:dashId/favorite"),
-  unfavorite: DELETE("/api/dashboard/:dashId/favorite"),
   parameterValues: GET("/api/dashboard/:dashId/params/:paramId/values"),
   parameterSearch: GET("/api/dashboard/:dashId/params/:paramId/search/:query"),
   validFilterFields: GET("/api/dashboard/params/valid-filter-fields"),
@@ -198,9 +195,6 @@ export const DashboardApi = {
   ),
   cardQueryPivot: POST(
     "/api/dashboard/pivot/:dashboardId/dashcard/:dashcardId/card/:cardId/query",
-  ),
-  exportCardQuery: POST(
-    "/api/dashboard/:dashboardId/dashcard/:dashcardId/card/:cardId/query/:exportFormat",
   ),
 };
 
@@ -256,7 +250,6 @@ export const AutoApi = {
     // this prevents the `subPath` parameter from being URL encoded
     raw: { subPath: true },
   }),
-  db_candidates: GET("/api/automagic-dashboards/database/:id/candidates"),
 };
 
 export const EmailApi = {
@@ -316,10 +309,6 @@ export const MetabaseApi = {
   // table_fields:                GET("/api/table/:tableId/fields"),
   table_fks: GET("/api/table/:tableId/fks"),
   // table_reorder_fields:       POST("/api/table/:tableId/reorder"),
-  table_query_metadata: GET(
-    "/api/table/:tableId/query_metadata",
-    injectTableMetadata,
-  ),
   tableAppendCSV: POST("/api/table/:tableId/append-csv", {
     formData: true,
     fetch: true,
@@ -336,8 +325,6 @@ export const MetabaseApi = {
   field_remapping: GET("/api/field/:fieldId/remapping/:remappedFieldId"),
   dataset: POST("/api/dataset"),
   dataset_pivot: POST("/api/dataset/pivot"),
-  dataset_duration: POST("/api/dataset/duration"),
-  native: POST("/api/dataset/native"),
 
   // to support audit app  allow the endpoint to be provided in the query
   datasetEndpoint: POST("/api/:endpoint", {
@@ -417,7 +404,6 @@ export const PermissionsApi = {
   graphForGroup: GET("/api/permissions/graph/group/:groupId"),
   graphForDB: GET("/api/permissions/graph/db/:databaseId"),
   updateGraph: PUT("/api/permissions/graph"),
-  createGroup: POST("/api/permissions/group"),
   memberships: GET("/api/permissions/membership"),
   createMembership: POST("/api/permissions/membership"),
   deleteMembership: DELETE("/api/permissions/membership/:id"),
@@ -444,11 +430,7 @@ export const SetupApi = {
 export const UserApi = {
   list: GET("/api/user/recipients"),
   current: GET("/api/user/current"),
-  update_password: PUT("/api/user/:id/password"),
   update_qbnewb: PUT("/api/user/:id/modal/qbnewb"),
-  delete: DELETE("/api/user/:userId"),
-  reactivate: PUT("/api/user/:userId/reactivate"),
-  send_invite: POST("/api/user/:id/send_invite"),
 };
 
 export const UtilApi = {
@@ -475,17 +457,12 @@ export const I18NApi = {
   locale: GET("/app/locales/:locale.json"),
 };
 
-export const TaskApi = {
-  get: GET("/api/task"),
-  getJobsInfo: GET("/api/task/info"),
-};
-
 export function setPublicQuestionEndpoints(uuid) {
   setCardEndpoints("/api/public/card/:uuid", { uuid });
 }
 
-export function setPublicDashboardEndpoints() {
-  setDashboardEndpoints("/api/public");
+export function setPublicDashboardEndpoints(uuid) {
+  setDashboardEndpoints("/api/public/dashboard/:uuid", { uuid });
 }
 
 export function setEmbedQuestionEndpoints(token) {
@@ -494,9 +471,11 @@ export function setEmbedQuestionEndpoints(token) {
   }
 }
 
-export function setEmbedDashboardEndpoints() {
+export function setEmbedDashboardEndpoints(token) {
   if (!IS_EMBED_PREVIEW) {
-    setDashboardEndpoints("/api/embed");
+    setDashboardEndpoints("/api/embed/dashboard/:token", { token });
+  } else {
+    setDashboardParameterValuesEndpoint(embedBase);
   }
 }
 
@@ -507,35 +486,57 @@ function GET_with(url, params, omitKeys) {
 
 function setCardEndpoints(prefix, params) {
   CardApi.parameterValues = GET_with(
-    prefix + "/params/:paramId/values",
+    `${prefix}/params/:paramId/values`,
     params,
     ["cardId"],
   );
   CardApi.parameterSearch = GET_with(
-    prefix + "/params/:paramId/search/:query",
+    `${prefix}/params/:paramId/search/:query`,
     params,
     ["cardId"],
   );
   MetabaseApi.field_values = GET_with(
-    prefix + "/field/:fieldId/values",
+    `${prefix}/field/:fieldId/values`,
     params,
   );
   MetabaseApi.field_search = GET_with(
-    prefix + "/field/:fieldId/search/:searchFieldId",
+    `${prefix}/field/:fieldId/search/:searchFieldId`,
     params,
   );
   MetabaseApi.field_remapping = GET_with(
-    prefix + "/field/:fieldId/remapping/:remappedFieldId",
+    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
     params,
   );
 }
 
-function setDashboardEndpoints(prefix) {
+function setDashboardEndpoints(prefix, params) {
+  DashboardApi.parameterValues = GET_with(
+    `${prefix}/params/:paramId/values`,
+    params,
+    ["dashId"],
+  );
+  DashboardApi.parameterSearch = GET_with(
+    `${prefix}/params/:paramId/search/:query`,
+    params,
+    ["dashId"],
+  );
+  MetabaseApi.field_values = GET_with(
+    `${prefix}/field/:fieldId/values`,
+    params,
+  );
+  MetabaseApi.field_search = GET_with(
+    `${prefix}/dashboard/:dashId/field/:fieldId/search/:searchFieldId`,
+    params,
+  );
+  MetabaseApi.field_remapping = GET_with(
+    `${prefix}/field/:fieldId/remapping/:remappedFieldId`,
+    params,
+  );
+}
+
+function setDashboardParameterValuesEndpoint(prefix) {
   DashboardApi.parameterValues = GET(
     `${prefix}/dashboard/:dashId/params/:paramId/values`,
-  );
-  DashboardApi.parameterSearch = GET(
-    `${prefix}/dashboard/:dashId/params/:paramId/search/:query`,
   );
 }
 
@@ -564,17 +565,9 @@ export const MetabotApi = {
   sendFeedback: POST("/api/metabot/feedback"),
 };
 
-export const ApiKeysApi = {
-  list: GET("/api/api-key"),
-  create: POST("/api/api-key"),
-  count: GET("/api/api-key/count"),
-  delete: DELETE("/api/api-key/:id"),
-  edit: PUT("/api/api-key/:id"),
-  regenerate: PUT("/api/api-key/:id/regenerate"),
-};
-
 export const CacheConfigApi = {
   list: GET("/api/cache"),
   update: PUT("/api/cache"),
   delete: DELETE("/api/cache"),
+  invalidate: POST("/api/cache/invalidate"),
 };

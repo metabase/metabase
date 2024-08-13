@@ -2,8 +2,10 @@ import { useEffect } from "react";
 import { push } from "react-router-redux";
 
 import type { SettingElement } from "metabase/admin/settings/types";
+import { UpsellHosting } from "metabase/admin/upsells";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { getIsEmailConfigured, getIsHosted } from "metabase/setup/selectors";
+import { Flex, Box } from "metabase/ui";
 import type { Settings, SettingValue } from "metabase-types/api";
 
 import { SettingsSection } from "../../app/components/SettingsEditor/SettingsSection";
@@ -44,15 +46,20 @@ export function SettingsEmailForm({
   );
 
   return (
-    <>
-      {!isHosted && <SMTPConnectionCard />}
-      <SettingsSection
-        settingElements={settingElements}
-        settingValues={settingValues}
-        derivedSettingValues={derivedSettingValues}
-        updateSetting={updateSetting}
-        reloadSettings={reloadSettings}
-      />
-    </>
+    <Flex justify="space-between">
+      <Box>
+        {!isHosted && <SMTPConnectionCard />}
+        <SettingsSection
+          settingElements={settingElements}
+          settingValues={settingValues}
+          derivedSettingValues={derivedSettingValues}
+          updateSetting={updateSetting}
+          reloadSettings={reloadSettings}
+        />
+      </Box>
+      <Box>
+        <UpsellHosting source="settings-email-migrate_to_cloud" />
+      </Box>
+    </Flex>
   );
 }

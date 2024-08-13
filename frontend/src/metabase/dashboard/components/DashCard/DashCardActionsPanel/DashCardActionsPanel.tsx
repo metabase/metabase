@@ -1,5 +1,5 @@
 import type { MouseEvent } from "react";
-import { useState } from "react";
+import { useCallback, useState, memo } from "react";
 import { t } from "ttag";
 
 import { isActionDashCard } from "metabase/actions/utils";
@@ -9,6 +9,7 @@ import { getVisualizationRaw } from "metabase/visualizations";
 import type {
   Dashboard,
   DashboardCard,
+  DashCardId,
   Series,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -32,11 +33,15 @@ interface Props {
   isLoading: boolean;
   isPreviewing: boolean;
   hasError: boolean;
-  onRemove: () => void;
-  onAddSeries: () => void;
-  onReplaceCard: () => void;
-  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
+  onRemove: (dashcard: DashboardCard) => void;
+  onAddSeries: (dashcard: DashboardCard) => void;
+  onReplaceCard: (dashcard: DashboardCard) => void;
+  onReplaceAllVisualizationSettings: (
+    dashcardId: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
   onUpdateVisualizationSettings: (
+    dashcardId: DashCardId,
     settings: Partial<VisualizationSettings>,
   ) => void;
   showClickBehaviorSidebar: () => void;
@@ -45,7 +50,7 @@ interface Props {
   onMouseDown: (event: MouseEvent) => void;
 }
 
-export function DashCardActionsPanel({
+function DashCardActionsPanelInner({
   series,
   dashboard,
   dashcard,
@@ -72,6 +77,52 @@ export function DashCardActionsPanel({
   const buttons = [];
 
   const [isDashCardTabMenuOpen, setIsDashCardTabMenuOpen] = useState(false);
+
+  const handleOnUpdateVisualizationSettings = useCallback(
+    (settings: VisualizationSettings) => {
+      if (!dashcard) {
+        return;
+      }
+
+      onUpdateVisualizationSettings(dashcard.id, settings);
+    },
+    [dashcard, onUpdateVisualizationSettings],
+  );
+
+  const handleOnReplaceAllVisualizationSettings = useCallback(
+    (settings: VisualizationSettings) => {
+      if (!dashcard) {
+        return;
+      }
+
+      onReplaceAllVisualizationSettings(dashcard.id, settings);
+    },
+    [dashcard, onReplaceAllVisualizationSettings],
+  );
+
+  const handleReplaceCard = useCallback(() => {
+    if (!dashcard) {
+      return;
+    }
+
+    onReplaceCard(dashcard);
+  }, [dashcard, onReplaceCard]);
+
+  const handleAddSeries = useCallback(() => {
+    if (!dashcard) {
+      return;
+    }
+
+    onAddSeries(dashcard);
+  }, [dashcard, onAddSeries]);
+
+  const handleRemoveCard = useCallback(() => {
+    if (!dashcard) {
+      return;
+    }
+
+    onRemove(dashcard);
+  }, [dashcard, onRemove]);
 
   if (dashcard) {
     buttons.push(
@@ -103,14 +154,16 @@ export function DashCardActionsPanel({
   }
 
   if (!isLoading && !hasError) {
-    if (onReplaceAllVisualizationSettings && !disableSettingsConfig) {
+    if (!disableSettingsConfig) {
       buttons.push(
         <ChartSettingsButton
           key="chart-settings-button"
           series={series}
           dashboard={dashboard}
           dashcard={dashcard}
-          onReplaceAllVisualizationSettings={onReplaceAllVisualizationSettings}
+          onReplaceAllVisualizationSettings={
+            handleOnReplaceAllVisualizationSettings
+          }
         />,
       );
     }
@@ -136,7 +189,7 @@ export function DashCardActionsPanel({
         key="replace-question"
         aria-label={t`Replace`}
         tooltip={t`Replace`}
-        onClick={onReplaceCard}
+        onClick={handleReplaceCard}
       >
         <Icon name="refresh_downstream" />
       </DashCardActionButton>,
@@ -163,7 +216,7 @@ export function DashCardActionsPanel({
         <AddSeriesButton
           key="add-series-button"
           series={series}
-          onClick={onAddSeries}
+          onClick={handleAddSeries}
         />,
       );
     }
@@ -183,7 +236,7 @@ export function DashCardActionsPanel({
         <LinkCardEditButton
           key="link-edit-button"
           dashcard={dashcard}
-          onUpdateVisualizationSettings={onUpdateVisualizationSettings}
+          onUpdateVisualizationSettings={handleOnUpdateVisualizationSettings}
         />,
       );
     }
@@ -199,7 +252,7 @@ export function DashCardActionsPanel({
       <DashCardActionButtonsContainer>
         {buttons}
         <DashCardActionButton
-          onClick={onRemove}
+          onClick={handleRemoveCard}
           tooltip={t`Remove`}
           analyticsEvent="Dashboard;Remove Card Modal"
         >
@@ -209,3 +262,5 @@ export function DashCardActionsPanel({
     </DashCardActionsPanelContainer>
   );
 }
+
+export const DashCardActionsPanel = memo(DashCardActionsPanelInner);

@@ -116,6 +116,8 @@ jobs:
         platforms: linux/amd64
         network: host
         tags: localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}
+        build-args: |
+          GIT_COMMIT_SHA=${{ github.sha }}
         no-cache: true
         push: true
     - name: Launch ${{ matrix.edition }} container
@@ -240,6 +242,8 @@ jobs:
           file: bin/docker/Dockerfile_ubuntu
           network: host
           tags: localhost:5000/metabase-dev:${{ steps.extract_branch.outputs.branch }}-${{ matrix.edition }}-ubuntu
+          build-args: |
+            GIT_COMMIT_SHA=${{ github.sha }}
           no-cache: true
           push: true
       - name: Launch ${{ matrix.edition }} Ubuntu based container

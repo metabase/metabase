@@ -12,7 +12,7 @@ Metabase stores connection information for the various databases you add in the 
 
 1. Generate a secret key that is at least 16 characters (longer is even better!). We recommend using a secure random key generator, such as `openssl`.
    > You cannot decrypt connection details without this key. If you lose (or change) the key, you'll have to reset all of the connection details that have been encrypted with that key in the Admin Panel.
-2. Set your secret key as the environment variable `MB_ENCRYPTION_SECRET_KEY`. On paid plans, you can set also set this using the [config file](../configuring-metabase/config-file.md).
+2. Set your secret key as the environment variable `MB_ENCRYPTION_SECRET_KEY`. On self-hosted [Pro and Enterprise plans](https://www.metabase.com/pricing/) plans, you can set also set this using the [config file](../configuring-metabase/config-file.md).
 
 ### Example commands for creating and adding a key
 

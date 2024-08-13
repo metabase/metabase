@@ -139,6 +139,7 @@
   regex-email-bodies
   reset-inbox!
   summarize-multipart-email
+  summarize-multipart-single-email
   with-expected-messages
   with-fake-inbox]
 
@@ -161,7 +162,8 @@
   application-database-metadata-provider]
 
  [mw.session
-  with-current-user]
+  with-current-user
+  as-admin]
 
  [perms.test-util
   with-restored-data-perms!
@@ -173,7 +175,8 @@
   with-perm-for-group-and-table!]
 
  [qp
-  process-query]
+  process-query
+  userland-query]
 
  [qp.store
   with-metadata-provider]
@@ -183,6 +186,7 @@
   col
   cols
   first-row
+  formatted-rows+column-names
   format-rows-by
   formatted-rows
   nest-query
@@ -193,7 +197,6 @@
   rows
   rows+column-names
   with-database-timezone-id
-  with-mock-fks-for-drivers-without-fk-constraints
   with-report-timezone-id!
   with-results-timezone-id]
 
@@ -227,6 +230,7 @@
 
  [tu
   boolean-ids-and-timestamps
+  call-with-map-params
   call-with-paused-query
   discard-setting-changes
   doall-recursive
@@ -235,16 +239,18 @@
   latest-audit-log-entry
   let-url
   obj->json->obj
+  ordered-subset?
   postwalk-pred
   round-all-decimals
   scheduler-current-tasks
   secret-value-equals?
   select-keys-sequentially
-  throw-if-called
+  throw-if-called!
+  repeat-concurrently
   with-all-users-permission
   with-column-remappings
   with-discarded-collections-perms-changes
-  with-discard-model-updates
+  with-discard-model-updates!
   with-env-keys-renamed-by
   with-locale
   with-model-cleanup
@@ -252,6 +258,7 @@
   with-non-admin-groups-no-root-collection-perms
   with-non-admin-groups-no-collection-perms
   with-all-users-data-perms-graph!
+  with-anaphora
   with-temp-env-var-value!
   with-temp-dir
   with-temp-file
@@ -260,7 +267,7 @@
   with-temporary-setting-values
   with-temporary-raw-setting-values
   with-user-in-groups
-  with-verified-cards]
+  with-verified-cards!]
 
  [tu.async
   wait-for-result
@@ -306,6 +313,7 @@
   get-dataset-definition
   has-test-extensions?
   metabase-instance
+  native-query-with-card-template-tag
   sorts-nil-first?
   supports-time-type?
   supports-timestamptz-type?]
@@ -315,7 +323,11 @@
   with-test-drivers]
 
  [schema-migrations-test.impl
-  with-temp-empty-app-db])
+  with-temp-empty-app-db]
+
+ [tu.dr
+  dynamic-value
+  with-dynamic-redefs])
 
 ;; Rename this instead of using `import-vars` to make it clear that it's related to `=?`
 (p/import-fn hawk.approx/malli malli=?)
@@ -324,11 +336,3 @@
 (alter-meta! #'with-temp update :doc str "\n\n  Note: by default, this will execute its body inside a transaction, making
   it thread safe. If it is wrapped in a call to [[metabase.test/test-helpers-set-global-values!]], it will affect the
   global state of the application database.")
-
-;; Cursive does not understand p/import-macro, so we just proxy this manually
-(defmacro with-dynamic-redefs
-  "A thread-safe version of with-redefs. It only support functions, and adds a fair amount of overhead.
-   It works by replacing each original definition with a proxy the first time it is redefined.
-   This proxy uses a dynamic mapping to check whether the function is currently redefined."
-  [bindings & body]
-  `(tu.dr/with-dynamic-redefs ~bindings ~@body))

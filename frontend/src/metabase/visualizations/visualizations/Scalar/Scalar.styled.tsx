@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { Ellipsified } from "metabase/core/components/Ellipsified";
-import { color } from "metabase/lib/colors";
 import { space } from "metabase/styled-components/theme";
 import { Icon } from "metabase/ui";
 
@@ -20,12 +19,12 @@ export const ScalarContainer = styled(Ellipsified)<ScalarContainerProps>`
       cursor: pointer;
 
       &:hover {
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
       }
     `}
 `;
 
 export const LabelIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   margin-top: 0.2rem;
 `;

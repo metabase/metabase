@@ -1,13 +1,10 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
-import type { Location } from "history";
-import { useMount } from "react-use";
 import { t } from "ttag";
 
 import {
   createNewTab,
   renameTab,
   deleteTab as deleteTabAction,
-  initTabs,
   selectTab,
   undoDeleteTab,
   moveTab as moveTabAction,
@@ -20,8 +17,6 @@ import { addUndo } from "metabase/redux/undo";
 import type { DashboardId } from "metabase-types/api";
 import type { SelectedTabId } from "metabase-types/store";
 
-import { parseSlug, useSyncURLSlug } from "./use-sync-url-slug";
-
 let tabDeletionId = 1;
 
 function isTabIdType(id: unknown): id is SelectedTabId {
@@ -29,18 +24,13 @@ function isTabIdType(id: unknown): id is SelectedTabId {
 }
 
 export function useDashboardTabs({
-  location,
   dashboardId,
 }: {
-  location: Location;
   dashboardId: DashboardId;
 }) {
   const dispatch = useDispatch();
   const tabs = useSelector(getTabs);
   const selectedTabId = useSelector(getSelectedTabId);
-
-  useSyncURLSlug({ location });
-  useMount(() => dispatch(initTabs({ slug: parseSlug({ location }) })));
 
   const duplicateTab = (tabId: UniqueIdentifier | null) => {
     if (!isTabIdType(tabId)) {

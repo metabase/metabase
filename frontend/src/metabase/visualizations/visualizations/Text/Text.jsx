@@ -7,7 +7,9 @@ import remarkGfm from "remark-gfm";
 import { t } from "ttag";
 
 import CS from "metabase/css/core/index.css";
+import { getParameterValues } from "metabase/dashboard/selectors";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 
@@ -38,9 +40,9 @@ export function Text({
   gridSize,
   settings,
   isEditing,
-  parameterValues,
   isMobile,
 }) {
+  const parameterValues = useSelector(getParameterValues);
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
   const [textValue, setTextValue] = useState(settings.text);
 

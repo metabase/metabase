@@ -1,9 +1,9 @@
 (ns metabase.lib.filter.operator
   (:require
-   [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.calculation :as lib.metadata.calculation]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.filter :as lib.schema.filter]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
    [metabase.lib.types.isa :as lib.types.isa]
    [metabase.shared.util.i18n :as i18n]
    [metabase.util :as u]
@@ -21,7 +21,7 @@
     :short                tag
     :display-name-variant display-name-style}))
 
-(def ^:private key-operators
+(def ^:private numeric-key-operators
   [(operator-def :=)
    (operator-def :!=)
    (operator-def :>)
@@ -31,16 +31,6 @@
    (operator-def :<=)
    (operator-def :is-null :is-empty)
    (operator-def :not-null :not-empty)])
-
-(def ^:private location-operators
-  [(operator-def :=)
-   (operator-def :!=)
-   (operator-def :is-empty)
-   (operator-def :not-empty)
-   (operator-def :contains)
-   (operator-def :does-not-contain)
-   (operator-def :starts-with)
-   (operator-def :ends-with)])
 
 (def ^:private temporal-operators
   [(operator-def :!= :excludes)
@@ -77,8 +67,6 @@
    (operator-def :!=)
    (operator-def :contains)
    (operator-def :does-not-contain)
-   (operator-def :is-null)
-   (operator-def :not-null)
    (operator-def :is-empty)
    (operator-def :not-empty)
    (operator-def :starts-with)
@@ -87,8 +75,6 @@
 (def ^:private text-like-operators
   [(operator-def :=)
    (operator-def :!=)
-   (operator-def :is-null)
-   (operator-def :not-null)
    (operator-def :is-empty)
    (operator-def :not-empty)])
 
@@ -98,10 +84,8 @@
    (operator-def :not-null :not-empty)])
 
 (def ^:private default-operators
-  [(operator-def :=)
-   (operator-def :!=)
-   (operator-def :is-null)
-   (operator-def :not-null)])
+  [(operator-def :is-null :is-empty)
+   (operator-def :not-null :not-empty)])
 
 (def join-operators
   "Operators that should be listed as options in join conditions."
@@ -116,25 +100,24 @@
   "The list of available filter operators.
    The order of operators is relevant for the front end.
    There are slight differences between names and ordering for the different base types."
-  [column :- lib.metadata/ColumnMetadata]
+  [column :- ::lib.schema.metadata/column]
   ;; The order of these clauses is important since we want to match the most relevant type
   ;; the order is different than `lib.types.isa/field-type` as filters need to operate
   ;; on the effective-type rather than the semantic-type, eg boolean and number cannot become
   ;; string if semantic type is type/Category
   (condp lib.types.isa/field-type? column
-    :metabase.lib.types.constants/primary_key key-operators
-    :metabase.lib.types.constants/foreign_key key-operators
-    :metabase.lib.types.constants/location    location-operators
     :metabase.lib.types.constants/temporal    temporal-operators
     :metabase.lib.types.constants/coordinate  coordinate-operators
-    :metabase.lib.types.constants/number      number-operators
+    :metabase.lib.types.constants/number      (if ((some-fn lib.types.isa/primary-key? lib.types.isa/foreign-key?) column)
+                                                numeric-key-operators
+                                                number-operators)
     :metabase.lib.types.constants/boolean     boolean-operators
     :metabase.lib.types.constants/string      text-operators
     :metabase.lib.types.constants/string_like text-like-operators
     ;; default
     default-operators))
 
-(mu/defn ^:private filter-operator-long-display-name :- ::lib.schema.common/non-blank-string
+(mu/defn- filter-operator-long-display-name :- ::lib.schema.common/non-blank-string
   [tag                  :- :keyword
    display-name-variant :- :keyword]
   (case tag
@@ -178,7 +161,7 @@
     :inside           (case display-name-variant
                         :default (i18n/tru "Inside"))))
 
-(mu/defn ^:private filter-operator-display-name :- ::lib.schema.common/non-blank-string
+(mu/defn- filter-operator-display-name :- ::lib.schema.common/non-blank-string
   [tag                  :- :keyword
    display-name-variant :- :keyword]
   (case tag

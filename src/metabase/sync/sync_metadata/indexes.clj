@@ -1,7 +1,6 @@
 (ns metabase.sync.sync-metadata.indexes
   (:require
    [clojure.data :as data]
-   [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.models.field :as field]
    [metabase.sync.fetch-metadata :as fetch-metadata]
@@ -20,14 +19,14 @@
     (let [normal-indexes           (->> indexes (filter #(= (:type %) :normal-column-index)) (map :value))
           nested-indexes           (->> indexes (filter #(= (:type %) :nested-column-index)) (map :value))
           normal-indexes-field-ids (when (seq normal-indexes)
-                                     (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id))
+                                     (t2/select-pks-vec :model/Field :name [:in normal-indexes] :table_id table-id :parent_id nil))
           nested-indexes-field-ids (remove nil? (map #(field/nested-field-names->field-id table-id %) nested-indexes))]
       (set (filter some? (concat normal-indexes-field-ids nested-indexes-field-ids))))))
 
 (defn maybe-sync-indexes-for-table!
   "Sync the indexes for `table` if the driver supports storing index info."
   [database table]
-  (if (driver/database-supports? (driver.u/database->driver database) :index-info database)
+  (if (driver.u/supports? (driver.u/database->driver database) :index-info database)
     (sync-util/with-error-handling (format "Error syncing Indexes for %s" (sync-util/name-for-logging table))
       (let [indexes                    (fetch-metadata/index-metadata database table)
             indexed-field-ids          (indexes->field-ids (:id table) indexes)
@@ -51,7 +50,9 @@
 (defn maybe-sync-indexes!
   "Sync the indexes for all tables in `database` if the driver supports storing index info."
   [database]
-  (if (driver/database-supports? (driver.u/database->driver database) :index-info database)
-    (apply merge-with + empty-stats
-           (map #(maybe-sync-indexes-for-table! database %) (sync-util/db->sync-tables database)))
+  (if (driver.u/supports? (driver.u/database->driver database) :index-info database)
+    (transduce (map #(maybe-sync-indexes-for-table! database %))
+               (partial merge-with +)
+               empty-stats
+               (sync-util/reducible-sync-tables database))
     empty-stats))

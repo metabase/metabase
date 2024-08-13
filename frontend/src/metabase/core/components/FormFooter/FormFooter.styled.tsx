@@ -1,8 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 interface FormFooterProps {
   hasTopBorder?: boolean;
 }
@@ -11,7 +9,7 @@ const FormFooter = styled.div<FormFooterProps>`
   ${props =>
     props.hasTopBorder
       ? css`
-          border-top: 1px solid ${color("border")};
+          border-top: 1px solid var(--mb-color-border);
           margin-top: 0.5rem;
           padding-top: 1.5rem;
         `

@@ -55,6 +55,7 @@ describe("SpecificDatePicker", () => {
       type: "specific",
       operator: "=",
       values: [new Date(2020, 0, 15)],
+      hasTime: false,
     });
   });
 
@@ -69,6 +70,7 @@ describe("SpecificDatePicker", () => {
       type: "specific",
       operator: "<",
       values: [new Date(2020, 0, 15)],
+      hasTime: false,
     });
   });
 
@@ -84,6 +86,7 @@ describe("SpecificDatePicker", () => {
       type: "specific",
       operator: ">",
       values: [new Date(2020, 1, 15)],
+      hasTime: false,
     });
   });
 
@@ -99,6 +102,7 @@ describe("SpecificDatePicker", () => {
       type: "specific",
       operator: "between",
       values: [new Date(2019, 11, 12), new Date(2020, 0, 5)],
+      hasTime: false,
     });
   });
 
@@ -118,6 +122,7 @@ describe("SpecificDatePicker", () => {
       type: "specific",
       operator: "between",
       values: [new Date(2019, 11, 29), new Date(2020, 1, 15)],
+      hasTime: false,
     });
   });
 });

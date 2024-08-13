@@ -6,7 +6,6 @@ import _ from "underscore";
 import { databaseApi, tableApi } from "metabase/api";
 import Fields from "metabase/entities/fields";
 import Questions from "metabase/entities/questions";
-import Metrics from "metabase/entities/metrics"; // eslint-disable-line import/order -- circular dependencies
 import Segments from "metabase/entities/segments";
 import { color } from "metabase/lib/colors";
 import {
@@ -106,9 +105,29 @@ const Tables = createEntity({
     // loads `query_metadata` for a single table
     fetchMetadata: compose(
       withAction(FETCH_METADATA),
+      withNormalize(TableSchema),
+    )(
+      ({ id, ...params }, options = {}) =>
+        dispatch =>
+          entityCompatibleQuery(
+            { id, ...params, ...options.params },
+            dispatch,
+            tableApi.endpoints.getTableQueryMetadata,
+            { forceRefetch: false },
+          ),
+    ),
+
+    // fetches table metadata with the request state & caching managed by the entity framework
+    // data is not properly cached & invalidated this way, prefer fetchMetadata instead
+    // used only to support legacy entity framework loader HoCs
+    fetchMetadataDeprecated: compose(
+      withAction(FETCH_METADATA),
       withCachedDataAndRequestState(
         ({ id }) => [...Tables.getObjectStatePath(id)],
-        ({ id }) => [...Tables.getObjectStatePath(id), "fetchMetadata"],
+        ({ id }) => [
+          ...Tables.getObjectStatePath(id),
+          "fetchMetadataDeprecated",
+        ],
         entityQuery => Tables.getQueryKey(entityQuery),
       ),
       withNormalize(TableSchema),
@@ -118,7 +137,7 @@ const Tables = createEntity({
           entityCompatibleQuery(
             { id, ...params, ...options.params },
             dispatch,
-            tableApi.endpoints.getTableMetadata,
+            tableApi.endpoints.getTableQueryMetadata,
           ),
     ),
 
@@ -175,12 +194,25 @@ const Tables = createEntity({
       },
   },
 
-  // FORMS
-  form: {
-    fields: [{ name: "name" }, { name: "description", type: "text" }],
-  },
-
   reducer: (state = {}, { type, payload, error }) => {
+    if (type === Fields.actionTypes.UPDATE && !error) {
+      const updatedField = payload.field;
+      const tableId = updatedField.table_id;
+      const table = state[tableId];
+
+      if (table) {
+        return {
+          ...state,
+          [tableId]: {
+            ...table,
+            original_fields: table.original_fields?.map(field => {
+              return field.id === updatedField.id ? updatedField : field;
+            }),
+          },
+        };
+      }
+    }
+
     if (type === Questions.actionTypes.CREATE && !error) {
       const card = payload.question;
       const virtualQuestionTable = convertSavedQuestionToVirtualTable(card);
@@ -250,17 +282,6 @@ const Tables = createEntity({
       }
     }
 
-    if (type === Metrics.actionTypes.CREATE && !error) {
-      const { table_id: tableId, id: metricId } = payload.metric;
-      const table = state[tableId];
-      if (table) {
-        return {
-          ...state,
-          [tableId]: { ...table, metrics: [metricId, ...table.metrics] },
-        };
-      }
-    }
-
     if (type === Segments.actionTypes.UPDATE && !error) {
       const { table_id: tableId, archived, id: segmentId } = payload.segment;
       const table = state[tableId];
@@ -270,20 +291,6 @@ const Tables = createEntity({
           [tableId]: {
             ...table,
             segments: table.segments.filter(id => id !== segmentId),
-          },
-        };
-      }
-    }
-
-    if (type === Metrics.actionTypes.UPDATE) {
-      const { table_id: tableId, archived, id: metricId } = payload.metric;
-      const table = state[tableId];
-      if (archived && table && table.metrics) {
-        return {
-          ...state,
-          [tableId]: {
-            ...table,
-            metrics: table.metrics.filter(id => id !== metricId),
           },
         };
       }

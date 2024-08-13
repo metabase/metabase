@@ -7,40 +7,40 @@
   Essentially, this is a translation layer between the graph used by the v1 permissions schema and the v2 permissions
   schema."
   (:require
-   [clojure.data :as data]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.api.common :as api]
    [metabase.api.permission-graph :as api.permission-graph]
-   [metabase.config :as config]
+   [metabase.audit :as audit]
    [metabase.models.data-permissions :as data-perms]
    [metabase.models.permissions-group :as perms-group]
    [metabase.models.permissions-revision :as perms-revision]
-   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.public-settings.premium-features
+    :as premium-features
+    :refer [defenterprise]]
    [metabase.util :as u]
    [metabase.util.i18n :refer [tru]]
-   [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 ;; See also: [[data-perms/Permissions]]
 (def ^:private ->api-keys
-  {:perms/data-access           :data
+  {:perms/view-data             :view-data
+   :perms/create-queries        :create-queries
    :perms/download-results      :download
    :perms/manage-table-metadata :data-model
-
-   :perms/native-query-editing  :native
    :perms/manage-database       :details})
 
 (def ^:private ->api-vals
-  {:perms/data-access           {:unrestricted    :all
-                                 :no-self-service nil
-                                 :block           :block}
+  {:perms/view-data             {:unrestricted           :unrestricted
+                                 :legacy-no-self-service :legacy-no-self-service
+                                 :blocked                :blocked}
+   :perms/create-queries        {:query-builder-and-native :query-builder-and-native
+                                 :query-builder            :query-builder
+                                 :no                       :no}
    :perms/download-results      {:one-million-rows  :full
                                  :ten-thousand-rows :limited
                                  :no                nil}
    :perms/manage-table-metadata {:yes :all :no nil}
-   :perms/native-query-editing  {:yes :write :no nil}
    :perms/manage-database       {:yes :yes :no :no}})
 
 (defenterprise add-impersonations-to-permissions-graph
@@ -66,10 +66,7 @@
    Unless it's :data perms, in which case, leave it out only if it's no-self-service"
   [type :- data-perms/PermissionType
    value :- data-perms/PermissionValue]
-  (if (= type :perms/data-access)
-    ;; for `:perms/data-access`, `:no-self-service` is the default (block  is a 'negative' permission),  so we should ellide
-    (= value :no-self-service)
-    (= (data-perms/least-permissive-value type) value)))
+  (= (data-perms/least-permissive-value type) value))
 
 (defn- rename-or-ellide-kv
   "Renames a kv pair from the data-permissions-graph to an API-style data permissions graph (which we send to the client)."
@@ -77,7 +74,7 @@
   (when-not (ellide? type value)
     [(->api-keys type) ((->api-vals type) value)]))
 
-(mu/defn ^:private api-table-perms
+(mu/defn- api-table-perms
   "Helper to transform 'leaf' values with table-level schemas in the data permissions graph into an API-style data permissions value.
    Coalesces permissions at the schema level if all table-level permissions within a schema are identical."
   [type :- data-perms/PermissionType
@@ -109,43 +106,48 @@
 
 (defn- rename-perm
   "Transforms a 'leaf' value with db-level or table-level perms in the data permissions graph into an API-style data permissions value.
-  There's some tricks in here that ellide table-level and table-level permissions values that are the most-permissive setting."
+  There's some tricks in here that ellide schema-level and table-level permissions values that are the most-permissive setting."
   [perm-map]
-  (let [granular-keys [:perms/native-query-editing :perms/data-access
-                       :perms/download-results :perms/manage-table-metadata]]
+  (let [granular-keys [:perms/download-results :perms/manage-table-metadata
+                       :perms/view-data :perms/create-queries]]
     (m/deep-merge
      (into {} (keep rename-or-ellide-kv (apply dissoc perm-map granular-keys)))
-     (granular-perm-rename perm-map :perms/data-access [:data :schemas])
-     (granular-perm-rename perm-map :perms/native-query-editing [:data :native])
      (granular-perm-rename perm-map :perms/download-results [:download :schemas])
-     (granular-perm-rename perm-map :perms/manage-table-metadata [:data-model :schemas]))))
+     (granular-perm-rename perm-map :perms/manage-table-metadata [:data-model :schemas])
+     (granular-perm-rename perm-map :perms/view-data [:view-data])
+     (granular-perm-rename perm-map :perms/create-queries [:create-queries]))))
 
 (defn- rename-perms [graph]
   (update-vals graph
                (fn [db-id->perms]
                  (update-vals db-id->perms rename-perm))))
 
-(def ^:private legacy-admin-perms
-   {:data {:native :write, :schemas :all},
-    :download {:schemas :full},
-    :data-model {:schemas :all},
-    :details :yes})
+(def ^:private admin-perms
+   {:view-data      :unrestricted
+    :create-queries :query-builder-and-native
+    :download       {:schemas :full}
+    :data-model     {:schemas :all}
+    :details        :yes})
 
 (defn- add-admin-perms-to-permissions-graph
   "These are not stored in the data-permissions table, but the API expects them to be there (for legacy reasons), so here we populate it.
   For every db in the incoming graph, adds on admin permissions."
-  [api-graph {:keys [db-id group-id audit?]}]
+  [api-graph {:keys [db-id group-ids group-id audit?]}]
   (let [admin-group-id (u/the-id (perms-group/admin))
         db-ids         (if db-id [db-id] (t2/select-pks-vec :model/Database
                                                             {:where [:and
-                                                                     (when-not audit? [:not= :id config/audit-db-id])]}))]
-    (if (and group-id (not= group-id admin-group-id))
-      ;; Don't add admin perms when we're fetching the perms for a specific non-admin group
-      api-graph
+                                                                     (when-not audit? [:not= :id audit/audit-db-id])]}))]
+    ;; Don't add admin perms when we're fetching the perms for a specific non-admin group or set of groups
+    (if (or (= group-id admin-group-id)
+            (contains? (set group-ids) admin-group-id)
+            ;; If we're not filtering on specific group IDs, always include the admin group
+            (and (nil? group-id)
+                 (nil? (seq group-ids))))
       (reduce (fn [api-graph db-id]
-                (assoc-in api-graph [admin-group-id db-id] legacy-admin-perms))
+                (assoc-in api-graph [admin-group-id db-id] admin-perms))
               api-graph
-              db-ids))))
+              db-ids)
+      api-graph)))
 
 (defn remove-empty-vals
   "Recursively walks a nested map from bottom-up, removing keys with nil or empty map values."
@@ -157,7 +159,7 @@
          (into {}))
     m))
 
-(mu/defn api-graph :- api.permission-graph/StrictData
+(mu/defn api-graph :- api.permission-graph/DataPermissionsGraph
   "Converts the backend representation of the data permissions graph to the representation we send over the API. Mainly
   renames permission types and values from the names stored in the database to the ones expected by the frontend.
   - Converts DB key names to API key names
@@ -170,6 +172,7 @@
   ([& {:as opts}
     :- [:map
         [:group-id {:optional true} [:maybe pos-int?]]
+        [:group-ids {:optional true} [:maybe [:sequential pos-int?]]]
         [:db-id {:optional true} [:maybe pos-int?]]
         [:audit? {:optional true} [:maybe :boolean]]
         [:perm-type {:optional true} [:maybe data-perms/PermissionType]]]]
@@ -181,7 +184,6 @@
                   (add-sandboxes-to-permissions-graph opts)
                   (add-impersonations-to-permissions-graph opts)
                   (add-admin-perms-to-permissions-graph opts))})))
-
 
 ;;; ---------------------------------------- Updating permissions -----------------------------------------------------
 
@@ -287,115 +289,87 @@
         :none
         (data-perms/set-database-permission! group-id db-id :perms/download-results :no)))))
 
-(defn- update-native-data-access-permissions!
-  [group-id db-id new-native-perms]
-  (data-perms/set-database-permission! group-id db-id :perms/native-query-editing (case new-native-perms
-                                                                                    :write :yes
-                                                                                    :none  :no)))
-
-(defn- update-table-level-data-access-permissions!
-  [group-id db-id schema new-table-perms]
-  (let [new-table-perms
-        (-> new-table-perms
-            (update-vals (fn [table-perm]
-                           (if (map? table-perm)
-                             (if (#{:all :segmented} (table-perm :query))
-                               ;; `:segmented` indicates that the table is sandboxed, but we should set :perms/data-access
-                               ;; permissions to :unrestricted and rely on the `sandboxes` table as the source of truth
-                               ;; for sandboxing.
-                               :unrestricted
-                               :no-self-service)
-                             (case table-perm
-                               :all  :unrestricted
-                               :none :no-self-service))))
-            (update-keys (fn [table-id] {:id table-id :db_id db-id :schema schema})))]
-    (data-perms/set-table-permissions! group-id :perms/data-access new-table-perms)))
-
-(defn- update-schema-level-data-access-permissions!
-  [group-id db-id schema new-schema-perms]
-  (if (map? new-schema-perms)
-    (update-table-level-data-access-permissions! group-id db-id schema new-schema-perms)
-    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
-      (when (seq tables)
-        (case new-schema-perms
-          :all
-          (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :unrestricted)))
-
-          :none
-          (data-perms/set-table-permissions! group-id :perms/data-access (zipmap tables (repeat :no-self-service))))))))
-
-(defn- update-db-level-data-access-permissions!
-  [group-id db-id new-db-perms]
-  (when-let [new-native-perms (:native new-db-perms)]
-    (update-native-data-access-permissions! group-id db-id new-native-perms))
-  (when-let [schemas (:schemas new-db-perms)]
-    (if (map? schemas)
-      (doseq [[schema schema-changes] schemas]
-        (update-schema-level-data-access-permissions! group-id db-id schema schema-changes))
-      (case schemas
-        (:all :impersonated)
-        (data-perms/set-database-permission! group-id db-id :perms/data-access :unrestricted)
-
-        :none
-        (data-perms/set-database-permission! group-id db-id :perms/data-access :no-self-service)
-
-        :block
-        (do
-          (when-not (premium-features/has-feature? :advanced-permissions)
-            (throw (ee-permissions-exception :block)))
-          (data-perms/set-database-permission! group-id db-id :perms/data-access :block))))))
-
 (defn- update-details-perms!
   [group-id db-id value]
   (data-perms/set-database-permission! group-id db-id :perms/manage-database value))
 
+(defn- update-table-level-create-queries-permissions!
+  [group-id db-id schema new-table-perms]
+  (let [new-table-perms (update-keys
+                         new-table-perms
+                         (fn [table-id] {:id table-id :db_id db-id :schema schema}))]
+    (data-perms/set-table-permissions! group-id :perms/create-queries new-table-perms)))
+
+(defn- update-schema-level-create-queries-permissions!
+  [group-id db-id schema new-schema-perms]
+  (if (map? new-schema-perms)
+    (update-table-level-create-queries-permissions! group-id db-id schema new-schema-perms)
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+      (when (seq tables)
+        (data-perms/set-table-permissions! group-id :perms/create-queries (zipmap tables (repeat new-schema-perms)))))))
+
+(defn- update-db-level-create-queries-permissions!
+  [group-id db-id new-db-perms]
+  (if (map? new-db-perms)
+    (doseq [[schema new-schema-perms] new-db-perms]
+      (update-schema-level-create-queries-permissions! group-id db-id schema new-schema-perms))
+    (when new-db-perms
+      (data-perms/set-database-permission! group-id db-id :perms/create-queries new-db-perms))))
+
+(defn- update-table-level-view-data-permissions!
+  [group-id db-id schema new-table-perms]
+  (let [new-table-perms (->
+                         (update-keys
+                          new-table-perms
+                          (fn [table-id] {:id table-id :db_id db-id :schema schema}))
+                         (update-vals (fn [table-perm]
+                                        (case table-perm
+                                          :unrestricted           :unrestricted
+                                          ;; If the table is sandboxed, we set `view-data` to `unrestricted` since
+                                          ;; sandboxes are stored separately in the `sandboxes` table
+                                          :sandboxed              :unrestricted
+                                          :legacy-no-self-service :legacy-no-self-service))))]
+    (data-perms/set-table-permissions! group-id :perms/view-data new-table-perms)))
+
+(defn- update-schema-level-view-data-permissions!
+  [group-id db-id schema new-schema-perms]
+  (if (map? new-schema-perms)
+    (update-table-level-view-data-permissions! group-id db-id schema new-schema-perms)
+    (let [tables (t2/select :model/Table :db_id db-id :schema (not-empty schema))]
+      (when (seq tables)
+        (data-perms/set-table-permissions! group-id :perms/view-data (zipmap tables (repeat new-schema-perms)))))))
+
+(defn- update-db-level-view-data-permissions!
+  [group-id db-id new-db-perms]
+  (if (map? new-db-perms)
+    (doseq [[schema new-schema-perms] new-db-perms]
+      (update-schema-level-view-data-permissions! group-id db-id schema new-schema-perms))
+    (case new-db-perms
+      (:unrestricted :impersonated)
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :unrestricted)
+
+      ;; Support setting legacy-no-self-service for testing purposes, though the UI shouldn't allow it normally
+      :legacy-no-self-service
+      (data-perms/set-database-permission! group-id db-id :perms/view-data :legacy-no-self-service)
+
+      :blocked
+      (do
+        (when-not (premium-features/has-feature? :advanced-permissions)
+          (throw (ee-permissions-exception :blocked)))
+        (data-perms/set-database-permission! group-id db-id :perms/view-data :blocked)))))
+
 (defn check-audit-db-permissions
   "Check that the changes coming in does not attempt to change audit database permission. Admins should
-  change these permissions in application monitoring permissions."
-  [changes]
-  (let [changes-ids (->> changes
+  change these permissions implicitly via collection permissions."
+  [group-updates]
+  (let [changes-ids (->> group-updates
                          vals
                          (map keys)
                          (apply concat))]
-    (when (some #{config/audit-db-id} changes-ids)
+    (when (some #{audit/audit-db-id} changes-ids)
       (throw (ex-info (tru
                        (str "Audit database permissions can only be changed by updating audit collection permissions."))
                       {:status-code 400})))))
-
-(defn log-permissions-changes
-  "Log changes to the permissions graph."
-  [old new]
-  (log/debug "Changing permissions"
-             "\n FROM:" (u/pprint-to-str :magenta old)
-             "\n TO:"   (u/pprint-to-str :blue new)))
-
-(defn check-revision-numbers
-  "Check that the revision number coming in as part of `new-graph` matches the one from `old-graph`. This way we can
-  make sure people don't submit a new graph based on something out of date, which would otherwise stomp over changes
-  made in the interim. Return a 409 (Conflict) if the numbers don't match up."
-  [old-graph new-graph]
-  (when (not= (:revision old-graph) (:revision new-graph))
-    (throw (ex-info (tru
-                      (str "Looks like someone else edited the permissions and your data is out of date. "
-                           "Please fetch new data and try again."))
-                    {:status-code 409}))))
-
-(defn save-perms-revision!
-  "Save changes made to permission graph for logging/auditing purposes.
-  This doesn't do anything if `*current-user-id*` is unset (e.g. for testing or REPL usage).
-  *  `model`   -- revision model, should be one of
-                  [PermissionsRevision, CollectionPermissionGraphRevision, ApplicationPermissionsRevision]
-  *  `before`  -- the graph before the changes
-  *  `changes` -- set of changes applied in this revision."
-  [model current-revision before changes]
-  (when api/*current-user-id*
-    (first (t2/insert-returning-instances! model
-                                           ;; manually specify ID here so if one was somehow inserted in the meantime in the fraction of a second since we
-                                           ;; called `check-revision-numbers` the PK constraint will fail and the transaction will abort
-                                           :id      (inc current-revision)
-                                           :before  before
-                                           :after   changes
-                                           :user_id api/*current-user-id*))))
 
 (mu/defn update-data-perms-graph!*
   "Takes an API-style perms graph and sets the permissions in the database accordingly."
@@ -404,32 +378,27 @@
      (doseq [[db-id db-changes] group-changes
              [perm-type new-perms] db-changes]
        (case perm-type
-         :data       (update-db-level-data-access-permissions! group-id db-id new-perms)
-         :download   (update-db-level-download-permissions! group-id db-id new-perms)
-         :data-model (update-db-level-metadata-permissions! group-id db-id new-perms)
-         :details    (update-details-perms! group-id db-id new-perms)))))
+         :view-data      (update-db-level-view-data-permissions! group-id db-id new-perms)
+         :create-queries (update-db-level-create-queries-permissions! group-id db-id new-perms)
+         :download       (update-db-level-download-permissions! group-id db-id new-perms)
+         :data-model     (update-db-level-metadata-permissions! group-id db-id new-perms)
+         :details        (update-details-perms! group-id db-id new-perms)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]
    (update-data-perms-graph!* (assoc-in (-> api-graph :groups) ks new-value))))
 
 (mu/defn update-data-perms-graph!
-  "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally validates the revision number,
-   logs the changes, and ensures impersonations and sandboxes are consistent."
-  ([new-graph :- api.permission-graph/StrictData]
-   (let [old-graph (api-graph)
-         [old new] (data/diff (:groups old-graph) (:groups new-graph))
-         old       (or old {})
-         new       (or new {})]
-     (when (or (seq old) (seq new))
-       (log-permissions-changes old new)
-       (check-revision-numbers old-graph new-graph)
-       (check-audit-db-permissions new)
+  "Takes an API-style perms graph and sets the permissions in the database accordingly. Additionally ensures
+  impersonations and sandboxes are consistent if necessary."
+  ([graph-updates :- api.permission-graph/DataPermissionsGraph]
+   (when (seq graph-updates)
+     (let [group-updates (:groups graph-updates)]
+       (check-audit-db-permissions group-updates)
        (t2/with-transaction [_conn]
-         (update-data-perms-graph!* new)
-         (save-perms-revision! :model/PermissionsRevision (:revision old-graph) old new)
-         (delete-impersonations-if-needed-after-permissions-change! new)
-         (delete-gtaps-if-needed-after-permissions-change! new)))))
+         (update-data-perms-graph!* group-updates)
+         (delete-impersonations-if-needed-after-permissions-change! group-updates)
+         (delete-gtaps-if-needed-after-permissions-change! group-updates)))))
 
   ;; The following arity is provided soley for convenience for tests/REPL usage
   ([ks :- [:vector :any] new-value]

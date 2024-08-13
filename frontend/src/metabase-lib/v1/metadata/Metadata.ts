@@ -5,7 +5,6 @@ import type {
   DatabaseId,
   FieldId,
   FieldReference,
-  MetricId,
   SchemaId,
   SegmentId,
   SettingKey,
@@ -17,7 +16,6 @@ import type Question from "../Question";
 
 import type Database from "./Database";
 import type Field from "./Field";
-import type Metric from "./Metric";
 import type Schema from "./Schema";
 import type Segment from "./Segment";
 import type Table from "./Table";
@@ -29,7 +27,6 @@ interface MetadataOpts {
   schemas?: Record<string, Schema>;
   tables?: Record<string, Table>;
   fields?: Record<string, Field>;
-  metrics?: Record<string, Metric>;
   segments?: Record<string, Segment>;
   questions?: Record<string, Question>;
   settings?: Settings;
@@ -46,7 +43,6 @@ class Metadata {
   schemas: Record<string, Schema> = {};
   tables: Record<string, Table> = {};
   fields: Record<string, Field> = {};
-  metrics: Record<string, Metric> = {};
   segments: Record<string, Segment> = {};
   questions: Record<string, Question> = {};
   settings?: Settings;
@@ -81,13 +77,6 @@ class Metadata {
   }
 
   /**
-   * @deprecated load data via RTK Query - useListMetricsQuery
-   */
-  metricsList(): Metric[] {
-    return Object.values(this.metrics);
-  }
-
-  /**
    * @deprecated load data via RTK Query - useListSegmentsQuery
    */
   segmentsList(): Segment[] {
@@ -99,13 +88,6 @@ class Metadata {
    */
   segment(segmentId: SegmentId | undefined | null): Segment | null {
     return (segmentId != null && this.segments[segmentId]) || null;
-  }
-
-  /**
-   * @deprecated load data via RTK Query - useGetMetricQuery
-   */
-  metric(metricId: MetricId | undefined | null): Metric | null {
-    return (metricId != null && this.metrics[metricId]) || null;
   }
 
   /**

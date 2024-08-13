@@ -4,8 +4,7 @@
    [cheshire.core :as json]
    [compojure.core :refer [GET]]
    [medley.core :as m]
-   [metabase.actions :as actions]
-   [metabase.actions.execution :as actions.execution]
+   [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.card :as api.card]
    [metabase.api.common :as api]
@@ -28,6 +27,7 @@
    [metabase.query-processor.dashboard :as qp.dashboard]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.middleware.constraints :as qp.constraints]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
    [metabase.query-processor.pipeline :as qp.pipeline]
    [metabase.query-processor.pivot :as qp.pivot]
    [metabase.query-processor.streaming :as qp.streaming]
@@ -74,10 +74,13 @@
 (defn- remove-card-non-public-columns
   "Remove everyting from public `card` that shouldn't be visible to the general public."
   [card]
-  (mi/instance
-   Card
-   (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
-                               [:dataset_query :type [:native :template-tags]]])))
+  ;; We need to check this to resolve params - we set `mw.session/as-admin` there
+  (if qp.perms/*param-values-query*
+    card
+    (mi/instance
+      Card
+      (u/select-nested-keys card [:id :name :description :display :visualization_settings :parameters
+                                  [:dataset_query :type [:native :template-tags]]]))))
 
 (defn public-card
   "Return a public Card matching key-value `conditions`, removing all columns that should not be visible to the general
@@ -98,7 +101,8 @@
   [uuid]
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
-  (card-with-uuid uuid))
+  (u/prog1 (card-with-uuid uuid)
+    (events/publish-event! :event/card-read {:object-id (:id <>), :user-id api/*current-user-id*, :context :question})))
 
 (defmulti ^:private transform-qp-result
   "Transform results to be suitable for a public endpoint"
@@ -127,7 +131,7 @@
      {:error (tru "An error occurred while running the query.")})))
 
 (defn- process-query-for-card-with-id-run-fn
-  "Create the `:run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
+  "Create the `:make-run` function used for [[process-query-for-card-with-id]] and [[process-query-for-dashcard]]."
   [qp export-format]
   (fn run [query info]
     (qp.streaming/streaming-response [rff export-format (u/slugify (:card-name info))]
@@ -153,7 +157,8 @@
     (m/mapply qp.card/process-query-for-card card-id export-format
               :parameters parameters
               :context    :public-question
-              :run        (process-query-for-card-with-id-run-fn qp export-format)
+              :qp         qp
+              :make-run   process-query-for-card-with-id-run-fn
               options)))
 
 (defn ^:private process-query-for-card-with-public-uuid
@@ -243,8 +248,7 @@
   {uuid ms/UUIDString}
   (validation/check-public-sharing-enabled)
   (u/prog1 (dashboard-with-uuid uuid)
-           (events/publish-event! :event/dashboard-read {:user-id api/*current-user-id*
-                                                         :object  <>})))
+    (events/publish-event! :event/dashboard-read {:object-id (:id <>), :user-id api/*current-user-id*})))
 
 (defn process-query-for-dashcard
   "Return the results of running a query for Card with `card-id` belonging to Dashboard with `dashboard-id` via
@@ -268,7 +272,7 @@
                                    (string? parameters) (json/parse-string keyword))
                   :export-format export-format
                   :qp            qp
-                  :run           (process-query-for-card-with-id-run-fn qp export-format)})]
+                  :make-run      process-query-for-card-with-id-run-fn})]
     ;; Run this query with full superuser perms. We don't want the various perms checks failing because there are no
     ;; current user perms; if this Dashcard is public you're by definition allowed to run it without a perms check
     ;; anyway
@@ -284,13 +288,35 @@
    card-id     ms/PositiveInt
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
+  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
-    (process-query-for-dashcard
-     :dashboard-id  dashboard-id
-     :card-id       card-id
-     :dashcard-id   dashcard-id
-     :export-format :api
-     :parameters    parameters)))
+    (u/prog1 (process-query-for-dashcard
+              :dashboard-id  dashboard-id
+              :card-id       card-id
+              :dashcard-id   dashcard-id
+              :export-format :api
+              :parameters    parameters)
+      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
+
+
+(api/defendpoint POST ["/dashboard/:uuid/dashcard/:dashcard-id/card/:card-id/:export-format"
+                       :export-format api.dataset/export-format-regex]
+  "Fetch the results of running a publicly-accessible Card belonging to a Dashboard and return the data in one of the export formats. Does not require auth credentials. Public sharing must be enabled."
+  [uuid card-id dashcard-id parameters export-format]
+  {uuid          ms/UUIDString
+   dashcard-id   ms/PositiveInt
+   card-id       ms/PositiveInt
+   parameters    [:maybe ms/JSONString]
+   export-format (into [:enum] api.dataset/export-formats)}
+  (validation/check-public-sharing-enabled)
+  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
+  (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
+    (u/prog1 (process-query-for-dashcard
+              :dashboard-id  dashboard-id
+              :card-id       card-id
+              :dashcard-id   dashcard-id
+              :export-format export-format
+              :parameters    parameters))))
 
 (api/defendpoint GET "/dashboard/:uuid/dashcard/:dashcard-id/execute"
   "Fetches the values for filling in execution parameters. Pass PK parameters and values to select."
@@ -300,7 +326,7 @@
    parameters  ms/JSONString}
   (validation/check-public-sharing-enabled)
   (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid :archived false))
-  (actions.execution/fetch-values
+  (actions/fetch-values
    (api/check-404 (action/dashcard->action dashcard-id))
    (json/parse-string parameters)))
 
@@ -333,7 +359,7 @@
           ;; you're by definition allowed to run it without a perms check anyway
           (binding [api/*current-user-permissions-set* (delay #{"/"})]
             ;; Undo middleware string->keyword coercion
-            (actions.execution/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
+            (actions/execute-dashcard! dashboard-id dashcard-id (update-keys parameters name))))))))
 
 (api/defendpoint GET "/oembed"
   "oEmbed endpoint used to retreive embed code and metadata for a (public) Metabase URL."
@@ -572,7 +598,8 @@
    param-key ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key constraint-param-key->value))))
+      (binding [qp.perms/*param-values-query* true]
+        (api.dashboard/param-values dashboard param-key constraint-param-key->value)))))
 
 (api/defendpoint GET "/dashboard/:uuid/params/:param-key/search/:query"
   "Fetch filter values for dashboard parameter `param-key`, containing specified `query`."
@@ -582,7 +609,8 @@
    query     ms/NonBlankString}
   (let [dashboard (dashboard-with-uuid uuid)]
     (mw.session/as-admin
-     (api.dashboard/param-values dashboard param-key constraint-param-key->value query))))
+      (binding [qp.perms/*param-values-query* true]
+        (api.dashboard/param-values dashboard param-key constraint-param-key->value query)))))
 
 ;;; ----------------------------------------------------- Pivot Tables -----------------------------------------------
 
@@ -605,14 +633,16 @@
    dashcard-id ms/PositiveInt
    parameters  [:maybe ms/JSONString]}
   (validation/check-public-sharing-enabled)
+  (api/check-404 (t2/select-one-pk :model/Card :id card-id :archived false))
   (let [dashboard-id (api/check-404 (t2/select-one-pk Dashboard :public_uuid uuid, :archived false))]
-    (process-query-for-dashcard
-     :dashboard-id  dashboard-id
-     :card-id       card-id
-     :dashcard-id   dashcard-id
-     :export-format :api
-     :parameters    parameters
-     :qp            qp.pivot/run-pivot-query)))
+    (u/prog1 (process-query-for-dashcard
+              :dashboard-id  dashboard-id
+              :card-id       card-id
+              :dashcard-id   dashcard-id
+              :export-format :api
+              :parameters    parameters
+              :qp            qp.pivot/run-pivot-query)
+      (events/publish-event! :event/card-read {:object-id card-id, :user-id api/*current-user-id*, :context :dashboard}))))
 
 (def ^:private action-execution-throttle
   "Rate limit at 10 actions per 1000 ms on a per action basis.
@@ -653,7 +683,7 @@
                                                                                      :type      (:type action)
                                                                                      :action_id (:id action)})
             ;; Undo middleware string->keyword coercion
-            (actions.execution/execute-action! action (update-keys parameters name))))))))
+            (actions/execute-action! action (update-keys parameters name))))))))
 
 
 ;;; ----------------------------------------- Route Definitions & Complaints -----------------------------------------

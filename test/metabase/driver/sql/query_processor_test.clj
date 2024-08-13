@@ -1,7 +1,9 @@
 (ns metabase.driver.sql.query-processor-test
   (:require
+   [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [java-time.api :as t]
    [malli.core :as mc]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor :as sql.qp]
@@ -19,9 +21,12 @@
    [metabase.query-processor.util.add-alias-info :as add]
    [metabase.test :as mt]
    [metabase.test.data.env :as tx.env]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]))
 
 (comment metabase.driver.sql.query-processor.deprecated/keep-me)
+
+(set! *warn-on-reflection* true)
 
 (deftest ^:parallel compiled-test
   (is (= [:raw "x"]
@@ -274,6 +279,7 @@
       :type     :query
       :query    (merge
                  {:source-query {:native "select 'foo' as a union select null as a union select 'bar' as a"}
+                  :expressions  {"initial" [:regex-match-first [:field "A" {:base-type :type/Text}] "(\\w)"]}
                   :order-by     [[:asc [:field "A" {:base-type :type/Text}]]]}
                  query)})))
 
@@ -287,7 +293,9 @@
     (is (= [[nil] ["bar"]]
            (query-on-dataset-with-nils {:filter [:not [:contains [:field "A" {:base-type :type/Text}] "f"]]})))
     (is (= [[nil] ["bar"]]
-           (query-on-dataset-with-nils {:filter [:!= [:field "A" {:base-type :type/Text}] "foo"]}))))
+           (query-on-dataset-with-nils {:filter [:!= [:field "A" {:base-type :type/Text}] "foo"]})))
+    (is (= [[nil] ["bar"]]
+           (query-on-dataset-with-nils {:filter [:!= [:expression "initial" {:base-type :type/Text}] "f"]}))))
   (testing "Null behaviour correction fix should work with joined fields (#13534)"
     (is (= [[1000]]
            (mt/rows
@@ -373,22 +381,14 @@
                     source.LONGITUDE   AS LONGITUDE
                     source.PRICE       AS PRICE
                     source.double_id   AS double_id]
-           :from   [{:select [source.ID          AS ID
-                              source.NAME        AS NAME
-                              source.CATEGORY_ID AS CATEGORY_ID
-                              source.LATITUDE    AS LATITUDE
-                              source.LONGITUDE   AS LONGITUDE
-                              source.PRICE       AS PRICE
-                              source.double_id   AS double_id]
-                     :from   [{:select [VENUES.ID AS ID
-                                        VENUES.NAME AS NAME
-                                        VENUES.CATEGORY_ID AS CATEGORY_ID
-                                        VENUES.LATITUDE    AS LATITUDE
-                                        VENUES.LONGITUDE   AS LONGITUDE
-                                        VENUES.PRICE       AS PRICE
-                                        VENUES.ID * 2      AS double_id]
-                               :from   [VENUES]}
-                              AS source]}
+           :from   [{:select [VENUES.ID          AS ID
+                              VENUES.NAME        AS NAME
+                              VENUES.CATEGORY_ID AS CATEGORY_ID
+                              VENUES.LATITUDE    AS LATITUDE
+                              VENUES.LONGITUDE   AS LONGITUDE
+                              VENUES.PRICE       AS PRICE
+                              VENUES.ID * 2      AS double_id]
+                     :from   [VENUES]}
                     AS source]
            :limit  [1]}
          (-> (lib.tu.macros/mbql-query venues
@@ -479,42 +479,29 @@
                sql.qp-test-util/sql->sql-map)))))
 
 (def ^:private reference-aggregation-expressions-in-joins-test-expected-sql
-  '{:select [source.ID                           AS ID
-             source.NAME                         AS NAME
-             source.CATEGORY_ID                  AS CATEGORY_ID
-             source.LATITUDE                     AS LATITUDE
-             source.LONGITUDE                    AS LONGITUDE
-             source.PRICE                        AS PRICE
-             source.RelativePrice                AS RelativePrice
-             source.CategoriesStats__CATEGORY_ID AS CategoriesStats__CATEGORY_ID
-             source.CategoriesStats__MaxPrice    AS CategoriesStats__MaxPrice
-             source.CategoriesStats__AvgPrice    AS CategoriesStats__AvgPrice
-             source.CategoriesStats__MinPrice    AS CategoriesStats__MinPrice]
-    :from   [{:select    [VENUES.ID          AS ID
-                          VENUES.NAME        AS NAME
-                          VENUES.CATEGORY_ID AS CATEGORY_ID
-                          VENUES.LATITUDE    AS LATITUDE
-                          VENUES.LONGITUDE   AS LONGITUDE
-                          VENUES.PRICE       AS PRICE
-                          CAST (VENUES.PRICE AS float)
-                          /
-                          CASE WHEN CategoriesStats.AvgPrice = 0 THEN NULL
-                          ELSE CategoriesStats.AvgPrice END AS RelativePrice
-                          CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
-                          CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
-                          CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
-                          CategoriesStats.MinPrice    AS CategoriesStats__MinPrice]
-              :from      [VENUES]
-              :left-join [{:select   [VENUES.CATEGORY_ID AS CATEGORY_ID
-                                      MAX (VENUES.PRICE) AS MaxPrice
-                                      AVG (VENUES.PRICE) AS AvgPrice
-                                      MIN (VENUES.PRICE) AS MinPrice]
-                           :from     [VENUES]
-                           :group-by [VENUES.CATEGORY_ID]
-                           :order-by [VENUES.CATEGORY_ID ASC]} AS CategoriesStats
-                          ON VENUES.CATEGORY_ID = CategoriesStats.CATEGORY_ID]}
-             AS source]
-    :limit  [3]})
+  '{:select    [VENUES.ID          AS ID
+                VENUES.NAME        AS NAME
+                VENUES.CATEGORY_ID AS CATEGORY_ID
+                VENUES.LATITUDE    AS LATITUDE
+                VENUES.LONGITUDE   AS LONGITUDE
+                VENUES.PRICE       AS PRICE
+                CAST (VENUES.PRICE AS float)
+                /
+                NULLIF (CategoriesStats.AvgPrice, 0) AS RelativePrice
+                CategoriesStats.CATEGORY_ID AS CategoriesStats__CATEGORY_ID
+                CategoriesStats.MaxPrice    AS CategoriesStats__MaxPrice
+                CategoriesStats.AvgPrice    AS CategoriesStats__AvgPrice
+                CategoriesStats.MinPrice    AS CategoriesStats__MinPrice]
+    :from      [VENUES]
+    :left-join [{:select   [VENUES.CATEGORY_ID AS CATEGORY_ID
+                            MAX (VENUES.PRICE) AS MaxPrice
+                            AVG (VENUES.PRICE) AS AvgPrice
+                            MIN (VENUES.PRICE) AS MinPrice]
+                 :from     [VENUES]
+                 :group-by [VENUES.CATEGORY_ID]
+                 :order-by [VENUES.CATEGORY_ID ASC]} AS CategoriesStats
+                ON VENUES.CATEGORY_ID = CategoriesStats.CATEGORY_ID]
+    :limit     [3]})
 
 (deftest ^:parallel reference-aggregation-expressions-in-joins-test
   (testing "See if we can correctly compile a query that references expressions that come from a join"
@@ -588,12 +575,9 @@
                                    [:expression "test"]]
                      :limit       1})]
         (testing "Generated SQL"
-          (is (= '{:select [source.PRICE AS PRICE
-                            source.test  AS test]
-                   :from   [{:select [TIMESTAMPADD ("second" VENUES.PRICE timestamp "1970-01-01T00:00:00Z") AS PRICE
-                                      1 * 1 AS test]
-                             :from   [VENUES]}
-                            AS source]
+          (is (= '{:select [TIMESTAMPADD ("second" VENUES.PRICE timestamp "1970-01-01T00:00:00Z") AS PRICE
+                            1 * 1 AS test]
+                   :from   [VENUES]
                    :limit  [1]}
                  (-> query mbql->native sql.qp-test-util/sql->sql-map)))
           (testing "Results"
@@ -804,19 +788,12 @@
 
 (deftest ^:parallel floating-point-division-test
   (testing "Make sure FLOATING POINT division is done when dividing by expressions/fields"
-    (is (= '{:select   [source.my_cool_new_field AS my_cool_new_field]
-             :from     [{:select [VENUES.ID          AS ID
-                                  VENUES.PRICE       AS PRICE
-                                  VENUES.PRICE + 2   AS big_price
-                                  CAST
-                                  (VENUES.PRICE AS float)
-                                  /
-                                  CASE WHEN (VENUES.PRICE + 2) = 0 THEN NULL
-                                  ELSE VENUES.PRICE + 2
-                                  END AS my_cool_new_field]
-                         :from   [VENUES]}
-                        AS source]
-             :order-by [source.ID ASC]
+    (is (= '{:select   [CAST
+                        (VENUES.PRICE AS float)
+                        /
+                        NULLIF (VENUES.PRICE + 2, 0) AS my_cool_new_field]
+             :from     [VENUES]
+             :order-by [VENUES.ID ASC]
              :limit    [3]}
            (-> (lib.tu.macros/mbql-query venues
                  {:expressions {:big_price         [:+ $price 2]
@@ -829,10 +806,8 @@
 
 (deftest ^:parallel floating-point-division-test-2
   (testing "Don't generate unneeded casts to FLOAT for the numerator if it is a number literal"
-    (is (= '{:select [source.my_cool_new_field AS my_cool_new_field]
-             :from   [{:select [2.0 / 4.0 AS my_cool_new_field]
-                       :from   [VENUES]}
-                      AS source]
+    (is (= '{:select [2.0 / 4.0 AS my_cool_new_field]
+             :from   [VENUES]
              :limit  [1]}
            (-> (lib.tu.macros/mbql-query venues
                  {:expressions {:my_cool_new_field [:/ 2 4]}
@@ -900,30 +875,22 @@
                            Q1.CC           AS Q1__CC]
                :from      [{:select [source.CATEGORY AS CATEGORY
                                      source.count    AS count
-                                     source.CC       AS CC]
-                            :from   [{:select [source.CATEGORY AS CATEGORY
-                                               source.count    AS count
-                                               1 + 1           AS CC]
-                                      :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
-                                                           COUNT (*)         AS count]
-                                                :from     [PRODUCTS]
-                                                :group-by [PRODUCTS.CATEGORY]
-                                                :order-by [PRODUCTS.CATEGORY ASC]}
-                                               AS source]}
+                                     1 + 1           AS CC]
+                            :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
+                                                 COUNT (*)         AS count]
+                                      :from     [PRODUCTS]
+                                      :group-by [PRODUCTS.CATEGORY]
+                                      :order-by [PRODUCTS.CATEGORY ASC]}
                                      AS source]}
                            AS source]
                :left-join [{:select [source.CATEGORY AS CATEGORY
                                      source.count    AS count
-                                     source.CC       AS CC]
-                            :from   [{:select [source.CATEGORY AS CATEGORY
-                                               source.count    AS count
-                                               1 + 1           AS CC]
-                                      :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
-                                                           COUNT (*)         AS count]
-                                                :from     [PRODUCTS]
-                                                :group-by [PRODUCTS.CATEGORY]
-                                                :order-by [PRODUCTS.CATEGORY ASC]}
-                                               AS source]}
+                                     1 + 1           AS CC]
+                            :from   [{:select   [PRODUCTS.CATEGORY AS CATEGORY
+                                                 COUNT (*)         AS count]
+                                      :from     [PRODUCTS]
+                                      :group-by [PRODUCTS.CATEGORY]
+                                      :order-by [PRODUCTS.CATEGORY ASC]}
                                      AS source]}
                            AS Q1 ON source.CC = Q1.CC]
                :limit     [1]}
@@ -1007,7 +974,7 @@
 
 (deftest ^:parallel format-honeysql-test
   (are [honeysql expected] (= expected
-                              (sql.qp/format-honeysql nil :ansi honeysql))
+                              (sql.qp/format-honeysql :sql honeysql))
     {:select [:*], :from [:table]} ["SELECT * FROM \"table\""]
 
     (h2x/identifier :field "A" "B") ["\"A\".\"B\""]
@@ -1106,3 +1073,60 @@
       ; --c2\n
       -- c3"
       "(SELECT ';')")))
+
+(deftest ^:parallel string-inline-value-test
+  (testing `String
+    (let [honeysql {:select [[:%count.*]]
+                    :from   [[:venues]]
+                    :where  [:= :venues/name "Barney's Beanery"]}]
+      (binding [driver/*compile-with-inline-parameters* true]
+        (is (= ["SELECT COUNT(*) FROM \"venues\" WHERE \"venues\".\"name\" = 'Barney''s Beanery'"]
+               (sql.qp/format-honeysql :sql honeysql)))))))
+
+(deftest ^:parallel OffsetDateTime-inline-value-test
+  (let [honeysql {:select [[:*]]
+                  :from   [[:venues]]
+                  :where  [:= :venues/created_at (t/offset-date-time "2017-01-01T00:00:00.000Z")]}]
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"created_at\" = timestamp with time zone '2017-01-01 00:00:00.000 +00:00'"]
+             (sql.qp/format-honeysql :sql honeysql))))))
+
+(driver/register! ::inline-value-test, :parent :sql, :abstract? true)
+
+(defmethod sql.qp/inline-value [::inline-value-test java.time.OffsetDateTime]
+  [_driver t]
+  (format "from_iso8601_timestamp('%s')" (u.date/format t)))
+
+(deftest ^:parallel override-inline-value-test
+  (let [honeysql {:select [[:*]]
+                  :from   [[:venues]]
+                  :where  [:= :venues/created_at (t/offset-date-time "2017-01-01T00:00:00.000Z")]}]
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"created_at\" = from_iso8601_timestamp('2017-01-01T00:00:00Z')"]
+             (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(defmethod sql.qp/inline-value [::inline-value-test String]
+  [_driver ^String s]
+  (format "decode(unhex('%s'), 'utf-8')" (codecs/bytes->hex (.getBytes s "UTF-8"))))
+
+(deftest ^:parallel override-inline-value-test-2
+  (let [honeysql {:select [[:*]]
+                  :from   [[:venues]]
+                  :where  [:= :venues/name "ABC"]}]
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = decode(unhex('414243'), 'utf-8')"]
+             (sql.qp/format-honeysql ::inline-value-test honeysql))))))
+
+(deftype ^:private MyString [s])
+
+(defmethod sql.qp/inline-value [::inline-value-test MyString]
+  [_driver _s]
+  "[my-string]")
+
+(deftest ^:parallel override-inline-value-arbitrary-type-test
+  (let [honeysql {:select [[:*]]
+                  :from   [[:venues]]
+                  :where  [:= :venues/name (->MyString "ABC")]}]
+    (binding [driver/*compile-with-inline-parameters* true]
+      (is (= ["SELECT * FROM \"venues\" WHERE \"venues\".\"name\" = [my-string]"]
+             (sql.qp/format-honeysql ::inline-value-test honeysql))))))

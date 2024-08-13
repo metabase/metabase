@@ -7,6 +7,8 @@ import ButtonsS from "metabase/css/components/buttons.module.css";
 import CS from "metabase/css/core/index.css";
 import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/v1/parameters/constants";
 
+import DateRelativeWidgetStyle from "./DateRelativeWidget.module.css";
+
 type Shortcut = {
   name: string;
   operator: string | string[];
@@ -28,8 +30,12 @@ const SHORTCUTS: Shortcut[] = [
     operator: ["=", "<", ">"],
     values: [["relative-datetime", -1, "day"]],
   },
-  { name: t`Past 7 days`, operator: "time-interval", values: [-7, "day"] },
-  { name: t`Past 30 days`, operator: "time-interval", values: [-30, "day"] },
+  { name: t`Previous 7 days`, operator: "time-interval", values: [-7, "day"] },
+  {
+    name: t`Previous 30 days`,
+    operator: "time-interval",
+    values: [-30, "day"],
+  },
 ];
 
 const RELATIVE_SHORTCUTS: ShortcutMap = {
@@ -100,9 +106,12 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
                   ButtonsS.Button,
                   ButtonsS.ButtonNormal,
                   ButtonsS.ButtonMedium,
-                  CS.textNormal,
-                  CS.textCentered,
                   CS.full,
+                  DateRelativeWidgetStyle.shortcut,
+                  {
+                    [DateRelativeWidgetStyle.shortcutSelected]:
+                      this.isSelectedShortcut(s),
+                  },
                 )}
                 onClick={() => this.onSetShortcut(s)}
               >
@@ -113,49 +122,46 @@ export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDa
         </section>
         {Object.keys(RELATIVE_SHORTCUTS).map(sectionName => (
           <section key={sectionName}>
-            <div
+            <fieldset
               className={cx(
-                CS.borderBottom,
                 CS.textUppercase,
                 CS.flex,
                 CS.layoutCentered,
-                CS.mb2,
+                DateRelativeWidgetStyle.sectionLine,
               )}
             >
-              <h6
-                style={{
-                  top: "6px",
-                }}
-                className={cx(CS.px2, CS.bgWhite, CS.relative)}
-              >
+              <legend className={DateRelativeWidgetStyle.sectionLabel}>
                 {sectionName}
-              </h6>
-            </div>
+              </legend>
+            </fieldset>
             <div className={CS.flex}>
-              {RELATIVE_SHORTCUTS[sectionName].map((s, index) => (
+              {RELATIVE_SHORTCUTS[sectionName].map((shortcut, index) => (
                 <button
                   key={index}
-                  aria-selected={this.isSelectedShortcut(s)}
+                  aria-selected={this.isSelectedShortcut(shortcut)}
                   data-ui-tag={
                     "relative-date-shortcut-" +
                     sectionName.toLowerCase() +
                     "-" +
-                    s.name.toLowerCase()
+                    shortcut.name.toLowerCase()
                   }
                   className={cx(
                     ButtonsS.Button,
                     ButtonsS.ButtonNormal,
                     ButtonsS.ButtonMedium,
-                    CS.flexFull,
+                    CS.full,
                     CS.mb1,
+                    DateRelativeWidgetStyle.shortcut,
                     {
                       [CS.mr1]:
                         index !== RELATIVE_SHORTCUTS[sectionName].length - 1,
+                      [DateRelativeWidgetStyle.shortcutSelected]:
+                        this.isSelectedShortcut(shortcut),
                     },
                   )}
-                  onClick={() => this.onSetShortcut(s)}
+                  onClick={() => this.onSetShortcut(shortcut)}
                 >
-                  {s.name}
+                  {shortcut.name}
                 </button>
               ))}
             </div>

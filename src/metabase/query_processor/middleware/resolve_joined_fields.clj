@@ -24,7 +24,7 @@
     {:error/message "Should not have :condition"}
     (complement :condition)]])
 
-(mu/defn ^:private add-join-alias
+(mu/defn- add-join-alias
   [{:keys [table-id], field-id :id, :as field}
    {:keys [joins source-query]}   :- InnerQuery
    [_ id-or-name opts :as clause] :- mbql.s/field:id]
@@ -50,7 +50,7 @@
       (let [explicit-joins (remove :fk-field-id joins)]
         (if (= (count explicit-joins) 1)
           (recur field {:joins explicit-joins} clause)
-          (let [{:keys [_id name]} (lib.metadata/table (qp.store/metadata-provider) table-id)]
+          (let [{:keys [name]} (lib.metadata/table (qp.store/metadata-provider) table-id)]
             (throw (ex-info (tru "Cannot resolve joined field due to ambiguous joins: table {0} (ID {1}) joined multiple times. You need to specify an explicit `:join-alias` in the field reference."
                                  name field-id)
                             {:field      field
@@ -66,7 +66,7 @@
       (when source-query
         (recur source-query))))
 
-(mu/defn ^:private add-join-alias-to-fields-if-needed*
+(mu/defn- add-join-alias-to-fields-if-needed*
   "Wrap Field clauses in a form that has `:joins`."
   [{:keys [source-query joins], :as form} :- InnerQuery]
   ;; don't replace stuff in child `:join` or `:source-query` forms -- remove these from `form` when we call `replace`

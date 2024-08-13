@@ -120,11 +120,11 @@
      (catch #?(:clj Throwable :cljs :default) _
        nil))))
 
-(mu/defn ^:private column-join-alias :- [:maybe :string]
+(mu/defn- column-join-alias :- [:maybe :string]
   [column :- ::lib.schema.metadata/column]
   ((some-fn :metabase.lib.join/join-alias :source-alias) column))
 
-(mu/defn ^:private matching-join? :- :boolean
+(mu/defn- matching-join? :- :boolean
   [[_ref-kind {:keys [join-alias source-field]} _ref-id] :- ::lib.schema.ref/ref
    column                                                :- ::lib.schema.metadata/column]
   ;; If the ref has a source-field, and it matches the column's :fk-field-id then this is an implicitly joined field.
@@ -135,17 +135,21 @@
       ;; an own column.
       (clojure.core/= (column-join-alias column) join-alias)))
 
-(mu/defn ^:private plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
-  [[_ref-kind _opts ref-name :as a-ref] :- ::lib.schema.ref/ref
+(mu/defn- plausible-matches-for-name :- [:sequential ::lib.schema.metadata/column]
+  [[_ref-kind opts ref-name :as a-ref] :- ::lib.schema.ref/ref
    columns                              :- [:sequential ::lib.schema.metadata/column]]
   (or (not-empty (filter #(and (clojure.core/= (:lib/desired-column-alias %) ref-name)
                                (matching-join? a-ref %))
                          columns))
       (filter #(and (clojure.core/= (:name %) ref-name)
-                    (matching-join? a-ref %))
+                    ;; TODO: If the target ref has no join-alias, AND the source is fields or card, the join
+                    ;; alias on the column can be ignored. QP can set it when it shouldn't. See #33972.
+                    (or (and (not (:join-alias opts))
+                             (#{:source/fields :source/card} (:lib/source %)))
+                        (matching-join? a-ref %)))
               columns)))
 
-(mu/defn ^:private plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
+(mu/defn- plausible-matches-for-id :- [:sequential ::lib.schema.metadata/column]
   [[_ref-kind opts ref-id :as a-ref] :- ::lib.schema.ref/ref
    columns                           :- [:sequential ::lib.schema.metadata/column]
    generous?                         :- [:maybe :boolean]]
@@ -165,11 +169,11 @@
            {:ref a-ref
             :columns columns}))
 
-(mu/defn ^:private expression-column? [column]
+(mu/defn- expression-column? [column]
   (or (= (:lib/source column) :source/expressions)
       (:lib/expression-name column)))
 
-(mu/defn ^:private disambiguate-matches-dislike-field-refs-to-expressions :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches-dislike-field-refs-to-expressions :- [:maybe ::lib.schema.metadata/column]
   "If a custom column is a simple wrapper for a field, that column gets `:id`, `:table_id`, etc.
   A custom column should get a ref like `[:expression {} \"expr name\"]`, not `[:field {} 17]`.
   If we got a `:field` ref, prefer matches which are not `:lib/source :source/expressions`."
@@ -184,7 +188,7 @@
       #?(:cljs (js/console.warn (ambiguous-match-error a-ref columns))
          :clj  (log/warn (ambiguous-match-error a-ref columns)))))
 
-(mu/defn ^:private disambiguate-matches-find-match-with-same-temporal-bucket :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches-find-match-with-same-temporal-bucket :- [:maybe ::lib.schema.metadata/column]
   "If there are multiple matching columns and `a-ref` has a temporal bucket, check if only one column has that same
   unit."
   [a-ref   :- ::lib.schema.ref/ref
@@ -197,7 +201,7 @@
             (first matching-columns))))
       (disambiguate-matches-dislike-field-refs-to-expressions a-ref columns)))
 
-(mu/defn ^:private disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches-prefer-explicit :- [:maybe ::lib.schema.metadata/column]
   "Prefers table-default or explicitly joined columns over implicitly joinable ones."
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
@@ -207,7 +211,7 @@
       (disambiguate-matches-find-match-with-same-temporal-bucket a-ref no-implicit))
     nil))
 
-(mu/defn ^:private disambiguate-matches-no-alias :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches-no-alias :- [:maybe ::lib.schema.metadata/column]
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   ;; a-ref without :join-alias - if exactly one column has no :source-alias, that's the match.
@@ -225,7 +229,7 @@
     ;; written. If this case causes issues, that logic may need rewriting.
     nil))
 
-(mu/defn ^:private disambiguate-matches :- [:maybe ::lib.schema.metadata/column]
+(mu/defn- disambiguate-matches :- [:maybe ::lib.schema.metadata/column]
   [a-ref   :- ::lib.schema.ref/ref
    columns :- [:sequential ::lib.schema.metadata/column]]
   (let [{:keys [join-alias]} (lib.options/options a-ref)]

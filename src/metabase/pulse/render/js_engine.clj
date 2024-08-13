@@ -7,12 +7,21 @@
 
   Javadocs: https://www.graalvm.org/truffle/javadoc/overview-summary.html"
   (:require
+   [clojure.core.memoize :as memoize]
    [clojure.java.io :as io]
    [metabase.util.i18n :refer [trs]])
   (:import
    (org.graalvm.polyglot Context HostAccess Source Value)))
 
 (set! *warn-on-reflection* true)
+
+(defn threadlocal-fifo-memoizer
+  "Returns a memoizer that is unique to each thread."
+  [thunk threshold]
+  (memoize/fifo
+   (with-meta thunk {::memoize/args-fn (fn [_]
+                                        [(.getId (Thread/currentThread))])})
+   :fifo/threshold threshold))
 
 (defn context
   "Create a new org.graalvm.polyglot.Context suitable to evaluate javascript"
@@ -46,10 +55,16 @@
 (defn execute-fn-name
   "Executes `js-fn-name` in js context with args"
   ^Value [^Context context js-fn-name & args]
-  (let [fn-ref (.eval context "js" js-fn-name)
-        args   (into-array Object args)]
-    (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
-    (.execute fn-ref args)))
+  ;; TODO: locking context is not ideal, but contexts are currently being shared with all threads and GraalVM doesn't
+  ;; support concurrent execution for js.
+  ;; There is a couple of idea we can try:
+  ;; - put a thread pool around context initialization
+  ;; - init a new context for each thread
+  (locking context
+    (let [fn-ref (.eval context "js" js-fn-name)
+          args   (into-array Object args)]
+      (assert (.canExecute fn-ref) (str "cannot execute " js-fn-name))
+      (.execute fn-ref args))))
 
 (defn execute-fn
   "fn-ref should be an executable org.graalvm.polyglot.Value return from a js engine. Invoke this function with args."

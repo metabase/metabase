@@ -17,6 +17,9 @@ import {
   queryBuilderHeader,
   openNotebook,
   selectFilterOperator,
+  entityPickerModal,
+  collectionOnTheGoModal,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 describe("scenarios > question > saved", () => {
@@ -40,7 +43,7 @@ describe("scenarios > question > saved", () => {
       cy.findByText("Save").click();
     });
     cy.wait("@cardCreate");
-    modal().button("Not now").click();
+    cy.button("Not now").click();
 
     // Add a filter in order to be able to save question again
     cy.findAllByTestId("action-buttons").last().findByText("Filter").click();
@@ -78,8 +81,7 @@ describe("scenarios > question > saved", () => {
     cy.findAllByText("Orders"); // question and table name appears
 
     // filter to only orders with quantity=100
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Quantity").click();
+    tableHeaderClick("Quantity");
     popover().findByText("Filter by this column").click();
     selectFilterOperator("Equal to");
     popover().within(() => {
@@ -128,9 +130,7 @@ describe("scenarios > question > saved", () => {
       cy.wait("@cardCreate");
     });
 
-    modal().within(() => {
-      cy.findByText("Not now").click();
-    });
+    cy.button("Not now").click();
 
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
@@ -149,25 +149,30 @@ describe("scenarios > question > saved", () => {
 
     modal().within(() => {
       cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("select-button").click();
+      cy.findByTestId("collection-picker-button").click();
     });
-    popover().findByText("New collection").click();
+
+    entityPickerModal().findByText("Create a new collection").click();
 
     const NEW_COLLECTION = "Foo";
-    cy.findByTestId("new-collection-modal").then(modal => {
-      cy.findByPlaceholderText("My new fantastic collection").type(
+    collectionOnTheGoModal().then(() => {
+      cy.findByPlaceholderText("My new collection").type(NEW_COLLECTION);
+      cy.findByText("Create").click();
+    });
+
+    entityPickerModal().findByText("Select").click();
+
+    modal().within(() => {
+      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
+      cy.findByTestId("collection-picker-button").should(
+        "have.text",
         NEW_COLLECTION,
       );
-      cy.findByText("Create").click();
-      cy.findByLabelText("Name").should("have.value", "Orders - Duplicate");
-      cy.findByTestId("select-button").should("have.text", NEW_COLLECTION);
       cy.findByText("Duplicate").click();
       cy.wait("@cardCreate");
     });
 
-    modal().within(() => {
-      cy.findByText("Not now").click();
-    });
+    cy.button("Not now").click();
 
     cy.findByTestId("qb-header-left-side").within(() => {
       cy.findByDisplayValue("Orders - Duplicate");
@@ -240,40 +245,44 @@ describe("scenarios > question > saved", () => {
     });
   });
 
-  it("'read-only' user should be able to resize column width (metabase#9772)", () => {
-    cy.signIn("readonly");
-    visitQuestion(ORDERS_QUESTION_ID);
+  it(
+    "'read-only' user should be able to resize column width (metabase#9772)",
+    { tags: "@flaky" },
+    () => {
+      cy.signIn("readonly");
+      visitQuestion(ORDERS_QUESTION_ID);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax")
-      .closest(".TableInteractive-headerCellData")
-      .as("headerCell")
-      .then($cell => {
-        const originalWidth = $cell[0].getBoundingClientRect().width;
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Tax")
+        .closest(".test-TableInteractive-headerCellData")
+        .as("headerCell")
+        .then($cell => {
+          const originalWidth = $cell[0].getBoundingClientRect().width;
 
-        // Retries the assertion a few times to ensure it waits for DOM changes
-        // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
-        function assertColumnResized(attempt = 0) {
-          cy.get("@headerCell").then($newCell => {
-            const newWidth = $newCell[0].getBoundingClientRect().width;
-            if (newWidth === originalWidth && attempt < 3) {
-              cy.wait(100);
-              assertColumnResized(++attempt);
-            } else {
-              expect(newWidth).to.be.gt(originalWidth);
-            }
-          });
-        }
+          // Retries the assertion a few times to ensure it waits for DOM changes
+          // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
+          function assertColumnResized(attempt = 0) {
+            cy.get("@headerCell").then($newCell => {
+              const newWidth = $newCell[0].getBoundingClientRect().width;
+              if (newWidth === originalWidth && attempt < 3) {
+                cy.wait(100);
+                assertColumnResized(++attempt);
+              } else {
+                expect(newWidth).to.be.gt(originalWidth);
+              }
+            });
+          }
 
-        cy.wrap($cell)
-          .find(".react-draggable")
-          .trigger("mousedown", 0, 0, { force: true })
-          .trigger("mousemove", 100, 0, { force: true })
-          .trigger("mouseup", 100, 0, { force: true });
+          cy.wrap($cell)
+            .find(".react-draggable")
+            .trigger("mousedown", 0, 0, { force: true })
+            .trigger("mousemove", 100, 0, { force: true })
+            .trigger("mouseup", 100, 0, { force: true });
 
-        assertColumnResized();
-      });
-  });
+          assertColumnResized();
+        });
+    },
+  );
 
   it("should always be possible to view the full title text of the saved question", () => {
     visitQuestion(ORDERS_QUESTION_ID);

@@ -5,6 +5,7 @@ import { push } from "react-router-redux";
 
 import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Segments from "metabase/entities/segments";
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
 
 import SegmentForm from "../components/SegmentForm";
@@ -71,22 +72,30 @@ const CreateSegmentForm = ({
 }) => {
   const [isDirty, setIsDirty] = useState(false);
 
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [, scheduleCallback] = useCallbackEffect();
+
   const handleSubmit = useCallback(
-    async segment => {
+    segment => {
       setIsDirty(false);
 
-      try {
-        await createSegment({
-          ...segment,
-          table_id: segment.definition["source-table"],
-        });
-        MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
-        onChangeLocation("/admin/datamodel/segments");
-      } catch (error) {
-        setIsDirty(isDirty);
-      }
+      scheduleCallback(async () => {
+        try {
+          await createSegment({
+            ...segment,
+            table_id: segment.definition["source-table"],
+          });
+          MetabaseAnalytics.trackStructEvent("Data Model", "Segment Updated");
+          onChangeLocation("/admin/datamodel/segments");
+        } catch (error) {
+          setIsDirty(isDirty);
+        }
+      });
     },
-    [createSegment, isDirty, onChangeLocation],
+    [scheduleCallback, createSegment, isDirty, onChangeLocation],
   );
 
   return (

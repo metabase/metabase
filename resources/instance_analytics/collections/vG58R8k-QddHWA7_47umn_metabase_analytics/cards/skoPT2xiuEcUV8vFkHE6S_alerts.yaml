@@ -7,9 +7,8 @@ display: table
 archived: false
 collection_id: vG58R8k-QddHWA7_47umn
 collection_preview: true
-collection_position: 15
+collection_position: 16
 query_type: query
-dataset: true
 cache_ttl: null
 database_id: Internal Metabase Database
 table_id:
@@ -372,5 +371,6 @@ serdes/meta:
   label: alerts
   model: Card
 initially_published_at: null
+last_used_at: '2024-05-16T21:01:38.038034Z'
 metabase_version: vUNKNOWN (13e6090)
 type: model

@@ -6,7 +6,7 @@ import _ from "underscore";
 import * as Yup from "yup";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker/FormCollectionPicker";
-import type { FilterItemsInPersonalCollection } from "metabase/containers/ItemPicker";
+import type { FilterItemsInPersonalCollection } from "metabase/common/components/EntityPicker";
 import Button from "metabase/core/components/Button";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormFooter from "metabase/core/components/FormFooter";
@@ -20,12 +20,17 @@ import * as Errors from "metabase/lib/errors";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
+import { DASHBOARD_DESCRIPTION_MAX_LENGTH } from "../constants";
+
 const DASHBOARD_SCHEMA = Yup.object({
   name: Yup.string()
     .required(Errors.required)
     .max(100, Errors.maxLength)
     .default(""),
-  description: Yup.string().nullable().max(255, Errors.maxLength).default(null),
+  description: Yup.string()
+    .nullable()
+    .max(DASHBOARD_DESCRIPTION_MAX_LENGTH, Errors.maxLength)
+    .default(null),
   collection_id: Yup.number().nullable(),
 });
 

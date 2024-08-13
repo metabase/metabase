@@ -1,4 +1,4 @@
-import type { DataTypeInfoItem } from "metabase/containers/DataPicker";
+import type { DataTypeInfoItem } from "../types";
 
 import {
   DataBucketListItemContainer as ItemContainer,

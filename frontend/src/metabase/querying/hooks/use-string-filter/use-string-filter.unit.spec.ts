@@ -198,11 +198,11 @@ describe("useStringFilter", () => {
     },
     {
       operator: "starts-with",
-      values: [""],
+      values: [],
     },
     {
       operator: "ends-with",
-      values: [""],
+      values: [],
     },
   ])(
     'should validate values for "$operator" operator',

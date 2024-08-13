@@ -230,3 +230,12 @@
              (map #(lib/display-name query %) (lib/returned-columns query))))
       (is (= ["ID is 1"]
              (map #(lib/display-name query %) (lib/filters query)))))))
+
+(deftest ^:parallel card-display-info-test
+  (testing "Cards with joins should return correct column metadata/refs (#31769)"
+    (let [query (lib.tu.mocks-31769/query)
+          card  (lib.metadata/card query 1)]
+      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1"}
+             (lib/display-info query card)))
+      (is (= {:name "Card 1", :display-name "Card 1", :long-display-name "Card 1", :metric? true}
+             (lib/display-info query (assoc card :type :metric)))))))

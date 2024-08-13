@@ -12,6 +12,7 @@
    [metabase.lib.schema.binning :as lib.schema.binning]
    [metabase.lib.schema.common :as lib.schema.common]
    [metabase.lib.schema.expression.temporal :as lib.schema.expression.temporal]
+   [metabase.lib.schema.expression.window :as lib.schema.expression.window]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.schema.info :as lib.schema.info]
    [metabase.lib.schema.literal :as lib.schema.literal]
@@ -373,6 +374,10 @@
   "Schema for any type of valid Field clause, or for an indexed reference to an aggregation clause."
   [:ref ::Reference])
 
+(defclause ^{:added "0.50.0"} offset
+  opts [:ref ::lib.schema.common/options]
+  expr [:or [:ref ::FieldOrExpressionDef] [:ref ::UnnamedAggregation]]
+  n    ::lib.schema.expression.window/offset.n)
 
 ;;; -------------------------------------------------- Expressions ---------------------------------------------------
 
@@ -380,7 +385,8 @@
 
 (def string-functions
   "Functions that return string values. Should match [[StringExpression]]."
-  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case})
+  #{:substring :trim :rtrim :ltrim :upper :lower :replace :concat :regex-match-first :coalesce :case
+    :host :domain :subdomain :month-name :quarter-name :day-name})
 
 (def ^:private StringExpression
   "Schema for the definition of an string expression."
@@ -416,7 +422,7 @@
 
 (def ^:private aggregations
   #{:sum :avg :stddev :var :median :percentile :min :max :cum-count :cum-sum :count-where :sum-where :share :distinct
-    :metric :aggregation-options :count})
+    :metric :aggregation-options :count :offset})
 
 (def ^:private datetime-functions
   "Functions that return Date or DateTime values. Should match [[DatetimeExpression]]."
@@ -556,6 +562,24 @@
 
 (defclause ^{:requires-features #{:expressions :regex}} regex-match-first
   s StringExpressionArg, pattern :string)
+
+(defclause ^{:requires-features #{:expressions :regex}} host
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions :regex}} domain
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions :regex}} subdomain
+  s StringExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} month-name
+  n NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} quarter-name
+  n NumericExpressionArg)
+
+(defclause ^{:requires-features #{:expressions}} day-name
+  n NumericExpressionArg)
 
 (defclause ^{:requires-features #{:expressions}} +
   x Addable, y Addable, more (rest Addable))
@@ -774,13 +798,38 @@
    ;; default true
    [:case-sensitive {:optional true} :boolean]])
 
-(defclause starts-with, field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
-(defclause ends-with,   field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
-(defclause contains,    field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(doseq [clause-keyword [::starts-with ::ends-with ::contains ::does-not-contain]]
+  (mr/def clause-keyword
+    [:or
+     ;; Binary form
+     (helpers/clause (keyword (name clause-keyword))
+                     "field" StringExpressionArg
+                     "string-or-field" StringExpressionArg
+                     "options" [:optional StringFilterOptions])
+     ;; Multi-arg form
+     (helpers/clause (keyword (name clause-keyword))
+                     "options" StringFilterOptions
+                     "field" StringExpressionArg
+                     "string-or-field" StringExpressionArg
+                     "second-string-or-field" StringExpressionArg
+                     "more-strings-or-fields" [:rest StringExpressionArg])]))
+
+(def ^{:clause-name :starts-with} starts-with
+  "Schema for a valid :starts-with clause."
+  [:ref ::starts-with])
+(def ^{:clause-name :ends-with} ends-with
+  "Schema for a valid :ends-with clause."
+  [:ref ::ends-with])
+(def ^{:clause-name :contains} contains
+  "Schema for a valid :contains clause."
+  [:ref ::contains])
 
 ;; SUGAR: this is rewritten as [:not [:contains ...]]
-(defclause ^:sugar does-not-contain
-  field StringExpressionArg, string-or-field StringExpressionArg, options (optional StringFilterOptions))
+(def ^{:sugar       true
+       :clause-name :does-not-contain}
+  does-not-contain
+  "Schema for a valid :does-not-contain clause."
+  [:ref ::does-not-contain])
 
 (def ^:private TimeIntervalOptions
   ;; Should we include partial results for the current day/month/etc? Defaults to `false`; set this to `true` to
@@ -808,6 +857,13 @@
            [:enum :current :last :next]]
   unit    [:ref ::RelativeDatetimeUnit]
   options (optional TimeIntervalOptions))
+
+(defclause ^:sugar relative-time-interval
+  col           Field
+  value         :int
+  bucket        [:ref ::RelativeDatetimeUnit]
+  offset-value  :int
+  offset-bucket [:ref ::RelativeDatetimeUnit])
 
 ;; A segment is a special `macro` that saves some pre-definied filter clause, e.g. [:segment 1]
 ;; this gets replaced by a normal Filter clause in MBQL macroexpansion
@@ -841,7 +897,7 @@
               ;; filters drivers must implement
               and or not = != < > <= >= between starts-with ends-with contains
               ;; SUGAR filters drivers do not need to implement
-              does-not-contain inside is-empty not-empty is-null not-null time-interval segment)]])
+              does-not-contain inside is-empty not-empty is-null not-null relative-time-interval time-interval segment)]])
 
 (def ^:private CaseClause
   [:tuple {:error/message ":case subclause"} Filter ExpressionArg])
@@ -863,7 +919,8 @@
           get-hour get-minute get-second))
 
 (mr/def ::StringExpression
-  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case))
+  (one-of substring trim ltrim rtrim replace lower upper concat regex-match-first coalesce case host domain subdomain
+          month-name quarter-name day-name))
 
 (mr/def ::FieldOrExpressionDef
   "Schema for anything that is accepted as a top-level expression definition, either an arithmetic expression such as a
@@ -878,12 +935,14 @@
                        (is-clause? boolean-functions x)  :boolean
                        (is-clause? datetime-functions x) :datetime
                        (is-clause? :case x)              :case
+                       (is-clause? :offset x)            :offset
                        :else                             :else))}
    [:numeric  NumericExpression]
    [:string   StringExpression]
    [:boolean  BooleanExpression]
    [:datetime DatetimeExpression]
    [:case     case]
+   [:offset   offset]
    [:else     Field]])
 
 ;;; -------------------------------------------------- Aggregations --------------------------------------------------
@@ -934,14 +993,8 @@
 
 ;; Metrics are just 'macros' (placeholders for other aggregations with optional filter and breakout clauses) that get
 ;; expanded to other aggregations/etc. in the expand-macros middleware
-;;
-;; METRICS WITH STRING IDS, e.g. `[:metric "ga:sessions"]`, are Google Analytics metrics, not Metabase metrics! They
-;; pass straight thru to the GA query processor.
-(def ^:private MetricID
-  [:ref ::lib.schema.id/legacy-metric])
-
 (defclause metric
-  metric-id [:or MetricID ::lib.schema.common/non-blank-string])
+  metric-id ::lib.schema.id/metric)
 
 ;; the following are definitions for expression aggregations, e.g.
 ;;
@@ -956,9 +1009,7 @@
                        :else))}
    [:numeric-expression NumericExpression]
    [:else (one-of avg cum-sum distinct stddev sum min max metric share count-where
-                  sum-where case median percentile ag:var
-                  ;; SUGAR clauses
-                  cum-count count)]])
+                  sum-where case median percentile ag:var cum-count count offset)]])
 
 (def ^:private UnnamedAggregation
   ::UnnamedAggregation)

@@ -17,7 +17,6 @@ import {
 import { Container, Interval, ToggleButton } from "./DatePickerFooter.styled";
 
 type Props = {
-  primaryColor?: string;
   hideTimeSelectors?: boolean;
 
   filter: Filter;
@@ -35,9 +34,8 @@ const getIntervalString = (filter: Filter) => {
   return start.format(formatString) + " - " + end.format(formatString);
 };
 
-const DatePickerFooter: React.FC<Props> = ({
+const DatePickerFooter: React.FC<React.PropsWithChildren<Props>> = ({
   filter,
-  primaryColor,
   onFilterChange,
   hideTimeSelectors,
   children,
@@ -87,11 +85,7 @@ const DatePickerFooter: React.FC<Props> = ({
     !isStartingFrom(filter)
   ) {
     content = (
-      <ToggleButton
-        primaryColor={primaryColor}
-        onClick={enableTimeSelectors}
-        icon="clock"
-      >
+      <ToggleButton onClick={enableTimeSelectors} icon="clock">
         {t`Add a time`}
       </ToggleButton>
     );

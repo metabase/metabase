@@ -29,9 +29,8 @@
                                         [:pg.id :group-id]
                                         [:api_key.id :api-key-id]]
                                :from   [[:permissions_group :pg]]
-                               :join   [[:permissions_group_membership :pgm]
-                                      [:= :pgm.group_id :pg.id]
-                                      :api_key [:= :api_key.user_id :pgm.user_id]]
+                               :join   [[:permissions_group_membership :pgm] [:= :pgm.group_id :pg.id]
+                                        :api_key [:= :api_key.user_id :pgm.user_id]]
                                :where  [:in :api_key.id (map u/the-id api-keys)]}))
           api-key-id->group
           (fn [api-key-id]
@@ -46,6 +45,9 @@
 (doto :model/ApiKey
   (derive :metabase/model)
   (derive :hook/timestamped?))
+
+(t2/deftransforms :model/ApiKey
+  {:scope mi/transform-keyword})
 
 (defn prefix
   "Given an API key, returns the standardized prefix for that API key."

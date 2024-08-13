@@ -21,9 +21,9 @@ After filling out the authentication form with your identity provider, you're ta
 **Steps to take**:
 
 1. You should have received an XML file of metadata from your identity provider. Open that metadata file, and look for the correct issuer or entity ID. This ID is a unique identifier for the identity provider. Depending on your provider, the issuer or entity ID usually looks something like this:
-    ```
-    http://www.example.com/141xkex604w0Q5PN724v
-    ```
+   ```
+   http://www.example.com/141xkex604w0Q5PN724v
+   ```
 2. Copy the issuer or entity ID from the XML file.
 3. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Enter the issuer or entity ID into the **SAML Identity Provider Issuer** field.
 
@@ -37,13 +37,13 @@ After filling out the authentication form with your identity provider, you go ba
 
 1. Go to Metabase and select **Admin settings** > **Settings** > **Authentication** > **SAML**. Check that the certificate that you entered into the **SAML Identity Provider Certificate** field matches the certificate in the XML file you got from your identity provider.
 
-    - Depending on your provider, you might need to download the XML file, open it in a text editor, then copy and paste the certificate's contents into the **SAML Identity Provider Certificate** field in Metabase.
+   - Depending on your provider, you might need to download the XML file, open it in a text editor, then copy and paste the certificate's contents into the **SAML Identity Provider Certificate** field in Metabase.
 
-    - Note that your certificate text may include header and footer comments that look like `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----`. These comments should be included when pasting your certificate text into Metabase.
+   - Note that your certificate text may include header and footer comments that look like `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----`. These comments should be included when pasting your certificate text into Metabase.
 
 ## Is the SSO URL correct?
 
-Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider’s website has `/auth/sso/` appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso/`.
+Verify that the Single Sign On URL (or equivalent) that you enter on your SAML provider’s website has `/auth/sso` appended to it. For instance, if you want your users to end up at `https://metabase.mycompany.com`, the full URL should be `https://metabase.mycompany.com/auth/sso`.
 
 ## Searching for private key and found a null
 

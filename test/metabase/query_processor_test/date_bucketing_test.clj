@@ -23,6 +23,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.driver.util :as driver.u]
    [metabase.lib.convert :as lib.convert]
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
@@ -65,7 +66,7 @@
 (deftest sanity-check-test
   ;; TIMEZONE FIXME — currently broken for Snowflake. UNIX timestamps are interpreted as being in the report timezone
   ;; rather than UTC.
-  (mt/test-drivers (disj (mt/normal-drivers) :snowflake :redshift)
+  (mt/test-drivers (disj (mt/normal-drivers) :redshift)
     (testing "\nRegardless of report timezone, UNIX timestamps should always be interpreted a being in UTC."
       (let [utc-results [[1 "2015-06-06T10:40:00Z" 4]
                          [2 "2015-06-10T19:51:00Z" 0]
@@ -81,7 +82,7 @@
                                       [id (u.date/format-sql (t/local-date-time (u.date/parse s))) cnt])
 
                                     (or (= timezone :utc)
-                                        (not (driver/database-supports? driver/*driver* :set-timezone (mt/db))))
+                                        (not (driver.u/supports? driver/*driver* :set-timezone (mt/db))))
                                     utc-results
 
                                     :else
@@ -882,10 +883,10 @@
                 :breakout    [!year.date]}))))))
 
 ;; RELATIVE DATES
-(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds]
+(p.types/deftype+ ^:private TimestampDatasetDef [intervalSeconds intervalCount]
   pretty/PrettyPrintable
   (pretty [_]
-    (list 'TimestampDatasetDef. intervalSeconds)))
+    (list 'TimestampDatasetDef. intervalSeconds intervalCount)))
 
 (defn- driver->current-datetime-base-type
   "Returns the :base-type of the \"current timestamp\" HoneySQL form defined by the driver `d`. Relies upon the driver
@@ -898,9 +899,10 @@
 
 (defmethod mt/get-dataset-definition TimestampDatasetDef
   [^TimestampDatasetDef this]
-  (let [interval-seconds (.intervalSeconds this)]
+  (let [interval-seconds (.intervalSeconds this)
+        intervalCount    (.intervalCount this)]
     (mt/dataset-definition
-     (str "interval_" interval-seconds)
+     (str "interval_" interval-seconds (when-not (= 30 intervalCount) (str "_" intervalCount)))
      ["checkins"
       [{:field-name "timestamp"
         :base-type  (or (driver->current-datetime-base-type driver/*driver*) :type/DateTime)}]
@@ -922,11 +924,17 @@
                                                               (* i interval-seconds)
                                                               :second))
                           (u.date/add :second (* i interval-seconds)))
-                 (assert <>))])
-            (range -15 15))])))
+                        (assert <>))])
+            (let [shift (quot intervalCount 2)
+                  lower-bound (- shift)
+                  upper-bound (- intervalCount shift)]
+              (range lower-bound upper-bound)))])))
 
-(defn- dataset-def-with-timestamps [interval-seconds]
-  (TimestampDatasetDef. interval-seconds))
+(defn- dataset-def-with-timestamps
+  ([interval-seconds]
+   (dataset-def-with-timestamps interval-seconds 30))
+  ([interval-seconds interval-count]
+   (TimestampDatasetDef. interval-seconds interval-count)))
 
 (def ^:private checkins:4-per-minute
   "Dynamically generated dataset with 30 checkins spaced 15 seconds apart, from 3 mins 45 seconds ago to 3 minutes 30
@@ -941,6 +949,10 @@
 (def ^:private checkins:1-per-day
   "Dynamically generated dataset with 30 checkins spaced 24 hours apart, from 15 days ago to 14 days in the future."
   (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60))))
+
+(def ^:private checkins:1-per-day:60
+  "Dynamically generated dataset with 60 checkins spaced 24 hours apart, from 30 days ago to 29 days in the future."
+  (dataset-def-with-timestamps (* 24 (u/minutes->seconds 60)) 60))
 
 (defn- checkins-db-is-old?
   "Determine whether we need to recreate one of the dynamically-generated datasets above, if the data has grown a little
@@ -979,7 +991,7 @@
 ;; when it takes so long to load the data that the times are no longer current (these tests pass locally if your
 ;; machine isn't as slow as the CircleCI ones)
 (deftest ^:parallel count-of-grouping-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (testing "4 checkins per minute dataset"
       (testing "group by minute"
         (doseq [args [[:current] [-1 :minute] [1 :minute]]]
@@ -988,7 +1000,7 @@
               (format "filter by minute = %s" (into [:relative-datetime] args))))))))
 
 (deftest ^:parallel count-of-grouping-test-2
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (testing "4 checkins per hour dataset"
       (testing "group by hour"
         (doseq [args [[:current] [-1 :hour] [1 :hour]]]
@@ -997,7 +1009,7 @@
               (format "filter by hour = %s" (into [:relative-datetime] args))))))))
 
 (deftest ^:parallel count-of-grouping-test-3
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (testing "1 checkin per day dataset"
       (testing "group by day"
         (doseq [args [[:current] [-1 :day] [1 :day]]]
@@ -1006,7 +1018,7 @@
               (format "filter by day = %s" (into [:relative-datetime] args))))))))
 
 (deftest ^:parallel count-of-grouping-test-4
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (testing "1 checkin per day dataset"
       (testing "group by week"
         (is (= 7
@@ -1014,7 +1026,7 @@
             "filter by week = [:relative-datetime :current]")))))
 
 (deftest ^:parallel time-interval-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
         (is (= 1
@@ -1025,7 +1037,7 @@
                      :filter      [:time-interval $timestamp :current :day]})))))))))
 
 (deftest ^:parallel time-interval-test-2
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (testing "Syntactic sugar (`:time-interval` clause)"
       (mt/dataset checkins:1-per-day
         (is (= 7
@@ -1036,7 +1048,7 @@
                      :filter      [:time-interval $timestamp :last :week]})))))))))
 
 (deftest ^:parallel time-interval-expression-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (mt/dataset checkins:1-per-day
       (let [metadata-provider (lib.metadata.jvm/application-database-metadata-provider (mt/id))
             orders (lib.metadata/table metadata-provider (mt/id :checkins))
@@ -1050,6 +1062,28 @@
                                                 :current :week))))]
         (is (= 7
                (count (mt/rows (qp/process-query query)))))))))
+
+(deftest ^:parallel relative-time-interval-test
+  (mt/test-drivers
+   (disj (mt/normal-drivers-with-feature :date-arithmetics) :athena)
+   ;; Following verifies #45942 is solved. Changing the offset ensures that intervals do not overlap.
+   (testing "Syntactic sugar (`:relative-time-interval` clause) (#45942)"
+     (mt/dataset checkins:1-per-day:60
+      (is (= 7
+             (ffirst
+              (mt/formatted-rows
+               [int]
+               (mt/run-mbql-query
+                checkins
+                {:aggregation [[:count]]
+                 :filter      [:relative-time-interval $timestamp -1 :week -1 :week]})))
+             (ffirst
+              (mt/formatted-rows
+               [int]
+               (mt/run-mbql-query
+                checkins
+                {:aggregation [[:count]]
+                 :filter      [:relative-time-interval $timestamp -1 :week 0 :week]})))))))))
 
 ;; Make sure that when referencing the same field multiple times with different units we return the one that actually
 ;; reflects the units the results are in. eg when we breakout by one unit and filter by another, make sure the results
@@ -1066,7 +1100,7 @@
      :unit (-> results :data :cols first :unit)}))
 
 (deftest ^:parallel date-bucketing-when-you-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (is (= {:rows 1, :unit :day}
            (date-bucketing-unit-when-you :breakout-by "day", :filter-by "day")))
     (is (= {:rows 7, :unit :day}
@@ -1094,7 +1128,7 @@
 ;; We should get count = 1 for the current day, as opposed to count = 0 if we weren't auto-bucketing
 ;; (e.g. 2018-11-19T00:00 != 2018-11-19T12:37 or whatever time the checkin is at)
 (deftest ^:parallel default-bucketing-test
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (mt/dataset checkins:1-per-day
       (is (= [[1]]
              (mt/formatted-rows [int]
@@ -1126,7 +1160,7 @@
                                   [:= [:field $id nil] 6]]}))))))))
 
 (deftest ^:parallel default-bucketing-test-4
-  (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+  (mt/test-drivers (mt/normal-drivers-except #{:athena})
     (testing "if datetime string is not yyyy-MM-dd no date bucketing should take place, and thus we should get no (exact) matches"
       (mt/dataset checkins:1-per-day
         (is (=
@@ -1304,6 +1338,34 @@
                    (mt/first-row
                      (qp/process-query query))))))))))
 
+(deftest temporal-unit-parameters-test
+  (mt/dataset test-data
+    (let [query-months (mt/query orders
+                         {:type       :query
+                          :query      {:source-table $$orders
+                                       :aggregation  [[:sum $subtotal]]
+                                       :breakout     [!month.created_at]
+                                       :filter       [:between $created_at "2018-01-01T00:00:00Z" "2018-12-31T23:59:59Z"]}
+                          ;; The value for this parameter gets overridden below.
+                          :parameters [{:type   :temporal-unit
+                                        :target [:dimension !month.created_at]
+                                        :value  "month"}]})
+          unit-totals (fn [unit]
+                        (->> (qp/process-query (assoc-in query-months [:parameters 0 :value] unit))
+                             (mt/formatted-rows [identity 2.0])
+                             (map second)))]
+      (testing "monthly"
+        (is (= [37019.52 32923.82 36592.60 35548.11 43556.61 39537.82
+                42292.10 42443.71 42077.35 45708.74 44498.55 46245.48]
+               (unit-totals "month"))))
+
+      (testing "quarterly"
+        (is (= [106535.94 118642.54 126813.16 136452.77]
+               (unit-totals "quarter"))))
+
+      (testing "annual"
+        (is (= [488444.41] (unit-totals "year")))))))
+
 (deftest day-of-week-custom-start-of-week-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "`:day-of-week` bucketing should respect the `start-of-week` Setting (#13604)"
@@ -1358,7 +1420,7 @@
 
 (deftest filter-by-expression-time-interval-test
   (testing "Datetime expressions can filter to a date range (#33528)"
-    (mt/test-drivers (mt/normal-drivers-except #{:snowflake :athena})
+    (mt/test-drivers (mt/normal-drivers-except #{:athena})
       (mt/dataset
         checkins:1-per-day
         (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
@@ -1377,6 +1439,30 @@
           (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
                  (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
                  (get-in (qp/process-query query) [:data :native_form]))))))))
+
+(deftest filter-by-expression-relative-time-interval-test
+  (testing "Datetime expressions can filter to a date range"
+    (mt/test-drivers
+     (disj (mt/normal-drivers-with-feature :date-arithmetics) :athena)
+     (mt/dataset checkins:1-per-day:60
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            query (as-> (lib/query mp (lib.metadata/table mp (mt/id :checkins))) $q
+                    (lib/expression $q "customdate" (m/find-first (comp #{(mt/id :checkins :timestamp)} :id)
+                                                                  (lib/visible-columns $q)))
+                    (lib/filter $q (lib/relative-time-interval
+                                    (lib/expression-ref $q "customdate") -1 :week -1 :week)))
+            mbql-query (mt/mbql-query
+                        checkins
+                        {:expressions {"customdate" $timestamp}
+                         :filter [:relative-time-interval
+                                  [:expression "customdate" {:base-type :type/DateTime}] -1 :week -1 :week]})
+            processed  (qp/process-query query)
+            mbql-processed (qp/process-query mbql-query)]
+        (is (= 7 (count (mt/rows processed))))
+        (is (= 7 (count (mt/rows mbql-processed))))
+        (is (= (get-in (qp/process-query mbql-query) [:data :native_form])
+               (get-in (qp/process-query (lib.convert/->pMBQL mbql-query)) [:data :native_form])
+               (get-in (qp/process-query query) [:data :native_form]))))))))
 
 ;; TODO -- is this really date BUCKETING? Does this BELONG HERE?!
 (deftest june-31st-test

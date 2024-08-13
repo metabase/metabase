@@ -6,19 +6,29 @@ import {
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   describeEE,
+  entityPickerModal,
+  entityPickerModalTab,
+  moveDnDKitElement,
   openOrdersTable,
   openProductsTable,
   openReviewsTable,
+  openTable,
   popover,
   restore,
-  startNewQuestion,
   setTokenFeatures,
-  openTable,
-  moveDnDKitElement,
+  startNewQuestion,
 } from "e2e/support/helpers";
 
-const { ORDERS, ORDERS_ID, PRODUCTS_ID, REVIEWS, REVIEWS_ID, PEOPLE_ID } =
-  SAMPLE_DATABASE;
+const {
+  ORDERS,
+  ORDERS_ID,
+  PRODUCTS_ID,
+  REVIEWS,
+  REVIEWS_ID,
+  PEOPLE_ID,
+  FEEDBACK,
+  FEEDBACK_ID,
+} = SAMPLE_DATABASE;
 const { ALL_USERS_GROUP } = USER_GROUPS;
 const MYSQL_DB_ID = SAMPLE_DB_ID + 1;
 const MYSQL_DB_SCHEMA_ID = `${MYSQL_DB_ID}:PUBLIC`;
@@ -54,8 +64,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("Updated Table display_name").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -101,8 +111,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("5 Hidden Tables").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("not.exist");
       });
@@ -115,8 +125,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.findByText("4 Hidden Tables").should("be.visible");
 
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("Orders").should("be.visible");
       });
@@ -227,7 +237,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -409,11 +420,29 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("User ID").should("be.visible");
+    });
+
+    it("should allow you to cast a field to a data type", () => {
+      visitFieldMetadata({ fieldId: FEEDBACK.RATING });
+      cy.findByRole("button", { name: /Don't cast/ }).click();
+
+      cy.log(
+        "Ensure that Coercion strategy has been humanized (metabase#44723)",
+      );
+      popover().should("not.contain.text", "Coercion");
+      popover().findByText("UNIX seconds → Datetime").click();
+      cy.wait("@updateField");
+
+      openTable({ database: SAMPLE_DB_ID, table: FEEDBACK_ID });
+      cy.findAllByTestId("cell-data")
+        .contains("December 31, 1969, 4:00 PM")
+        .should("have.length.greaterThan", 0);
     });
   });
 
@@ -438,8 +467,8 @@ describe("scenarios > admin > datamodel > editor", () => {
 
       cy.signInAsNormalUser();
       startNewQuestion();
-      popover().within(() => {
-        cy.findByText("Raw Data").click();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("People").should("be.visible");
         cy.findByText("New orders").should("be.visible");
       });
@@ -507,7 +536,8 @@ describe("scenarios > admin > datamodel > editor", () => {
       cy.signInAsNormalUser();
       openTable({ database: SAMPLE_DB_ID, table: ORDERS_ID, mode: "notebook" });
       cy.icon("join_left_outer").click();
-      popover().within(() => {
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
         cy.findByText("Products").click();
       });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
@@ -653,7 +683,7 @@ const clearAndBlurInput = oldValue => {
 const searchAndSelectValue = (newValue, searchText = newValue) => {
   popover().within(() => {
     cy.findByRole("grid").scrollTo("top", { ensureScrollable: false });
-    cy.findByPlaceholderText("Find...").type(searchText);
+    cy.findByPlaceholderText("Find...").type(searchText, { delay: 50 });
     cy.findByText(newValue).click();
   });
 };

@@ -5,13 +5,13 @@ import * as Lib from "metabase-lib";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   DatabaseId,
-  DatasetQuery,
   DatasetColumn,
+  DatasetQuery,
   RowValue,
 } from "metabase-types/api";
 import {
-  createSampleDatabase,
   ORDERS_ID,
+  createSampleDatabase,
 } from "metabase-types/api/mocks/presets";
 
 const SAMPLE_DATABASE = createSampleDatabase();
@@ -61,12 +61,11 @@ export const columnFinder =
 
       // for non-table columns - aggregations, custom columns
       if (!displayInfo.table) {
-        return displayInfo?.name === columnName;
+        return displayInfo.name === columnName;
       }
 
       return (
-        displayInfo?.table?.name === tableName &&
-        displayInfo?.name === columnName
+        displayInfo.table.name === tableName && displayInfo.name === columnName
       );
     });
 
@@ -156,9 +155,17 @@ function withTemporalBucketAndBinningStrategy(
   );
 }
 
-interface AggregationClauseOpts {
-  operatorName: string;
-}
+type AggregationClauseOpts =
+  | {
+      operatorName: string;
+      tableName?: never;
+      columnName?: never;
+    }
+  | {
+      operatorName: string;
+      tableName: string;
+      columnName: string;
+    };
 
 interface BreakoutClauseOpts {
   columnName: string;
@@ -214,6 +221,12 @@ export function createQueryWithClauses({
       -1,
       Lib.aggregationClause(
         findAggregationOperator(query, aggregation.operatorName),
+        aggregation.columnName && aggregation.tableName
+          ? columnFinder(query, Lib.visibleColumns(query, -1))(
+              aggregation.tableName,
+              aggregation.columnName,
+            )
+          : undefined,
       ),
     );
   }, queryWithExpressions);

@@ -10,7 +10,8 @@ import { formatCoordinate } from "metabase/lib/formatting/geography";
 import { formatNumber } from "metabase/lib/formatting/numbers";
 import { formatTime } from "metabase/lib/formatting/time";
 import type { OptionsType } from "metabase/lib/formatting/types";
-import type { ChartColumns } from "metabase/visualizations/lib/graph/columns";
+import { getFormattingOptionsWithoutScaling } from "metabase/visualizations/echarts/cartesian/model/util";
+import type { CartesianChartColumns } from "metabase/visualizations/lib/graph/columns";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
 import type {
   ChartTicksFormatters,
@@ -18,7 +19,7 @@ import type {
 } from "metabase/visualizations/shared/types/format";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
   isCoordinate,
@@ -103,53 +104,55 @@ export const formatStaticValue = (value: unknown, options: OptionsType) => {
 };
 
 export const getStaticFormatters = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ChartTicksFormatters => {
   const yTickFormatter = (value: StringLike) => {
     const column = chartColumns.dimension.column;
-    const columnSettings = settings.column_settings?.[getColumnKey(column)];
+    const columnSettings = getColumnSettings(settings, column);
     const valueToFormat = getRemappedValue(value, column);
 
-    return String(
-      formatStaticValue(valueToFormat, {
-        column,
-        ...columnSettings,
-        jsx: false,
-      }),
-    );
+    const options = getFormattingOptionsWithoutScaling({
+      column,
+      ...columnSettings,
+      jsx: false,
+    });
+
+    return String(formatStaticValue(valueToFormat, options));
   };
 
   const metricColumn = getLabelsMetricColumn(chartColumns);
 
   const percentXTicksFormatter = (percent: NumberLike) => {
     const column = metricColumn.column;
-    const number_separators =
-      settings.column_settings?.[getColumnKey(column)]?.number_separators;
+    const number_separators = getColumnSettings(
+      settings,
+      column,
+    )?.number_separators;
 
-    return String(
-      formatStaticValue(percent, {
-        column,
-        number_separators,
-        jsx: false,
-        number_style: "percent",
-        decimals: 2,
-      }),
-    );
+    const options = getFormattingOptionsWithoutScaling({
+      column,
+      number_separators,
+      jsx: false,
+      number_style: "percent",
+      decimals: 2,
+    });
+
+    return String(formatStaticValue(percent, options));
   };
 
   const xTickFormatter = (value: NumberLike) => {
     const column = metricColumn.column;
-    const columnSettings = settings.column_settings?.[getColumnKey(column)];
+    const columnSettings = getColumnSettings(settings, column);
     const valueToFormat = getRemappedValue(value, column);
 
-    return String(
-      formatStaticValue(valueToFormat, {
-        column,
-        ...columnSettings,
-        jsx: false,
-      }),
-    );
+    const options = getFormattingOptionsWithoutScaling({
+      column,
+      ...columnSettings,
+      jsx: false,
+    });
+
+    return String(formatStaticValue(valueToFormat, options));
   };
 
   const shouldFormatXTicksAsPercent = getStackOffset(settings) === "expand";
@@ -163,21 +166,20 @@ export const getStaticFormatters = (
 };
 
 export const getLabelsStaticFormatter = (
-  chartColumns: ChartColumns,
+  chartColumns: CartesianChartColumns,
   settings: VisualizationSettings,
 ): ValueFormatter => {
   const column = getLabelsMetricColumn(chartColumns).column;
-  const columnSettings = settings.column_settings?.[getColumnKey(column)];
+  const columnSettings = getColumnSettings(settings, column);
+  const options = getFormattingOptionsWithoutScaling({
+    column,
+    ...columnSettings,
+    jsx: false,
+    compact: settings["graph.label_value_formatting"] === "compact",
+  });
 
   const labelsFormatter = (value: any) =>
-    String(
-      formatStaticValue(value, {
-        column,
-        ...columnSettings,
-        jsx: false,
-        compact: settings["graph.label_value_formatting"] === "compact",
-      }),
-    );
+    String(formatStaticValue(value, options));
 
   return labelsFormatter;
 };

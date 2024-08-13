@@ -7,6 +7,7 @@
    [metabase.driver.sql-jdbc.sync.describe-database
     :as sql-jdbc.describe-database]
    [metabase.driver.sql-jdbc.test-util :as sql-jdbc.tu]
+   [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.util :as driver.u]
    [metabase.models :refer [Database Field Table]]
    [metabase.query-processor :as qp]
@@ -24,62 +25,6 @@
                          {:name table, :schema "PUBLIC", :description nil}))}
          (driver/describe-database :h2 (mt/db)))))
 
-(deftest ^:parallel describe-table-test
-  (is (= {:name   "VENUES"
-          :schema "PUBLIC"
-          :fields #{{:name              "ID"
-                     :database-type     "BIGINT"
-                     :base-type         :type/BigInteger
-                     :pk?               true
-                     :database-position 0
-                     :database-required false
-                     :database-is-auto-increment true
-                     :json-unfolding    false}
-                    {:name              "NAME"
-                     :database-type     "CHARACTER VARYING"
-                     :base-type         :type/Text
-                     :database-position 1
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}
-                    {:name              "CATEGORY_ID"
-                     :database-type     "INTEGER"
-                     :base-type         :type/Integer
-                     :database-position 2
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}
-                    {:name              "LATITUDE"
-                     :database-type     "DOUBLE PRECISION"
-                     :base-type         :type/Float
-                     :database-position 3
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}
-                    {:name              "LONGITUDE"
-                     :database-type     "DOUBLE PRECISION"
-                     :base-type         :type/Float
-                     :database-position 4
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}
-                    {:name              "PRICE"
-                     :database-type     "INTEGER"
-                     :base-type         :type/Integer
-                     :database-position 5
-                     :database-required false
-                     :database-is-auto-increment false
-                     :json-unfolding    false}}}
-         (driver/describe-table :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
-
-(deftest ^:parallel describe-table-fks-test
-  (is (= #{{:fk-column-name   "CATEGORY_ID"
-            :dest-table       {:name   "CATEGORIES"
-                               :schema "PUBLIC"}
-            :dest-column-name "ID"}}
-         #_{:clj-kondo/ignore [:deprecated-var]}
-         (driver/describe-table-fks :h2 (mt/db) (t2/select-one Table :id (mt/id :venues))))))
-
 (deftest describe-fields-sync-with-composite-pks-test
   (testing "Make sure syncing a table that has a composite pks works"
     (mt/test-driver (mt/normal-drivers-with-feature :describe-fields)
@@ -94,7 +39,7 @@
                        fk-metadata))))))))
 
 (deftest ^:parallel table-rows-sample-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (is (= [["20th Century Cafe"]
             ["25°"]
             ["33 Taps"]
@@ -108,7 +53,7 @@
                 (take 5))))))
 
 (deftest ^:parallel table-rows-seq-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
     (is (= [{:name "Red Medicine", :price 3, :category_id 4, :id 1}
             {:name "Stout Burgers & Beers", :price 2, :category_id 11, :id 2}
             {:name "The Apple Pan", :price 2, :category_id 11, :id 3}
@@ -153,92 +98,48 @@
                        (throw e))
                      (some-> (.getCause e) recur))))))))))
 
-;;; --------------------------------- Tests for splice-parameters-into-native-query ----------------------------------
-
-(deftest ^:parallel splice-parameters-native-test
-  (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
-    (testing (str "test splicing a single param\n"
-                  "(This test won't work if a driver that doesn't use single quotes for string literals comes along. "
-                  "We can cross that bridge when we get there.)")
-      (is (=  {:query  "SELECT * FROM birds WHERE name = 'Reggae'"
-               :params nil}
-              (driver/splice-parameters-into-native-query driver/*driver*
-                {:query  "SELECT * FROM birds WHERE name = ?"
-                 :params ["Reggae"]}))))
-
-    (testing "test splicing multiple params"
-      (is (=  {:query
-               "SELECT * FROM birds WHERE name = 'Reggae' AND type = 'toucan' AND favorite_food = 'blueberries';",
-               :params nil}
-              (driver/splice-parameters-into-native-query driver/*driver*
-                {:query  "SELECT * FROM birds WHERE name = ? AND type = ? AND favorite_food = ?;"
-                 :params ["Reggae" "toucan" "blueberries"]}))))
-
-    (testing (str "I think we're supposed to ignore multiple question narks, only single ones should get substituted "
-                  "(`??` becomes `?` in JDBC, which is used for Postgres as a \")key exists?\" JSON operator amongst "
-                  "other uses)")
-      (is (= {:query
-              "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = 'Reggae'",
-              :params nil}
-             (driver/splice-parameters-into-native-query driver/*driver*
-               {:query  "SELECT * FROM birds WHERE favorite_food ?? bird_info AND name = ?"
-                :params ["Reggae"]}))))
-
-    (testing "splicing with no params should no-op"
-      (is (= {:query "SELECT * FROM birds;", :params []}
-             (driver/splice-parameters-into-native-query driver/*driver*
-               {:query  "SELECT * FROM birds;"
-                :params []}))))))
-
-(defn- spliced-count-of [table filter-clause]
+(defn- test-spliced-count-of [table filter-clause expected]
   (let [query        {:database (mt/id)
                       :type     :query
                       :query    {:source-table (mt/id table)
                                  :aggregation  [[:count]]
                                  :filter       filter-clause}}
-        native-query (qp.compile/compile-and-splice-parameters query)
-        spliced      (driver/splice-parameters-into-native-query driver/*driver* native-query)]
-    (ffirst
-     (mt/formatted-rows [int]
-       (qp/process-query
-        {:database (mt/id)
-         :type     :native
-         :native   spliced})))))
+        native-query (qp.compile/compile-with-inline-parameters query)]
+    (testing (format "\nnative query =\n%s" (u/pprint-to-str native-query))
+      (is (= expected
+             (ffirst
+              (mt/formatted-rows [int]
+                                 (qp/process-query
+                                  {:database (mt/id)
+                                   :type     :native
+                                   :native   native-query}))))))))
 
 (deftest ^:parallel splice-parameters-mbql-test
-  (testing "`splice-parameters-into-native-query` should generate a query that works correctly"
-    (mt/test-drivers (sql-jdbc.tu/sql-jdbc-drivers)
+  (testing "metabase.query-processor.compile/compile-with-inline-parameters should generate a query that works correctly"
+    (mt/test-drivers (sql-jdbc.tu/normal-sql-jdbc-drivers)
       (mt/$ids venues
         (testing "splicing a string"
-          (is (= 3
-                 (spliced-count-of :venues [:starts-with $name "Sushi"])))
+          (test-spliced-count-of :venues [:starts-with $name "Sushi"] 3)
           (testing "containing single quotes -- this is done differently from driver to driver"
-            (is (= 1
-                   (spliced-count-of :venues [:= $name "Barney's Beanery"])))))
+            (test-spliced-count-of :venues [:= $name "Barney's Beanery"] 1)))
         (testing "splicing an integer"
-          (is (= 13
-                 (spliced-count-of :venues [:= $price 3]))))
+          (test-spliced-count-of :venues [:= $price 3] 13))
         (testing "splicing floating-point numbers"
-          (is (= 13
-                 (spliced-count-of :venues [:between $price 2.9 3.1]))))
+          (test-spliced-count-of :venues [:between $price 2.9 3.1] 13))
         (testing "splicing nil"
-          (is (= 0
-                 (spliced-count-of :venues [:is-null $price])))))
+          (test-spliced-count-of :venues [:is-null $price] 0)))
       (mt/dataset places-cam-likes
         (mt/$ids places
           (testing "splicing a boolean"
-            (is (= 2
-                   (spliced-count-of :places [:= $liked true]))))))
+            (test-spliced-count-of :places [:= $liked true] 2))))
       (mt/$ids checkins
         (testing "splicing a date"
-          (is (= 3
-                 (spliced-count-of :checkins [:= $date "2014-03-05"])))))
+          (test-spliced-count-of :checkins [:= $date "2014-03-05"] 3)))
       (when (mt/supports-time-type? driver/*driver*)
         (testing "splicing a time"
           (mt/dataset time-test-data
-            (is (= 2
-                   (mt/$ids users
-                     (spliced-count-of :users [:= $last_login_time "09:30"]))))))))))
+            (mt/$ids users
+              (test-spliced-count-of :users [:= $last_login_time "09:30"] 2))))))))
 
 (defn- find-schema-filters-prop [driver]
   (first (filter (fn [conn-prop]
@@ -282,3 +183,71 @@
               (let [syncable (driver/syncable-schemas driver/*driver* db-filtered)]
                 (is (not (contains? syncable "public")))
                 (is (not (contains? syncable fake-schema-name)))))))))))
+
+(deftest ^:parallel uuid-filtering-test
+  (mt/test-drivers (set/intersection
+                     (mt/sql-jdbc-drivers)
+                     (mt/normal-drivers-with-feature :uuid-type))
+    (let [uuid (random-uuid)
+          uuid-query (mt/native-query {:query (format "select cast('%s' as uuid) as x" uuid)})
+          results (qp/process-query uuid-query)
+          result-metadata (get-in results [:data :results_metadata :columns])
+          col-metadata (first result-metadata)]
+      (is (= :type/UUID (:base_type col-metadata)))
+      (mt/with-temp [:model/Card card {:type :model
+                                       :result_metadata result-metadata
+                                       :dataset_query uuid-query}]
+        (let [model-query {:database (mt/id)
+                           :type :query
+                           :query {:source-table (str "card__" (:id card))}}]
+          (are [expected filt]
+            (= expected
+               (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
+            [[uuid]] [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]]
+            [[uuid]] [:= (:field_ref col-metadata) (:field_ref col-metadata)]
+            [[uuid]] [:= (:field_ref col-metadata) (str uuid)]
+            [[uuid]] [:!= (:field_ref col-metadata) (str (random-uuid))]
+            [[uuid]] [:starts-with (:field_ref col-metadata) (str uuid)]
+            [[uuid]] [:ends-with (:field_ref col-metadata) (str uuid)]
+            [[uuid]] [:contains (:field_ref col-metadata) (str uuid)]
+
+            ;; Test partial uuid values
+            [[uuid]] [:contains (:field_ref col-metadata) (subs (str uuid) 0 1)]
+            [[uuid]] [:starts-with (:field_ref col-metadata) (subs (str uuid) 0 1)]
+            [[uuid]] [:ends-with (:field_ref col-metadata) (subs (str uuid) (dec (count (str uuid))))]
+
+            ;; Cannot match a uuid, but should not blow up
+            [[uuid]] [:!= (:field_ref col-metadata) "q"]
+            [] [:= (:field_ref col-metadata) "q"]
+            [] [:starts-with (:field_ref col-metadata) "q"]
+            [] [:ends-with (:field_ref col-metadata) "q"]
+            [] [:contains (:field_ref col-metadata) "q"]
+
+            ;; empty/null handling
+            [] [:is-empty (:field_ref col-metadata)]
+            [[uuid]] [:not-empty (:field_ref col-metadata)]
+            [] [:is-null (:field_ref col-metadata)]
+            [[uuid]] [:not-null (:field_ref col-metadata)]
+
+            ;; nil value handling
+            [[uuid]] [:!= (:field_ref col-metadata) nil]
+            [] [:= (:field_ref col-metadata) nil])
+          (testing ":= uses indexable query"
+            (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
+                     (some-fn #(= uuid %)
+                              #(= [:metabase.util.honey-sql-2/typed
+                                   [:cast (str uuid) [:raw "uuid"]]
+                                   {:database-type "uuid"}]
+                                  %))]
+                    (sql.qp/->honeysql
+                      driver/*driver*
+                      [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]])))
+            (is (=? [:= [:metabase.util.honey-sql-2/identifier :field [(second (:field_ref col-metadata))]]
+                     (some-fn #(= uuid %)
+                              #(= [:metabase.util.honey-sql-2/typed
+                                   [:cast (str uuid) [:raw "uuid"]]
+                                   {:database-type "uuid"}]
+                                  %))]
+                    (sql.qp/->honeysql
+                      driver/*driver*
+                      [:= (:field_ref col-metadata) uuid])))))))))

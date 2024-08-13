@@ -5,7 +5,6 @@
    [java-time.api :as t]
    [metabase.config :as config]
    [metabase.db :as mdb]
-   [metabase.db.jdbc-protocols :as mdb.jdbc-protocols]
    [metabase.driver :as driver]
    [metabase.driver.common :as driver.common]
    [metabase.driver.h2.actions :as h2.actions]
@@ -75,6 +74,7 @@
                               :percentile-aggregations   false
                               :regex                     true
                               :test/jvm-timezone-setting false
+                              :uuid-type                 true
                               :uploads                   true}]
   (defmethod driver/database-supports? [:h2 feature]
     [_driver _feature _database]
@@ -184,7 +184,7 @@
       (when (instance? SessionLocal session)
         (Parser. session)))))
 
-(mu/defn ^:private classify-query :- [:maybe
+(mu/defn- classify-query :- [:maybe
                                       [:map
                                        [:command-types [:vector pos-int?]]
                                        [:remaining-sql [:maybe :string]]]]
@@ -283,7 +283,7 @@
          (h2x/literal unit)
          (if (number? amount)
            (sql.qp/inline-num (long amount))
-           (h2x/cast :long amount))
+           (h2x/cast-unless-type-in "integer" #{"long" "integer"} amount))
          expr]
         (h2x/with-database-type-info (h2x/database-type expr)))))
 
@@ -468,8 +468,8 @@
                                 (#{CHARACTER CHAR} LARGE OBJECT)
                                 CLOB
                                 (#{NATIONAL CHARACTER NCHAR} LARGE OBJECT)
-                                NCLOB
-                                UUID}
+                                NCLOB}
+    :type/UUID                #{UUID}
     :type/*                   #{ARRAY
                                 BINARY
                                 "BINARY VARYING"
@@ -552,7 +552,7 @@
                           (Class/forName true (classloader/the-classloader)))]
     (if (isa? classname Clob)
       (fn []
-        (mdb.jdbc-protocols/clob->str (.getObject rs i)))
+        (mdb/clob->str (.getObject rs i)))
       (fn []
         (.getObject rs i)))))
 

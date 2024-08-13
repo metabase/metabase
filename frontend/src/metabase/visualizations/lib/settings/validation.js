@@ -1,6 +1,7 @@
 import { t } from "ttag";
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
 import {
   MinRowsError,
   ChartSettingsError,
@@ -14,8 +15,8 @@ export const validateDatasetRows = series => {
 };
 
 export const validateChartDataSettings = settings => {
-  const dimensions = (settings["graph.dimensions"] || []).filter(name => name);
-  const metrics = (settings["graph.metrics"] || []).filter(name => name);
+  const dimensions = (settings["graph.dimensions"] || []).filter(isNotNull);
+  const metrics = (settings["graph.metrics"] || []).filter(isNotNull);
   if (dimensions.length < 1 || metrics.length < 1) {
     throw new ChartSettingsError(
       t`Which fields do you want to use for the X and Y axes?`,

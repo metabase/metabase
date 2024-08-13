@@ -71,24 +71,14 @@ For more information on setting up a truststore for AWS RDS Oracle instances, se
 
 If you need to connect to other databases using SSL, instead of creating a new truststore, you'll probably want to add the RDS CA to your existing truststore file (likely called `cacerts`).
 
-### Default result cache duration
+## Supported Oracle database and Oracle driver versions
 
-{% include plans-blockquote.html feature="Database-specific caching" %}
-
-How long to keep question results. By default, Metabase will use the value you supply on the [cache settings page](../../configuring-metabase/caching.md), but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
-
-Options are:
-
-- **Use instance default (TTL)**. TTL is time to live, meaning how long the cache remains valid before Metabase should run the query again.
-- **Custom**.
-
-If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
+- **Driver version**: the minimum Oracle driver version should be 19c, regardless of which Java version or Oracle database version you have.
+- **Database version**: the minimum database version should be version 19c, as Oracle [no longer supports database versions prior to 19](https://endoflife.date/oracle-database).
 
 ## Downloading the Oracle JDBC Driver JAR
 
 You can download a JDBC driver from [Oracle's JDBC driver downloads page](https://www.oracle.com/technetwork/database/application-development/jdbc/downloads/index.html).
-
-The minimum driver version should be 19c, regardless of which Java version or Oracle Database version you have.
 
 We recommend using the `ojdbc8.jar` JAR.
 

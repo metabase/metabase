@@ -40,6 +40,7 @@ const mapStateToProps = (state, props) => ({
   addSampleDatabaseError: getAddSampleDatabaseError(state),
 
   created: props.location.query.created,
+  createdDbId: props.location.query.createdDbId,
   engines: MetabaseSettings.get("engines"),
   showSyncingModal: MetabaseSettings.get("show-database-syncing-modal"),
 

@@ -7,6 +7,7 @@ import {
   assertJoinValid,
   assertQueryBuilderRowCount,
   enterCustomColumnDetails,
+  entityPickerModal,
   filter,
   getNotebookStep,
   join,
@@ -256,7 +257,7 @@ describe("scenarios > question > joined questions", () => {
     addSummaryGroupingField({ table: "Product", field: "ID" });
 
     cy.findAllByTestId("action-buttons").last().button("Join data").click();
-    joinTable("Reviews", "ID", "Product ID");
+    joinTable("Reviews");
     visualize();
 
     assertJoinValid({
@@ -352,7 +353,7 @@ describe("scenarios > question > joined questions", () => {
     );
 
     getNotebookStep("data").findByTestId("data-step-cell").click();
-    popover().findByText("People").click();
+    entityPickerModal().findByText("People").click();
 
     getNotebookStep("join").should("not.exist");
 

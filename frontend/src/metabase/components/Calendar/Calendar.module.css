@@ -18,7 +18,7 @@
 }
 
 .CalendarDayNames {
-  opacity: 0.12;
+  color: var(--mb-color-text-tertiary);
 }
 
 .CalendarDay,
@@ -27,7 +27,7 @@
 }
 
 .CalendarDay {
-  color: var(--color-text-light);
+  color: var(--mb-color-text-light);
   position: relative;
   border-radius: 99px;
   font-weight: 700;
@@ -38,7 +38,6 @@
 
 .CalendarDayName {
   cursor: inherit;
-  color: inherit !important;
 }
 
 .CalendarDayThisMonth {
@@ -57,7 +56,7 @@
 
 .CalendarDayInRange {
   border-radius: 0;
-  background-color: var(--color-bg-medium);
+  background-color: var(--mb-color-bg-medium);
 }
 
 .CalendarNoContext.CalendarDay {

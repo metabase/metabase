@@ -51,7 +51,7 @@ export type DateOperator = {
 export const DATE_OPERATORS: DateOperator[] = [
   {
     name: "previous",
-    displayName: t`Past`,
+    displayName: t`Previous`,
     init: filter => getPreviousDateFilter(filter),
     test: filter => isPreviousDateFilter(filter),
     group: "relative",
@@ -134,7 +134,6 @@ type Props = {
   disableChangingDimension?: boolean;
   supportsExpressions?: boolean;
 
-  primaryColor?: string;
   minWidth?: number | null;
   maxWidth?: number | null;
 
@@ -143,7 +142,7 @@ type Props = {
   onFilterChange: (filter: any[]) => void;
 };
 
-const DatePicker: React.FC<Props> = props => {
+const DatePicker: React.FC<React.PropsWithChildren<Props>> = props => {
   const {
     className,
     filter,
@@ -152,7 +151,6 @@ const DatePicker: React.FC<Props> = props => {
     disableOperatorSelection,
     disableChangingDimension,
     supportsExpressions,
-    primaryColor,
     onCommit,
     children,
     hideTimeSelectors,
@@ -182,7 +180,6 @@ const DatePicker: React.FC<Props> = props => {
       {!operator || showShortcuts ? (
         <DatePickerShortcuts
           className={CS.p2}
-          primaryColor={primaryColor}
           dateShortcutOptions={dateShortcutOptions}
           onFilterChange={filter => {
             setShowShortcuts(false);
@@ -199,7 +196,6 @@ const DatePicker: React.FC<Props> = props => {
               filter={filter}
               onBack={onBack}
               operators={operators}
-              primaryColor={primaryColor}
               onFilterChange={onFilterChange}
             />
           ) : null}
@@ -209,7 +205,6 @@ const DatePicker: React.FC<Props> = props => {
               className={cx(CS.flexFull, CS.p2)}
               filter={filter}
               onCommit={onCommit}
-              primaryColor={primaryColor}
               supportsExpressions={supportsExpressions}
               onFilterChange={(filter: Filter) => {
                 if (!isStartingFrom(filter) && operator && operator.init) {
@@ -222,7 +217,6 @@ const DatePicker: React.FC<Props> = props => {
           )}
           <DatePickerFooter
             filter={filter}
-            primaryColor={primaryColor}
             onFilterChange={onFilterChange}
             hideTimeSelectors={hideTimeSelectors}
           >

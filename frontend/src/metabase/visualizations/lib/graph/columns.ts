@@ -1,18 +1,21 @@
+import _ from "underscore";
+
 import { isNotNull } from "metabase/lib/types";
+import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
 import type {
-  RemappingHydratedChartData,
-  RemappingHydratedDatasetColumn,
-} from "metabase/visualizations/types";
-import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+  DatasetData,
+  VisualizationSettings,
+  DatasetColumn,
+} from "metabase-types/api";
 
 export type ColumnDescriptor = {
   index: number;
   column: RemappingHydratedDatasetColumn;
 };
 
-export const getColumnDescriptors = (
+export const getColumnDescriptors = <TColumn extends DatasetColumn>(
   columnNames: string[],
-  columns: RemappingHydratedDatasetColumn[],
+  columns: TColumn[],
 ): ColumnDescriptor[] => {
   return columnNames.map(columnName => {
     const index = columns.findIndex(column => column.name === columnName);
@@ -54,32 +57,62 @@ export type MultipleMetricsChartColumns = {
   metrics: ColumnDescriptor[];
 };
 
-export type ChartColumns = BreakoutChartColumns | MultipleMetricsChartColumns;
+export type ScatterPlotColumns = (
+  | BreakoutChartColumns
+  | MultipleMetricsChartColumns
+) & {
+  bubbleSize?: ColumnDescriptor;
+};
 
-export const getChartColumns = (
-  data: RemappingHydratedChartData,
-  visualizationSettings: VisualizationSettings,
-): ChartColumns => {
+export type CartesianChartColumns =
+  | BreakoutChartColumns
+  | MultipleMetricsChartColumns
+  | ScatterPlotColumns;
+
+export function assertMultiMetricColumns(
+  chartColumns: CartesianChartColumns,
+): MultipleMetricsChartColumns {
+  if ("breakout" in chartColumns) {
+    throw Error("Given `chartColumns` has breakout");
+  }
+
+  return chartColumns;
+}
+
+export const getCartesianChartColumns = (
+  columns: RemappingHydratedDatasetColumn[],
+  settings: Pick<
+    VisualizationSettings,
+    "graph.dimensions" | "graph.metrics" | "scatter.bubble"
+  >,
+): CartesianChartColumns => {
   const [dimension, breakout] = getColumnDescriptors(
-    (visualizationSettings["graph.dimensions"] ?? []).filter(isNotNull),
-    data.cols,
+    (settings["graph.dimensions"] ?? []).filter(isNotNull),
+    columns,
   );
 
   const metrics = getColumnDescriptors(
-    (visualizationSettings["graph.metrics"] ?? []).filter(isNotNull),
-    data.cols,
+    _.uniq((settings["graph.metrics"] ?? []).filter(isNotNull)),
+    columns,
   );
+
+  const bubbleSize = getColumnDescriptors(
+    [settings["scatter.bubble"]].filter(isNotNull),
+    columns,
+  )[0];
 
   if (breakout) {
     return {
       dimension,
       breakout,
       metric: metrics[0],
+      bubbleSize,
     };
   }
 
   return {
     dimension,
     metrics,
+    bubbleSize,
   };
 };

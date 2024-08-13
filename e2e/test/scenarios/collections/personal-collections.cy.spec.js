@@ -61,7 +61,9 @@ describe("personal collections", () => {
       });
 
       cy.visit("/collection/root");
-      cy.findByRole("tree").findByText("Your personal collection");
+      cy.findAllByRole("tree")
+        .contains("Your personal collection")
+        .should("be.visible");
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
@@ -168,10 +170,10 @@ describe("personal collections", () => {
 
           openCollectionMenu();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          popover().within(() => cy.findByText("Archive").click());
-          modal().findByRole("button", { name: "Archive" }).click();
+          popover().within(() => cy.findByText("Move to trash").click());
+          modal().findByRole("button", { name: "Move to trash" }).click();
           // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-          cy.findByText("Archived collection");
+          cy.findByText("Trashed collection");
           cy.get("@sidebar").findByText("Foo").should("not.exist");
         });
       });

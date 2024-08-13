@@ -1,7 +1,6 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
 import { Icon } from "metabase/ui";
 
 export const HeaderRoot = styled.div`
@@ -15,14 +14,15 @@ export const HeaderIcon = styled(Icon)`
 
 const backButtonStyle = () => css`
   cursor: pointer;
+
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
 const defaultBackButtonStyle = () => css`
   ${backButtonStyle()}
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.83em;
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -49,10 +49,8 @@ export const HeaderTitleContainer = styled.span<{
 }>`
   display: flex;
   align-items: center;
-
   font-size: 1.17em;
   font-weight: bold;
-
   margin-top: 0;
   margin-bottom: 0;
 
@@ -60,12 +58,11 @@ export const HeaderTitleContainer = styled.span<{
 `;
 
 export const CloseButton = styled.a`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   text-decoration: none;
-
   margin-left: auto;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

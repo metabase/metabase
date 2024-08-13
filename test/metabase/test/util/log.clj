@@ -36,7 +36,7 @@
       (get keyword->Level (keyword k))
       (throw (ex-info "Invalid log level" {:level k}))))
 
-(mu/defn ^:private log-level->keyword :- LogLevelKeyword
+(mu/defn- log-level->keyword :- LogLevelKeyword
   [level :- (ms/InstanceOfClass Level)]
   (some (fn [[k a-level]]
           (when (= a-level level)

@@ -1,19 +1,40 @@
 import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { getDashboardParameterSections } from "metabase/parameters/utils/dashboard-options";
+import { resetParameterMapping } from "metabase/dashboard/actions";
+import { useDispatch } from "metabase/lib/redux";
+import {
+  getDashboardParameterSections,
+  getDefaultOptionForParameterSectionMap,
+} from "metabase/parameters/utils/dashboard-options";
 import type { EmbeddingParameterVisibility } from "metabase/public/lib/types";
-import { Radio, Stack, Text, TextInput, Box, Select } from "metabase/ui";
+import {
+  Radio,
+  Stack,
+  Text,
+  TextInput,
+  Box,
+  Select,
+  Button,
+} from "metabase/ui";
+import type { ParameterSectionId } from "metabase-lib/v1/parameters/utils/operators";
 import { canUseCustomSource } from "metabase-lib/v1/parameters/utils/parameter-source";
-import { parameterHasNoDisplayValue } from "metabase-lib/v1/parameters/utils/parameter-values";
+import {
+  isFilterParameter,
+  isTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
+import {
+  getIsMultiSelect,
+  parameterHasNoDisplayValue,
+} from "metabase-lib/v1/parameters/utils/parameter-values";
 import type {
   Parameter,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
 } from "metabase-types/api";
 
-import { getIsMultiSelect } from "../../utils/dashboards";
 import { isSingleOrMultiSelectable } from "../../utils/parameter-type";
 import { RequiredParamToggle } from "../RequiredParamToggle";
 import { ValuesSourceSettings } from "../ValuesSourceSettings";
@@ -23,47 +44,47 @@ import {
   SettingLabelError,
   SettingValueWidget,
 } from "./ParameterSettings.styled";
+import { TemporalUnitSettings } from "./TemporalUnitSettings";
 
 export interface ParameterSettingsProps {
   parameter: Parameter;
+  hasMapping: boolean;
   isParameterSlugUsed: (value: string) => boolean;
   onChangeName: (name: string) => void;
+  onChangeType: (type: string, sectionId: string) => void;
   onChangeDefaultValue: (value: unknown) => void;
   onChangeIsMultiSelect: (isMultiSelect: boolean) => void;
   onChangeQueryType: (queryType: ValuesQueryType) => void;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
   onChangeRequired: (value: boolean) => void;
+  onChangeTemporalUnits: (temporalUnits: TemporalUnit[]) => void;
   embeddedParameterVisibility: EmbeddingParameterVisibility | null;
 }
-
-type SectionOption = {
-  sectionId: string;
-  type: string;
-  name: string;
-  operator: string;
-  menuName?: string;
-  combinedName?: string | undefined;
-};
 
 const parameterSections = getDashboardParameterSections();
 const dataTypeSectionsData = parameterSections.map(section => ({
   label: section.name,
   value: section.id,
 }));
+const defaultOptionForSection = getDefaultOptionForParameterSectionMap();
 
 export const ParameterSettings = ({
   parameter,
   isParameterSlugUsed,
   onChangeName,
+  onChangeType,
   onChangeDefaultValue,
   onChangeIsMultiSelect,
   onChangeQueryType,
   onChangeSourceType,
   onChangeSourceConfig,
   onChangeRequired,
+  onChangeTemporalUnits,
   embeddedParameterVisibility,
+  hasMapping,
 }: ParameterSettingsProps): JSX.Element => {
+  const dispatch = useDispatch();
   const [tempLabelValue, setTempLabelValue] = useState(parameter.name);
   // TODO: sectionId should always be present, but current type definition presumes it's optional in the parameter.
   // so we might want to remove all checks related to absence of it
@@ -102,6 +123,20 @@ export const ParameterSettings = ({
   const isEmbeddedDisabled = embeddedParameterVisibility === "disabled";
   const isMultiValue = getIsMultiSelect(parameter) ? "multi" : "single";
 
+  const handleTypeChange = (sectionId: ParameterSectionId) => {
+    const defaultOptionOfNextType = defaultOptionForSection[sectionId];
+
+    onChangeType(defaultOptionOfNextType.type, sectionId);
+  };
+
+  const handleOperatorChange = (operatorType: string) => {
+    if (!sectionId) {
+      return;
+    }
+
+    onChangeType(operatorType, sectionId);
+  };
+
   const filterOperatorData = useMemo(() => {
     if (!sectionId) {
       return [];
@@ -115,16 +150,16 @@ export const ParameterSettings = ({
       return [];
     }
 
-    const options = currentSection.options as SectionOption[];
+    const options = currentSection.options;
 
     return options.map(option => ({
-      label: option.name,
+      label: option.menuName ?? option.name,
       value: option.type,
     }));
   }, [sectionId]);
 
   return (
-    <Box p="1.5rem 1rem">
+    <Box p="1.5rem 1rem 0.5rem">
       <Box mb="xl">
         <SettingLabel>{t`Label`}</SettingLabel>
         <TextInput
@@ -135,25 +170,37 @@ export const ParameterSettings = ({
           aria-label={t`Label`}
         />
       </Box>
-      {sectionId && (
+      {sectionId && isFilterParameter(parameter) && (
         <>
           <Box mb="xl">
             <SettingLabel>{t`Filter type`}</SettingLabel>
-            <Select disabled data={dataTypeSectionsData} value={sectionId} />
+            <Select
+              data={dataTypeSectionsData}
+              value={sectionId}
+              onChange={handleTypeChange}
+            />
           </Box>
           {filterOperatorData.length > 1 && (
             <Box mb="xl">
               <SettingLabel>{t`Filter operator`}</SettingLabel>
               <Select
-                disabled
                 data={filterOperatorData}
                 value={parameter.type}
+                onChange={handleOperatorChange}
               />
             </Box>
           )}
         </>
       )}
-
+      {isTemporalUnitParameter(parameter) && (
+        <Box mb="xl">
+          <SettingLabel>{t`Unit of Time options`}</SettingLabel>
+          <TemporalUnitSettings
+            parameter={parameter}
+            onChangeTemporalUnits={onChangeTemporalUnits}
+          />
+        </Box>
+      )}
       {canUseCustomSource(parameter) && (
         <Box mb="xl">
           <SettingLabel>{t`How should people filter on this column?`}</SettingLabel>
@@ -189,22 +236,23 @@ export const ParameterSettings = ({
       )}
 
       <Box mb="lg">
-        <SettingLabel>
+        <SettingLabel id="default-value-label">
           {t`Default value`}
           {parameter.required &&
             parameterHasNoDisplayValue(parameter.default) && (
-              <SettingLabelError>({t`required`})</SettingLabelError>
+              <SettingLabelError> ({t`required`})</SettingLabelError>
             )}
         </SettingLabel>
 
-        <SettingValueWidget
-          parameter={parameter}
-          name={parameter.name}
-          value={parameter.default}
-          placeholder={t`No default`}
-          setValue={onChangeDefaultValue}
-          mimicMantine
-        />
+        <div aria-labelledby="default-value-label">
+          <SettingValueWidget
+            parameter={parameter}
+            value={parameter.default}
+            placeholder={t`No default`}
+            setValue={onChangeDefaultValue}
+            mimicMantine
+          />
+        </div>
 
         <RequiredParamToggle
           // This forces the toggle to be a new instance when the parameter changes,
@@ -234,6 +282,18 @@ export const ParameterSettings = ({
           }
         ></RequiredParamToggle>
       </Box>
+
+      {hasMapping && (
+        <Box>
+          <Button
+            variant="subtle"
+            pl={0}
+            onClick={() => {
+              dispatch(resetParameterMapping(parameter.id));
+            }}
+          >{t`Disconnect from cards`}</Button>
+        </Box>
+      )}
     </Box>
   );
 };

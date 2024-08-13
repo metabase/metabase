@@ -37,28 +37,41 @@ function getActionOverrides(
   operator: Lib.QuickFilterDrillThruOperator,
   value: unknown,
 ): Partial<ClickAction> {
-  if (Lib.isDate(column) && value != null) {
+  if (Lib.isTemporal(column)) {
     const action: Partial<ClickAction> = {
       sectionTitle: t`Filter by this date`,
       sectionDirection: "column",
       buttonType: "horizontal",
     };
 
-    switch (operator) {
-      case "=":
-        return { ...action, title: t`On` };
-      case "≠":
-        return { ...action, title: t`Not on` };
-      case ">":
-        return { ...action, title: t`After` };
-      case "<":
-        return { ...action, title: t`Before` };
-      default:
-        return action;
+    if (value !== null) {
+      switch (operator) {
+        case "=":
+          return { ...action, title: t`On` };
+        case "≠":
+          return { ...action, title: t`Not on` };
+        case ">":
+          return { ...action, title: t`After` };
+        case "<":
+          return { ...action, title: t`Before` };
+        default:
+          return action;
+      }
+    }
+
+    if (value === null) {
+      switch (operator) {
+        case "=":
+          return { ...action, title: t`Is empty` };
+        case "≠":
+          return { ...action, title: t`Not empty` };
+        default:
+          return action;
+      }
     }
   }
 
-  if (Lib.isString(column) && typeof value === "string") {
+  if (Lib.isStringOrStringLike(column) && typeof value === "string") {
     const columnName = Lib.displayInfo(query, stageIndex, column).displayName;
     const valueTitle = getTextValueTitle(value);
     const action: Partial<ClickAction> = {

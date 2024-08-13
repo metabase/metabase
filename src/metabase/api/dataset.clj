@@ -6,6 +6,7 @@
    [compojure.core :refer [POST]]
    [metabase.api.common :as api]
    [metabase.api.field :as api.field]
+   [metabase.api.query-metadata :as api.query-metadata]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
    [metabase.events :as events]
@@ -16,7 +17,6 @@
    [metabase.models.database :as database :refer [Database]]
    [metabase.models.params.custom-values :as custom-values]
    [metabase.models.persisted-info :as persisted-info]
-   [metabase.models.query :as query]
    [metabase.models.table :refer [Table]]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
@@ -47,9 +47,9 @@
     (api/read-check Card source-card-id)
     source-card-id))
 
-(mu/defn ^:private run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
+(mu/defn- run-streaming-query :- (ms/InstanceOfClass metabase.async.streaming_response.StreamingResponse)
   [{:keys [database], :as query}
-   & {:keys [context export-format]
+   & {:keys [context export-format was-pivot]
       :or   {context       :ad-hoc
              export-format :api}}]
   (span/with-span!
@@ -76,7 +76,12 @@
                            (assoc :metadata/model-metadata (:result_metadata source-card)))]
       (binding [qp.perms/*card-id* source-card-id]
         (qp.streaming/streaming-response [rff export-format]
-          (qp/process-query (update query :info merge info) rff))))))
+          (if was-pivot
+            (qp.pivot/run-pivot-query (-> query
+                                          (assoc :constraints (qp.constraints/default-query-constraints))
+                                          (update :info merge info))
+                                      rff)
+            (qp/process-query (update query :info merge info) rff)))))))
 
 (api/defendpoint POST "/"
   "Execute a query and retrieve the results in the usual format. The query will not use the cache."
@@ -131,38 +136,32 @@
    visualization_settings ms/JSONString
    format_rows            [:maybe :boolean]
    export-format          (into [:enum] export-formats)}
-  (let [query        (json/parse-string query keyword)
-        viz-settings (-> (json/parse-string visualization_settings viz-setting-key-fn)
-                         (update :table.columns mbql.normalize/normalize)
-                         mb.viz/db->norm)
-        query        (-> query
-                         (assoc :viz-settings viz-settings)
-                         (dissoc :constraints)
-                         (update :middleware #(-> %
-                                                  (dissoc :add-default-userland-constraints? :js-int-to-string?)
-                                                  (assoc :process-viz-settings? true
-                                                         :skip-results-metadata? true
-                                                         :format-rows? format_rows))))]
+  (let [{:keys [was-pivot] :as query} (json/parse-string query keyword)
+        query                         (dissoc query :was-pivot)
+        viz-settings                  (-> (json/parse-string visualization_settings viz-setting-key-fn)
+                                          (update :table.columns mbql.normalize/normalize)
+                                          mb.viz/db->norm)
+        query                         (-> query
+                                          (assoc :viz-settings viz-settings)
+                                          (dissoc :constraints)
+                                          (update :middleware #(-> %
+                                                                   (dissoc :add-default-userland-constraints? :js-int-to-string?)
+                                                                   (assoc :process-viz-settings? true
+                                                                          :skip-results-metadata? true
+                                                                          :format-rows? format_rows))))]
     (run-streaming-query
      (qp/userland-query query)
      :export-format export-format
-     :context       (export-format->context export-format))))
-
+     :context      (export-format->context export-format)
+     :was-pivot    was-pivot)))
 
 ;;; ------------------------------------------------ Other Endpoints -------------------------------------------------
 
-;; TODO - this is no longer used. Should we remove it?
-(api/defendpoint POST "/duration"
-  "Get historical query execution duration."
-  [:as {{:keys [database], :as query} :body}]
-  (api/read-check Database database)
-  ;; try calculating the average for the query as it was given to us, otherwise with the default constraints if
-  ;; there's no data there. If we still can't find relevant info, just default to 0
-  {:average (or
-             (some (comp query/average-execution-time-ms qp.util/query-hash)
-                   [query
-                    (assoc query :constraints (qp.constraints/default-query-constraints))])
-             0)})
+(api/defendpoint POST "/query_metadata"
+  "Get all of the required query metadata for an ad-hoc query."
+  [:as {{:keys [database] :as query} :body}]
+  {database ms/PositiveInt}
+  (api.query-metadata/batch-fetch-query-metadata [query]))
 
 (api/defendpoint POST "/native"
   "Fetch a native version of an MBQL query."
@@ -173,7 +172,7 @@
     (qp.perms/check-current-user-has-adhoc-native-query-perms query)
     (let [driver (driver.u/database->driver database)
           prettify (partial driver/prettify-native-form driver)
-          compiled (qp.compile/compile-and-splice-parameters query)]
+          compiled (qp.compile/compile-with-inline-parameters query)]
       (cond-> compiled
         (not (false? pretty)) (update :query prettify)))))
 
@@ -190,7 +189,8 @@
       (qp.pivot/run-pivot-query (assoc query
                                        :constraints (qp.constraints/default-query-constraints)
                                        :info        info)
-                                rff))))
+                                rff)
+      query)))
 
 (defn- parameter-field-values
   [field-ids query]

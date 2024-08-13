@@ -2,9 +2,10 @@
   "`/api/ee/audit-app/user` endpoints. These only work if you have a premium token with the `:audit-app` feature."
   (:require
    [compojure.core :refer [DELETE GET]]
-   [metabase-enterprise.audit-db :as audit-db]
+   [metabase-enterprise.audit-app.audit :as ee-audit]
    [metabase.api.common :as api]
    [metabase.api.user :as api.user]
+   [metabase.audit :as audit]
    [metabase.models.interface :as mi]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-channel-recipient :refer [PulseChannelRecipient]]
@@ -16,14 +17,14 @@
   "Gets audit info for the current user if he has permissions to access the audit collection.
   Otherwise return an empty map."
   []
-  (let [custom-reports     (audit-db/default-custom-reports-collection)
-        question-overview  (audit-db/memoized-select-audit-entity :model/Dashboard audit-db/default-question-overview-entity-id)
-        dashboard-overview (audit-db/memoized-select-audit-entity :model/Dashboard audit-db/default-dashboard-overview-entity-id)]
+  (let [custom-reports     (audit/default-custom-reports-collection)
+        question-overview  (audit/memoized-select-audit-entity :model/Dashboard ee-audit/default-question-overview-entity-id)
+        dashboard-overview (audit/memoized-select-audit-entity :model/Dashboard ee-audit/default-dashboard-overview-entity-id)]
     (merge
      {}
-     (when (mi/can-read? (audit-db/default-custom-reports-collection))
+     (when (mi/can-read? (audit/default-custom-reports-collection))
        {(:slug custom-reports) (:id custom-reports)})
-     (when (mi/can-read? (audit-db/default-audit-collection))
+     (when (mi/can-read? (audit/default-audit-collection))
        {(u/slugify (:name question-overview)) (:id question-overview)
         (u/slugify (:name dashboard-overview)) (:id dashboard-overview)}))))
 

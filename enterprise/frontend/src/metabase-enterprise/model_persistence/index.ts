@@ -20,7 +20,9 @@ if (hasPremiumFeature("cache_granular_controls")) {
     const isPersisted = model.isPersisted();
 
     return {
-      title: isPersisted ? t`Turn model caching off` : t`Turn model caching on`,
+      title: isPersisted
+        ? t`Turn model persistence off`
+        : t`Turn model persistence on`,
       action: () => toggleModelPersistence(model, onChange),
       icon: "database",
     };

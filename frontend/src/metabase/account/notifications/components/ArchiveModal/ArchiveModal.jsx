@@ -3,8 +3,8 @@ import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-import FormMessage from "metabase/components/form/FormMessage";
 import Button from "metabase/core/components/Button";
+import { FormMessage } from "metabase/forms";
 import { formatDateTimeWithUnit } from "metabase/lib/formatting";
 import { formatChannelRecipients } from "metabase/lib/notifications";
 import Settings from "metabase/lib/settings";

@@ -1,6 +1,16 @@
 import { useState, useCallback } from "react";
 
-export function useListSelect<T>(keyFn: (item: T) => string) {
+export type UseListSelectReturnValue<T> = {
+  clear: () => void;
+  getIsSelected: (item: T) => boolean;
+  selected: T[];
+  selectOnlyTheseItems: (items: T[]) => void;
+  toggleItem: (item: T) => void;
+};
+
+export function useListSelect<T>(
+  keyFn: (item: T) => string,
+): UseListSelectReturnValue<T> {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [selected, setSelected] = useState<T[]>([]);
 

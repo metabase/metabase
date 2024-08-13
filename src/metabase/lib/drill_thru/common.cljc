@@ -41,3 +41,8 @@
   "Does the source table for this `query` have more than one primary key?"
   [query]
   (> (count (lib.metadata.calculation/primary-keys query)) 1))
+
+(defn drill-value->js
+  "Convert a drill value to a JS value"
+  [value]
+  (if (= value :null) nil value))

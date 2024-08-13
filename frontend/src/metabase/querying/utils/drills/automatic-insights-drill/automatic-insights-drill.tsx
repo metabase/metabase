@@ -35,8 +35,14 @@ export const automaticInsightsDrill: Drill = ({
     },
   ];
 
-  const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
-    return <ClickActionsView clickActions={actions} onClick={onClick} />;
+  const DrillPopover = ({ onClose, onClick }: ClickActionPopoverProps) => {
+    return (
+      <ClickActionsView
+        clickActions={actions}
+        close={onClose}
+        onClick={onClick}
+      />
+    );
   };
 
   return [

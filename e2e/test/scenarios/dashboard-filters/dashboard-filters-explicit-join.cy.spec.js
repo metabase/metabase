@@ -88,7 +88,7 @@ describe("scenarios > dashboard > filters", () => {
 
     cy.location("search").should(
       "eq",
-      "?text=Awesome%20Concrete%20Shoes&text=Awesome%20Iron%20Hat",
+      "?text=Awesome+Concrete+Shoes&text=Awesome+Iron+Hat",
     );
 
     filterWidget().contains("2 selections");
@@ -102,6 +102,6 @@ describe("scenarios > dashboard > filters", () => {
 
 function selectFromDropdown(values) {
   values.forEach(value => {
-    cy.findByTestId(`${value}-filter-value`).should("be.visible").click();
+    cy.findByLabelText(value).should("be.visible").click();
   });
 }

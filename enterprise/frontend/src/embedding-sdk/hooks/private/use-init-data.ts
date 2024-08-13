@@ -1,88 +1,110 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import _ from "underscore";
 
-import { store } from "embedding-sdk/store";
+import { getEmbeddingSdkVersion } from "embedding-sdk/config";
+import { getAuthConfiguration } from "embedding-sdk/hooks/private/get-auth-configuration";
+import { getErrorMessage } from "embedding-sdk/lib/user-warnings/constants";
+import { useSdkDispatch, useSdkSelector } from "embedding-sdk/store";
 import {
-  getOrRefreshSession,
-  getSessionTokenState,
+  setFetchRefreshTokenFn,
+  setLoginStatus,
 } from "embedding-sdk/store/reducer";
-import type { EmbeddingSessionTokenState } from "embedding-sdk/store/types";
-import type { SDKConfigType } from "embedding-sdk/types";
-import { reloadSettings } from "metabase/admin/settings/settings";
+import { getLoginStatus } from "embedding-sdk/store/selectors";
+import type { SDKConfig } from "embedding-sdk/types";
 import api from "metabase/lib/api";
-import { useDispatch } from "metabase/lib/redux";
+import { useSelector } from "metabase/lib/redux";
+import { refreshSiteSettings } from "metabase/redux/settings";
 import { refreshCurrentUser } from "metabase/redux/user";
+import { getApplicationName } from "metabase/selectors/whitelabel";
 import registerVisualizations from "metabase/visualizations/register";
 
 const registerVisualizationsOnce = _.once(registerVisualizations);
 
 interface InitDataLoaderParameters {
-  config: SDKConfigType;
+  config: SDKConfig;
 }
 
-export const useInitData = ({
-  config,
-}: InitDataLoaderParameters): {
-  isLoggedIn: boolean;
-  isInitialized: boolean;
-} => {
-  const dispatch = useDispatch();
+export const useInitData = ({ config }: InitDataLoaderParameters) => {
+  const dispatch = useSdkDispatch();
 
-  const [isInitialized, setIsInitialized] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [sessionTokenState, setSessionTokenState] =
-    useState<EmbeddingSessionTokenState | null>(null);
+  const loginStatus = useSdkSelector(getLoginStatus);
+  const appName = useSelector(getApplicationName);
 
   useEffect(() => {
     registerVisualizationsOnce();
+
+    const EMBEDDING_SDK_VERSION = getEmbeddingSdkVersion();
+    api.requestClient = {
+      name: "embedding-sdk-react",
+      version: EMBEDDING_SDK_VERSION,
+    };
+
+    // eslint-disable-next-line no-console
+    console.log(
+      // eslint-disable-next-line no-literal-metabase-strings -- Not a user facing string
+      `Using Metabase Embedding SDK, version ${EMBEDDING_SDK_VERSION}`,
+    );
   }, []);
 
-  const jwtProviderUri =
-    config.authType === "jwt" ? config.jwtProviderUri : null;
   useEffect(() => {
-    if (config.authType === "jwt") {
-      const updateToken = () => {
-        const currentState = store.getState();
-        setSessionTokenState(getSessionTokenState(currentState));
-      };
-
-      const unsubscribe = store.subscribe(updateToken);
-
-      if (jwtProviderUri) {
-        dispatch(getOrRefreshSession(jwtProviderUri));
-      }
-
-      updateToken();
-
-      return () => unsubscribe();
-    }
-  }, [config.authType, dispatch, jwtProviderUri]);
+    dispatch(setFetchRefreshTokenFn(config.fetchRequestToken ?? null));
+  }, [dispatch, config.fetchRequestToken]);
 
   useEffect(() => {
-    api.basename = config.metabaseInstanceUrl;
-
-    if (config.authType === "jwt") {
-      api.onBeforeRequest = () =>
-        dispatch(getOrRefreshSession(config.jwtProviderUri));
-      api.sessionToken = sessionTokenState?.token?.id;
-    } else if (config.authType === "apiKey" && config.apiKey) {
-      api.apiKey = config.apiKey;
-    } else {
-      setIsLoggedIn(false);
+    if (loginStatus.status !== "uninitialized") {
       return;
     }
 
-    Promise.all([
-      dispatch(refreshCurrentUser()),
-      dispatch(reloadSettings()),
-    ]).then(() => {
-      setIsInitialized(true);
-      setIsLoggedIn(true);
-    });
-  }, [config, dispatch, sessionTokenState]);
+    api.basename = config.metabaseInstanceUrl;
 
-  return {
-    isLoggedIn,
-    isInitialized,
-  };
+    const authErrorMessage = getAuthConfiguration(config, dispatch, appName);
+
+    if (authErrorMessage) {
+      dispatch(
+        setLoginStatus({
+          status: "error",
+          error: new Error(authErrorMessage),
+        }),
+      );
+    }
+  }, [appName, config, dispatch, loginStatus.status]);
+
+  useEffect(() => {
+    if (loginStatus.status === "validated") {
+      const fetchData = async () => {
+        dispatch(setLoginStatus({ status: "loading" }));
+
+        try {
+          const [userResponse, siteSettingsResponse] = await Promise.all([
+            dispatch(refreshCurrentUser()),
+            dispatch(refreshSiteSettings({})),
+          ]);
+
+          if (
+            userResponse.meta.requestStatus === "rejected" ||
+            siteSettingsResponse.meta.requestStatus === "rejected"
+          ) {
+            dispatch(
+              setLoginStatus({
+                status: "error",
+                error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
+              }),
+            );
+            return;
+          }
+
+          dispatch(setLoginStatus({ status: "success" }));
+        } catch (error) {
+          dispatch(
+            setLoginStatus({
+              status: "error",
+              error: new Error(getErrorMessage("COULD_NOT_AUTHENTICATE")),
+            }),
+          );
+        }
+      };
+
+      fetchData();
+    }
+  }, [dispatch, loginStatus.status]);
 };

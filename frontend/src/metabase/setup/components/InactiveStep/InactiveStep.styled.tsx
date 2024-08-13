@@ -9,16 +9,16 @@ interface Props {
 
 export const StepRoot = styled.section<Props>`
   position: relative;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
   padding: 1rem 2rem;
   margin-bottom: 1.75rem;
   background-color: ${props =>
-    color(props.isCompleted ? "white" : "bg-medium")};
+    color(props.isCompleted ? "bg-white" : "bg-medium")};
 `;
 
 export const StepTitle = styled.div<Props>`
-  color: ${props => color(props.isCompleted ? "success" : "brand")};
+  color: ${props => (props.isCompleted ? color("success") : color("brand"))};
   font-size: 1rem;
   font-weight: 700;
   margin: 0.5rem 0;
@@ -34,13 +34,15 @@ export const StepLabel = styled.div<Props>`
   align-items: center;
   width: 2.625rem;
   height: 2.625rem;
-  border: 1px solid ${props => color(props.isCompleted ? "success" : "border")};
+  border: 1px solid
+    ${props => (props.isCompleted ? color("success") : color("border"))};
   border-radius: 50%;
-  background-color: ${props => color(props.isCompleted ? "success" : "white")};
+  background-color: ${props =>
+    props.isCompleted ? color("success") : color("bg-white")};
 `;
 
 export const StepLabelText = styled.span`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
   line-height: 1;
 `;
@@ -48,5 +50,5 @@ export const StepLabelText = styled.span`
 export const StepLabelIcon = styled(Icon)`
   width: 1rem;
   height: 1rem;
-  color: ${color("white")};
+  color: var(--mb-color-text-white);
 `;

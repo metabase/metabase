@@ -3,9 +3,7 @@
   (:require
    [cheshire.core :as json]
    [compojure.core :as compojure :refer [POST]]
-   [metabase.actions :as actions]
-   [metabase.actions.execution :as actions.execution]
-   [metabase.actions.http-action :as http-action]
+   [metabase.actions.core :as actions]
    [metabase.analytics.snowplow :as snowplow]
    [metabase.api.common :as api]
    [metabase.api.common.validation :as validation]
@@ -25,7 +23,7 @@
   [:and
    string?
    (mu/with-api-error-message
-     [:fn #(http-action/apply-json-query {} %)]
+    [:fn #(actions/apply-json-query {} %)]
      (deferred-tru "must be a valid json-query, something like ''.item.title''"))])
 
 (def ^:private supported-action-type
@@ -207,7 +205,7 @@
   (actions/check-actions-enabled! action-id)
   (-> (action/select-action :id action-id :archived false)
       api/read-check
-      (actions.execution/fetch-values (json/parse-string parameters))))
+      (actions/fetch-values (json/parse-string parameters))))
 
 (api/defendpoint POST "/:id/execute"
   "Execute the Action.
@@ -220,6 +218,6 @@
     (snowplow/track-event! ::snowplow/action-executed api/*current-user-id* {:source    :model_detail
                                                                              :type      type
                                                                              :action_id id})
-    (actions.execution/execute-action! action (update-keys parameters name))))
+    (actions/execute-action! action (update-keys parameters name))))
 
 (api/define-routes)

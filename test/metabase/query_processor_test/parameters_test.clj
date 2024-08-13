@@ -4,11 +4,14 @@
   (:require
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.lib.native :as lib-native]
    [metabase.models :refer [Card]]
+   [metabase.models.permissions :as perms]
+   [metabase.models.permissions-group :as perms-group]
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.test :as mt]
@@ -75,7 +78,7 @@
               (is (= 1
                      (count-with-params :users :last_login :date/single "2014-08-02T09:30Z" options))))))))))
 
-(deftest template-tag-generation-test
+(deftest ^:parallel template-tag-generation-test
   (testing "Generating template tags produces correct types for running process-query (#31252)"
     (t2.with-temp/with-temp
       [Card {card-id :id} {:type          :model
@@ -87,7 +90,8 @@
                    :type     :native
                    :native   {:query         q
                               :template-tags tt}})]
-        (is (some? res))))))
+        (is (=? {:status :completed}
+                res))))))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Field Filter Params                                               |
@@ -127,7 +131,7 @@
 (deftest ^:parallel field-filter-param-test
   (letfn [(is-count-= [expected-count table field value-type value]
             (let [query (field-filter-count-query table field value-type value)]
-              (testing (format "\nquery = \n%s" (u/pprint-to-str 'cyan query))
+              (mt/with-native-query-testing-context query
                 (is (= expected-count
                        (run-count-query query))))))]
     (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters)
@@ -135,9 +139,7 @@
         ;; TIMEZONE FIXME — The excluded drivers don't have TIME types, so the `attempted-murders` dataset doesn't
         ;; currently work. We should use the closest equivalent types (e.g. `DATETIME` or `TIMESTAMP` so we can still
         ;; load the dataset and run tests using this dataset such as these, which doesn't even use the TIME type.
-        (when (and (mt/supports-time-type? driver/*driver*)
-                   ;; Not sure why it's failing for Snowflake, we'll have to investigate.
-                   (not (= :snowflake driver/*driver*)))
+        (when (mt/supports-time-type? driver/*driver*)
           (mt/dataset attempted-murders
             (doseq [field
                     [:datetime
@@ -194,8 +196,8 @@
     (testing "Multiple values"
       (mt/dataset airports
         (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX')"
-                :params nil}
-               (qp.compile/compile-and-splice-parameters
+                :params []}
+               (qp.compile/compile-with-inline-parameters
                 {:type       :native
                  :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                               :template-tags {"country"
@@ -213,8 +215,8 @@
   (testing "Overriding the widget type in parameters should drop case-senstive option when incompatible"
     (mt/dataset airports
       (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (\"PUBLIC\".\"COUNTRY\".\"NAME\" = 'US')"
-              :params nil}
-             (qp.compile/compile-and-splice-parameters
+              :params []}
+             (qp.compile/compile-with-inline-parameters
                {:type       :native
                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                              :template-tags {"country"
@@ -227,12 +229,14 @@
                 :database   (mt/id)
                 :parameters [{:type   :string/=
                               :target [:dimension [:template-tag "country"]]
-                              :value  ["US"]}]})))))
+                              :value  ["US"]}]}))))))
+
+(deftest ^:parallel native-with-param-options-different-than-tag-type-test-2
   (testing "Overriding the widget type in parameters should not drop case-senstive option when compatible"
     (mt/dataset airports
       (is (= {:query  "SELECT NAME FROM COUNTRY WHERE (LOWER(\"PUBLIC\".\"COUNTRY\".\"NAME\") LIKE '%us')"
-              :params nil}
-             (qp.compile/compile-and-splice-parameters
+              :params []}
+             (qp.compile/compile-with-inline-parameters
                {:type       :native
                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}}"
                              :template-tags {"country"
@@ -252,7 +256,7 @@
     (testing "Comma-separated numbers"
       (is (= {:query  "SELECT * FROM VENUES WHERE \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE {{price}}"
                             :template-tags {"price"
@@ -272,7 +276,7 @@
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2, 3)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type :native
                :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
                         :template-tags {"number_comma"
@@ -290,7 +294,7 @@
       ;; this is an undocumented feature but lots of people rely on it, so we want it to continue working.
       (is (= {:query "SELECT * FROM VENUES WHERE price IN (1, 2)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type :native
                :native {:query "SELECT * FROM VENUES WHERE price IN ({{number_comma}})"
                         :template-tags {"number_comma"
@@ -307,28 +311,28 @@
   (testing "Params in SQL comments are ignored"
     (testing "Single-line comments"
       (mt/dataset airports
-                  (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
-                          :params nil}
-                         (qp.compile/compile-and-splice-parameters
-                          {:type       :native
-                           :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
-                                        :template-tags {"country"
-                                                        {:name         "country"
-                                                         :display-name "Country"
-                                                         :type         :dimension
-                                                         :dimension    [:field (mt/id :country :name) nil]
-                                                         :widget-type  :category}}}
-                           :database   (mt/id)
-                           :parameters [{:type   :location/country
-                                         :target [:dimension [:template-tag "country"]]
-                                         :value  ["US" "MX"]}]})))))))
+        (is (= {:query  "SELECT NAME FROM COUNTRY WHERE \"PUBLIC\".\"COUNTRY\".\"NAME\" IN ('US', 'MX') -- {{ignoreme}}"
+                :params []}
+               (qp.compile/compile-with-inline-parameters
+                {:type       :native
+                 :native     {:query         "SELECT NAME FROM COUNTRY WHERE {{country}} -- {{ignoreme}}"
+                              :template-tags {"country"
+                                              {:name         "country"
+                                               :display-name "Country"
+                                               :type         :dimension
+                                               :dimension    [:field (mt/id :country :name) nil]
+                                               :widget-type  :category}}}
+                 :database   (mt/id)
+                 :parameters [{:type   :location/country
+                               :target [:dimension [:template-tag "country"]]
+                               :value  ["US" "MX"]}]})))))))
 
 (deftest ^:parallel params-in-comments-test-2
   (testing "Params in SQL comments are ignored"
     (testing "Multi-line comments"
       (is (= {:query  "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ \"PUBLIC\".\"VENUES\".\"PRICE\" IN (1, 2)"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type       :native
                :native     {:query         "SELECT * FROM VENUES WHERE\n/*\n{{ignoreme}}\n*/ {{price}}"
                             :template-tags {"price"
@@ -499,7 +503,7 @@
     (mt/dataset test-data
       (is (= {:query  "SELECT NOW() - INTERVAL '30 DAYS'"
               :params []}
-             (qp.compile/compile-and-splice-parameters
+             (qp.compile/compile-with-inline-parameters
               {:type       :native
                :native     {:query         "SELECT NOW() - INTERVAL '{{n}} DAYS'"
                             :template-tags {"n"
@@ -511,3 +515,80 @@
                              :target [:variable [:template-tag "n"]]
                              :slug "n"
                              :value "30"}]}))))))
+
+(deftest sql-permissions-but-no-card-permissions-template-tag-test
+  (testing "If we have full SQL perms for a DW but no Card perms we shouldn't be able to include it with a ref or template tag"
+    (mt/test-drivers (mt/normal-drivers-with-feature :native-parameters :nested-queries :native-parameter-card-reference)
+      (mt/with-non-admin-groups-no-root-collection-perms
+        (mt/with-temp [:model/Collection {collection-1-id :id} {}
+                       :model/Collection {collection-2-id :id} {}
+
+                       :model/Card
+                       {card-1-id :id}
+                       {:collection_id collection-1-id
+                        :dataset_query (mt/mbql-query venues {:fields   [$id $name]
+                                                              :order-by [[:asc $id]]
+                                                              :limit    2})}
+
+                       :model/Card
+                       {card-2-id :id, :as card-2}
+                       {:collection_id collection-2-id
+                        :dataset_query (mt/native-query
+                                         {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                                          :template-tags {"card" {:name         "card"
+                                                                  :display-name "card"
+                                                                  :type         :card
+                                                                  :card-id      card-1-id}}})}]
+          (testing (format "\nCollection 1 ID = %d, Card 1 ID = %d; Collection 2 ID = %d, Card 2 ID = %d"
+                           collection-1-id card-1-id collection-2-id card-2-id)
+            (mt/with-test-user :rasta
+              (testing "Sanity check: shouldn't be able to run Card as MBQL query"
+                (is (thrown-with-msg?
+                     clojure.lang.ExceptionInfo
+                     #"You do not have permissions to view Card \d+"
+                     (qp/process-query {:database (mt/id), :type :query, :query {:source-table (format "card__%d" card-2-id)}}))))
+              (testing "Sanity check: SHOULD be able to run a native query"
+                (testing (str "COMPILED = \n" (u/pprint-to-str (qp.compile/compile (:dataset_query card-2))))
+                  (is (= [[1 "Red Medicine"]
+                          [2 "Stout Burgers & Beers"]]
+                         (mt/formatted-rows
+                          [int str]
+                          (qp/process-query {:database (mt/id)
+                                             :type     :native
+                                             :native   (dissoc (qp.compile/compile (:dataset_query card-2))
+                                                               :metabase.models.query.permissions/referenced-card-ids)}))))))
+              (let [query (mt/native-query
+                            {:query         (mt/native-query-with-card-template-tag driver/*driver* "card")
+                             :template-tags {"card" {:name         "card"
+                                                     :display-name "card"
+                                                     :type         :card
+                                                     :card-id      card-2-id}}})]
+                (testing "SHOULD NOT be able to run native query with Card ID template tag"
+                  (is (thrown-with-msg?
+                       clojure.lang.ExceptionInfo
+                       #"\QYou do not have permissions to run this query.\E"
+                       (qp/process-query query))))
+                (testing "Exception should NOT include the compiled native query"
+                  (try
+                    (qp/process-query query)
+                    (is (not ::here?)
+                        "Should never get here, query should throw an Exception")
+                    (catch Throwable e
+                      (doseq [data (keep ex-data (u/full-exception-chain e))]
+                        (walk/postwalk
+                         (fn [form]
+                           (when (string? form)
+                             (is (not (re-find #"SELECT" form))))
+                           form)
+                         data)))))
+                (testing (str "If we have permissions for Card 2's Collection (but not Card 1's) we should be able to"
+                              " run a native query referencing Card 2, even tho it references Card 1 (#15131)")
+                  (perms/grant-collection-read-permissions! (perms-group/all-users) collection-2-id)
+                  ;; need to call [[mt/with-test-user]] again so [[metabase.api.common/*current-user-permissions-set*]]
+                  ;; gets rebound with the updated permissions. This will be fixed in #45001
+                  (mt/with-test-user :rasta
+                    (is (= [[1 "Red Medicine"]
+                            [2 "Stout Burgers & Beers"]]
+                           (mt/formatted-rows
+                            [int str]
+                            (qp/process-query query))))))))))))))

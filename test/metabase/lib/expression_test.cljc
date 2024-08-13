@@ -11,7 +11,9 @@
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.expression :as lib.schema.expression]
    [metabase.lib.test-metadata :as meta]
-   [metabase.lib.test-util :as lib.tu]))
+   [metabase.lib.test-util :as lib.tu]
+   [metabase.lib.util :as lib.util]
+   [metabase.util :as u]))
 
 (comment lib/keep-me)
 
@@ -70,7 +72,7 @@
                           #_#_(lib/concat string-field "abc") :type/Text
                           (lib/substring string-field 0 10) :type/Text
                           (lib/replace string-field "abc" "def") :type/Text
-                          (lib/regexextract string-field "abc") :type/Text
+                          (lib/regex-match-first string-field "abc") :type/Text
                           (lib/length string-field) :type/Integer
                           (lib/trim string-field) :type/Text
                           (lib/rtrim string-field) :type/Text
@@ -254,7 +256,8 @@
   ;; TODO: This logic was removed as part of fixing #39059. We might want to bring it back for collisions with other
   ;; expressions in the same stage; probably not with tables or earlier stages. De-duplicating names is supported by the
   ;; QP code, and it should be powered by MLv2 in due course.
-  #_(testing "collisions with other column names are detected and rejected"
+  #_
+  (testing "collisions with other column names are detected and rejected"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :categories))
           ex    (try
                   (lib/expression query "ID" (meta/field-metadata :categories :name))
@@ -293,12 +296,32 @@
         expressionable-expressions-for-position (fn [pos]
                                                   (some->> (lib/expressionable-columns query pos)
                                                            (map :lib/desired-column-alias)))]
-    (is (= ["ID" "NAME"] (expressionable-expressions-for-position 0)))
-    (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
+    ;; Because of (the second problem in) #44584, the expression-position argument is ignored,
+    ;; so the first two calls behave the same as the last two.
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 0)))
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 1)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
     (is (= (lib/visible-columns query)
            (lib/expressionable-columns query nil)))))
+
+(deftest ^:parallel expressionable-columns-exclude-expressions-containing-offset
+  (testing "expressionable-columns should filter out expressions which contain :offset"
+    (let [query (-> lib.tu/venues-query
+                    (lib/order-by (meta/field-metadata :venues :id) :asc)
+                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
+                    (lib/expression "Nested Offset"
+                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                 {:id (meta/id :venues :name) :name "NAME"}
+                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                 {:id (meta/id :venues :price) :name "PRICE"}
+                 {:id (meta/id :categories :id) :name "ID"}
+                 {:id (meta/id :categories :name) :name "NAME"}]
+                (lib/expressionable-columns query -1 2)))))))
 
 (deftest ^:parallel infix-display-name-with-expressions-test
   (testing "#32063"
@@ -489,7 +512,74 @@
                              (assoc 3 (lib/count)))
             :filter      (assoc (get exprs "circular-c") 0 :=)))
         (testing "circular definition"
-          (is (= {:message "Cycle detected: c → x → b → c"}
-                 (lib.expression/diagnose-expression query 0 :expression
-                                                     (get exprs "circular-c")
-                                                     c-pos))))))))
+          (is (=? {:message "Cycle detected: c → x → b → c"}
+                  (lib.expression/diagnose-expression query 0 :expression
+                                                      (get exprs "circular-c")
+                                                      c-pos))))))))
+
+(deftest ^:parallel diagnose-expression-test-4-offset-not-allowed-in-expressions
+  (testing "adding/editing an expression using offset is not allowed"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (=? {:message "OFFSET is not supported in custom columns"}
+              (lib.expression/diagnose-expression query 0 :expression
+                                                  (lib/offset (meta/field-metadata :orders :subtotal) -1)
+                                                  nil))))))
+
+(deftest ^:parallel diagnose-expression-test-5-offset-not-allowed-in-filters
+  (testing "adding/editing a filter using offset is not allowed"
+    (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
+      (is (=? {:message  "OFFSET is not supported in custom filters"
+               :friendly true}
+              (lib.expression/diagnose-expression query 0 :filter
+                                                  (lib/< (lib/offset (meta/field-metadata :orders :subtotal) -1)
+                                                         100)
+                                                  nil))))))
+
+(deftest ^:parallel date-and-time-string-literals-test-1-dates
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    #{:type/Date :type/Text} "2024-07-02"))
+
+(deftest ^:parallel date-and-time-string-literals-test-2-times
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; Times without time zones
+    #{:type/Time :type/Text} "12:34:56.789"
+    #{:type/Time :type/Text} "12:34:56"
+    #{:type/Time :type/Text} "12:34"
+    ;; Times in Zulu
+    #{:type/Time :type/Text} "12:34:56.789Z"
+    #{:type/Time :type/Text} "12:34:56Z"
+    #{:type/Time :type/Text} "12:34Z"
+    ;; Times with offsets
+    #{:type/Time :type/Text} "12:34:56.789+07:00"
+    #{:type/Time :type/Text} "12:34:56-03:00"
+    #{:type/Time :type/Text} "12:34+02:03"))
+
+(deftest ^:parallel date-and-time-string-literals-test-3-datetimes-with-T
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; DateTimes without time zones
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34"
+    ;; DateTimes in Zulu time
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789Z"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56Z"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34Z"
+    ;; DateTimes with offsets
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56.789+07:00"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34:56-03:00"
+    #{:type/DateTime :type/Text} "2024-07-02T12:34+02:03"))
+
+(deftest ^:parallel date-and-time-string-literals-test-4-datetimes-without-T
+  (are [types input] (= types (lib.schema.expression/type-of input))
+    ;; DateTimes without time zones and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34"
+    ;; DateTimes in Zulu time and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789Z"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56Z"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34Z"
+    ;; DateTimes with offsets and no T
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56.789+07:00"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34:56-03:00"
+    #{:type/DateTime :type/Text} "2024-07-02 12:34+02:03"))

@@ -16,8 +16,9 @@
   (testing "zoom-in for bins is available for cells, pivots and legends on numeric columns which have binning set"
     (canned/canned-test
       :drill-thru/zoom-in.timeseries
-      (fn [_test-case context {:keys [click]}]
+      (fn [test-case context {:keys [click]}]
         (and (#{:cell :pivot :legend} click)
+             (not (:native? test-case))
              (seq (for [dim (:dimensions context)
                         :when (and (isa? (:effective-type (:column dim)) :type/DateTime)
                                    (lib/temporal-bucket (:column dim)))]

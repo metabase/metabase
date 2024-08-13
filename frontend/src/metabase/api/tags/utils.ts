@@ -1,5 +1,6 @@
 import type { TagDescription } from "@reduxjs/toolkit/query";
 
+import { isVirtualDashCard } from "metabase/dashboard/utils";
 import type {
   Alert,
   ApiKey,
@@ -8,28 +9,40 @@ import type {
   Collection,
   CollectionItem,
   CollectionItemModel,
+  Dashboard,
+  DashboardSubscription,
   Database,
-  DatabaseCandidate,
+  DatabaseXray,
   Field,
   FieldDimension,
   FieldId,
   ForeignKey,
-  Metric,
+  GroupListQuery,
+  ListDashboardsResponse,
+  NativeQuerySnippet,
+  ModelCacheRefreshStatus,
   PopularItem,
   RecentItem,
+  Revision,
   SearchModel,
   SearchResult,
   Segment,
   Table,
+  Task,
   Timeline,
   TimelineEvent,
   UserInfo,
+  DashboardQueryMetadata,
+  CardQueryMetadata,
+  CardId,
+  ModelIndex,
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
   COLLECTION_ITEM_MODELS,
   SEARCH_MODELS,
 } from "metabase-types/api";
+import type { CloudMigration } from "metabase-types/api/cloud-migration";
 
 import type { TagType } from "./constants";
 import { TAG_TYPE_MAPPING } from "./constants";
@@ -56,6 +69,10 @@ export function invalidateTags(
   return !error ? tags : [];
 }
 
+// ----------------------------------------------------------------------- //
+// Keep the below list of entity-specific functions alphabetically sorted. //
+// ----------------------------------------------------------------------- //
+
 export function provideActivityItemListTags(
   items: RecentItem[] | PopularItem[],
 ): TagDescription<TagType>[] {
@@ -68,7 +85,17 @@ export function provideActivityItemListTags(
 export function provideActivityItemTags(
   item: RecentItem | PopularItem,
 ): TagDescription<TagType>[] {
-  return [idTag(TAG_TYPE_MAPPING[item.model], item.model_id)];
+  return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
+}
+
+export function provideAdhocQueryMetadataTags(
+  metadata: CardQueryMetadata,
+): TagDescription<TagType>[] {
+  return [
+    ...provideDatabaseListTags(metadata.databases),
+    ...provideTableListTags(metadata.tables),
+    ...provideFieldListTags(metadata.fields),
+  ];
 }
 
 export function provideAlertListTags(
@@ -92,36 +119,6 @@ export function provideApiKeyListTags(
 
 export function provideApiKeyTags(apiKey: ApiKey): TagDescription<TagType>[] {
   return [idTag("api-key", apiKey.id)];
-}
-
-export function provideDatabaseCandidateListTags(
-  candidates: DatabaseCandidate[],
-): TagDescription<TagType>[] {
-  return [
-    listTag("schema"),
-    ...candidates.flatMap(provideDatabaseCandidateTags),
-  ];
-}
-
-export function provideDatabaseCandidateTags(
-  candidate: DatabaseCandidate,
-): TagDescription<TagType>[] {
-  return [idTag("schema", candidate.schema)];
-}
-
-export function provideDatabaseListTags(
-  databases: Database[],
-): TagDescription<TagType>[] {
-  return [listTag("database"), ...databases.flatMap(provideDatabaseTags)];
-}
-
-export function provideDatabaseTags(
-  database: Database,
-): TagDescription<TagType>[] {
-  return [
-    idTag("database", database.id),
-    ...(database.tables ? provideTableListTags(database.tables) : []),
-  ];
 }
 
 export function provideBookmarkListTags(
@@ -150,6 +147,19 @@ export function provideCardTags(card: Card): TagDescription<TagType>[] {
   ];
 }
 
+export function provideCardQueryMetadataTags(
+  id: CardId,
+  metadata: CardQueryMetadata,
+): TagDescription<TagType>[] {
+  return [idTag("card", id), ...provideAdhocQueryMetadataTags(metadata)];
+}
+
+export function provideCloudMigrationTags(
+  migration: CloudMigration,
+): TagDescription<TagType>[] {
+  return [idTag("cloud-migration", migration.id)];
+}
+
 export function provideCollectionItemListTags(
   items: CollectionItem[],
   models: CollectionItemModel[] = Array.from(COLLECTION_ITEM_MODELS),
@@ -166,10 +176,101 @@ export function provideCollectionItemTags(
   return [idTag(TAG_TYPE_MAPPING[item.model], item.id)];
 }
 
+export function provideCollectionListTags(
+  collections: Collection[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("collection"),
+    ...collections.flatMap(collection => provideCollectionTags(collection)),
+  ];
+}
+
 export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideModelIndexTags(
+  modelIndex: ModelIndex,
+): TagDescription<TagType>[] {
+  return [idTag("model-index", modelIndex.id)];
+}
+
+export function provideModelIndexListTags(
+  modelIndexes: ModelIndex[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("model-index"),
+    ...modelIndexes.flatMap(modelIndex => provideModelIndexTags(modelIndex)),
+  ];
+}
+
+export function provideDatabaseCandidateListTags(
+  candidates: DatabaseXray[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("schema"),
+    ...candidates.flatMap(provideDatabaseCandidateTags),
+  ];
+}
+
+export function provideDatabaseCandidateTags(
+  candidate: DatabaseXray,
+): TagDescription<TagType>[] {
+  return [idTag("schema", candidate.schema)];
+}
+
+export function provideDatabaseListTags(
+  databases: Database[],
+): TagDescription<TagType>[] {
+  return [listTag("database"), ...databases.flatMap(provideDatabaseTags)];
+}
+
+export function provideDatabaseTags(
+  database: Database,
+): TagDescription<TagType>[] {
+  return [
+    idTag("database", database.id),
+    ...(database.tables ? provideTableListTags(database.tables) : []),
+  ];
+}
+
+export function provideDashboardListTags(
+  dashboards: ListDashboardsResponse,
+): TagDescription<TagType>[] {
+  return [
+    listTag("dashboard"),
+    ...dashboards.map(dashboard => idTag("dashboard", dashboard.id)),
+  ];
+}
+
+export function provideDashboardTags(
+  dashboard: Dashboard,
+): TagDescription<TagType>[] {
+  const cards = dashboard.dashcards
+    .flatMap(dashcard => (isVirtualDashCard(dashcard) ? [] : [dashcard]))
+    .map(dashcard => dashcard.card);
+
+  return [
+    idTag("dashboard", dashboard.id),
+    ...provideCardListTags(cards),
+    ...(dashboard.collection
+      ? provideCollectionTags(dashboard.collection)
+      : []),
+  ];
+}
+
+export function provideDashboardQueryMetadataTags(
+  metadata: DashboardQueryMetadata,
+): TagDescription<TagType>[] {
+  return [
+    ...provideDatabaseListTags(metadata.databases),
+    ...provideTableListTags(metadata.tables),
+    ...provideFieldListTags(metadata.fields),
+    ...provideCardListTags(metadata.cards),
+    ...provideDashboardListTags(metadata.dashboards),
+  ];
 }
 
 export function provideFieldListTags(
@@ -225,17 +326,58 @@ export function provideFieldValuesTags(id: FieldId): TagDescription<TagType>[] {
   return [idTag("field-values", id)];
 }
 
-export function provideMetricListTags(
-  metrics: Metric[],
+export function providePermissionsGroupListTags(
+  groups: GroupListQuery[],
 ): TagDescription<TagType>[] {
-  return [listTag("metric"), ...metrics.flatMap(provideMetricTags)];
+  return [
+    listTag("permissions-group"),
+    ...groups.flatMap(providePermissionsGroupTags),
+  ];
 }
 
-export function provideMetricTags(metric: Metric): TagDescription<TagType>[] {
+export function providePermissionsGroupTags(
+  group: GroupListQuery,
+): TagDescription<TagType>[] {
+  return [idTag("permissions-group", group.id)];
+}
+
+export function providePersistedInfoListTags(
+  statuses: ModelCacheRefreshStatus[],
+): TagDescription<TagType>[] {
   return [
-    idTag("metric", metric.id),
-    ...(metric.table ? provideTableTags(metric.table) : []),
+    listTag("persisted-info"),
+    ...statuses.flatMap(providePersistedInfoTags),
   ];
+}
+
+export function providePersistedInfoTags(
+  status: ModelCacheRefreshStatus,
+): TagDescription<TagType>[] {
+  return [idTag("persisted-info", status.id)];
+}
+
+/**
+ * We have to differentiate between the `persisted-info` and `persisted-model` tags
+ * because the model cache refresh lives on the card api `/api/card/model/:id/refresh`.
+ * That endpoint doesn't have information about the persisted info id, so we have to
+ * map the model id to the `card_id` on the ModelCacheRefreshStatus.
+ */
+export function providePersistedModelTags(
+  status: ModelCacheRefreshStatus,
+): TagDescription<TagType>[] {
+  return [idTag("persisted-model", status.card_id)];
+}
+
+export function provideRevisionListTags(
+  revisions: Revision[],
+): TagDescription<TagType>[] {
+  return [listTag("revision"), ...revisions.flatMap(provideRevisionTags)];
+}
+
+export function provideRevisionTags(
+  revision: Revision,
+): TagDescription<TagType>[] {
+  return [idTag("revision", revision.id)];
 }
 
 export function provideSearchItemListTags(
@@ -272,6 +414,33 @@ export function provideSegmentTags(
   ];
 }
 
+export function provideSnippetListTags(
+  snippets: NativeQuerySnippet[],
+): TagDescription<TagType>[] {
+  return [listTag("snippet"), ...snippets.flatMap(provideSnippetTags)];
+}
+
+export function provideSnippetTags(
+  snippet: NativeQuerySnippet,
+): TagDescription<TagType>[] {
+  return [idTag("snippet", snippet.id)];
+}
+
+export function provideSubscriptionListTags(
+  subscriptions: DashboardSubscription[],
+): TagDescription<TagType>[] {
+  return [
+    listTag("subscription"),
+    ...subscriptions.flatMap(provideSubscriptionTags),
+  ];
+}
+
+export function provideSubscriptionTags(
+  subscription: DashboardSubscription,
+): TagDescription<TagType>[] {
+  return [idTag("subscription", subscription.id)];
+}
+
 export function provideTableListTags(
   tables: Table[],
 ): TagDescription<TagType>[] {
@@ -285,8 +454,15 @@ export function provideTableTags(table: Table): TagDescription<TagType>[] {
     ...(table.fields ? provideFieldListTags(table.fields) : []),
     ...(table.fks ? provideForeignKeyListTags(table.fks) : []),
     ...(table.segments ? provideSegmentListTags(table.segments) : []),
-    ...(table.metrics ? provideMetricListTags(table.metrics) : []),
   ];
+}
+
+export function provideTaskListTags(tasks: Task[]): TagDescription<TagType>[] {
+  return [listTag("task"), ...tasks.flatMap(provideTaskTags)];
+}
+
+export function provideTaskTags(task: Task): TagDescription<TagType>[] {
+  return [idTag("task", task.id)];
 }
 
 export function provideTimelineEventListTags(
@@ -321,6 +497,12 @@ export function provideTimelineTags(
     ...(timeline.collection ? provideCollectionTags(timeline.collection) : []),
     ...(timeline.events ? provideTimelineEventListTags(timeline.events) : []),
   ];
+}
+
+export function provideUserListTags(
+  users: UserInfo[],
+): TagDescription<TagType>[] {
+  return [listTag("user"), ...users.flatMap(user => provideUserTags(user))];
 }
 
 export function provideUserTags(user: UserInfo): TagDescription<TagType>[] {

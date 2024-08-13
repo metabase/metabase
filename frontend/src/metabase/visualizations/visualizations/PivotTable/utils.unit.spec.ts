@@ -242,6 +242,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
       const { leftHeaderWidths } = getLeftHeaderWidths({
         rowIndexes: [0, 1, 2],
         getColumnTitle: () => "test-123",
+        font: {},
       });
       // jest-dom thinks all characters are 1px wide, so we get the minimum
       expect(leftHeaderWidths).toEqual([
@@ -255,6 +256,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
       const { totalLeftHeaderWidths } = getLeftHeaderWidths({
         rowIndexes: [0, 1, 2],
         getColumnTitle: () => "test-123",
+        font: {},
       });
       expect(totalLeftHeaderWidths).toEqual(MIN_HEADER_CELL_WIDTH * 3);
     });
@@ -264,6 +266,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         rowIndexes: [0, 1, 2],
         // jest-dom thinks characters are 1px wide
         getColumnTitle: () => "x".repeat(MAX_HEADER_CELL_WIDTH),
+        font: {},
       });
 
       expect(leftHeaderWidths).toEqual([
@@ -287,6 +290,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         rowIndexes: [0, 1, 2, 3, 4],
         leftHeaderItems: data,
         getColumnTitle: () => "x".repeat(70),
+        font: {},
       });
 
       expect(leftHeaderWidths).toEqual([
@@ -312,6 +316,7 @@ describe("Visualizations > Visualizations > PivotTable > utils", () => {
         rowIndexes: [0, 1, 2, 3, 4],
         leftHeaderItems: data,
         getColumnTitle: () => "test-123",
+        font: {},
       });
 
       expect(leftHeaderWidths).toEqual([

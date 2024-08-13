@@ -10,15 +10,14 @@ import {
   canSaveClickBehavior,
   clickBehaviorIsValid,
 } from "metabase-lib/v1/parameters/utils/click-behavior";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Dashboard,
-  QuestionDashboardCard,
   DashCardId,
-  CardId,
   ClickBehavior,
-  DatasetData,
   DatasetColumn,
+  DashCardVisualizationSettings,
+  DashboardCard,
 } from "metabase-types/api";
 
 import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";
@@ -29,33 +28,29 @@ function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;
 }
 
-type VizSettings = Record<string, unknown>;
-
 interface Props {
   dashboard: Dashboard;
-  dashcard: QuestionDashboardCard;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   hideClickBehaviorSidebar: () => void;
   onUpdateDashCardColumnSettings: (
     id: DashCardId,
     columnKey: string,
-    settings?: VizSettings | null,
+    settings?: Record<string, unknown> | null,
   ) => void;
   onUpdateDashCardVisualizationSettings: (
     id: DashCardId,
-    settings?: VizSettings | null,
+    settings: DashCardVisualizationSettings | null | undefined,
   ) => void;
   onReplaceAllDashCardVisualizationSettings: (
     id: DashCardId,
-    settings?: VizSettings | null,
+    settings: DashCardVisualizationSettings | null | undefined,
   ) => void;
 }
 
 export function ClickBehaviorSidebar({
   dashboard,
   dashcard,
-  dashcardData,
   parameters,
   hideClickBehaviorSidebar,
   onUpdateDashCardColumnSettings,
@@ -71,7 +66,7 @@ export function ClickBehaviorSidebar({
   );
 
   const [originalVizSettings, setOriginalVizSettings] = useState<
-    VizSettings | undefined | null
+    DashCardVisualizationSettings | null | undefined
   >(null);
 
   const [originalColumnVizSettings, setOriginalColumnVizSettings] = useState<
@@ -213,7 +208,6 @@ export function ClickBehaviorSidebar({
         <ClickBehaviorSidebarContent
           dashboard={dashboard}
           dashcard={dashcard}
-          dashcardData={dashcardData}
           parameters={parameters}
           clickBehavior={clickBehavior}
           isTypeSelectorVisible={isTypeSelectorVisible}

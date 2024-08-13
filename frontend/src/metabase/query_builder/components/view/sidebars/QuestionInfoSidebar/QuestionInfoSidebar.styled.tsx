@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import EditableText from "metabase/core/components/EditableText";
-import { color } from "metabase/lib/colors";
 
 export const Root = styled.div`
   padding: 1rem 1.5rem 0;
@@ -20,7 +19,7 @@ export const ContentSection = styled.div<ContentSectionProps>`
   flex-direction: column;
   row-gap: 0.5rem;
   ${props => (props.extraPadding ? "padding: 2rem 0;" : "padding: 1rem 0;")}
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 
   &:last-of-type {
     border-bottom: none;

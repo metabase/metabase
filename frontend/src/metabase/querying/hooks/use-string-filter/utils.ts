@@ -1,7 +1,11 @@
-import { getAvailableOperatorOptions } from "metabase/querying/utils/filters";
+import {
+  getAvailableOperatorOptions,
+  getDefaultAvailableOperator,
+} from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 
 import { OPERATOR_OPTIONS } from "./constants";
+import type { OperatorOption } from "./types";
 
 function isNotEmpty(value: string) {
   return value.length > 0;
@@ -26,30 +30,23 @@ export function getOptionByOperator(operator: Lib.StringFilterOperatorName) {
 
 export function getDefaultOperator(
   column: Lib.ColumnMetadata,
+  availableOptions: OperatorOption[],
 ): Lib.StringFilterOperatorName {
-  if (
+  const desiredOperator =
     Lib.isPrimaryKey(column) ||
     Lib.isForeignKey(column) ||
     Lib.isCategory(column)
-  ) {
-    return "=";
-  } else {
-    return "contains";
-  }
+      ? "="
+      : "contains";
+  return getDefaultAvailableOperator(availableOptions, desiredOperator);
 }
 
 export function getDefaultValues(
   operator: Lib.StringFilterOperatorName,
   values: string[],
 ): string[] {
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  if (hasMultipleValues) {
-    return values.filter(isNotEmpty);
-  }
-
-  return Array(valueCount)
-    .fill("")
-    .map((value, index) => values[index] ?? value);
+  const { type } = OPERATOR_OPTIONS[operator];
+  return type !== "empty" ? values.filter(isNotEmpty) : [];
 }
 
 export function isValidFilter(
@@ -77,11 +74,8 @@ function getFilterParts(
   values: string[],
   options: Lib.StringFilterOptions,
 ): Lib.StringFilterParts | undefined {
-  const { valueCount, hasMultipleValues } = OPERATOR_OPTIONS[operator];
-  if (!values.every(isNotEmpty)) {
-    return undefined;
-  }
-  if (hasMultipleValues ? values.length === 0 : values.length !== valueCount) {
+  const { type } = OPERATOR_OPTIONS[operator];
+  if (values.length === 0 && type !== "empty") {
     return undefined;
   }
 

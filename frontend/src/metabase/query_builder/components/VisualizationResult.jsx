@@ -57,12 +57,14 @@ export default class VisualizationResult extends Component {
       rawSeries,
       timelineEvents,
       selectedTimelineEventIds,
+      onNavigateBack,
       className,
+      isRunning,
     } = this.props;
     const { showCreateAlertModal } = this.state;
 
     const noResults = datasetContainsNoResults(result.data);
-    if (noResults) {
+    if (noResults && !isRunning) {
       const supportsRowsPresentAlert = question.alertType() === ALERT_TYPE_ROWS;
 
       // successful query but there were 0 rows returned with the result
@@ -89,7 +91,9 @@ export default class VisualizationResult extends Component {
                 )}
                 <button
                   className={ButtonsS.Button}
-                  onClick={() => window.history.back()}
+                  onClick={() =>
+                    onNavigateBack ? onNavigateBack() : window.history.back()
+                  }
                 >
                   {t`Back to previous results`}
                 </button>

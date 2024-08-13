@@ -1,7 +1,7 @@
 import type React from "react";
 import { t } from "ttag";
 
-import { isMac } from "metabase/lib/browser";
+import { METAKEY } from "metabase/lib/browser";
 import { color } from "metabase/lib/colors";
 import { Button, Tooltip } from "metabase/ui";
 
@@ -10,8 +10,6 @@ export const CommandPaletteTrigger = ({
 }: {
   onClick: (e: React.MouseEvent) => void;
 }) => {
-  const METAKEY = isMac() ? "⌘" : "Ctrl";
-
   return (
     <Tooltip label={t`Search and quickly jump to things`}>
       <Button
@@ -25,7 +23,7 @@ export const CommandPaletteTrigger = ({
         mr="0.5rem"
         style={{
           borderRadius: "0.25rem",
-          border: `1px solid ${color("border")}`,
+          border: "1px solid var(--mb-color-border)",
         }}
         styles={{
           root: {

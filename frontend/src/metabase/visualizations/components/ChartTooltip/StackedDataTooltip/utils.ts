@@ -17,7 +17,7 @@ export const getPercent = (total: number, value: unknown) => {
     return undefined;
   }
 
-  return value / total;
+  return value / Math.abs(total);
 };
 
 export const groupExcessiveTooltipRows = (

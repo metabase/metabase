@@ -37,14 +37,11 @@ describe("DatabaseForm", () => {
   });
 
   it("should not allow to configure cache ttl", async () => {
-    setup({ isCachingEnabled: true });
+    setup();
     await userEvent.click(screen.getByText("Show advanced options"));
     expect(
       screen.getByText("Choose when syncs and scans happen"),
     ).toBeInTheDocument();
-    expect(
-      screen.queryByText("Default result cache duration"),
-    ).not.toBeInTheDocument();
   });
 });
 

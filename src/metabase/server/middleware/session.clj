@@ -45,6 +45,8 @@
    [toucan2.core :as t2]
    [toucan2.pipeline :as t2.pipeline]))
 
+(set! *warn-on-reflection* true)
+
 (def ^String metabase-session-cookie
   "Where the session cookie goes."                      "metabase.SESSION")
 (def ^:private ^String metabase-embedded-session-cookie "metabase.EMBEDDED_SESSION")
@@ -103,7 +105,10 @@
                 (throw (ex-info (tru "Invalid value for session cookie samesite")
                                 {:possible-values possible-session-cookie-samesite-values
                                  :session-cookie-samesite normalized-value
-                                 :http-status 400}))))))
+                                 :http-status 400})))))
+  :doc "See [Embedding Metabase in a different domain](../embedding/interactive-embedding.md#embedding-metabase-in-a-different-domain).
+        Related to [MB_EMBEDDING_APP_ORIGIN](#mb_embedding_app_origin). Read more about [interactive Embedding](../embedding/interactive-embedding.md).
+        Learn more about [SameSite cookies](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Set-Cookie/SameSite).")
 
 (defmulti default-session-cookie-attributes
   "The appropriate cookie attributes to persist a newly created Session to `response`."
@@ -338,7 +343,10 @@
 (def ^:private api-key-that-should-never-match (str (random-uuid)))
 (def ^:private hash-that-should-never-match (u.password/hash-bcrypt "password"))
 
-(defn- do-useless-hash []
+(defn do-useless-hash
+  "Password check that will always fail, used to avoid exposing any info about existing users or API keys via timing
+  attacks."
+  []
   (u.password/verify-password api-key-that-should-never-match "" hash-that-should-never-match))
 
 (defn- matching-api-key? [{:keys [api-key] :as _user-data} passed-api-key]
@@ -355,7 +363,7 @@
     (let [user-data (some-> (t2/query-one (cons (user-data-for-api-key-prefix-query
                                                  (premium-features/enable-advanced-permissions?))
                                                 [(api-key/prefix api-key)]))
-                               (update :is-group-manager? boolean))]
+                            (update :is-group-manager? boolean))]
       (when (matching-api-key? user-data api-key)
         (dissoc user-data :api-key)))))
 
@@ -398,6 +406,20 @@
   ;;      ...)
   ;;
   ::none)
+
+;;; this is actually used by [[metabase.models.permissions/clear-current-user-cached-permissions!]]
+#_{:clj-kondo/ignore [:clojure-lsp/unused-public-var]}
+(defn clear-current-user-cached-permissions-set!
+  "If [[metabase.api.common/*current-user-permissions-set*]] is bound, reset it so it gets recalculated on next use.
+  Called by [[metabase.models.permissions/delete-related-permissions!]]
+  and [[metabase.models.permissions/grant-permissions!]], mostly as a convenience for tests that bind a current user
+  and then grant or revoke permissions for that user without rebinding it."
+  []
+  (when-let [current-user-id api/*current-user-id*]
+    ;; [[api/*current-user-permissions-set*]] is dynamically bound
+    (when (get (get-thread-bindings) #'api/*current-user-permissions-set*)
+      (.set #'api/*current-user-permissions-set* (delay (user/permissions-set current-user-id)))))
+  nil)
 
 (defn do-with-current-user
   "Impl for [[with-current-user]]."
@@ -507,7 +529,8 @@
                                  :amount-must-be-positive            "Session timeout amount must be positive."
                                  :amount-must-be-less-than-100-years "Session timeout must be less than 100 years.")
                                {:status-code 400})))
-             (setting/set-value-of-type! :json :session-timeout new-value)))
+             (setting/set-value-of-type! :json :session-timeout new-value))
+  :doc "Has to be in the JSON format `\"{\"amount\":120,\"unit\":\"minutes\"}\"` where the unit is one of \"seconds\", \"minutes\" or \"hours\".")
 
 (defn session-timeout->seconds
   "Convert the session-timeout setting value to seconds."

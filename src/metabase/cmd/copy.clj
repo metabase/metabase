@@ -53,8 +53,6 @@
     :model/Field
     :model/FieldValues
     :model/Segment
-    :model/LegacyMetric
-    :model/LegacyMetricImportantField
     :model/ModerationReview
     :model/Revision
     :model/ViewLog
@@ -97,7 +95,8 @@
     ;; 48+
     :model/TablePrivileges
     :model/AuditLog
-    :model/RecentViews]
+    :model/RecentViews
+    :model/UserParameterValue]
    (when config/ee-available?
      [:model/GroupTableAccessPolicy
       :model/ConnectionImpersonation])))
@@ -110,7 +109,7 @@
   ;; should be ok now that #16344 is resolved -- we might be able to remove this code entirely now. Quoting identifiers
   ;; is still a good idea tho.)
   (let [source-keys (keys (first objs))
-        quote-fn    (partial mdb.setup/quote-for-application-db (mdb/quoting-style target-db-type))
+        quote-fn    (partial mdb/quote-for-application-db (mdb/quoting-style target-db-type))
         dest-keys   (for [k source-keys]
                       (quote-fn (name k)))]
     {:cols dest-keys
@@ -163,6 +162,13 @@
       (map (fn [database]
              (cond-> database
                (= (:engine database) "h2") (assoc :details "{}")))))
+    :model/Setting
+    ;; Never create dumps with read-only-mode turned on.
+    ;; It will be confusing to restore from and prevent key rotation.
+    (remove (fn [{k :key}] (= k "read-only-mode")))
+    :model/Field
+    ;; unique_field_helper is a computed/generated column
+    (map #(dissoc % :unique_field_helper))
     ;; else
     identity))
 

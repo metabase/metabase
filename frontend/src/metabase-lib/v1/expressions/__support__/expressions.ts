@@ -6,7 +6,6 @@ import type { DatasetQuery } from "metabase-types/api";
 import {
   createMockDatabase,
   createMockField,
-  createMockMetric,
   createMockSegment,
   createMockTable,
 } from "metabase-types/api/mocks";
@@ -87,18 +86,6 @@ const database = createMockDatabase({
           table_id: TABLE_ID,
         }),
       ],
-      metrics: [
-        createMockMetric({
-          id: 1,
-          name: "metric",
-          table_id: TABLE_ID,
-        }),
-        createMockMetric({
-          id: 2,
-          name: "metric",
-          table_id: TABLE_ID,
-        }),
-      ],
     }),
   ],
   features: [
@@ -106,7 +93,6 @@ const database = createMockDatabase({
     "standard-deviation-aggregations",
     "expression-aggregations",
     "percentile-aggregations",
-    "foreign-keys",
     "native-parameters",
     "expressions",
     "advanced-math-expressions",

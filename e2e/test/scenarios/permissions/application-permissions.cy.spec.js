@@ -35,7 +35,7 @@ describeEE("scenarios > admin > permissions > application", () => {
   it("shows permissions help", () => {
     cy.visit("/admin/permissions/application");
     cy.get("main").within(() => {
-      cy.findByText("Permission help").as("permissionHelpButton").click();
+      cy.findByText("Permissions help").as("permissionHelpButton").click();
       cy.get("@permissionHelpButton").should("not.exist");
     });
 

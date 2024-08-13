@@ -5,6 +5,7 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   adhocQuestionHash,
+  entityPickerModal,
   popover,
   appBar,
   restore,
@@ -19,6 +20,8 @@ import {
   createDashboardWithTabs,
   goToTab,
   visitFullAppEmbeddingUrl,
+  getDashboardCardMenu,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
 import {
   createMockDashboardCard,
@@ -114,7 +117,7 @@ describeEE("scenarios > embedding > full app", () => {
       sideNav().should("not.exist");
     });
 
-    it("should disable home link when top nav is enabeld but side nav is disabled", () => {
+    it("should disable home link when top nav is enabled but side nav is disabled", () => {
       visitDashboardUrl({
         url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
         qs: { top_nav: true, side_nav: false },
@@ -162,11 +165,13 @@ describeEE("scenarios > embedding > full app", () => {
   describe("browse data", () => {
     it("should hide the top nav when nothing is shown", () => {
       visitFullAppEmbeddingUrl({
-        url: "/browse",
+        url: "/browse/databases",
         qs: { side_nav: false, logo: false },
       });
-      cy.findByRole("heading", { name: /Browse data/ }).should("be.visible");
-      cy.findByRole("treeitem", { name: /Browse data/ }).should("not.exist");
+      cy.findByRole("heading", { name: /Databases/ }).should("be.visible");
+      cy.findByRole("treeitem", { name: /Browse databases/ }).should(
+        "not.exist",
+      );
       cy.findByRole("treeitem", { name: "Our analytics" }).should("not.exist");
       appBar().should("not.exist");
     });
@@ -181,7 +186,7 @@ describeEE("scenarios > embedding > full app", () => {
       cy.button(/Edited/).should("be.visible");
 
       cy.icon("refresh").should("be.visible");
-      cy.icon("notebook").should("be.visible");
+      cy.findByTestId("notebook-button").should("be.visible");
       cy.button("Summarize").should("be.visible");
       cy.button("Filter").should("be.visible");
     });
@@ -216,9 +221,22 @@ describeEE("scenarios > embedding > full app", () => {
       });
 
       cy.icon("refresh").should("be.visible");
-      cy.icon("notebook").should("not.exist");
+      cy.findByTestId("notebook-button").should("not.exist");
       cy.button("Summarize").should("not.exist");
       cy.button("Filter").should("not.exist");
+    });
+
+    it("should send 'X-Metabase-Client' header for api requests", () => {
+      visitFullAppEmbeddingUrl({
+        url: "/question/" + ORDERS_QUESTION_ID,
+        qs: { action_buttons: false },
+      });
+
+      cy.wait("@getCardQuery").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe",
+        );
+      });
     });
 
     describe("question creation", () => {
@@ -235,8 +253,10 @@ describeEE("scenarios > embedding > full app", () => {
 
         cy.button("New").click();
         popover().findByText("Question").click();
-        popover().findByText("Raw Data").click();
-        popover().findByText("Orders").click();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Orders").click();
+        });
       });
 
       it("should show the database for a new native question (metabase#21511)", () => {
@@ -485,26 +505,19 @@ describeEE("scenarios > embedding > full app", () => {
           },
         });
       });
-      cy.get("@postMessage")
-        .should("have.been.calledWith", {
-          metabase: {
-            type: "frame",
-            frame: {
-              mode: "fit",
-              height: Cypress.sinon.match(value => value > 1000),
-            },
-          },
-        })
-        .and("not.have.been.calledWith", {
-          metabase: {
-            type: "frame",
-            frame: {
-              mode: "fit",
-              height: Cypress.sinon.match(value => value < 400),
-            },
-          },
-        });
 
+      // TODO: Find a way to assert that this is the last call.
+      cy.get("@postMessage").should("have.been.calledWith", {
+        metabase: {
+          type: "frame",
+          frame: {
+            mode: "fit",
+            height: Cypress.sinon.match(value => value > 1000),
+          },
+        },
+      });
+
+      cy.get("@postMessage").invoke("resetHistory");
       cy.findByRole("tab", { name: TAB_2.name }).click();
       cy.get("@postMessage").should("have.been.calledWith", {
         metabase: {
@@ -516,23 +529,57 @@ describeEE("scenarios > embedding > full app", () => {
         },
       });
 
+      cy.get("@postMessage").invoke("resetHistory");
       cy.findByTestId("app-bar").findByText("Our analytics").click();
 
       cy.findByRole("heading", { name: "Metabase analytics" }).should(
         "be.visible",
       );
-      cy.get("@postMessage").then(postMessage => {
+      cy.get("@postMessage").should("have.been.calledWith", {
+        metabase: {
+          type: "frame",
+          frame: {
+            mode: "fit",
+            height: 800,
+          },
+        },
+      });
+    });
+
+    it("should allow downloading question results when logged in via Google SSO (metabase#39848)", () => {
+      const CSRF_TOKEN = "abcdefgh";
+      cy.intercept("GET", "/api/user/current", req => {
+        req.on("response", res => {
+          res.headers["X-Metabase-Anti-CSRF-Token"] = CSRF_TOKEN;
+        });
+      });
+      cy.intercept(
+        "POST",
+        "/api/dashboard/*/dashcard/*/card/*/query/csv?format_rows=true",
+      ).as("CsvDownload");
+      visitDashboardUrl({
+        url: `/dashboard/${ORDERS_DASHBOARD_ID}`,
+      });
+
+      getDashboardCard().realHover();
+      getDashboardCardMenu().click();
+      popover().findByText("Download results").click();
+      popover().findByText(".csv").click();
+
+      cy.wait("@CsvDownload").then(interception => {
         expect(
-          postMessage.lastCall.calledWith({
-            metabase: {
-              type: "frame",
-              frame: {
-                mode: "fit",
-                height: 800,
-              },
-            },
-          }),
-        ).to.be.true;
+          interception.request.headers["x-metabase-anti-csrf-token"],
+        ).to.equal(CSRF_TOKEN);
+      });
+    });
+
+    it("should send 'X-Metabase-Client' header for api requests", () => {
+      visitFullAppEmbeddingUrl({ url: `/dashboard/${ORDERS_DASHBOARD_ID}` });
+
+      cy.wait("@getDashboard").then(({ request }) => {
+        expect(request?.headers?.["x-metabase-client"]).to.equal(
+          "embedding-iframe",
+        );
       });
     });
   });

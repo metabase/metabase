@@ -37,14 +37,15 @@ If you'd like to share your data with the good people of the internet, you can c
 ## Comparison of embedding types
 
 | Action                                                                                                   | [Interactive](./interactive-embedding.md) | [Static](./static-embedding.md) | [Public](../questions/sharing/public-links.md) |
-|----------------------------------------------------------------------------------------------------------|-------------------------------------|---------------------------------|------------------------------------------------|
-| Display charts and dashboards                                                                            | ✅                                  | ✅                              | ✅                                             |
-| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                  | ✅                              | ✅                                             |
-| Restrict data with [locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed) | ❌                                  | ✅                              | ❌                                             |
-| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                         | ✅                                  | ❌                              | ❌                                             |
-| Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)               | ✅                                  | ❌                              | ❌                                             |
-| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ✅                                  | ❌                              | ❌                                             |
-| View usage of embeds with [auditing tools](../usage-and-performance-tools/audit.md)                      | ✅                                  | ❌                              | ❌                                             |
+| -------------------------------------------------------------------------------------------------------- | ----------------------------------------- | ------------------------------- | ---------------------------------------------- |
+| Display charts and dashboards                                                                            | ✅                                         | ✅                               | ✅                                              |
+| Display interactive [filter widgets](https://www.metabase.com/glossary/filter_widget)                    | ✅                                         | ✅                               | ✅                                              |
+| Restrict data with [locked filters](./static-embedding-parameters.md#restricting-data-in-a-static-embed) | ❌                                         | ✅                               | ❌                                              |
+| Restrict data with [sandboxes](../permissions/data-sandboxes.md)                                         | ✅                                         | ❌                               | ❌                                              |
+| Use the [drill-through menu](https://www.metabase.com/learn/questions/drill-through)                     | ✅                                         | ❌                               | ❌                                              |
+| Self-serve via [query builder](https://www.metabase.com/glossary/query_builder)                          | ✅                                         | ❌                               | ❌                                              |
+| View usage of embeds with [usage analytics](../usage-and-performance-tools/usage-analytics.md)           | ✅                                         | ❌                               | ❌                                              |
+| [Actions on dashboards](../dashboards/actions.md)                                                        | ✅                                         | ❌                               | ❌                                              |
 
 ## Switching from static to interactive embedding
 

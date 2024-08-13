@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Link from "metabase/core/components/Link";
-import { color } from "metabase/lib/colors";
 
 export const CollectionBadgeRoot = styled.div`
   display: inline-block;
@@ -13,6 +12,6 @@ export const CollectionLink = styled(Link)`
   text-decoration: dashed;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

@@ -3,9 +3,9 @@ import { setupDatabasesEndpoints } from "__support__/server-mocks";
 import { setupPerformanceEndpoints } from "__support__/server-mocks/performance";
 import { mockSettings } from "__support__/settings";
 import { createMockEntitiesState } from "__support__/store";
-import { fireEvent, renderWithProviders, screen } from "__support__/ui";
+import { act, fireEvent, renderWithProviders, screen } from "__support__/ui";
 import type { TokenFeatures } from "metabase-types/api";
-import { DurationUnit } from "metabase-types/api";
+import { CacheDurationUnit } from "metabase-types/api";
 import {
   createMockSettings,
   createMockTokenFeatures,
@@ -14,7 +14,7 @@ import {
   createMockCacheConfig,
   createMockCacheConfigWithDoNotCacheStrategy,
   createMockCacheConfigWithDurationStrategy,
-  createMockCacheConfigWithTTLStrategy,
+  createMockCacheConfigWithMultiplierStrategy,
 } from "metabase-types/api/mocks/performance";
 import { createSampleDatabase } from "metabase-types/api/mocks/presets";
 import { createMockState } from "metabase-types/store/mocks";
@@ -26,7 +26,7 @@ export interface SetupOpts {
   tokenFeatures?: Partial<TokenFeatures>;
 }
 
-export const setup = ({
+export const setupStrategyEditorForDatabases = ({
   hasEnterprisePlugins,
   tokenFeatures = {},
 }: SetupOpts = {}) => {
@@ -44,13 +44,17 @@ export const setup = ({
   }
 
   const cacheConfigs = [
-    createMockCacheConfigWithTTLStrategy({ model_id: 1 }),
+    createMockCacheConfigWithMultiplierStrategy({ model_id: 1 }),
     createMockCacheConfigWithDoNotCacheStrategy({ model_id: 2 }),
     createMockCacheConfigWithDurationStrategy({ model_id: 3 }),
     createMockCacheConfig({
       model: "root",
       model_id: 0,
-      strategy: { type: "duration", duration: 1, unit: DurationUnit.Hours },
+      strategy: {
+        type: "duration",
+        duration: 1,
+        unit: CacheDurationUnit.Hours,
+      },
     }),
   ];
   setupPerformanceEndpoints(cacheConfigs);
@@ -73,8 +77,12 @@ export const changeInput = async (
   expectedPlaceholder: number,
   value: number,
 ) => {
-  const input = (await screen.findByLabelText(label)) as HTMLInputElement;
+  const input = (await screen.findByRole("spinbutton", {
+    name: new RegExp(label),
+  })) as HTMLInputElement;
   expect(input).toHaveAttribute("placeholder", expectedPlaceholder.toString());
-  fireEvent.change(input, { target: { value } });
+  act(() => {
+    fireEvent.change(input, { target: { value } });
+  });
   expect(input).toHaveValue(value);
 };

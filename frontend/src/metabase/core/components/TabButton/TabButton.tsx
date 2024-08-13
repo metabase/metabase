@@ -1,6 +1,5 @@
 import type { UniqueIdentifier } from "@dnd-kit/core";
-import { useSortable } from "@dnd-kit/sortable";
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 import type {
   HTMLAttributes,
@@ -20,7 +19,7 @@ import {
 import { t } from "ttag";
 
 import ControlledPopoverWithTrigger from "metabase/components/PopoverWithTrigger/ControlledPopoverWithTrigger";
-import { color, lighten } from "metabase/lib/colors";
+import { lighten } from "metabase/lib/colors";
 
 import type { TabContextType } from "../Tab";
 import {
@@ -189,9 +188,9 @@ export interface RenameableTabButtonProps
 }
 
 // These styles need to be here instead of .styled to avoid circular dependency
-const borderStyle = css`
-  border: 1px solid ${color("brand")};
-  box-shadow: 0px 0px 0px 1px ${lighten(color("brand"), 0.28)};
+const getBorderStyle = (theme: Theme) => css`
+  border: 1px solid var(--mb-color-brand);
+  box-shadow: 0px 0px 0px 1px ${lighten(theme.fn.themeColor("brand"), 0.28)};
 `;
 export const RenameableTabButtonStyled = styled(_TabButton)<{
   isRenaming: boolean;
@@ -199,9 +198,10 @@ export const RenameableTabButtonStyled = styled(_TabButton)<{
   canRename: boolean;
 }>`
   ${TabButtonInputWrapper} {
-    ${props => props.isRenaming && borderStyle}
+    ${props => props.isRenaming && getBorderStyle(props.theme)}
     :hover {
-      ${props => props.canRename && props.isSelected && borderStyle}
+      ${props =>
+        props.canRename && props.isSelected && getBorderStyle(props.theme)}
     }
   }
 `;
@@ -258,19 +258,9 @@ export function RenameableTabButton({
     ];
   }
 
-  const dragLabel = (s: string) => {
-    if (s.length < 20) {
-      return s;
-    } else {
-      return `${s.slice(0, 17)}...`;
-    }
-  };
-
-  const { isDragging } = useSortable({ id: props.value });
-
   return (
     <RenameableTabButtonStyled
-      label={isDragging ? dragLabel(label) : label}
+      label={label}
       isSelected={isSelected}
       isRenaming={canRename && isRenaming}
       canRename={canRename}

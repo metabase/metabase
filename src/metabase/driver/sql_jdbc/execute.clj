@@ -32,7 +32,8 @@
    [metabase.util.malli :as mu]
    [potemkin :as p])
   (:import
-   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData Statement Types)
+   (java.sql Connection JDBCType PreparedStatement ResultSet ResultSetMetaData SQLFeatureNotSupportedException
+             Statement Types)
    (java.time Instant LocalDate LocalDateTime LocalTime OffsetDateTime OffsetTime ZonedDateTime)
    (javax.sql DataSource)))
 
@@ -237,8 +238,8 @@
   [driver ^Connection conn]
   (let [dbmeta (.getMetaData conn)]
     (loop [[[level-name ^Integer level] & more] [[:read-uncommitted Connection/TRANSACTION_READ_UNCOMMITTED]
-                                                 [:repeatable-read  Connection/TRANSACTION_REPEATABLE_READ]
-                                                 [:read-committed   Connection/TRANSACTION_READ_COMMITTED]]]
+                                                 [:read-committed   Connection/TRANSACTION_READ_COMMITTED]
+                                                 [:repeatable-read  Connection/TRANSACTION_REPEATABLE_READ]]]
       (cond
         (.supportsTransactionIsolationLevel dbmeta level)
         (do
@@ -251,6 +252,16 @@
         (seq more)
         (recur more)))))
 
+(def ^:private DbOrIdOrSpec
+  [:and
+   [:or :int :map]
+   [:fn
+    ;; can't wrap a java.sql.Connection here because we're not
+    ;; responsible for its lifecycle and that means you can't use
+    ;; `with-open` on the Connection you'd get from the DataSource
+    {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
+    (complement :connection)]])
+
 (mu/defn do-with-resolved-connection-data-source :- (lib.schema.common/instance-of-class DataSource)
   "Part of the default implementation for [[do-with-connection-with-options]]: get an appropriate `java.sql.DataSource`
   for `db-or-id-or-spec`. Not for use with a JDBC spec wrapping a `java.sql.Connection` (a spec with the key
@@ -258,14 +269,7 @@
   Connections provided by this DataSource."
   {:added "0.47.0", :arglists '(^javax.sql.DataSource [driver db-or-id-or-spec options])}
   [driver           :- :keyword
-   db-or-id-or-spec :- [:and
-                        [:or :int :map]
-                        [:fn
-                         ;; can't wrap a java.sql.Connection here because we're not
-                         ;; responsible for its lifecycle and that means you can't use
-                         ;; `with-open` on the Connection you'd get from the DataSource
-                         {:error/message "Cannot be a JDBC spec wrapping a java.sql.Connection"}
-                         (complement :connection)]]
+   db-or-id-or-spec :- DbOrIdOrSpec
    {:keys [^String session-timezone], :as _options} :- ConnectionOptions]
   (if-not (u/id db-or-id-or-spec)
     ;; not a Database or Database ID... this is a raw `clojure.java.jdbc` spec, use that
@@ -344,9 +348,16 @@
     (log/tracef "Setting default connection options with options %s" (pr-str options))
     (set-best-transaction-level! driver conn)
     (set-time-zone-if-supported! driver conn session-timezone)
-    (set-role-if-supported! driver conn (cond (integer? db-or-id-or-spec) (qp.store/with-metadata-provider db-or-id-or-spec
-                                                                            (lib.metadata/database (qp.store/metadata-provider)))
-                                              (u/id db-or-id-or-spec)     db-or-id-or-spec))
+    (when-let [db (cond
+                    ;; id?
+                    (integer? db-or-id-or-spec)
+                    (qp.store/with-metadata-provider db-or-id-or-spec
+                      (lib.metadata/database (qp.store/metadata-provider)))
+                    ;; db?
+                    (u/id db-or-id-or-spec)     db-or-id-or-spec
+                    ;; otherwise it's a spec and we can't get the db
+                    :else nil)]
+      (set-role-if-supported! driver conn db))
     (let [read-only? (not write?)]
       (try
         ;; Setting the connection to read-only does not prevent writes on some databases, and is meant
@@ -636,7 +647,7 @@
 (defmethod column-metadata :sql-jdbc
   [driver ^ResultSetMetaData rsmeta]
   (mapv
-   (fn [^Integer i]
+   (fn [^Long i]
      (let [col-name     (.getColumnLabel rsmeta i)
            db-type-name (.getColumnTypeName rsmeta i)
            base-type    (sql-jdbc.sync.interface/database-type->base-type driver (keyword db-type-name))]
@@ -648,8 +659,8 @@
         #_:original_name #_(.getColumnName rsmeta i)
         #_:jdbc_type #_ (u/ignore-exceptions
                           (.getName (JDBCType/valueOf (.getColumnType rsmeta i))))
-        #_:db_type   #_db-type-name
-        :base_type   (or base-type :type/*)}))
+        :base_type     (or base-type :type/*)
+        :database_type db-type-name}))
    (column-range rsmeta)))
 
 (defn reducible-rows
@@ -710,7 +721,22 @@
                                                     e))))]
         (let [rsmeta           (.getMetaData rs)
               results-metadata {:cols (column-metadata driver rsmeta)}]
-          (respond results-metadata (reducible-rows driver rs rsmeta qp.pipeline/*canceled-chan*))))))))
+          (try (respond results-metadata (reducible-rows driver rs rsmeta qp.pipeline/*canceled-chan*))
+               ;; Following cancels the statment on the dbms side.
+               ;; It avoids blocking `.close` call, in case we reduced the results subset eg. by means of
+               ;; [[metabase.query-processor.middleware.limit/limit-xform]] middleware, while statment is still
+               ;; in progress. This problem was encountered on Redshift. For details see the issue #39018.
+               ;; It also handles situation where query is canceled through [[qp.pipeline/*canceled-chan*]] (#41448).
+               (finally
+                 ;; TODO: Following `when` is in place just to find out if vertica is flaking because of cancelations.
+                 ;;       It should be removed afterwards!
+                 (when-not (= :vertica driver)
+                   (try (.cancel stmt)
+                        (catch SQLFeatureNotSupportedException _
+                          (log/warnf "Statemet's `.cancel` method is not supported by the `%s` driver."
+                                     (name driver)))
+                        (catch Throwable _
+                          (log/warn "Statement cancelation failed."))))))))))))
 
 (defn reducible-query
   "Returns a reducible collection of rows as maps from `db` and a given SQL query. This is similar to [[jdbc/reducible-query]] but reuses the

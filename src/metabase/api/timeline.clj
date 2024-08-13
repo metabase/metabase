@@ -41,8 +41,8 @@
   "Fetch a list of [[Timelines]]. Can include `archived=true` to return archived timelines."
   [include archived]
   {include  [:maybe Include]
-   archived [:maybe ms/BooleanString]}
-  (let [archived? (Boolean/parseBoolean archived)
+   archived [:maybe ms/BooleanValue]}
+  (let [archived? archived
         timelines (->> (t2/select Timeline
                          {:where    [:and
                                      [:= :archived archived?]
@@ -60,10 +60,10 @@
   [id include archived start end]
   {id       ms/PositiveInt
    include  [:maybe Include]
-   archived [:maybe ms/BooleanString]
+   archived [:maybe ms/BooleanValue]
    start    [:maybe ms/TemporalString]
    end      [:maybe ms/TemporalString]}
-  (let [archived? (Boolean/parseBoolean archived)
+  (let [archived? archived
         timeline  (api/read-check (t2/select-one Timeline :id id))]
     (cond-> (t2/hydrate timeline :creator [:collection :can_write])
       ;; `collection_id` `nil` means we need to assoc 'root' collection

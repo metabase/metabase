@@ -1,10 +1,15 @@
+import { fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { createMockMetadata } from "__support__/metadata";
 import {
   setupDatabasesEndpoints,
+  setupRecentViewsAndSelectionsEndpoints,
   setupSearchEndpoints,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen } from "__support__/ui";
+import { getIcon, renderWithProviders, screen, within } from "__support__/ui";
+import { METAKEY } from "metabase/lib/browser";
+import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import {
   columnFinder,
@@ -12,10 +17,16 @@ import {
   findAggregationOperator,
 } from "metabase-lib/test-helpers";
 import Question from "metabase-lib/v1/Question";
+import type { CardType } from "metabase-types/api";
 import {
   createSampleDatabase,
+  createSavedStructuredCard,
   SAMPLE_DB_ID,
 } from "metabase-types/api/mocks/presets";
+import {
+  createMockEmbedState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
 import { createMockNotebookStep } from "../../test-utils";
 
@@ -43,13 +54,23 @@ const createQueryWithBreakout = () => {
   return Lib.breakout(query, 0, column);
 };
 
-const setup = async (
+const setup = (
   step = createMockNotebookStep(),
-  { readOnly = false }: { readOnly?: boolean } = {},
+  {
+    readOnly = false,
+    isEmbeddingSdk = false,
+  }: { readOnly?: boolean; isEmbeddingSdk?: boolean } = {},
 ) => {
+  const mockWindowOpen = jest.spyOn(window, "open").mockImplementation();
+
   const updateQuery = jest.fn();
   setupDatabasesEndpoints([createSampleDatabase()]);
   setupSearchEndpoints([]);
+  setupRecentViewsAndSelectionsEndpoints([], ["selections"]);
+
+  const storeInitialState = createMockState({
+    embed: createMockEmbedState({ isEmbeddingSdk }),
+  });
 
   renderWithProviders(
     <DataStep
@@ -62,6 +83,7 @@ const setup = async (
       reportTimezone="UTC"
       updateQuery={updateQuery}
     />,
+    { storeInitialState },
   );
 
   const getNextQuery = (): Lib.Query => {
@@ -83,9 +105,7 @@ const setup = async (
     return Lib.displayInfo(nextQuery, 0, column);
   };
 
-  await screen.findByText("Orders");
-
-  return { getNextQuery, getNextTableName, getNextColumn };
+  return { getNextQuery, getNextTableName, getNextColumn, mockWindowOpen };
 };
 
 const setupEmptyQuery = () => {
@@ -95,22 +115,43 @@ const setupEmptyQuery = () => {
 };
 
 describe("DataStep", () => {
-  it("should render without a table selected", async () => {
-    await setupEmptyQuery();
+  const scrollBy = HTMLElement.prototype.scrollBy;
+  const getBoundingClientRect = HTMLElement.prototype.getBoundingClientRect;
 
-    expect(screen.getByText("Pick your starting data")).toBeInTheDocument();
-
-    // Ensure the table picker is not open
-    expect(screen.getByText("Sample Database")).toBeInTheDocument();
-    expect(screen.getByText("Orders")).toBeInTheDocument();
-    expect(screen.getByText("Products")).toBeInTheDocument();
-    expect(screen.getByText("People")).toBeInTheDocument();
+  beforeAll(() => {
+    HTMLElement.prototype.scrollBy = jest.fn();
+    // needed for @tanstack/react-virtual, see https://github.com/TanStack/virtual/issues/29#issuecomment-657519522
+    HTMLElement.prototype.getBoundingClientRect = jest
+      .fn()
+      .mockReturnValue({ height: 1, width: 1 });
   });
 
-  it("should render with a selected table", async () => {
-    await setup();
+  afterAll(() => {
+    HTMLElement.prototype.scrollBy = scrollBy;
+    HTMLElement.prototype.getBoundingClientRect = getBoundingClientRect;
+
+    jest.resetAllMocks();
+  });
+
+  it("should render without a table selected", async () => {
+    setupEmptyQuery();
+
+    const modal = await screen.findByTestId("entity-picker-modal");
+    expect(
+      await within(modal).findByText("Pick your starting data"),
+    ).toBeInTheDocument();
+
+    // Ensure the table picker not open
+    expect(await within(modal).findByText("Orders")).toBeInTheDocument();
+    expect(await within(modal).findByText("Products")).toBeInTheDocument();
+    expect(await within(modal).findByText("People")).toBeInTheDocument();
+  });
+
+  it("should render with a selected table", () => {
+    setup();
 
     expect(screen.getByText("Orders")).toBeInTheDocument();
+    expect(getIcon("table")).toBeInTheDocument();
 
     expect(
       screen.queryByText("Pick your starting data"),
@@ -120,8 +161,32 @@ describe("DataStep", () => {
     expect(screen.queryByText("People")).not.toBeInTheDocument();
   });
 
+  it.each<{ type: CardType; icon: IconName }>([
+    { type: "question", icon: "table2" },
+    { type: "model", icon: "model" },
+  ])("should render with a selected card", ({ type, icon }) => {
+    const card = createSavedStructuredCard({
+      id: 1,
+      type,
+    });
+    const metadata = createMockMetadata({
+      databases: [createSampleDatabase()],
+      questions: [card],
+    });
+    const metadataProvider = Lib.metadataProvider(SAMPLE_DB_ID, metadata);
+    const query = Lib.queryFromTableOrCardMetadata(
+      metadataProvider,
+      Lib.tableOrCardMetadata(metadataProvider, `card__${card.id}`),
+    );
+    const step = createMockNotebookStep({ query });
+    setup(step);
+
+    expect(screen.getByText(card.name)).toBeInTheDocument();
+    expect(getIcon(icon)).toBeInTheDocument();
+  });
+
   it("should change a table", async () => {
-    const { getNextTableName } = await setup();
+    const { getNextTableName } = setup();
 
     await userEvent.click(screen.getByText("Orders"));
     await userEvent.click(await screen.findByText("Products"));
@@ -131,7 +196,7 @@ describe("DataStep", () => {
 
   describe("fields selection", () => {
     it("should render with all columns selected", async () => {
-      await setup();
+      setup();
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select none")).toBeChecked();
@@ -143,7 +208,7 @@ describe("DataStep", () => {
 
     it("should render with a single column selected", async () => {
       const query = createQueryWithFields(["ID"]);
-      await setup(createMockNotebookStep({ query }));
+      setup(createMockNotebookStep({ query }));
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -155,7 +220,7 @@ describe("DataStep", () => {
 
     it("should render with multiple columns selected", async () => {
       const query = createQueryWithFields(["ID", "TOTAL"]);
-      await setup(createMockNotebookStep({ query }));
+      setup(createMockNotebookStep({ query }));
       await userEvent.click(screen.getByLabelText("Pick columns"));
 
       expect(screen.getByLabelText("Select all")).not.toBeChecked();
@@ -170,7 +235,7 @@ describe("DataStep", () => {
     it("should allow selecting a column", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = await setup(step);
+      const { getNextColumn } = setup(step);
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Tax"));
@@ -181,7 +246,7 @@ describe("DataStep", () => {
     });
 
     it("should allow de-selecting a column", async () => {
-      const { getNextColumn } = await setup();
+      const { getNextColumn } = setup();
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Tax"));
@@ -194,7 +259,7 @@ describe("DataStep", () => {
     it("should allow selecting all columns", async () => {
       const query = createQueryWithFields(["ID"]);
       const step = createMockNotebookStep({ query });
-      const { getNextColumn } = await setup(step);
+      const { getNextColumn } = setup(step);
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Select all"));
@@ -205,7 +270,7 @@ describe("DataStep", () => {
     });
 
     it("should leave one column when de-selecting all columns", async () => {
-      const { getNextQuery } = await setup();
+      const { getNextQuery } = setup();
 
       await userEvent.click(screen.getByLabelText("Pick columns"));
       await userEvent.click(screen.getByLabelText("Select none"));
@@ -214,13 +279,13 @@ describe("DataStep", () => {
       expect(Lib.fields(nextQuery, 0)).toHaveLength(1);
     });
 
-    it("should not display fields picker in read-only mode", async () => {
-      await setup(createMockNotebookStep(), { readOnly: true });
+    it("should not display fields picker in read-only mode", () => {
+      setup(createMockNotebookStep(), { readOnly: true });
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
-    it("should not display fields picker until a table is selected", async () => {
-      await setupEmptyQuery();
+    it("should not display fields picker until a table is selected", () => {
+      setupEmptyQuery();
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
     });
 
@@ -238,6 +303,125 @@ describe("DataStep", () => {
       setup(step);
 
       expect(screen.queryByLabelText("Pick columns")).not.toBeInTheDocument();
+    });
+  });
+
+  describe("link to data source", () => {
+    it("should show the tooltip on hover", async () => {
+      setup();
+
+      await userEvent.hover(screen.getByText("Orders"));
+      expect(screen.getByRole("tooltip")).toHaveTextContent(
+        `${METAKEY}+click to open in new tab`,
+      );
+    });
+
+    it("should not show the tooltip when there is no table selected", async () => {
+      setupEmptyQuery();
+
+      const modal = await screen.findByTestId("entity-picker-modal");
+      const closeButton = await screen.findByRole("button", { name: /close/i });
+
+      await userEvent.click(closeButton);
+      expect(modal).not.toBeInTheDocument();
+
+      await userEvent.hover(screen.getByText("Pick your starting data"));
+      expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+    });
+
+    it("meta click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      fireEvent.click(dataSource, { metaKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("ctrl click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      fireEvent.click(dataSource, { ctrlKey: true });
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("middle click should open the data source in a new window", () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+      const middleClick = new MouseEvent("auxclick", {
+        bubbles: true,
+        button: 1,
+      });
+
+      fireEvent(dataSource, middleClick);
+
+      expect(mockWindowOpen).toHaveBeenCalledTimes(1);
+      mockWindowOpen.mockClear();
+    });
+
+    it("regular click should open the entity picker", async () => {
+      const { mockWindowOpen } = setup();
+
+      const dataSource = screen.getByText("Orders");
+
+      fireEvent.click(dataSource);
+
+      expect(
+        await screen.findByTestId("entity-picker-modal"),
+      ).toBeInTheDocument();
+      expect(mockWindowOpen).not.toHaveBeenCalled();
+    });
+
+    describe("embedding SDK context", () => {
+      it("should not show the tooltip", async () => {
+        setup(createMockNotebookStep(), { isEmbeddingSdk: true });
+
+        await userEvent.hover(screen.getByText("Orders"));
+        expect(screen.queryByRole("tooltip")).not.toBeInTheDocument();
+      });
+
+      it.each([{ metaKey: true }, { ctrlKey: true }])(
+        "meta/ctrl click should not open the data source",
+        async clickConfig => {
+          const { mockWindowOpen } = setup(createMockNotebookStep(), {
+            isEmbeddingSdk: true,
+          });
+
+          const dataSource = screen.getByText("Orders");
+          fireEvent.click(dataSource, clickConfig);
+
+          expect(
+            await screen.findByTestId("entity-picker-modal"),
+          ).toBeInTheDocument();
+          expect(mockWindowOpen).not.toHaveBeenCalled();
+          mockWindowOpen.mockClear();
+        },
+      );
+
+      it("middle click should not open the data source", async () => {
+        const { mockWindowOpen } = setup(createMockNotebookStep(), {
+          isEmbeddingSdk: true,
+        });
+
+        const dataSource = screen.getByText("Orders");
+        const middleClick = new MouseEvent("auxclick", {
+          bubbles: true,
+          button: 1,
+        });
+
+        fireEvent(dataSource, middleClick);
+
+        expect(
+          await screen.findByTestId("entity-picker-modal"),
+        ).toBeInTheDocument();
+        expect(mockWindowOpen).not.toHaveBeenCalled();
+        mockWindowOpen.mockClear();
+      });
     });
   });
 });

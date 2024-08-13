@@ -62,7 +62,7 @@
 ;;; |                                          SCHEDULE MAP -> CRON STRING                                           |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private cron-string :- CronScheduleString
+(mu/defn- cron-string :- CronScheduleString
   "Build a cron string from key-value pair parts."
   [{:keys [seconds minutes hours day-of-month month day-of-week year]}]
   (str/join " " [(or seconds      "0")

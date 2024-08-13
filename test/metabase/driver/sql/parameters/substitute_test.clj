@@ -91,8 +91,9 @@
     (testing "non-optional"
       (let [query ["select * from orders where " (param "created_at")]]
         (testing "param is present"
-          (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
-                  [(t/offset-date-time "2019-09-20T19:52:00.000-07:00")]]
+          (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"
+                  [(t/zoned-date-time "2019-09-20T19:52:00" (t/zone-id "UTC"))
+                   (t/zoned-date-time "2019-09-20T19:53:00" (t/zone-id "UTC"))]]
                  (substitute query {"created_at" (date-field-filter-value)}))))
         (testing "param is missing"
           (is (= ["select * from orders where 1 = 1" []]
@@ -101,8 +102,9 @@
     (testing "optional"
       (let [query ["select * from orders " (optional "where " (param "created_at"))]]
         (testing "param is present"
-          (is (= ["select * from orders where DATE_TRUNC('minute', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") = ?"
-                  [#t "2019-09-20T19:52:00.000-07:00"]]
+          (is (= ["select * from orders where \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= ? AND \"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < ?"
+                  [(t/zoned-date-time "2019-09-20T19:52:00" (t/zone-id "UTC"))
+                   (t/zoned-date-time "2019-09-20T19:53:00" (t/zone-id "UTC"))]]
                  (substitute query {"created_at" (date-field-filter-value)}))))
         (testing "param is missing — should be omitted entirely"
           (is (= ["select * from orders" nil]
@@ -867,10 +869,6 @@
                      :parameters [{:type :date/single :target [:variable [:template-tag "date"]] :value "2018-04-18"}]}]
           (mt/with-native-query-testing-context query
             (is (= [(cond
-                      ;; TIMEZONE FIXME — Busted
-                      (= driver/*driver* :vertica)
-                      "2018-04-17T00:00:00-07:00"
-
                       (qp.test-util/supports-report-timezone? driver/*driver*)
                       "2018-04-18T00:00:00-07:00"
 

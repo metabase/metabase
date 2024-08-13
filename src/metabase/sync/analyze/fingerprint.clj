@@ -4,8 +4,7 @@
   (:require
    [clojure.set :as set]
    [honey.sql.helpers :as sql.helpers]
-   [metabase.analyze.fingerprint.fingerprinters :as fingerprinters]
-   [metabase.analyze.fingerprint.schema :as fingerprint.schema]
+   [metabase.analyze :as analyze]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.driver :as driver]
@@ -26,17 +25,21 @@
 (comment
   metadata-queries/keep-me-for-default-table-row-sample)
 
-(mu/defn ^:private save-fingerprint!
+(defn incomplete-analysis-kvs
+  "Key-value pairs corresponding to the state of Fields that have the latest fingerprint, but have not yet
+   *completed* analysis. All Fields who get new fingerprints should get marked as having the latest fingerprint
+   version, but we'll clear their values for `last_analyzed`. This way we know these fields haven't 'completed'
+   analysis for the latest fingerprints. This is a function because `*latest-fingerprint-version* may be rebound
+   in tests."
+  []
+  {:fingerprint_version i/*latest-fingerprint-version*
+   :last_analyzed       nil})
+
+(mu/defn- save-fingerprint!
   [field       :- i/FieldInstance
-   fingerprint :- [:maybe fingerprint.schema/Fingerprint]]
+   fingerprint :- [:maybe analyze/Fingerprint]]
   (log/debugf "Saving fingerprint for %s" (sync-util/name-for-logging field))
-  ;; All Fields who get new fingerprints should get marked as having the latest fingerprint version, but we'll
-  ;; clear their values for `last_analyzed`. This way we know these fields haven't "completed" analysis for the
-  ;; latest fingerprints.
-  (t2/update! Field (u/the-id field)
-              {:fingerprint         fingerprint
-               :fingerprint_version i/*latest-fingerprint-version*
-               :last_analyzed       nil}))
+  (t2/update! Field (u/the-id field) (merge (incomplete-analysis-kvs) {:fingerprint fingerprint})))
 
 (mr/def ::FingerprintStats
   [:map
@@ -59,12 +62,12 @@
   issues when syncing."
   1234)
 
-(mu/defn ^:private fingerprint-table!
+(mu/defn- fingerprint-table!
   [table  :- i/TableInstance
    fields :- [:maybe [:sequential i/FieldInstance]]]
   (let [rff (fn [_metadata]
               (redux/post-complete
-               (fingerprinters/fingerprint-fields fields)
+               (analyze/fingerprint-fields fields)
                (fn [fingerprints]
                  (reduce (fn [count-info [field fingerprint]]
                            (cond
@@ -105,7 +108,7 @@
 ;;        (fingerprint_version < 2 AND
 ;;         base_type IN ("type/Text", "type/SerializedJSON")))
 
-(mu/defn ^:private base-types->descendants :- [:maybe [:set ms/FieldTypeKeywordOrString]]
+(mu/defn- base-types->descendants :- [:maybe [:set ms/FieldTypeKeywordOrString]]
   "Given a set of `base-types` return an expanded set that includes those base types as well as all of their
   descendants. These types are converted to strings so HoneySQL doesn't confuse them for columns."
   [base-types :- [:set ms/FieldType]]
@@ -134,7 +137,7 @@
 ;;
 ;; This way we can also completely omit adding clauses for versions that have been "eclipsed" by others.
 ;; This would keep the SQL query from growing boundlessly as new fingerprint versions are added
-(mu/defn ^:private versions-clauses :- [:maybe [:sequential :any]]
+(mu/defn- versions-clauses :- [:maybe [:sequential :any]]
   []
   ;; keep track of all the base types (including descendants) for each version, starting from most recent
   (let [versions+base-types (reverse (sort-by first (seq i/*fingerprint-version->types-that-should-be-re-fingerprinted*)))
@@ -161,14 +164,15 @@
     [:not (mdb.query/isa :semantic_type :type/PK)]
     [:= :semantic_type nil]]
    [:not-in :visibility_type ["retired" "sensitive"]]
-   [:not (mdb.query/isa :base_type :type/Structured)]])
+   [:not-in :base_type (conj (mdb.query/type-keyword->descendants :type/fingerprint-unsupported)
+                             (u/qualified-name :type/*))]])
 
 (def ^:dynamic *refingerprint?*
   "Whether we are refingerprinting or doing the normal fingerprinting. Refingerprinting should get fields that already
   are analyzed and have fingerprints."
   false)
 
-(mu/defn ^:private honeysql-for-fields-that-need-fingerprint-updating :- [:map
+(mu/defn- honeysql-for-fields-that-need-fingerprint-updating :- [:map
                                                                           [:where :any]]
   "Return appropriate WHERE clause for all the Fields whose Fingerprint needs to be re-calculated."
   ([]
@@ -183,7 +187,7 @@
 ;;; |                                      FINGERPRINTING ALL FIELDS IN A TABLE                                      |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-(mu/defn ^:private fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
+(mu/defn- fields-to-fingerprint :- [:maybe [:sequential i/FieldInstance]]
   "Return a sequences of Fields belonging to `table` for which we should generate (and save) fingerprints.
    This should include NEW fields that are active and visible."
   [table :- i/TableInstance]
@@ -208,34 +212,34 @@
 (def ^:private LogProgressFn
   [:=> [:cat :string [:schema i/TableInstance]] :any])
 
-(mu/defn ^:private fingerprint-fields-for-db!*
+(mu/defn- fingerprint-fields-for-db!*
   "Invokes `fingerprint-fields!` on every table in `database`"
   ([database        :- i/DatabaseInstance
-    tables          :- [:maybe [:sequential i/TableInstance]]
     log-progress-fn :- LogProgressFn]
-   (fingerprint-fields-for-db!* database tables log-progress-fn (constantly true)))
+   (fingerprint-fields-for-db!* database log-progress-fn (constantly true)))
 
   ([database        :- i/DatabaseInstance
-    tables          :- [:maybe [:sequential i/TableInstance]]
     log-progress-fn :- LogProgressFn
     continue?       :- [:=> [:cat ::FingerprintStats] :any]]
    (qp.store/with-metadata-provider (u/the-id database)
-     (reduce (fn [acc table]
-               (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
-               (let [new-acc (merge-with + acc (fingerprint-fields! table))]
-                 (if (continue? new-acc)
-                   new-acc
-                   (reduced new-acc))))
-             (empty-stats-map 0)
-             tables))))
+     (let [tables (if *refingerprint?*
+                    (sync-util/refingerprint-reducible-sync-tables database)
+                    (sync-util/reducible-sync-tables database))]
+       (reduce (fn [acc table]
+                 (log-progress-fn (if *refingerprint?* "refingerprint-fields" "fingerprint-fields") table)
+                 (let [new-acc (merge-with + acc (fingerprint-fields! table))]
+                   (if (continue? new-acc)
+                     new-acc
+                     (reduced new-acc))))
+               (empty-stats-map 0)
+               tables)))))
 
 (mu/defn fingerprint-fields-for-db!
   "Invokes [[fingerprint-fields!]] on every table in `database`"
   [database        :- i/DatabaseInstance
-   tables          :- [:maybe [:sequential i/TableInstance]]
    log-progress-fn :- LogProgressFn]
-  (if (driver/database-supports? (:engine database) :fingerprint database)
-    (fingerprint-fields-for-db!* database tables log-progress-fn)
+  (if (driver.u/supports? (:engine database) :fingerprint database)
+    (fingerprint-fields-for-db!* database log-progress-fn)
     (empty-stats-map 0)))
 
 (def ^:private max-refingerprint-field-count
@@ -246,13 +250,9 @@
 (mu/defn refingerprint-fields-for-db!
   "Invokes [[fingeprint-fields!]] on every table in `database` up to some limit."
   [database        :- i/DatabaseInstance
-   tables          :- [:maybe [:sequential i/TableInstance]]
    log-progress-fn :- LogProgressFn]
   (binding [*refingerprint?* true]
     (fingerprint-fields-for-db!* database
-                                 ;; our rudimentary refingerprint strategy is to shuffle the tables and fingerprint
-                                 ;; until we are over some threshold of fields
-                                 (shuffle tables)
                                  log-progress-fn
                                  (fn [stats-acc]
                                    (< (:fingerprints-attempted stats-acc) max-refingerprint-field-count)))))

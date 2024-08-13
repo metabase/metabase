@@ -2,10 +2,15 @@ import cx from "classnames";
 import { t } from "ttag";
 
 import ActionMenu from "metabase/collections/components/ActionMenu";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+} from "metabase/collections/types";
 import {
   isFullyParameterized,
   isPreviewShown,
 } from "metabase/collections/utils";
+import EventSandbox from "metabase/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -27,8 +32,8 @@ export interface PinnedQuestionCardProps {
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
-  onCreateBookmark?: (id: string, model: string) => void;
-  onDeleteBookmark?: (id: string, model: string) => void;
+  onCreateBookmark?: CreateBookmark;
+  onDeleteBookmark?: DeleteBookmark;
 }
 
 const PinnedQuestionCard = ({
@@ -44,21 +49,30 @@ const PinnedQuestionCard = ({
   const isPreview = isPreviewShown(item);
 
   const actionMenu = (
-    <ActionMenu
-      item={item}
-      collection={collection}
-      databases={databases}
-      bookmarks={bookmarks}
-      onCopy={onCopy}
-      onMove={onMove}
-      createBookmark={onCreateBookmark}
-      deleteBookmark={onDeleteBookmark}
-    />
+    // This component is used within a `<Link>` component,
+    // so we must prevent events from triggering the activation of the link
+    <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
+      <ActionMenu
+        item={item}
+        collection={collection}
+        databases={databases}
+        bookmarks={bookmarks}
+        onCopy={onCopy}
+        onMove={onMove}
+        createBookmark={onCreateBookmark}
+        deleteBookmark={onDeleteBookmark}
+      />
+    </EventSandbox>
   );
 
   const positionedActionMenu = (
     <CardActionMenuContainer>{actionMenu}</CardActionMenuContainer>
   );
+
+  const DEFAULT_DESCRIPTION: Record<string, string> = {
+    card: t`A question`,
+    metric: t`A metric`,
+  };
 
   return (
     <CardRoot
@@ -92,7 +106,9 @@ const PinnedQuestionCard = ({
       ) : (
         <CardStaticSkeleton
           name={item.name}
-          description={item.description ?? t`A question`}
+          description={
+            item.description || DEFAULT_DESCRIPTION[item.model] || ""
+          }
           icon={item.getIcon() as unknown as { name: IconName }}
           tooltip={getSkeletonTooltip(item)}
         />

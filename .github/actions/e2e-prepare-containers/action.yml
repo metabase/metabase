@@ -8,23 +8,23 @@ inputs:
     description: DockerHub password/token
     required: true
   maildev:
-    description: Maildev
+    description: Maildev container
     required: true
     default: 'false'
   openldap:
-    description: Maildev
+    description: OpenLDAP container
     required: true
     default: 'false'
   postgres:
-    description: Maildev
+    description: Postgres container
     required: true
     default: 'false'
   mysql:
-    description: Maildev
+    description: MySQL container
     required: true
     default: 'false'
   mongo:
-    description: Maildev
+    description: Mongo container
     required: true
     default: 'false'
 

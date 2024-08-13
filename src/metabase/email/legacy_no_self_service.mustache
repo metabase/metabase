@@ -1,0 +1,53 @@
+{{> metabase/email/_header }}
+<style>
+  strong: {
+    font-weight: 600;
+  }
+</style>
+<div class="card-container" style="color: {{colorTextDark}}; font-weight: 300;">
+
+  <p style="font-weight: 500; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};">
+    <i>(This email is sent directly from {{instanceURL}}, it doesn't go through any external services)</i>
+  </p>
+
+  <p>Hi {{userName}},</p>
+  <p>We updated our permissions model in Metabase 50, and you’ll need to update the new <strong>View data</strong> permission for a few groups that we can’t automatically update for you.</p>
+
+  <h4>What you need to update</h4>
+
+  <p>Please review your Metabase permissions and change all groups that have their <strong>View data</strong> access set to <strong>No self-service (deprecated)</strong> to one of the new <strong>View data</strong> permission types:</p>
+  <ul>
+    <li>Unrestricted</li>
+    <li>Impersonated</li>
+    <li>Sandboxed</li>
+    <li>Block</li>
+  </ul>
+  <p>For which permission level is right for each group, see our <a href="#">docs on permissions</a>.</p>
+
+  <h4>The groups you need to update</h4>
+
+  <p>The following groups currently have their <strong>View data</strong> access set to <strong>No self-service (deprecated)</strong></p>
+  <ul>
+   {{#groups}}
+      <li><a href="{{instanceURL}}/admin/permissions/data/group/{{id}}" style="color: #336699;">{{name}}</a></li>
+   {{/groups}}
+  </ul>
+
+  <p>If the group's <strong>View data</strong> access is set to "Granular" for a database, be sure to check the <strong>View data</strong> access for individual schemas and tables.</p>
+
+  <p>In a future release, if a group's <strong>View data</strong> access for a database (or any of its schemas or tables) is still set to <strong>No self-service (deprecated)</strong>, Metabase will automatically change that group's <strong>View data</strong> access for the entire database to <strong>Blocked</strong>.
+  We're defaulting to <strong>Blocked</strong>, the least permissive <strong>View data</strong> access, to prevent any unintended access to data.</p>
+
+  <h4>Why did we change our permissions model?</h4>
+
+  <p>For an explanation about what changed and why, check out this doc on <a href="https://www.metabase.com/docs/latest/permissions/no-self-service-deprecated">permission improvements in Metabase</a>.</p>
+
+  <p>And apologies for the hassle. This new permissions model should make permissions a lot easier to reason about going forward.</p>
+
+  <p>Please reach us out at help@metabase.com if you have any questions.</p>
+
+  <p>Thank you,</p>
+
+  <p>- The Metabase Team</p>
+</div>
+{{> metabase/email/_footer }}

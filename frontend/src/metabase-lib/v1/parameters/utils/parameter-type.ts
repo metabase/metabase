@@ -9,7 +9,7 @@ export function getParameterType(parameter: Parameter | string) {
     : parameter.sectionId || splitType(parameter)[0];
 }
 
-export function getParameterSubType(parameter: Parameter) {
+export function getParameterSubType(parameter: Parameter | string) {
   const [, subtype] = splitType(parameter);
   return subtype;
 }
@@ -40,6 +40,15 @@ export function isNumberParameter(parameter: Parameter) {
 export function isStringParameter(parameter: Parameter) {
   const type = getParameterType(parameter);
   return type === "string";
+}
+
+export function isFilterParameter(parameter: Parameter) {
+  return !isTemporalUnitParameter(parameter);
+}
+
+export function isTemporalUnitParameter(parameter: Parameter) {
+  const type = getParameterType(parameter);
+  return type === "temporal-unit";
 }
 
 // TODO this must be wrong because it returns true

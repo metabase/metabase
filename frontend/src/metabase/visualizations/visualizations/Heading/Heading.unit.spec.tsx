@@ -1,7 +1,7 @@
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import { color } from "metabase/lib/colors";
+import { renderWithProviders } from "__support__/ui";
 import { buildTextTagTarget } from "metabase-lib/v1/parameters/utils/targets";
 import type {
   QuestionDashboardCard,
@@ -16,6 +16,7 @@ import {
   createMockDashboard,
   createMockDashboardCard,
 } from "metabase-types/api/mocks";
+import { createMockDashboardState } from "metabase-types/store/mocks";
 
 import { Heading } from "../Heading";
 
@@ -45,8 +46,14 @@ const defaultProps = {
   parameterValues: {},
 };
 
-const setup = (options: Options) => {
-  render(<Heading {...defaultProps} {...options} />);
+const setup = ({ parameterValues, ...options }: Options) => {
+  renderWithProviders(<Heading {...defaultProps} {...options} />, {
+    storeInitialState: {
+      dashboard: createMockDashboardState({
+        parameterValues,
+      }),
+    },
+  });
 };
 
 describe("Text", () => {
@@ -98,8 +105,8 @@ describe("Text", () => {
           screen.getByTestId("editing-dashboard-heading-preview"),
         ).toHaveTextContent("Heading");
         expect(screen.getByTestId("editing-dashboard-heading-container"))
-          .toHaveStyle(`border: 1px solid ${color("brand")};
-                        color: ${color("text-light")};`);
+          .toHaveStyle(`border: 1px solid var(--mb-color-brand);
+                        color: var(--mb-color-text-light);`);
       });
 
       it("should preview with text when it has content", () => {

@@ -52,11 +52,12 @@
 (mu/defn zoom-drill :- [:maybe ::lib.schema.drill-thru/drill-thru.zoom]
   "Return a `:zoom` drill when clicking on the value of a PK column in a Table that has only one PK column."
   [query                                   :- ::lib.schema/query
-   _stage-number                           :- :int
+   stage-number                            :- :int
    {:keys [column value row] :as _context} :- ::lib.schema.drill-thru/context]
   (when (and
          ;; ignore clicks on headers (value = nil rather than :null)
          (some? value)
+         (lib.drill-thru.common/mbql-stage? query stage-number)
          ;; if this table has more than one PK we should be returning a [[metabase.lib.drill-thru.pk]] instead.
          (not (lib.drill-thru.common/many-pks? query)))
     (if (lib.types.isa/primary-key? column)

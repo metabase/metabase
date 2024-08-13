@@ -12,8 +12,18 @@ import { SelectDropdown } from "../Select/SelectDropdown";
 import { SelectItem } from "../Select/SelectItem";
 
 const SIZES = {
-  xs: rem(16),
-  md: rem(24),
+  xs: rem(30),
+  md: rem(38),
+};
+
+const VALUE_SIZES = {
+  xs: rem(20),
+  md: rem(28),
+};
+
+const RIGHT_SECTION_SIZES = {
+  default: rem(40),
+  unstyled: rem(28),
 };
 
 export const getMultiSelectOverrides =
@@ -28,23 +38,54 @@ export const getMultiSelectOverrides =
         clearButtonProps: {
           color: "text-dark",
         },
+        "data-testid": "multi-select",
       },
       styles: (
         theme,
         { invalid }: MultiSelectStylesParams,
-        { size = "md" },
+        { size = "md", variant = "default" },
       ) => ({
-        ...getSelectInputOverrides(theme, size),
+        ...getSelectInputOverrides(theme),
         ...getSelectItemsOverrides(theme, size),
         values: {
+          boxSizing: "border-box",
           minHeight: getSize({ size, sizes: SIZES }),
           marginLeft: 0,
-          gap: theme.spacing.sm,
+          gap: theme.spacing.xs,
+          paddingTop: theme.spacing.xs,
+          paddingLeft: theme.spacing.xs,
+          paddingBottom: theme.spacing.xs,
+          paddingRight:
+            variant === "unstyled"
+              ? RIGHT_SECTION_SIZES.unstyled
+              : RIGHT_SECTION_SIZES.default,
+          alignItems: "center",
+          "[data-with-icon=true] &": {
+            paddingLeft: 0,
+          },
+        },
+        input: {
+          padding: 0,
+          boxSizing: "border-box",
+          "&[data-with-icon]": {
+            paddingLeft: theme.spacing.lg,
+          },
+          background: "var(--mb-color-background)",
+          color: "var(--mb-color-text-primary)",
+          "&::placeholder": {
+            color: "var(--mb-color-text-secondary)",
+          },
+        },
+        icon: {
+          width: theme.spacing.lg,
         },
         value: {
           margin: 0,
         },
         searchInput: {
+          minHeight: getSize({ size, sizes: VALUE_SIZES }),
+          padding: 0,
+          marginLeft: theme.spacing.sm,
           "&::placeholder": {
             color: invalid
               ? theme.fn.themeColor("error")
@@ -53,19 +94,22 @@ export const getMultiSelectOverrides =
           "&::-webkit-search-cancel-button": {
             display: "none",
           },
+          "[data-with-icon=true] &:first-child": {
+            marginLeft: 0,
+          },
         },
         defaultValue: {
-          height: getSize({ size, sizes: SIZES }),
-          paddingLeft: theme.spacing.sm,
-          paddingRight: theme.spacing.sm,
-          fontWeight: "normal",
-          fontSize: theme.fontSizes.xs,
+          padding: 0,
+          paddingInline: theme.spacing.sm,
+          height: getSize({ size, sizes: VALUE_SIZES }),
+          fontWeight: "bold",
+          fontSize: getSize({ size, sizes: theme.fontSizes }),
           borderRadius: theme.radius.xs,
-          color: theme.fn.themeColor("text-dark"),
-          backgroundColor: theme.fn.themeColor("bg-medium"),
+          color: "var(--mb-color-text-selected)",
+          backgroundColor: "var(--mb-color-background-selected)",
         },
         defaultValueRemove: {
-          color: theme.fn.themeColor("text-dark"),
+          color: "var(--mb-color-text-selected)",
           width: rem(12),
           height: rem(12),
           minWidth: rem(12),
@@ -77,6 +121,10 @@ export const getMultiSelectOverrides =
             width: "100% !important",
             height: "100% !important",
           },
+        },
+        dropdown: {
+          backgroundColor: "var(--mb-color-background)",
+          borderColor: "var(--mb-color-border)",
         },
       }),
       variants: {

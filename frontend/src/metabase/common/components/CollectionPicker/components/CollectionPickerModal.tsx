@@ -3,32 +3,41 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { SearchModel } from "metabase-types/api";
+import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
-import type { CollectionPickerItem, CollectionPickerOptions } from "../types";
+import { useLogRecentItem } from "../../EntityPicker/hooks/use-log-recent-item";
+import type {
+  CollectionPickerItem,
+  CollectionPickerOptions,
+  CollectionPickerValueItem,
+} from "../types";
 
 import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
-interface CollectionPickerModalProps {
+export interface CollectionPickerModalProps {
   title?: string;
-  onChange: (item: CollectionPickerItem) => void;
+  onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
-  value: Pick<CollectionPickerItem, "id" | "model">;
+  value: Pick<CollectionPickerValueItem, "id" | "model">;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
+  searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
+  recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
 }
 
-const canSelectItem = (item: CollectionPickerItem | null): boolean => {
-  return !!item && item?.can_write !== false;
+const canSelectItem = (
+  item: Pick<CollectionPickerItem, "can_write" | "model"> | null,
+): item is CollectionPickerValueItem => {
+  return !!item && item.can_write !== false && item.model === "collection";
 };
 
-const searchFilter = (
-  searchResults: CollectionPickerItem[],
-): CollectionPickerItem[] => {
-  return searchResults.filter(result => result.can_write);
+const searchFilter = (searchResults: SearchResult[]): SearchResult[] => {
+  return searchResults.filter(
+    result => result.can_write && result.collection.type !== "trash",
+  );
 };
 
 export const CollectionPickerModal = ({
@@ -38,10 +47,22 @@ export const CollectionPickerModal = ({
   value,
   options = defaultOptions,
   shouldDisableItem,
+  searchResultFilter,
+  recentFilter,
 }: CollectionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
     null,
+  );
+
+  const { tryLogRecentItem } = useLogRecentItem();
+
+  const handleChange = useCallback(
+    async (item: CollectionPickerValueItem) => {
+      await onChange(item);
+      tryLogRecentItem(item);
+    },
+    [onChange, tryLogRecentItem],
   );
 
   const [
@@ -57,30 +78,32 @@ export const CollectionPickerModal = ({
     async (item: CollectionPickerItem) => {
       if (options.hasConfirmButtons) {
         setSelectedItem(item);
-      } else {
-        await onChange(item);
+      } else if (canSelectItem(item)) {
+        await handleChange(item);
       }
     },
-    [onChange, options],
+    [handleChange, options],
   );
 
   const handleConfirm = async () => {
-    if (selectedItem) {
-      await onChange(selectedItem);
+    if (selectedItem && canSelectItem(selectedItem)) {
+      await handleChange(selectedItem);
     }
   };
 
-  const modalActions = [
-    <Button
-      key="collection-on-the-go"
-      miw="21rem"
-      onClick={openCreateDialog}
-      leftIcon={<Icon name="add" />}
-      disabled={selectedItem?.can_write === false}
-    >
-      {t`Create a new collection`}
-    </Button>,
-  ];
+  const modalActions = options.allowCreateNew
+    ? [
+        <Button
+          key="collection-on-the-go"
+          miw="21rem"
+          onClick={openCreateDialog}
+          leftIcon={<Icon name="add" />}
+          disabled={selectedItem?.can_write === false}
+        >
+          {t`Create a new collection`}
+        </Button>,
+      ]
+    : [];
 
   const tabs: [EntityTab<SearchModel>] = [
     {
@@ -103,6 +126,16 @@ export const CollectionPickerModal = ({
     pickerRef.current?.onNewCollection(newCollection);
   };
 
+  const composedSearchResultFilter = useCallback(
+    (searchResults: SearchResult[]) => {
+      if (searchResultFilter) {
+        return searchFilter(searchResultFilter(searchResults));
+      }
+      return searchFilter(searchResults);
+    },
+    [searchResultFilter],
+  );
+
   return (
     <>
       <EntityPickerModal
@@ -114,15 +147,23 @@ export const CollectionPickerModal = ({
         selectedItem={selectedItem}
         tabs={tabs}
         options={options}
-        searchResultFilter={searchFilter}
+        searchResultFilter={composedSearchResultFilter}
+        recentFilter={recentFilter}
         actionButtons={modalActions}
         trapFocus={!isCreateDialogOpen}
       />
       <NewCollectionDialog
         isOpen={isCreateDialogOpen}
         onClose={closeCreateDialog}
-        parentCollectionId={selectedItem?.id || value?.id || "root"}
+        parentCollectionId={
+          canSelectItem(selectedItem)
+            ? selectedItem.id
+            : canSelectItem(value)
+            ? value.id
+            : "root"
+        }
         onNewCollection={handleNewCollectionCreate}
+        namespace={options.namespace}
       />
     </>
   );

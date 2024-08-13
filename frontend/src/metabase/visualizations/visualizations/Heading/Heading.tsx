@@ -2,13 +2,14 @@ import type { MouseEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { t } from "ttag";
 
+import { getParameterValues } from "metabase/dashboard/selectors";
 import { useToggle } from "metabase/hooks/use-toggle";
+import { useSelector } from "metabase/lib/redux";
 import { isEmpty } from "metabase/lib/validate";
 import { fillParametersInText } from "metabase/visualizations/shared/utils/parameter-substitution";
 import type {
   Dashboard,
   QuestionDashboardCard,
-  ParameterValueOrArray,
   VisualizationSettings,
 } from "metabase-types/api";
 
@@ -25,7 +26,6 @@ interface HeadingProps {
   dashcard: QuestionDashboardCard;
   settings: VisualizationSettings;
   dashboard: Dashboard;
-  parameterValues: { [id: string]: ParameterValueOrArray };
 }
 
 export function Heading({
@@ -34,8 +34,8 @@ export function Heading({
   onUpdateVisualizationSettings,
   dashcard,
   dashboard,
-  parameterValues,
 }: HeadingProps) {
+  const parameterValues = useSelector(getParameterValues);
   const justAdded = useMemo(() => dashcard?.justAdded || false, [dashcard]);
 
   const [isFocused, { turnOn: toggleFocusOn, turnOff: toggleFocusOff }] =

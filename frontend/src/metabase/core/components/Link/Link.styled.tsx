@@ -4,7 +4,6 @@ import styled from "@emotion/styled";
 import { Link } from "react-router";
 
 import { focusOutlineStyle } from "metabase/core/style/input";
-import { color as metabaseColor } from "metabase/lib/colors";
 
 import type { LinkProps } from "./types";
 
@@ -27,14 +26,16 @@ export const LinkRoot = styled(Link, {
 export const variants = {
   default: "",
   brand: css`
-    color: ${metabaseColor("brand")};
+    color: var(--mb-color-brand);
+
     &:hover {
       text-decoration: underline;
     }
   `,
   brandBold: css`
-    color: ${metabaseColor("brand")};
+    color: var(--mb-color-brand);
     font-weight: bold;
+
     &:hover {
       text-decoration: underline;
     }

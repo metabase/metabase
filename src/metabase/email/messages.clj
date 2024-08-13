@@ -96,7 +96,7 @@
 
 ;;; Various Context Helper Fns. Used to build Stencil template context
 
-(defn- common-context
+(defn common-context
   "Context that is used across multiple email templates, and that is the same for all emails"
   []
   {:applicationName           (public-settings/application-name)
@@ -289,8 +289,6 @@
                :message      (stencil/render-file "metabase/email/follow_up_email" context)}]
     (email/send-message! email)))
 
-
-
 (defn send-creator-sentiment-email!
   "Format and send an email to a creator with a link to a survey. If a [[blob]] is included, it will be turned into json
   and then base64 encoded."
@@ -340,9 +338,9 @@
   (let [dashboard-id (:id dashboard)]
    (merge (common-context)
           {:emailType                 "pulse"
-           :title                     (:name pulse)
+           :title                     (:name dashboard)
            :titleUrl                  (pulse-params/dashboard-url dashboard-id (pulse-params/parameters pulse dashboard))
-           :dashboardDescription      (:description dashboard)
+           :dashboardDescription      (markdown/process-markdown (:description dashboard) :html)
            ;; There are legacy pulses that exist without being tied to a dashboard
            :dashboardHasTabs          (when dashboard-id
                                         (boolean (seq (t2/hydrate dashboard :tabs))))
@@ -380,7 +378,7 @@
     {:type         :attachment
      :content-type content-type
      :file-name    (format "%s_%s.%s"
-                           (or (u/slugify card-name) "query_result")
+                           (or card-name "query_result")
                            (u.date/format (t/zoned-date-time))
                            (name export-type))
      :content      (-> attachment-file .toURI .toURL)
@@ -580,7 +578,7 @@
   "Returns a string that describes the run schedule of an alert (i.e. how often results are checked),
   for inclusion in the email template. Not translated, since emails in general are not currently translated."
   [channel]
-  (case (:schedule_type channel)
+  (case (keyword (:schedule_type channel))
     :hourly
     "Run hourly"
 
@@ -598,10 +596,13 @@
 (defn- alert-context
   "Context that is applicable only to the actual alert template (not alert management templates)"
   [alert channel non-user-email]
-  (let [{card-id :id, card-name :name} (first-card alert)]
+  (let [{card-id :id card-name :name} (first-card alert)]
     {:title                     card-name
      :titleUrl                  (urls/card-url card-id)
      :alertSchedule             (alert-schedule-text channel)
+     :notificationText          (if (nil? non-user-email)
+                                    "Manage your subscriptions"
+                                    "Unsubscribe")
      :notificationManagementUrl (if (nil? non-user-email)
                                   (urls/notification-management-url)
                                   (str (urls/unsubscribe-url)

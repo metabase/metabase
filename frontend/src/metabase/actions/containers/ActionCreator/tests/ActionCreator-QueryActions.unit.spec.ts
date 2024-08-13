@@ -65,9 +65,9 @@ describe("ActionCreator > Query Actions", () => {
         expect(
           await screen.findByPlaceholderText("My new fantastic action"),
         ).toBeInTheDocument();
-        expect(screen.getByTestId("select-button-content")).toHaveTextContent(
-          "Select a model",
-        );
+        expect(
+          screen.getByTestId("collection-picker-button"),
+        ).toHaveTextContent("Select a model");
       });
       it("should preselect model", async () => {
         const MODEL_NAME = "Awesome Model";
@@ -90,9 +90,9 @@ describe("ActionCreator > Query Actions", () => {
           screen.getByPlaceholderText("My new fantastic action"),
         ).toBeInTheDocument();
         // model is preselected
-        expect(screen.getByTestId("select-button-content")).toHaveTextContent(
-          MODEL_NAME,
-        );
+        expect(
+          screen.getByTestId("collection-picker-button"),
+        ).toHaveTextContent(MODEL_NAME);
       });
     });
   });
@@ -143,7 +143,7 @@ describe("ActionCreator > Query Actions", () => {
 
       screen.getByLabelText("Action settings").click();
 
-      expect(screen.getByLabelText("Success message")).toBeDisabled();
+      expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });
 
     it("blocks editing if actions are disabled for the database", async () => {
@@ -161,7 +161,7 @@ describe("ActionCreator > Query Actions", () => {
 
       screen.getByLabelText("Action settings").click();
 
-      expect(screen.getByLabelText("Success message")).toBeDisabled();
+      expect(await screen.findByLabelText("Success message")).toBeDisabled();
     });
   });
 });

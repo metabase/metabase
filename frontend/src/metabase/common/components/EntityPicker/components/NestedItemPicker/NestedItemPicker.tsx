@@ -5,16 +5,16 @@ import { Flex } from "metabase/ui";
 
 import type {
   EntityPickerOptions,
+  IsFolder,
   ListProps,
   PickerState,
-  IsFolder,
   TypeWithModel,
 } from "../../types";
 import { isSelectedItem } from "../../utils";
 import { AutoScrollBox } from "../AutoScrollBox";
 
 import { ListBox } from "./NestedItemPicker.styled";
-import { findLastSelectedItem } from "./utils";
+import { findLastSelectedItem, generateKey } from "./utils";
 
 export interface NestedItemPickerProps<
   Id,
@@ -25,13 +25,12 @@ export interface NestedItemPickerProps<
 > {
   onFolderSelect: ({ folder }: { folder: Item }) => void;
   onItemSelect: (item: Item) => void;
-  generateKey: (query?: Query) => string;
-  itemName: string;
   options: Options;
   path: PickerState<Item, Query>;
   isFolder: IsFolder<Id, Model, Item>;
   listResolver: ComponentType<ListProps<Id, Model, Item, Query, Options>>;
   shouldDisableItem?: (item: Item) => boolean;
+  shouldShowItem?: (item: Item) => boolean;
 }
 
 export function NestedItemPicker<
@@ -43,12 +42,12 @@ export function NestedItemPicker<
 >({
   onFolderSelect,
   onItemSelect,
-  generateKey,
   options,
   path,
   isFolder,
   listResolver: ListResolver,
   shouldDisableItem,
+  shouldShowItem,
 }: NestedItemPickerProps<Id, Model, Item, Query, Options>) {
   const handleClick = (item: Item) => {
     if (isFolder(item)) {
@@ -68,7 +67,6 @@ export function NestedItemPicker<
       <Flex h="100%" w="fit-content">
         {path.map((level, index) => {
           const { query, selectedItem } = level;
-
           const isCurrentLevel = Boolean(
             selectedItem &&
               lastSelectedItem &&
@@ -88,6 +86,7 @@ export function NestedItemPicker<
                   onClick={(item: Item) => handleClick(item)}
                   isCurrentLevel={isCurrentLevel}
                   shouldDisableItem={shouldDisableItem}
+                  shouldShowItem={shouldShowItem}
                   isFolder={isFolder}
                 />
               </ErrorBoundary>

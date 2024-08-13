@@ -13,9 +13,50 @@ import {
   getFieldType,
   isString,
   isInteger,
+  isDimension,
+  isMetric,
 } from "metabase-lib/v1/types/utils/isa";
+import { createMockColumn } from "metabase-types/api/mocks";
 
 describe("isa", () => {
+  describe("isDimension", () => {
+    it("should should return false for aggregation columns", () => {
+      expect(isDimension(createMockColumn({ source: "aggregation" }))).toBe(
+        false,
+      );
+    });
+
+    it("should should return true for description column types", () => {
+      expect(
+        isDimension(createMockColumn({ semantic_type: TYPE.Description })),
+      ).toBe(true);
+    });
+  });
+
+  describe("isMetric", () => {
+    it.each([
+      createMockColumn({ source: "aggregation", base_type: TYPE.Integer }),
+      createMockColumn({ base_type: TYPE.Integer }),
+      createMockColumn({ base_type: TYPE.BigInteger }),
+      createMockColumn({ base_type: TYPE.BigInteger, name: "solid" }),
+    ])("should should return true for numeric columns", column => {
+      expect(isMetric(column)).toBe(true);
+    });
+
+    it.each([
+      createMockColumn({ source: "breakout", base_type: TYPE.Integer }),
+      createMockColumn({ base_type: TYPE.Text }),
+      createMockColumn({ base_type: TYPE.BigInteger, name: "id" }),
+      createMockColumn({ base_type: TYPE.BigInteger, name: "orders_id" }),
+      createMockColumn({ base_type: TYPE.BigInteger, name: "orders-id" }),
+    ])(
+      "should should return false for breakout, ID, non-summable columns",
+      column => {
+        expect(isMetric(column)).toBe(false);
+      },
+    );
+  });
+
   describe("getFieldType", () => {
     it("should know a date", () => {
       expect(getFieldType({ base_type: TYPE.Date })).toEqual(TEMPORAL);

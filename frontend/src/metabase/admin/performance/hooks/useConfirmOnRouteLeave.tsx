@@ -11,7 +11,7 @@ export const useConfirmOnRouteLeave = ({
   shouldConfirm,
   confirm,
 }: {
-  router: InjectedRouter;
+  router?: InjectedRouter;
   route?: Route;
   shouldConfirm: boolean;
   confirm: (onConfirm: () => void) => void;
@@ -20,7 +20,7 @@ export const useConfirmOnRouteLeave = ({
   const [nextLocation, setNextLocation] = useState<Location>();
 
   useEffect(() => {
-    if (!route) {
+    if (!route || !router) {
       return;
     }
     const removeLeaveHook = router.setRouteLeaveHook(route, location => {

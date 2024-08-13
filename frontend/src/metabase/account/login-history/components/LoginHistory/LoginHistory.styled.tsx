@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import Label from "metabase/components/type/Label";
-import { color } from "metabase/lib/colors";
 
 export const LoginGroup = styled.div`
   padding: 1rem 0;
@@ -18,5 +17,5 @@ export const LoginItemInfo = styled.div`
 `;
 
 export const LoginActiveLabel = styled(Label)`
-  color: ${color("summarize")};
+  color: var(--mb-color-summarize);
 `;

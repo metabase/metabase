@@ -9,7 +9,6 @@ import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type {
   UiParameter,
   FieldFilterUiParameter,
-  ParameterWithTarget,
 } from "metabase-lib/v1/parameters/types";
 import { isFieldFilterParameter } from "metabase-lib/v1/parameters/utils/parameter-type";
 import {
@@ -67,8 +66,25 @@ export function setParameterName(
   };
 }
 
-export function getIsMultiSelect(parameter: Parameter): boolean {
-  return parameter.isMultiSelect ?? true;
+export function setParameterType(
+  parameter: Parameter,
+  type: string,
+  sectionId: string,
+): Parameter {
+  // reset default value
+  const {
+    default: _,
+    values_source_type,
+    values_source_config,
+    values_query_type,
+    ...rest
+  } = parameter;
+
+  return {
+    ...rest,
+    type,
+    sectionId,
+  };
 }
 
 export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
@@ -77,22 +93,6 @@ export function hasMapping(parameter: Parameter, dashboard: Dashboard) {
       return parameter_mapping.parameter_id === parameter.id;
     });
   });
-}
-
-export function isDashboardParameterWithoutMapping(
-  parameter: Parameter,
-  dashboard: Dashboard,
-) {
-  if (!dashboard || !dashboard.parameters) {
-    return false;
-  }
-
-  const parameterExistsOnDashboard = dashboard.parameters.some(
-    dashParam => dashParam.id === parameter.id,
-  );
-  const parameterHasMapping = hasMapping(parameter, dashboard);
-
-  return parameterExistsOnDashboard && !parameterHasMapping;
 }
 
 function getMappings(dashcards: QuestionDashboardCard[]): ExtendedMapping[] {
@@ -175,7 +175,7 @@ function buildFieldFilterUiParameter(
 
     const question = questions[card.id] ?? new Question(card, metadata);
     try {
-      const field = getParameterTargetField(target, question);
+      const field = getParameterTargetField(question, parameter, target);
 
       return {
         field,
@@ -209,28 +209,6 @@ function buildFieldFilterUiParameter(
     fields: _.uniq(fields, field => field.id),
     hasVariableTemplateTagTarget,
   };
-}
-
-export function getParametersMappedToDashcard(
-  dashboard: Dashboard,
-  dashcard: QuestionDashboardCard,
-): ParameterWithTarget[] {
-  const { parameters } = dashboard;
-  const { parameter_mappings } = dashcard;
-  return (parameters || [])
-    .map(parameter => {
-      const mapping = _.findWhere(parameter_mappings || [], {
-        parameter_id: parameter.id,
-      });
-
-      if (mapping) {
-        return {
-          ...parameter,
-          target: mapping.target,
-        };
-      }
-    })
-    .filter((parameter): parameter is ParameterWithTarget => parameter != null);
 }
 
 export function hasMatchingParameters({

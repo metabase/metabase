@@ -83,7 +83,13 @@ export class WindowModal extends Component<WindowModalProps> {
       >
         <FocusTrap active={this.props.trapFocus}>
           <div
-            className={cx(className, CS.relative, CS.bgWhite, CS.rounded)}
+            className={cx(
+              className,
+              CS.relative,
+              CS.bgWhite,
+              CS.rounded,
+              CS.textDark,
+            )}
             role="dialog"
             data-testid="modal"
           >
@@ -124,7 +130,7 @@ export class WindowModal extends Component<WindowModalProps> {
         container={this._modalElement}
         enableMouseEvents={enableMouseEvents}
         // disable keydown to allow FocusTrap to work
-        unsandboxEvents={["onKeyDown"]}
+        unsandboxedEvents={["onKeyDown"]}
       >
         <TransitionGroup
           appear={enableTransition}

@@ -7,7 +7,7 @@ import { t } from "ttag";
 import NoResults from "assets/img/no_results.svg";
 import DateTime from "metabase/components/DateTime";
 import EmptyState from "metabase/components/EmptyState";
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import Link from "metabase/core/components/Link";
 import Tooltip from "metabase/core/components/Tooltip";
 import AdminS from "metabase/css/admin.module.css";

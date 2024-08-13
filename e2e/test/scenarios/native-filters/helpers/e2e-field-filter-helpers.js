@@ -36,7 +36,7 @@ export function clearWidgetValue() {
 }
 
 export function setWidgetStringFilter(value) {
-  popover().find("input").first().type(`${value}{enter}`);
+  popover().find("input").not("[type=hidden]").first().type(`${value}{enter}`);
 }
 
 /**
@@ -109,9 +109,12 @@ export function addWidgetNumberFilter(
  * @return {function}
  */
 export function addDefaultNumberFilter(value) {
-  return isBetweenFilter(value)
-    ? addBetweenFilter(value)
-    : enterDefaultValue(value);
+  if (isBetweenFilter(value)) {
+    cy.findByText("Enter a default value…").click();
+    addBetweenFilter(value);
+  } else {
+    enterDefaultValue(value);
+  }
 }
 
 // UI PATTERNS
@@ -180,7 +183,9 @@ function addSimpleNumberFilter(value, buttonLabel = "Add filter") {
  */
 function enterDefaultValue(value, buttonLabel = "Add filter") {
   cy.findByText("Enter a default value…").click();
-  cy.findByPlaceholderText("Enter a default value…").type(`${value}{enter}`);
+  cy.findByPlaceholderText("Enter a default value…")
+    .type(`${value}{enter}`)
+    .blur();
   cy.button(buttonLabel).click();
 }
 
@@ -200,7 +205,7 @@ export function pickDefaultValue(searchTerm, result) {
   // is to make sure the string is "visible" before acting on it.
   // This seems to help with the flakiness.
   //
-  cy.findByTestId(`${result}-filter-value`).should("be.visible").click();
+  cy.findByLabelText(result).should("be.visible").click();
 
   cy.button("Add filter").click();
 }

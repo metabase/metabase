@@ -519,7 +519,7 @@ describe("MetadataEditor", () => {
 
       history?.goBack();
 
-      expect(screen.getByText("Link to Datamodel")).toBeInTheDocument();
+      expect(await screen.findByText("Link to Datamodel")).toBeInTheDocument();
     });
   });
 });

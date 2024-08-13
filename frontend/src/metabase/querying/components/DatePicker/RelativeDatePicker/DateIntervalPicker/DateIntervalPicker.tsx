@@ -7,12 +7,13 @@ import {
   Divider,
   Flex,
   Group,
-  Menu,
   NumberInput,
   Select,
   Text,
+  Tooltip,
 } from "metabase/ui";
 
+import { IncludeCurrentSwitch } from "../IncludeCurrentSwitch";
 import type { DateIntervalValue } from "../types";
 import {
   formatDateRange,
@@ -21,13 +22,7 @@ import {
   getUnitOptions,
 } from "../utils";
 
-import {
-  getIncludeCurrentLabel,
-  getIncludeCurrent,
-  setIncludeCurrent,
-  setUnit,
-  setDefaultOffset,
-} from "./utils";
+import { setUnit, setDefaultOffset } from "./utils";
 
 interface DateIntervalPickerProps {
   value: DateIntervalValue;
@@ -46,7 +41,6 @@ export function DateIntervalPicker({
 }: DateIntervalPickerProps) {
   const interval = getInterval(value);
   const unitOptions = getUnitOptions(value);
-  const includeCurrent = getIncludeCurrent(value);
   const dateRangeText = formatDateRange(value);
 
   const handleIntervalChange = (inputValue: number | "") => {
@@ -64,10 +58,6 @@ export function DateIntervalPicker({
 
   const handleStartingFromClick = () => {
     onChange(setDefaultOffset(value));
-  };
-
-  const handleIncludeCurrentClick = () => {
-    onChange(setIncludeCurrent(value, !includeCurrent));
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -91,34 +81,20 @@ export function DateIntervalPicker({
           ml="md"
           onChange={handleUnitChange}
         />
-        <Menu>
-          <Menu.Target>
+        {canUseRelativeOffsets && (
+          <Tooltip label={t`Starting from…`} position="bottom">
             <Button
-              c="text-dark"
+              aria-label={t`Starting from…`}
+              c="text-medium"
               variant="subtle"
-              leftIcon={<Icon name="ellipsis" />}
-              aria-label={t`Options`}
+              leftIcon={<Icon name="arrow_left_to_line" />}
+              onClick={handleStartingFromClick}
             />
-          </Menu.Target>
-          <Menu.Dropdown>
-            {canUseRelativeOffsets && (
-              <Menu.Item
-                icon={<Icon name="arrow_left_to_line" />}
-                onClick={handleStartingFromClick}
-              >
-                {t`Starting from…`}
-              </Menu.Item>
-            )}
-            <Menu.Item
-              icon={<Icon name={includeCurrent ? "check" : "calendar"} />}
-              onClick={handleIncludeCurrentClick}
-              aria-selected={includeCurrent}
-              data-testid="include-current-interval-option"
-            >
-              {t`Include ${getIncludeCurrentLabel(value.unit)}`}
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
+          </Tooltip>
+        )}
+      </Flex>
+      <Flex p="md" pt={0}>
+        <IncludeCurrentSwitch value={value} onChange={onChange} />
       </Flex>
       <Divider />
       <Group px="md" py="sm" position="apart">

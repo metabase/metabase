@@ -78,7 +78,7 @@
 
 (deftest reactivate-field-test
   (testing "Syncing can reactivate a field"
-    (t2.with-temp/with-temp [Database db {:engine ::toucanery/toucanery}]
+    (mt/with-temp [Database db {:engine ::toucanery/toucanery}]
       ;; do the initial sync
       (sync-metadata/sync-db-metadata! db)
       ;; delete our entry for the `transactions.toucan.details.age` field

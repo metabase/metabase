@@ -6,9 +6,9 @@ export function getPivotColumnSplit(question) {
   const setting = question.setting("pivot_table.column_split");
   const query = question.query();
   const stageIndex = -1;
-  const breakoutColumns = Lib.breakouts(query, stageIndex).map(breakout =>
-    Lib.breakoutColumn(query, stageIndex, breakout),
-  );
+  const breakoutColumns = Lib.breakouts(query, stageIndex)
+    .map(breakout => Lib.breakoutColumn(query, stageIndex, breakout))
+    .filter(Boolean);
 
   const { rows: pivot_rows, columns: pivot_cols } = _.mapObject(
     setting,

@@ -4,6 +4,7 @@
    [clojure.spec.alpha :as s]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.actions :as lib.schema.actions]
@@ -118,7 +119,7 @@
 (defn check-actions-enabled-for-database!
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
   [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
-  (when-not (driver/database-supports? driver :actions db)
+  (when-not (driver.u/supports? driver :actions db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
                               (u/qualified-name driver)
                               (format "%d %s" db-id (pr-str db-name)))

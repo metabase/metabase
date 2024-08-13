@@ -2,6 +2,7 @@ import {
   precision,
   computeNumericDataInverval,
   isMultipleOf,
+  computeChange,
 } from "metabase/visualizations/lib/numeric";
 
 describe("visualization.lib.numeric", () => {
@@ -84,5 +85,183 @@ describe("visualization.lib.numeric", () => {
         value,
       )})`, () => expect(isMultipleOf(value, precision(value))).toBe(true)),
     );
+  });
+
+  describe("computeChange", () => {
+    describe("comparisonVal = 0", () => {
+      const cases = [
+        {
+          description: "should evaluate: 0 → < 0 = -∞%",
+          subCases: [
+            {
+              previous: 0,
+              next: -1,
+              expected: -Infinity,
+            },
+            {
+              previous: 0,
+              next: -10,
+              expected: -Infinity,
+            },
+          ],
+        },
+        {
+          description: "should evaluate: 0 → > 0 = ∞%",
+          subCases: [
+            {
+              previous: 0,
+              next: 1,
+              expected: Infinity,
+            },
+            {
+              previous: 0,
+              next: 10,
+              expected: Infinity,
+            },
+          ],
+        },
+        {
+          description: "should evaluate: 0 → 0 =  0%",
+          subCases: [
+            {
+              previous: 0,
+              next: 0,
+              expected: 0,
+            },
+          ],
+        },
+      ];
+
+      describe.each(cases)("$description", ({ subCases }) => {
+        it.each(subCases)(
+          "$previous -> $next = $expected",
+          ({ previous, next, expected }) => {
+            expect(computeChange(previous, next)).toBe(expected);
+          },
+        );
+      });
+    });
+
+    describe("comparisonVal < 0", () => {
+      const cases = [
+        {
+          description: "should evaluate: - → 0 = 100%",
+          subCases: [
+            {
+              previous: -1,
+              next: 0,
+              expected: 1,
+            },
+            {
+              previous: -10,
+              next: 0,
+              expected: 1,
+            },
+          ],
+        },
+        {
+          description:
+            "should evaluate: - → - =  (currVal - comparisonVal) / Math.abs(comparisonVal)",
+          subCases: [
+            {
+              previous: -3,
+              next: -5,
+              expected: -2 / 3,
+            },
+            {
+              previous: -12,
+              next: -3,
+              expected: 9 / 12,
+            },
+          ],
+        },
+        {
+          description:
+            "should evaluate: - → + = (currVal - comparisonVal) / Math.abs(comparisonVal)",
+          subCases: [
+            {
+              previous: -3,
+              next: 5,
+              expected: 8 / 3,
+            },
+            {
+              previous: -12,
+              next: 3,
+              expected: 15 / 12,
+            },
+          ],
+        },
+      ];
+
+      describe.each(cases)("$description", ({ subCases }) => {
+        it.each(subCases)(
+          "$previous -> $next = $expected",
+          ({ previous, next, expected }) => {
+            expect(computeChange(previous, next)).toBe(expected);
+          },
+        );
+      });
+    });
+
+    describe("comparisonVal > 0", () => {
+      const cases = [
+        {
+          description: "should evaluate: + → 0 = -100%",
+          subCases: [
+            {
+              previous: 1,
+              next: 0,
+              expected: -1,
+            },
+            {
+              previous: 10,
+              next: 0,
+              expected: -1,
+            },
+          ],
+        },
+        {
+          description:
+            "should evaluate: + → + = (currVal - comparisonVal) / Math.abs(comparisonVal)",
+          subCases: [
+            {
+              previous: 3,
+              next: 5,
+              expected: 2 / 3,
+            },
+            {
+              previous: 12,
+              next: 3,
+              expected: -9 / 12,
+            },
+          ],
+        },
+        {
+          description:
+            "should evaluate: + → - = (currVal - comparisonVal) / Math.abs(comparisonVal)",
+          subCases: [
+            {
+              previous: 3,
+              next: -5,
+              expected: -8 / 3,
+            },
+            {
+              previous: 12,
+              next: -3,
+              expected: -15 / 12,
+            },
+          ],
+        },
+      ];
+
+      describe.each(cases)("$description", ({ subCases }) => {
+        it.each(subCases)(
+          "$previous -> $next = $expected",
+          ({ previous, next, expected }) => {
+            expect(computeChange(previous, next)).toBe(expected);
+          },
+        );
+      });
+    });
   });
 });

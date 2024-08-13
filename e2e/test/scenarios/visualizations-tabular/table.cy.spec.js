@@ -19,6 +19,11 @@ import {
   sidebar,
   moveDnDKitElement,
   selectFilterOperator,
+  expressionEditorWidget,
+  entityPickerModal,
+  entityPickerModalTab,
+  tableHeaderClick,
+  startNewNativeQuestion,
 } from "e2e/support/helpers";
 
 describe("scenarios > visualizations > table", () => {
@@ -30,7 +35,10 @@ describe("scenarios > visualizations > table", () => {
 
   function joinTable(table) {
     cy.findByText("Join data").click();
-    popover().findByText(table).click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText(table).click();
+    });
   }
 
   function selectFromDropdown(option, clickOpts) {
@@ -46,7 +54,7 @@ describe("scenarios > visualizations > table", () => {
     visualize();
 
     // Rename the first ID column, and make sure the second one is not updated
-    headerCells().findByText("ID").click();
+    tableHeaderClick("ID");
     popover().within(() => {
       cy.findByText("Filter by this column");
       cy.icon("gear").click();
@@ -73,13 +81,16 @@ describe("scenarios > visualizations > table", () => {
 
     cy.get("@total")
       .trigger("mousedown", 0, 0, { force: true })
+      .wait(200)
       .trigger("mousemove", 5, 5, { force: true })
+      .wait(200)
       .trigger("mousemove", -220, 0, { force: true })
+      .wait(200)
       .trigger("mouseup", -220, 0, { force: true });
 
     headerCells().eq(1).should("contain.text", "TOTAL");
 
-    headerCells().contains("QUANTITY").click();
+    tableHeaderClick("QUANTITY");
     popover().icon("eye_crossed_out").click();
 
     headerCells().contains("QUANTITY").should("not.exist");
@@ -88,8 +99,7 @@ describe("scenarios > visualizations > table", () => {
   it("should allow to display any column as link with extrapolated url and text", () => {
     openPeopleTable({ limit: 2 });
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("City").click();
+    tableHeaderClick("City");
 
     popover().within(() => {
       cy.icon("gear").click();
@@ -130,7 +140,7 @@ describe("scenarios > visualizations > table", () => {
 
     cy.icon("add_data").click();
 
-    popover().within(() => {
+    expressionEditorWidget().within(() => {
       enterCustomColumnDetails({
         formula: "concat([Name], [Name])",
         name: ccName,
@@ -216,7 +226,7 @@ describe("scenarios > visualizations > table", () => {
         },
       ],
     ].forEach(([column, test]) => {
-      cy.get(".cellData").contains(column).trigger("mouseover");
+      cy.get("[data-testid=cell-data]").contains(column).trigger("mouseover");
 
       // Add a delay here because there can be two popovers active for a very short time.
       cy.wait(250);
@@ -225,7 +235,7 @@ describe("scenarios > visualizations > table", () => {
         test();
       });
 
-      cy.get(".cellData").contains(column).trigger("mouseout");
+      cy.get("[data-testid=cell-data]").contains(column).trigger("mouseout");
     });
 
     summarize();
@@ -234,15 +244,15 @@ describe("scenarios > visualizations > table", () => {
 
     cy.wait("@dataset");
 
-    cy.get(".cellData").contains("Count").trigger("mouseover");
+    cy.get("[data-testid=cell-data]").contains("Count").trigger("mouseover");
     hovercard().within(() => {
       cy.contains("Quantity");
       cy.findByText("No description");
     });
-    cy.get(".cellData").contains("Count").trigger("mouseout");
+    cy.get("[data-testid=cell-data]").contains("Count").trigger("mouseout");
 
     // Make sure new table results loaded with Custom column and Count columns
-    cy.get(".cellData").contains(ccName).trigger("mouseover");
+    cy.get("[data-testid=cell-data]").contains(ccName).trigger("mouseover");
     cy.wait(250);
 
     hovercard().within(() => {
@@ -254,7 +264,9 @@ describe("scenarios > visualizations > table", () => {
   it("should show the field metadata popover for a foreign key field (metabase#19577)", () => {
     openOrdersTable({ limit: 2 });
 
-    cy.get(".cellData").contains("Product ID").trigger("mouseover");
+    cy.get("[data-testid=cell-data]")
+      .contains("Product ID")
+      .trigger("mouseover");
 
     hovercard().within(() => {
       cy.contains("Foreign Key");
@@ -280,15 +292,19 @@ describe("scenarios > visualizations > table", () => {
   });
 
   it("should show field metadata hovercards for native query tables", () => {
-    openNativeEditor().type("select * from products");
+    startNewNativeQuestion({ query: "select * from products limit 1" });
     cy.findByTestId("native-query-editor-container").icon("play").click();
 
-    cy.get(".cellData").contains("CATEGORY").realHover();
+    cy.log("Wait for the table to load");
+    cy.findAllByTestId("cell-data")
+      .should("be.visible")
+      .and("contain", "Gizmo");
 
-    hovercard().within(() => {
-      cy.contains("No special type");
-      cy.findByText("No description");
-    });
+    cy.log("Assert");
+    cy.findAllByTestId("header-cell").filter(":contains(CATEGORY)").realHover();
+    hovercard()
+      .should("contain", "No special type")
+      .and("contain", "No description");
   });
 
   it.skip("should close the colum popover on subsequent click (metabase#16789)", () => {
@@ -315,7 +331,7 @@ describe("scenarios > visualizations > table", () => {
 
   it("popover should not be scrollable horizontally (metabase#31339)", () => {
     openPeopleTable();
-    headerCells().filter(":contains('Password')").click();
+    tableHeaderClick("Password");
 
     popover().findByText("Filter by this column").click();
     selectFilterOperator("Is");
@@ -415,7 +431,7 @@ describe("scenarios > visualizations > table > conditional formatting", () => {
         .should("contain.text", "is less than 6");
 
       cy.findByRole("button", { name: /add a rule/i }).click();
-      cy.findByRole("button", { name: /choose a column/i }).click();
+      // popover should open automatically
       popover().findByText("Subtotal").click();
       cy.realPress("Escape");
       cy.findByRole("button", { name: /is equal to/i }).click();
@@ -536,7 +552,7 @@ describe("scenarios > visualizations > table > time formatting (#11398)", () => 
     );
 
     // Open the formatting menu
-    cy.findByTestId("field-info-popover").click();
+    tableHeaderClick("CREATION_TIME");
 
     popover().icon("gear").click();
 

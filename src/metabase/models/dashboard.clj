@@ -1,45 +1,46 @@
 (ns metabase.models.dashboard
   (:require
-   [clojure.core.async :as a]
    [clojure.data :refer [diff]]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
-   [metabase.automagic-dashboards.populate :as populate]
+   [metabase.api.common :as api]
+   [metabase.audit :as audit]
+   [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.events :as events]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.card :as card :refer [Card]]
    [metabase.models.collection :as collection :refer [Collection]]
-   [metabase.models.dashboard-card
-    :as dashboard-card
-    :refer [DashboardCard]]
+   [metabase.models.dashboard-card :as dashboard-card :refer [DashboardCard]]
    [metabase.models.dashboard-tab :as dashboard-tab]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.parameter-card :as parameter-card]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
-   [metabase.models.pulse :as pulse :refer [Pulse]]
+   [metabase.models.pulse :as pulse]
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
    [metabase.public-settings :as public-settings]
-   [metabase.query-processor.async :as qp.async]
+   [metabase.query-processor.metadata :as qp.metadata]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru deferred-trun tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
+   [metabase.xrays :as xrays]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
    [toucan2.realize :as t2.realize]))
 
 (def Dashboard
-  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
-   We'll keep this till we replace all the Dashboard symbol in our codebase."
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model
+  name. We'll keep this till we replace all the Dashboard symbol in our codebase."
   :model/Dashboard)
 
 (methodical/defmethod t2/table-name :model/Dashboard [_model] :report_dashboard)
@@ -56,9 +57,9 @@
    (if (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (some? (:id (perms/default-audit-collection)))
+        (some? (:id (audit/default-audit-collection)))
         ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (perms/default-audit-collection))))
+        (= (:collection_id instance) (:id (audit/default-audit-collection))))
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
   ([_ pk]
@@ -95,11 +96,14 @@
 
 (t2/define-before-update :model/Dashboard
   [dashboard]
-  (u/prog1 (maybe-populate-initially-published-at dashboard)
-    (params/assert-valid-parameters dashboard)
-    (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard))
-    (collection/check-collection-namespace Dashboard (:collection_id dashboard)))
-  (maybe-populate-initially-published-at dashboard))
+  (let [changes (t2/changes dashboard)]
+    (u/prog1 (maybe-populate-initially-published-at dashboard)
+      (params/assert-valid-parameters dashboard)
+      (when (:parameters changes)
+        (parameter-card/upsert-or-delete-from-parameters! "dashboard" (:id dashboard) (:parameters dashboard)))
+      (collection/check-collection-namespace Dashboard (:collection_id dashboard))
+      (when (:archived changes)
+        (t2/delete! :model/Pulse :dashboard_id (u/the-id dashboard))))))
 
 (defn- update-dashboard-subscription-pulses!
   "Updates the pulses' names and collection IDs, and syncs the PulseCards"
@@ -138,7 +142,10 @@
                                     :position          position})]
         (t2/with-transaction [_conn]
           (binding [pulse/*allow-moving-dashboard-subscriptions* true]
-            (t2/update! Pulse {:dashboard_id dashboard-id}
+            (t2/update! :model/Pulse {:dashboard_id dashboard-id}
+                        ;; TODO we probably don't need this anymore
+                        ;; pulse.name is no longer used for generating title.
+                        ;; pulse.collection_id is a thing for the old "Pulse" feature, but it was removed
                         {:name (:name dashboard)
                          :collection_id (:collection_id dashboard)})
             (pulse-card/bulk-create! new-pulse-cards)))))))
@@ -236,7 +243,8 @@
    ;;   lower-numbered positions appearing before higher numbered ones.
    ;; TODO: querying on stats we don't have any dashboard that has a position, maybe we could just drop it?
    :public_uuid :made_public_by_id
-   :position :initially_published_at])
+   :position :initially_published_at :view_count
+   :last_viewed_at])
 
 (def ^:private excluded-columns-for-dashcard-revision
   [:entity_id :created_at :updated_at :collection_authority_level])
@@ -266,7 +274,7 @@
                                            :model/DashboardCard
                                            :dashboard_id dashboard-id)
         id->current-card (zipmap (map :id current-cards) current-cards)
-        {:keys [to-create to-update to-delete]} (u/classify-changes current-cards serialized-cards)]
+        {:keys [to-create to-update to-delete]} (u/row-diff current-cards serialized-cards)]
     (when (seq to-delete)
       (dashboard-card/delete-dashboard-cards! (map :id to-delete)))
     (when (seq to-create)
@@ -285,9 +293,9 @@
    (remove #(contains? inactive-card-ids (:card_id %)) dashcards)))
 
 (defmethod revision/revert-to-revision! :model/Dashboard
-  [_model dashboard-id _user-id serialized-dashboard]
+  [model dashboard-id user-id serialized-dashboard]
   ;; Update the dashboard description / name / permissions
-  (t2/update! :model/Dashboard dashboard-id (dissoc serialized-dashboard :cards :tabs))
+  ((get-method revision/revert-to-revision! :default) model dashboard-id user-id (dissoc serialized-dashboard :cards :tabs))
   ;; Now update the tabs and cards as needed
   (let [serialized-dashcards      (:cards serialized-dashboard)
         current-tabs              (t2/select-fn-vec #(dissoc (t2.realize/realize %) :created_at :updated_at :entity_id :dashboard_id)
@@ -377,11 +385,6 @@
         (concat (map-indexed check-series-change (:cards changes)))
         (->> (filter identity)))))
 
-(defn has-tabs?
-  "Check if a dashboard has tabs."
-  [dashboard-or-id]
-  (t2/exists? :model/DashboardTab :dashboard_id (u/the-id dashboard-or-id)))
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                                 OTHER CRUD FNS                                                 |
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -456,12 +459,11 @@
       (update-field-values-for-on-demand-dbs! (params/dashcards->param-field-ids old-dashcards) new-param-field-ids))))
 
 
-;; TODO - we need to actually make this async, but then we'd need to make `save-card!` async, and so forth
-;; Issue: https://github.com/metabase/metabase/issues/39413
-(defn- result-metadata-for-query
+(defn- legacy-result-metadata-for-query
   "Fetch the results metadata for a `query` by running the query and seeing what the `qp` gives us in return."
   [query]
-  (a/<!! (qp.async/result-metadata-for-query-async query)))
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (qp.metadata/legacy-result-metadata query api/*current-user-id*))
 
 (defn- save-card!
   [card]
@@ -473,14 +475,15 @@
     ;; Don't save text cards
     (-> card :dataset_query not-empty)
     (let [card (first (t2/insert-returning-instances!
-                        Card
-                        (-> card
-                            (update :result_metadata #(or % (-> card
-                                                                :dataset_query
-                                                                result-metadata-for-query)))
-                            (dissoc :id))))]
+                       Card
+                       (-> card
+                           (update :result_metadata #(or % (-> card
+                                                               :dataset_query
+                                                               legacy-result-metadata-for-query)))
+                            ;; Xrays populate this in their transient cards
+                           (dissoc :id :can_run_adhoc_query))))]
       (events/publish-event! :event/card-create {:object card :user-id (:creator_id card)})
-      (t2/hydrate card :creator :dashboard_count :can_write :collection))))
+      (t2/hydrate card :creator :dashboard_count :can_write :can_run_adhoc_query :collection))))
 
 (defn- ensure-unique-collection-name
   [collection-name parent-collection-id]
@@ -499,7 +502,7 @@
          tabs           :tabs
          dashboard-name :name
          :keys          [description] :as dashboard} (i18n/localized-strings->strings dashboard)
-        collection (populate/create-collection!
+        collection (xrays/create-collection!
                     (ensure-unique-collection-name dashboard-name parent-collection-id)
                     "Automatically generated cards."
                     parent-collection-id)
@@ -535,7 +538,7 @@
    [:name ms/NonBlankString]
    [:mappings [:maybe [:set dashboard-card/ParamMapping]]]])
 
-(mu/defn ^:private dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
+(mu/defn- dashboard->resolved-params :- [:map-of ms/NonBlankString ParamWithMapping]
   [dashboard :- [:map [:parameters [:maybe [:sequential :map]]]]]
   (let [param-key->mappings (apply
                              merge-with set/union
@@ -569,109 +572,41 @@
   (let [dashboards-with-cards (t2/hydrate dashboards [:dashcards :card])]
     (map #(assoc %1 k %2) dashboards (map dashboard->resolved-params dashboards-with-cards))))
 
+(defmethod mi/exclude-internal-content-hsql :model/Dashboard
+  [_model & {:keys [table-alias]}]
+  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                               SERIALIZATION                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
 (defmethod serdes/extract-query "Dashboard" [_ opts]
-  (eduction (map #(t2/hydrate % [:dashcards :series]))
+  (eduction (map #(t2/hydrate % :tabs [:dashcards :series]))
             (serdes/extract-query-collections Dashboard opts)))
 
-(defn export-dashboard-card-series
-  "Given the hydrated `:series` of a DashboardCard, as a vector of maps, converts it to a portable form with
-  the card IDs replaced with their entity IDs."
-  [cards]
-  (mapv (fn [card]
-          {:card_id (serdes/*export-fk* (:id card) :model/Card)})
-        cards))
-
-(defn- extract-dashcard
-  [dashcard]
-  (-> (into (sorted-map) dashcard)
-      (dissoc :id :collection_authority_level :dashboard_id :updated_at)
-      (update :card_id                serdes/*export-fk* 'Card)
-      (update :action_id              serdes/*export-fk* 'Action)
-      (update :dashboard_tab_id       serdes/*export-fk* :model/DashboardTab)
-      (update :series                 export-dashboard-card-series)
-      (update :parameter_mappings     serdes/export-parameter-mappings)
-      (update :visualization_settings serdes/export-visualization-settings)))
-
-(defn- extract-dashtab
-  [dashtab]
-  (dissoc dashtab :id :dashboard_id :updated_at))
-
-(defmethod serdes/extract-one "Dashboard"
-  [_model-name _opts dash]
-  (let [dash (cond-> dash
-               (nil? (:dashcards dash))
-               (t2/hydrate [:dashcards :series])
-               (nil? (:tabs dash))
-               (t2/hydrate :tabs))]
-    (-> (serdes/extract-one-basics "Dashboard" dash)
-        (update :dashcards         #(mapv extract-dashcard %))
-        (update :tabs              #(mapv extract-dashtab %))
-        (update :parameters        serdes/export-parameters)
-        (update :collection_id     serdes/*export-fk* Collection)
-        (update :creator_id        serdes/*export-user*)
-        (update :made_public_by_id serdes/*export-user*))))
-
-(defmethod serdes/load-xform "Dashboard"
-  [dash]
-  (-> dash
-      serdes/load-xform-basics
-      ;; Deliberately not doing anything to :dashcards - they get handled by load-one! below.
-      (update :collection_id     serdes/*import-fk* Collection)
-      (update :parameters        serdes/import-parameters)
-      (update :creator_id        serdes/*import-user*)
-      (update :made_public_by_id serdes/*import-user*)))
-
-(defn- dashcard-for [dashcard dashboard]
-  (assoc dashcard
-         :dashboard_id (:entity_id dashboard)
-         :serdes/meta  (remove nil?
-                               [{:model "Dashboard"     :id (:entity_id dashboard)}
-                                (when-let [dashtab-eeid (last (:dashboard_tab_id dashcard))]
-                                  {:model "DashboardTab" :id dashtab-eeid})
-                                {:model "DashboardCard" :id (:entity_id dashcard)}])))
-
-(defn- dashtab-for [tab dashboard]
-  (assoc tab
-         :dashboard_id (:entity_id dashboard)
-         :serdes/meta  [{:model "Dashboard"    :id (:entity_id dashboard)}
-                        {:model "DashboardTab" :id (:entity_id tab)}]))
-
-(defn- drop-excessive-nested!
-  "Remove nested entities which are not present in incoming serialization load"
-  [hydration-key ingested local]
-  (let [local-nested    (get (t2/hydrate local hydration-key) hydration-key)
-        ingested-nested (get ingested hydration-key)
-        to-remove       (set/difference (set (map :entity_id local-nested))
-                                        (set (map :entity_id ingested-nested)))
-        model           (t2/model (first local-nested))]
-    (when (seq to-remove)
-      (t2/delete! model :entity_id [:in to-remove]))))
-
-;; Call the default load-one! for the Dashboard, then for each DashboardCard.
-(defmethod serdes/load-one! "Dashboard" [ingested maybe-local]
-  (let [dashboard ((get-method serdes/load-one! :default) (dissoc ingested :dashcards :tabs) maybe-local)]
-
-    (drop-excessive-nested! :tabs ingested dashboard)
-    (doseq [tab (:tabs ingested)]
-      (serdes/load-one! (dashtab-for tab dashboard)
-                        (t2/select-one :model/DashboardTab :entity_id (:entity_id tab))))
-
-    (drop-excessive-nested! :dashcards ingested dashboard)
-    (doseq [dashcard (:dashcards ingested)]
-      (serdes/load-one! (dashcard-for dashcard dashboard)
-                        (t2/select-one :model/DashboardCard :entity_id (:entity_id dashcard))))))
+(defmethod serdes/make-spec "Dashboard" [_model-name opts]
+  {:copy      [:archived :archived_directly :auto_apply_filters :cache_ttl :caveats :collection_position
+               :description :embedding_params :enable_embedding :entity_id :initially_published_at :name
+               :points_of_interest :position :public_uuid :show_in_getting_started :width]
+   :skip      [;; those stats are inherently local state
+               :view_count :last_viewed_at]
+   :transform {:created_at        (serdes/date)
+               :collection_id     (serdes/fk :model/Collection)
+               :creator_id        (serdes/fk :model/User)
+               :made_public_by_id (serdes/fk :model/User)
+               :parameters        {:export serdes/export-parameters :import serdes/import-parameters}
+               :tabs              (serdes/nested :model/DashboardTab :dashboard_id opts)
+               :dashcards         (serdes/nested :model/DashboardCard :dashboard_id opts)}})
 
 (defn- serdes-deps-dashcard
   [{:keys [action_id card_id parameter_mappings visualization_settings series]}]
-  (->> (mapcat serdes/mbql-deps parameter_mappings)
-       (concat (serdes/visualization-settings-deps visualization_settings))
-       (concat (when card_id   #{[{:model "Card"   :id card_id}]}))
-       (concat (when action_id #{[{:model "Action" :id action_id}]}))
-       (concat (for [s series] [{:model "Card" :id (:card_id s)}]))
-       set))
+  (set
+   (concat
+    (mapcat serdes/mbql-deps parameter_mappings)
+    (serdes/visualization-settings-deps visualization_settings)
+    (when card_id   #{[{:model "Card" :id card_id}]})
+    (when action_id #{[{:model "Action" :id action_id}]})
+    (for [s series] [{:model "Card" :id (:card_id s)}]))))
 
 (defmethod serdes/dependencies "Dashboard"
   [{:keys [collection_id dashcards parameters]}]

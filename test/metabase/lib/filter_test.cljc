@@ -217,7 +217,7 @@
             [:ends-with
              {:lib/uuid "953597df-a96d-4453-a57b-665e845abc69"}
              [:field {:lib/uuid "be28f393-538a-406b-90da-bac5f8ef565e"} (meta/id :venues :name)]
-             "t"]))) ))
+             "t"])))))
 
 (deftest ^:parallel filterable-columns-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users))
@@ -235,7 +235,7 @@
         pk-operators [:= :!= :> :< :between :>= :<= :is-null :not-null]
         temporal-operators [:!= := :< :> :between :is-null :not-null]
         coordinate-operators [:= :!= :inside :> :< :between :>= :<=]
-        text-operators [:= :!= :contains :does-not-contain :is-null :not-null :is-empty :not-empty :starts-with :ends-with]]
+        text-operators [:= :!= :contains :does-not-contain :is-empty :not-empty :starts-with :ends-with]]
     (is (= ["ID"
             "NAME"
             "LAST_LOGIN"
@@ -275,13 +275,30 @@
                                   ">"       {:display-name ">", :long-display-name "Greater than"}
                                   ">="      {:display-name "≥", :long-display-name "Greater than or equal to"},}
                  "NAME"          {"="        {:display-name "=", :long-display-name "Is"}
-                                  "is-null" {:display-name "Is null", :long-display-name "Is null"}
                                   "is-empty" {:display-name "Is empty", :long-display-name "Is empty"}}
                  "LAST_LOGIN"    {"!=" {:display-name "≠", :long-display-name "Excludes"}
                                   ">"  {:display-name ">", :long-display-name "After"}}
                  "Venues__PRICE" {"="       {:display-name "=", :long-display-name "Equal to"}
                                   "is-null" {:display-name "Is empty", :long-display-name "Is empty"}}}
                 display-info-by-type-and-op))))))
+
+(deftest ^:parallel filterable-columns-excludes-offset-expressions-test
+  (testing "filterable-columns should exclude expressions which contain :offset"
+    (let [query (-> lib.tu/venues-query
+                    (lib/order-by (meta/field-metadata :venues :id) :asc)
+                    (lib/expression "Offset col"    (lib/offset (meta/field-metadata :venues :price) -1))
+                    (lib/expression "Nested Offset"
+                                    (lib/* 100 (lib/offset (meta/field-metadata :venues :price) -1))))]
+      (testing (lib.util/format "Query =\n%s" (u/pprint-to-str query))
+        (is (=? [{:id (meta/id :venues :id) :name "ID"}
+                 {:id (meta/id :venues :name) :name "NAME"}
+                 {:id (meta/id :venues :category-id) :name "CATEGORY_ID"}
+                 {:id (meta/id :venues :latitude) :name "LATITUDE"}
+                 {:id (meta/id :venues :longitude) :name "LONGITUDE"}
+                 {:id (meta/id :venues :price) :name "PRICE"}
+                 {:id (meta/id :categories :id) :name "ID"}
+                 {:id (meta/id :categories :name) :name "NAME"}]
+                (lib/filterable-columns query)))))))
 
 (deftest ^:parallel filter-clause-test
   (let [query (-> (lib/query meta/metadata-provider (meta/table-metadata :users)))
@@ -354,16 +371,38 @@
               :database-type "BOOLEAN",
               :effective-type :type/Boolean,
               :fk-target-field-id nil,
-              :operators [{:lib/type :operator/filter, :short :=, :display-name-variant :default}
-                          {:lib/type :operator/filter, :short :is-null, :display-name-variant :is-empty}
-                          {:lib/type :operator/filter, :short :not-null, :display-name-variant :not-empty}],
               :id 14,
               :parent-id nil,
               :visibility-type :normal,
               :lib/desired-column-alias "TRIAL_CONVERTED",
               :display-name "Trial Converted",
               :position 10,
-              :fingerprint {:global {:distinct-count 2, :nil% 0.0}}})))))
+              :fingerprint {:global {:distinct-count 2, :nil% 0.0}}}))))
+  (testing "should return text-like operators for text-like PKs and FKs"
+    (doseq [semantic-type [:type/PK :type/FK]
+            :let [column {:description nil,
+                          :lib/type :metadata/column,
+                          :base-type :type/MongoBSONID,
+                          :semantic-type semantic-type
+                          :table-id 7,
+                          :name "ID",
+                          :coercion-strategy nil,
+                          :lib/source :source/table-defaults,
+                          :lib/source-column-alias "ID",
+                          :settings nil,
+                          :lib/source-uuid "ad9a276f-3af8-4e5a-b17e-d8170273ec0a",
+                          :nfc-path nil,
+                          :database-type "STRING",
+                          :effective-type :type/MongoBSONID,
+                          :fk-target-field-id nil,
+                          :id 14,
+                          :parent-id nil,
+                          :visibility-type :normal,
+                          :lib/desired-column-alias "ID",
+                          :display-name "ID",
+                          :position 10}]]
+        (is (= [:= :!= :is-empty :not-empty]
+               (mapv :short (lib.filter.operator/filter-operators column)))))))
 
 (deftest ^:parallel replace-filter-clause-test
   (testing "Make sure we are able to replace a filter clause using the lib functions for manipulating filters."
@@ -573,12 +612,17 @@
        {:clause [:!= nam "A" "B" "C"], :name "Name is not 3 selections"}
        {:clause [:contains nam "ABC"], :name "Name contains ABC"}
        {:clause [:contains nam "ABC"], :options {:case-sensitive true}, :name "Name contains ABC"}
+       {:clause [:contains nam "ABC"], :options {:case-sensitive false}, :name "Name contains ABC"}
+       {:clause [:contains nam "ABC" "HJK" "XYZ"], :name "Name contains 3 selections"}
        {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
+       {:clause [:does-not-contain nam "ABC" "HJK" "XYZ"], :name "Name does not contain 3 selections"}
        {:clause [:is-empty nam], :name "Name is empty"}
        {:clause [:not-empty nam], :name "Name is not empty"}
        {:clause [:does-not-contain nam "ABC"], :name "Name does not contain ABC"}
        {:clause [:starts-with nam "ABC"], :name "Name starts with ABC"}
-       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}])))
+       {:clause [:starts-with nam "ABC" "HJK" "XYZ"], :name "Name starts with 3 selections"}
+       {:clause [:ends-with nam "ABC"], :name "Name ends with ABC"}
+       {:clause [:ends-with nam "ABC" "HJK" "XYZ"], :name "Name ends with 3 selections"}])))
 
 (deftest ^:parallel boolean-frontend-filter-display-names-test
   (check-display-names
@@ -628,8 +672,8 @@
                  (lib/expression-clause :+
                                         [created-at
                                          (lib/expression-clause :interval [1 :month] nil)] nil)
-                  (lib/expression-clause :relative-datetime [-1 :month] nil)
-                  (lib/expression-clause :relative-datetime [0 :month] nil)],
+                 (lib/expression-clause :relative-datetime [-1 :month] nil)
+                 (lib/expression-clause :relative-datetime [0 :month] nil)],
         :name "Created At is in the previous month, starting 1 month ago"}
        {:clause [:time-interval created-at :current :day], :name "Created At is today"}
        {:clause [:time-interval created-at :current :week], :name "Created At is this week"}
@@ -657,7 +701,11 @@
                                           (lib/expression-clause :interval [-1 :month] nil)] nil)
                   (lib/expression-clause :relative-datetime [0 :month] nil)
                   (lib/expression-clause :relative-datetime [1 :month] nil)],
-        :name "Created At is in the next month, starting 1 month from now"}])))
+        :name "Created At is in the next month, starting 1 month from now"}
+       {:clause [:relative-time-interval created-at 10 :week 10 :week]
+        :name "Created At is in the next 10 weeks, starting 10 weeks from now"}
+       {:clause [:relative-time-interval created-at -10 :week -10 :week]
+        :name "Created At is in the previous 10 weeks, starting 10 weeks ago"}])))
 
 (deftest ^:parallel specific-date-frontend-filter-display-names-test
   (let [created-at (meta/field-metadata :products :created-at)]

@@ -3,6 +3,7 @@
   In Java these return [[OffsetDateTime]], in JavaScript they return Moments.
   Most of the implementations are in the split CLJ/CLJS files [[metabase.shared.util.internal.time]]."
   (:require
+   [clojure.string :as str]
    [metabase.shared.util.internal.time :as internal]
    [metabase.shared.util.internal.time-common :as common]
    [metabase.shared.util.namespaces :as shared.ns]
@@ -75,9 +76,14 @@
 
 (defn format-unit
   "Formats a temporal-value (iso date/time string, int for hour/minute) given the temporal-bucketing unit.
-   If unit is nil, formats the full date/time"
-  [temporal-value unit]
-  (internal/format-unit temporal-value unit))
+  If unit is nil, formats the full date/time.
+
+  If `locale` is provided, that locale will be used for localizing the formatter. In CLJ this should be a `Locale`. Not
+  supported in CLJS since we have to rely on the browser's locale."
+  ([temporal-value unit]
+   (internal/format-unit temporal-value unit))
+  ([temporal-value unit locale]
+   (internal/format-unit temporal-value unit locale)))
 
 (defn format-diff
   "Formats a time difference between two temporal values.
@@ -97,3 +103,12 @@
    (internal/format-relative-date-range n unit offset-n offset-unit options))
   ([t n unit offset-n offset-unit options]
    (internal/format-relative-date-range (coerce-to-timestamp t) n unit offset-n offset-unit options)))
+
+(defn yyyyMMddhhmmss->parts
+  "Generate parts vector for `yyyy-MM-ddThh:mm:ss` format `date-str`. Trailing parts, if not present in the string,
+  are added. Not compatile with strings containing milliseconds or timezone."
+  [date-str]
+  (let [parts (mapv #?(:clj #(Integer/parseInt %)
+                       :cljs js/parseInt)
+                    (str/split date-str #"-|:|T"))]
+    (into parts (repeat (- 6 (count parts)) 0))))

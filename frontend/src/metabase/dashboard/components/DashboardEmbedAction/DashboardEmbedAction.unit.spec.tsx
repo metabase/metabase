@@ -1,10 +1,14 @@
-import userEvent from "@testing-library/user-event";
+import userEvent, {
+  PointerEventsCheckLevel,
+} from "@testing-library/user-event";
+import { indexBy } from "underscore";
 
 import { renderWithProviders, screen } from "__support__/ui";
 import { DashboardEmbedAction } from "metabase/dashboard/components/DashboardEmbedAction/DashboardEmbedAction";
 import type { DashboardSharingEmbeddingModalProps } from "metabase/dashboard/containers/DashboardSharingEmbeddingModal";
 import { createMockDashboard, createMockUser } from "metabase-types/api/mocks";
 import {
+  createMockDashboardState,
   createMockSettingsState,
   createMockState,
 } from "metabase-types/store/mocks";
@@ -55,8 +59,18 @@ const setup = ({
     public_uuid: hasPublicLink ? "mock-uuid" : undefined,
   });
 
-  renderWithProviders(<DashboardEmbedAction dashboard={testDashboard} />, {
+  renderWithProviders(<DashboardEmbedAction />, {
     storeInitialState: createMockState({
+      dashboard: createMockDashboardState({
+        dashboardId: testDashboard.id,
+        dashboards: {
+          [testDashboard.id]: {
+            ...testDashboard,
+            dashcards: testDashboard.dashcards.map(dc => dc.id),
+          },
+        },
+        dashcards: indexBy(testDashboard.dashcards, "id"),
+      }),
       currentUser: createMockUser({ is_superuser: isAdmin }),
       settings: createMockSettingsState({
         "enable-public-sharing": publicLinksEnabled,
@@ -103,7 +117,10 @@ describe("DashboardEmbedAction", () => {
           isAdmin: false,
         });
 
-        await userEvent.hover(screen.getByLabelText("share icon"));
+        await userEvent.hover(screen.getByLabelText("share icon"), {
+          // The button is disabled so pointer events should be disabled
+          pointerEventsCheck: PointerEventsCheckLevel.Never,
+        });
         expect(
           await screen.findByText("Public links are disabled"),
         ).toBeInTheDocument();
@@ -116,7 +133,10 @@ describe("DashboardEmbedAction", () => {
           publicLinksEnabled: true,
         });
 
-        await userEvent.hover(screen.getByLabelText("share icon"));
+        await userEvent.hover(screen.getByLabelText("share icon"), {
+          // The button is disabled so pointer events should be disabled
+          pointerEventsCheck: PointerEventsCheckLevel.Never,
+        });
         expect(
           await screen.findByText("Ask your admin to create a public link"),
         ).toBeInTheDocument();

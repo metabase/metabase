@@ -41,14 +41,14 @@ function setStartingFrom({ value, unit }) {
  * @param {string} params.unit - interval unit in singular form (e.g. "day", not "days")
  */
 function addStartingFrom({ value, unit }) {
-  popover().findByLabelText("Options").click();
-  popover().last().findByText("Starting from…").click();
+  popover().findByLabelText("Starting from…").click();
   setStartingFrom({ value, unit });
 }
 
 function toggleCurrentInterval() {
-  popover().findByLabelText("Options").click();
-  popover().last().findByTestId("include-current-interval-option").click();
+  popover()
+    .findByTestId("include-current-interval-option")
+    .click({ force: true });
 }
 
 export const relativeDatePicker = {

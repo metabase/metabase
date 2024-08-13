@@ -1,0 +1,410 @@
+[
+  {
+    "card": {
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-05-31T21:54:58.651055Z",
+      "parameters": [],
+      "metabase_version": "v0.1.6-SNAPSHOT (295fd34)",
+      "collection": null,
+      "visualization_settings": {
+        "stackable.stack_type": "normalized",
+        "graph.label_value_formatting": "auto",
+        "graph.show_values": true,
+        "graph.dimensions": ["CREATED_AT", "CATEGORY"],
+        "graph.metrics": ["sum"]
+      },
+      "collection_preview": true,
+      "entity_id": "DusS70-gDaJOlPJp4M2L7",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 362,
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            [
+              "sum",
+              [
+                "field",
+                44,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            [
+              "field",
+              58,
+              {
+                "base-type": "type/Text",
+                "source-field": 40
+              }
+            ]
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-05-31T21:54:58.651055Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "type": "question",
+      "last_used_at": null,
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "bar-stacked-series-labels-normalized-auto-compactness",
+      "query_type": "query",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            58,
+            {
+              "base-type": "type/Text",
+              "source-field": 40
+            }
+          ],
+          "effective_type": "type/Text",
+          "id": 58,
+          "visibility_type": "normal",
+          "display_name": "Product → Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text"
+        },
+        {
+          "display_name": "Sum of Subtotal",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 20,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 8679.441692962115,
+                "q1": 38111.1481783827,
+                "q3": 129621.8420839959,
+                "max": 154510.91116740505,
+                "sd": 52000.28136704835,
+                "avg": 72409.40829389516
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 5,
+      "collection_position": null,
+      "view_count": 0,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        ["2022-01-01T00:00:00-03:00", "Doohickey", 8679.441692962115],
+        ["2022-01-01T00:00:00-03:00", "Gadget", 10277.247428944826],
+        ["2022-01-01T00:00:00-03:00", "Gizmo", 9539.930763571248],
+        ["2022-01-01T00:00:00-03:00", "Widget", 12005.00589143701],
+        ["2023-01-01T00:00:00-03:00", "Doohickey", 41479.44306894035],
+        ["2023-01-01T00:00:00-03:00", "Gadget", 52759.41800334872],
+        ["2023-01-01T00:00:00-03:00", "Gizmo", 46284.722073915465],
+        ["2023-01-01T00:00:00-03:00", "Widget", 56807.353854424466],
+        ["2024-01-01T00:00:00-03:00", "Doohickey", 94293.53611792835],
+        ["2024-01-01T00:00:00-03:00", "Gadget", 128183.61482139908],
+        ["2024-01-01T00:00:00-03:00", "Gizmo", 131060.06934659272],
+        ["2024-01-01T00:00:00-03:00", "Widget", 134908.71891524346],
+        ["2025-01-01T00:00:00-03:00", "Doohickey", 105767.3564020153],
+        ["2025-01-01T00:00:00-03:00", "Gadget", 153829.10197361806],
+        ["2025-01-01T00:00:00-03:00", "Gizmo", 138937.27702807737],
+        ["2025-01-01T00:00:00-03:00", "Widget", 154510.91116740505],
+        ["2026-01-01T00:00:00-03:00", "Doohickey", 34821.99854037839],
+        ["2026-01-01T00:00:00-03:00", "Gadget", 44764.83193151748],
+        ["2026-01-01T00:00:00-03:00", "Gizmo", 41400.29781638701],
+        ["2026-01-01T00:00:00-03:00", "Widget", 47877.889039796966]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "year",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "year"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+          "semantic_type": "type/Category",
+          "table_id": 8,
+          "coercion_strategy": null,
+          "name": "CATEGORY",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "fk_field_id": 40,
+          "field_ref": [
+            "field",
+            58,
+            {
+              "base-type": "type/Text",
+              "source-field": 40
+            }
+          ],
+          "effective_type": "type/Text",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 58,
+          "position": 3,
+          "visibility_type": "normal",
+          "display_name": "Product → Category",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 4,
+              "nil%": 0
+            },
+            "type": {
+              "type/Text": {
+                "percent-json": 0,
+                "percent-url": 0,
+                "percent-email": 0,
+                "percent-state": 0,
+                "average-length": 6.375
+              }
+            }
+          },
+          "base_type": "type/Text",
+          "source_alias": "PRODUCTS__via__PRODUCT_ID"
+        },
+        {
+          "semantic_type": null,
+          "name": "sum",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/Float",
+          "aggregation_index": 0,
+          "display_name": "Sum of Subtotal",
+          "base_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" AS \"PRODUCTS__via__PRODUCT_ID__CATEGORY\", SUM(\"PUBLIC\".\"ORDERS\".\"SUBTOTAL\") AS \"sum\" FROM \"PUBLIC\".\"ORDERS\" LEFT JOIN \"PUBLIC\".\"PRODUCTS\" AS \"PRODUCTS__via__PRODUCT_ID\" ON \"PUBLIC\".\"ORDERS\".\"PRODUCT_ID\" = \"PRODUCTS__via__PRODUCT_ID\".\"ID\" GROUP BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\"), \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" ORDER BY DATE_TRUNC('year', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC, \"PRODUCTS__via__PRODUCT_ID\".\"CATEGORY\" ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "year",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "year"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "description": "The type of product, valid values include: Doohicky, Gadget, Gizmo and Widget",
+            "semantic_type": "type/Category",
+            "coercion_strategy": null,
+            "name": "CATEGORY",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              58,
+              {
+                "base-type": "type/Text",
+                "source-field": 40
+              }
+            ],
+            "effective_type": "type/Text",
+            "id": 58,
+            "visibility_type": "normal",
+            "display_name": "Product → Category",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 4,
+                "nil%": 0
+              },
+              "type": {
+                "type/Text": {
+                  "percent-json": 0,
+                  "percent-url": 0,
+                  "percent-email": 0,
+                  "percent-state": 0,
+                  "average-length": 6.375
+                }
+              }
+            },
+            "base_type": "type/Text"
+          },
+          {
+            "display_name": "Sum of Subtotal",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 20,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 8679.441692962115,
+                  "q1": 38111.1481783827,
+                  "q3": 129621.8420839959,
+                  "max": 154510.91116740505,
+                  "sd": 52000.28136704835,
+                  "avg": 72409.40829389516
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

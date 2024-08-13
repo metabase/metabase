@@ -191,29 +191,31 @@
   "Formats a temporal-value (iso date/time string, int for extraction units) given the temporal-bucketing unit.
    If unit is nil, formats the full date/time.
    Time input formatting is only defined with time units."
-  [input unit]
-  (if (string? input)
-    (let [time? (common/matches-time? input)
-          date? (common/matches-date? input)
-          date-time? (common/matches-date-time? input)
-          t (cond
-              ;; Anchor to an arbitrary date since time inputs are only defined for
-              ;; :hour-of-day and :minute-of-hour.
-              time? (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
-              (or date? date-time?) (coerce-local-date-time input))]
-      (if (and t (.isValid t))
-        (or
-          (format-extraction-unit t unit)
-          (cond
-            time? (.format t "h:mm A")
-            date? (.format t "MMM D, YYYY")
-            date-time? (.format t "MMM D, YYYY, h:mm A")))
-        input))
-    (if (= unit :hour-of-day)
-      (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
-      (or
-        (format-extraction-unit (common/number->timestamp input {:unit unit}) unit)
-        (str input)))))
+  ;; This third argument is needed for the JVM side; it can be ignored here.
+  ([input unit _locale] (format-unit input unit))
+  ([input unit]
+   (if (string? input)
+     (let [time? (common/matches-time? input)
+           date? (common/matches-date? input)
+           date-time? (common/matches-date-time? input)
+           t (cond
+               ;; Anchor to an arbitrary date since time inputs are only defined for
+               ;; :hour-of-day and :minute-of-hour.
+               time? (moment/utc (str "2023-01-01T" input) moment/ISO_8601)
+               (or date? date-time?) (coerce-local-date-time input))]
+       (if (and t (.isValid t))
+         (or
+           (format-extraction-unit t unit)
+           (cond
+             time? (.format t "h:mm A")
+             date? (.format t "MMM D, YYYY")
+             date-time? (.format t "MMM D, YYYY, h:mm A")))
+         input))
+     (if (= unit :hour-of-day)
+       (str (cond (zero? input) "12" (<= input 12) input :else (- input 12)) " " (if (<= input 11) "AM" "PM"))
+       (or
+         (format-extraction-unit (common/number->timestamp input {:unit unit}) unit)
+         (str input))))))
 
 (defn format-diff
   "Formats a time difference between two temporal values.

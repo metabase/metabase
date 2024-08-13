@@ -19,7 +19,7 @@ const setup = () => {
     const params = new URL(request.url).searchParams;
     const limit = parseInt(params.get("limit") ?? "0");
     const offset = parseInt(params.get("offset") ?? "0");
-    return MockUsers.slice(offset, offset + limit);
+    return { data: MockUsers.slice(offset, offset + limit) };
   });
   renderWithProviders(<UserCollectionList />);
 };

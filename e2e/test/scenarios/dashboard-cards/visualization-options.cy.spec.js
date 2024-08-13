@@ -32,7 +32,7 @@ describe("scenarios > dashboard cards > visualization options", () => {
     cy.icon("palette").click();
 
     modal().within(() => {
-      cy.findByDisplayValue(originalCardTitle).click().clear();
+      cy.findByDisplayValue(originalCardTitle).click().clear().blur();
       cy.button("Done").click();
     });
 

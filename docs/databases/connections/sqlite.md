@@ -4,6 +4,8 @@ title: SQLite
 
 # SQLite
 
+> SQLite isn't available for [Metabase Cloud](https://www.metabase.com/cloud/).
+
 To add a database connection, click on the **gear** icon in the top right, and navigate to **Admin settings** > **Databases** > **Add a database**.
 
 Fill out the fields for that database, and click **Save changes** at the bottom.
@@ -54,19 +56,6 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
-
-### Default result cache duration
-
-{% include plans-blockquote.html feature="Database-specific caching" %}
-
-How long to keep question results. By default, Metabase will use the value you supply on the [cache settings page](../../configuring-metabase/caching.md), but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
-
-Options are:
-
-- **Use instance default (TTL)**. TTL is time to live, meaning how long the cache remains valid before Metabase should run the query again.
-- **Custom**.
-
-If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
 
 ## Further reading
 

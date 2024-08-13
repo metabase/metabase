@@ -15,6 +15,7 @@
    [metabase.models.database :as database]
    [metabase.models.dimension :as dimension]
    [metabase.models.field :as field]
+   [metabase.models.field-usage :as field-usage]
    [metabase.models.field-values :as field-values]
    [metabase.models.legacy-metric :as legacy-metric]
    [metabase.models.legacy-metric-important-field :as legacy-metric-important-field]
@@ -33,9 +34,11 @@
    [metabase.models.pulse-card :as pulse-card]
    [metabase.models.pulse-channel :as pulse-channel]
    [metabase.models.pulse-channel-recipient :as pulse-channel-recipient]
+   [metabase.models.query-analysis :as query-analysis]
    [metabase.models.query-cache :as query-cache]
    [metabase.models.query-execution :as query-execution]
    [metabase.models.query-field :as query-field]
+   [metabase.models.query-table :as query-table]
    [metabase.models.revision :as revision]
    [metabase.models.secret :as secret]
    [metabase.models.segment :as segment]
@@ -69,8 +72,9 @@
          dashboard/keep-me
          database/keep-me
          dimension/keep-me
-         field-values/keep-me
          field/keep-me
+         field-usage/keep-me
+         field-values/keep-me
          legacy-metric/keep-me
          legacy-metric-important-field/keep-me
          login-history/keep-me
@@ -88,7 +92,9 @@
          pulse/keep-me
          query-cache/keep-me
          query-execution/keep-me
+         query-analysis/keep-me
          query-field/keep-me
+         query-table/keep-me
          revision/keep-me
          secret/keep-me
          segment/keep-me

@@ -185,8 +185,9 @@
   (log/warn (u/colorize :red "'load' is deprecated and will be removed in a future release. Please migrate to 'import'."))
   (call-enterprise 'metabase-enterprise.serialization.cmd/v1-load! path (get-parsed-options #'load options)))
 
-(defn ^:command import
-  {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."}
+(defn ^:command ^:requires-init import
+  {:doc "Load serialized Metabase instance as created by the [[export]] command from directory `path`."
+   :arg-spec [["-e" "--continue-on-error" "Do not break execution on errors."]]}
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-load! path (get-parsed-options #'import options)))
 
@@ -206,14 +207,19 @@
 
 (defn ^:command export
   {:doc "Serialize Metabase instance into directory at `path`."
-   :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs."
+   :arg-spec [["-c" "--collection ID"            "Export only specified ID(s). Use commas to separate multiple IDs. You can pass entity ids with `eid:<...>` as a prefix."
                :id        :collection-ids
-               :parse-fn  (fn [raw-string] (map parse-long (str/split raw-string #"\s*,\s*")))]
+               :parse-fn  (fn [raw-string] (->> (str/split raw-string #"\s*,\s*")
+                                                (map (fn [v]
+                                                       (if (str/starts-with? v "eid:")
+                                                         v
+                                                         (parse-long v))))))]
               ["-C" "--no-collections"           "Do not export any content in collections."]
               ["-S" "--no-settings"              "Do not export settings.yaml"]
               ["-D" "--no-data-model"            "Do not export any data model entities; useful for subsequent exports."]
               ["-f" "--include-field-values"     "Include field values along with field metadata."]
-              ["-s" "--include-database-secrets" "Include database connection details (in plain text; use caution)."]]}
+              ["-s" "--include-database-secrets" "Include database connection details (in plain text; use caution)."]
+              ["-e" "--continue-on-error"        "Do not break execution on errors."]]}
   [path & options]
   (call-enterprise 'metabase-enterprise.serialization.cmd/v2-dump! path (get-parsed-options #'export options)))
 
@@ -239,8 +245,8 @@
     ((resolve 'metabase.cmd.rotate-encryption-key/rotate-encryption-key!) new-key)
     (log/info "Encryption key rotation OK.")
     (system-exit! 0)
-    (catch Throwable _e
-      (log/error "ERROR ROTATING KEY.")
+    (catch Throwable e
+      (log/error e "ERROR ROTATING KEY.")
       (system-exit! 1))))
 
 ;;; ------------------------------------------------ Validate Commands ----------------------------------------------
@@ -281,6 +287,10 @@
       arg-spec
       (:errors (cli/parse-opts args arg-spec)))))
 
+(defn- requires-init?
+  [command-name]
+  (-> command-name cmd->var meta :requires-init))
+
 (defn- fail!
   [& messages]
   (doseq [msg messages]
@@ -290,7 +300,7 @@
 (defn run-cmd
   "Run `cmd` with `args`. This is a function above. e.g. `clojure -M:run metabase migrate force` becomes
   `(migrate \"force\")`."
-  [command-name args]
+  [command-name init-fn args]
   (if-let [errors (validate command-name args)]
     (do
       (when (cmd->var command-name)
@@ -298,6 +308,8 @@
         (help command-name))
       (apply fail! errors))
     (try
+      (when (requires-init? command-name)
+        (init-fn))
       (apply @(cmd->var command-name) args)
       (catch Throwable e
         (.printStackTrace e)

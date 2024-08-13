@@ -2,7 +2,7 @@ import type { Dispatch, SetStateAction } from "react";
 import { useCallback, useEffect, useState } from "react";
 
 import { CacheConfigApi } from "metabase/services";
-import type { Config } from "metabase-types/api";
+import type { CacheConfig } from "metabase-types/api";
 
 export const useResetToDefaultForm = ({
   configs,
@@ -10,8 +10,8 @@ export const useResetToDefaultForm = ({
   databaseIds,
   isFormVisible,
 }: {
-  configs: Config[];
-  setConfigs: Dispatch<SetStateAction<Config[]>>;
+  configs: CacheConfig[];
+  setConfigs: Dispatch<SetStateAction<CacheConfig[]>>;
   databaseIds: number[];
   isFormVisible: boolean;
 }) => {
@@ -34,7 +34,7 @@ export const useResetToDefaultForm = ({
         { model_id: databaseIds, model: "database" },
         { hasBody: true },
       );
-      setConfigs((configs: Config[]) =>
+      setConfigs((configs: CacheConfig[]) =>
         configs.filter(({ model }) => model !== "database"),
       );
     } catch (e) {

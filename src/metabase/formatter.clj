@@ -8,12 +8,14 @@
    [hiccup.util]
    [metabase.formatter.datetime :as datetime]
    [metabase.public-settings :as public-settings]
+   [metabase.query-processor.streaming.common :as common]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.shared.util.currency :as currency]
    [metabase.types :as types]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [metabase.util.ui-logic :as ui-logic]
+   [potemkin :as p]
    [potemkin.types :as p.types])
   (:import
    (java.math RoundingMode)
@@ -24,6 +26,11 @@
 
 ;; Fool Eastwood into thinking this namespace is used
 (comment hiccup.util/keep-me)
+
+(p/import-vars
+  [datetime
+   format-temporal-str
+   temporal-string?])
 
 (def RenderedPulseCard
   "Schema used for functions that operate on pulse card contents and their attachments"
@@ -57,11 +64,11 @@
      0
      (let [val-string (-> (condp = (type value)
                             java.math.BigDecimal (.toPlainString ^BigDecimal value)
-                            java.lang.Double (format "%.20f" value)
-                            java.lang.Float (format "%.20f" value)
+                            java.lang.Double     (format "%.20f" value)
+                            java.lang.Float      (format "%.20f" value)
                             (str value))
                           (strip-trailing-zeroes (str decimal)))
-           [_n d] (str/split val-string #"[^\d*]")]
+           d          (last (str/split val-string #"[^\d*]"))]
        (count d)))))
 
 (defn- sig-figs-after-decimal
@@ -77,19 +84,35 @@
           figs (last (str/split val-string #"[\.0]+"))]
       (count figs))))
 
+(defn- qualify-keys
+  [m]
+  (update-keys m (fn [k] (keyword
+                          "metabase.shared.models.visualization-settings"
+                          (name k)))))
+
+;; TODO: use `metabase.query-processor.streaming.common/viz-settings-for-col` here, it's
+;; doing the same thing (unifying global settings, column settings, and viz-settings for the column.
+;; perhaps that implementation needs to move here, or to a new `metabase.formatter.common` or something?
 (defn number-formatter
   "Return a function that will take a number and format it according to its column viz settings. Useful to compute the
   format string once and then apply it over many values."
   [{:keys [semantic_type effective_type base_type]
-    col-id :id field-ref :field_ref col-name :name :as _column}
+    col-id :id field-ref :field_ref col-name :name col-settings :settings :as col}
    viz-settings]
-  (let [col-id (or col-id (second field-ref))
+  (let [global-type-settings (common/global-type-settings col viz-settings)
+        col-id (or col-id (second field-ref))
         column-settings (-> (get viz-settings ::mb.viz/column-settings)
                             (update-keys #(select-keys % [::mb.viz/field-id ::mb.viz/column-name])))
-        column-settings (or (get column-settings {::mb.viz/field-id col-id})
-                            (get column-settings {::mb.viz/column-name col-name}))
-        global-settings (::mb.viz/global-column-settings viz-settings)
+        column-settings (merge
+                         (or (get column-settings {::mb.viz/field-id col-id})
+                             (get column-settings {::mb.viz/column-name col-name}))
+                         (qualify-keys col-settings)
+                         global-type-settings)
+        global-settings (merge
+                         global-type-settings
+                         (::mb.viz/global-column-settings viz-settings))
         currency?       (boolean (or (= (::mb.viz/number-style column-settings) "currency")
+                                     (= (::mb.viz/number-style viz-settings) "currency")
                                      (and (nil? (::mb.viz/number-style column-settings))
                                           (or
                                            (::mb.viz/currency-style column-settings)
@@ -123,7 +146,7 @@
                                integral? 0
                                currency? (get-in currency/currency [(keyword (or currency "USD")) :decimal_digits])
                                percent?  (min 2 decimals-in-value) ;; 5.5432 -> %554.32
-                               :else (if (>= scaled-value 1)
+                               :else (if (>= (abs scaled-value) 1)
                                        (min 2 decimals-in-value) ;; values greater than 1 round to 2 decimal places
                                        (let [n-figs (sig-figs-after-decimal scaled-value decimal)]
                                          (if (> n-figs 2)
@@ -139,7 +162,7 @@
                                                    (false? (::mb.viz/currency-in-header column-settings)))]
                          (str (when prefix prefix)
                               (when (and inline-currency? (or (nil? currency-style)
-                                                       (= currency-style "symbol")))
+                                                              (= currency-style "symbol")))
                                 (get-in currency/currency [(keyword (or currency "USD")) :symbol]))
                               (when (and inline-currency? (= currency-style "code"))
                                 (str (get-in currency/currency [(keyword (or currency "USD")) :code]) \space))

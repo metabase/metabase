@@ -118,7 +118,7 @@ export const loadObjectDetailFKReferences = createThunkAction(
           metadataProvider,
           table,
         );
-        const aggregatedQuery = Lib.aggregateByCount(baseQuery);
+        const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
         const query = filterByFk(aggregatedQuery, fk.origin, objectId);
         const finalCard = Question.create({ databaseId, metadata })
           .setQuery(query)

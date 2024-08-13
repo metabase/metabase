@@ -1,10 +1,8 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-
 export const ContextText = styled("p")`
   line-height: 1.4em;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-top: 0;
 `;
 

@@ -13,6 +13,7 @@ import {
   visitPublicQuestion,
   visitPublicDashboard,
   createQuestion,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const {
@@ -100,30 +101,28 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
             alias: "Products",
           },
         ],
-        limit: 5,
+        limit: 2,
       },
     };
 
     createQuestion(questionDetails, { visitQuestion: true });
+    cy.findByTestId("question-row-count").should("have.text", "Showing 2 rows");
 
-    cy.log("check click on 1st row");
-
-    cy.get(".cellData").contains("37.65").realHover();
-    cy.findByTestId("detail-shortcut").findByRole("button").click();
-
+    cy.log("Check object details for the first row");
+    cy.findAllByTestId("cell-data").filter(":contains(37.65)").realHover();
+    cy.get("[data-show-detail-rowindex='0']").click();
     cy.findByTestId("object-detail").within(() => {
-      cy.get("h2").should("contain", "Order").should("contain", 1);
+      cy.findByRole("heading").should("contain", "Order").and("contain", 1);
+      cy.findByText("37.65").should("be.visible");
       cy.findByTestId("object-detail-close-button").click();
     });
 
-    cy.log("check click on 3rd row");
-
-    cy.get(".cellData").contains("52.72").realHover();
-    cy.findByTestId("detail-shortcut").findByRole("button").click();
-
+    cy.log("Check object details for the second row");
+    cy.findAllByTestId("cell-data").filter(":contains(110.93)").realHover();
+    cy.get("[data-show-detail-rowindex='1']").click();
     cy.findByTestId("object-detail").within(() => {
-      cy.get("h2").should("contain", "Order").should("contain", 3);
-      cy.findByText("52.72");
+      cy.findByRole("heading").should("contain", "Order").and("contain", 2);
+      cy.findByText("110.93").should("be.visible");
     });
   });
 
@@ -132,26 +131,18 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
       name: "34070",
       query: {
         "source-table": PRODUCTS_ID,
+        fields: [["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }]],
         joins: [
           {
-            fields: "all",
+            fields: [["field", REVIEWS.RATING, { "join-alias": "Products" }]],
             alias: "Products",
             condition: [
               "=",
-              [
-                "field",
-                PRODUCTS.ID,
-                {
-                  "base-type": "type/BigInteger",
-                },
-              ],
+              ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
               [
                 "field",
                 REVIEWS.PRODUCT_ID,
-                {
-                  "base-type": "type/BigInteger",
-                  "join-alias": "Products",
-                },
+                { "base-type": "type/BigInteger", "join-alias": "Products" },
               ],
             ],
             "source-table": REVIEWS_ID,
@@ -163,14 +154,7 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 
     createQuestion(questionDetails, { visitQuestion: true });
 
-    // there should be a hover instead of click
-    // but realHover is flaky
-    cy.get(".cellData").contains("4966277046676").click();
-
-    cy.findByTestId("detail-shortcut")
-      .findByRole("button")
-      .should("be.visible")
-      .click();
+    cy.findByRole("gridcell", { name: "3" }).should("be.visible").click();
 
     cy.findByRole("dialog").findByTestId("fk-relation-orders").click();
 
@@ -383,11 +367,11 @@ describe("scenarios > question > object details", { tags: "@slow" }, () => {
 });
 
 function drillPK({ id }) {
-  cy.get(".Table-ID").contains(id).first().click();
+  cy.get(".test-Table-ID").contains(id).first().click();
 }
 
 function drillFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
   popover().findByText("View details").click();
 }
 
@@ -419,7 +403,7 @@ function getNextObjectDetailButton() {
 
 function changeSorting(columnName, direction) {
   const icon = direction === "asc" ? "arrow_up" : "arrow_down";
-  cy.findByText(columnName).click();
+  tableHeaderClick(columnName);
   popover().within(() => {
     cy.icon(icon).click();
   });

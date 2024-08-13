@@ -11,6 +11,6 @@ export const ButtonRoot = styled.a<ButtonRootProps>`
   transition: color 0.3s linear;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

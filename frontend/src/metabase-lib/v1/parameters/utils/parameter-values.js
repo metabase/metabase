@@ -18,10 +18,14 @@ export function getParameterValue({
   parameter,
   values = {},
   defaultRequired = false,
+  lastUsedParameterValue = null,
 }) {
   const value = values?.[parameter.id];
   const useDefault = defaultRequired && parameter.required;
-  return value ?? (useDefault ? parameter.default : null);
+
+  return (
+    lastUsedParameterValue ?? value ?? (useDefault ? parameter.default : null)
+  );
 }
 
 /**
@@ -73,6 +77,11 @@ export function areParameterValuesIdentical(a, b) {
   );
 }
 
+/**
+ * @import { NormalizedParameter } from "metabase-types/api";
+ *
+ * @returns {NormalizedParameter}
+ */
 export function normalizeParameter(parameter) {
   return {
     id: parameter.id,
@@ -114,7 +123,11 @@ export function isParameterValueEmpty(value) {
 // Should treat undefined and null equally.
 // TODO reconcile with isParameterValueEmpty
 export function parameterHasNoDisplayValue(value) {
-  return !value || value === "" || (Array.isArray(value) && value.length === 0);
+  return (
+    (!value && value !== 0) ||
+    value === "" ||
+    (Array.isArray(value) && value.length === 0)
+  );
 }
 
 export function normalizeParameterValue(type, value) {
@@ -133,10 +146,15 @@ export function normalizeParameterValue(type, value) {
 export function getParameterValuesBySlug(parameters, parameterValuesById) {
   parameters = parameters ?? [];
   parameterValuesById = parameterValuesById ?? {};
+
   return Object.fromEntries(
     parameters.map(parameter => [
       parameter.slug,
       parameter.value ?? parameterValuesById[parameter.id] ?? null,
     ]),
   );
+}
+
+export function getIsMultiSelect(parameter) {
+  return parameter.isMultiSelect ?? true;
 }

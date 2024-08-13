@@ -97,17 +97,20 @@ async function setup({
     collectionItems,
   });
 
-  renderWithProviders(<AddCardSidebar onSelect={jest.fn()} />, {
-    storeInitialState: createMockState({
-      currentUser: CURRENT_USER,
-      dashboard: createMockDashboardState({
-        dashboards: {
-          [dashboard.id]: { ...dashboard, dashcards: [] },
-        },
-        dashboardId: dashboard.id,
+  renderWithProviders(
+    <AddCardSidebar onSelect={jest.fn()} onClose={jest.fn()} />,
+    {
+      storeInitialState: createMockState({
+        currentUser: CURRENT_USER,
+        dashboard: createMockDashboardState({
+          dashboards: {
+            [dashboard.id]: { ...dashboard, dashcards: [] },
+          },
+          dashboardId: dashboard.id,
+        }),
       }),
-    }),
-  });
+    },
+  );
 
   await waitFor(() => {
     expect(screen.queryByText("Loading...")).not.toBeInTheDocument();
@@ -188,7 +191,7 @@ describe("AddCardSideBar", () => {
       const typedText = "dashboard";
       await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
-        models: ["card", "dataset"],
+        models: ["card", "dataset", "metric"],
         offset: 0,
         limit: 50,
       };
@@ -260,7 +263,7 @@ describe("AddCardSideBar", () => {
       const typedText = "dashboard";
       await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
-        models: ["card", "dataset"],
+        models: ["card", "dataset", "metric"],
         offset: 0,
         limit: 50,
       };
@@ -351,7 +354,7 @@ describe("AddCardSideBar", () => {
       const typedText = "dashboard";
       await userEvent.type(screen.getByPlaceholderText("Search…"), typedText);
       const baseQuery = {
-        models: ["card", "dataset"],
+        models: ["card", "dataset", "metric"],
         offset: 0,
         limit: 50,
       };

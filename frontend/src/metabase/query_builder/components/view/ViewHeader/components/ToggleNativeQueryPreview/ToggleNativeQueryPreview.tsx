@@ -77,9 +77,13 @@ ToggleNativeQueryPreview.shouldRender = ({
   queryBuilderMode,
 }: ToggleNativeQueryPreviewOpts) => {
   const { isNative } = Lib.queryDisplayInfo(question.query());
+  const isMetric = question.type() === "metric";
+
   return (
     !isNative &&
+    !isMetric &&
     question.database()?.native_permissions === "write" &&
-    queryBuilderMode === "notebook"
+    queryBuilderMode === "notebook" &&
+    !question.isArchived()
   );
 };

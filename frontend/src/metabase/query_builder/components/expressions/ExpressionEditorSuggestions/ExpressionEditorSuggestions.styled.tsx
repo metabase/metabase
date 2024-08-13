@@ -1,17 +1,13 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { QueryColumnInfoIcon as BaseQueryColumnInfoIcon } from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import {
   HoverParent,
   PopoverHoverTarget as BasePopoverHoverTarget,
 } from "metabase/components/MetadataInfo/InfoIcon";
-import { color } from "metabase/lib/colors";
 
 export const ExpressionList = styled.ul`
-  min-width: 150px;
-  max-height: 350px;
-  overflow-y: auto;
+  min-width: 250px;
 `;
 
 export const SuggestionMatch = styled.span`
@@ -19,8 +15,8 @@ export const SuggestionMatch = styled.span`
 `;
 
 const highlighted = css`
-  color: ${color("white")};
-  background-color: ${color("brand")};
+  color: var(--mb-color-text-white);
+  background-color: var(--mb-color-brand);
 `;
 
 export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
@@ -29,11 +25,19 @@ export const ExpressionListItem = styled.li<{ isHighlighted: boolean }>`
   padding: 0 0.875rem;
   padding-right: 0.5rem;
   cursor: pointer;
-  min-height: 1.625rem;
+  height: 2rem;
+  color: var(--mb-color-text-dark);
 
-  &:hover {
-    ${highlighted}
-  }
+  ${props => props.isHighlighted && highlighted}
+`;
+
+export const ExpressionListFooter = styled.a<{ isHighlighted: boolean }>`
+  height: 2rem;
+  color: var(--mb-color-text-medium);
+  display: flex;
+  align-items: center;
+  padding-left: 0.875rem;
+  margin-top: 12px;
 
   ${props => props.isHighlighted && highlighted}
 `;
@@ -42,19 +46,24 @@ export const SuggestionTitle = styled.span`
   margin-right: 1.5em;
 `;
 
-export const QueryColumnInfoIcon = styled(BaseQueryColumnInfoIcon)`
-  padding: 0;
-  margin-left: auto;
-  padding: 0.3125rem 0;
-`;
-
 export const PopoverHoverTarget = styled(BasePopoverHoverTarget)`
-  padding: 0;
   margin-left: auto;
   padding: 0.3125rem 0;
   visibility: hidden;
 
   ${HoverParent}:hover & {
     visibility: visible;
+  }
+`;
+
+export const GroupTitle = styled(ExpressionListItem)`
+  font-weight: bold;
+  font-size: 12px;
+  color: var(--mb-color-text-medium);
+  pointer-events: none;
+  margin-top: 12px;
+
+  &:first-child {
+    margin-top: 0;
   }
 `;

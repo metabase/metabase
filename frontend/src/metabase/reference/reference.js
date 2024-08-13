@@ -73,33 +73,9 @@ export const wrappedFetchDatabaseMetadataAndQuestion = async (
     ]);
   })(databaseID);
 };
-export const wrappedFetchMetricDetail = async (props, metricID) => {
-  fetchDataWrapper(props, async mID => {
-    await Promise.all([props.fetchMetricTable(mID), props.fetchMetrics()]);
-  })(metricID);
-};
-export const wrappedFetchMetricQuestions = async (props, metricID) => {
-  fetchDataWrapper(props, async mID => {
-    await Promise.all([
-      props.fetchMetricTable(mID),
-      props.fetchMetrics(),
-      props.fetchQuestions(),
-    ]);
-  })(metricID);
-};
-export const wrappedFetchMetricRevisions = async (props, metricID) => {
-  fetchDataWrapper(props, async mID => {
-    await Promise.all([props.fetchMetricRevisions(mID), props.fetchMetrics()]);
-  })(metricID);
-};
-
 export const wrappedFetchDatabases = props => {
   fetchDataWrapper(props, props.fetchRealDatabases)({});
 };
-export const wrappedFetchMetrics = props => {
-  fetchDataWrapper(props, props.fetchMetrics)({});
-};
-
 export const wrappedFetchSegments = props => {
   fetchDataWrapper(props, props.fetchSegments)({});
 };
@@ -188,24 +164,6 @@ export const rUpdateTableDetail = (formFields, props) => {
 };
 export const rUpdateFieldDetail = (formFields, props) => {
   return () => updateDataWrapper(props, props.updateField)(formFields);
-};
-
-export const rUpdateMetricDetail = (metric, formFields, props) => {
-  return async () => {
-    props.startLoading();
-    try {
-      const editedFields = filterUntouchedFields(formFields, metric);
-      if (!isEmptyObject(editedFields)) {
-        const newMetric = { ...metric, ...editedFields };
-        await props.updateMetric(newMetric);
-      }
-    } catch (error) {
-      props.setError(error);
-      console.error(error);
-    }
-
-    resetForm(props);
-  };
 };
 
 export const rUpdateFields = (fields, formFields, props) => {

@@ -11,7 +11,6 @@ export const RootLayout = styled.div`
   display: flex;
   flex: 1;
   flex-direction: row;
-
   padding: 3rem 4rem;
   min-height: 90vh;
 `;
@@ -20,7 +19,6 @@ export const ModelMain = styled.div`
   display: flex;
   flex: 1;
   flex-direction: column;
-
   padding-right: 3rem;
 `;
 

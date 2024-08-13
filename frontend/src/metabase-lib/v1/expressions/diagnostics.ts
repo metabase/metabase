@@ -11,7 +11,12 @@ import {
 import type Database from "metabase-lib/v1/metadata/Database";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 
-import { useShorthands, adjustCase, adjustOptions } from "./recursive-parser";
+import {
+  useShorthands,
+  adjustCase,
+  adjustOptions,
+  adjustOffset,
+} from "./recursive-parser";
 import { LOGICAL_OPS, COMPARISON_OPS, resolve } from "./resolver";
 import { tokenize, TOKEN, OPERATOR } from "./tokenizer";
 import type { ErrorWithMessage } from "./types";
@@ -47,7 +52,7 @@ export function diagnose({
   stageIndex,
   metadata,
   name = null,
-  expressionPosition,
+  expressionIndex,
 }: {
   source: string;
   startRule: "expression" | "aggregation" | "boolean";
@@ -55,7 +60,7 @@ export function diagnose({
   stageIndex: number;
   name?: string | null;
   metadata?: Metadata;
-  expressionPosition?: number;
+  expressionIndex: number | undefined;
 }): ErrorWithMessage | null {
   if (!source || source.length === 0) {
     return null;
@@ -110,6 +115,7 @@ export function diagnose({
       name,
       query,
       stageIndex,
+      expressionIndex,
       database,
     });
 
@@ -139,19 +145,26 @@ export function diagnose({
   const expressionMode: Lib.ExpressionMode =
     startRuleToExpressionModeMapping[startRule] ?? startRule;
 
-  const possibleError = Lib.diagnoseExpression(
-    query,
-    stageIndex,
-    expressionMode,
-    mbqlOrError,
-    expressionPosition,
-  );
+  try {
+    const possibleError = Lib.diagnoseExpression(
+      query,
+      stageIndex,
+      expressionMode,
+      mbqlOrError,
+      expressionIndex,
+    );
 
-  if (possibleError) {
-    console.warn("diagnostic error", possibleError.message);
+    if (possibleError) {
+      console.warn("diagnostic error", possibleError.message);
 
-    // diagnoseExpression should return a user friendly message, which we'll be
-    // able to return directly
+      // diagnoseExpression returns some messages which are user-friendly and some which are not.
+      // If the `friendly` flag is true, we can use the possibleError as-is; if not then use a generic message.
+      return possibleError.friendly
+        ? possibleError
+        : { message: t`Invalid expression` };
+    }
+  } catch (error) {
+    console.warn("diagnostic error", error);
     return { message: t`Invalid expression` };
   }
 
@@ -164,6 +177,7 @@ function prattCompiler({
   name,
   query,
   stageIndex,
+  expressionIndex,
   database,
 }: {
   source: string;
@@ -171,10 +185,18 @@ function prattCompiler({
   name: string | null;
   query: Lib.Query;
   stageIndex: number;
+  expressionIndex: number | undefined;
   database?: Database | null;
 }): ErrorWithMessage | Expr {
   const tokens = lexify(source);
-  const options = { source, startRule, name, query, stageIndex };
+  const options = {
+    source,
+    startRule,
+    name,
+    query,
+    stageIndex,
+    expressionIndex,
+  };
 
   // PARSE
   const { root, errors } = parse(tokens, {
@@ -206,10 +228,8 @@ function prattCompiler({
 
       return Lib.legacyRef(query, stageIndex, segment);
     } else {
-      const reference = options.name ?? ""; // avoid circular reference
-
       // fallback
-      const dimension = parseDimension(name, { reference, ...options });
+      const dimension = parseDimension(name, options);
       if (!dimension) {
         throw new ResolverError(t`Unknown Field: ${name}`, node);
       }
@@ -223,6 +243,7 @@ function prattCompiler({
     passes: [
       adjustOptions,
       useShorthands,
+      adjustOffset,
       adjustCase,
       expression =>
         resolve({

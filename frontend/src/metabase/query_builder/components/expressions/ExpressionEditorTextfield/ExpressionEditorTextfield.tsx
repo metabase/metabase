@@ -11,12 +11,18 @@ import _ from "underscore";
 import { getColumnIcon } from "metabase/common/utils/columns";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import { getMetadata } from "metabase/selectors/metadata";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import type { IconName } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import { isExpression } from "metabase-lib/v1/expressions";
 import { diagnose } from "metabase-lib/v1/expressions/diagnostics";
 import { format } from "metabase-lib/v1/expressions/format";
 import { processSource } from "metabase-lib/v1/expressions/process";
-import type { Suggestion } from "metabase-lib/v1/expressions/suggest";
+import type {
+  GroupName,
+  SuggestArgs,
+  Suggestion,
+} from "metabase-lib/v1/expressions/suggest";
 import { suggest } from "metabase-lib/v1/expressions/suggest";
 import { tokenize } from "metabase-lib/v1/expressions/tokenizer";
 import type {
@@ -40,6 +46,63 @@ import {
 ace.config.set("basePath", "/assets/ui/");
 ace.config.set("useStrictCSP", true);
 
+export type SuggestionFooter = {
+  footer: true;
+  name: string;
+  icon: IconName;
+  href: string;
+};
+
+export type SuggestionShortcut = {
+  shortcut: true;
+  name: string;
+  icon: IconName;
+  group: GroupName;
+  action: () => void;
+};
+
+type SuggestWithExtras = {
+  suggestions: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
+  helpText?: HelpText;
+};
+
+export function suggestWithExtras(
+  args: SuggestArgs & {
+    showMetabaseLinks: boolean;
+    shortcuts?: SuggestionShortcut[];
+  },
+): SuggestWithExtras {
+  const res = suggest(args);
+
+  const suggestions: (Suggestion | SuggestionFooter | SuggestionShortcut)[] =
+    res.suggestions ?? [];
+
+  if (args.showMetabaseLinks && args.source === "") {
+    suggestions.push(...(args.shortcuts ?? []));
+
+    if (args.startRule === "aggregation") {
+      suggestions.push({
+        footer: true,
+        name: t`Documentation`,
+        icon: "external",
+        href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#aggregations",
+      });
+    } else {
+      suggestions.push({
+        footer: true,
+        name: t`Documentation`,
+        icon: "external",
+        href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions",
+      });
+    }
+  }
+
+  return {
+    ...res,
+    suggestions,
+  };
+}
+
 const ACE_OPTIONS = {
   behavioursEnabled: false,
   indentedSoftWrap: false,
@@ -59,7 +122,7 @@ interface ExpressionEditorTextfieldProps {
   stageIndex: number;
   metadata: Metadata;
   startRule: "expression" | "aggregation" | "boolean";
-  expressionPosition?: number;
+  expressionIndex?: number;
   width?: number;
   reportTimezone?: string;
   textAreaId?: string;
@@ -75,11 +138,13 @@ interface ExpressionEditorTextfieldProps {
     expressionClause: Lib.ExpressionClause | null,
   ) => void;
   helpTextTarget: RefObject<HTMLElement>;
+  showMetabaseLinks: boolean;
+  shortcuts?: SuggestionShortcut[];
 }
 
 interface ExpressionEditorTextfieldState {
   source: string;
-  suggestions: Suggestion[];
+  suggestions: (Suggestion | SuggestionFooter | SuggestionShortcut)[];
   highlightedSuggestionIndex: number;
   isFocused: boolean;
   errorMessage: ErrorWithMessage | null;
@@ -97,6 +162,11 @@ function transformPropsToState(
     clause,
     query,
     stageIndex,
+    expressionIndex,
+    metadata,
+    reportTimezone,
+    showMetabaseLinks,
+    shortcuts = [],
   } = props;
   const expressionFromClause = clause
     ? Lib.legacyExpressionForExpressionClause(query, stageIndex, clause)
@@ -106,13 +176,28 @@ function transformPropsToState(
     startRule,
     stageIndex,
     query,
+    expressionIndex,
+  });
+
+  const { suggestions = [], helpText = null } = suggestWithExtras({
+    reportTimezone,
+    startRule,
+    source,
+    targetOffset: 0,
+    expressionIndex,
+    query,
+    stageIndex,
+    metadata,
+    getColumnIcon,
+    showMetabaseLinks,
+    shortcuts,
   });
 
   return {
     source,
     highlightedSuggestionIndex: 0,
-    helpText: null,
-    suggestions: [],
+    helpText,
+    suggestions,
     isFocused: false,
     errorMessage: null,
     hasChanges: false,
@@ -121,6 +206,7 @@ function transformPropsToState(
 
 const mapStateToProps = (state: State) => ({
   metadata: getMetadata(state),
+  showMetabaseLinks: getShowMetabaseLinks(state),
 });
 
 const CURSOR_DEBOUNCE_INTERVAL = 10;
@@ -132,6 +218,7 @@ class ExpressionEditorTextfield extends React.Component<
   input = React.createRef<AceEditor>();
   suggestionTarget = React.createRef<HTMLDivElement>();
   helpTextTarget = React.createRef<HTMLDivElement>();
+  popupMenuTarget = React.createRef<HTMLUListElement>();
 
   static defaultProps = {
     expression: "",
@@ -152,7 +239,14 @@ class ExpressionEditorTextfield extends React.Component<
     newProps: Readonly<ExpressionEditorTextfieldProps>,
   ) {
     // we only refresh our state if we had no previous state OR if our expression changed
-    const { expression, clause, startRule, query, stageIndex } = newProps;
+    const {
+      expression,
+      clause,
+      startRule,
+      query,
+      stageIndex,
+      expressionIndex,
+    } = newProps;
     const hasLegacyExpressionChanged = !_.isEqual(
       this.props.expression,
       expression,
@@ -169,6 +263,7 @@ class ExpressionEditorTextfield extends React.Component<
         startRule,
         stageIndex,
         query,
+        expressionIndex,
       });
       const currentSource = this.state.source;
       this.setState(transformPropsToState(newProps));
@@ -181,11 +276,33 @@ class ExpressionEditorTextfield extends React.Component<
     }
   }
 
+  handleKeypress = (evt: KeyboardEvent) => {
+    if (evt.key !== "Enter") {
+      return;
+    }
+
+    evt.preventDefault();
+    evt.stopPropagation();
+    this.handleEnter();
+  };
+
+  textarea() {
+    return this.input.current?.refEditor?.getElementsByTagName("textarea")[0];
+  }
+
   componentDidMount() {
     if (this.input.current) {
       const { editor } = this.input.current;
       // "ExpressionMode" constructor is not typed, so cast it here explicitly
       const mode = new ExpressionMode() as unknown as Ace.SyntaxMode;
+
+      // HACK: manually register the keypress event for the enter key,
+      // since ACE does not seem to call the event handlers in time for
+      // them to do certain things, like window.open.
+      //
+      // Without this hack, popups get blocked since they are not
+      // considered by the browser to be in response to a user action.
+      this.textarea()?.addEventListener("keypress", this.handleKeypress);
 
       editor.getSession().setMode(mode);
 
@@ -216,9 +333,25 @@ class ExpressionEditorTextfield extends React.Component<
     }
   }
 
+  componentWillUnmount() {
+    this.textarea()?.removeEventListener("keypress", this.handleKeypress);
+  }
+
   onSuggestionSelected = (index: number) => {
     const { source, suggestions } = this.state;
     const suggestion = suggestions && suggestions[index];
+
+    if ("footer" in suggestion) {
+      // open link in new window
+      window.open(suggestion.href, "_blank");
+      return;
+    }
+
+    if ("shortcut" in suggestion) {
+      // run the shortcut
+      suggestion.action();
+      return;
+    }
 
     if (this.input.current && suggestion) {
       const { editor } = this.input.current;
@@ -248,9 +381,10 @@ class ExpressionEditorTextfield extends React.Component<
         // clicking on the autocomplete
         setTimeout(() => editor.moveCursorTo(row, caretPos));
       } else {
-        const newExpression = source + suggestion.text;
-        this.handleExpressionChange(newExpression);
-        editor.moveCursorTo(row, newExpression.length);
+        const updatedExpression = source + suggestion.text;
+        this.handleExpressionChange(updatedExpression);
+        const caretPos = updatedExpression.length;
+        setTimeout(() => editor.moveCursorTo(row, caretPos));
       }
     }
   };
@@ -293,6 +427,12 @@ class ExpressionEditorTextfield extends React.Component<
     }
   };
 
+  handleHighlightSuggestion = (index: number) => {
+    this.setState({
+      highlightedSuggestionIndex: index,
+    });
+  };
+
   chooseSuggestion = () => {
     const { highlightedSuggestionIndex, suggestions } = this.state;
 
@@ -316,6 +456,15 @@ class ExpressionEditorTextfield extends React.Component<
   };
 
   handleInputBlur = (e: React.FocusEvent) => {
+    // Ensure there is no active popup menu before we blur or
+    // that user didn't interact with the popup menu
+    if (
+      this.popupMenuTarget.current &&
+      e.relatedTarget?.contains(this.popupMenuTarget.current)
+    ) {
+      return;
+    }
+
     this.setState({ isFocused: false });
 
     // Switching to another window also triggers the blur event.
@@ -361,7 +510,11 @@ class ExpressionEditorTextfield extends React.Component<
     this.updateSuggestions([]);
   }
 
-  updateSuggestions(suggestions: Suggestion[] | undefined = []) {
+  updateSuggestions(
+    suggestions:
+      | (Suggestion | SuggestionFooter | SuggestionShortcut)[]
+      | undefined = [],
+  ) {
     this.setState({ suggestions });
 
     // Correctly bind Tab depending on whether suggestions are available or not
@@ -384,7 +537,7 @@ class ExpressionEditorTextfield extends React.Component<
 
   compileExpression() {
     const { source } = this.state;
-    const { query, stageIndex, startRule, name } = this.props;
+    const { query, stageIndex, startRule, name, expressionIndex } = this.props;
     if (!source || source.length === 0) {
       return null;
     }
@@ -394,6 +547,7 @@ class ExpressionEditorTextfield extends React.Component<
       query,
       stageIndex,
       startRule,
+      expressionIndex,
     });
 
     return { expression, expressionClause };
@@ -406,7 +560,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
       metadata,
     } = this.props;
 
@@ -420,7 +574,7 @@ class ExpressionEditorTextfield extends React.Component<
       name,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
       metadata,
     });
   }
@@ -432,7 +586,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
       onCommit,
       onError,
-      expressionPosition,
+      expressionIndex,
     } = this.props;
     const { source } = this.state;
 
@@ -441,7 +595,7 @@ class ExpressionEditorTextfield extends React.Component<
       startRule,
       query,
       stageIndex,
-      expressionPosition,
+      expressionIndex,
     });
 
     this.setState({ errorMessage });
@@ -486,20 +640,24 @@ class ExpressionEditorTextfield extends React.Component<
       reportTimezone,
       stageIndex,
       metadata,
-      expressionPosition,
+      expressionIndex,
       startRule = ExpressionEditorTextfield.defaultProps.startRule,
+      showMetabaseLinks,
+      shortcuts = [],
     } = this.props;
     const { source } = this.state;
-    const { suggestions, helpText } = suggest({
+    const { suggestions, helpText } = suggestWithExtras({
       reportTimezone,
       startRule,
       source,
       targetOffset: cursor.column,
-      expressionPosition,
+      expressionIndex,
       query,
       stageIndex,
       metadata,
       getColumnIcon,
+      showMetabaseLinks,
+      shortcuts,
     });
 
     this.setState({ helpText: helpText || null });
@@ -529,6 +687,7 @@ class ExpressionEditorTextfield extends React.Component<
   }
 
   commands: ICommand[] = [
+    // Note: Enter is handled manually (see componentDidMount)
     {
       name: "arrowDown",
       bindKey: { win: "Down", mac: "Down" },
@@ -541,13 +700,6 @@ class ExpressionEditorTextfield extends React.Component<
       bindKey: { win: "Up", mac: "Up" },
       exec: () => {
         this.handleArrowUp();
-      },
-    },
-    {
-      name: "enter",
-      bindKey: { win: "Enter", mac: "Enter" },
-      exec: () => {
-        this.handleEnter();
       },
     },
     {
@@ -587,6 +739,9 @@ class ExpressionEditorTextfield extends React.Component<
           suggestions={suggestions}
           onSuggestionMouseDown={this.onSuggestionSelected}
           highlightedIndex={highlightedSuggestionIndex}
+          onHighlightSuggestion={this.handleHighlightSuggestion}
+          open={isFocused}
+          ref={this.popupMenuTarget}
         >
           <EditorContainer
             isFocused={isFocused}

@@ -6,7 +6,7 @@ redirect_from:
 
 # Creating an RDS database on AWS
 
-If you want to move from using Metabase just for testing to something that is ready for the big time, you need to use either PostgreSQL or MySQL/MariaDB for you application database. Here's a high-level view of Metabase deployed with a dedicated application database.
+If you want to move from using Metabase just for testing to something that is ready for the big time, you should use PostgreSQL for your application database. Here's a high-level view of Metabase deployed with a dedicated application database.
 
 ![high level architecture diagram](images/Metabase-AWS-SI.png)
 
@@ -14,7 +14,7 @@ If you want to move from using Metabase just for testing to something that is re
 
 In AWS, enter RDS in the search box or select RDS from the dropdown button on the top left of the page. Once inside RDS, click on the **Create database** button.
 
-Select PostgreSQL or MySQL as the engine type. For this example we will choose PostgreSQL on its latest version available in AWS at the time of writing (12.4-R1).
+Select PostgreSQL as the engine type. We'll choose the latest version available in AWS at the time of writing (12.4-R1).
 
 Templates: you can leave "Production" selected, or choose any other option that better suits your needs.
 

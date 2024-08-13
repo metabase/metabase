@@ -12,9 +12,12 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
       dropdown: {
         padding: "0.75rem !important",
         minWidth: "11.5rem",
+        overflow: "auto",
+        background: "var(--mb-color-background)",
+        borderColor: "var(--mb-color-border)",
       },
       item: {
-        color: theme.fn.themeColor("text-dark"),
+        color: "var(--mb-color-text-primary)",
         fontSize: theme.fontSizes.md,
         lineHeight: "1.5rem",
         padding: theme.spacing.sm,
@@ -23,11 +26,11 @@ export const getMenuOverrides = (): MantineThemeOverride["components"] => ({
           color: theme.fn.themeColor("text-light"),
         },
         "&[data-hovered]": {
-          color: theme.fn.themeColor("brand"),
-          backgroundColor: theme.fn.themeColor("brand-lighter"),
+          color: "var(--mb-color-text-hover)",
+          backgroundColor: "var(--mb-color-background-hover)",
 
           [`& .${getStylesRef("itemRightSection")}`]: {
-            color: theme.fn.themeColor("brand"),
+            color: "var(--mb-color-text-hover)",
           },
         },
       },

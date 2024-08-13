@@ -29,6 +29,7 @@ import {
   createPublicDashboardLink,
   openStaticEmbeddingModal,
   visitIframe,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
 import { many_data_types_rows } from "e2e/support/test_tables_data";
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -792,11 +793,7 @@ const MODEL_NAME = "Test Action Model";
             cy.findByPlaceholderText("JSON").should("not.exist");
             cy.findByPlaceholderText("JSONB").should("not.exist");
             cy.findByPlaceholderText("Binary").should("not.exist");
-
-            if (dialect === "mysql") {
-              // we only have enums in postgres as of Feb 2023
-              cy.findByPlaceholderText("Enum").should("not.exist");
-            }
+            cy.findByPlaceholderText("Enum").should("exist");
           });
         });
 
@@ -1191,7 +1188,9 @@ describe(
         });
 
         filterWidget().click();
-        popover().find("input").first().type("{backspace}10");
+        popover().within(() => {
+          multiAutocompleteInput().type("{backspace}10");
+        });
         cy.button("Update filter").click();
 
         cy.button(actionName).click();

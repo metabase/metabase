@@ -38,13 +38,13 @@ function FeatureDescription({ schemaName }: { schemaName: string }) {
   const docsLink = (
     <ExternalLink
       key="model-caching-link"
-      href={MetabaseSettings.docsUrl("data-modeling/models")}
+      href={MetabaseSettings.docsUrl("data-modeling/model-persistence")}
     >{t`Learn more.`}</ExternalLink>
   );
   return (
     <PopoverContent>
-      <FeatureTitle>{t`Cache models`}</FeatureTitle>
-      <FeatureDescriptionText>{jt`We'll create tables with model data and refresh them on a schedule you define. To enable it, you need to grant this connection credential read and write permissions on the "${schemaName}" schema or grant create schema permissions. ${docsLink}`}</FeatureDescriptionText>
+      <FeatureTitle>{t`Persist models`}</FeatureTitle>
+      <FeatureDescriptionText>{jt`We'll create tables with model data and refresh them on a schedule you define. To enable model persistence, you need to grant this connection's credentials read and write permissions on the "${schemaName}" schema or grant create schema permissions. ${docsLink}`}</FeatureDescriptionText>
     </PopoverContent>
   );
 }
@@ -61,8 +61,8 @@ function ModelCachingControl({ database }: Props) {
   const isEnabled = database.isPersisted();
 
   const normalText = isEnabled
-    ? t`Turn model caching off`
-    : t`Turn model caching on`;
+    ? t`Turn model persistence off`
+    : t`Turn model persistence on`;
 
   const siteUUID = MetabaseSettings.get("site-uuid") || "";
   const cacheSchemaName = getModelCacheSchemaName(databaseId, siteUUID);

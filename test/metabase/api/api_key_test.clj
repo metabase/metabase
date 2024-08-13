@@ -85,7 +85,7 @@
                      [:group :name]))))
     (testing "A non-empty name is required"
       (is (= {:errors          {:name "value must be a non-blank string."}
-              :specific-errors {:name ["should be at least 1 characters, received: \"\"" "non-blank string, received: \"\""]}}
+              :specific-errors {:name ["should be at least 1 character, received: \"\"" "non-blank string, received: \"\""]}}
              (mt/user-http-request :crowberto :post 400 "api-key"
                                    {:group_id group-id
                                     :name     ""}))))
@@ -110,7 +110,16 @@
                                                 :user_id       (mt/user->id :crowberto)
                                                 :creator_id    (mt/user->id :crowberto)
                                                 :updated_by_id (mt/user->id :crowberto)}]
-        (is (= 2 (mt/user-http-request :crowberto :get 200 "api-key/count")))))))
+        (is (= 2 (mt/user-http-request :crowberto :get 200 "api-key/count"))))
+
+      (testing "API keys with non-default scopes, like SCIM, are excluded"
+        (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
+                                                  :name          "my cool OTHER name"
+                                                  :user_id       (mt/user->id :crowberto)
+                                                  :creator_id    (mt/user->id :crowberto)
+                                                  :updated_by_id (mt/user->id :crowberto)
+                                                  :scope         "scim"}]
+          (is (= 1 (mt/user-http-request :crowberto :get 200 "api-key/count"))))))))
 
 (deftest api-keys-work-e2e
   (testing "We can create a new API key and then use it for authentication"
@@ -222,7 +231,16 @@
                :group {:name "All Users"
                        :id (:id (perms-group/all-users))}}]
              (map #(select-keys % [:name :group])
-                  (mt/user-http-request :crowberto :get 200 "api-key")))))))
+                  (mt/user-http-request :crowberto :get 200 "api-key"))))
+
+      (testing "API keys with non-default scopes, like SCIM, are excluded"
+        (t2.with-temp/with-temp [:model/ApiKey _ {:unhashed_key  (api-key/generate-key)
+                                                  :name          "SCIM API key"
+                                                  :user_id       (mt/user->id :crowberto)
+                                                  :creator_id    (mt/user->id :crowberto)
+                                                  :updated_by_id (mt/user->id :crowberto)
+                                                  :scope         "scim"}]
+          (is (= 2 (count (mt/user-http-request :crowberto :get 200 "api-key")))))))))
 
 (deftest api-keys-can-be-deleted
   (mt/with-empty-h2-app-db

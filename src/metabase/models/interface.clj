@@ -43,7 +43,6 @@
 (p/import-vars
  [models.dispatch
   toucan-instance?
-  InstanceOf
   instance-of?
   model
   instance])
@@ -278,11 +277,6 @@
   {:in  encrypted-json-in
    :out cached-encrypted-json-out})
 
-(def transform-encrypted-text
-  "Transform for encrypted text."
-  {:in  encryption/maybe-encrypt
-   :out encryption/maybe-decrypt})
-
 (defn normalize-visualization-settings
   "The frontend uses JSON-serialized versions of MBQL clauses as keys in `:column_settings`. This normalizes them
    to modern MBQL clauses so things work correctly."
@@ -300,8 +294,14 @@
           (normalize-mbql-clauses [form]
             (walk/postwalk
              (fn [form]
-               (cond-> form
-                 (mbql-field-clause? form) mbql.normalize/normalize))
+               (try
+                 (cond-> form
+                   (mbql-field-clause? form) mbql.normalize/normalize)
+                 (catch Exception e
+                   (log/warnf "Unable to normalize visualization-settings part %s: %s"
+                              (u/pprint-to-str 'red form)
+                              (ex-message e))
+                   form)))
              form))]
     (cond-> (walk/keywordize-keys (dissoc viz-settings "column_settings" "graph.metrics"))
       (get viz-settings "column_settings") (assoc :column_settings (normalize-column-settings (get viz-settings "column_settings")))
@@ -316,12 +316,16 @@
 
 (defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
   (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} viz-settings]
-    (if-let [new-value (cond
-                         legend?  "inside"
-                         percent? "legend")]
-      (assoc viz-settings :pie.percent_visibility new-value)
-      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+         legend?  :pie.show_legend} viz-settings
+        new-visibility              (cond
+                                      legend?  "inside"
+                                      percent? "legend")
+        new-linktype                (when (= "page" (-> viz-settings :click_behavior :linkType))
+                                      "dashboard")]
+    (cond-> viz-settings
+      ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+      new-visibility (assoc :pie.percent_visibility new-visibility)
+      new-linktype   (assoc-in [:click_behavior :linkType] new-linktype))))
 
 (defn- migrate-viz-settings
   [viz-settings]
@@ -339,9 +343,7 @@
 
 (def ^{:arglists '([s])} ^:private validate-cron-string
   (let [validator (mc/validator u.cron/CronScheduleString)]
-    (fn [s]
-      (when (validator s)
-        s))))
+    (partial mu/validate-throw validator)))
 
 (def transform-cron-string
   "Transform for encrypted json."
@@ -351,7 +353,7 @@
 (def ^:private LegacyMetricSegmentDefinition
   [:map
    [:filter      {:optional true} [:maybe mbql.s/Filter]]
-   [:aggregation {:optional true} [:maybe [:sequential mbql.s/Aggregation]]]])
+   [:aggregation {:optional true} [:maybe [:sequential ::mbql.s/Aggregation]]]])
 
 (def ^:private ^{:arglists '([definition])} validate-legacy-metric-segment-definition
   (let [explainer (mr/explainer LegacyMetricSegmentDefinition)]
@@ -469,10 +471,11 @@
       add-entity-id))
 
 (methodical/prefer-method! #'t2.before-insert/before-insert :hook/timestamped? :hook/entity-id)
+(methodical/prefer-method! #'t2.before-insert/before-insert :hook/updated-at-timestamped? :hook/entity-id)
 
 ;; --- helper fns
-(defn pre-update-changes
-  "Returns the changes used for pre-update hooks.
+(defn changes-with-pk
+  "The row merged with the changes in pre-update hooks.
   This is to match the input of pre-update for toucan1 methods"
   [row]
   (t2.protocols/with-current row (merge (t2.model/primary-key-values-map row)
@@ -493,14 +496,14 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                             New Permissions Stuff                                              |
 ;;; +----------------------------------------------------------------------------------------------------------------+
-
 (def ^{:arglists '([x & _args])} dispatch-on-model
   "Helper dispatch function for multimethods. Dispatches on the first arg, using [[models.dispatch/model]]."
-  t2.u/dispatch-on-first-arg)
+  ;; make sure model namespace gets loaded e.g. `:model/Database` should load `metabase.model.database` if needed.
+  (comp t2/resolve-model t2.u/dispatch-on-first-arg))
 
 (defmulti perms-objects-set
-  "Return a set of permissions object paths that a user must have access to in order to access this object. This should be
-  something like
+  "Return a set of permissions object paths that a user must have access to in order to access this object. This should
+  be something like
 
     #{\"/db/1/schema/public/table/20/\"}
 
@@ -702,6 +705,7 @@
   [(u/->snake_case_en (keyword (str (name dest-key) "_id")))])
 
 (mu/defn instances-with-hydrated-data
+  ;; TODO: this example is wrong, we don't get a vector of tables
   "Helper function to write batched hydrations.
   Assoc to each `instances` a key `hydration-key` with data from calling `instance-key->hydrated-data-fn` by `instance-key`.
 
@@ -722,4 +726,16 @@
   (when (seq instances)
     (let [key->hydrated-items (instance-key->hydrated-data-fn)]
       (for [item instances]
-        (assoc item hydration-key (get key->hydrated-items (get item instance-key) default))))))
+        (when item
+          (assoc item hydration-key (get key->hydrated-items (get item instance-key) default)))))))
+
+(defmulti exclude-internal-content-hsql
+  "Returns a HoneySQL expression to exclude instances of the model that were created automatically as part of internally
+   used content, such as Metabase Analytics, the sample database, or the sample dashboard. If a `table-alias` (string
+   or keyword) is provided any columns will have a table alias in the returned expression."
+  {:arglists '([model & {:keys [table-alias]}])}
+  dispatch-on-model)
+
+(defmethod exclude-internal-content-hsql :default
+  [_model & _]
+  [:= [:inline 1] [:inline 1]])

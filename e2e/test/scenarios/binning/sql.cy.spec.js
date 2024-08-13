@@ -7,6 +7,10 @@ import {
   summarize,
   openTable,
   visitQuestionAdhoc,
+  cartesianChartCircle,
+  chartPathWithFillColor,
+  echartsContainer,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const questionDetails = {
@@ -69,7 +73,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Year");
-      cy.get("circle");
+      cartesianChartCircle();
     });
 
     it("should work for number", () => {
@@ -83,7 +87,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: 50 bins");
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
@@ -97,7 +101,7 @@ describe("scenarios > binning > from a saved sql question", () => {
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: 10°");
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
   });
 
@@ -136,7 +140,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         assertOnResponse(response);
       });
 
-      cy.get("circle");
+      cartesianChartCircle();
     });
 
     it("should work for number", () => {
@@ -153,7 +157,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         assertOnResponse(response);
       });
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
@@ -170,7 +174,7 @@ describe("scenarios > binning > from a saved sql question", () => {
         assertOnResponse(response);
       });
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
   });
 
@@ -184,15 +188,14 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
 
     it("should work for time series", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("CREATED_AT").click();
+      tableHeaderClick("CREATED_AT");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "CREATED_AT", yLabel: "Count" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by CREATED_AT: Month");
-      cy.get("circle");
+      cartesianChartCircle();
 
       // Open a popover with bucket options from the time series footer
       cy.findByTestId("timeseries-bucket-button").contains("Month").click();
@@ -206,27 +209,25 @@ describe("scenarios > binning > from a saved sql question", () => {
     });
 
     it("should work for number", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("TOTAL").click();
+      tableHeaderClick("TOTAL");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "TOTAL", yLabel: "Count" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: Auto binned");
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("LONGITUDE").click();
+      tableHeaderClick("LONGITUDE");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       assertOnXYAxisLabels({ xLabel: "LONGITUDE", yLabel: "Count" });
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: Auto binned");
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
@@ -234,9 +235,9 @@ describe("scenarios > binning > from a saved sql question", () => {
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
+  echartsContainer().get("text").contains(xLabel);
 
-  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
+  echartsContainer().get("text").contains(yLabel);
 }
 
 function waitAndAssertOnRequest(requestAlias) {

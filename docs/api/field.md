@@ -77,15 +77,6 @@ If a Field's value of `has_field_values` is `:list`, return a list of all the di
 
 *  **`id`** value must be an integer greater than zero.
 
-## `GET /api/field/field%2C:field-name%2C:options/values`
-
-Implementation of the field values endpoint for fields in the Saved Questions 'virtual' DB. This endpoint is just a
-  convenience to simplify the frontend code. It just returns the standard 'empty' field values response.
-
-### PARAMS:
-
-*  **`_`**
-
 ## `POST /api/field/:id/dimension`
 
 Sets the dimension for the given field at ID.

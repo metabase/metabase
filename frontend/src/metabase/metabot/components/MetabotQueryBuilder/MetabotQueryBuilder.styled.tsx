@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import EmptyState from "metabase/components/EmptyState";
-import { color } from "metabase/lib/colors";
 import { VisualizationRunningState } from "metabase/query_builder/components/QueryVisualization";
 import { Icon } from "metabase/ui";
 
@@ -17,11 +16,11 @@ export const IdleStateRoot = styled.div`
   justify-content: center;
   align-items: center;
   flex: 1 0 auto;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const IdleStateIcon = styled(Icon)`
-  color: ${color("bg-dark")};
+  color: var(--mb-color-bg-dark);
   width: 2.5rem;
   height: 2.5rem;
 `;

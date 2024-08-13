@@ -101,7 +101,7 @@ describe("scenarios > dashboard > filters > date", () => {
   });
 
   it("should support being required", () => {
-    setFilter("Time", "Month and Year");
+    setFilter("Time", "Month and Year", "Month and Year");
 
     // Can't save without a default value
     toggleRequiredParameter();
@@ -130,7 +130,7 @@ describe("scenarios > dashboard > filters > date", () => {
     saveDashboard();
 
     // Updates the filter value
-    filterWidget().click();
+    filterWidget().should("contain.text", "November 2023").click();
     popover().findByText("December").click();
     filterWidget().findByText("December 2023");
     ensureDashboardCardHasText("76.83");
@@ -143,13 +143,9 @@ describe("scenarios > dashboard > filters > date", () => {
 
   it("should show sub-day resolutions in relative date filter (metabase#6660)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
-    cy.icon("pencil").click();
-    cy.icon("filter").click();
+    editDashboard();
 
-    popover().within(() => {
-      cy.findByText("Time").click();
-      cy.findByText("All Options").click();
-    });
+    setFilter("Time", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("No default").click();
@@ -160,8 +156,7 @@ describe("scenarios > dashboard > filters > date", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Next").click();
     // click on Days (the default value), which should open the resolution dropdown
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("days").click();
+    cy.findByDisplayValue("days").click();
     // Hours should appear in the selection box (don't click it)
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("hours");
@@ -181,13 +176,11 @@ describe("scenarios > dashboard > filters > date", () => {
     });
 
     visitDashboard(ORDERS_DASHBOARD_ID);
+    // we can't use helpers as they use english words
     cy.icon("pencil").click();
     cy.icon("filter").click();
 
-    popover().within(() => {
-      cy.findByText("Heure").click(); // "Time"
-      cy.findByText("Toutes les options").click(); // "All Options"
-    });
+    popover().findByText("Heure").click(); // "Time" -> "All Options"
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sélectionner...").click(); // "Select…"

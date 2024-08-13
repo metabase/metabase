@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import type Question from "metabase-lib/v1/Question";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   ConcreteFieldReference,
   DatasetColumn,
@@ -69,7 +69,7 @@ function ChartSettingsListColumns({
   );
 
   const onColumnSettingsClick = useCallback(
-    (fieldIdOrFieldRef, targetElement: Element) => {
+    (fieldIdOrFieldRef: FieldIdOrFieldRef, targetElement: Element) => {
       const column = columns.find(
         column =>
           column.id === fieldIdOrFieldRef ||

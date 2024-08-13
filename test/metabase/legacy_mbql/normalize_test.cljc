@@ -196,6 +196,10 @@
     {{:query {"FILTER" ["time-interval" 10 -10 "day"]}}
      {:query {:filter [:time-interval 10 -10 :day]}}}
 
+    "relative-time-interval is correctly normalized"
+    {{:query {"FILTER" ["relative-time-interval" 10 "week" -10 "week"]}}
+     {:query {:filter [:relative-time-interval 10 :week -10 :week]}}}
+
     "make sure we support time-interval options"
     {["TIME_INTERVAL" 10 -30 "DAY" {"include_current" true}]
      [:time-interval 10 -30 :day {:include-current true}]}
@@ -661,10 +665,6 @@
     "if already wrapped in field-id it's ok"
     {{:query {:aggregation [:count [:field-id 1000]]}}
      {:query {:aggregation [[:count [:field 1000 nil]]]}}}
-
-    "ags in the canonicalized format should pass thru ok"
-    {{:query {:aggregation [[:metric "ga:sessions"] [:metric "ga:1dayUsers"]]}}
-     {:query {:aggregation [[:metric "ga:sessions"] [:metric "ga:1dayUsers"]]}}}
 
     ":rows aggregation type, being deprecated since FOREVER, should just get removed"
     {{:query {:aggregation [:rows]}}
@@ -1510,3 +1510,18 @@
                    k {"x" 1, "y" {"z" 2}, "a" nil}}]
         (t/is (= query
                  (mbql.normalize/normalize query)))))))
+
+(t/deftest ^:parallel normalize-offset-test
+  (t/is (=? [:offset
+             {:effective-type :type/Float, :lib/uuid string?}
+             [:field
+              1
+              {:base-type :type/Float, :effective-type :type/Float}]
+             -1]
+            (mbql.normalize/normalize
+             ["offset"
+              {"effective-type" "type/Float"}
+              ["field"
+               1
+               {"base-type" "type/Float", "effective-type" "type/Float"}]
+              -1]))))

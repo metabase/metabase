@@ -267,7 +267,16 @@
         {:headers {"x-api-key" "abcde"}}
 
         ;; no key at all
-        {:headers {}}))))
+        {:headers {}})))
+
+  (t2.with-temp/with-temp [:model/ApiKey _ {:name          "An API Key without an internal user"
+                                            :user_id       nil
+                                            :creator_id    (mt/user->id :lucky)
+                                            :updated_by_id (mt/user->id :lucky)
+                                            :unhashed_key  (u.secret/secret "mb_foobar")}]
+    (testing "An API key without an internal user (e.g. a SCIM key) should not modify the request"
+      (let [req {:headers {"x-api-key" "mb_foobar"}}]
+        (is (= req (#'mw.session/merge-current-user-info req)))))))
 
 (defn- simple-auth-handler
   "A handler that just does authentication and returns a map from the dynamic variables that are bound as a result."

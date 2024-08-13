@@ -14,7 +14,7 @@ First, you'll want to make sure your browser is on friendly terms with Metabase:
 1. Create a new dashboard for each group of cards that are related to the same time period or segment.
    - For example, create new dashboards for weekly vs. monthly metrics, or new vs. returning customers.
 2. Move your cards to the new dashboard(s) until each dashboard has 10 or fewer cards.
-2. Use [custom destinations](https://www.metabase.com/learn/dashboards/custom-destinations) to link related cards on different dashboards.
+3. Use [custom destinations](https://www.metabase.com/learn/dashboards/custom-destinations) to link related cards on different dashboards.
 
 **Explanation**
 
@@ -24,17 +24,17 @@ Aside from running faster, a small and focused dashboard is also easier for peop
 
 ## Dashboard used by many people at the same time
 
-1. Optional: use Metabase's [auditing tools](../usage-and-performance-tools/audit.md) to look at your Metabase usage stats\*.
+1. Optional: use Metabase's [Usage analytics](../usage-and-performance-tools/usage-analytics.md) to look at your Metabase usage stats\*.
 2. Set up [caching](../configuring-metabase/caching.md) for the questions on your popular dashboard.
 3. Run the dashboard during off-hours so that people can load the cached results in seconds instead of executing a fresh query to your database.
 
-\* Available on paid plans.
+\* Available on Pro and Enterprise plans.
 
 **Explanation**
 
 If you have a dashboard that many people check around the same time (e.g., at the start of the work day), you may end up with queued queries or saturated database connections. Caching allows you to prepare for peak traffic by running those slow queries once, ahead of time, so that the results are ready to go.
 
-Caching takes less effort because it doesn't involve any changes to your schemas or databases. If you're ready to invest more resources into the root cause of dashboard performance issues, check out this list of common [schema and database optimizations](https://metabase.com/learn/administration/making-dashboards-faster#organize-data-to-anticipate-common-questions).
+Caching takes less effort because it doesn't involve any changes to your schemas or databases. If you're ready to invest more resources into the root cause of dashboard performance issues, check out this list of common [schema and database optimizations](https://metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#organize-data-to-anticipate-common-questions).
 
 ## Embedded dashboard is slow compared to original dashboard
 

@@ -83,11 +83,11 @@
   This may include subscriptions which the current user does not have collection permissions for, in which case
   some sensitive metadata (the list of cards and recipients) is stripped out."
   [archived dashboard_id creator_or_recipient]
-  {archived             [:maybe ms/BooleanString]
+  {archived             [:maybe ms/BooleanValue]
    dashboard_id         [:maybe ms/PositiveInt]
-   creator_or_recipient [:maybe ms/BooleanString]}
-  (let [creator-or-recipient (Boolean/parseBoolean creator_or_recipient)
-        archived?            (Boolean/parseBoolean archived)
+   creator_or_recipient [:maybe ms/BooleanValue]}
+  (let [creator-or-recipient creator_or_recipient
+        archived?            archived
         pulses               (->> (pulse/retrieve-pulses {:archived?    archived?
                                                           :dashboard-id dashboard_id
                                                           :user-id      (when creator-or-recipient api/*current-user-id*)})

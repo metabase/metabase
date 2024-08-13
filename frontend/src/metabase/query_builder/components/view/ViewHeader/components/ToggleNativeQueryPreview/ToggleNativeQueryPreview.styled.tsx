@@ -9,15 +9,15 @@ interface SqlButtonProps {
 
 export const SqlButton = styled(IconButtonWrapper)<SqlButtonProps>`
   color: ${({ isSelected }) =>
-    isSelected ? color("white") : color("text-dark")};
+    isSelected ? color("text-white") : color("text-dark")};
   background-color: ${({ isSelected }) => isSelected && color("brand")};
   height: 2rem;
   width: 2rem;
 
   &:hover {
-    color: ${color("brand")};
-    background-color: ${color("bg-medium")};
-    border: 1px solid ${color("brand")};
+    color: var(--mb-color-brand);
+    background-color: var(--mb-color-bg-medium);
+    border: 1px solid var(--mb-color-brand);
     transition: all 200ms linear;
   }
 `;

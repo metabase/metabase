@@ -119,7 +119,7 @@
             (when <>
               (log/info (u/format-color :red "Settings have been changed on another instance, and will be reloaded here.")))))))))
 
-(def ^:private ^:const cache-update-check-interval-ms
+(def ^:const cache-update-check-interval-ms
   "How often we should check whether the Settings cache is out of date (which requires a DB call)?"
   (u/minutes->ms 1))
 

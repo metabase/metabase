@@ -78,8 +78,8 @@ function getTitle(title) {
 }
 
 function assertOnHeaderCells(bucketSize) {
-  cy.get(".cellData").eq(0).contains(`Created At: ${bucketSize}`);
-  cy.get(".cellData").eq(1).contains("Count");
+  cy.get("[data-testid=cell-data]").eq(0).contains(`Created At: ${bucketSize}`);
+  cy.get("[data-testid=cell-data]").eq(1).contains("Count");
 }
 
 function assertOnTableValues(values) {

@@ -5,10 +5,12 @@
   "
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [malli.core :as mc]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.lib.schema.temporal-bucketing :as lib.schema.temporal-bucketing]
    [metabase.models.dispatch :as models.dispatch]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
@@ -21,38 +23,41 @@
 ;;; -------------------------------------------------- Utils --------------------------------------------------
 
 ;;; TODO -- consider renaming this to `InstanceOfModel` to differentiate it from [[InstanceOfClass]]
-(defn InstanceOf
+(def ^{:arglists '([model])} InstanceOf
   "Helper for creating a schema to check whether something is an instance of `model`.
 
     (ms/defn my-fn
       [user :- (ms/InstanceOf User)]
       ...)"
-  [model]
-  (mu/with-api-error-message
-    [:fn
-     {:error/message (format "value must be an instance of %s" (name model))}
-     #(models.dispatch/instance-of? model %)]
-    (deferred-tru "value must be an instance of {0}" (name model))))
+  (memoize
+    (fn [model]
+      (mu/with-api-error-message
+        [:fn
+         {:error/message (format "value must be an instance of %s" (name model))}
+         #(models.dispatch/instance-of? model %)]
+        (deferred-tru "value must be an instance of {0}" (name model))))))
 
-(defn InstanceOfClass
+(def ^{:arglists '([^Class klass])} InstanceOfClass
   "Helper for creating schemas to check whether something is an instance of a given class."
-  [^Class klass]
-  [:fn
-   {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
-   (partial instance? klass)])
+  (memoize
+    (fn [^Class klass]
+      [:fn
+       {:error/message (format "Instance of a %s" (.getCanonicalName klass))}
+       (partial instance? klass)])))
 
-(defn maps-with-unique-key
+(def ^{:arglists '([maps-schema k])} maps-with-unique-key
   "Given a schema of a sequence of maps, returns a schema that does an additional unique check on key `k`."
-  [maps-schema k]
-  (mu/with-api-error-message
-    [:and
-     [:fn (fn [maps]
-            (= (count maps)
-               (-> (map #(get % k) maps)
-                   distinct
-                   count)))]
-     maps-schema]
-    (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))
+  (memoize
+    (fn [maps-schema k]
+      (mu/with-api-error-message
+        [:and
+         [:fn (fn [maps]
+                (= (count maps)
+                   (-> (map #(get % k) maps)
+                       distinct
+                       count)))]
+         maps-schema]
+        (deferred-tru "value must be seq of maps in which {0}s are unique" (name k))))))
 
 ;;; -------------------------------------------------- Schemas --------------------------------------------------
 
@@ -158,8 +163,9 @@
                  (isa? k :Relation/*))))]
     (deferred-tru "value must be a valid field semantic or relation type (keyword or string).")))
 
-(def Field
-  "Schema for a valid Field for API usage."
+(def LegacyFieldOrExpressionReference
+  "Schema for a valid legacy `:field` or `:expression` reference for API usage. TODO -- why are these passed into the
+  REST API at all? MBQL clauses are not things we should ask for as API parameters."
   (mu/with-api-error-message
     [:fn (fn [k]
            ((comp (mc/validator mbql.s/Field)
@@ -227,13 +233,6 @@
      [:fn #(u/ignore-exceptions (<= 0 (Integer/parseInt %)))]]
     (deferred-tru "value must be a valid integer greater than or equal to zero.")))
 
-(def BooleanString
-  "Schema for a string that is a valid representation of a boolean (either `true` or `false`).
-   Defendpoint uses this to coerce the value for this schema to a boolean."
-  (mu/with-api-error-message
-    [:enum "true" "false" "TRUE" "FALSE"]
-    (deferred-tru "value must be a valid boolean string (''true'' or ''false'').")))
-
 (def TemporalString
   "Schema for a string that can be parsed by date2/parse."
   (mu/with-api-error-message
@@ -268,6 +267,14 @@
       (mu/with-api-error-message
        (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
 
+(def MaybeBooleanValue
+  "Same as above, but allows distinguishing between `nil` (the user did not specify a value)
+  and `false` (the user specified `false`)."
+  (-> [:enum {:decode/json (fn [b] (some->> b (contains? #{"true" true})))}
+       "true" "false" true false nil]
+      (mu/with-api-error-message
+       (deferred-tru "value must be a valid boolean string (''true'' or ''false'')."))))
+
 (def ValuesSourceConfig
   "Schema for valid source_options within a Parameter"
   ;; TODO: This should be tighter
@@ -275,8 +282,8 @@
     [:map
      [:values {:optional true} [:* :any]]
      [:card_id {:optional true} PositiveInt]
-     [:value_field {:optional true} Field]
-     [:label_field {:optional true} Field]]))
+     [:value_field {:optional true} LegacyFieldOrExpressionReference]
+     [:label_field {:optional true} LegacyFieldOrExpressionReference]]))
 
 (def RemappedFieldValue
   "Has two components:
@@ -290,9 +297,7 @@
 
 (def FieldValuesList
   "Schema for a valid list of values for a field, in contexts where the field can have a remapped field."
-  [:or
-   [:sequential RemappedFieldValue]
-   [:sequential NonRemappedFieldValue]])
+  [:sequential [:or RemappedFieldValue NonRemappedFieldValue]])
 
 (def FieldValuesResult
   "Schema for a value result of fetching the values for a field, in contexts where the field can have a remapped field."
@@ -330,7 +335,9 @@
      [:slug {:optional true} :string]
      [:name {:optional true} :string]
      [:default {:optional true} :any]
-     [:sectionId {:optional true} NonBlankString]]
+     [:sectionId {:optional true} NonBlankString]
+     [:temporal_units {:optional true}
+      [:sequential ::lib.schema.temporal-bucketing/unit]]]
     (deferred-tru "parameter must be a map with :id and :type keys")))
 
 (def ParameterMapping
@@ -380,3 +387,28 @@
   "Helper for creating a schema that coerces single-value to a vector. Useful for coercing query parameters."
   [schema]
   [:vector {:decode/string (fn [x] (cond (vector? x) x x [x]))} schema])
+
+(defn MapWithNoKebabKeys
+  "Helper for creating a schema to check if a map doesn't contain kebab case keys."
+  []
+  [:fn
+   {:error/message "Map should not contain any kebab-case keys"}
+   (fn [m]
+     ;; reduce-kv is more efficient that iterating over (keys m). But we have to extract the underlying map from
+     ;; Toucan2 Instance because it doesn't implement IKVReduce (yet).
+     (let [m (if (instance? toucan2.instance.Instance m)
+               (.m ^toucan2.instance.Instance m)
+               m)]
+       (reduce-kv (fn [_ k _]
+                    (if (str/includes? k "-")
+                      (reduced false)
+                      true))
+                  true m)))])
+
+(def File
+  "Schema for a file coming in HTTP request from multipart/form-data"
+  [:map {:closed true}
+   [:content-type string?]
+   [:filename string?]
+   [:size int?]
+   [:tempfile (InstanceOfClass java.io.File)]])

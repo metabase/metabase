@@ -14,6 +14,11 @@ const config = {
 
 const targetBranch = process.argv[2];
 
+if (!config.owner || !config.repo) {
+  console.error(chalk.red("You must set GITHUB_OWNER and GITHUB_REPO in your environment"));
+  process.exit(1);
+}
+
 if (!targetBranch) {
   console.error(chalk.red("You must provide a target branch name"));
   console.log("Usage: ", chalk.blue("yarn copy-required-checks <branch-to-copy-to>"));

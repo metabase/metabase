@@ -136,7 +136,7 @@
 
 (def orderable-types
   "Set of base types that are orderable."
-  #{:type/Text :type/Number :type/Temporal :type/Boolean})
+  #{:type/Text :type/Number :type/Temporal :type/Boolean :type/MongoBSONID})
 
 (mr/def ::orderable
   (expression-schema orderable-types
@@ -161,7 +161,7 @@
 (def equality-comparable-types
   "Set of base types that can be compared with equality."
   ;; TODO: Adding :type/* here was necessary to prevent type errors for queries where a field's type in the DB could not
-  ;; be determined better than :type/*. See #36841, where a MySQL enum field gets `:base-type :type/*`, and this check
+  ;; be determined better than :type/*. See #36841, where a MySQL enum field used to get `:base-type :type/*`, and this check
   ;; would fail on `[:= {} [:field ...] "enum-str"]` without `:type/*` here.
   ;; This typing of each input should be replaced with an alternative scheme that checks that it's plausible to compare
   ;; all the args to an `:=` clause. Eg. comparing `:type/*` and `:type/String` is cool. Comparing `:type/IPAddress` to

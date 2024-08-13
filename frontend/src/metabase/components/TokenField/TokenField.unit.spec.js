@@ -1,7 +1,7 @@
 /* eslint-disable jest/expect-expect */
 /* eslint-disable react/prop-types */
 
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { act, render, screen, fireEvent, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Component } from "react";
 
@@ -286,7 +286,9 @@ describe("TokenField", () => {
       expect(input().value).toEqual("");
 
       // Reset search on focus (it was a separate test before)
-      input().focus();
+      act(() => {
+        input().focus();
+      });
       findWithinOptions(["Doohickey", "Gizmo", "Widget"]);
     });
 

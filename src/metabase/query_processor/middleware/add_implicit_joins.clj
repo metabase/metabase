@@ -7,6 +7,7 @@
    [clojure.walk :as walk]
    [medley.core :as m]
    [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.legacy-mbql.schema :as mbql.s]
    [metabase.legacy-mbql.util :as mbql.u]
    [metabase.lib.metadata :as lib.metadata]
@@ -43,7 +44,7 @@
    [:condition    mbql.s/=]
    [:fk-field-id  ::lib.schema.id/field]])
 
-(mu/defn ^:private fk-ids->join-infos :- [:maybe [:sequential JoinInfo]]
+(mu/defn- fk-ids->join-infos :- [:maybe [:sequential JoinInfo]]
   "Given `fk-field-ids`, return a sequence of maps containing IDs and and other info needed to generate corresponding
   `joined-field` and `:joins` clauses."
   [fk-field-ids]
@@ -99,7 +100,7 @@
        [:field id-or-name (not-empty (dissoc opts :base-type :effective-type))]))
    fields))
 
-(mu/defn ^:private construct-fk-field-id->join-alias :- [:map-of
+(mu/defn- construct-fk-field-id->join-alias :- [:map-of
                                                          ::lib.schema.id/field
                                                          ::lib.schema.common/non-blank-string]
   [form]
@@ -290,8 +291,8 @@
   [query]
   (if (lib.util.match/match-one (:query query) [:field _ (_ :guard (every-pred :source-field (complement :join-alias)))])
     (do
-      (when-not (driver/database-supports? driver/*driver* :foreign-keys (lib.metadata/database (qp.store/metadata-provider)))
-        (throw (ex-info (tru "{0} driver does not support foreign keys." driver/*driver*)
+      (when-not (driver.u/supports? driver/*driver* :left-join (lib.metadata/database (qp.store/metadata-provider)))
+        (throw (ex-info (tru "{0} driver does not support left join." driver/*driver*)
                         {:driver driver/*driver*
                          :type   qp.error-type/unsupported-feature})))
       (update query :query resolve-implicit-joins))

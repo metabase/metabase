@@ -1,5 +1,5 @@
 (ns metabase.util.malli
-  (:refer-clojure :exclude [fn defn defmethod])
+  (:refer-clojure :exclude [fn defn defn- defmethod])
   (:require
    #?@(:clj
        ([metabase.util.i18n]
@@ -18,7 +18,7 @@
 #?(:clj
    (p/import-vars
     [mu.fn fn]
-    [mu.defn defn]))
+    [mu.defn defn defn-]))
 
 (core/defn humanize-include-value
   "Pass into mu/humanize to include the value received in the error message."
@@ -43,6 +43,11 @@
      ;; TODO Is there a way to check if a string is being localized in CLJS, by the `ttag`?
      ;; The compiler seems to just inline the translated strings with no annotation or wrapping.
      :cljs :string))
+
+(metabase.util.malli/defn with
+  "Update a malli schema with an arbitrary map of properties"
+  [mschema props]
+  (mut/update-properties (mc/schema mschema) merge props))
 
 ;; Kondo gets confused by :refer [defn] on this, so it's referenced fully qualified.
 (metabase.util.malli/defn with-api-error-message
@@ -118,3 +123,16 @@
               value)
        (throw (ex-info "Value does not match schema" {:value value :schema schema-or-validator}))
        value)))
+
+(core/defn map-schema-assoc
+  "Returns a new schema that is the same as map-schema, but with the key k associated with the value v.
+   If kvs are provided, they are also associated with the schema."
+  [map-schema & kvs]
+  (if kvs
+    (if (next kvs)
+      (let [key (first kvs)
+            val (first (next kvs))
+            ret (mut/assoc map-schema key val)]
+        (recur ret (nnext kvs)))
+      (throw (ex-info "map-schema-assoc expects even number of arguments after schema-map, found odd number" {})))
+    map-schema))

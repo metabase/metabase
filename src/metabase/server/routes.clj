@@ -41,8 +41,8 @@
        (redirect-including-query-string (format "%s/api/embed/card/%s/query/%s" (public-settings/site-url) token export-format)))
   (GET "*" [] index/embed))
 
-(defroutes ^{:doc "Top-level ring routes for Metabase."} routes
-  (or (some-> (resolve 'ee.sso.routes/routes) var-get)
+(defroutes ^{:doc "Top-level ring routes for Metabase.", :arglists '([request] [request respond raise])} routes
+  (or (some-> (resolve 'metabase-enterprise.sso.api.routes/routes) var-get)
       (fn [_ respond _]
         (respond nil)))
   ;; ^/$ -> index.html

@@ -1,12 +1,11 @@
 import styled from "@emotion/styled";
 
 import DefaultButton from "metabase/core/components/Button";
-import { color } from "metabase/lib/colors";
 
 export const SectionTitle = styled.span`
   font-size: 12px;
   font-weight: 900;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const SectionContent = styled.div`
@@ -23,7 +22,7 @@ export const Row = styled.div`
 
 export const Button = styled(DefaultButton)`
   padding: 8px;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
   border: none;
 `;

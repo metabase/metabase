@@ -5,7 +5,7 @@ import _ from "underscore";
 
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
 import { TreeNodeList } from "./TreeNodeList";
-import type { ITreeNodeItem, TreeNodeComponent } from "./types";
+import type { ITreeNodeItem } from "./types";
 import { getInitialExpandedIds } from "./utils";
 
 interface TreeProps {
@@ -14,7 +14,7 @@ interface TreeProps {
   role?: string;
   emptyState?: React.ReactNode;
   onSelect?: (item: ITreeNodeItem) => void;
-  TreeNode?: TreeNodeComponent;
+  TreeNode?: any; // This was previously set to TreeNodeComponent, but after upgrading to react 18, the type no longer played nice with forward ref compontents, including styled components
 }
 
 function BaseTree({

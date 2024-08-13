@@ -7,6 +7,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
+import { SmallGenericError } from "metabase/components/ErrorPages";
 import ExplicitSize from "metabase/components/ExplicitSize";
 import CS from "metabase/css/core/index.css";
 import DashboardS from "metabase/css/dashboard.module.css";
@@ -14,6 +15,7 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { formatNumber } from "metabase/lib/formatting";
 import { equals } from "metabase/lib/utils";
 import { getIsShowingRawTable } from "metabase/query_builder/selectors";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { getFont } from "metabase/styled-components/selectors";
 import {
   extractRemappings,
@@ -55,6 +57,7 @@ const defaultProps = {
   isEditing: false,
   isSettings: false,
   isQueryBuilder: false,
+  isEmbeddingSdk: false,
   onUpdateVisualizationSettings: () => {},
   // prefer passing in a function that doesn't cause the application to reload
   onChangeLocation: location => {
@@ -65,15 +68,18 @@ const defaultProps = {
 const mapStateToProps = state => ({
   fontFamily: getFont(state),
   isRawTable: getIsShowingRawTable(state),
+  isEmbeddingSdk: getIsEmbeddingSdk(state),
 });
 
 const SMALL_CARD_WIDTH_THRESHOLD = 150;
 
 class Visualization extends PureComponent {
   state = {
+    getHref: undefined,
     hovered: null,
     clicked: null,
     error: null,
+    genericError: null,
     warnings: [],
     yAxisSplit: null,
     series: null,
@@ -146,9 +152,11 @@ class Visualization extends PureComponent {
     const computedSettings = !this.isLoading(series)
       ? getComputedSettingsForSeries(series)
       : {};
+
     this.setState({
       hovered: null,
       error: null,
+      genericError: null,
       warnings: [],
       yAxisSplit: null,
       series: series,
@@ -223,10 +231,13 @@ class Visualization extends PureComponent {
       metadata,
       isRawTable,
       getExtraDataForClick = () => ({}),
+      rawSeries,
     } = this.props;
 
-    const seriesIndex = clicked.seriesIndex || 0;
-    const card = this.state.series[seriesIndex].card;
+    const card =
+      rawSeries.find(series => series.card.id === clicked.cardId)?.card ??
+      rawSeries[0].card;
+
     const question = this._getQuestionForCardCached(metadata, card);
     const mode = this.getMode(this.props.mode, question);
 
@@ -294,22 +305,17 @@ class Visualization extends PureComponent {
   };
 
   // Add the underlying card of current series to onChangeCardAndRun if available
-  handleOnChangeCardAndRun = ({
-    nextCard,
-    seriesIndex,
-    objectId,
-    settingsSyncOptions,
-  }) => {
-    const { series, clicked } = this.state;
+  handleOnChangeCardAndRun = ({ nextCard, objectId }) => {
+    const { rawSeries } = this.props;
 
-    const index = seriesIndex || (clicked && clicked.seriesIndex) || 0;
-    const previousCard = series && series[index] && series[index].card;
+    const previousCard =
+      rawSeries.find(series => series.card.id === nextCard?.id)?.card ??
+      rawSeries[0].card;
 
     this.props.onChangeCardAndRun({
       nextCard,
       previousCard,
       objectId,
-      settingsSyncOptions,
     });
   };
 
@@ -320,6 +326,10 @@ class Visualization extends PureComponent {
   onRenderError = error => {
     console.error(error);
     this.setState({ error });
+  };
+
+  onErrorBoundaryError = genericError => {
+    this.setState({ genericError });
   };
 
   hideActions = () => {
@@ -333,6 +343,7 @@ class Visualization extends PureComponent {
       actionButtons,
       className,
       dashcard,
+      getHref,
       errorMessageOverride,
       showTitle,
       isDashboard,
@@ -348,7 +359,7 @@ class Visualization extends PureComponent {
       onOpenChartSettings,
       onUpdateVisualizationSettings,
     } = this.props;
-    const { visualization } = this.state;
+    const { genericError, visualization } = this.state;
     const small = width < SMALL_CARD_WIDTH_THRESHOLD;
 
     // these may be overridden below
@@ -408,7 +419,7 @@ class Visualization extends PureComponent {
       }
     }
 
-    if (!error) {
+    if (!error && !genericError) {
       noResults = _.every(
         series,
         s => s && s.data && datasetContainsNoResults(s.data),
@@ -466,7 +477,7 @@ class Visualization extends PureComponent {
       (replacementContent && (dashcard.size_y !== 1 || isMobile) && !isAction);
 
     return (
-      <ErrorBoundary>
+      <ErrorBoundary onError={this.onErrorBoundaryError}>
         <VisualizationRoot
           className={className}
           style={style}
@@ -480,6 +491,7 @@ class Visualization extends PureComponent {
                 icon={headerIcon}
                 actionButtons={extra}
                 width={width}
+                getHref={getHref}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun && !replacementContent
                     ? this.handleOnChangeCardAndRun
@@ -499,6 +511,8 @@ class Visualization extends PureComponent {
               isSmall={small}
               isDashboard={isDashboard}
             />
+          ) : genericError ? (
+            <SmallGenericError bordered={false} />
           ) : loading ? (
             <LoadingView expectedDuration={expectedDuration} isSlow={isSlow} />
           ) : (
@@ -530,6 +544,7 @@ class Visualization extends PureComponent {
                 onRender={this.onRender}
                 onActionDismissal={this.hideActions}
                 gridSize={gridSize}
+                getHref={getHref}
                 onChangeCardAndRun={
                   this.props.onChangeCardAndRun
                     ? this.handleOnChangeCardAndRun

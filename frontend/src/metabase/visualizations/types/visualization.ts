@@ -1,6 +1,11 @@
+import type { ReactNode } from "react";
+
 import type { OptionsType } from "metabase/lib/formatting/types";
-import type { ColorGetter } from "metabase/static-viz/lib/colors";
 import type { IconName, IconProps } from "metabase/ui";
+import type {
+  TextHeightMeasurer,
+  TextWidthMeasurer,
+} from "metabase/visualizations/shared/types/measure-text";
 import type { ClickObject } from "metabase/visualizations/types";
 import type Metadata from "metabase-lib/v1/metadata/Metadata";
 import type Query from "metabase-lib/v1/queries/Query";
@@ -10,6 +15,8 @@ import type {
   DatasetData,
   RawSeries,
   Series,
+  TimelineEvent,
+  TimelineEventId,
   TransformedSeries,
   VisualizationSettings,
 } from "metabase-types/api";
@@ -17,16 +24,42 @@ import type {
 import type { RemappingHydratedDatasetColumn } from "./columns";
 import type { HoveredObject } from "./hover";
 
-export type Formatter = (value: unknown, options: OptionsType) => string;
+export type Formatter = (value: unknown, options?: OptionsType) => string;
+
+export type ColorGetter = (colorName: string) => string;
 
 export interface RenderingContext {
   getColor: ColorGetter;
   formatValue: Formatter;
-  measureText: (text: string, fontSize: number, fontWeight?: number) => number;
+
+  measureText: TextWidthMeasurer;
+  measureTextHeight: TextHeightMeasurer;
   fontFamily: string;
+
+  theme: VisualizationTheme;
 }
 
-type OnChangeCardAndRunOpts = {
+/**
+ * Visualization theming overrides.
+ * Refer to DEFAULT_METABASE_COMPONENT_THEME for the default values.
+ **/
+export interface VisualizationTheme {
+  cartesian: {
+    label: {
+      fontSize: number;
+    };
+    goalLine: {
+      label: {
+        fontSize: number;
+      };
+    };
+  };
+  pie: {
+    borderColor: string;
+  };
+}
+
+export type OnChangeCardAndRunOpts = {
   previousCard?: Card;
   nextCard: Card;
   seriesIndex?: number;
@@ -35,7 +68,7 @@ type OnChangeCardAndRunOpts = {
 export type OnChangeCardAndRun = (opts: OnChangeCardAndRunOpts) => void;
 
 export type ComputedVisualizationSettings = VisualizationSettings & {
-  column?: (col: RemappingHydratedDatasetColumn) => OptionsType;
+  column?: (col: RemappingHydratedDatasetColumn) => Record<string, unknown>;
 };
 
 export interface StaticVisualizationProps {
@@ -47,22 +80,28 @@ export interface StaticVisualizationProps {
 export interface VisualizationProps {
   series: Series;
   card: Card;
+  getHref?: () => string | undefined;
   data: DatasetData;
   metadata: Metadata;
   rawSeries: RawSeries;
   settings: ComputedVisualizationSettings;
   headerIcon: IconProps;
-  actionButtons: React.ReactNode;
+  errorIcon: IconName;
+  actionButtons: ReactNode;
   fontFamily: string;
   isPlaceholder?: boolean;
   isFullscreen: boolean;
   isQueryBuilder: boolean;
+  isEmbeddingSdk: boolean;
   showTitle: boolean;
   isDashboard: boolean;
   isEditing: boolean;
   isSettings: boolean;
+  showAllLegendItems?: boolean;
   hovered?: HoveredObject;
   className?: string;
+  timelineEvents?: TimelineEvent[];
+  selectedTimelineEventIds?: TimelineEventId[];
 
   gridSize?: VisualizationGridSize;
   width: number;
@@ -78,16 +117,20 @@ export interface VisualizationProps {
     yAxisSplit?: number[][];
     warnings?: string[];
   }) => void;
-  onRenderError: (error?: Error) => void;
+  onRenderError: (error?: string) => void;
   onChangeCardAndRun: OnChangeCardAndRun;
   onHoverChange: (hoverObject?: HoveredObject | null) => void;
   onVisualizationClick: (clickObject?: ClickObject) => void;
   onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
+  onSelectTimelineEvents?: (timelineEvents: TimelineEvent[]) => void;
+  onDeselectTimelineEvents?: () => void;
+  onOpenTimelines?: () => void;
 
   "graph.dimensions"?: string[];
   "graph.metrics"?: string[];
 
-  onRemoveSeries?: any;
+  canRemoveSeries?: (seriesIndex: number) => boolean;
+  onRemoveSeries?: (event: React.MouseEvent, seriesIndex: number) => void;
   onUpdateWarnings?: any;
 }
 
@@ -118,10 +161,13 @@ export type VisualizationSettingDefinition<TValue, TProps = void> = {
   getHidden?: (series: Series, settings: VisualizationSettings) => boolean;
   getDefault?: (series: Series, settings: VisualizationSettings) => TValue;
   getValue?: (series: Series, settings: VisualizationSettings) => TValue;
+  getDisabled?: (series: Series, settings: VisualizationSettings) => TValue;
+  disabled?: boolean;
   default?: TValue;
   marginBottom?: string;
   getMarginBottom?: (series: Series, settings: VisualizationSettings) => string;
   persistDefault?: boolean;
+  inline?: boolean;
   props?: TProps;
   getProps?: (
     series: Series,
@@ -149,20 +195,23 @@ export type VisualizationGridSize = {
 };
 
 // TODO: add component property for the react component instead of the intersection
-export type Visualization = React.ComponentType<VisualizationProps> & {
-  name: string;
-  noun: string;
+export type Visualization = React.ComponentType<VisualizationProps> &
+  VisualizationDefinition;
+
+export type VisualizationDefinition = {
+  name?: string;
+  noun?: string;
   uiName: string;
   identifier: string;
   aliases?: string[];
   iconName: IconName;
 
-  maxMetricsSupported: number;
-  maxDimensionsSupported: number;
+  maxMetricsSupported?: number;
+  maxDimensionsSupported?: number;
 
   disableClickBehavior?: boolean;
   canSavePng?: boolean;
-  noHeader: boolean;
+  noHeader?: boolean;
   hidden?: boolean;
   disableSettingsConfig?: boolean;
   supportPreviewing?: boolean;
@@ -173,9 +222,9 @@ export type Visualization = React.ComponentType<VisualizationProps> & {
 
   settings: VisualizationSettingsDefinitions;
 
-  placeHolderSeries: Series;
+  placeHolderSeries?: Series;
 
-  transformSeries: (series: Series) => TransformedSeries;
+  transformSeries?: (series: Series) => TransformedSeries;
   // TODO: remove dependency on metabase-lib
   isSensible: (data: DatasetData, query?: Query) => boolean;
   // checkRenderable throws an error if a visualization is not renderable
@@ -184,6 +233,7 @@ export type Visualization = React.ComponentType<VisualizationProps> & {
     settings: VisualizationSettings,
     query: Query,
   ) => void | never;
-  isLiveResizable: (series: Series) => boolean;
+  isLiveResizable?: (series: Series) => boolean;
   onDisplayUpdate?: (settings: VisualizationSettings) => VisualizationSettings;
+  placeholderSeries: RawSeries;
 };

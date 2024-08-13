@@ -6,11 +6,13 @@ import { isNotNull } from "metabase/lib/types";
 import { Anchor, Button, Icon, Text, List } from "metabase/ui";
 
 import type { EmbedHomepageViewProps } from "./EmbedHomepageView";
+import { trackEmbeddingHomepageExampleDashboardClick } from "./analytics";
 
 export const StaticTabContent = ({
   embeddingAutoEnabled,
   exampleDashboardId,
   learnMoreStaticEmbedUrl,
+  initialTab,
 }: EmbedHomepageViewProps) => {
   return (
     <>
@@ -43,7 +45,12 @@ export const StaticTabContent = ({
       </List>
 
       {isNotNull(exampleDashboardId) && (
-        <Link to={`/dashboard/${exampleDashboardId}`}>
+        <Link
+          onClick={() =>
+            trackEmbeddingHomepageExampleDashboardClick(initialTab)
+          }
+          to={`/dashboard/${exampleDashboardId}`}
+        >
           <Button
             variant="filled"
             mb="sm"

@@ -6,7 +6,6 @@
    [metabase.api.common :as api]
    [metabase.config :as config]
    [metabase.integrations.google.interface :as google.i]
-   [metabase.models.interface :as mi]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting.multi-setting
     :refer [define-multi-setting-impl]]
@@ -16,6 +15,7 @@
    [metabase.util.i18n :refer [deferred-tru tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
    [toucan2.core :as t2]))
 
 ;; Load EE implementation if available
@@ -107,7 +107,7 @@
               {:status-code 401
                :errors  {:_error non-existant-account-message}}))))
 
-(mu/defn ^:private google-auth-create-new-user!
+(mu/defn- google-auth-create-new-user!
   [{:keys [email] :as new-user} :- user/NewUser]
   (check-autocreate-user-allowed-for-email email)
   ;; this will just give the user a random password; they can go reset it if they ever change their mind and want to
@@ -124,7 +124,7 @@
                                         :last_name  last-name}))
   (assoc user :first_name first-name :last_name last-name))
 
-(mu/defn ^:private google-auth-fetch-or-create-user! :- (mi/InstanceOf User)
+(mu/defn- google-auth-fetch-or-create-user! :- (ms/InstanceOf User)
   [first-name last-name email]
   (let [existing-user (t2/select-one [User :id :email :last_login :first_name :last_name] :%lower.email (u/lower-case-en email))]
     (if existing-user

@@ -3,7 +3,8 @@
    [clojure.string :as str]
    [clojure.test :as t]
    [metabase.legacy-mbql.util :as mbql.u]
-   [metabase.types]))
+   [metabase.types]
+   #?@(:clj (#_{:clj-kondo/ignore [:discouraged-namespace]} [metabase.test :as mt]))))
 
 (comment metabase.types/keep-me)
 
@@ -275,6 +276,52 @@
            (mbql.u/desugar-filter-clause [:time-interval [:expression "CC"] :current :week]))
         "keywords like `:current` should work correctly"))
 
+(t/deftest ^:parallel desugar-relative-time-interval-negative-test
+  (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
+    (let [value           -10
+          bucket          :day
+          offset-value    -8
+          offset-bucket   :week
+          exp-offset [:interval offset-value offset-bucket]]
+      (t/testing "expression reference is transformed correctly"
+        (let [expr-ref [:expression "cc"]]
+          (t/is (= [:and
+                    [:>= expr-ref [:+ [:relative-datetime value bucket] exp-offset]]
+                    [:<  expr-ref [:+ [:relative-datetime 0     bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval expr-ref value bucket offset-value offset-bucket])))))
+      (t/testing "field reference is transformed correctly"
+        (let [field-ref [:field 100 nil]
+              exp-field-ref (update field-ref 2 assoc :temporal-unit :default)]
+          (t/is (= [:and
+                    [:>= exp-field-ref [:+ [:relative-datetime value bucket] exp-offset]]
+                    [:<  exp-field-ref [:+ [:relative-datetime 0     bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval exp-field-ref value bucket offset-value offset-bucket]))))))))
+
+(t/deftest ^:parallel desugar-relative-time-interval-positive-test
+  (t/testing "Desugaring relative-date-time produces expected [:and [:>=..] [:<..]] expression"
+    (let [value           10
+          bucket          :day
+          offset-value    8
+          offset-bucket   :week
+          exp-offset [:interval offset-value offset-bucket]]
+      (t/testing "expression reference is transformed correctly"
+        (let [expr-ref [:expression "cc"]]
+          (t/is (= [:and
+                    [:>= expr-ref [:+ [:relative-datetime 1           bucket] exp-offset]]
+                    [:<  expr-ref [:+ [:relative-datetime (inc value) bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval expr-ref value bucket offset-value offset-bucket])))))
+      (t/testing "field reference is transformed correctly"
+        (let [field-ref [:field 100 nil]
+              exp-field-ref (update field-ref 2 assoc :temporal-unit :default)]
+          (t/is (= [:and
+                    [:>= exp-field-ref [:+ [:relative-datetime 1           bucket] exp-offset]]
+                    [:<  exp-field-ref [:+ [:relative-datetime (inc value) bucket] exp-offset]]]
+                   (mbql.u/desugar-filter-clause
+                    [:relative-time-interval exp-field-ref value bucket offset-value offset-bucket]))))))))
+
 (t/deftest ^:parallel desugar-relative-datetime-with-current-test
   (t/testing "when comparing `:relative-datetime`to `:field`, it should take the temporal unit of the `:field`"
     (t/is (= [:=
@@ -374,12 +421,36 @@
              (mbql.u/desugar-filter-clause [:not-empty [:field 1 {:base-type :type/DateTime}]])))))
 
 (t/deftest ^:parallel desugar-does-not-contain-test
-  (t/testing "desugaring does-not-contain without options"
-    (t/is (= [:not [:contains [:field 1 nil] "ABC"]]
-             (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC"]))))
-  (t/testing "desugaring does-not-contain *with* options"
-    (t/is (= [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
-             (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC" {:case-sensitive false}])))))
+  (t/testing "desugaring does-not-contain"
+    (t/testing "without options"
+      (t/is (= [:not [:contains [:field 1 nil] "ABC"]]
+               (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC"]))))
+    (t/testing "*with* options"
+      (t/is (= [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
+               (mbql.u/desugar-filter-clause [:does-not-contain [:field 1 nil] "ABC" {:case-sensitive false}]))))
+    (t/testing "desugaring does-not-contain with multiple arguments"
+      (t/testing "without options"
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC"]]
+                  [:not [:contains [:field 1 nil] "XYZ"]]]
+                 (mbql.u/desugar-filter-clause [:does-not-contain {} [:field 1 nil] "ABC" "XYZ"])))
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC"]]
+                  [:not [:contains [:field 1 nil] "XYZ"]]
+                  [:not [:contains [:field 1 nil] "LMN"]]]
+                 (mbql.u/desugar-filter-clause [:does-not-contain {} [:field 1 nil] "ABC" "XYZ" "LMN"]))))
+      (t/testing "*with* options"
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
+                  [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]]
+                 (mbql.u/desugar-filter-clause
+                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ"])))
+        (t/is (= [:and
+                  [:not [:contains [:field 1 nil] "ABC" {:case-sensitive false}]]
+                  [:not [:contains [:field 1 nil] "XYZ" {:case-sensitive false}]]
+                  [:not [:contains [:field 1 nil] "LMN" {:case-sensitive false}]]]
+                 (mbql.u/desugar-filter-clause
+                   [:does-not-contain {:case-sensitive false} [:field 1 nil] "ABC" "XYZ" "LMN"])))))))
 
 (t/deftest ^:parallel desugar-temporal-extract-test
   (t/testing "desugaring :get-year, :get-month, etc"
@@ -851,3 +922,76 @@
             [:expression "Date" {:temporal-unit :quarter}]
             [:relative-datetime 0 :quarter]]
            (mbql.u/desugar-time-interval [:time-interval [:expression "Date"] :current :quarter]))))
+
+(t/deftest ^:parallel desugar-month-quarter-day-name-test
+  (t/is (= [:case [[[:= [:field 1 nil] 1]  "Jan"]
+                   [[:= [:field 1 nil] 2]  "Feb"]
+                   [[:= [:field 1 nil] 3]  "Mar"]
+                   [[:= [:field 1 nil] 4]  "Apr"]
+                   [[:= [:field 1 nil] 5]  "May"]
+                   [[:= [:field 1 nil] 6]  "Jun"]
+                   [[:= [:field 1 nil] 7]  "Jul"]
+                   [[:= [:field 1 nil] 8]  "Aug"]
+                   [[:= [:field 1 nil] 9]  "Sep"]
+                   [[:= [:field 1 nil] 10] "Oct"]
+                   [[:= [:field 1 nil] 11] "Nov"]
+                   [[:= [:field 1 nil] 12] "Dec"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:month-name [:field 1 nil]]))
+        "`month-name` should desugar to a `:case` clause with values for each month")
+  (t/is (= [:case [[[:= [:field 1 nil] 1] "Q1"]
+                   [[:= [:field 1 nil] 2] "Q2"]
+                   [[:= [:field 1 nil] 3] "Q3"]
+                   [[:= [:field 1 nil] 4] "Q4"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:quarter-name [:field 1 nil]]))
+        "`quarter-name` should desugar to a `:case` clause with values for each quarter")
+  (t/is (= [:case [[[:= [:field 1 nil] 1] "Sunday"]
+                   [[:= [:field 1 nil] 2] "Monday"]
+                   [[:= [:field 1 nil] 3] "Tuesday"]
+                   [[:= [:field 1 nil] 4] "Wednesday"]
+                   [[:= [:field 1 nil] 5] "Thursday"]
+                   [[:= [:field 1 nil] 6] "Friday"]
+                   [[:= [:field 1 nil] 7] "Saturday"]]
+            {:default ""}]
+           (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
+        "`day-name` should desugar to a `:case` clause with values for each weekday"))
+
+#?(:clj
+   (t/deftest ^:synchronized desugar-month-quarter-day-name-i18n-test
+     (mt/with-user-locale "es"
+       ;; JVM versions 17 and older for some languages (including Spanish) use eg. "oct.", while in JVMs 18+ they
+       ;; use "oct". I wish I were joking, but I'm not. These tests were passing on 21 and failing on 17 and 11
+       ;; before I made them flexible about the dot.
+       (t/is (=? [:case [[[:= [:field 1 nil] 1]  #(#{"ene"  "ene."}  %)]
+                         [[:= [:field 1 nil] 2]  #(#{"feb"  "feb."}  %)]
+                         [[:= [:field 1 nil] 3]  #(#{"mar"  "mar."}  %)]
+                         [[:= [:field 1 nil] 4]  #(#{"abr"  "abr."}  %)]
+                         [[:= [:field 1 nil] 5]  #(#{"may"  "may."}  %)]
+                         [[:= [:field 1 nil] 6]  #(#{"jun"  "jun."}  %)]
+                         [[:= [:field 1 nil] 7]  #(#{"jul"  "jul."}  %)]
+                         [[:= [:field 1 nil] 8]  #(#{"ago"  "ago."}  %)]
+                         [[:= [:field 1 nil] 9]  #(#{"sept" "sept."} %)]
+                         [[:= [:field 1 nil] 10] #(#{"oct"  "oct."}  %)]
+                         [[:= [:field 1 nil] 11] #(#{"nov"  "nov."}  %)]
+                         [[:= [:field 1 nil] 12] #(#{"dic"  "dic."}  %)]]
+                  {:default ""}]
+                 (mbql.u/desugar-expression [:month-name [:field 1 nil]]))
+             "`month-name` should desugar to a `:case` clause with values for each month")
+       (t/is (= [:case [[[:= [:field 1 nil] 1] "Q1"]
+                        [[:= [:field 1 nil] 2] "Q2"]
+                        [[:= [:field 1 nil] 3] "Q3"]
+                        [[:= [:field 1 nil] 4] "Q4"]]
+                 {:default ""}]
+                (mbql.u/desugar-expression [:quarter-name [:field 1 nil]]))
+             "`quarter-name` should desugar to a `:case` clause with values for each quarter")
+       (t/is (= [:case [[[:= [:field 1 nil] 1] "domingo"]
+                        [[:= [:field 1 nil] 2] "lunes"]
+                        [[:= [:field 1 nil] 3] "martes"]
+                        [[:= [:field 1 nil] 4] "miércoles"]
+                        [[:= [:field 1 nil] 5] "jueves"]
+                        [[:= [:field 1 nil] 6] "viernes"]
+                        [[:= [:field 1 nil] 7] "sábado"]]
+                 {:default ""}]
+                (mbql.u/desugar-expression [:day-name [:field 1 nil]]))
+             "`day-name` should desugar to a `:case` clause with values for each weekday"))))

@@ -28,8 +28,43 @@ export function modal() {
   return cy.get([MODAL_SELECTOR, LEGACY_MODAL_SELECTOR].join(","));
 }
 
+export function tooltip() {
+  return cy.get(".emotion-Tooltip-tooltip");
+}
+
 export function entityPickerModal() {
   return cy.findByTestId("entity-picker-modal");
+}
+
+export function entityPickerModalLevel(level) {
+  return cy.findByTestId(`item-picker-level-${level}`);
+}
+
+export function entityPickerModalItem(level, name) {
+  return entityPickerModalLevel(level).findByText(name).parents("button");
+}
+
+export function entityPickerModalTab(name) {
+  return cy.findAllByRole("tab").filter(`:contains(${name})`);
+}
+
+// displays at least these tabs:
+export function shouldDisplayTabs(tabs) {
+  tabs.forEach(tab => {
+    entityPickerModalTab(tab).should("exist");
+  });
+}
+
+export function tabsShouldBe(selected, tabs) {
+  cy.log(tabs);
+  cy.findAllByRole("tab").should("have.length", tabs.length);
+  tabs.forEach(tab => {
+    if (tab === selected) {
+      entityPickerModalTab(tab).and("have.attr", "aria-selected", "true");
+    } else {
+      entityPickerModalTab(tab).should("exist");
+    }
+  });
 }
 
 export function collectionOnTheGoModal() {
@@ -58,15 +93,16 @@ export function appBar() {
 
 export function openNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
+  navigationSidebar().should("be.visible");
 }
 
 export function closeNavigationSidebar() {
   appBar().findByTestId("sidebar-toggle").click();
+  navigationSidebar().should("not.be.visible");
 }
 
-export function browse() {
-  // takes you to `/browse` (reflecting changes made in `0.38-collection-redesign)
-  return navigationSidebar().findByText("Browse data");
+export function browseDatabases() {
+  return navigationSidebar().findByLabelText("Browse databases");
 }
 
 /**
@@ -97,7 +133,7 @@ export function clearFilterWidget(index = 0) {
 }
 
 export function resetFilterWidgetToDefault(index = 0) {
-  return filterWidget().eq(index).icon("time_history").click();
+  return filterWidget().eq(index).icon("revert").click();
 }
 
 export function setFilterWidgetValue(
@@ -106,13 +142,15 @@ export function setFilterWidgetValue(
   { buttonLabel = "Update filter" } = {},
 ) {
   filterWidget().eq(0).click();
-  popover().within(() => {
-    cy.icon("close").click();
-    if (value) {
-      cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
-    }
-    cy.button(buttonLabel).click();
-  });
+  popover()
+    .first()
+    .within(() => {
+      removeMultiAutocompleteValue(0);
+      if (value) {
+        cy.findByPlaceholderText(targetPlaceholder).type(value).blur();
+      }
+      cy.button(buttonLabel).click({ force: true });
+    });
 }
 
 export function toggleFilterWidgetValues(
@@ -137,6 +175,10 @@ export const collectionTable = () => {
 
 export const queryBuilderHeader = () => {
   return cy.findByTestId("qb-header");
+};
+
+export const queryBuilderFooter = () => {
+  return cy.findByTestId("view-footer");
 };
 
 export const closeQuestionActions = () => {
@@ -214,4 +256,53 @@ export const undoToastList = () => {
 
 export function dashboardCards() {
   return cy.get("[data-element-id=dashboard-cards-container]");
+}
+
+export function tableInteractive() {
+  return cy.findByTestId("TableInteractive-root");
+}
+
+export function tableHeaderClick(headerString) {
+  tableInteractive().within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mousedown");
+  });
+
+  tableInteractive().within(() => {
+    cy.findByTextEnsureVisible(headerString).trigger("mouseup");
+  });
+}
+
+/**
+ * selects the global new button
+ * @param {*} menuItem optional, if provided, will click the New button and return the menu item with the text provided
+ * @returns
+ */
+export function newButton(menuItem) {
+  if (menuItem) {
+    cy.findByTestId("app-bar").button("New").click();
+    return popover().findByText(menuItem);
+  }
+
+  return cy.findByTestId("app-bar").button("New");
+}
+
+export function multiSelectInput(filter = ":eq(0)") {
+  return cy.findByRole("combobox").filter(filter).get("input").last();
+}
+
+export function multiAutocompleteInput(filter = ":eq(0)") {
+  return cy.findAllByRole("combobox").filter(filter).get("input").last();
+}
+
+export function multiAutocompleteValue(index, filter = ":eq(0)") {
+  return cy
+    .findAllByRole("combobox")
+    .filter(filter)
+    .get(`[value][index=${index}]`);
+}
+
+export function removeMultiAutocompleteValue(index, filter) {
+  return multiAutocompleteValue(index, filter)
+    .findByRole("button", { hidden: true })
+    .click();
 }

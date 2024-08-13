@@ -28,11 +28,17 @@
   #{:model/ApiKey
     :model/CacheConfig
     :model/CardFavorite
+    :model/CloudMigration
     :model/DashboardFavorite
+    :model/FieldUsage
+    :model/LegacyMetric
+    :model/LegacyMetricImportantField
     :model/Query
+    :model/QueryAnalysis
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField
+    :model/QueryTable
     :model/TaskHistory})
 
 (defn- all-model-names []

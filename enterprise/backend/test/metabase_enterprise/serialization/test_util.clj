@@ -7,12 +7,13 @@
    [metabase.db.connection :as mdb.connection]
    [metabase.db.data-source :as mdb.data-source]
    [metabase.models :refer [Card Collection Dashboard DashboardCard DashboardCardSeries Database
-                            Field LegacyMetric NativeQuerySnippet Pulse PulseCard Segment Table User]]
+                            Field NativeQuerySnippet Pulse PulseCard Segment Table User]]
    [metabase.models.collection :as collection]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.test :as mt]
    [metabase.test.data :as data]
    [metabase.util.files :as u.files]
+   [toucan2.connection :as t2.conn]
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
@@ -61,10 +62,12 @@
 
 (defmacro with-db [data-source & body]
   `(binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 ~data-source)]
-     ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
-     ;;   redefs not great for parallelism
-    (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
-      ~@body)) )
+     (with-open [conn# (.getConnection mdb.connection/*application-db*)]
+       (binding [t2.conn/*current-connectable* conn#]
+         ;; TODO mt/with-empty-h2-app-db also rebinds some perms-group/* - do we want to do that too?
+         ;;   redefs not great for parallelism
+         (testing (format "\nApp DB = %s" (pr-str (-data-source-url ~data-source)))
+           ~@body)))) )
 
 (defn- do-with-in-memory-h2-db [db-name-prefix f]
   (let [db-name           (str db-name-prefix "-" (mt/random-name))
@@ -160,10 +163,6 @@
                                                         "Deeply Nested Personal Collection"
                                                         :location
                                                         (format "/%d/%d/" (crowberto-pc-id) pc-nested-id)}
-                  LegacyMetric {metric-id :id} {:name "My Metric"
-                                                :table_id table-id
-                                                :definition {:source-table table-id
-                                                             :aggregation [:sum [:field numeric-field-id nil]]}}
                   Segment    {segment-id :id} {:name "My Segment"
                                                :table_id table-id
                                                :definition {:source-table table-id
@@ -440,7 +439,6 @@
         :last-login-field-id          last-login-field-id
         :latitude-field-id            latitude-field-id
         :longitude-field-id           longitude-field-id
-        :metric-id                    metric-id
         :name-field-id                name-field-id
         :nested-snippet-id            nested-snippet-id
         :numeric-field-id             numeric-field-id
@@ -500,7 +498,6 @@
                    last-login-field-id
                    latitude-field-id
                    longitude-field-id
-                   metric-id
                    name-field-id
                    nested-snippet-id
                    numeric-field-id

@@ -4,10 +4,6 @@
     "alpha-value-notation": null,
     "color-function-notation": null,
     "custom-property-pattern": null,
-    "function-no-unknown": [
-      true,
-      { "ignoreFunctions": ["color-mod", "alpha", "blackness"] }
-    ],
     "import-notation": "string",
     "media-feature-range-notation": "prefix",
     "no-descending-specificity": null,
@@ -22,6 +18,9 @@
       true,
       { "ignoreProperties": ["composes"] }
     ],
-    "comment-empty-line-before": null
+    "comment-empty-line-before": null,
+    "selector-pseudo-element-colon-notation": null,
+    "no-empty-source": null,
+    "font-family-no-missing-generic-family-keyword": null
   }
 }

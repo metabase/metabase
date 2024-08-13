@@ -24,7 +24,6 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.query-processor.util :as sql.qp.u]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.lib.field :as lib.field]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.schema.common :as lib.schema.common]
@@ -42,9 +41,8 @@
    [metabase.util.malli :as mu])
   (:import
    (java.io StringReader)
-   (java.sql Connection ResultSet ResultSetMetaData Time Types)
+   (java.sql Connection ResultSet ResultSetMetaData Types)
    (java.time LocalDateTime OffsetDateTime OffsetTime)
-   (java.util Date UUID)
    (org.postgresql.copy CopyManager)
    (org.postgresql.jdbc PgConnection)))
 
@@ -67,6 +65,8 @@
                               :now                      true
                               :persist-models           true
                               :schemas                  true
+                              :identifiers-with-spaces  true
+                              :uuid-type                true
                               :uploads                  true}]
   (defmethod driver/database-supports? [:postgres feature] [_driver _feature _db] supported?))
 
@@ -136,7 +136,9 @@
     (assoc driver.common/default-port-details :placeholder 5432)
     driver.common/default-dbname-details
     driver.common/default-user-details
-    driver.common/default-password-details
+    driver.common/auth-provider-options
+    (assoc driver.common/default-password-details
+           :visible-if {"use-auth-provider" false})
     driver.common/cloud-ip-address-info
     {:name "schema-filters"
      :type :schema-filters
@@ -288,6 +290,10 @@
 ;;; |                                           metabase.driver.sql impls                                            |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(defmethod driver.sql/json-field-length :postgres
+  [_ json-field-identifier]
+  [:length [:cast json-field-identifier :text]])
+
 (defn- ->timestamp [honeysql-form]
   (h2x/cast-unless-type-in "timestamp" #{"timestamp" "timestamptz" "timestamp with time zone" "date"} honeysql-form))
 
@@ -351,7 +357,7 @@
                  [:inline 0.0])]
     (make-time hour minute second)))
 
-(mu/defn ^:private date-trunc
+(mu/defn- date-trunc
   [unit :- ::lib.schema.temporal-bucketing/unit.date-time.truncate
    expr]
   (condp = (h2x/database-type expr)
@@ -406,7 +412,7 @@
   [_ _ expr]
   (sql.qp/adjust-start-of-week :postgres (partial date-trunc :week) expr))
 
-(mu/defn ^:private quoted? [database-type :- ::lib.schema.common/non-blank-string]
+(mu/defn- quoted? [database-type :- ::lib.schema.common/non-blank-string]
   (and (str/starts-with? database-type "\"")
        (str/ends-with? database-type "\"")))
 
@@ -424,16 +430,15 @@
 
 (defmethod sql.qp/->honeysql [:postgres :value]
   [driver value]
-  (let [[_ value {base-type :base_type, database-type :database_type}] value]
-    (when (some? value)
+  (let [[_ raw-value {base-type :base_type, database-type :database_type}] value]
+    (when (some? raw-value)
       (condp #(isa? %2 %1) base-type
-        :type/UUID         (when (not= "" value) ; support is-empty/non-empty checks
-                             (UUID/fromString  value))
-        :type/IPAddress    (h2x/cast :inet value)
+        :type/IPAddress    (h2x/cast :inet raw-value)
         :type/PostgresEnum (if (quoted? database-type)
-                             (h2x/cast database-type value)
-                             (h2x/quoted-cast database-type value))
-        (sql.qp/->honeysql driver value)))))
+                             (h2x/cast database-type raw-value)
+                             (h2x/quoted-cast database-type raw-value))
+        ((get-method sql.qp/->honeysql [:sql-jdbc :value])
+         driver value)))))
 
 (defmethod sql.qp/->honeysql [:postgres :median]
   [driver [_ arg]]
@@ -491,10 +496,6 @@
   [driver [_ arg pattern]]
   (let [identifier (sql.qp/->honeysql driver arg)]
     [::regex-match-first identifier pattern]))
-
-(defmethod sql.qp/->honeysql [:postgres Time]
-  [_ time-value]
-  (h2x/->time time-value))
 
 (defn- format-pg-conversion [_fn [expr psql-type]]
   (let [[expr-sql & expr-args] (sql/format-expr expr {:nested true})]
@@ -624,16 +625,6 @@
                      (sql.qp/rewrite-fields-to-force-using-column-aliases clause)
                      clause)]
     ((get-method sql.qp/->honeysql [:sql :asc]) driver new-clause)))
-
-(defmethod unprepare/unprepare-value [:postgres Date]
-  [_ value]
-  (format "'%s'::timestamp" (u.date/format value)))
-
-(prefer-method unprepare/unprepare-value [:sql Time] [:postgres Date])
-
-(defmethod unprepare/unprepare-value [:postgres UUID]
-  [_ value]
-  (format "'%s'::uuid" value))
 
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
@@ -948,10 +939,10 @@
           "   NULL as role,"
           "   t.schemaname as schema,"
           "   t.objectname as table,"
-          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'update') as update,"
-          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'select') as select,"
-          "   pg_catalog.has_any_column_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'insert') as insert,"
-          "   pg_catalog.has_table_privilege(current_user, '\"' || t.schemaname || '\"' || '.' || '\"' || t.objectname || '\"',  'delete') as delete"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || replace(t.schemaname, '\"', '\"\"') || '\"' || '.' || '\"' || replace(t.objectname, '\"', '\"\"') || '\"',  'update') as update,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || replace(t.schemaname, '\"', '\"\"') || '\"' || '.' || '\"' || replace(t.objectname, '\"', '\"\"') || '\"',  'select') as select,"
+          "   pg_catalog.has_any_column_privilege(current_user, '\"' || replace(t.schemaname, '\"', '\"\"') || '\"' || '.' || '\"' || replace(t.objectname, '\"', '\"\"') || '\"',  'insert') as insert,"
+          "   pg_catalog.has_table_privilege(     current_user, '\"' || replace(t.schemaname, '\"', '\"\"') || '\"' || '.' || '\"' || replace(t.objectname, '\"', '\"\"') || '\"',  'delete') as delete"
           " from ("
           "   select schemaname, tablename as objectname from pg_catalog.pg_tables"
           "   union"

@@ -1,0 +1,10 @@
+{
+  "overrides": [
+    {
+      "files": ["*.ts", "*.js"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
+}

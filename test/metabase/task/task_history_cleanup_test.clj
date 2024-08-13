@@ -32,7 +32,7 @@
               (set (map :task (t2/select TaskHistory))))]
       (testing "Basic run of the cleanup task when it needs to remove rows. Should also add a TaskHistory row once complete"
         (do-with-tasks
-         {:rows-to-keep 2}
+         {:rows-to-keep 3}
          (fn []
            (is (set/subset? #{task-2 task-3 "task-history-cleanup"}
                             (task-history-tasks))))))

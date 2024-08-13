@@ -23,10 +23,10 @@ import {
 export const fieldApi = Api.injectEndpoints({
   endpoints: builder => ({
     getField: builder.query<Field, GetFieldRequest>({
-      query: ({ id, ...body }) => ({
+      query: ({ id, ...params }) => ({
         method: "GET",
         url: `/api/field/${id}`,
-        body,
+        params,
       }),
       providesTags: field => (field ? provideFieldTags(field) : []),
     }),
@@ -38,10 +38,10 @@ export const fieldApi = Api.injectEndpoints({
       providesTags: (_, error, fieldId) => provideFieldValuesTags(fieldId),
     }),
     searchFieldValues: builder.query<FieldValue[], SearchFieldValuesRequest>({
-      query: ({ fieldId, searchFieldId, ...body }) => ({
+      query: ({ fieldId, searchFieldId, ...params }) => ({
         method: "GET",
         url: `/api/field/${fieldId}/search/${searchFieldId}`,
-        body,
+        params,
       }),
       providesTags: (_, error, { fieldId }) => provideFieldValuesTags(fieldId),
     }),

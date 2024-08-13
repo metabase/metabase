@@ -1,0 +1,33 @@
+.RefreshOptionIcon {
+  margin-right: 0.5em;
+}
+
+.RefreshOptionItem {
+  font-weight: bold;
+  padding-top: 0.5em;
+  padding-bottom: 0.5em;
+  cursor: pointer;
+  color: var(--mb-color-text-dark);
+  display: flex;
+  align-items: center;
+}
+
+.RefreshOptionItem.Enabled.Selected {
+  color: var(--mb-color-summarize);
+}
+
+.RefreshOptionItem .RefreshOptionIcon {
+  visibility: hidden;
+}
+
+.RefreshOptionItem.Selected .RefreshOptionIcon {
+  visibility: visible;
+}
+
+.RefreshOptionItem:hover {
+  color: var(--mb-color-brand);
+}
+
+.RefreshOptionItem:hover .RefreshOptionIcon {
+  visibility: visible;
+}

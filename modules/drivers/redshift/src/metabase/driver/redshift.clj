@@ -5,6 +5,7 @@
    [clojure.string :as str]
    [honey.sql :as sql]
    [java-time.api :as t]
+   [metabase.config :as config]
    [metabase.driver :as driver]
    [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.common :as sql-jdbc.common]
@@ -22,12 +23,12 @@
    [metabase.query-processor.util.relative-datetime :as qp.relative-datetime]
    [metabase.upload :as upload]
    [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.log :as log])
   (:import
    (com.amazon.redshift.util RedshiftInterval)
-   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)
-   (java.time OffsetTime)))
+   (java.sql Connection PreparedStatement ResultSet ResultSetMetaData Types)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,6 +37,8 @@
 (doseq [[feature supported?] {:connection-impersonation  true
                               :describe-fields           true
                               :describe-fks              true
+                              :identifiers-with-spaces   false
+                              :uuid-type                 false
                               :nested-field-columns      false
                               :test/jvm-timezone-setting false}]
   (defmethod driver/database-supports? [:redshift feature] [_driver _feat _db] supported?))
@@ -104,9 +107,25 @@
      (sql-jdbc.execute/reducible-query database get-tables-sql))))
 
 (defmethod driver/describe-database :redshift
- [_driver database]
+  [driver database]
   ;; TODO: change this to return a reducible so we don't have to hold 100k tables in memory in a set like this
-  {:tables (into #{} (describe-database-tables database))})
+  ;;
+  ;; Redshift sync is super duper flaky and un-robust! This auto-retry is a temporary workaround until we can actually
+  ;; fix #45874
+  (try
+    (u/auto-retry (if config/is-prod? 2 5)
+      (try
+        {:tables (into #{} (describe-database-tables database))}
+        (catch Throwable e
+          ;; during test/REPL runs, wait a second before throwing the exception, that way when we do our retry there is
+          ;; a better chance of it succeeding.
+          (when-not config/is-prod?
+            (Thread/sleep 1000))
+          (throw e))))
+    (catch Throwable e
+      (throw (ex-info (format "Error in %s describe-database: %s" driver (ex-message e))
+                      {}
+                      e)))))
 
 (defmethod sql-jdbc.sync/describe-fks-sql :redshift
   [driver & {:keys [schema-names table-names]}]
@@ -315,6 +334,35 @@
   [driver [_ amount unit]]
   (qp.relative-datetime/maybe-cacheable-relative-datetime-honeysql driver unit amount))
 
+(defmethod sql.qp/->honeysql [:redshift java.time.LocalDate]
+  [_driver t]
+  (-> [:raw (format "date '%s'" (u.date/format t))]
+      (h2x/with-database-type-info "date")))
+
+(defmethod sql.qp/->honeysql [:redshift java.time.LocalTime]
+  [_driver t]
+  (-> [:raw (format "time '%s'" (u.date/format "HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "time")))
+
+(defmethod sql.qp/->honeysql [:redshift java.time.OffsetTime]
+  [_driver t]
+  (-> [:raw (format "time with time zone '%s'" (u.date/format "HH:mm:ss.SSS xxx" t))]
+      (h2x/with-database-type-info "timetz")))
+
+(defmethod sql.qp/->honeysql [:redshift java.time.LocalDateTime]
+  [_driver t]
+  (-> [:raw (format "timestamp '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS" t))]
+      (h2x/with-database-type-info "timestamp")))
+
+(defmethod sql.qp/->honeysql [:redshift java.time.OffsetDateTime]
+  [_driver t]
+  (-> [:raw (format "timestamp with time zone '%s'" (u.date/format "yyyy-MM-dd HH:mm:ss.SSS xxx" t))]
+      (h2x/with-database-type-info "timestamptz")))
+
+(defmethod sql.qp/->honeysql [:redshift java.time.ZonedDateTime]
+  [driver t]
+  (sql.qp/->honeysql driver (t/offset-date-time t)))
+
 (defmethod sql.qp/datetime-diff [:redshift :year]
   [driver _unit x y]
   (h2x// (sql.qp/datetime-diff driver :month x y) 12))
@@ -395,10 +443,12 @@
  [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set Types/TIME]
  [:postgres Types/TIME])
 
+;;; I don't think this should actually ever get called because we should be compiling an `OffsetTime` as a `timetz`
+;;; literal
 (prefer-method
  sql-jdbc.execute/set-parameter
- [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set OffsetTime]
- [:postgres OffsetTime])
+ [::sql-jdbc.legacy/use-legacy-classes-for-read-and-set java.time.OffsetTime]
+ [:postgres java.time.OffsetTime])
 
 (defn- field->parameter-value
   "Map fields used in parameters to parameter `:value`s."

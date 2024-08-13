@@ -13,7 +13,7 @@ export const ItemLink = styled(Link)`
   display: block;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
@@ -37,13 +37,13 @@ export const SidebarHeader = styled.h2`
 `;
 
 export const XrayIcon = styled(Icon)`
-  color: ${color("accent4")};
+  color: ${() => color("accent4")};
   margin-right: 1rem;
 `;
 
 export const SuggestionsSidebarWrapper = styled.div`
   min-height: 100vh;
   width: 346px;
-  background-color: ${color("bg-light")};
-  border-left: 2px solid ${color("border")};
+  background-color: var(--mb-color-bg-light);
+  border-left: 2px solid var(--mb-color-border);
 `;

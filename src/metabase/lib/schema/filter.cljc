@@ -79,18 +79,17 @@
 (def ^:private string-filter-options
   [:map [:case-sensitive {:optional true} :boolean]]) ; default true
 
-;; binary [:ref ::expression/string] filter clauses. These also accept a `:case-sensitive` option
+;; N-ary [:ref ::expression/string] filter clauses. These also accept a `:case-sensitive` option.
+;; Requires at least 2 string-shaped args. If there are more than 2, `[:contains x a b]` is equivalent to
+;; `[:or [:contains x a] [:contains x b]]`.
 ;;
-;; `:does-not-contain` is sugar for `[:not [:contains ...]]`:
-;;
-;; [:does-not-contain ...] = [:not [:contains ...]]
+;; `[:does-not-contain ...]` = `[:not [:contains ...]]`
 (doseq [op [:starts-with :ends-with :contains :does-not-contain]]
   (mbql-clause/define-mbql-clause op :- :type/Boolean
-    [:tuple
-     [:= {:decode/normalize common/normalize-keyword} op]
-     [:merge ::common/options string-filter-options]
-     #_whole [:ref ::expression/string]
-     #_part  [:ref ::expression/string]]))
+    [:schema [:catn {:error/message (str "Valid " op " clause")}
+              [:tag [:= {:decode/normalize common/normalize-keyword} op]]
+              [:options [:merge ::common/options string-filter-options]]
+              [:args [:repeat {:min 2} [:schema [:ref ::expression/string]]]]]]))
 
 (def ^:private time-interval-options
   [:map [:include-current {:optional true} :boolean]]) ; default false
@@ -112,6 +111,18 @@
            ;; I guess there's no reason you shouldn't be able to do something like 1 + 2 in here
            [false [:ref ::expression/integer]]]
    #_unit [:ref ::temporal-bucketing/unit.date-time.interval]])
+
+(mbql-clause/define-mbql-clause :relative-time-interval :- :type/Boolean
+  [:tuple
+   [:= {:decode/normalize common/normalize-keyword} :relative-time-interval]
+   ;; `relative-time-interval` does not support options to eg. include/exclude start or end point. Only int values
+   ;; are allowed for intervals.
+   ::common/options
+   #_col           [:ref ::expression/temporal]
+   #_value         :int
+   #_bucket        [:ref ::temporal-bucketing/unit.date-time.interval]
+   #_offset-value  :int
+   #_offset-bucket [:ref ::temporal-bucketing/unit.date-time.interval]])
 
 ;; segments are guaranteed to return valid filter clauses and thus booleans, right?
 (mbql-clause/define-mbql-clause :segment :- :type/Boolean

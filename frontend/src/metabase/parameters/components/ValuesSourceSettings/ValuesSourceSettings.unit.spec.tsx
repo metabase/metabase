@@ -49,7 +49,7 @@ describe("ValuesSourceSettings", () => {
       await userEvent.click(screen.getByRole("button", { name: "Done" }));
 
       expect(onChangeSourceSettings).toHaveBeenCalledWith("static-list", {
-        values: ["A"],
+        values: [["A"]],
       });
     },
   );

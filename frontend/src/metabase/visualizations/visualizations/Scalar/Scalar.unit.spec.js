@@ -1,28 +1,31 @@
 import userEvent from "@testing-library/user-event";
 
 import { getIcon, render, screen, within } from "__support__/ui";
+import { createMockCard, createMockColumn } from "metabase-types/api/mocks";
 
 import { Scalar } from "./Scalar";
 
 const series = (value = 1.23) => [
   {
-    card: {},
-    data: { rows: [[value]], cols: [{ name: "count" }] },
+    card: createMockCard({ display: "scalar" }),
+    data: { rows: [[value]], cols: [createMockColumn({ name: "count" })] },
   },
 ];
+
 const settings = {
   "scalar.field": "count",
   "card.title": "Scalar Title",
   column: () => ({ column: { base_type: "type/Integer" } }),
 };
 
-describe("MetricForm", () => {
+describe("Scalar", () => {
   it("should render title on dashboards", () => {
     render(
       <Scalar
         series={series()}
+        rawSeries={series()}
         settings={settings}
-        isDashboard={true}
+        isDashboard
         visualizationIsClickable={() => false}
       />,
     );
@@ -33,6 +36,7 @@ describe("MetricForm", () => {
     render(
       <Scalar
         series={series(12345)}
+        rawSeries={series(12345)}
         settings={settings}
         visualizationIsClickable={() => false}
         width={230}
@@ -47,6 +51,7 @@ describe("MetricForm", () => {
     render(
       <Scalar
         series={series()}
+        rawSeries={series()}
         settings={{ ...settings, "card.description": DESCRIPTION }}
         isDashboard
         visualizationIsClickable={() => false}
@@ -64,6 +69,7 @@ describe("MetricForm", () => {
     render(
       <Scalar
         series={series()}
+        rawSeries={series()}
         settings={{ ...settings, "card.description": DESCRIPTION }}
         isDashboard
         visualizationIsClickable={() => false}
@@ -81,6 +87,7 @@ describe("MetricForm", () => {
     render(
       <Scalar
         series={series(12345.6)}
+        rawSeries={series(12345.6)}
         settings={settings}
         visualizationIsClickable={() => false}
         width={230}
@@ -94,6 +101,7 @@ describe("MetricForm", () => {
       <Scalar
         isDashboard // displays title
         series={series(null)}
+        rawSeries={series(null)}
         settings={settings}
         visualizationIsClickable={() => false}
       />,

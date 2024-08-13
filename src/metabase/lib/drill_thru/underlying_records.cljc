@@ -32,7 +32,6 @@
    [medley.core :as m]
    [metabase.lib.aggregation :as lib.aggregation]
    [metabase.lib.binning :as lib.binning]
-   [metabase.lib.convert :as lib.convert]
    [metabase.lib.drill-thru.common :as lib.drill-thru.common]
    [metabase.lib.filter :as lib.filter]
    [metabase.lib.metadata :as lib.metadata]
@@ -101,7 +100,7 @@
    :row-count  row-count
    :table-name table-name})
 
-(mu/defn ^:private drill-filter :- ::lib.schema/query
+(mu/defn- drill-filter :- ::lib.schema/query
   [query        :- ::lib.schema/query
    stage-number :- :int
    column       :- ::lib.schema.metadata/column
@@ -162,14 +161,6 @@
                 ;; Fancy aggregations that filter the input - the filter is the last part of the aggregation.
                 (:sum-where :count-where :share)
                 [(last aggregation)]
-
-                ;; Metrics are standard filter + aggregation units; if the column is a metric get its filters.
-                :metric
-                (-> (lib.metadata/legacy-metric query (last aggregation))
-                    :definition
-                    lib.convert/js-legacy-inner-query->pMBQL
-                    (assoc :database (:database query))
-                    (lib.filter/filters -1))
 
                 ;; Default: no filters to add.
                 nil)))))

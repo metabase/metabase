@@ -43,6 +43,9 @@
                                   :left-join [[:metabase_database :db] [:= :db.id :p.database_id]
                                               [:report_card :c]        [:= :c.id :p.card_id]
                                               [:collection :col]       [:= :c.collection_id :col.id]]
+                                  :where     [:and
+                                              [:= :c.type "model"]
+                                              [:= :c.archived false]]
                                   :order-by  [[:p.refresh_begin :desc]]}
                            persisted-info-id (sql.helpers/where [:= :p.id persisted-info-id])
                            (seq db-ids)      (sql.helpers/where [:in :p.database_id db-ids])
@@ -70,7 +73,12 @@
         persisted-infos (fetch-persisted-info {:db-ids writable-db-ids} mw.offset-paging/*limit* mw.offset-paging/*offset*)]
     {:data   persisted-infos
      :total  (if (seq writable-db-ids)
-               (t2/count PersistedInfo :database_id [:in writable-db-ids])
+               (t2/count PersistedInfo {:from [[:persisted_info :p]]
+                                        :join [[:report_card :c] [:= :c.id :p.card_id]]
+                                        :where [:and
+                                                [:in :p.database_id writable-db-ids]
+                                                [:= :c.type "model"]
+                                                [:not :c.archived]]})
                0)
      :limit  mw.offset-paging/*limit*
      :offset mw.offset-paging/*offset*}))

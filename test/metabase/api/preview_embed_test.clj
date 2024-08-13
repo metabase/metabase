@@ -1,6 +1,10 @@
 (ns metabase.api.preview-embed-test
   (:require
+   [buddy.sign.jwt :as jwt]
+   [cheshire.core :as json]
    [clojure.test :refer :all]
+   [crypto.random :as crypto-random]
+   [metabase.api.dashboard-test :as api.dashboard-test]
    [metabase.api.embed-test :as embed-test]
    [metabase.api.pivots :as api.pivots]
    [metabase.api.preview-embed :as api.preview-embed]
@@ -9,6 +13,7 @@
    [metabase.models.dashboard-card :refer [DashboardCard]]
    [metabase.test :as mt]
    [metabase.util :as u]
+   [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp]))
 
 ;;; --------------------------------------- GET /api/preview_embed/card/:token ---------------------------------------
@@ -167,7 +172,7 @@
           (testing "an empty value should apply if provided as nil in the JWT params"
             (is (= [[1000]]
                    (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "enabled"}
-                                                                                            :params {:date nil}}))))))))
+                                                                                            :params            {:date nil}}))))))))
       (testing "if the param is disabled"
         (t2.with-temp/with-temp
           [Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "disabled"})]
@@ -180,18 +185,18 @@
       (testing "if the param is locked"
         (t2.with-temp/with-temp
           [Card card (assoc (embed-test/card-with-date-field-filter-default) :embedding_params {:date "locked"})]
-          (testing "an empty value should apply if provided as nil in the JWT params"
-            (is (= [[1000]]
-                   (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "locked"}
-                                                                                            :params {:date nil}})))))
+          (testing "an empty value with `nil` as the param's value is invalid and should result in an error"
+            (is (= "You must specify a value for :date in the JWT."
+                   (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:date "locked"}
+                                                                                   :params            {:date nil}}))))
             (testing "check this is different to when a non-nil value is provided"
               (is (= [[138]]
                      (mt/rows (mt/user-http-request :crowberto :get 202 (card-query-url card {:_embedding_params {:date "locked"}
-                                                                                              :params {:date "Q2-2014"}})))))))
+                                                                                              :params            {:date "Q2-2014"}})))))))
           (testing "an empty string value is invalid and should result in an error"
             (is (= "You must specify a value for :date in the JWT."
                    (mt/user-http-request :crowberto :get 400 (card-query-url card {:_embedding_params {:date "locked"}
-                                                                                   :params {:date ""}}))))))))))
+                                                                                   :params            {:date ""}}))))))))))
 
 (deftest query-max-results-constraint-test
   (testing "GET /api/preview_embed/card/:token/query"
@@ -531,3 +536,136 @@
                 (is (= [[1]]
                        (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer"))
                        (mt/rows (mt/user-http-request :crowberto :get 202 url :name "Hudson Borer" :name "x"))))))))))))
+
+;;; ------------------------------------------------ Chain filtering -------------------------------------------------
+
+(defn random-embedding-secret-key [] (crypto-random/hex 32))
+
+(def ^:dynamic *secret-key* nil)
+
+(defn sign [claims] (jwt/sign claims *secret-key*))
+
+(defn do-with-new-secret-key [f]
+  (binding [*secret-key* (random-embedding-secret-key)]
+    (mt/with-temporary-setting-values [embedding-secret-key *secret-key*]
+      (f))))
+
+(defmacro with-new-secret-key {:style/indent 0} [& body]
+  `(do-with-new-secret-key (fn [] ~@body)))
+
+(defmacro with-embedding-enabled-and-new-secret-key {:style/indent 0} [& body]
+  `(mt/with-temporary-setting-values [~'enable-embedding true]
+     (with-new-secret-key
+       ~@body)))
+
+(defn dash-token
+  [dash-or-id & [additional-token-params]]
+  (sign (merge {:resource {:dashboard (u/the-id dash-or-id)}
+                :params   {}}
+               additional-token-params)))
+
+(deftest params-with-static-list-test
+  (testing "embedding with parameter that has source is a static list"
+    (with-embedding-enabled-and-new-secret-key
+      (api.dashboard-test/with-chain-filter-fixtures [{:keys [dashboard]}]
+        (t2/update! Dashboard (u/the-id dashboard) {:enable_embedding false ;; works without enabling embedding on the dashboard (#44962)
+                                                    :embedding_params {"static_category"       "enabled"
+                                                                       "static_category_label" "enabled"}})
+        (let [signed-token (dash-token dashboard)
+              url            (format "preview_embed/dashboard/%s/params/%s/values" signed-token "_STATIC_CATEGORY_")]
+          (testing "Should work if the param we're fetching values for is enabled"
+            (testing "\nGET /api/preview-embed/dashboard/:token/params/:param-key/values"
+              (is (= {:values          [["African"] ["American"] ["Asian"]]
+                      :has_more_values false}
+                     (mt/user-http-request :rasta :get 200 url))))))))))
+
+(deftest boolean-parameter-values-test
+  (testing "embedding endpoint supports boolean parameter values (#27643)"
+    (embed-test/with-embedding-enabled-and-new-secret-key
+      (mt/dataset places-cam-likes
+        (mt/with-temp [:model/Card {card-id :id :as card} {:dataset_query
+                                                           {:database (mt/id)
+                                                            :type     :native
+                                                            :native
+                                                            {:template-tags
+                                                             {"LIKED"
+                                                              {:widget-type  :string/=
+                                                               :default      [true]
+                                                               :name         "LIKED"
+                                                               :type         :dimension
+                                                               :id           "LIKED"
+                                                               :dimension    [:field (mt/id :places :liked) nil]
+                                                               :display-name "Liked"
+                                                               :options      nil
+                                                               :required     true}}
+                                                             :query "SELECT * FROM PLACES WHERE {{LIKED}}"}}}
+                       :model/Dashboard {dashboard-id :id} {:parameters
+                                                            [{:name      "LIKED"
+                                                              :slug      "LIKED"
+                                                              :id        "ccb91bc"
+                                                              :type      :string/=
+                                                              :sectionId "string"
+                                                              :required  true
+                                                              :default   [true]}]}
+                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                      :parameter_mappings
+                                                      [{:parameter_id "ccb91bc"
+                                                        :card_id      card-id
+                                                        :target       [:dimension [:template-tag "LIKED"]]}]
+                                                      :card_id      card-id}]
+          (testing "for card embeds"
+            (let [url (card-query-url card {:_embedding_params {:LIKED "enabled"}})]
+              (is (= [[3 "The Dentist" false]]
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:LIKED false}))
+                         :data
+                         :rows)))
+              (is (= [[1 "Tempest" true]
+                      [2 "Bullit" true]]
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:LIKED true}))
+                         :data
+                         :rows)))))
+          (testing "for dashboard embeds"
+            (let [url (dashcard-url dashcard {:_embedding_params {:LIKED "enabled"}})]
+              (is (= [[3 "The Dentist" false]]
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:LIKED false}))
+                         :data
+                         :rows)))
+              (is (= [[1 "Tempest" true]
+                      [2 "Bullit" true]]
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:LIKED true}))
+                         :data
+                         :rows))))))))))
+
+(deftest string-parameter-values-test
+  (testing "embedding endpoint should not parse string values into numbers (#46240)"
+    (embed-test/with-embedding-enabled-and-new-secret-key
+      (mt/dataset airports
+        (mt/with-temp [:model/Card {card-id :id} {:dataset_query
+                                                           {:database (mt/id)
+                                                            :type :query
+                                                            :query
+                                                            {:source-table (mt/id :airport)
+                                                             :fields       [[:field (mt/id :airport :name) nil]]}}}
+                       :model/Dashboard {dashboard-id :id} {:parameters
+                                                            [{:name      "NAME"
+                                                              :slug      "NAME"
+                                                              :id        "ccb91bc"
+                                                              :type      :string/contains
+                                                              :sectionId "number"}]}
+                       :model/DashboardCard dashcard {:dashboard_id dashboard-id
+                                                      :parameter_mappings
+                                                      [{:parameter_id "ccb91bc"
+                                                        :card_id      card-id
+                                                        :target       [:dimension [:field (mt/id :airport :name) nil]]}]
+                                                      :card_id      card-id}]
+          (testing "for dashboard embeds"
+            (let [url (dashcard-url dashcard {:_embedding_params {:NAME "enabled"}})]
+              (is (= [["Cheongju International Airport/Cheongju Air Base (K-59/G-513)"]]
+                     (-> (mt/user-http-request :crowberto :get 202 url
+                                               :parameters (json/generate-string {:NAME "513"}))
+                         :data
+                         :rows))))))))))

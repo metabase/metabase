@@ -8,7 +8,8 @@
 
 (deftest test-pulse-endpoint-should-respect-email-domain-allow-list-test
   (testing "POST /api/pulse/test"
-    (t2.with-temp/with-temp [Card card {:dataset_query (mt/mbql-query venues)}]
+    (t2.with-temp/with-temp [Card card {:name          "Test card"
+                                        :dataset_query (mt/mbql-query venues)}]
       ;; make sure we validate raw emails whether they're part of `:details` or part of `:recipients` -- we
       ;; technically allow either right now
       (doseq [channel [{:details {:emails ["test@metabase.com"]}}
@@ -16,23 +17,23 @@
                         :details    {}}]]
         (testing (format "\nChannel = %s\n" (u/pprint-to-str channel))
           (letfn [(send! [expected-status-code]
-                    (let [pulse-name (mt/random-name)]
-                      (mt/with-fake-inbox
-                        {:response   (mt/user-http-request
-                                      :rasta :post expected-status-code "pulse/test"
-                                      {:name          pulse-name
-                                       :cards         [{:id                (u/the-id card)
-                                                        :include_csv       false
-                                                        :include_xls       false
-                                                        :dashboard_card_id nil}]
-                                       :channels      [(merge {:enabled       true
-                                                               :channel_type  "email"
-                                                               :schedule_type "daily"
-                                                               :schedule_hour 12
-                                                               :schedule_day  nil}
-                                                              channel)]
-                                       :skip_if_empty false})
-                         :recipients (set (keys (mt/regex-email-bodies (re-pattern pulse-name))))})))]
+                    (mt/with-fake-inbox
+                      {:response   (mt/user-http-request
+                                    :rasta :post expected-status-code "pulse/test"
+                                    {:name          (mt/random-name)
+                                     :cards         [{:id                (u/the-id card)
+                                                      :include_csv       false
+                                                      :include_xls       false
+                                                      :dashboard_card_id nil}]
+                                     :channels      [(merge {:enabled       true
+                                                             :channel_type  "email"
+                                                             :schedule_type "daily"
+                                                             :schedule_hour 12
+                                                             :schedule_day  nil}
+                                                            channel)]
+                                     :alert_condition "rows"
+                                     :skip_if_empty false})
+                       :recipients (set (keys (mt/regex-email-bodies (re-pattern "Test card"))))}))]
             (testing "allowed email -- should pass"
               (mt/with-premium-features #{:email-allow-list}
                 (mt/with-temporary-setting-values [subscription-allowed-domains "metabase.com"]

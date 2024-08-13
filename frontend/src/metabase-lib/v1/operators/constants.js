@@ -169,21 +169,25 @@ export const FIELD_FILTER_OPERATORS = {
     validArgumentsFilters: [comparableArgument, comparableArgument],
   },
   "starts-with": {
+    multi: true,
     validArgumentsFilters: [freeformArgument],
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },
   },
   "ends-with": {
+    multi: true,
     validArgumentsFilters: [freeformArgument],
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },
   },
   contains: {
+    multi: true,
     validArgumentsFilters: [freeformArgument],
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },
   },
   "does-not-contain": {
+    multi: true,
     validArgumentsFilters: [freeformArgument],
     options: CASE_SENSITIVE_OPTION,
     optionsDefaults: { "case-sensitive": false },

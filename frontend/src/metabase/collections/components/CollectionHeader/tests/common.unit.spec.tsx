@@ -184,7 +184,7 @@ describe("CollectionHeader", () => {
 
       await userEvent.click(screen.getByLabelText("ellipsis icon"));
       expect(await screen.findByText("Move")).toBeInTheDocument();
-      expect(screen.getByText("Archive")).toBeInTheDocument();
+      expect(screen.getByText("Move to trash")).toBeInTheDocument();
     });
   });
 
@@ -232,7 +232,7 @@ describe("CollectionHeader", () => {
       await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByText("Uploads CSVs to Metabase")).toBeInTheDocument();
+      expect(screen.getByText("Upload CSVs to Metabase")).toBeInTheDocument();
     });
 
     it("should show an informational modal with a link to settings for admins", async () => {
@@ -245,7 +245,7 @@ describe("CollectionHeader", () => {
       await userEvent.click(screen.getByLabelText("Upload data"));
 
       expect(await screen.findByRole("dialog")).toBeInTheDocument();
-      expect(screen.getByText("Enable in settings")).toBeInTheDocument();
+      expect(screen.getByText("Go to setup")).toBeInTheDocument();
       expect(screen.getByRole("link")).toBeInTheDocument();
     });
 

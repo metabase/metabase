@@ -13,5 +13,9 @@ export const getVerifyQuestionTitle = (question: Question): string => {
     return t`Verify this model`;
   }
 
+  if (type === "metric") {
+    return t`Verify this metric`;
+  }
+
   throw new Error(`Unknown question.type(): ${type}`);
 };

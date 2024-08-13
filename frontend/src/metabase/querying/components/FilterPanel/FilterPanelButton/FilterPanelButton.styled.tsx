@@ -10,15 +10,22 @@ type FilterButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
     isExpanded: boolean;
   };
 
-export const FilterButton = styled(Button)<FilterButtonProps>`
-  color: ${({ isExpanded }) => (isExpanded ? color("white") : color("filter"))};
+const shouldForwardProp = (propName: string) => {
+  return propName !== "isExpanded";
+};
+
+export const FilterButton = styled(Button, {
+  shouldForwardProp,
+})<FilterButtonProps>`
+  color: ${({ isExpanded }) =>
+    isExpanded ? color("text-white") : color("filter")};
   background-color: ${({ isExpanded }) =>
     isExpanded ? alpha("filter", 0.8) : alpha("filter", 0.2)};
   transition: border 300ms linear, background 300ms linear;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("filter")};
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-filter);
   }
 
   @media (prefers-reduced-motion) {

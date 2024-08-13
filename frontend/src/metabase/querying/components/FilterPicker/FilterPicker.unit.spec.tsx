@@ -33,6 +33,7 @@ import {
   findDateColumn,
   createQueryWithExcludeDateFilter,
   createQueryWithRelativeDateFilter,
+  createQueryWithDefaultFilter,
 } from "./test-utils";
 
 const productCategories = PRODUCT_CATEGORY_VALUES.values.flat() as string[];
@@ -58,9 +59,16 @@ function createQueryWithSegmentFilter() {
   return createFilteredQuery(query, segment);
 }
 
-function createQueryWithCustomFilter() {
+function createQueryWithNullStringFilter() {
   const query = createQuery();
+  const column = findStringColumn(query);
+  const clause = Lib.expressionClause("is-null", [column], null);
 
+  return createFilteredQuery(query, clause);
+}
+
+function createQueryWithCustomNumberFilter() {
+  const query = createQuery();
   const column1 = findBooleanColumn(query);
   const column2 = findNumericColumn(query);
   const clause = Lib.expressionClause(">", [column1, column2], null);
@@ -132,6 +140,11 @@ const WIDGET_TEST_CASES: WidgetTestCase[] = [
     "time",
     createQueryWithTimeFilter(),
     { columnName: "Time", pickerId: "time-filter-picker" },
+  ],
+  [
+    "default",
+    createQueryWithDefaultFilter(),
+    { columnName: "Unknown", pickerId: "default-filter-picker" },
   ],
 ];
 
@@ -417,7 +430,7 @@ describe("FilterPicker", () => {
       const { query, getNextFilter } = setup();
 
       await userEvent.click(screen.getByText(/Custom expression/i));
-      await editExpressionAndSubmit("[[Total] > [[Discount]{enter}");
+      await editExpressionAndSubmit("[[Total] > [[Discount]");
 
       const filter = getNextFilter();
 
@@ -426,8 +439,15 @@ describe("FilterPicker", () => {
       );
     });
 
-    it("should update a filter with a custom expression", async () => {
-      const { query, getNextFilter } = setup(createQueryWithCustomFilter());
+    it("should open the expression editor for unsupported expressions", async () => {
+      setup(createQueryWithNullStringFilter());
+      expect(screen.getByLabelText("Expression")).toBeInTheDocument();
+    });
+
+    it("should update a filter with a numeric custom expression", async () => {
+      const { query, getNextFilter } = setup(
+        createQueryWithCustomNumberFilter(),
+      );
 
       await editExpressionAndSubmit("{selectall}{backspace}[[Total] > 100", {
         delay: 50,

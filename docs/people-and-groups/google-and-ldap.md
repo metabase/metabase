@@ -8,7 +8,7 @@ redirect_from:
 
 Enabling [Google Sign-In](https://developers.google.com/identity/sign-in/web/sign-in) or [LDAP](https://www.metabase.com/glossary/ldap) for single sign-on (SSO) lets your team log in with a click instead of using email and password. SSO can also be used to let people create Metabase accounts without asking an admin to add each person manually. You can find SSO options under **Settings** > **Admin settings** > **Authentication**.
 
-If you'd like to have people authenticate with [SAML][saml-docs] or [JWT][jwt-docs], Metabase's [paid plans](https://www.metabase.com/pricing) let you do just that. As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase, please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
+If you'd like to have people authenticate with [SAML][saml-docs] or [JWT][jwt-docs], Metabase's [Pro and Enterprise](https://www.metabase.com/pricing) let you do just that. As time goes on we may add other auth providers. If you have a service you’d like to see work with Metabase, please let us know by [filing an issue](http://github.com/metabase/metabase/issues/new).
 
 ## Enabling Google Sign-In
 
@@ -99,7 +99,7 @@ This default command will work for most LDAP servers, since `inetOrgPerson` is a
 
 ### LDAP group mapping
 
-Manually assigning people to [groups](./managing.md#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](https://www.metabase.com/learn/permissions/ldap-auth-access-control#group-management).
+Manually assigning people to [groups](./managing.md#groups) in Metabase after they've logged in via SSO can get tedious. Instead, you can take advantage of the groups that already exist in your LDAP directory by enabling [group mappings](https://www.metabase.com/learn/metabase-basics/administration/permissions/ldap-auth-access-control#group-management).
 
 Scroll to **Group Schema** on the same LDAP settings page, and click the toggle to enable group mapping. Selecting **Edit Mapping** will bring up a modal where you can create and edit mappings, specifying which LDAP group corresponds to which Metabase group.
 
@@ -135,12 +135,12 @@ User attributes can't be synced with regular Google Sign-In. You'll need to set 
 
 {% include plans-blockquote.html feature="Disabling password logins" %}
 
-On paid plans, you can require people to log in with SSO by disabling password authentication from **Admin settings** > **Authentication**.
+On Pro and Enterprise plans, you can require people to log in with SSO by disabling password authentication from **Admin settings** > **Authentication**.
 
 ## Troubleshooting login issues
 
- - [Can't log in](../troubleshooting-guide/cant-log-in.md).
- - [Troubleshooting LDAP](../troubleshooting-guide/ldap.md)
+- [Can't log in](../troubleshooting-guide/cant-log-in.md).
+- [Troubleshooting LDAP](../troubleshooting-guide/ldap.md)
 
 ## Further reading
 

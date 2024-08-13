@@ -321,7 +321,7 @@
       mbql.u/simplify-compound-filter
       parse-filter*))
 
-(mu/defn ^:private add-datetime-units* :- ::mbql.s/DateTimeValue
+(mu/defn- add-datetime-units* :- ::mbql.s/DateTimeValue
   "Return a `relative-datetime` clause with `n` units added to it."
   [absolute-or-relative-datetime :- ::mbql.s/DateTimeValue
    n                             :- number?]
@@ -683,8 +683,10 @@
       [:max      _]    [[(or output-name-kwd :max)]
                         {:aggregations [(ag:doubleMax ag-field (or output-name :max))]}])))
 
-(mu/defn ^:private handle-aggregation
-  [query-type ag-clause :- mbql.s/Aggregation druid-query]
+(mu/defn- handle-aggregation
+  [query-type
+   ag-clause :- ::mbql.s/Aggregation
+   druid-query]
   (let [output-name               (annotate/aggregation-name *query* ag-clause)
         [ag-type ag-field & args] (lib.util.match/match-one ag-clause
                                     [:aggregation-options ag & _] #_:clj-kondo/ignore (recur ag)

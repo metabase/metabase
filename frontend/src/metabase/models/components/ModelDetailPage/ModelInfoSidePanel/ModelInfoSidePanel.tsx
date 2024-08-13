@@ -25,7 +25,7 @@ interface Props {
 function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
   const modelCard = model.card() as Card;
 
-  const canWrite = model.canWrite();
+  const canWrite = model.canWrite() && !model.isArchived();
   const description = model.description();
   const { isNative } = Lib.queryDisplayInfo(model.query());
 
@@ -40,6 +40,7 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
           }
           isOptional
           isMultiline
+          isMarkdown
           isDisabled={!canWrite}
           aria-label={t`Description`}
           onChange={onChangeDescription}
@@ -58,7 +59,7 @@ function ModelInfoSidePanel({ model, mainTable, onChangeDescription }: Props) {
         <ModelInfoSection>
           <ModelInfoTitle>{t`Backing table`}</ModelInfoTitle>
           <ModelInfoLink
-            to={ML_Urls.getUrl(mainTable.newQuestion(), { clean: false })}
+            to={ML_Urls.getUrl(mainTable.newQuestion())}
             aria-label={t`Backing table`}
           >
             {mainTable.displayName()}

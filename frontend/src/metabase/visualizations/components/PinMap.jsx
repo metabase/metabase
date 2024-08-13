@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
 import cx from "classnames";
-import d3 from "d3";
+import * as d3 from "d3";
 import L from "leaflet";
 import { Component } from "react";
 import { t } from "ttag";
@@ -132,9 +132,13 @@ export default class PinMap extends Component {
     ]);
 
     // only use points with numeric coordinates & metric
-    const validPoints = allPoints.map(
-      ([lat, lng, metric]) => lat != null && lng != null && metric != null,
-    );
+    const validPoints = allPoints.map(([lat, lng, metric]) => {
+      if (settings["map.type"] === "pin") {
+        return lat != null && lng != null;
+      }
+
+      return lat != null && lng != null && metric != null;
+    });
     const points = allPoints.filter((_, i) => validPoints[i]);
     const updatedRows = rows.filter((_, i) => validPoints[i]);
 

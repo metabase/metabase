@@ -1,23 +1,26 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  addOrUpdateDashboardCard,
+  createNativeQuestion,
+  main,
+  mapColumnTo,
   modal,
-  restore,
-  rightSidebar,
-  visualize,
-  visitDashboard,
-  popover,
+  openColumnOptions,
+  openNotebook,
   openQuestionActions,
+  popover,
   queryBuilderHeader,
   questionInfoButton,
-  addOrUpdateDashboardCard,
-  openColumnOptions,
   renameColumn,
+  restore,
+  rightSidebar,
+  saveMetadataChanges,
   setColumnType,
-  mapColumnTo,
   setModelMetadata,
   sidebar,
-  saveMetadataChanges,
-  main,
+  visitDashboard,
+  visitModel,
+  visualize,
 } from "e2e/support/helpers";
 
 import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
@@ -99,27 +102,33 @@ describe("scenarios > models metadata", () => {
         .and("not.contain", "Pre-tax");
     });
 
-    it("clears custom metadata when a model is turned back into a question", () => {
-      openQuestionActions();
-      popover().findByTextEnsureVisible("Edit metadata").click();
+    it(
+      "clears custom metadata when a model is turned back into a question",
+      { tags: "@flaky" },
+      () => {
+        openQuestionActions();
+        popover().findByTextEnsureVisible("Edit metadata").click();
 
-      openColumnOptions("Subtotal");
-      renameColumn("Subtotal", "Pre-tax");
-      setColumnType("No special type", "Cost");
-      saveMetadataChanges();
+        openColumnOptions("Subtotal");
+        renameColumn("Subtotal", "Pre-tax");
+        setColumnType("No special type", "Cost");
+        saveMetadataChanges();
 
-      cy.findAllByTestId("header-cell")
-        .should("contain", "Pre-tax ($)")
-        .and("not.contain", "Subtotal");
+        cy.findAllByTestId("header-cell")
+          .should("contain", "Pre-tax ($)")
+          .and("not.contain", "Subtotal");
 
-      openQuestionActions();
-      popover().findByTextEnsureVisible("Turn back to saved question").click();
-      cy.wait("@cardQuery");
+        openQuestionActions();
+        popover()
+          .findByTextEnsureVisible("Turn back to saved question")
+          .click();
+        cy.wait("@cardQuery");
 
-      cy.findAllByTestId("header-cell")
-        .should("contain", "Subtotal")
-        .and("not.contain", "Pre-tax ($)");
-    });
+        cy.findAllByTestId("header-cell")
+          .should("contain", "Subtotal")
+          .and("not.contain", "Pre-tax ($)");
+      },
+    );
   });
 
   it("should edit native model metadata", () => {
@@ -334,11 +343,12 @@ describe("scenarios > models metadata", () => {
           cy.findByText("68883"); // zip
           cy.findAllByText("Hudson Borer");
           cy.icon("close").click();
-          cy.wait("@dataset");
         });
 
         cy.go("back"); // navigate away from drilled table
         cy.wait("@dataset");
+
+        cy.findByText("Native Model"); // we are back on the original model
 
         // Drill to Reviews table
         // FK column has a FK semantic type, no mapping to real DB columns
@@ -385,7 +395,7 @@ describe("scenarios > models metadata", () => {
       });
     });
 
-    it("should allow drills on FK columns from dashboards", () => {
+    it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;
@@ -445,13 +455,44 @@ describe("scenarios > models metadata", () => {
         .should("be.visible");
     });
   });
+
+  it("does not confuse the names of various native model columns mapped to the same database field", () => {
+    createNativeQuestion(
+      {
+        type: "model",
+        native: {
+          query: "select 1 as A, 2 as B, 3 as C",
+        },
+      },
+      { idAlias: "modelId", wrapId: true },
+    );
+
+    cy.get("@modelId").then(modelId => {
+      setModelMetadata(modelId, (field, index) => ({
+        ...field,
+        id: ORDERS.ID,
+        display_name: `ID${index + 1}`,
+        semantic_type: "type/PK",
+      }));
+
+      visitModel(modelId);
+    });
+
+    openNotebook();
+    cy.findByTestId("fields-picker").click();
+    popover().within(() => {
+      cy.findByText("ID1").should("be.visible");
+      cy.findByText("ID2").should("be.visible");
+      cy.findByText("ID3").should("be.visible");
+    });
+  });
 });
 
 function drillFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
   popover().findByTextEnsureVisible("View details").click();
 }
 
 function drillDashboardFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
 }

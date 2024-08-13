@@ -132,4 +132,51 @@ describe("SimpleDateIntervalPicker", () => {
       });
     },
   );
+
+  describe("Include current switch", () => {
+    it("should turn the 'Include current' switch on and register that change", async () => {
+      const { onChange } = setup({
+        value: {
+          type: "relative",
+          value: 1,
+          unit: "month",
+        },
+      });
+
+      await userEvent.click(screen.getByLabelText("Include this month"));
+
+      expect(onChange).toHaveBeenCalledWith({
+        options: {
+          "include-current": true,
+        },
+        type: "relative",
+        value: 1,
+        unit: "month",
+      });
+    });
+
+    it("should turn the 'Include current' switch off and register that change", async () => {
+      const { onChange } = setup({
+        value: {
+          options: {
+            "include-current": true,
+          },
+          type: "relative",
+          value: 1,
+          unit: "month",
+        },
+      });
+
+      await userEvent.click(screen.getByLabelText("Include this month"));
+
+      expect(onChange).toHaveBeenCalledWith({
+        options: {
+          "include-current": false,
+        },
+        type: "relative",
+        value: 1,
+        unit: "month",
+      });
+    });
+  });
 });

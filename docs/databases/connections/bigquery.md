@@ -73,7 +73,7 @@ foo,bar,baz
 To sync datasets based on a string match, use the `*` wildcard:
 
 - To sync bar and baz, select **Only these...** and enter the string `b*`.
-- To sync foo only, select **All except...**  and enter the string `b*`.
+- To sync foo only, select **All except...** and enter the string `b*`.
 
 Note that only the `*` wildcard is supported; you can't use other special characters or regexes.
 
@@ -83,7 +83,7 @@ We suggest you leave this off unless you're doing manual [timezone](../../config
 
 ### Include User ID and query hash in queries
 
-This can be useful for [auditing](../../usage-and-performance-tools/audit.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
+This can be useful for [auditing](../../usage-and-performance-tools/usage-analytics.md) and debugging, but prevents BigQuery from caching results and may increase your costs.
 
 ### Re-run queries for simple explorations
 
@@ -119,19 +119,6 @@ If you've selected **Choose when syncs and scans happen** > **ON**, you'll see t
 Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
 A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
-
-### Default result cache duration
-
-{% include plans-blockquote.html feature="Database-specific caching" %}
-
-How long to keep question results. By default, Metabase will use the value you supply on the [cache settings page](../../configuring-metabase/caching.md), but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
-
-Options are:
-
-- **Use instance default (TTL)**. TTL is time to live, meaning how long the cache remains valid before Metabase should run the query again.
-- **Custom**.
-
-If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
 
 ## Connecting Metabase to Google Drive data sources
 

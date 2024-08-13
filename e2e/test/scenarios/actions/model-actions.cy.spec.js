@@ -18,6 +18,7 @@ import {
   createModelFromTableName,
   queryWritableDB,
   setTokenFeatures,
+  entityPickerModal,
 } from "e2e/support/helpers";
 import { getCreatePostgresRoleIfNotExistSql } from "e2e/support/test_roles";
 import { createMockActionParameter } from "metabase-types/api/mocks";
@@ -97,6 +98,7 @@ describe(
       cy.intercept("GET", "/api/table/*/query_metadata*").as("fetchMetadata");
       cy.intercept("GET", "/api/search?archived=true").as("getArchived");
       cy.intercept("GET", "/api/search?*").as("getSearchResults");
+      cy.intercept("GET", "/api/database?*").as("getDatabase");
     });
 
     it("should allow CRUD operations on model actions", () => {
@@ -170,35 +172,6 @@ describe(
           cy.findByText("Update").should("not.exist");
           cy.findByText("Delete").should("not.exist");
         });
-
-      cy.log("Go to the archive");
-      cy.visit("/archive");
-
-      getArchiveListItem("Delete Order")
-        .icon("unarchive")
-        .click({ force: true });
-
-      cy.findByTestId("archived-list").within(() => {
-        cy.findByText("Items you archive will appear here.");
-        cy.findByText("Delete Order").should("not.exist");
-      });
-
-      cy.findByTestId("toast-undo").button("Undo").click();
-
-      cy.findByTestId("archived-list").within(() => {
-        cy.findByText("Items you archive will appear here.").should(
-          "not.exist",
-        );
-        cy.findByText("Delete Order").should("be.visible");
-      });
-
-      cy.log("Delete the action");
-      getArchiveListItem("Delete Order").icon("trash").click({ force: true });
-
-      cy.findByTestId("archived-list").within(() => {
-        cy.findByText("Items you archive will appear here.");
-        cy.findByText("Delete Order").should("not.exist");
-      });
     });
 
     it("should allow to create an action with the New button", () => {
@@ -208,6 +181,7 @@ describe(
       cy.findByTestId("app-bar").findByText("New").click();
       popover().findByText("Action").click();
 
+      cy.wait("@getDatabase");
       fillActionQuery(QUERY);
 
       cy.findByRole("dialog").within(() => {
@@ -219,7 +193,10 @@ describe(
       });
 
       modal().eq(1).findByText("Select a model").click();
-      popover().findByText("Order").click();
+      entityPickerModal().within(() => {
+        cy.findByText("Order").click();
+      });
+
       cy.findByRole("button", { name: "Create" }).click();
 
       cy.get("@modelId").then(modelId => {
@@ -239,12 +216,19 @@ describe(
       // to test database picker behavior in the action editor
       setActionsEnabledForDB(SAMPLE_DB_ID);
 
+      setTokenFeatures("all");
       cy.updatePermissionsGraph({
         [USER_GROUPS.ALL_USERS_GROUP]: {
-          [WRITABLE_DB_ID]: { data: { schemas: "none", native: "none" } },
+          [WRITABLE_DB_ID]: {
+            "view-data": "blocked",
+            "create-queries": "no",
+          },
         },
         [USER_GROUPS.DATA_GROUP]: {
-          [WRITABLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+          [WRITABLE_DB_ID]: {
+            "view-data": "unrestricted",
+            "create-queries": "query-builder-and-native",
+          },
         },
       });
 
@@ -805,7 +789,16 @@ describe(
       cy.updatePermissionsGraph(
         {
           [USER_GROUPS.ALL_USERS_GROUP]: {
-            [WRITABLE_DB_ID]: { data: { schemas: "all", native: "write" } },
+            [WRITABLE_DB_ID]: {
+              "view-data": "impersonated",
+              "create-queries": "query-builder-and-native",
+            },
+          },
+          // By default, all groups get `unrestricted` access that will override the impersonation.
+          [USER_GROUPS.COLLECTION_GROUP]: {
+            [WRITABLE_DB_ID]: {
+              "view-data": "blocked",
+            },
           },
         },
         [
@@ -919,10 +912,6 @@ function disableSharingFor(actionName) {
   cy.findByRole("dialog").within(() => {
     cy.button("Cancel").click();
   });
-}
-
-function getArchiveListItem(itemName) {
-  return cy.findByTestId(`archive-item-${itemName}`);
 }
 
 function resetAndVerifyScoreValue(dialect) {

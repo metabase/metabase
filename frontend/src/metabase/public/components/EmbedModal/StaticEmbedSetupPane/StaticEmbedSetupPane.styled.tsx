@@ -7,7 +7,6 @@ const ContentWrapper = styled.div`
   width: 100%;
   display: flex;
   align-items: stretch;
-
   min-height: 648px;
 `;
 
@@ -15,9 +14,8 @@ const SettingsAsideBlock = styled.div`
   flex-shrink: 0;
   width: 21.6rem;
   padding: 2rem;
-  border-right: 1px solid ${({ theme }) => theme.fn.themeColor("border")};
-  background-color: ${({ theme }) => theme.fn.themeColor("white")};
-
+  border-right: 1px solid var(--mb-color-border);
+  background-color: var(--mb-color-bg-white);
   height: 45.125rem;
   overflow-y: auto;
 `;
@@ -25,17 +23,14 @@ const SettingsAsideBlock = styled.div`
 const PreviewAreaBlock = styled.div`
   width: 100%;
   min-width: 50rem;
-
   position: relative;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   justify-content: stretch;
-
   gap: 1rem;
-
   padding: 1rem 1.5rem 2rem 1rem;
-  background-color: ${({ theme }) => theme.fn.themeColor("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const SettingsTabLayout = ({

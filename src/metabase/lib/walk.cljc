@@ -4,27 +4,11 @@
    [metabase.lib.join :as lib.join]
    [metabase.lib.schema :as lib.schema]
    [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.util :as u]
    [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]))
 
 (declare walk-stages*)
-
-(defn- reduce-preserving-reduced
-  "Like [[reduce]] but preserves the [[reduced]] wrapper around the result. This is important because we use a few
-  different calls to [[reduce]] below that we'd like to skip if any of them returns [[reduced]]."
-  [rf init xs]
-  (if (reduced? init)
-    init
-    (reduce
-     (fn [acc x]
-       ;; HACK: just wrap the reduced value in [[reduced]] again, [[reduce]] will unwrap the first wrapper but we'll
-       ;; still have the original wrapper around the value.
-       (let [acc' (rf acc x)]
-         (if (reduced? acc')
-           (reduced acc')
-           acc')))
-     init
-     xs)))
 
 (defn- walk-items* [query path-to-items walk-item-fn f]
   ;; negative-item-offset below is a negative index e.g. [-3 -2 -1] rather than normal positive index e.g. [0 1 2] to
@@ -33,7 +17,7 @@
   ;; regardless of how many things we splice in front of it. This way the path always is correct even if the number of
   ;; items change. See [[metabase.lib.walk/return-multiple-stages-test]]
   ;; and [[metabase.lib.walk/return-multiple-joins-test]]
-  (reduce-preserving-reduced
+  (u/reduce-preserving-reduced
    (fn [query negative-item-offset]
      (let [items                (get-in query path-to-items)
            absolute-item-number (+ negative-item-offset (count items)) ; e.g. [-3 -2 1] => [0 1 2]
@@ -171,22 +155,23 @@
    ::stage-path
    [:? ::path.joins-part]])
 
-(mu/defn query-for-stage-at-path :- [:map
-                                     [:query ::lib.schema/query]
-                                     [:stage-number :int]]
+(mu/defn query-for-path :- [:map
+                            [:query ::lib.schema/query]
+                            [:stage-number :int]]
   "For compatibility with functions that take query + stage-number. Create a fake query with the top-level `:stages`
-  pointing to the stages in `stage-path`; return a map with this fake `:query` and `stage-number`.
+   pointing to the stages in `path`; return a map with this fake `:query` and `stage-number`.
+   A join path will return `0` for `stage-number`
 
-  Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in combination with [[walk-stages]]."
+   Lets you use stuff like [[metabase.lib.aggregation/resolve-aggregation]] in combination with [[walk-stages]]."
   [query      :- ::lib.schema/query
-   stage-path :- ::stage-path]
+   stage-path :- ::path]
   (let [[_stages stage-number & more] stage-path]
     (if (empty? more)
       {:query query, :stage-number stage-number}
       (let [[_joins join-number & more] more
             join                        (nth (lib.join/joins query stage-number) join-number)
             query'                      (assoc query :stages (:stages join))]
-        (recur query' more)))))
+        (recur query' (if (empty? more) [:stages 0] more))))))
 
 (defn apply-f-for-stage-at-path
   "Use a function that takes top-level `query` and `stage-number` with a `query` and `path`,
@@ -199,5 +184,5 @@
 
     (f <query> <stage-number> x y)"
   [f query stage-path & args]
-  (let [{:keys [query stage-number]} (query-for-stage-at-path query stage-path)]
+  (let [{:keys [query stage-number]} (query-for-path query stage-path)]
     (apply f query stage-number args)))

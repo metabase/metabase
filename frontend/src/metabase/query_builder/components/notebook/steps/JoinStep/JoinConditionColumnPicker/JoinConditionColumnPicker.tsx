@@ -116,7 +116,7 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
           display="block"
           size={11}
           lh={1}
-          color={columnInfo ? "white" : "brand"}
+          color={columnInfo ? "text-white" : "brand"}
           align="left"
           weight={400}
         >
@@ -125,7 +125,7 @@ const JoinColumnTarget = forwardRef(function JoinColumnTarget(
       )}
       <Text
         display="block"
-        color={columnInfo ? "white" : "brand"}
+        color={columnInfo ? "text-white" : "brand"}
         align="left"
         weight={700}
         lh={1}

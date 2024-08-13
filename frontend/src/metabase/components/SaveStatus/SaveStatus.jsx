@@ -55,7 +55,7 @@ class SaveStatus extends Component {
 
 const mapDispatchToProps = dispatch => ({
   notify: undo => dispatch(addUndo(undo)),
-  unnotify: undoId => dispatch(dismissUndo(undoId)),
+  unnotify: undoId => dispatch(dismissUndo({ undoId })),
 });
 
 export default _.compose(

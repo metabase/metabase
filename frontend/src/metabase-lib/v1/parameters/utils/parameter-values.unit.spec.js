@@ -2,7 +2,9 @@ import {
   getValuePopulatedParameters,
   getParameterValuesBySlug,
   normalizeParameterValue,
+  getParameterValue,
 } from "metabase-lib/v1/parameters/utils/parameter-values";
+import { createMockParameter } from "metabase-types/api/mocks";
 
 describe("parameters/utils/parameter-values", () => {
   let field1;
@@ -193,6 +195,57 @@ describe("parameters/utils/parameter-values", () => {
     it("should handle nullish parameters", () => {
       expect(getParameterValuesBySlug(undefined, {})).toEqual({});
       expect(getParameterValuesBySlug(null, {})).toEqual({});
+    });
+  });
+
+  describe("getParameterValue", () => {
+    const parameter = createMockParameter({
+      id: 333,
+      slug: "baz",
+      default: "parameter default value",
+      fields: [field1],
+      required: true,
+    });
+
+    it("should return last_used_param_value if there is any", () => {
+      expect(
+        getParameterValue({
+          parameter,
+          values: { [parameter.id]: "parameter value" },
+          defaultRequired: true,
+          lastUsedParameterValue: "last used value",
+        }),
+      ).toBe("last used value");
+    });
+
+    it("should return value when there is no last_used_param_value", () => {
+      expect(
+        getParameterValue({
+          parameter,
+          values: { [parameter.id]: "parameter value" },
+          defaultRequired: true,
+        }),
+      ).toBe("parameter value");
+    });
+
+    it("should return default value if parameter is required and default is required", () => {
+      expect(
+        getParameterValue({
+          parameter,
+          values: {},
+          defaultRequired: true,
+        }),
+      ).toBe("parameter default value");
+    });
+
+    it("should return null if no default value required", () => {
+      expect(
+        getParameterValue({
+          parameter,
+          values: {},
+          defaultRequired: false,
+        }),
+      ).toBe(null);
     });
   });
 

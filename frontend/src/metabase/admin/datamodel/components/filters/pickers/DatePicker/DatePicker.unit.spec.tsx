@@ -311,7 +311,7 @@ describe("DatePicker", () => {
         "quarters",
         "years",
       ];
-      const relativeTimeDirection = ["past", "next"];
+      const relativeTimeDirection = ["previous", "next"];
       const relativeTimeValue = 4;
 
       relativeTimeDirection.forEach(direction => {
@@ -341,7 +341,7 @@ describe("DatePicker", () => {
             expect(changeSpy).toHaveBeenLastCalledWith([
               "time-interval",
               ["field", ORDERS.CREATED_AT, null],
-              (direction === "past" ? -1 : 1) * relativeTimeValue,
+              (direction === "previous" ? -1 : 1) * relativeTimeValue,
               unit.slice(0, -1), // without the 's'
             ]);
           });

@@ -6,14 +6,13 @@ export const RowCountButton = styled.button<{ highlighted?: boolean }>`
   color: ${props =>
     props.highlighted ? color("brand") : color("text-medium")};
   font-weight: bold;
-
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
 export const RowCountStaticLabel = styled.span`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;

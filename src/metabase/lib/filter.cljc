@@ -31,10 +31,10 @@
 (doseq [tag [:and :or]]
   (lib.hierarchy/derive tag ::compound))
 
-(doseq [tag [:= :!=]]
+(doseq [tag [:= :!= :starts-with :ends-with :contains :does-not-contain]]
   (lib.hierarchy/derive tag ::varargs))
 
-(doseq [tag [:< :<= :> :>= :starts-with :ends-with :contains :does-not-contain]]
+(doseq [tag [:< :<= :> :>=]]
   (lib.hierarchy/derive tag ::binary))
 
 (doseq [tag [:is-null :not-null :is-empty :not-empty :not]]
@@ -93,6 +93,9 @@
       [:= _ (a :guard (unit-is lib.schema.temporal-bucketing/datetime-truncation-units)) (b :guard string?)]
       (i18n/tru "{0} is {1}" (->unbucketed-display-name a) (shared.ut/format-relative-date-range b 0 (:temporal-unit (second a)) nil nil {:include-current true}))
 
+      [:= _ (a :guard (unit-is :day-of-week)) (b :guard (some-fn int? string?))]
+      (i18n/tru "{0} is {1}" (->display-name a) (->temporal-name a b))
+
       [:= _ (a :guard temporal?) (b :guard (some-fn int? string?))]
       (i18n/tru "{0} is on {1}" (->display-name a) (->temporal-name a b))
 
@@ -139,7 +142,43 @@
       (i18n/tru "{0} is {1} selections" (->display-name a) (count args))
 
       [:!= _ a & args]
-      (i18n/tru "{0} is not {1} selections" (->display-name a) (count args)))))
+      (i18n/tru "{0} is not {1} selections" (->display-name a) (count args))
+
+      [:starts-with _ x (y :guard string?)]
+      (i18n/tru "{0} starts with {1}"                 (->display-name x) y)
+
+      [:starts-with _ x y]
+      (i18n/tru "{0} starts with {1}"                 (->display-name x) (->display-name y))
+
+      [:starts-with _ x & args]
+      (i18n/tru "{0} starts with {1} selections"      (->display-name x) (count args))
+
+      [:ends-with _ x (y :guard string?)]
+      (i18n/tru "{0} ends with {1}"                   (->display-name x) y)
+
+      [:ends-with _ x y]
+      (i18n/tru "{0} ends with {1}"                   (->display-name x) (->display-name y))
+
+      [:ends-with _ x & args]
+      (i18n/tru "{0} ends with {1} selections"        (->display-name x) (count args))
+
+      [:contains _ x (y :guard string?)]
+      (i18n/tru "{0} contains {1}"                    (->display-name x) y)
+
+      [:contains _ x y]
+      (i18n/tru "{0} contains {1}"                    (->display-name x) (->display-name y))
+
+      [:contains _ x & args]
+      (i18n/tru "{0} contains {1} selections"         (->display-name x) (count args))
+
+      [:does-not-contain _ x (y :guard string?)]
+      (i18n/tru "{0} does not contain {1}"            (->display-name x) y)
+
+      [:does-not-contain _ x y]
+      (i18n/tru "{0} does not contain {1}"            (->display-name x) (->display-name y))
+
+      [:does-not-contain _ x & args]
+      (i18n/tru "{0} does not contain {1} selections" (->display-name x) (count args)))))
 
 (defmethod lib.metadata.calculation/display-name-method ::binary
   [query stage-number expr style]
@@ -163,31 +202,7 @@
       (i18n/tru "{0} is greater than {1}"             (->display-name x) (->display-name y))
 
       [:>= _ x y]
-      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y))
-
-      [:starts-with _ x (y :guard string?)]
-      (i18n/tru "{0} starts with {1}"                 (->display-name x) y)
-
-      [:starts-with _ x y]
-      (i18n/tru "{0} starts with {1}"                 (->display-name x) (->display-name y))
-
-      [:ends-with _ x (y :guard string?)]
-      (i18n/tru "{0} ends with {1}"                   (->display-name x) y)
-
-      [:ends-with _ x y]
-      (i18n/tru "{0} ends with {1}"                   (->display-name x) (->display-name y))
-
-      [:contains _ x (y :guard string?)]
-      (i18n/tru "{0} contains {1}"                    (->display-name x) y)
-
-      [:contains _ x y]
-      (i18n/tru "{0} contains {1}"                    (->display-name x) (->display-name y))
-
-      [:does-not-contain _ x (y :guard string?)]
-      (i18n/tru "{0} does not contain {1}"            (->display-name x) y)
-
-      [:does-not-contain _ x y]
-      (i18n/tru "{0} does not contain {1}"            (->display-name x) (->display-name y)))))
+      (i18n/tru "{0} is greater than or equal to {1}" (->display-name x) (->display-name y)))))
 
 (defmethod lib.metadata.calculation/display-name-method :between
   [query stage-number expr style]
@@ -260,6 +275,18 @@
               (lib.metadata.calculation/display-name query stage-number expr style)
               (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval n unit)))))
 
+(defmethod lib.metadata.calculation/display-name-method :relative-time-interval
+  [query stage-number [_tag _opts column value bucket offset-value offset-bucket] style]
+  (if (neg? offset-value)
+    (i18n/tru "{0} is in the {1}, starting {2} ago"
+              (lib.metadata.calculation/display-name query stage-number column style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
+              (inflections/pluralize (abs offset-value) (name offset-bucket)))
+    (i18n/tru "{0} is in the {1}, starting {2} from now"
+              (lib.metadata.calculation/display-name query stage-number column style)
+              (u/lower-case-en (lib.temporal-bucket/describe-temporal-interval value bucket))
+              (inflections/pluralize (abs offset-value) (name offset-bucket)))))
+
 (defmethod lib.metadata.calculation/display-name-method :relative-datetime
   [_query _stage-number [_tag _opts n unit] _style]
   (i18n/tru "{0}" (lib.temporal-bucket/describe-temporal-interval n unit)))
@@ -287,10 +314,11 @@
 (lib.common/defop ends-with [whole part])
 (lib.common/defop contains [whole part])
 (lib.common/defop does-not-contain [whole part])
+(lib.common/defop relative-time-interval [x value bucket offset-value offset-bucket])
 (lib.common/defop time-interval [x amount unit])
 (lib.common/defop segment [segment-id])
 
-(mu/defn ^:private add-filter-to-stage
+(mu/defn- add-filter-to-stage
   "Add a new filter clause to a `stage`, ignoring it if it is a duplicate clause (ignoring :lib/uuid)."
   [stage      :- ::lib.schema/stage
    new-filter :- [:maybe ::lib.schema.expression/boolean]]

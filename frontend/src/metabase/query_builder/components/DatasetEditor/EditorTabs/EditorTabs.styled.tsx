@@ -1,7 +1,7 @@
 import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import { alpha, darken, color } from "metabase/lib/colors";
+import { alpha, darken } from "metabase/lib/colors";
 
 export const TabBar = styled.ul`
   display: flex;
@@ -39,14 +39,10 @@ export const Tab = styled.label<{ selected: boolean; disabled?: boolean }>`
   justify-content: center;
   align-items: center;
   padding: 6px 12px;
-
-  color: ${color("text-white")};
+  color: var(--mb-color-text-white);
   font-weight: bold;
-
   border: 2px solid;
   border-radius: 8px;
-  cursor: pointer;
-
   transition: all 0.3s;
 
   .Icon {

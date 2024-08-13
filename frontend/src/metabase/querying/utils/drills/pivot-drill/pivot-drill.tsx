@@ -1,6 +1,7 @@
 import { t } from "ttag";
 
 import { QueryColumnPicker } from "metabase/common/components/QueryColumnPicker";
+import { Box } from "metabase/ui";
 import { ClickActionsView } from "metabase/visualizations/components/ClickActions";
 import type {
   ClickActionPopoverProps,
@@ -35,8 +36,14 @@ export const pivotDrill: Drill = ({ query, stageIndex, drill, applyDrill }) => {
     getActionForType(query, stageIndex, drill, pivotType, applyDrill),
   );
 
-  const DrillPopover = ({ onClick }: ClickActionPopoverProps) => {
-    return <ClickActionsView clickActions={actions} onClick={onClick} />;
+  const DrillPopover = ({ onClick, onClose }: ClickActionPopoverProps) => {
+    return (
+      <ClickActionsView
+        clickActions={actions}
+        close={onClose}
+        onClick={onClick}
+      />
+    );
   };
 
   return [
@@ -80,18 +87,20 @@ function getColumnPopover(
     onClose,
   }: ClickActionPopoverProps) {
     return (
-      <QueryColumnPicker
-        query={query}
-        stageIndex={stageIndex}
-        columnGroups={Lib.groupColumns(columns)}
-        checkIsColumnSelected={() => false}
-        onSelect={column => {
-          const nextQuestion = applyDrill(drill, column).setDefaultDisplay();
-          const nextCard = nextQuestion.card();
-          onChangeCardAndRun({ nextCard });
-        }}
-        onClose={onClose}
-      />
+      <Box mah="65vh">
+        <QueryColumnPicker
+          query={query}
+          stageIndex={stageIndex}
+          columnGroups={Lib.groupColumns(columns)}
+          checkIsColumnSelected={() => false}
+          onSelect={column => {
+            const nextQuestion = applyDrill(drill, column).setDefaultDisplay();
+            const nextCard = nextQuestion.card();
+            onChangeCardAndRun({ nextCard });
+          }}
+          onClose={onClose}
+        />
+      </Box>
     );
   };
 }

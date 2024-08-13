@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { t } from "ttag";
 
 import EmptyState from "metabase/components/EmptyState";
-import PaginationControls from "metabase/components/PaginationControls";
+import { PaginationControls } from "metabase/components/PaginationControls";
 import SelectList from "metabase/components/SelectList";
 import type { BaseSelectListItemProps } from "metabase/components/SelectList/BaseSelectListItem";
 import Search from "metabase/entities/search";
+import { isEmbeddingSdk } from "metabase/env";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { DEFAULT_SEARCH_LIMIT } from "metabase/lib/constants";
 import { PLUGIN_MODERATION } from "metabase/plugins";
@@ -73,7 +74,9 @@ export function QuestionList({
 
     return {
       ...baseQuery,
-      models: ["card", "dataset"],
+      models: isEmbeddingSdk // FIXME(sdk): remove this logic when v51 is released
+        ? ["card", "dataset"] // ignore "metric" as SDK is used with v50 (or below) now, where we don't have this entity type
+        : ["card", "dataset", "metric"],
       offset: queryOffset,
       limit: DEFAULT_SEARCH_LIMIT,
     };

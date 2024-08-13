@@ -12,7 +12,7 @@ export const ResetButtonContainer = () => {
     <Box
       pb="1rem"
       mt="auto"
-      style={{ marginInlineStart: "auto", marginInlineEnd: ".75rem" }}
+      style={{ marginInlineStart: "auto", marginInlineEnd: "1.5rem" }}
     >
       <ResetAllToDefaultButtonFormBody />
     </Box>
@@ -49,6 +49,8 @@ const ResetAllToDefaultButtonFormBody = () => {
             }}
             label={
               <Text
+                // Prevents the label from getting cut off vertically
+                h="1rem"
                 lh="1"
                 fw="normal"
                 color="error"

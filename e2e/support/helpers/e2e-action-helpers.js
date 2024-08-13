@@ -9,8 +9,10 @@ export function setActionsEnabledForDB(dbId, enabled = true) {
 }
 
 export function fillActionQuery(query) {
-  cy.get(".ace_content:visible").type(query, {
+  // Without this wait, content tends to drop from the beginning of the string. TODO: Fix
+  cy.get(".ace_content:visible").wait(500).type(query, {
     parseSpecialCharSequences: false,
+    delay: 50,
   });
 }
 /**

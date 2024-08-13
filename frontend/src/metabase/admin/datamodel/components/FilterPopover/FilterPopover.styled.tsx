@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
 
 import BaseButton from "metabase/core/components/Button";
-import { color, alpha } from "metabase/lib/colors";
+import { alpha } from "metabase/lib/colors";
 
 type Props = {
   primaryColor?: string;
@@ -9,14 +9,16 @@ type Props = {
 
 export const Button = styled(BaseButton)<Props>`
   color: white;
-  border-color: ${({ primaryColor = color("brand") }) => primaryColor};
-  background-color: ${({ primaryColor = color("brand") }) => primaryColor};
+  border-color: ${({ primaryColor = "var(--mb-color-brand)" }) => primaryColor};
+  background-color: ${({ primaryColor = "var(--mb-color-brand)" }) =>
+    primaryColor};
 
   &:hover,
   &:focus {
     color: white;
-    border-color: ${({ primaryColor = color("brand") }) => primaryColor};
-    background-color: ${({ primaryColor = color("brand") }) =>
+    border-color: ${({ primaryColor = "var(--mb-color-brand)" }) =>
+      primaryColor};
+    background-color: ${({ primaryColor = "var(--mb-color-brand)" }) =>
       alpha(primaryColor, 0.8)};
   }
 `;
@@ -24,7 +26,7 @@ export const Button = styled(BaseButton)<Props>`
 export const FilterPopoverSeparator = styled.hr`
   border: 0;
   height: 0;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 // Mimics the PopoverS.PopoverBodyMarginBottom class in Popover.css that the other

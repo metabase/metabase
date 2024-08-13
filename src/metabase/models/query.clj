@@ -100,7 +100,7 @@
    [:database-id ::lib.schema.id/database]
    [:table-id    [:maybe ::lib.schema.id/table]]])
 
-(mu/defn ^:private pmbql-query->database-and-table-ids :- ::database-and-table-ids
+(mu/defn- pmbql-query->database-and-table-ids :- ::database-and-table-ids
   [{database-id :database, :as query} :- [:map
                                           [:lib/type [:= :mbql/query]]]]
   (if-let [source-card-id (lib.util/source-card-id query)]
@@ -110,7 +110,7 @@
       {:database-id database-id
        :table-id    table-id})))
 
-(mu/defn ^:private legacy-query->database-and-table-ids :- ::database-and-table-ids
+(mu/defn- legacy-query->database-and-table-ids :- ::database-and-table-ids
   [{database-id :database, query-type :type, {:keys [source-table source-query]} :query} :- [:map
                                                                                              [:type [:enum :query :native]]]]
   (cond
@@ -126,7 +126,7 @@
 (mu/defn query->database-and-table-ids :- [:maybe ::database-and-table-ids]
   "Return a map with `:database-id` and source `:table-id` that should be saved for a Card.
 
-  Handles either pMBQL (MLv2) queries or legacy MBQL queries. Handles source Cards by fetching them as needed."
+ Handles either pMBQL (MLv2) queries or legacy MBQL queries. Handles source Cards by fetching them as needed."
   [query :- [:maybe :map]]
   (when query
     (when-let [f (case (lib/normalized-query-type query)

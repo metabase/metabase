@@ -12,7 +12,6 @@
    [metabase.query-processor :as qp]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.pipeline :as qp.pipeline]
-   [metabase.query-processor.test-util :as qp.test-util]
    [metabase.sync :as sync]
    [metabase.test :as mt]
    [metabase.test.data.bigquery-cloud-sdk :as bigquery.tx]
@@ -23,7 +22,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (com.google.cloud.bigquery BigQuery DatasetId)))
+   (com.google.cloud.bigquery BigQuery DatasetId TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -36,6 +35,10 @@
 (defn- drop-table-if-exists!
   [table-name]
   (bigquery.tx/execute! (format "DROP TABLE IF EXISTS `%s`;" (fmt-table-name table-name))))
+
+(defn- drop-mv-if-exists!
+  [table-name]
+  (bigquery.tx/execute! (format "DROP MATERIALIZED VIEW IF EXISTS `%s`;" (fmt-table-name table-name))))
 
 (deftest can-connect?-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -75,29 +78,31 @@
    ;; we don't care how many pages it took to load this dataset above. it will be a large
    ;; number because we're just tracking the number of times `get-query-results` gets invoked.
 
-   ;; TODO Temporarily disabling due to flakiness (#33140)
-   #_
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
-       (with-bindings {#'bigquery/*page-size*             25
-                       #'bigquery/*page-callback*         page-callback}
-         (let [actual (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                             [(t2/select-one Field :id (mt/id :venues :id))
-                              (t2/select-one Field :id (mt/id :venues :name))]
-                             (constantly conj))
-                           (sort-by first)
-                           (take 5))]
+       (with-bindings {#'bigquery/*page-size*     25
+                       #'bigquery/*page-callback* page-callback}
+         (let [results (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                              [(t2/select-one Field :id (mt/id :venues :id))
+                               (t2/select-one Field :id (mt/id :venues :name))]
+                              (constantly conj))
+                            (sort-by first)
+                            (take 5))]
            (is (= [[1 "Red Medicine"]
                    [2 "Stout Burgers & Beers"]
                    [3 "The Apple Pan"]
                    [4 "Wurstküche"]
                    [5 "Brite Spot Family Restaurant"]]
-                  actual))
+                  (take 5 results)))
+           (testing "results are not duplicated when pagination occurs (#45953)"
+             (is (= (count results) (count (distinct results)))))
            ;; the `(sort-by)` above will cause the entire resultset to be realized, so
            ;; we want to make sure that it really did retrieve 25 rows per request
            ;; this only works if the timeout has been temporarily set to 0 (see above)
-           (is (= 4 @pages-retrieved))))))))
+
+           ;; TODO Temporarily disabling due to flakiness (#33140)
+           #_(is (= 4 @pages-retrieved))))))))
 
 ;; These look like the macros from metabase.query-processor-test.expressions-test
 ;; but conform to bigquery naming rules
@@ -253,6 +258,27 @@
                    {:source-table (mt/id view-name)
                     :order-by     [[:asc (mt/id view-name :id)]]}))))))))
 
+(deftest sync-materialized-view-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (mt/with-model-cleanup [:model/Table]
+      (let [view-name "mv_test_materialized_view"]
+        (try
+          (doseq [sql [(format "CREATE MATERIALIZED VIEW %s AS (
+                               SELECT product_id, COUNT(id) as cnt FROM %s GROUP BY product_id);"
+                               (fmt-table-name view-name)
+                               (fmt-table-name "orders"))]]
+            (bigquery.tx/execute! sql))
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (testing "We should be able to run queries against the view (#3414)"
+            (is (= [[1 93] [2 98] [3 77]]
+                   (mt/rows
+                    (mt/run-mbql-query nil
+                                       {:source-table (mt/id view-name)
+                                        :order-by     [[:asc (mt/id view-name :product_id)]]
+                                        :limit        3})))))
+          (finally
+            (drop-mv-if-exists! view-name)))))))
+
 (deftest sync-table-with-required-filter-test
   (mt/test-driver :bigquery-cloud-sdk
     (testing "tables that require a partition filters are synced correctly"
@@ -316,8 +342,9 @@
   (mt/test-driver :bigquery-cloud-sdk
     (testing "Partitioned tables that require a partition filter can be synced"
       (mt/with-model-cleanup [:model/Table]
-        (let [table-names  ["partition_by_range" "partition_by_time" "partitioned_by_datetime"
-                            "partition_by_ingestion_time" "partition_by_ingestion_time_not_required"]]
+        (let [table-names  ["partition_by_range" "partition_by_time" "partition_by_datetime"
+                            "partition_by_ingestion_time" "partition_by_ingestion_time_not_required"]
+              mv-names     ["mv_partition_by_datetime" "mv_partition_by_range"]]
           (try
            (doseq [sql [(format "CREATE TABLE %s (customer_id INT64)
                                 PARTITION BY RANGE_BUCKET(customer_id, GENERATE_ARRAY(0, 100, 10))
@@ -326,15 +353,23 @@
                         (format "INSERT INTO %s (customer_id)
                                 VALUES (1), (2), (3);"
                                 (fmt-table-name "partition_by_range"))
+                        (format "CREATE MATERIALIZED VIEW %s AS
+                                SELECT customer_id + 41 as vip_customer FROM %s WHERE customer_id = 1;"
+                                (fmt-table-name "mv_partition_by_range")
+                                (fmt-table-name "partition_by_range"))
                         (format "CREATE TABLE %s (company STRING, founded DATETIME)
                                 PARTITION BY DATE(founded)
                                 OPTIONS (require_partition_filter = TRUE);"
-                                (fmt-table-name "partitioned_by_datetime"))
+                                (fmt-table-name "partition_by_datetime"))
                         (format "INSERT INTO %s (company, founded)
                                 VALUES ('Metabase', DATETIME('2014-10-10 00:00:00')),
                                 ('Tesla', DATETIME('2003-07-01 00:00:00')),
                                 ('Apple', DATETIME('1976-04-01 00:00:00'));"
-                                (fmt-table-name "partitioned_by_datetime"))
+                                (fmt-table-name "partition_by_datetime"))
+                        (format "CREATE MATERIALIZED VIEW %s AS
+                                SELECT company AS ev_company FROM %s WHERE founded = DATETIME('2003-07-01 00:00:00');"
+                                (fmt-table-name "mv_partition_by_datetime")
+                                (fmt-table-name "partition_by_datetime"))
                         (format "CREATE TABLE %s (name STRING, birthday TIMESTAMP)
                                 PARTITION BY DATE(birthday)
                                 OPTIONS (require_partition_filter = TRUE);"
@@ -359,21 +394,23 @@
                                 (fmt-table-name "partition_by_ingestion_time_not_required"))]]
              (bigquery.tx/execute! sql))
            (sync/sync-database! (mt/db))
-           (let [table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in table-names])
+           (let [table-ids     (t2/select-pks-vec :model/Table :db_id (mt/id) :name [:in (concat mv-names table-names)])
                  all-field-ids (t2/select-pks-vec :model/Field :table_id [:in table-ids])]
              (testing "all fields are fingerprinted"
                (is (every? some? (t2/select-fn-vec :fingerprint :model/Field :id [:in all-field-ids]))))
              (testing "Field values are correctly synced"
                (is (= {"customer_id"   #{1 2 3}
+                       "vip_customer"  #{42}
                        "name"          #{"Khuat" "Quang" "Ngoc"}
                        "company"       #{"Metabase" "Tesla" "Apple"}
+                       "ev_company"    #{"Tesla"}
                        "is_awesome"    #{true false}
                        "is_opensource" #{true false}}
                       (->> (t2/query {:select [[:field.name :field-name] [:fv.values :values]]
                                       :from   [[:metabase_field :field]]
                                       :join   [[:metabase_fieldvalues :fv] [:= :field.id :fv.field_id]]
                                       :where  [:and [:in :field.table_id table-ids]
-                                               [:in :field.name ["customer_id" "name" "is_awesome" "is_opensource" "company"]]]})
+                                               [:in :field.name ["customer_id" "vip_customer" "name" "is_awesome" "is_opensource" "company" "ev_company"]]]})
                            (map #(update % :values (comp set json/parse-string)))
                            (map (juxt :field-name :values))
                            (into {}))))))
@@ -397,6 +434,7 @@
                     (first (mt/rows (mt/run-mbql-query partition_by_ingestion_time_not_required {:limit 1})))))))
            (finally
             (doall (map drop-table-if-exists! table-names))
+            (doall (map drop-mv-if-exists! mv-names))
             nil)))))))
 
 (deftest sync-update-require-partition-option-test
@@ -446,79 +484,79 @@
 
 (deftest chain-filter-with-fields-from-table-requires-a-filter-test
   (testing "#40673"
-    (mt/test-driver :bigquery-cloud-sdk
-      (binding [qp.test-util/*enable-fk-support-for-disabled-drivers-in-tests* true]
-        (mt/with-model-cleanup [:model/Table]
-          (let [category-table-name "cf_category"
-                product-table-name  "cf_product"]
-            (try
-              (doseq [sql [(format "CREATE TABLE %s (id INT64, category STRING, PRIMARY KEY(id) NOT ENFORCED)
+    (mt/test-driver
+     :bigquery-cloud-sdk
+     (mt/with-model-cleanup [:model/Table]
+       (let [category-table-name "cf_category"
+             product-table-name  "cf_product"]
+         (try
+           (doseq [sql [(format "CREATE TABLE %s (id INT64, category STRING, PRIMARY KEY(id) NOT ENFORCED)
                                    PARTITION BY _PARTITIONDATE
                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name category-table-name))
-                           (format "INSERT INTO %s (id, category)
+                                (fmt-table-name category-table-name))
+                        (format "INSERT INTO %s (id, category)
                                    VALUES (1, \"coffee\"), (2, \"tea\");"
-                                   (fmt-table-name category-table-name))
-                           (format "CREATE TABLE %s (id INT64, category_id INT64, name STRING)
+                                (fmt-table-name category-table-name))
+                        (format "CREATE TABLE %s (id INT64, category_id INT64, name STRING)
                                    PARTITION BY _PARTITIONDATE
                                    OPTIONS (require_partition_filter = TRUE);"
-                                   (fmt-table-name product-table-name))
-                           (format "ALTER TABLE %1$s
+                                (fmt-table-name product-table-name))
+                        (format "ALTER TABLE %1$s
                                    ADD CONSTRAINT fk_product_category_id FOREIGN KEY (category_id)
                                    REFERENCES %2$s(id) NOT ENFORCED;"
-                                   (fmt-table-name product-table-name)
-                                   (fmt-table-name category-table-name))
-                           (format "INSERT INTO %s (id, category_id, name)
+                                (fmt-table-name product-table-name)
+                                (fmt-table-name category-table-name))
+                        (format "INSERT INTO %s (id, category_id, name)
                                    VALUES (1, 1, \"Americano\"), (2, 1, \"Cold brew\"), (3, 2, \"Herbal\"), (4, 2, \"Oolong\");"
-                                   (fmt-table-name product-table-name))]]
-                (bigquery.tx/execute! sql))
-              (sync/sync-database! (mt/db) {:scan :schema})
+                                (fmt-table-name product-table-name))]]
+             (bigquery.tx/execute! sql))
+           (sync/sync-database! (mt/db) {:scan :schema})
               ;; Fake fk relationship for bigquery because apparently fk on bigquery is not a thing.
               ;; We want this to test whether chain filter add a filter on partitioned fields from joned tables.
-              (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
-              (mt/with-temp
-                [:model/Card          card-category {:database_id   (mt/id)
-                                                     :table_id      (mt/id :cf_category)
-                                                     :dataset_query (mt/mbql-query cf_category)}
-                 :model/Card          card-product  {:database_id   (mt/id)
-                                                     :table_id      (mt/id :cf_product)
-                                                     :dataset_query (mt/mbql-query cf_product)}
-                 :model/Dashboard     dashboard     {:parameters [{:name "Category"
-                                                                   :slug "category"
-                                                                   :id   "_CATEGORY_"
-                                                                   :type :string/=}
-                                                                  {:name "Product Name"
-                                                                   :slug "Product name"
-                                                                   :id   "_NAME_"
-                                                                   :type :string/=}]}
-                 :model/DashboardCard _dashcard     {:card_id            (:id card-category)
-                                                     :dashboard_id       (:id dashboard)
-                                                     :parameter_mappings [{:parameter_id "_CATEGORY_"
-                                                                           :card_id      (:id card-category)
-                                                                           :target       [:dimension (mt/$ids $cf_category.category)]}]}
-                 :model/DashboardCard _dashcard     {:card_id            (:id card-product)
-                                                     :dashboard_id       (:id dashboard)
-                                                     :parameter_mappings [{:parameter_id "_NAME_"
-                                                                           :card_id      (:id card-product)
-                                                                           :target       [:dimension (mt/$ids $cf_product.name)]}]}]
+           (t2/update! :model/Field (mt/id :cf_product :category_id) {:fk_target_field_id (mt/id :cf_category :id)})
+           (mt/with-temp
+             [:model/Card          card-category {:database_id   (mt/id)
+                                                  :table_id      (mt/id :cf_category)
+                                                  :dataset_query (mt/mbql-query cf_category)}
+              :model/Card          card-product  {:database_id   (mt/id)
+                                                  :table_id      (mt/id :cf_product)
+                                                  :dataset_query (mt/mbql-query cf_product)}
+              :model/Dashboard     dashboard     {:parameters [{:name "Category"
+                                                                :slug "category"
+                                                                :id   "_CATEGORY_"
+                                                                :type :string/=}
+                                                               {:name "Product Name"
+                                                                :slug "Product name"
+                                                                :id   "_NAME_"
+                                                                :type :string/=}]}
+              :model/DashboardCard _dashcard     {:card_id            (:id card-category)
+                                                  :dashboard_id       (:id dashboard)
+                                                  :parameter_mappings [{:parameter_id "_CATEGORY_"
+                                                                        :card_id      (:id card-category)
+                                                                        :target       [:dimension (mt/$ids $cf_category.category)]}]}
+              :model/DashboardCard _dashcard     {:card_id            (:id card-product)
+                                                  :dashboard_id       (:id dashboard)
+                                                  :parameter_mappings [{:parameter_id "_NAME_"
+                                                                        :card_id      (:id card-product)
+                                                                        :target       [:dimension (mt/$ids $cf_product.name)]}]}]
 
-                (testing "chained filter works"
-                  (is (= {:has_more_values false
-                          :values          [["Americano"] ["Cold brew"]]}
-                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values?%s=%s"
-                                                                           (:id dashboard) "_NAME_" "_CATEGORY_" "coffee")))))
-                (testing "getting values works"
-                  (is (= {:has_more_values false
-                          :values          [["Americano"] ["Cold brew"] ["Herbal"] ["Oolong"]]}
-                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values" (:id dashboard) "_NAME_")))))
-                (testing "searching values works"
-                  (is (= {:has_more_values false
-                          :values          [["Oolong"]]}
-                         (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/search/oo" (:id dashboard) "_NAME_"))))))
+             (testing "chained filter works"
+               (is (= {:has_more_values false
+                       :values          [["Americano"] ["Cold brew"]]}
+                      (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values?%s=%s"
+                                                                        (:id dashboard) "_NAME_" "_CATEGORY_" "coffee")))))
+             (testing "getting values works"
+               (is (= {:has_more_values false
+                       :values          [["Americano"] ["Cold brew"] ["Herbal"] ["Oolong"]]}
+                      (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/values" (:id dashboard) "_NAME_")))))
+             (testing "searching values works"
+               (is (= {:has_more_values false
+                       :values          [["Oolong"]]}
+                      (mt/user-http-request :crowberto :get 200 (format "/dashboard/%d/params/%s/search/oo" (:id dashboard) "_NAME_"))))))
 
-             (finally
-               (doseq [table-name [product-table-name category-table-name]]
-                 (drop-table-if-exists! table-name))))))))))
+           (finally
+             (doseq [table-name [product-table-name category-table-name]]
+               (drop-table-if-exists! table-name)))))))))
 
 (deftest query-integer-pk-or-fk-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -650,12 +688,12 @@
     (let [fake-execute-called (atom false)
           orig-fn             @#'bigquery/execute-bigquery]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
                                                   (if-not @fake-execute-called
                                                     (do (reset! fake-execute-called true)
                                                         ;; simulate a transient error being thrown
                                                         (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (orig-fn client sql parameters nil nil)))]
+                                                    (orig-fn client sql parameters nil)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
@@ -666,13 +704,13 @@
     (let [fake-execute-called (atom false)
           orig-fn        @#'bigquery/execute-bigquery]
       (testing "Should not retry query on cancellation"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
                                                   ;; We only want to simulate exception on the query that we're testing and not on possible db setup queries
                                                   (if (and (re-find #"notRetryCancellationExceptionTest" sql) (not @fake-execute-called))
                                                     (do (reset! fake-execute-called true)
                                                         ;; Simulate a cancellation happening
                                                         (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
-                                                    (orig-fn client sql parameters nil nil)))]
+                                                    (orig-fn client sql parameters nil)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
                                :type     :native})
@@ -683,6 +721,12 @@
               (is (= "Query cancelled" (.getMessage e)))
               ;; make sure that the fake exception was thrown
               (is (true? @fake-execute-called)))))))))
+
+(defn- future-thread-names []
+  ;; kinda hacky but we don't control this thread pool
+  (into #{} (comp (map (fn [^Thread t] (.getName t)))
+                  (filter #(str/includes? % "clojure-agent-send-off-pool")))
+        (.keySet (Thread/getAllStackTraces))))
 
 (deftest query-cancel-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -705,7 +749,46 @@
                   (is (< 0 row-count 10000)))))
             (catch clojure.lang.ExceptionInfo e
               (is (= "Query cancelled"
-                     (ex-message e))))))))))
+                     (ex-message e))))))))
+    (testing "Cancel thread does not leak"
+      (mt/dataset test-data
+        (let [query        (assoc-in (mt/query orders) [:query :limit] 2)
+              count-before (count (future-thread-names))]
+          (dotimes [_ 10]
+            (mt/process-query query))
+          (let [count-after (count (future-thread-names))]
+            (is (< count-after (+ count-before 5))
+                "unbounded thread growth!")))))))
+
+(deftest later-page-fetch-throws-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery queries which fail on later pages are caught properly"
+      (let [count-before (count (future-thread-names))
+            page-counter (atom 3)
+            orig-exec    @#'bigquery/execute-bigquery
+            wrap-result  (fn wrap-result [^TableResult result]
+                           (proxy [TableResult] []
+                             (getSchema [] (.getSchema result))
+                             (getValues [] (.getValues result))
+                             (getNextPageToken [] (.getNextPageToken result))
+                             (getNextPage []
+                               (if (zero? @page-counter)
+                                 (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
+                                 (wrap-result (.getNextPage result))))))]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters cancel-chan]
+                                                  (wrap-result (orig-exec client sql parameters cancel-chan)))]
+          (dotimes [_ 10]
+            (reset! page-counter 3)
+            (binding [bigquery/*page-size*     100 ; small pages so there are several
+                      bigquery/*page-callback* (fn []
+                                                 (let [pages (swap! page-counter #(max (dec %) 0))]
+                                                   (log/debugf "*page-callback counting down: %d to go" pages)))]
+              (mt/dataset test-data
+                (is (thrown-with-msg? Exception #"onoes BigQuery failed to fetch a later page"
+                                      (mt/process-query (mt/query orders))))))))
+        (testing "no thread leaks"
+          (let [count-after (count (future-thread-names))]
+            (is (< count-after (+ count-before 5)))))))))
 
 ;; TODO Temporarily disabling due to flakiness (#33140)
 #_
@@ -868,6 +951,6 @@
                   str/join
                   pretty-sql-lines)
              (->> (mt/mbql-query venues {:aggregation [:count]})
-                  qp.compile/compile-and-splice-parameters
+                  qp.compile/compile-with-inline-parameters
                   :query
                   pretty-sql-lines))))))

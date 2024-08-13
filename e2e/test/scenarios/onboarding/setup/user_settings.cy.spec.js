@@ -1,5 +1,11 @@
 import { USERS } from "e2e/support/cypress_data";
-import { restore, popover, getFullName } from "e2e/support/helpers";
+import { NORMAL_USER_ID } from "e2e/support/cypress_sample_instance_data";
+import {
+  restore,
+  popover,
+  getFullName,
+  entityPickerModal,
+} from "e2e/support/helpers";
 
 const { normal } = USERS;
 
@@ -150,6 +156,25 @@ describe("user > settings", () => {
         },
       );
     });
+  });
+
+  it("Should show correct translations when a user logs in with a locale that is different from the site locale", () => {
+    cy.intercept("GET", "/api/user/current").as("getUser");
+    cy.request("PUT", `/api/user/${NORMAL_USER_ID}`, { locale: "fr" });
+    cy.signOut();
+    cy.visit("/question/notebook");
+    cy.wait("@getUser");
+    cy.findByLabelText("Email address").type(email);
+    cy.findByLabelText("Password").type(password);
+    cy.button("Sign in").click();
+
+    // should be redirected to new question page
+    cy.wait("@getUser");
+    entityPickerModal().findByText("Orders Model").click();
+    cy.findByTestId("step-summarize-0-0")
+      .findByText("Summarize")
+      .should("not.exist");
+    cy.findByTestId("step-summarize-0-0").findByText("Résumer").should("exist");
   });
 
   describe("when user is authenticated via ldap", () => {

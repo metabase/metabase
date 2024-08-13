@@ -10,7 +10,8 @@ import { useSelector } from "metabase/lib/redux";
 import { LeftNavWrapper } from "./AdminPeopleApp.styled";
 
 export const AdminPeopleApp = ({ children }: { children: React.ReactNode }) => {
-  const shouldNudge = useSelector(shouldNudgeToPro);
+  const shouldNudge = useSelector(shouldNudgeToPro) as boolean;
+
   return (
     <AdminLayout
       sidebar={

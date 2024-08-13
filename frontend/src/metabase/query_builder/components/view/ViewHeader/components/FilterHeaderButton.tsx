@@ -1,16 +1,18 @@
+import cx from "classnames";
 import { t } from "ttag";
 
-import { color } from "metabase/lib/colors";
+import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
 import type { QueryBuilderMode } from "metabase-types/store";
 
-import { HeaderButton } from "../ViewHeader.styled";
+import ViewTitleHeaderS from "../ViewTitleHeader.module.css";
 
 interface FilterHeaderButtonProps {
   className?: string;
-  onOpenModal: (modalType: string) => void;
+  onOpenModal: (modalType: QueryModalType) => void;
 }
 
 export function FilterHeaderButton({
@@ -18,17 +20,14 @@ export function FilterHeaderButton({
   onOpenModal,
 }: FilterHeaderButtonProps) {
   return (
-    <HeaderButton
-      className={className}
-      active={false}
-      large
-      labelBreakpoint="sm"
-      color={color("filter")}
+    <Button
+      color="filter"
+      className={cx(className, ViewTitleHeaderS.FilterButton)}
       onClick={() => onOpenModal(MODAL_TYPES.FILTERS)}
       data-testid="question-filter-header"
     >
       {t`Filter`}
-    </HeaderButton>
+    </Button>
   );
 }
 
@@ -51,6 +50,7 @@ FilterHeaderButton.shouldRender = ({
     !isNative &&
     isEditable &&
     !isObjectDetail &&
-    isActionListVisible
+    isActionListVisible &&
+    !question.isArchived()
   );
 };

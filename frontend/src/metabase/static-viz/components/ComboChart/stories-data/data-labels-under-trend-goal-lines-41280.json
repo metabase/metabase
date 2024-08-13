@@ -1,0 +1,663 @@
+[
+  {
+    "card": {
+      "original_card_id": 335,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-05-15T20:16:52.379534Z",
+      "parameters": [],
+      "metabase_version": "v0.2.0-SNAPSHOT (9d968d9)",
+      "collection": {
+        "authority_level": null,
+        "description": null,
+        "archived": false,
+        "slug": "bugs___regressions",
+        "name": "Bugs / Regressions",
+        "personal_owner_id": null,
+        "type": null,
+        "is_sample": false,
+        "id": 17,
+        "entity_id": "5GNXgVzQTdQp5bxa6D_aa",
+        "location": "/5/",
+        "namespace": null,
+        "is_personal": false,
+        "created_at": "2023-12-13T22:30:37.083713Z"
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["date"],
+        "graph.show_values": true,
+        "graph.show_goal": true,
+        "graph.show_trendline": true,
+        "graph.goal_value": 12000,
+        "series_settings": {
+          "stddev": {
+            "display": "bar"
+          },
+          "avg": {
+            "display": "bar"
+          }
+        },
+        "graph.metrics": ["sum", "stddev", "avg"]
+      },
+      "parameter_mappings": [],
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            [
+              "sum",
+              [
+                "field",
+                "total_accident",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ],
+            [
+              "stddev",
+              [
+                "field",
+                "total_accident",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ],
+            [
+              "avg",
+              [
+                "field",
+                "Total Accident Inverted",
+                {
+                  "base-type": "type/BigInteger"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "date",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "month"
+              }
+            ]
+          ],
+          "source-table": "card__101"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-05-20T20:18:06.329062Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 409.0344827586207,
+      "type": "question",
+      "last_used_at": "2024-05-20T20:18:06.329062Z",
+      "dashboard_count": 0,
+      "last_query_start": "2024-05-20T20:18:05.964566Z",
+      "query_type": "query",
+      "enable_embedding": false,
+      "initially_published_at": null,
+      "creator": {
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_login": "2024-05-20T17:24:29.444123Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Usmani",
+        "date_joined": "2023-11-21T21:25:41.062104Z",
+        "common_name": "Emmad Usmani"
+      },
+      "result_metadata": [
+        {
+          "database_type": "date",
+          "semantic_type": "type/CreationDate",
+          "table_id": 154,
+          "unit": "month",
+          "name": "date",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/Date",
+          "id": 1417,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/Date"
+        },
+        {
+          "semantic_type": "type/Quantity",
+          "base_type": "type/BigInteger",
+          "name": "sum",
+          "display_name": "Sum of Total Accident",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0
+        },
+        {
+          "semantic_type": "type/Quantity",
+          "base_type": "type/Float",
+          "name": "stddev",
+          "display_name": "Standard deviation of Total Accident",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1
+        },
+        {
+          "base_type": "type/Float",
+          "name": "avg",
+          "display_name": "Average of Total Accident Inverted",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 2],
+          "aggregation_index": 2
+        }
+      ],
+      "table_id": 154,
+      "view_count": 36,
+      "cache_invalidated_at": null,
+      "model": "card",
+      "location": null,
+      "last-edit-info": {
+        "id": 1,
+        "email": "emmad@metabase.com",
+        "first_name": "Emmad",
+        "last_name": "Usmani",
+        "timestamp": "2024-05-20T19:42:39.697069Z"
+      },
+      "collection_preview": true,
+      "entity_id": "1qOIcKz10uS0qg2vPRnwT",
+      "display": "line",
+      "id": 335,
+      "moderated_status": null,
+      "fully_parameterized": true,
+      "name": "#41280 - data labels are less readable when overlap with goal and trend lines",
+      "database_id": 2,
+      "can_write": true,
+      "collection_position": null,
+      "description": null,
+      "archived": false,
+      "collection_id": 17,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [
+          "2014-01-01T00:00:00-08:00",
+          12086,
+          86.34467386883274,
+          -389.8709677419355
+        ],
+        ["2014-02-01T00:00:00-08:00", 10780, 65.60705536972159, -385],
+        [
+          "2014-03-01T00:00:00-08:00",
+          11915,
+          54.21376351081194,
+          -384.35483870967744
+        ],
+        [
+          "2014-04-01T00:00:00-07:00",
+          11008,
+          53.50136031500092,
+          -366.93333333333334
+        ],
+        [
+          "2014-05-01T00:00:00-07:00",
+          12303,
+          59.699647124630566,
+          -396.8709677419355
+        ],
+        [
+          "2014-06-01T00:00:00-07:00",
+          12532,
+          57.467633402541374,
+          -417.73333333333335
+        ],
+        [
+          "2014-07-01T00:00:00-07:00",
+          13026,
+          47.98347790568206,
+          -420.19354838709677
+        ],
+        [
+          "2014-08-01T00:00:00-07:00",
+          12108,
+          47.72351431881987,
+          -390.5806451612903
+        ],
+        ["2014-09-01T00:00:00-07:00", 11832, 51.108120685464456, -394.4],
+        [
+          "2014-10-01T00:00:00-07:00",
+          13450,
+          74.00599013919637,
+          -433.8709677419355
+        ],
+        [
+          "2014-11-01T00:00:00-07:00",
+          13246,
+          69.81104656300622,
+          -441.53333333333336
+        ],
+        [
+          "2014-12-01T00:00:00-08:00",
+          12036,
+          111.486139089831,
+          -388.258064516129
+        ],
+        [
+          "2015-01-01T00:00:00-08:00",
+          11601,
+          88.52217133519729,
+          -374.2258064516129
+        ],
+        [
+          "2015-02-01T00:00:00-08:00",
+          10284,
+          57.58339117120066,
+          -367.2857142857143
+        ],
+        [
+          "2015-03-01T00:00:00-08:00",
+          10939,
+          56.64646555923677,
+          -352.8709677419355
+        ],
+        [
+          "2015-04-01T00:00:00-07:00",
+          10874,
+          58.534738024147295,
+          -362.46666666666664
+        ],
+        [
+          "2015-05-01T00:00:00-07:00",
+          11441,
+          59.13131122088663,
+          -369.06451612903226
+        ],
+        [
+          "2015-06-01T00:00:00-07:00",
+          12058,
+          50.56806194515357,
+          -401.93333333333334
+        ],
+        [
+          "2015-07-01T00:00:00-07:00",
+          12771,
+          46.17951219441418,
+          -411.96774193548384
+        ],
+        ["2015-08-01T00:00:00-07:00", 11470, 39.16384112434457, -370],
+        ["2015-09-01T00:00:00-07:00", 12201, 53.90927563972642, -406.7],
+        [
+          "2015-10-01T00:00:00-07:00",
+          12409,
+          66.7383884057198,
+          -400.2903225806452
+        ],
+        ["2015-11-01T00:00:00-07:00", 12378, 67.94389842607895, -412.6],
+        [
+          "2015-12-01T00:00:00-08:00",
+          11630,
+          91.63958039575073,
+          -375.16129032258067
+        ],
+        [
+          "2016-01-01T00:00:00-08:00",
+          11688,
+          85.84362522444715,
+          -377.03225806451616
+        ],
+        [
+          "2016-02-01T00:00:00-08:00",
+          10657,
+          65.29435772722404,
+          -367.48275862068965
+        ],
+        [
+          "2016-03-01T00:00:00-08:00",
+          10836,
+          60.0042142120451,
+          -349.5483870967742
+        ],
+        [
+          "2016-04-01T00:00:00-07:00",
+          10592,
+          52.43912873248584,
+          -353.06666666666666
+        ],
+        [
+          "2016-05-01T00:00:00-07:00",
+          11482,
+          49.24571533309324,
+          -370.38709677419354
+        ],
+        ["2016-06-01T00:00:00-07:00", 11046, 46.75781574596201, -368.2],
+        [
+          "2016-07-01T00:00:00-07:00",
+          11777,
+          45.339119930208014,
+          -379.9032258064516
+        ],
+        [
+          "2016-08-01T00:00:00-07:00",
+          11461,
+          52.03298801559858,
+          -369.7096774193548
+        ],
+        ["2016-09-01T00:00:00-07:00", 11571, 50.92815200521875, -385.7],
+        [
+          "2016-10-01T00:00:00-07:00",
+          11624,
+          53.73800473562133,
+          -374.96774193548384
+        ],
+        ["2016-11-01T00:00:00-07:00", 12741, 73.90225526554202, -424.7],
+        [
+          "2016-12-01T00:00:00-08:00",
+          11146,
+          98.94339819202511,
+          -359.5483870967742
+        ],
+        [
+          "2017-01-01T00:00:00-08:00",
+          11147,
+          65.9309385466966,
+          -359.5806451612903
+        ],
+        [
+          "2017-02-01T00:00:00-08:00",
+          9740,
+          64.39760104544395,
+          -347.85714285714283
+        ],
+        [
+          "2017-03-01T00:00:00-08:00",
+          10806,
+          48.04216843535337,
+          -348.5806451612903
+        ],
+        [
+          "2017-04-01T00:00:00-07:00",
+          9773,
+          46.3563611840082,
+          -325.76666666666665
+        ],
+        [
+          "2017-05-01T00:00:00-07:00",
+          10922,
+          53.15369504151219,
+          -352.3225806451613
+        ],
+        ["2017-06-01T00:00:00-07:00", 11130, 42.62862887778588, -371],
+        [
+          "2017-07-01T00:00:00-07:00",
+          11450,
+          47.930425643773916,
+          -369.35483870967744
+        ],
+        [
+          "2017-08-01T00:00:00-07:00",
+          10301,
+          30.926753788523325,
+          -332.2903225806452
+        ],
+        ["2017-09-01T00:00:00-07:00", 11091, 50.688032775662805, -369.7],
+        [
+          "2017-10-01T00:00:00-07:00",
+          11194,
+          59.31455505360447,
+          -361.0967741935484
+        ],
+        ["2017-11-01T00:00:00-07:00", 11958, 54.87537395468633, -398.6],
+        [
+          "2017-12-01T00:00:00-08:00",
+          10470,
+          96.43716581843647,
+          -337.741935483871
+        ]
+      ],
+      "cols": [
+        {
+          "database_type": "date",
+          "semantic_type": "type/CreationDate",
+          "table_id": 154,
+          "unit": "month",
+          "name": "date",
+          "source": "breakout",
+          "field_ref": [
+            "field",
+            "date",
+            {
+              "base-type": "type/Date",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 1417,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1460,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "semantic_type": "type/Quantity",
+          "base_type": "type/Decimal",
+          "name": "sum",
+          "display_name": "Sum of Total Accident",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/Decimal"
+        },
+        {
+          "semantic_type": "type/Quantity",
+          "base_type": "type/Decimal",
+          "name": "stddev",
+          "display_name": "Standard deviation of Total Accident",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Decimal"
+        },
+        {
+          "base_type": "type/Decimal",
+          "name": "avg",
+          "display_name": "Average of Total Accident Inverted",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 2],
+          "aggregation_index": 2,
+          "effective_type": "type/Decimal"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('month', CAST(\"source\".\"date\" AS timestamp)) AS \"date\", SUM(\"source\".\"total_accident\") AS \"sum\", STDDEV_POP(\"source\".\"total_accident\") AS \"stddev\", AVG(\"source\".\"Total Accident Inverted\") AS \"avg\" FROM (SELECT \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"total_accident\", 0 - \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"Total Accident Inverted\" FROM \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\") AS \"source\" GROUP BY DATE_TRUNC('month', CAST(\"source\".\"date\" AS timestamp)) ORDER BY DATE_TRUNC('month', CAST(\"source\".\"date\" AS timestamp)) ASC",
+        "params": null
+      },
+      "dataset": true,
+      "model": true,
+      "format-rows?": true,
+      "results_timezone": "America/Los_Angeles",
+      "results_metadata": {
+        "columns": [
+          {
+            "semantic_type": "type/CreationDate",
+            "unit": "month",
+            "name": "date",
+            "field_ref": [
+              "field",
+              "date",
+              {
+                "base-type": "type/Date",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 1417,
+            "visibility_type": "normal",
+            "display_name": "Date",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1460,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2014-01-01",
+                  "latest": "2017-12-31"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Sum of Total Accident",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "sum",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 48,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 9740,
+                  "q1": 10930.5,
+                  "q3": 12072,
+                  "max": 13450,
+                  "sd": 841.1712681693408,
+                  "avg": 11520.4375
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Standard deviation of Total Accident",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 1],
+            "name": "stddev",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 48,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 30.926753788523325,
+                  "q1": 49.90688863912341,
+                  "q3": 66.33466347620819,
+                  "max": 111.486139089831,
+                  "sd": 16.7064978210245,
+                  "avg": 60.638823604590726
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Total Accident Inverted",
+            "field_ref": ["aggregation", 2],
+            "name": "avg",
+            "base_type": "type/Decimal",
+            "effective_type": "type/Decimal",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 48,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": -441.53333333333336,
+                  "q1": -395.63548387096773,
+                  "q3": -361.7817204301075,
+                  "max": -325.76666666666665,
+                  "sd": 25.936439241171925,
+                  "avg": -378.5063356330668
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": 11958,
+          "unit": "month",
+          "offset": 26847.730807189066,
+          "last-change": -0.1244355243351731,
+          "col": "sum",
+          "slope": -0.9131126476367732,
+          "last-value": 10470,
+          "best-fit": [
+            "+",
+            160306.18836401674,
+            ["*", -15294.634234553254, ["log", "x"]]
+          ]
+        },
+        {
+          "previous-value": 54.87537395468633,
+          "unit": "month",
+          "offset": 159.29687061836626,
+          "last-change": 0.7573851232079081,
+          "col": "stddev",
+          "slope": -0.0058774833047116155,
+          "last-value": 96.43716581843647,
+          "best-fit": [
+            "*",
+            4469009464.898191,
+            ["pow", "x", -1.8656333471844966]
+          ]
+        },
+        {
+          "previous-value": -398.6,
+          "unit": "month",
+          "offset": -907.9472395969607,
+          "last-change": 0.18019102196752632,
+          "col": "avg",
+          "slope": 0.03154106702968403,
+          "last-value": -337.741935483871,
+          "best-fit": ["+", -907.9472395969607, ["*", 0.03154106702968403, "x"]]
+        }
+      ]
+    }
+  }
+]

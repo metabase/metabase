@@ -78,9 +78,10 @@ module.exports = {
     "react/forbid-component-props": [2, { forbid: ["sx"] }],
     "react-hooks/exhaustive-deps": [
       "warn",
-      { additionalHooks: "(useSyncedQueryString|useSafeAsyncFunction)" },
+      { additionalHooks: "(useSafeAsyncFunction)" },
     ],
     "prefer-const": [1, { destructuring: "all" }],
+    "no-restricted-globals": ["error", "close"],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": [
       "error",
@@ -133,6 +134,7 @@ module.exports = {
     "plugin:import/errors",
     "plugin:import/warnings",
     "plugin:import/typescript",
+    "plugin:depend/recommended",
   ],
   settings: {
     "import/internal-regex": "^metabase/|^metabase-lib/",
@@ -160,6 +162,17 @@ module.exports = {
       rules: {
         "no-unconditional-metabase-links-render": "error",
         "no-literal-metabase-strings": "error",
+        "depend/ban-dependencies": [
+          "error",
+          {
+            allowed: [
+              "underscore",
+              "moment",
+              "lodash.orderby",
+              "lodash.debounce",
+            ],
+          },
+        ],
       },
     },
     {
@@ -189,7 +202,13 @@ module.exports = {
         "@typescript-eslint/no-inferrable-types": "off",
         "@typescript-eslint/no-explicit-any": "off",
         "@typescript-eslint/no-this-alias": "off",
-        "@typescript-eslint/consistent-type-imports": "error",
+        "@typescript-eslint/consistent-type-imports": [
+          "error",
+          {
+            fixStyle: "inline-type-imports",
+          },
+        ],
+        "@typescript-eslint/no-import-type-side-effects": "error",
         "@typescript-eslint/no-unused-vars": [
           "error",
           {

@@ -1,6 +1,12 @@
 import * as ML from "cljs/metabase.lib.js";
 import * as ML_MetadataCalculation from "cljs/metabase.lib.metadata.calculation";
-import type { DatabaseId, DatasetColumn, TableId } from "metabase-types/api";
+import type {
+  CardId,
+  CardType,
+  DatabaseId,
+  DatasetColumn,
+  TableId,
+} from "metabase-types/api";
 
 import type {
   AggregationClause,
@@ -16,6 +22,8 @@ import type {
   Clause,
   ClauseDisplayInfo,
   ColumnDisplayInfo,
+  ColumnExtraction,
+  ColumnExtractionInfo,
   ColumnGroup,
   ColumnGroupDisplayInfo,
   ColumnMetadata,
@@ -28,8 +36,8 @@ import type {
   JoinConditionOperatorDisplayInfo,
   JoinStrategy,
   JoinStrategyDisplayInfo,
-  LegacyMetricDisplayInfo,
-  LegacyMetricMetadata,
+  MetricDisplayInfo,
+  MetricMetadata,
   MetadataProvider,
   OrderByClause,
   OrderByClauseDisplayInfo,
@@ -115,8 +123,8 @@ declare function DisplayInfoFn(
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
-  metric: LegacyMetricMetadata,
-): LegacyMetricDisplayInfo;
+  metric: MetricMetadata,
+): MetricDisplayInfo;
 declare function DisplayInfoFn(
   query: Query,
   stageIndex: number,
@@ -142,6 +150,11 @@ declare function DisplayInfoFn(
   stageIndex: number,
   segment: SegmentMetadata,
 ): SegmentDisplayInfo;
+declare function DisplayInfoFn(
+  query: Query,
+  stageIndex: number,
+  extraction: ColumnExtraction,
+): ColumnExtractionInfo;
 
 // x can be any sort of opaque object, e.g. a clause or metadata map. Values returned depend on what you pass in, but it
 // should always have display_name... see :metabase.lib.metadata.calculation/display-info schema
@@ -204,6 +217,21 @@ export function queryDisplayInfo(query: Query): QueryDisplayInfo {
   return ML.display_info(query, -1, query);
 }
 
-export function dependentMetadata(query: Query): DependentItem[] {
-  return ML.dependent_metadata(query);
+export function dependentMetadata(
+  query: Query,
+  cardId: CardId | undefined,
+  cardType: CardType,
+): DependentItem[] {
+  return ML.dependent_metadata(query, cardId, cardType);
+}
+
+export function tableOrCardDependentMetadata(
+  metadataProvider: MetadataProvider,
+  tableId: TableId,
+): DependentItem[] {
+  return ML.table_or_card_dependent_metadata(metadataProvider, tableId);
+}
+
+export function columnKey(column: ColumnMetadata): string {
+  return ML.column_key(column);
 }

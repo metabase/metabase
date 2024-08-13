@@ -1,8 +1,3 @@
-:root {
-  --body-text-color: var(--color-text-medium);
-  --70-percent-black: var(--color-text-dark);
-}
-
 /* center */
 .textCentered {
   text-align: center;
@@ -43,7 +38,7 @@
 .textBody {
   font-size: 1.286em;
   line-height: 1.457em;
-  color: var(--color-text-medium); /* TODO - is this bad? */
+  color: var(--mb-color-text-medium); /* TODO - is this bad? */
 }
 
 .textList {
@@ -87,8 +82,8 @@
 
 .textCode {
   font-family: monospace;
-  color: var(--color-text-medium);
-  background-color: var(--color-bg-medium);
+  color: var(--mb-color-text-medium);
+  background-color: var(--mb-color-bg-medium);
   border-radius: 2px;
   padding: 0.2em 0.4em;
   line-height: 1.4em;

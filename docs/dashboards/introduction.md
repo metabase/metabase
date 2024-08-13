@@ -163,9 +163,9 @@ Sections include:
 
 ![KPIs with large chart below](./images/kpis-with-large-chart-below.png)
 
-### Dashboard width
+## Dashboard width
 
-You can change the width of a dashboard.
+You can change the width of a dashboard by going into the three dots menu in the upper right:
 
 ![Change dashboard width](./images/toggle-width.png)
 
@@ -226,7 +226,7 @@ Combining fullscreen mode and auto refresh is a great way to keep your team in s
 
 {% include plans-blockquote.html feature="Caching dashboard results" %}
 
-See [Caching per dashboard](../configuring-metabase/caching.md#caching-per-dashboard).
+See [Caching per dashboard](../configuring-metabase/caching.md#dashboard-caching-policy).
 
 ## Sharing dashboards with public links
 

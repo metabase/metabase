@@ -60,6 +60,7 @@ export default class RelativeDatePicker extends Component {
             intervals={intervals}
             formatter={formatter}
             periods={ALL_PERIODS}
+            testId="relative-date-unit-selector"
           />
         </div>
       </div>

@@ -1,10 +1,10 @@
-import { css } from "@emotion/react";
+import { css, type Theme } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { darken } from "metabase/lib/colors";
 
 // Should be applied to :before or :after pseudo-elements to add a spacing between table sections such as header, body or footer
-const tableRowSpacingStyle = css`
+export const tableRowSpacingStyle = css`
   line-height: 0.5rem;
   content: " ";
   display: block;
@@ -32,8 +32,12 @@ export const DataPointTableHeader = styled.thead<DataPointTableHeaderProps>`
   }
 `;
 
+export const getTooltipSeparatorStyle = (theme: Theme) => css`
+  border-top: 1px solid ${darken(theme.fn.themeColor("bg-dark"), 0.55)};
+`;
+
 export const DataPointTableBody = styled.tbody`
-  border-top: 1px solid ${darken("bg-dark", 0.55)};
+  ${({ theme }) => getTooltipSeparatorStyle(theme)}
 
   &:before {
     ${tableRowSpacingStyle}

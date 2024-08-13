@@ -2,7 +2,8 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import DashboardS from "metabase/css/dashboard.module.css";
-import { color } from "metabase/lib/colors";
+import type { MantineTheme } from "metabase/ui";
+import { SAVING_DOM_IMAGE_CLASS } from "metabase/visualizations/lib/save-chart-image";
 
 import { FIXED_WIDTH } from "./Dashboard/Dashboard.styled";
 
@@ -13,7 +14,6 @@ interface DashboardCardProps {
 export const DashboardCardContainer = styled.div<DashboardCardProps>`
   position: relative;
   z-index: 1;
-
   container-name: DashboardCard;
   container-type: inline-size;
 
@@ -36,7 +36,15 @@ export const DashboardCardContainer = styled.div<DashboardCardProps>`
     bottom: 0;
     right: 0;
     border-radius: 8px;
-    box-shadow: 0 0 0 1px ${color("border")};
+
+    ${({ theme }) => getDashboardCardShadowOrBorder(theme)}
+  }
+
+  .${SAVING_DOM_IMAGE_CLASS} & .${DashboardS.Card} {
+    // the renderer we use for saving to image/pdf doesn't support box-shadow
+    // so we replace it with a border
+    box-shadow: none;
+    border: 1px solid var(--mb-color-border);
   }
 
   ${props =>
@@ -82,3 +90,17 @@ export const DashboardGridContainer = styled.div<{
       max-width: ${FIXED_WIDTH};
     `}
 `;
+
+function getDashboardCardShadowOrBorder(theme: MantineTheme) {
+  const { border } = theme.other.dashboard.card;
+
+  if (border) {
+    return css`
+      border: ${border};
+    `;
+  }
+
+  return css`
+    box-shadow: 0 1px 3px var(--mb-color-shadow);
+  `;
+}

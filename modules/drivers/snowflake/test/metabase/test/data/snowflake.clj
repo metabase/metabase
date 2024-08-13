@@ -2,10 +2,10 @@
   (:require
    [clojure.java.jdbc :as jdbc]
    [clojure.string :as str]
+   [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql.test-util.unique-prefix :as sql.tu.unique-prefix]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.test.data.interface :as tx]
    [metabase.test.data.sql :as sql.tx]
    [metabase.test.data.sql-jdbc :as sql-jdbc.tx]
@@ -30,7 +30,11 @@
                               :type/Float          "FLOAT"
                               :type/Integer        "INTEGER"
                               :type/Text           "TEXT"
-                              :type/Time           "TIME"}]
+                              ;; 3 = millisecond precision. Default is allegedly 9 (nanosecond precision) according to
+                              ;; https://docs.snowflake.com/en/sql-reference/data-types-datetime#time, but it seems like
+                              ;; no matter what I do it ignores everything after seconds anyway. See
+                              ;; https://community.snowflake.com/s/question/0D50Z00008sOM5JSAW/how-can-i-get-milliseconds-precision-on-time-datatype
+                              :type/Time           "TIME(3)"}]
   (defmethod sql.tx/field-base-type->sql-type [:snowflake base-type] [_ _] sql-type))
 
 (def ^:dynamic *database-prefix-fn*
@@ -53,7 +57,7 @@
       (str prefix database-name))))
 
 (defmethod tx/dbdef->connection-details :snowflake
-  [_ context {:keys [database-name]}]
+  [_driver context {:keys [database-name], :as _dbdef}]
   (merge
    {:account             (tx/db-test-env-var-or-throw :snowflake :account)
     :user                (tx/db-test-env-var-or-throw :snowflake :user)
@@ -62,8 +66,14 @@
     ;; this lowercasing this value is part of testing the fix for
     ;; https://github.com/metabase/metabase/issues/9511
     :warehouse           (u/lower-case-en (tx/db-test-env-var-or-throw :snowflake :warehouse))
+    ;;
     ;; SESSION parameters
-    :timezone            "UTC"}
+    ;;
+    :timezone            "UTC"
+    ;; return times with millisecond precision, if we don't set this then Snowflake will only return them with second
+    ;; precision. Important mostly because other DBs use millisecond precision by default and this makes Snowflake test
+    ;; results match up with others
+    :time_output_format  "HH24:MI:SS.FF3"}
    ;; Snowflake JDBC driver ignores this, but we do use it in the `query-db-name` function in
    ;; `metabase.driver.snowflake`
    (when (= context :db)
@@ -175,10 +185,10 @@
 ;; For reasons I don't understand the Snowflake JDBC driver doesn't seem to work when trying to use parameterized
 ;; INSERT statements, even though the documentation suggests it should. Just go ahead and deparameterize all the
 ;; statements for now.
-(defmethod ddl/insert-rows-ddl-statements :snowflake
-  [driver table-identifier row-or-rows]
-  (for [sql+args ((get-method ddl/insert-rows-ddl-statements :sql-jdbc/test-extensions) driver table-identifier row-or-rows)]
-    (unprepare/unprepare driver sql+args)))
+(defmethod ddl/insert-rows-dml-statements :snowflake
+  [driver table-identifier rows]
+  (binding [driver/*compile-with-inline-parameters* true]
+    ((get-method ddl/insert-rows-dml-statements :sql-jdbc/test-extensions) driver table-identifier rows)))
 
 (defmethod execute/execute-sql! :snowflake
   [& args]
@@ -188,9 +198,9 @@
 
 (defmethod tx/id-field-type :snowflake [_] :type/Number)
 
-(defmethod load-data/load-data! :snowflake
-  [& args]
-  (apply load-data/load-data-maybe-add-ids-chunked! args))
+(defmethod load-data/row-xform :snowflake
+  [_driver _dbdef tabledef]
+  (load-data/maybe-add-ids-xform tabledef))
 
 (defmethod tx/aggregate-column-info :snowflake
   ([driver ag-type]
@@ -204,3 +214,19 @@
     ((get-method tx/aggregate-column-info ::tx/test-extensions) driver ag-type field)
     (when (#{:count :cum-count} ag-type)
       {:base_type :type/Number}))))
+
+(defmethod tx/dataset-already-loaded? :snowflake
+  [driver dbdef]
+  ;; check and see if ANY tables are loaded for the current catalog
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   (sql-jdbc.conn/connection-details->spec driver (tx/dbdef->connection-details driver :server dbdef))
+   {:write? false}
+   (fn [^java.sql.Connection conn]
+     (with-open [rset (.getTables (.getMetaData conn)
+                                  #_catalog        (qualified-db-name (:database-name dbdef))
+                                  #_schema-pattern nil
+                                  #_table-pattern  nil
+                                  #_types          (into-array String ["TABLE"]))]
+       ;; if the ResultSet returns anything we know the catalog has been created
+       (.next rset)))))

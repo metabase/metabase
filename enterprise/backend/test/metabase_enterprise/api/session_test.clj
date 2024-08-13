@@ -8,6 +8,7 @@
 
 (deftest properties-token-features-test
   (mt/with-premium-features #{:advanced-permissions
+                              :attached-dwh
                               :audit-app
                               :cache-granular-controls
                               :config-text-file
@@ -22,6 +23,7 @@
                               :no-upsell
                               :official-collections
                               :sandboxes
+                              :scim
                               :serialization
                               :session-timeout-config
                               :snippet-collections
@@ -29,8 +31,11 @@
                               :sso-jwt
                               :sso-ldap
                               :sso-saml
-                              :whitelabel}
+                              :upload_management
+                              :whitelabel
+                              :collection-cleanup}
           (is (= {:advanced_permissions           true
+                  :attached_dwh                   true
                   :audit_app                      true
                   :cache_granular_controls        true
                   :config_text_file               true
@@ -44,11 +49,14 @@
                   :llm_autodescription            true
                   :official_collections           true
                   :sandboxes                      true
+                  :scim                           true
                   :session_timeout_config         true
                   :snippet_collections            true
                   :sso_google                     true
                   :sso_jwt                        true
                   :sso_ldap                       true
                   :sso_saml                       true
-                  :whitelabel                     true}
+                  :upload_management              false
+                  :whitelabel                     true
+                  :collection_cleanup             true}
                  (:token-features (mt/user-http-request :crowberto :get 200 "session/properties"))))))

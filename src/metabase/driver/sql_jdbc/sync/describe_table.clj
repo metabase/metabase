@@ -2,13 +2,13 @@
   "SQL JDBC impl for `describe-fields`, `describe-table`, `describe-fks`, `describe-table-fks`, and `describe-nested-field-columns`.
   `describe-table-fks` is deprecated and will be replaced by `describe-fks` in the future."
   (:require
-   [cheshire.core :as json]
    [clojure.java.jdbc :as jdbc]
    [clojure.set :as set]
    [clojure.string :as str]
    [medley.core :as m]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.driver :as driver]
+   [metabase.driver.sql :as driver.sql]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync.common :as sql-jdbc.sync.common]
@@ -16,14 +16,19 @@
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.lib.schema.literal :as lib.schema.literal]
    [metabase.models :refer [Field]]
+   [metabase.models.setting :as setting]
    [metabase.models.table :as table]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.sync.util :as sync-util]
    [metabase.util :as u]
    [metabase.util.honey-sql-2 :as h2x]
+   [metabase.util.i18n :refer [deferred-tru]]
    [metabase.util.log :as log]
    [metabase.util.malli.registry :as mr]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [toucan2.core :as t2])
   (:import
+   (com.fasterxml.jackson.core JsonFactory JsonParser JsonToken JsonParser$NumberType)
    (java.sql Connection DatabaseMetaData ResultSet)))
 
 (set! *warn-on-reflection* true)
@@ -212,12 +217,18 @@
    (describe-table-fields-xf driver (table/database table))
    (fields-metadata driver conn table db-name-or-nil)))
 
+;;; TODO -- it seems like in practice we usually call this without passing in a DB name, so `db-name-or-nil` is almost
+;;; always just `nil`. There's currently not a great driver-agnostic way to determine the actual physical Database name
+;;; anyway... Database `:name` is wrong, because it's a display name rather than a physical name. We might want to
+;;; consider reworking this method so it takes `database` and `table` as arguments, and drivers can extract the Database
+;;; name as needed if they want to do so from `database`.
 (defmulti get-table-pks
   "Returns a vector of primary keys for `table` using a JDBC DatabaseMetaData from JDBC Connection `conn`.
   The PKs should be ordered by column names if there are multiple PKs.
   Ref: https://docs.oracle.com/javase/8/docs/api/java/sql/DatabaseMetaData.html#getPrimaryKeys-java.lang.String-java.lang.String-java.lang.String-
 
-  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection can access.
+  Note: If db-name, schema, and table-name are not passed, this may return _all_ pks that the metadata's connection
+  can access.
 
   This does not need to be implemented for drivers that support the [[driver/describe-fields]] multimethod."
   {:changelog-test/ignore true
@@ -226,32 +237,52 @@
   driver/dispatch-on-initialized-driver
   :hierarchy #'driver/hierarchy)
 
-(defmethod get-table-pks :default
-  [_driver ^Connection conn db-name-or-nil table]
+(defn- assert-database-name-does-not-include-driver
+  "Starting in 51+ we started giving test Databases like `test-data` a helpful `:name` like `test-data (h2)` for ease of
+  use in the GUI. This helps us catch situations where we're using the human-friendly Database name rather than the
+  actual physical database name for things like sync. Check and make sure we're not trying to use the user-friendly
+  Database `:name` under the hood, since the actual name should still be something like `test-data`."
+  [driver db-name]
+  (when (and db-name
+             (str/ends-with? db-name (format "(%s)" (u/qualified-name driver))))
+    ;; not i18n'ed because this is an assertion meant to catch bugs in driver implementations during test runs
+    (throw (ex-info (str "Error: Database display :name detected where you should be using its physical name"
+                         \newline
+                         "Database `:name` (e.g. `test-data (h2)`) is the human-friendly display name used in the GUI,"
+                         " it does not necessarily correspond to any actual names of anything in the data warehouse"
+                         " itself. Make sure you're using the actual physical name (e.g. `test-data`) rather than the "
+                         " display name.")
+                    {:driver driver, :db-name db-name, :type qp.error-type/driver}))))
+
+(defmethod get-table-pks :sql-jdbc
+  [driver ^Connection conn db-name-or-nil table]
+  (assert-database-name-does-not-include-driver driver db-name-or-nil)
   (let [^DatabaseMetaData metadata (.getMetaData conn)]
     (into [] (sql-jdbc.sync.common/reducible-results
               #(.getPrimaryKeys metadata db-name-or-nil (:schema table) (:name table))
               (fn [^ResultSet rs] #(.getString rs "COLUMN_NAME"))))))
 
 (defn add-table-pks
-  "Using `conn`, find any primary keys for `table` (or more, see: [[get-table-pks]]) and finally assoc `:pk?` to true for those columns."
-  [driver ^Connection conn db-name-or-nil table]
-  (let [pks (set (get-table-pks driver conn db-name-or-nil table))]
-    (update table :fields (fn [fields]
-                            (set (for [field fields]
-                                   (if-not (contains? pks (:name field))
-                                     field
-                                     (assoc field :pk? true))))))))
+  "Using `conn`, find any primary keys for `table` (or more, see: [[get-table-pks]]) and finally assoc `:pk?` to true
+  for those columns."
+  ([driver ^Connection conn table]
+   (add-table-pks driver conn nil table))
+
+  ([driver ^Connection conn db-name-or-nil table]
+   (let [pks (set (get-table-pks driver conn db-name-or-nil table))]
+     (update table :fields (fn [fields]
+                             (set (for [field fields]
+                                    (if-not (contains? pks (:name field))
+                                      field
+                                      (assoc field :pk? true)))))))))
 
 (defn- describe-table*
-  ([driver ^Connection conn table]
-   (describe-table* driver conn nil table))
-  ([driver ^Connection conn db-name-or-nil table]
-   {:pre [(instance? Connection conn)]}
-   (->> (assoc (select-keys table [:name :schema])
-               :fields (describe-table-fields driver conn table nil))
-        ;; find PKs and mark them
-        (add-table-pks driver conn db-name-or-nil))))
+  [driver ^Connection conn table]
+  {:pre [(instance? Connection conn)]}
+  (->> (assoc (select-keys table [:name :schema])
+              :fields (describe-table-fields driver conn table nil))
+       ;; find PKs and mark them
+       (add-table-pks driver conn)))
 
 (defn describe-table
   "Default implementation of `driver/describe-table` for SQL JDBC drivers. Uses JDBC DatabaseMetaData."
@@ -349,22 +380,9 @@
                        :value index-name})))
             set)))))
 
-(def ^:dynamic *nested-field-column-max-row-length*
-  "Max string length for a row for nested field column before we just give up on parsing it.
-  Marked as mutable because we mutate it for tests."
-  50000)
-
-(defn- flattened-row [field-name row]
-  (letfn [(flatten-row [row path]
-            (lazy-seq
-              (when-let [[[k v] & xs] (seq row)]
-                (cond (and (map? v) (not-empty v))
-                      (into (flatten-row v (conj path k))
-                            (flatten-row xs path))
-                      :else
-                      (cons [(conj path k) v]
-                            (flatten-row xs path))))))]
-    (into {} (flatten-row row [field-name]))))
+(def ^:const max-nested-field-columns
+  "Maximum number of nested field columns."
+  100)
 
 (def ^:private ^{:arglists '([s])} can-parse-datetime?
   "Returns whether a string can be parsed to an ISO 8601 datetime or not."
@@ -372,33 +390,85 @@
 
 (defn- type-by-parsing-string
   "Mostly just (type member) but with a bit to suss out strings which are ISO8601 and say that they are datetimes"
-  [member]
-  (let [member-type (type member)]
-    (if (and (instance? String member)
-             (can-parse-datetime? member))
-      java.time.LocalDateTime
-      member-type)))
+  [value]
+  (if (and (string? value)
+           (can-parse-datetime? value))
+    java.time.LocalDateTime
+    (type value)))
 
-(defn- row->types [row]
-  (into {} (for [[field-name field-val] row
-                 ;; We put top-level array row type semantics on JSON roadmap but skip for now
-                 :when (map? field-val)]
-             (let [flat-row (flattened-row field-name field-val)]
-               (into {} (map (fn [[k v]] [k (type-by-parsing-string v)]) flat-row))))))
+(defn- json-parser ^JsonParser [v]
+  (let [f (JsonFactory.)]
+    (if (string? v)
+      (.createParser f ^String v)
+      (.createParser f ^java.io.Reader v))))
 
-(defn- describe-json-xform [member]
-  ((comp (map #(for [[k v] %
-                     :when (< (count v) *nested-field-column-max-row-length*)]
-                 [k (json/parse-string v)]))
-         (map #(into {} %))
-         (map row->types)) member))
+(defn- number-type [t]
+  (u/case-enum t
+    JsonParser$NumberType/INT         Long
+    JsonParser$NumberType/LONG        Long
+    JsonParser$NumberType/FLOAT       Double
+    JsonParser$NumberType/DOUBLE      Double
+    JsonParser$NumberType/BIG_INTEGER clojure.lang.BigInt
+    ;; there seem to be no way to encounter this, search in tests for `BigDecimal`
+    JsonParser$NumberType/BIG_DECIMAL BigDecimal))
 
-(def ^:const max-nested-field-columns
-  "Maximum number of nested field columns."
-  100)
+(defn- json-object?
+  "Return true if the string `s` is a JSON where value is an object.
+
+    (is-json-object \"{}\") => true
+    (is-json-object \"[]\") => false
+    (is-json-object \"\\\"foo\\\"\") => false"
+  [^String s]
+  (= JsonToken/START_OBJECT (-> s json-parser .nextToken)))
+
+(defn- json->types
+  "Parses given json (a string or a reader) into a map of paths to types, i.e. `{[\"bob\"} String}`.
+
+  Uses Jackson Streaming API to skip allocating data structures, eschews allocating values when possible.
+  Respects [[nested-field-columns-max-row-length]]."
+  [v path]
+  (if-not (json-object? v)
+    {}
+    (let [p (json-parser v)]
+      (loop [path      (or path [])
+             field     nil
+             res       (transient {})]
+        (let [token (.nextToken p)]
+          (cond
+           (nil? token)
+           (persistent! res)
+
+           ;; we could be more precise here and issue warning about nested fields (the one in `describe-json-fields`),
+           ;; but this limit could be hit by multiple json fields (fetched in `describe-json-fields`) rather than only
+           ;; by this one. So for the sake of issuing only a single warning in logs we'll spill over limit by a single
+           ;; entry (instead of doing `<=`).
+           (< max-nested-field-columns (count res))
+           (persistent! res)
+
+           :else
+           (u/case-enum token
+             JsonToken/VALUE_NUMBER_INT   (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+             JsonToken/VALUE_NUMBER_FLOAT (recur path field (assoc! res (conj path field) (number-type (.getNumberType p))))
+             JsonToken/VALUE_TRUE         (recur path field (assoc! res (conj path field) Boolean))
+             JsonToken/VALUE_FALSE        (recur path field (assoc! res (conj path field) Boolean))
+             JsonToken/VALUE_NULL         (recur path field (assoc! res (conj path field) nil))
+             JsonToken/VALUE_STRING       (recur path field (assoc! res (conj path field)
+                                                                    (type-by-parsing-string (.getText p))))
+             JsonToken/FIELD_NAME         (recur path (.getText p) res)
+             JsonToken/START_OBJECT       (recur (cond-> path field  (conj field)) field res)
+             JsonToken/END_OBJECT         (recur (cond-> path (seq path) pop) field res)
+             ;; We put top-level array row type semantics on JSON roadmap but skip for now
+             JsonToken/START_ARRAY        (do (.skipChildren p)
+                                              (if field
+                                                (recur path field (assoc! res (conj path field) clojure.lang.PersistentVector))
+                                                (recur path field res)))
+             JsonToken/END_ARRAY          (recur path field res))))))))
+
+(defn- json-map->types [json-map]
+  (apply merge (map #(json->types (second %) [(first %)]) json-map)))
 
 (defn- describe-json-rf
-  "Reducing function that takes a bunch of maps from row->types,
+  "Reducing function that takes a bunch of maps from json-map->types,
   and gets them to conform to the type hierarchy,
   going through and taking the lowest common denominator type at each pass,
   ignoring the nils."
@@ -508,38 +578,57 @@
                                         (false? (:json_unfolding existing-field))))]
         (remove should-not-unfold? json-fields)))))
 
+(setting/defsetting nested-field-columns-value-length-limit
+  (deferred-tru (str "Maximum length of a JSON string before skipping it during sync for JSON unfolding. If this is set "
+                     "too high it could lead to slow syncs or out of memory errors."))
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :default    50000)
+
 (defn- sample-json-row-honey-sql
   "Return a honeysql query used to get row sample to describe json columns.
 
   If the table has PKs, try to fetch both first and last rows (see #25744).
   Else fetch the first n rows only."
-  [table-identifier json-field-identifiers pk-identifiers]
+  [driver table-identifier json-field-identifiers pk-identifiers]
   (let [pks-expr         (mapv vector pk-identifiers)
         table-expr       [table-identifier]
-        json-field-exprs (mapv vector json-field-identifiers)]
+        json-field-exprs (mapv (fn [field]
+                                 (if (= (driver.sql/json-field-length driver field) ::driver.sql/nyi)
+                                   [field]
+                                   [[:case
+                                     [:<
+                                      [:inline (nested-field-columns-value-length-limit)]
+                                      (driver.sql/json-field-length driver field)]
+                                     nil
+                                     :else
+                                     field]
+                                    (last (h2x/identifier->components field))]))
+                               json-field-identifiers)]
     (if (seq pk-identifiers)
       {:select json-field-exprs
        :from   [table-expr]
        ;; mysql doesn't support limit in subquery, so we're using inner join here
-       :join  [[{:union [{:nest {:select   pks-expr
-                                 :from     [table-expr]
-                                 :order-by (mapv #(vector % :asc) pk-identifiers)
-                                 :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
-                         {:nest {:select   pks-expr
-                                 :from     [table-expr]
-                                 :order-by (mapv #(vector % :desc) pk-identifiers)
-                                 :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
-                :result]
-               (into [:and]
-                     (for [pk-identifier pk-identifiers]
-                       [:=
-                        (h2x/identifier :field :result (last (h2x/identifier->components pk-identifier)))
-                        pk-identifier]))]}
+       :join   [[{:union-all [{:nest {:select   pks-expr
+                                      :from     [table-expr]
+                                      :order-by (mapv #(vector % :asc) pk-identifiers)
+                                      :limit    (/ metadata-queries/nested-field-sample-limit 2)}}
+                              {:nest {:select   pks-expr
+                                      :from     [table-expr]
+                                      :order-by (mapv #(vector % :desc) pk-identifiers)
+                                      :limit    (/ metadata-queries/nested-field-sample-limit 2)}}]}
+                 :result]
+                (into [:and]
+                      (for [pk-identifier pk-identifiers]
+                        [:=
+                         (h2x/identifier :field :result (last (h2x/identifier->components pk-identifier)))
+                         pk-identifier]))]}
       {:select json-field-exprs
        :from   [table-expr]
-       :limit  metadata-queries/nested-field-sample-limit})))
+       :limit  (sql.qp/inline-num metadata-queries/nested-field-sample-limit)})))
 
-(defn- describe-json-fields
+(defn- sample-json-reducible-query
   [driver jdbc-spec table json-fields pks]
   (let [table-identifier-info [(:schema table) (:name table)]
         json-field-identifiers (mapv #(apply h2x/identifier :field (into table-identifier-info [(:name %)])) json-fields)
@@ -548,10 +637,15 @@
                            (mapv #(apply h2x/identifier :field (into table-identifier-info [%])) pks))
         sql-args         (sql.qp/format-honeysql
                           driver
-                          (sample-json-row-honey-sql table-identifier json-field-identifiers pk-identifiers))
-        query            (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})
-        field-types      (transduce describe-json-xform describe-json-rf query)
-        fields           (field-types->fields field-types)]
+                          (sample-json-row-honey-sql driver table-identifier json-field-identifiers pk-identifiers))]
+    (jdbc/reducible-query jdbc-spec sql-args {:identifiers identity})))
+
+(defn- describe-json-fields
+  [driver jdbc-spec table json-fields pks]
+  (log/infof "Inferring schema for %d JSON fields in %s" (count json-fields) (sync-util/name-for-logging table))
+  (let [query       (sample-json-reducible-query driver jdbc-spec table json-fields pks)
+        field-types (transduce (map json-map->types) describe-json-rf query)
+        fields      (field-types->fields field-types)]
     (if (> (count fields) max-nested-field-columns)
       (do
         (log/warnf "More nested field columns detected than maximum. Limiting the number of nested field columns to %d."
@@ -570,7 +664,11 @@
       nil
       (fn [^Connection conn]
         (let [unfold-json-fields (table->unfold-json-fields driver conn table)
-              pks                (get-table-pks driver conn (:name database) table)]
+              ;; Just pass in `nil` here, that's what we do in the normal sync process and it seems to work correctly.
+              ;; We don't currently have a driver-agnostic way to get the physical database name. `(:name database)` is
+              ;; wrong, because it's a human-friendly name rather than a physical name. `(get-in
+              ;; database [:details :db])` works for most drivers but not H2.
+              pks                (get-table-pks driver conn nil table)]
           (if (empty? unfold-json-fields)
             #{}
             (describe-json-fields driver jdbc-spec table unfold-json-fields pks)))))))

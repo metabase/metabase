@@ -130,6 +130,39 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
   trim: { displayName: `trim`, type: "string", args: ["string"] },
   rtrim: { displayName: `rtrim`, type: "string", args: ["string"] },
   ltrim: { displayName: `ltrim`, type: "string", args: ["string"] },
+  domain: {
+    displayName: `domain`,
+    type: "string",
+    args: ["string"],
+    requiresFeature: "regex",
+  },
+  subdomain: {
+    displayName: `subdomain`,
+    type: "string",
+    args: ["string"],
+    requiresFeature: "regex",
+  },
+  host: {
+    displayName: `host`,
+    type: "string",
+    args: ["string"],
+    requiresFeature: "regex",
+  },
+  "month-name": {
+    displayName: `monthName`,
+    type: "string",
+    args: ["number"],
+  },
+  "quarter-name": {
+    displayName: `quarterName`,
+    type: "string",
+    args: ["number"],
+  },
+  "day-name": {
+    displayName: `dayName`,
+    type: "string",
+    args: ["number"],
+  },
   // numeric functions
   abs: {
     displayName: `abs`,
@@ -257,6 +290,18 @@ export const MBQL_CLAUSES: MBQLClauseMap = {
     type: "expression",
     args: ["expression", "expression"], // ideally we'd alternate boolean/expression
     multiple: true,
+  },
+  offset: {
+    displayName: `Offset`,
+    type: "any", // ideally we'd dynamically infer it from the first argument
+    args: ["any", "number"],
+    requiresFeature: "window-functions/offset",
+    validator: function (_expr: any, offset: number) {
+      if (offset === 0) {
+        return t`Row offset cannot be zero`;
+      }
+    },
+    hasOptions: true,
   },
   // boolean operators
   and: { displayName: `AND`, type: "boolean", args: ["boolean", "boolean"] },
@@ -439,6 +484,7 @@ export const AGGREGATION_FUNCTIONS = new Set([
   "cum-sum",
   "distinct",
   "stddev",
+  "offset",
   "avg",
   "median",
   "min",
@@ -460,6 +506,12 @@ export const EXPRESSION_FUNCTIONS = new Set([
   "rtrim",
   "ltrim",
   "length",
+  "domain",
+  "subdomain",
+  "host",
+  "month-name",
+  "quarter-name",
+  "day-name",
   // number
   "abs",
   "floor",
@@ -559,3 +611,28 @@ export const STANDARD_AGGREGATIONS = new Set([
   "max",
   "median",
 ]);
+
+export const POPULAR_FUNCTIONS = [
+  "case",
+  "concat",
+  "contains",
+  "between",
+  "coalesce",
+];
+
+export const POPULAR_FILTERS = [
+  "contains",
+  "case",
+  "between",
+  "interval",
+  "concat",
+  "round",
+];
+
+export const POPULAR_AGGREGATIONS = [
+  "count",
+  "distinct",
+  "count-where",
+  "sum",
+  "avg",
+];

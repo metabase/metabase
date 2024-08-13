@@ -1,13 +1,16 @@
-import type {
-  MantineSize,
-  MantineTheme,
-  MantineThemeOverride,
-  CSSObject,
+import {
+  type CSSObject,
+  type MantineSize,
+  type MantineTheme,
+  type MantineThemeOverride,
+  getSize,
+  getStylesRef,
+  rem,
+  px,
 } from "@mantine/core";
-import { getSize, getStylesRef, px, rem } from "@mantine/core";
 
 import { SelectDropdown } from "./SelectDropdown";
-import { SelectItem } from "./SelectItem";
+import { SelectItem, getItemFontSize, getItemLineHeight } from "./SelectItem";
 
 export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
   Select: {
@@ -22,10 +25,12 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
       },
     }),
     styles: (theme, _, { size = "md" }) => ({
-      ...getSelectInputOverrides(theme, size),
+      ...getSelectInputOverrides(theme),
       ...getSelectItemsOverrides(theme, size),
       // For epic (metabase#38699)
       dropdown: {
+        background: "var(--mb-color-background)",
+        borderColor: "var(--mb-color-border)",
         ">div": {
           maxHeight: "none !important",
         },
@@ -38,7 +43,6 @@ export const getSelectOverrides = (): MantineThemeOverride["components"] => ({
 
 export const getSelectInputOverrides = (
   theme: MantineTheme,
-  size: MantineSize | number,
 ): Record<string, CSSObject> => {
   return {
     root: {
@@ -51,9 +55,7 @@ export const getSelectInputOverrides = (
       },
     },
     label: {
-      color: theme.fn.themeColor("text-medium"),
       ref: getStylesRef("label"),
-      fontSize: getSize({ size, sizes: theme.fontSizes }),
     },
     description: {
       ref: getStylesRef("description"),
@@ -64,9 +66,6 @@ export const getSelectInputOverrides = (
     wrapper: {
       ref: getStylesRef("wrapper"),
       color: theme.fn.themeColor("text-dark"),
-      "&:not(:only-child)": {
-        marginTop: theme.spacing.xs,
-      },
       [`&:has(.${getStylesRef("input")}[data-disabled])`]: {
         opacity: 1,
         pointerEvents: "auto",
@@ -89,6 +88,8 @@ export const getSelectInputOverrides = (
     },
     input: {
       ref: getStylesRef("input"),
+      color: "var(--mb-color-text-primary)",
+      backgroundColor: "var(--mb-color-background)",
 
       "&[data-disabled]": {
         opacity: 1,
@@ -96,7 +97,7 @@ export const getSelectInputOverrides = (
     },
     rightSection: {
       ref: getStylesRef("rightSection"),
-      color: theme.fn.themeColor("text-dark"),
+      color: "var(--mb-color-text-primary)",
 
       svg: {
         color: "inherit !important",
@@ -114,16 +115,6 @@ export const getSelectInputOverrides = (
   };
 };
 
-const LINE_HEIGHTS = {
-  xs: rem(16),
-  md: rem(24),
-};
-
-const ITEM_FONT_SIZES = {
-  xs: rem(12),
-  md: rem(14),
-};
-
 const SEPARATOR_FONT_SIZES = {
   xs: rem(12),
   md: rem(12),
@@ -138,17 +129,17 @@ export const getSelectItemsOverrides = (
       padding: "0.75rem",
     },
     item: {
-      color: theme.fn.themeColor("text-dark"),
-      fontSize: getSize({ size, sizes: ITEM_FONT_SIZES }),
-      lineHeight: getSize({ size, sizes: LINE_HEIGHTS }),
+      color: "var(--mb-color-text-primary)",
+      fontSize: getItemFontSize(size),
+      lineHeight: getItemLineHeight(size),
       padding: theme.spacing.sm,
       "&[data-hovered]": {
-        color: theme.fn.themeColor("brand"),
-        backgroundColor: theme.fn.themeColor("brand-lighter"),
+        color: "var(--mb-color-text-hover)",
+        backgroundColor: "var(--mb-color-background-hover)",
       },
       "&[data-selected]": {
-        color: theme.fn.themeColor("text-white"),
-        backgroundColor: theme.fn.themeColor("brand"),
+        color: "var(--mb-color-text-selected)",
+        backgroundColor: "var(--mb-color-background-selected)",
       },
       "&[data-disabled]": {
         color: theme.fn.themeColor("text-light"),
@@ -180,8 +171,8 @@ export const getSelectItemsOverrides = (
     },
     nothingFound: {
       color: theme.fn.themeColor("text-light"),
-      fontSize: getSize({ size, sizes: ITEM_FONT_SIZES }),
-      lineHeight: getSize({ size, sizes: LINE_HEIGHTS }),
+      fontSize: getItemFontSize(size),
+      lineHeight: getItemLineHeight(size),
       padding: theme.spacing.sm,
     },
   };

@@ -11,6 +11,13 @@
 
 (declare load-one!)
 
+(defn- without-references
+  "Remove references to other entities from a given one. Used to break circular dependencies when loading."
+  [entity]
+  (if (:dashcards entity)
+    (dissoc entity :dashcards)
+    (throw (ex-info "No known references found when breaking circular dependency!" {:entity entity}))))
+
 (defn- load-deps!
   "Given a list of `deps` (hierarchies), [[load-one]] them all.
   If [[load-one]] throws because it can't find that entity in the filesystem, check if it's already loaded in
@@ -22,29 +29,41 @@
               (try
                 (load-one! ctx dep)
                 (catch Exception e
-                  (if (and (= (:error (ex-data e)) ::not-found)
-                           (serdes/load-find-local dep))
+                  (cond
                     ;; It was missing but we found it locally, so just return the context.
+                    (and (= (:error (ex-data e)) ::not-found)
+                         (serdes/load-find-local dep))
                     ctx
-                    ;; Different error, or couldn't find it locally, so rethrow.
+
+                    ;; It's a circular dep, strip off probable cause and retry. This will store an incomplete version
+                    ;; of an entity, but this is not a problem - a full version is waiting to be stored up the stack.
+                    (= (:error (ex-data e)) ::circular)
+                    (do
+                      (log/debug "Detected circular dependency" (serdes/log-path-str dep))
+                      (load-one! (update ctx :expanding disj dep) dep without-references))
+
+                    :else
                     (throw e)))))]
       (reduce loader ctx deps))))
 
 (defn- load-one!
-  "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to avoid
-  cycles.
+  "Loads a single entity, specified by its `:serdes/meta` abstract path, into the appdb, doing some bookkeeping to
+  avoid cycles.
 
-  If the incoming entity has any dependencies, they are recursively processed first (postorder) so that any foreign key
-  references in this entity can be resolved properly.
+  If the incoming entity has any dependencies, they are recursively processed first (postorder) so that any foreign
+  key references in this entity can be resolved properly.
 
   This is mostly bookkeeping for the overall deserialization process - the actual load of any given entity is done by
   [[metabase.models.serialization/load-one!]] and its various overridable parts, which see.
 
-  Circular dependencies are not allowed, and are detected and thrown as an error."
-  [{:keys [expanding ingestion seen] :as ctx} path]
+  Error is thrown on a circular dependency, should be handled and retried at the caller. `modfn` is an optional
+  parameter to modify entity data after reading and before other processing (before loading dependencies, finding
+  local version, and storing in the db)."
+  [{:keys [expanding ingestion seen] :as ctx} path & [modfn]]
   (log/infof "Loading %s" (serdes/log-path-str path))
   (cond
-    (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path)) {:path path}))
+    (expanding path) (throw (ex-info (format "Circular dependency on %s" (pr-str path)) {:path path
+                                                                                         :error ::circular}))
     (seen path) ctx ; Already been done, just skip it.
     :else (let [ingested (try
                            (serdes.ingest/ingest-one ingestion path)
@@ -54,7 +73,10 @@
                                               :deps-chain expanding
                                               :error      ::not-found}
                                              e))))
+                ingested (cond-> ingested
+                           modfn modfn)
                 deps     (serdes/dependencies ingested)
+                _        (log/debug "Loading dependencies" deps)
                 ctx      (-> ctx
                              (update :expanding conj path)
                              (load-deps! deps)
@@ -74,8 +96,9 @@
 
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill?]
-                :or   {backfill? true}}]
+  [ingestion & {:keys [backfill? continue-on-error]
+                :or   {backfill?   true
+                       continue-on-error false}}]
   (t2/with-transaction [_tx]
     ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
     ;; guide the import, and make sure all containers are imported before contents, etc.
@@ -85,5 +108,17 @@
           ctx      {:expanding #{}
                     :seen      #{}
                     :ingestion ingestion
-                    :from-ids  (m/index-by :id contents)}]
-      (reduce load-one! ctx contents))))
+                    :from-ids  (m/index-by :id contents)
+                    :errors    []}]
+      (log/infof "Starting deserialization, total %s documents" (count contents))
+      (reduce (fn [ctx item]
+                (try
+                  (load-one! ctx item)
+                  (catch Exception e
+                    (when-not continue-on-error
+                      (throw e))
+                    ;; eschew big and scary stacktrace
+                    (log/warnf "Skipping deserialization error: %s %s" (ex-message e) (ex-data e))
+                    (update ctx :errors conj e))))
+              ctx
+              contents))))

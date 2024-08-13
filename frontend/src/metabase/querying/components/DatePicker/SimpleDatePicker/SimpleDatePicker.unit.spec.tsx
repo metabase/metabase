@@ -35,7 +35,7 @@ describe("SimpleDatePicker", () => {
 
     await userEvent.click(screen.getByDisplayValue("All time"));
     await userEvent.click(screen.getByText("Current"));
-    await userEvent.click(screen.getByDisplayValue("Day"));
+    await userEvent.click(screen.getByText("Day"));
     await userEvent.click(screen.getByText("Month"));
     await userEvent.click(screen.getByText("Apply"));
 
@@ -44,5 +44,41 @@ describe("SimpleDatePicker", () => {
       value: "current",
       unit: "month",
     });
+  });
+
+  it("should not show 'Include current' switch by default", async () => {
+    setup();
+
+    await userEvent.click(screen.getByDisplayValue("All time"));
+    expect(screen.queryByLabelText(/^Include/)).not.toBeInTheDocument();
+  });
+
+  it("should not show 'Include current' switch by for the specific date value", async () => {
+    setup();
+
+    await userEvent.click(screen.getByDisplayValue("All time"));
+    await userEvent.click(screen.getByText("Between"));
+    expect(screen.queryByLabelText(/^Include/)).not.toBeInTheDocument();
+  });
+
+  it("should not show 'Include current' switch by for the `Current` relative date", async () => {
+    setup();
+
+    await userEvent.click(screen.getByDisplayValue("All time"));
+    await userEvent.click(screen.getByText("Current"));
+    expect(screen.queryByLabelText(/^Include/)).not.toBeInTheDocument();
+  });
+
+  it("should show 'Include current' switch and work for the relative `Previous` or `Next`", async () => {
+    setup({
+      value: {
+        type: "relative",
+        value: 1,
+        unit: "month",
+      },
+    });
+
+    expect(screen.getByDisplayValue("Next")).toBeInTheDocument();
+    expect(screen.getByLabelText("Include this month")).toBeInTheDocument();
   });
 });

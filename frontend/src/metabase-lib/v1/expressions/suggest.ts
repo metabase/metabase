@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import * as Lib from "metabase-lib";
@@ -11,6 +12,9 @@ import {
   EXPRESSION_FUNCTIONS,
   getMBQLName,
   MBQL_CLAUSES,
+  POPULAR_AGGREGATIONS,
+  POPULAR_FILTERS,
+  POPULAR_FUNCTIONS,
 } from "metabase-lib/v1/expressions/config";
 import { getHelpText } from "metabase-lib/v1/expressions/helper-text-strings";
 import type {
@@ -32,6 +36,7 @@ export type Suggestion = {
   range?: [number, number];
   column?: Lib.ColumnMetadata;
   helpText?: HelpText;
+  group?: GroupName;
 };
 
 const suggestionText = (func: MBQLClauseFunctionConfig) => {
@@ -40,7 +45,21 @@ const suggestionText = (func: MBQLClauseFunctionConfig) => {
   return displayName + suffix;
 };
 
-type SuggestArgs = {
+export const GROUPS = {
+  popularExpressions: {
+    displayName: t`Common functions`,
+  },
+  popularAggregations: {
+    displayName: t`Common aggregations`,
+  },
+  shortcuts: {
+    displayName: t`Shortcuts`,
+  },
+} as const;
+
+export type GroupName = keyof typeof GROUPS;
+
+export type SuggestArgs = {
   source: string;
   query: Lib.Query;
   stageIndex: number;
@@ -48,7 +67,7 @@ type SuggestArgs = {
   reportTimezone?: string;
   startRule: string;
   targetOffset?: number;
-  expressionPosition?: number;
+  expressionIndex: number | undefined;
   getColumnIcon: (column: Lib.ColumnMetadata) => string;
 };
 
@@ -60,7 +79,7 @@ export function suggest({
   metadata,
   reportTimezone,
   startRule,
-  expressionPosition,
+  expressionIndex,
   targetOffset = source.length,
 }: SuggestArgs): {
   helpText?: HelpText;
@@ -90,6 +109,55 @@ export function suggest({
         }
       }
     }
+
+    if (source === "") {
+      let popular: string[] = [];
+      if (startRule === "expression") {
+        popular = POPULAR_FUNCTIONS;
+      }
+      if (startRule === "boolean") {
+        popular = POPULAR_FILTERS;
+      }
+      if (startRule === "aggregation") {
+        popular = POPULAR_AGGREGATIONS;
+      }
+
+      suggestions.push(
+        ...popular
+          .map((name: string): Suggestion | null => {
+            const clause = MBQL_CLAUSES[name];
+            if (!clause) {
+              return null;
+            }
+
+            const isSupported =
+              !database || database?.hasFeature(clause.requiresFeature);
+
+            if (!isSupported) {
+              return null;
+            }
+
+            return {
+              type: "functions",
+              name: clause.displayName,
+              text: suggestionText(clause),
+              index: targetOffset,
+              icon: "function",
+              order: 1,
+              group:
+                startRule === "aggregation"
+                  ? "popularAggregations"
+                  : "popularExpressions",
+              helpText: database
+                ? getHelpText(name, database, reportTimezone)
+                : undefined,
+            };
+          })
+          .filter((suggestion): suggestion is Suggestion => Boolean(suggestion))
+          .slice(0, 5),
+      );
+    }
+
     return { suggestions };
   }
 
@@ -127,6 +195,12 @@ export function suggest({
         .filter(
           clause => clause && database?.hasFeature(clause.requiresFeature),
         )
+        .filter(function disableOffsetInFilterExpressions(clause) {
+          const isOffset = clause.name === "offset";
+          const isFilterExpression = startRule === "boolean";
+          const isOffsetInFilterExpression = isOffset && isFilterExpression;
+          return !isOffsetInFilterExpression;
+        })
         .map(func => ({
           type: "functions",
           name: func.displayName,
@@ -158,7 +232,7 @@ export function suggest({
 
   if (_.last(matchPrefix) !== "]") {
     suggestions.push(
-      ...Lib.expressionableColumns(query, stageIndex, expressionPosition).map(
+      ...Lib.expressionableColumns(query, stageIndex, expressionIndex).map(
         column => {
           const displayInfo = Lib.displayInfo(query, stageIndex, column);
 
@@ -199,7 +273,7 @@ export function suggest({
     }
 
     if (startRule === "aggregation") {
-      const metrics = Lib.availableLegacyMetrics(query, stageIndex);
+      const metrics = Lib.availableMetrics(query, stageIndex);
 
       if (metrics) {
         suggestions.push(

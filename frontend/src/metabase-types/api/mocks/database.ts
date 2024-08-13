@@ -12,7 +12,6 @@ export const COMMON_DATABASE_FEATURES: DatabaseFeature[] = [
   "case-sensitivity-string-filter-options",
   "expression-aggregations",
   "expressions",
-  "foreign-keys",
   "native-parameters",
   "nested-queries",
   "standard-deviation-aggregations",
@@ -37,6 +36,9 @@ export const createMockDatabase = (opts?: Partial<Database>): Database => ({
   native_permissions: "write",
   initial_sync_status: "complete",
   features: COMMON_DATABASE_FEATURES,
+  uploads_enabled: false,
+  uploads_schema_name: null,
+  uploads_table_prefix: null,
   ...opts,
 });
 

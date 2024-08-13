@@ -1,4 +1,7 @@
-import Select, { Option } from "metabase/core/components/Select";
+import cx from "classnames";
+
+import CS from "metabase/css/core/index.css";
+import { Select } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 const defaultDisplayName = (period: string, intervals: number) =>
@@ -28,23 +31,22 @@ const DateUnitSelector = ({
   testId,
 }: Props) => (
   <Select
-    className={className}
-    value={value}
-    onChange={(e: any) => onChange(e.target.value)}
-    width={150}
-    compact
-    buttonProps={
-      ariaLabel || testId
-        ? { "aria-label": ariaLabel, "data-testid": testId }
-        : undefined
-    }
-  >
-    {periods.map(period => (
-      <Option value={period} key={period}>
-        {formatDisplayName(period, formatter(intervals) || 1)}
-      </Option>
-    ))}
-  </Select>
+    className={cx(className)}
+    value={value ? String(value) : null}
+    onChange={value => value && onChange(value)}
+    data={periods.map(period => ({
+      value: period,
+      label: formatDisplayName(period, formatter(intervals) || 1),
+    }))}
+    w="150px"
+    data-testid={testId}
+    aria-label={ariaLabel}
+    radius="md"
+    classNames={{
+      input: CS.textBold,
+      dropdown: CS.textBold,
+    }}
+  />
 );
 
 // eslint-disable-next-line import/no-default-export -- deprecated usage

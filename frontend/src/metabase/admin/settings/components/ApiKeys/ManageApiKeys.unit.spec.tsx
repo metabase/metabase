@@ -5,7 +5,13 @@ import {
   setupApiKeyEndpoints,
   setupGroupsEndpoint,
 } from "__support__/server-mocks";
-import { renderWithProviders, screen, waitFor, within } from "__support__/ui";
+import {
+  renderWithProviders,
+  screen,
+  waitFor,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
 import { ManageApiKeys } from "metabase/admin/settings/components/ApiKeys/ManageApiKeys";
 import type { ApiKey } from "metabase-types/api";
 import { createMockGroup } from "metabase-types/api/mocks";
@@ -59,6 +65,7 @@ async function setup(
   setupGroupsEndpoint(GROUPS);
   setupApiKeyEndpoints(apiKeys ?? testApiKeys);
   renderWithProviders(<ManageApiKeys />);
+  await waitForLoaderToBeRemoved();
   await waitFor(() => {
     expect(
       fetchMock.calls("path:/api/api-key", { method: "GET" }),

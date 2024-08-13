@@ -1,6 +1,7 @@
 import { KBarPortal, VisualState, useKBar } from "kbar";
 import { useRef, useEffect } from "react";
 import { withRouter } from "react-router";
+import { t } from "ttag";
 import _ from "underscore";
 
 import { useOnClickOutside } from "metabase/hooks/use-on-click-outside";
@@ -56,7 +57,9 @@ const PaletteContainer = () => {
           data-testid="command-palette"
         >
           <Box w="100%" p="1.5rem" pb="0">
-            <PaletteInput defaultPlaceholder="Jump to..." />
+            <PaletteInput
+              defaultPlaceholder={t`Search for anything or jump somewhere…`}
+            />
           </Box>
           <PaletteResults />
           <PaletteFooter />

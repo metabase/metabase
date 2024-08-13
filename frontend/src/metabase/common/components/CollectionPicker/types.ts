@@ -1,9 +1,10 @@
 import type {
   CollectionId,
-  SearchRequest,
-  SearchModel,
+  ListCollectionItemsRequest,
   SearchResult,
   CollectionItemModel,
+  DashboardId,
+  CardId,
 } from "metabase-types/api";
 
 import type {
@@ -12,7 +13,25 @@ import type {
   TypeWithModel,
 } from "../EntityPicker";
 
-export type CollectionPickerItem = TypeWithModel<CollectionId, SearchModel> &
+export type CollectionItemId = CollectionId | CardId | DashboardId;
+
+// internally, this picker supports all items that live in collections
+// so that we can use its components for picking all of them
+export type CollectionPickerModel = Extract<
+  CollectionItemModel,
+  "collection" | "card" | "dataset" | "metric" | "dashboard"
+>;
+
+// we can enforce type safety at the boundary of a collection-only picker with this type
+export type CollectionPickerValueModel = Extract<
+  CollectionPickerModel,
+  "collection"
+>;
+
+export type CollectionPickerItem = TypeWithModel<
+  CollectionItemId,
+  CollectionPickerModel
+> &
   Pick<Partial<SearchResult>, "description" | "can_write"> & {
     location?: string | null;
     effective_location?: string | null;
@@ -22,16 +41,22 @@ export type CollectionPickerItem = TypeWithModel<CollectionId, SearchModel> &
     below?: CollectionItemModel[];
   };
 
+export type CollectionPickerValueItem = Omit<CollectionPickerItem, "model"> & {
+  id: CollectionId;
+  model: CollectionPickerValueModel;
+};
+
 export type CollectionPickerOptions = EntityPickerModalOptions & {
+  allowCreateNew?: boolean;
   showPersonalCollections?: boolean;
   showRootCollection?: boolean;
   namespace?: "snippets";
 };
 
 export type CollectionItemListProps = ListProps<
-  CollectionId,
-  SearchModel,
+  CollectionItemId,
+  CollectionPickerModel,
   CollectionPickerItem,
-  SearchRequest,
+  ListCollectionItemsRequest,
   CollectionPickerOptions
 >;

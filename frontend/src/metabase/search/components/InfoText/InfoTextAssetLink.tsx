@@ -136,7 +136,7 @@ export const InfoTextAssetLink = ({
     return <InfoTextTablePath showLinks={showLinks} result={result} />;
   }
 
-  if (result.model === "segment" || result.model === "metric") {
+  if (result.model === "segment") {
     return <InfoTextTableLink showLinks={showLinks} result={result} />;
   }
 

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
 
 import MetabotLogo from "metabase/core/components/MetabotLogo";
-import { color } from "metabase/lib/colors";
 
 export const MetabotMessageRoot = styled.div`
   display: flex;
@@ -18,7 +17,7 @@ export const MetabotText = styled.div`
   display: inline-block;
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
-  background-color: ${color("bg-light")};
-  color: ${color("text-medium")};
+  background-color: var(--mb-color-bg-light);
+  color: var(--mb-color-text-medium);
   font-weight: bold;
 `;

@@ -67,6 +67,18 @@
              :lib/options {:lib/uuid string?}
              :fields      :all}
             (lib/join-clause (meta/table-metadata :orders)))))
+  (testing "Should allow specifying the join strategy when creating a join clause"
+    (is (= [:left-join :right-join :inner-join]
+           (let [query lib.tu/query-with-join
+                 product-table (meta/table-metadata :products)
+                 products-id (meta/id :products :id)
+                 orders-product-id (meta/id :orders :product-id)
+                 join-conditions [(lib/= orders-product-id products-id)]
+                 join-strategies (lib/available-join-strategies query)]
+             (into [] (comp
+                       (map #(lib/join-clause product-table join-conditions %))
+                       (map :strategy))
+                   join-strategies)))))
   (testing "source-card"
     (let [query {:lib/type :mbql/query
                  :lib/metadata lib.tu/metadata-provider-with-mock-cards
@@ -1094,7 +1106,7 @@
           user                (lib.metadata/table metadata-provider id-user)
           ;; the order the conditions get returned in is indeterminate, so for convenience let's just sort them by
           ;; Field IDs so we get consistent results in the test assertions.
-          sort-conditions     #(sort-by (fn [[_= _opts [_field _opts lhs-id, :as _lhs] [_field _opts rhs-id, :as _rhs]]]
+          sort-conditions     #(sort-by (fn [[_= _opts [_field-lhs _opts-lhs lhs-id, :as _lhs] [_field-rhs _opts-rhs rhs-id, :as _rhs]]]
                                           [lhs-id rhs-id])
                                         %)]
       (testing "ORDER joining USER (we have a composite FK to the joined thing)"

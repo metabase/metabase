@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import Badge from "metabase/components/Badge";
+import { Badge } from "metabase/components/Badge";
 import Link from "metabase/core/components/Link/Link";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";

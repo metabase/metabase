@@ -47,7 +47,9 @@
     :model/CollectionPermissionGraphRevision
     :model/DashboardCardSeries
     :model/LoginHistory
+    :model/FieldUsage
     :model/FieldValues
+    :model/LegacyMetric
     :model/LegacyMetricImportantField
     :model/ModelIndex
     :model/ModelIndexValue
@@ -62,9 +64,11 @@
     :model/PulseChannel
     :model/PulseChannelRecipient
     :model/Query
+    :model/QueryAnalysis
     :model/QueryCache
     :model/QueryExecution
     :model/QueryField
+    :model/QueryTable
     :model/RecentViews
     :model/Revision
     :model/Secret
@@ -73,9 +77,11 @@
     :model/TaskHistory
     :model/TimelineEvent
     :model/User
+    :model/UserParameterValue
     :model/ViewLog
     :model/GroupTableAccessPolicy
-    :model/ConnectionImpersonation})
+    :model/ConnectionImpersonation
+    :model/CloudMigration})
 
 (deftest ^:parallel comprehensive-entity-id-test
   (doseq [model (->> (v2.entity-ids/toucan-models)

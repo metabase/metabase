@@ -14,7 +14,7 @@
 
 (set! *warn-on-reflection* true)
 
-(mu/defn ^:private to-numeric :- number?
+(mu/defn- to-numeric :- number?
   "Returns either a double or a long. Possible to use the edn reader but we would then have to worry about biginters
   or arbitrary maps/stuff being read. Error messages would be more confusing EOF while reading instead of a more
   sensical number format exception."
@@ -37,7 +37,7 @@
     (lib/type-of (lib/query (qp.store/metadata-provider) (lib.convert/->pMBQL query))
                  (lib.convert/->pMBQL &match))))
 
-(mu/defn ^:private parse-param-value-for-type
+(mu/defn- parse-param-value-for-type
   "Convert `param-value` to a type appropriate for `param-type`.
   The frontend always passes parameters in as strings, which is what we want in most cases; for numbers, instead
   convert the parameters to integers or floating-point numbers."
@@ -59,7 +59,7 @@
     :else
     (to-numeric param-value)))
 
-(mu/defn ^:private build-filter-clause :- [:maybe mbql.s/Filter]
+(mu/defn- build-filter-clause :- [:maybe mbql.s/Filter]
   [query {param-type :type, param-value :value, [_ field :as target] :target, :as param}]
   (cond
     (params.ops/operator? param-type)
@@ -88,6 +88,16 @@
      (mbql.u/wrap-field-id-if-needed field)
      (parse-param-value-for-type query param-type param-value (mbql.u/unwrap-field-or-expression-clause field))]))
 
+(defn- update-breakout-unit
+  [query
+   {[_dimension [_field target-field-id {:keys [temporal-unit]}]] :target
+    :keys [value] :as _param}]
+  (let [new-unit (keyword value)]
+    (lib.util.match/replace-in
+      query [:query :breakout]
+      [:field (_ :guard #(= target-field-id %)) (opts :guard #(= temporal-unit (:temporal-unit %)))]
+      [:field target-field-id (assoc opts :temporal-unit new-unit)])))
+
 (defn expand
   "Expand parameters for MBQL queries in `query` (replacing Dashboard or Card-supplied params with the appropriate
   values in the queries themselves)."
@@ -100,6 +110,10 @@
       (or (not target)
           (not param-value))
       (recur query rest)
+
+      (= (:type param) :temporal-unit)
+      (let [query (update-breakout-unit query (assoc param :value param-value))]
+        (recur query rest))
 
       :else
       (let [filter-clause (build-filter-clause query (assoc param :value param-value))

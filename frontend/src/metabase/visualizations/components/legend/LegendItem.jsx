@@ -15,9 +15,8 @@ import {
 } from "./LegendItem.styled";
 
 const propTypes = {
-  label: PropTypes.string,
+  item: PropTypes.object,
   index: PropTypes.number,
-  color: PropTypes.string,
   isMuted: PropTypes.bool,
   isVertical: PropTypes.bool,
   isReversed: PropTypes.bool,
@@ -27,9 +26,8 @@ const propTypes = {
 };
 
 const LegendItem = ({
-  label,
+  item,
   index,
-  color,
   isMuted,
   isVertical,
   isReversed,
@@ -61,7 +59,7 @@ const LegendItem = ({
         onMouseEnter={onHoverChange && handleItemMouseEnter}
         onMouseLeave={onHoverChange && handleItemMouseLeave}
       >
-        <LegendItemDot color={color} />
+        <LegendItemDot color={item.color} />
         <LegendItemTitle
           className={cx(
             DashboardS.fullscreenNormalText,
@@ -69,7 +67,7 @@ const LegendItem = ({
             EmbedFrameS.fullscreenNightText,
           )}
         >
-          <Ellipsified>{label}</Ellipsified>
+          <Ellipsified>{item.name}</Ellipsified>
         </LegendItemTitle>
       </LegendItemLabel>
       {onRemoveSeries && <LegendItemRemoveIcon onClick={handleRemoveClick} />}

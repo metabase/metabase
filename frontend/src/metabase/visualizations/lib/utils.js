@@ -1,9 +1,10 @@
 import crossfilter from "crossfilter";
-import d3 from "d3";
+import * as d3 from "d3";
 import { t } from "ttag";
 import _ from "underscore";
 
 import { isNotNull } from "metabase/lib/types";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import { isDimension, isMetric, isDate } from "metabase-lib/v1/types/utils/isa";
 
 export const MAX_SERIES = 100;
@@ -25,11 +26,14 @@ export function columnsAreValid(colNames, data, filter = () => true) {
   for (const col of data.cols) {
     colsByName[col.name] = col;
   }
-  return colNames.reduce(
+
+  const isValid = colNames.reduce(
     (acc, name) =>
       acc && (name == null || (colsByName[name] && filter(colsByName[name]))),
     true,
   );
+
+  return Boolean(isValid);
 }
 
 // computed size properties (drop 'px' and convert string -> Number)
@@ -206,21 +210,22 @@ export function colorShade(hex, shade = 0) {
 }
 
 // cache computed cardinalities in a weak map since they are computationally expensive
-const cardinalityCache = new WeakMap();
+const cardinalityCache = new Map();
 
 export function getColumnCardinality(cols, rows, index) {
   const col = cols[index];
-  if (!cardinalityCache.has(col)) {
+  const key = getColumnKey(col);
+  if (!cardinalityCache.has(key)) {
     const dataset = crossfilter(rows);
     cardinalityCache.set(
-      col,
+      key,
       dataset
         .dimension(d => d[index])
         .group()
         .size(),
     );
   }
-  return cardinalityCache.get(col);
+  return cardinalityCache.get(key);
 }
 
 const extentCache = new WeakMap();
@@ -248,6 +253,7 @@ export function getCardAfterVisualizationClick(nextCard, previousCard) {
 
     return {
       ...nextCard,
+      type: "question",
       // Original card id is needed for showing the "started from" lineage in dirty cards.
       original_card_id: alreadyHadLineage
         ? // Just recycle the original card id of previous card if there was one
@@ -277,11 +283,12 @@ export function getDefaultDimensionAndMetric(series) {
   };
 }
 
-export function getDefaultDimensionsAndMetrics(
-  [{ data }],
+export function getSingleSeriesDimensionsAndMetrics(
+  series,
   maxDimensions = 2,
   maxMetrics = Infinity,
 ) {
+  const { data } = series;
   if (!data) {
     return {
       dimensions: [null],
@@ -338,6 +345,18 @@ export function getDefaultDimensionsAndMetrics(
     dimensions: dimensions.length > 0 ? dimensions.map(c => c.name) : [null],
     metrics: metrics.length > 0 ? metrics.map(c => c.name) : [null],
   };
+}
+
+export function getDefaultDimensionsAndMetrics(
+  rawSeries,
+  maxDimensions = 2,
+  maxMetrics = Infinity,
+) {
+  return getSingleSeriesDimensionsAndMetrics(
+    rawSeries[0],
+    maxDimensions,
+    maxMetrics,
+  );
 }
 
 // Figure out how many decimal places are needed to represent the smallest

@@ -1,10 +1,10 @@
 :root {
-  --breadcrumbs-color: var(--color-text-light);
-  --breadcrumb-page-color: var(--color-text-dark);
+  --breadcrumbs-color: var(--mb-color-text-light);
+  --breadcrumb-page-color: var(--mb-color-text-dark);
   --breadcrumb-divider-spacing: 0.75em;
 
   /* taken from Sidebar.css, should probably factor them out into variables */
-  --sidebar-breadcrumbs-color: var(--color-text-medium);
+  --sidebar-breadcrumbs-color: var(--mb-color-text-medium);
 }
 
 .breadcrumbs {
@@ -66,11 +66,11 @@
 }
 
 .sidebarBreadcrumb.breadcrumbPath:hover {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
   transition: color 0.3s linear;
 }
 
 /* the breadcrumb page (current page) should be a different contrasting color  */
 .sidebarBreadcrumb.breadcrumbPage {
-  color: var(--color-brand);
+  color: var(--mb-color-brand);
 }

@@ -84,9 +84,13 @@
 (defn config-bool "Fetch a configuration key and parse it as a boolean."  ^Boolean [k] (some-> k config-str Boolean/parseBoolean))
 (defn config-kw   "Fetch a configuration key and parse it as a keyword."  ^Keyword [k] (some-> k config-str keyword))
 
-(def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `clojure -M:run`)?" (= :dev  (config-kw :mb-run-mode)))
-(def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                       (= :prod (config-kw :mb-run-mode)))
-(def ^Boolean is-test? "Are we running in `test` mode (i.e. via `clojure -X:test`)?"            (= :test (config-kw :mb-run-mode)))
+(def run-mode
+  "The mode in which Metabase is being run"
+  (config-kw :mb-run-mode))
+
+(def ^Boolean is-dev?  "Are we running in `dev` mode (i.e. in a REPL or via `clojure -M:run`)?" (= :dev  run-mode))
+(def ^Boolean is-prod? "Are we running in `prod` mode (i.e. from a JAR)?"                       (= :prod run-mode))
+(def ^Boolean is-test? "Are we running in `test` mode (i.e. via `clojure -X:test`)?"            (= :test run-mode))
 
 ;;; Version stuff
 
@@ -145,10 +149,6 @@
   (when-let [user-json (env/env :mb-user-defaults)]
     (json/parse-string user-json true)))
 
-(def ^:const audit-db-id
-  "ID of Audit DB which is loaded when running an EE build. ID is placed in OSS code to facilitate permission checks."
-  13371337)
-
 (def ^:const internal-mb-user-id
   "The user-id of the internal metabase user.
    This is needed in the OSS edition to filter out users for setup/has-user-setup."
@@ -163,3 +163,7 @@
   Using this effectively means `MB_LOAD_SAMPLE_CONTENT` defaults to true."
   []
   (not (false? (config-bool :mb-load-sample-content))))
+
+(def ^:dynamic *request-id*
+  "A unique identifier for the current request. This is bound by `metabase.server.middleware.request-id/wrap-request-id`."
+  nil)

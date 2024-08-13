@@ -38,7 +38,7 @@ function CustomScheduleInputHint() {
     >{t`cron syntax`}</ExternalLink>
   );
   return (
-    <CustomScheduleLabel>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields separated by white spaces`}</CustomScheduleLabel>
+    <CustomScheduleLabel>{jt`Our ${cronSyntaxDocsLink} is a string of 5 fields separated by spaces`}</CustomScheduleLabel>
   );
 }
 

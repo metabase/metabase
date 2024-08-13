@@ -27,29 +27,22 @@
    [java-time.api :as t]
    [malli.core :as mc]
    [medley.core :as m]
+   [metabase.analyze :as analyze]
    [metabase.db.metadata-queries :as metadata-queries]
    [metabase.db.query :as mdb.query]
    [metabase.models.interface :as mi]
    [metabase.models.serialization :as serdes]
    [metabase.public-settings.premium-features :refer [defenterprise]]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.query-processor.schema :as qp.schema]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
-
-(def ^Long category-cardinality-threshold
-  "Fields with less than this many distinct values should automatically be given a semantic type of `:type/Category`.
-  This no longer has any meaning whatsoever as far as the backend code is concerned; it is used purely to inform
-  frontend behavior such as widget choices."
-  30)
-
-(def ^Long auto-list-cardinality-threshold
-  "Fields with less than this many distincy values should be given a `has_field_values` value of `list`, which means
-  the Field should have FieldValues."
-  1000)
 
 (def ^:private ^Long entry-max-length
   "The maximum character length for a stored FieldValues entry."
@@ -57,7 +50,27 @@
 
 (def ^:dynamic ^Long *total-max-length*
   "Maximum total length for a FieldValues entry (combined length of all values for the field)."
-  (long (* auto-list-cardinality-threshold entry-max-length)))
+  (long (* analyze/auto-list-cardinality-threshold entry-max-length)))
+
+(def ^:dynamic ^Integer *absolute-max-distinct-values-limit*
+  "The absolute maximum number of results to return for a `field-distinct-values` query. Normally Fields with 100 or
+  less values (at the time of this writing) get marked as `auto-list` Fields, meaning we save all their distinct
+  values in a FieldValues object, which powers a list widget in the FE when using the Field for filtering in the QB.
+  Admins can however manually mark any Field as `list`, which is effectively ordering Metabase to keep FieldValues for
+  the Field regardless of its cardinality.
+
+  Of course, if a User does something crazy, like mark a million-arity Field as List, we don't want Metabase to
+  explode trying to make their dreams a reality; we need some sort of hard limit to prevent catastrophes. So this
+  limit is effectively a safety to prevent Users from nuking their own instance for Fields that really shouldn't be
+  List Fields at all. For these very-high-cardinality Fields, we're effectively capping the number of
+  FieldValues that get could saved.
+
+  This number should be a balance of:
+
+  * Not being too low, which would definitely result in GitHub issues along the lines of 'My 500-distinct-value Field
+    that I marked as List is not showing all values in the List Widget'
+  * Not being too high, which would result in Metabase running out of memory dealing with too many values"
+  (int 1000))
 
 (def ^java.time.Period advanced-field-values-max-age
   "Age of an advanced FieldValues in days.
@@ -243,7 +256,8 @@
       (boolean
        (and
         (not (contains? #{:retired :sensitive :hidden :details-only} (keyword visibility-type)))
-        (not (isa? (keyword base-type) :type/Temporal))
+        (not (isa? (keyword base-type) :type/field-values-unsupported))
+        (not (= (keyword base-type) :type/*))
         (#{:list :auto-list} (keyword has-field-values)))))))
 
 (defn take-by-length
@@ -330,6 +344,24 @@
 ;;; |                                                    CRUD fns                                                    |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
+(mu/defn- limit-max-char-len-rff :- ::qp.schema/rff
+  "Returns a rff that will stop when the total character length of the values exceeds `max-char-len`."
+  [rff max-char-len]
+  (fn [metadata]
+    (let [rf         (rff metadata)
+          total-char (volatile! 0)]
+      (fn
+        ([]
+         (rf))
+        ([result]
+         (rf result))
+        ([result row]
+         (assert (= 1 (count row)))
+         (vswap! total-char + (count (str (first row))))
+         (if (> @total-char max-char-len)
+           (reduced (assoc result ::reached-char-len-limit true))
+           (rf result row)))))))
+
 (defn distinct-values
   "Fetch a sequence of distinct values for `field` that are below the [[*total-max-length*]] threshold. If the values are
   past the threshold, this returns a subset of possible values values where the total length of all items is less than [[*total-max-length*]].
@@ -344,21 +376,20 @@
   very specific reason, such as certain cases where we fetch ad-hoc FieldValues for GTAP-filtered Fields.)"
   [field]
   (try
-    (let [distinct-values         (metadata-queries/field-distinct-values field)
-          limited-distinct-values (take-by-length *total-max-length* distinct-values)]
-      {:values          limited-distinct-values
+    (let [result          (metadata-queries/table-query (:table_id field)
+                                                        {:breakout [[:field (u/the-id field) nil]]
+                                                         :limit    *absolute-max-distinct-values-limit*}
+                                                        (limit-max-char-len-rff qp.reducible/default-rff *total-max-length*))
+          distinct-values (-> result :data :rows)]
+      {:values          distinct-values
        ;; has_more_values=true means the list of values we return is a subset of all possible values.
-       :has_more_values (or
-                          ;; If the `distinct-values` has more elements than `limited-distinct-values`
-                          ;; it means the the `distinct-values` has exceeded our [[*total-max-length*]] limits.
-                          (> (count distinct-values)
-                             (count limited-distinct-values))
-                          ;; [[metabase.db.metadata-queries/field-distinct-values]] runs a query
-                          ;; with limit = [[metabase.db.metadata-queries/absolute-max-distinct-values-limit]].
-                          ;; So, if the returned `distinct-values` has length equal to that exact limit,
-                          ;; we assume the returned values is just a subset of what we have in DB.
-                          (= (count distinct-values)
-                             metadata-queries/absolute-max-distinct-values-limit))})
+       :has_more_values (or (true? (::reached-char-len-limit result))
+                            ;; `distinct-values` is from a query
+                            ;; with limit = [[*absolute-max-distinct-values-limit*]].
+                            ;; So, if the returned `distinct-values` has length equal to that exact limit,
+                            ;; we assume the returned values is just a subset of what we have in DB.
+                            (= (count distinct-values)
+                               *absolute-max-distinct-values-limit*))})
     (catch Throwable e
       (log/error e "Error fetching field values")
       nil)))
@@ -402,7 +433,7 @@
         field-name                (or (:name field) (:id field))]
     (cond
       ;; If this Field is marked `auto-list`, and the number of values in now over
-      ;; the [[auto-list-cardinality-threshold]] or the accumulated length of all values exceeded
+      ;; the [[analyze/auto-list-cardinality-threshold]] or the accumulated length of all values exceeded
       ;; the [[*total-max-length*]] threshold we need to unmark it as `auto-list`. Switch it to `has_field_values` =
       ;; `nil` and delete the FieldValues; this will result in it getting a Search Widget in the UI when
       ;; `has_field_values` is automatically inferred by the [[metabase.models.field/infer-has-field-values]] hydration
@@ -413,7 +444,7 @@
       ;; way that could make this work. Thus, we are stuck doing it here :(
       (and (= :auto-list (keyword (:has_field_values field)))
            (or has_more_values
-               (> (count values) auto-list-cardinality-threshold)))
+               (> (count values) analyze/auto-list-cardinality-threshold)))
       (do
         (log/infof
          (str "Field %s was previously automatically set to show a list widget, but now has %s values."
@@ -518,6 +549,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Serialization                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod serdes/entity-id "FieldValues" [_ _] nil)
+
 (defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
   (let [field (t2/select-one 'Field :id field_id)]
     (conj (serdes/generate-path "Field" field)

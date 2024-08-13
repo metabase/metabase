@@ -2,57 +2,51 @@
   "Underlying DB model for what is now most commonly referred to as a 'Question' in most user-facing situations. Card
   is a historical name, but is the same thing; both terms are used interchangeably in the backend codebase."
   (:require
-   [clojure.core.async :as a]
    [clojure.data :as data]
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.walk :as walk]
-   [malli.core :as mc]
    [medley.core :as m]
-   [metabase.analyze.query-results :as qr]
    [metabase.api.common :as api]
+   [metabase.audit :as audit]
    [metabase.config :as config]
    [metabase.db.query :as mdb.query]
    [metabase.email.messages :as messages]
    [metabase.events :as events]
    [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
+   [metabase.lib.metadata.protocols :as lib.metadata.protocols]
    [metabase.lib.schema.template-tag :as lib.schema.template-tag]
+   [metabase.lib.util :as lib.util]
    [metabase.models.audit-log :as audit-log]
+   [metabase.models.card.metadata :as card.metadata]
    [metabase.models.collection :as collection]
    [metabase.models.field-values :as field-values]
    [metabase.models.interface :as mi]
    [metabase.models.moderation-review :as moderation-review]
-   [metabase.models.parameter-card
-    :as parameter-card
-    :refer [ParameterCard]]
+   [metabase.models.parameter-card :as parameter-card :refer [ParameterCard]]
    [metabase.models.params :as params]
    [metabase.models.permissions :as perms]
    [metabase.models.pulse :as pulse]
    [metabase.models.query :as query]
+   [metabase.models.query.permissions :as query-perms]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.moderation :as moderation]
-   [metabase.native-query-analyzer :as query-analyzer]
    [metabase.public-settings :as public-settings]
-   [metabase.public-settings.premium-features
-    :as premium-features
-    :refer [defenterprise]]
-   [metabase.query-processor.async :as qp.async]
+   [metabase.public-settings.premium-features :as premium-features :refer [defenterprise]]
+   [metabase.query-analysis :as query-analysis]
    [metabase.query-processor.util :as qp.util]
-   [metabase.server.middleware.session :as mw.session]
-   [metabase.shared.util.i18n :refer [trs]]
    [metabase.util :as u]
    [metabase.util.embed :refer [maybe-populate-initially-published-at]]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :refer [tru]]
    [metabase.util.log :as log]
-   [metabase.util.malli :as mu]
    [metabase.util.malli.registry :as mr]
-   [metabase.util.malli.schema :as ms]
    [methodical.core :as methodical]
    [toucan2.core :as t2]
-   [toucan2.tools.hydrate :as t2.hydrate])
-  (:import
-   (clojure.core.async.impl.channels ManyToManyChannel)))
+   [toucan2.tools.hydrate :as t2.hydrate]))
 
 (set! *warn-on-reflection* true)
 
@@ -91,9 +85,9 @@
    (if (and
         ;; We want to make sure there's an existing audit collection before doing the equality check below.
         ;; If there is no audit collection, this will be nil:
-        (some? (:id (perms/default-audit-collection)))
+        (some? (:id (audit/default-audit-collection)))
         ;; Is a direct descendant of audit collection
-        (= (:collection_id instance) (:id (perms/default-audit-collection))))
+        (= (:collection_id instance) (:id (audit/default-audit-collection))))
      false
      (mi/current-user-has-full-permissions? (perms/perms-objects-set-for-parent-collection instance :write))))
   ([_ pk]
@@ -139,6 +133,67 @@
    :id
    {:default 0}))
 
+(defn- source-card-id
+  [query]
+  (when (map? query)
+    (let [query-type (lib/normalized-query-type query)]
+      (case query-type
+        :query      (-> query mbql.normalize/normalize qp.util/query->source-card-id)
+        :mbql/query (-> query lib/normalize lib.util/source-card-id)
+        nil))))
+
+(defn- card->integer-table-ids
+  "Return integer source table ids for card's :dataset_query."
+  [card]
+  (when-some [query (-> card :dataset_query :query)]
+    (not-empty (filter pos-int? (lib.util/collect-source-tables query)))))
+
+(defn- prefetch-tables-for-cards!
+  "Collect tables from `dataset-cards` and prefetch metadata. Should be used only with metdata provider caching
+  enabled, as per https://github.com/metabase/metabase/pull/45050. Returns `nil`."
+  [dataset-cards]
+  (let [db-id->table-ids (-> (group-by :database_id dataset-cards)
+                             (update-vals (partial into #{} (comp (mapcat card->integer-table-ids)
+                                                                  (remove nil?)))))]
+    (doseq [[db-id table-ids] db-id->table-ids
+            :let  [mp (lib.metadata.jvm/application-database-metadata-provider db-id)]
+            :when (seq table-ids)]
+      (lib.metadata.protocols/metadatas mp :metadata/table table-ids))))
+
+(defn with-can-run-adhoc-query
+  "Adds can_run_adhoc_query to each card."
+  [cards]
+  ;; TODO: for metrics, we can get (some-fn :source_model_id :source_question_id)
+  (let [dataset-cards (filter (comp seq :dataset_query) cards)
+        source-card-ids (into #{}
+                              (keep (comp source-card-id :dataset_query))
+                              dataset-cards)]
+    ;; Prefetching code should not propagate any exceptions.
+    (when lib.metadata.jvm/*metadata-provider-cache*
+      (try
+        (prefetch-tables-for-cards! dataset-cards)
+        (catch Throwable t
+          (log/errorf t "Failed prefething cards `%s`." (pr-str (map :id dataset-cards))))))
+    (binding [query-perms/*card-instances*
+              (when (seq source-card-ids)
+                (t2/select-fn->fn :id identity [Card :id :collection_id] :id [:in source-card-ids]))]
+      (mi/instances-with-hydrated-data
+       cards :can_run_adhoc_query
+       (fn []
+         (into {}
+               (map
+                (fn [{card-id :id :keys [dataset_query]}]
+                  [card-id (query-perms/can-run-query? dataset_query)]))
+               dataset-cards))
+       :id
+       {:default false}))))
+
+(mi/define-batched-hydration-method add-can-run-adhoc-query
+  :can_run_adhoc_query
+  "Hydrate can_run_adhoc_query onto cards"
+  [cards]
+  (with-can-run-adhoc-query cards))
+
 (methodical/defmethod t2/batched-hydrate [:model/Card :parameter_usage_count]
   [_model k cards]
   (mi/instances-with-hydrated-data
@@ -182,15 +237,26 @@
          (into {}))
    :id))
 
+(methodical/defmethod t2/batched-hydrate [:model/Card :metrics]
+  [_model k cards]
+  (mi/instances-with-hydrated-data
+   cards k
+   #(group-by :source_card_id
+              (t2/select :model/Card
+                         :source_card_id [:in (map :id cards)],
+                         :archived false,
+                         :type :metric,
+                         {:order-by [[:name :asc]]}))
+   :id))
+
 ;; There's more hydration in the shared metabase.moderation namespace, but it needs to be required:
 (comment moderation/keep-me)
-
 
 ;;; --------------------------------------------------- Revisions ----------------------------------------------------
 
 (def ^:private excluded-columns-for-card-revision
-  [:id :created_at :updated_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
-   :initially_published_at :cache_invalidated_at])
+  [:id :created_at :updated_at :last_used_at :entity_id :creator_id :public_uuid :made_public_by_id :metabase_version
+   :initially_published_at :cache_invalidated_at :view_count])
 
 (defmethod revision/revert-to-revision! :model/Card
   [model id user-id serialized-card]
@@ -213,10 +279,13 @@
 ;;; --------------------------------------------------- Lifecycle ----------------------------------------------------
 
 (defn populate-query-fields
-  "Lift `database_id`, `table_id`, and `query_type` from query definition when inserting/updating a Card."
+  "Lift `database_id`, `table_id`, `query_type`, and `source_card_id` fields
+  from query definition when inserting/updating a Card."
   [{query :dataset_query, :as card}]
   (merge
    card
+   (when-let [source-id (source-card-id query)]
+     {:source_card_id source-id})
    ;; mega HACK FIXME -- don't update this stuff when doing deserialization because it might differ from what's in the
    ;; YAML file and break tests like [[metabase-enterprise.serialization.v2.e2e.yaml-test/e2e-storage-ingestion-test]].
    ;; The root cause of this issue is that we're generating Cards that have a different Database ID or Table ID from
@@ -234,49 +303,6 @@
             {:database_id database-id})
           (when table-id
             {:table_id table-id})))))))
-
-(defn- populate-result-metadata
-  "When inserting/updating a Card, populate the result metadata column if not already populated by inferring the
-  metadata from the query."
-  [{query :dataset_query, metadata :result_metadata, existing-card-id :id, :as card}]
-  (cond
-    ;; not updating the query => no-op
-    (not query)
-    (do
-      (log/debug "Not inferring result metadata for Card: query was not updated")
-      card)
-
-    ;; passing in metadata => no-op
-    metadata
-    (do
-      (log/debug "Not inferring result metadata for Card: metadata was passed in to insert!/update!")
-      card)
-
-    ;; this is an update, and dataset_query hasn't changed => no-op
-    (and existing-card-id
-         (= query (t2/select-one-fn :dataset_query Card :id existing-card-id)))
-    (do
-      (log/debugf "Not inferring result metadata for Card %s: query has not changed" existing-card-id)
-      card)
-
-    ;; query has changed (or new Card) and this is a native query => set metadata to nil
-    ;;
-    ;; we can't infer the metadata for a native query without running it, so it's better to have no metadata than
-    ;; possibly incorrect metadata.
-    (= (:type query) :native)
-    (do
-      (log/debug "Can't infer result metadata for Card: query is a native query. Setting result metadata to nil")
-      (assoc card :result_metadata nil))
-
-    ;; otherwise, attempt to infer the metadata. If the query can't be run for one reason or another, set metadata to
-    ;; nil.
-    :else
-    (do
-      (log/debug "Attempting to infer result metadata for Card")
-      (let [inferred-metadata (not-empty (mw.session/with-current-user nil
-                                           (u/ignore-exceptions
-                                             ((requiring-resolve 'metabase.query-processor.preprocess/query->expected-cols) query))))]
-        (assoc card :result_metadata inferred-metadata)))))
 
 (defn- check-for-circular-source-query-references
   "Check that a `card`, if it is using another Card as its source, does not have circular references between source
@@ -400,39 +426,40 @@
   - card is archived
   - card.result_metadata changes and the parameter values source field can't be found anymore"
   [{id :id, :as changes}]
-  (let [parameter-cards   (t2/select ParameterCard :card_id id)]
-    (doseq [[[po-type po-id] param-cards]
-            (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
-      (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
-            {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
-            affected-param-ids-set (cond
-                                     ;; update all parameters that use this card as source
-                                     (:archived changes)
-                                     (set (map :parameter_id param-cards))
+  (when (some #{:archived :result_metadata} (keys changes))
+    (let [parameter-cards (t2/select ParameterCard :card_id id)]
+      (doseq [[[po-type po-id] param-cards]
+              (group-by (juxt :parameterized_object_type :parameterized_object_id) parameter-cards)]
+        (let [model                  (case po-type :card 'Card :dashboard 'Dashboard)
+              {:keys [parameters]}   (t2/select-one [model :parameters] :id po-id)
+              affected-param-ids-set (cond
+                                      ;; update all parameters that use this card as source
+                                      (:archived changes)
+                                      (set (map :parameter_id param-cards))
 
-                                     ;; update only parameters that have value_field no longer in this card
-                                     (:result_metadata changes)
-                                     (let [param-id->parameter (m/index-by :id parameters)]
-                                       (->> param-cards
-                                            (filter (fn [param-card]
-                                                      ;; if cant find the value-field in result_metadata, then we should
-                                                      ;; remove it
-                                                      (nil? (qp.util/field->field-info
+                                      ;; update only parameters that have value_field no longer in this card
+                                      (:result_metadata changes)
+                                      (let [param-id->parameter (m/index-by :id parameters)]
+                                        (->> param-cards
+                                             (filter (fn [param-card]
+                                                       ;; if cant find the value-field in result_metadata, then we should
+                                                       ;; remove it
+                                                       (nil? (qp.util/field->field-info
                                                               (get-in (param-id->parameter (:parameter_id param-card)) [:values_source_config :value_field])
                                                               (:result_metadata changes)))))
-                                            (map :parameter_id)
-                                            set))
+                                             (map :parameter_id)
+                                             set))
 
-                                     :else #{})
-            new-parameters (map (fn [parameter]
-                                  (if (affected-param-ids-set (:id parameter))
-                                    (-> parameter
-                                        (assoc :values_source_type nil)
-                                        (dissoc :values_source_config))
-                                    parameter))
-                                parameters)]
-        (when-not (= parameters new-parameters)
-          (t2/update! model po-id {:parameters new-parameters}))))))
+                                      :else #{})
+              new-parameters (map (fn [parameter]
+                                    (if (affected-param-ids-set (:id parameter))
+                                      (-> parameter
+                                          (assoc :values_source_type nil)
+                                          (dissoc :values_source_config))
+                                      parameter))
+                                  parameters)]
+          (when-not (= parameters new-parameters)
+            (t2/update! model po-id {:parameters new-parameters})))))))
 
 (defn model-supports-implicit-actions?
   "A model with implicit action supported iff they are a raw table,
@@ -454,7 +481,7 @@
                                                           :where  [:= :action.model_id model-id]})]
     (t2/delete! :model/Action :id [:in action-ids])))
 
-(defn- pre-update [{archived? :archived, id :id, :as changes}]
+(defn- pre-update [{id :id, :as changes}]
   ;; TODO - don't we need to be doing the same permissions check we do in `pre-insert` if the query gets changed? Or
   ;; does that happen in the `PUT` endpoint? (#40013)
   (u/prog1 changes
@@ -463,9 +490,6 @@
                                   (:dataset_query changes)
                                   (get-in changes [:dataset_query :native]))
                           (t2/select-one [:model/Card :dataset_query :type] :id (u/the-id id)))]
-      ;; if the Card is archived, then remove it from any Dashboards
-      (when archived?
-        (t2/delete! :model/DashboardCard :card_id id))
       ;; if the template tag params for this Card have changed in any way we need to update the FieldValues for
       ;; On-Demand DB Fields
       (when (get-in changes [:dataset_query :native])
@@ -500,7 +524,12 @@
       (params/assert-valid-parameters changes)
       (params/assert-valid-parameter-mappings changes)
       (update-parameters-using-card-as-values-source changes)
-      (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes))
+      ;; TODO: this would ideally be done only once the query changes have been commited to the database, to avoid
+      ;;       race conditions leading to stale analysis triggering the "last one wins" analysis update.
+      (when (contains? changes :dataset_query)
+        (query-analysis/analyze-async! changes))
+      (when (:parameters changes)
+        (parameter-card/upsert-or-delete-from-parameters! "card" id (:parameters changes)))
       ;; additional checks (Enterprise Edition only)
       (pre-update-check-sandbox-constraints changes)
       (assert-valid-type (merge old-card-info changes)))))
@@ -508,14 +537,17 @@
 
 (t2/define-after-select :model/Card
   [card]
-  (public-settings/remove-public-uuid-if-public-sharing-is-disabled card))
+  (-> card
+      (dissoc :dataset_query_metrics_v2_migration_backup)
+      (m/assoc-some :source_card_id (-> card :dataset_query source-card-id))
+      public-settings/remove-public-uuid-if-public-sharing-is-disabled))
 
 (t2/define-before-insert :model/Card
   [card]
   (-> card
       (assoc :metabase_version config/mb-version-string)
       maybe-normalize-query
-      populate-result-metadata
+      card.metadata/populate-result-metadata
       pre-insert
       populate-query-fields))
 
@@ -526,7 +558,7 @@
       (log/info "Card references Fields in params:" field-ids)
       (field-values/update-field-values-for-on-demand-dbs! field-ids))
     (parameter-card/upsert-or-delete-from-parameters! "card" (:id card) (:parameters card))
-    (query-analyzer/update-query-fields-for-card! card)))
+    (query-analysis/analyze-async! card)))
 
 (t2/define-before-update :model/Card
   [{:keys [verified-result-metadata?] :as card}]
@@ -544,14 +576,10 @@
       (cond-> #_changes
         (or (empty? (:result_metadata card))
             (not verified-result-metadata?))
-        populate-result-metadata)
+        card.metadata/populate-result-metadata)
       pre-update
       populate-query-fields
       maybe-populate-initially-published-at
-      ;; TODO: this should go in after-update once camsaul/toucan2#129 is fixed
-      ;; It's at the end for now so that all the before-update validations have a chance to run
-      ;; TODO the Second: No reason this couldn't be async, especially once it's in the after-update
-      (doto query-analyzer/update-query-fields-for-card!)
       (dissoc :id)))
 
 ;; Cards don't normally get deleted (they get archived instead) so this mostly affects tests
@@ -568,92 +596,11 @@
   [_card]
   [:name (serdes/hydrated-hash :collection) :created_at])
 
+(defmethod mi/exclude-internal-content-hsql :model/Card
+  [_model & {:keys [table-alias]}]
+  [:not= (h2x/identifier :field table-alias :creator_id) config/internal-mb-user-id])
+
 ;;; ----------------------------------------------- Creating Cards ----------------------------------------------------
-
-(mu/defn result-metadata-async :- (ms/InstanceOfClass ManyToManyChannel)
-  "Return a channel of metadata for the passed in `query`. Takes the `original-query` so it can determine if existing
-  `metadata` might still be valid. Takes `dataset?` since existing metadata might need to be \"blended\" into the
-  fresh metadata to preserve metadata edits from the dataset.
-
-  Note this condition is possible for new cards and edits to cards. New cards can be created from existing cards by
-  copying, and they could be datasets, have edited metadata that needs to be blended into a fresh run.
-
-  This is also complicated because everything is optional, so we cannot assume the client will provide metadata and
-  might need to save a metadata edit, or might need to use db-saved metadata on a modified dataset."
-  [{:keys [original-query query metadata original-metadata dataset?]}]
-  (let [valid-metadata? (and metadata (mc/validate qr/ResultsMetadata metadata))]
-    (cond
-      (or
-       ;; query didn't change, preserve existing metadata
-       (and (= (mbql.normalize/normalize original-query)
-               (mbql.normalize/normalize query))
-            valid-metadata?)
-       ;; only sent valid metadata in the edit. Metadata might be the same, might be different. We save in either case
-       (and (nil? query)
-            valid-metadata?)
-
-       ;; copying card and reusing existing metadata
-       (and (nil? original-query)
-            query
-            valid-metadata?))
-      (do
-        (log/debug (trs "Reusing provided metadata"))
-        (a/to-chan! [metadata]))
-
-      ;; frontend always sends query. But sometimes programatic don't (cypress, API usage). Returning an empty channel
-      ;; means the metadata won't be updated at all.
-      (nil? query)
-      (do
-        (log/debug (trs "No query provided so not querying for metadata"))
-        (doto (a/chan) a/close!))
-
-      ;; datasets need to incorporate the metadata either passed in or already in the db. Query has changed so we
-      ;; re-run and blend the saved into the new metadata
-      (and dataset? (or valid-metadata? (seq original-metadata)))
-      (do
-        (log/debug (trs "Querying for metadata and blending model metadata"))
-        (a/go (let [metadata' (if valid-metadata?
-                                (map mbql.normalize/normalize-source-metadata metadata)
-                                original-metadata)
-                    fresh     (a/<! (qp.async/result-metadata-for-query-async query))]
-                (qp.util/combine-metadata fresh metadata'))))
-      :else
-      ;; compute fresh
-      (do
-        (log/debug (trs "Querying for metadata"))
-        (qp.async/result-metadata-for-query-async query)))))
-
-(def metadata-sync-wait-ms
-  "Duration in milliseconds to wait for the metadata before saving the card without the metadata. That metadata will be
-saved later when it is ready."
-  1500)
-
-(def metadata-async-timeout-ms
-  "Duration in milliseconds to wait for the metadata before abandoning the asynchronous metadata saving. Default is 15
-  minutes."
-  (u/minutes->ms 15))
-
-(defn schedule-metadata-saving
-  "Save metadata when (and if) it is ready. Takes a chan that will eventually return metadata. Waits up
-  to [[metadata-async-timeout-ms]] for the metadata, and then saves it if the query of the card has not changed."
-  [result-metadata-chan card]
-  (a/go
-    (let [timeoutc        (a/timeout metadata-async-timeout-ms)
-          [metadata port] (a/alts! [result-metadata-chan timeoutc])
-          id              (:id card)]
-      (cond (= port timeoutc)
-            (do (a/close! result-metadata-chan)
-                (log/infof "Metadata not ready in %s minutes, abandoning" (long (/ metadata-async-timeout-ms 1000 60))))
-
-            (not (seq metadata))
-            (log/infof "Not updating metadata asynchronously for card %s because no metadata" id)
-            :else
-            (future
-              (let [current-query (t2/select-one-fn :dataset_query Card :id id)]
-                (if (= (:dataset_query card) current-query)
-                  (do (t2/update! Card id {:result_metadata metadata})
-                      (log/infof "Metadata updated asynchronously for card %s" id))
-                  (log/infof "Not updating metadata asynchronously for card %s because query has changed" id))))))))
 
 (defn create-card!
   "Create a new Card. Metadata will be fetched off thread. If the metadata takes longer than [[metadata-sync-wait-ms]]
@@ -665,39 +612,36 @@ saved later when it is ready."
   created."
   ([card creator] (create-card! card creator false))
   ([{:keys [dataset_query result_metadata parameters parameter_mappings type] :as card-data} creator delay-event?]
-   (let [data-keys            [:dataset_query :description :display :name :visualization_settings
-                               :parameters :parameter_mappings :collection_id :collection_position :cache_ttl :type]
+   (let [data-keys                          [:dataset_query :description :display :name :visualization_settings
+                                             :parameters :parameter_mappings :collection_id :collection_position
+                                             :cache_ttl :type]
          ;; `zipmap` instead of `select-keys` because we want to get `nil` values for keys that aren't present. Required
          ;; by `api/maybe-reconcile-collection-position!`
-         card-data            (-> (zipmap data-keys (map card-data data-keys))
-                                  (assoc
-                                   :creator_id (:id creator)
-                                   :parameters (or parameters [])
-                                   :parameter_mappings (or parameter_mappings []))
-                                  (cond-> (nil? type)
-                                    (assoc :type :question)))
-         result-metadata-chan (result-metadata-async {:query    dataset_query
-                                                      :metadata result_metadata
-                                                      :dataset? (model? card-data)})
-         metadata-timeout     (a/timeout metadata-sync-wait-ms)
-         [metadata port]      (a/alts!! [result-metadata-chan metadata-timeout])
-         timed-out?           (= port metadata-timeout)
-         card                 (t2/with-transaction [_conn]
-                                ;; Adding a new card at `collection_position` could cause other cards in this
-                                ;; collection to change position, check that and fix it if needed
-                                (api/maybe-reconcile-collection-position! card-data)
-                                (t2/insert-returning-instance! Card (cond-> card-data
-                                                                      (and metadata (not timed-out?))
-                                                                      (assoc :result_metadata metadata))))]
+         card-data                          (-> (zipmap data-keys (map card-data data-keys))
+                                                (assoc
+                                                 :creator_id (:id creator)
+                                                 :parameters (or parameters [])
+                                                 :parameter_mappings (or parameter_mappings []))
+                                                (cond-> (nil? type)
+                                                  (assoc :type :question)))
+         {:keys [metadata metadata-future]} (card.metadata/maybe-async-result-metadata {:query    dataset_query
+                                                                                        :metadata result_metadata
+                                                                                        :model?   (model? card-data)})
+         card                               (t2/with-transaction [_conn]
+                                              ;; Adding a new card at `collection_position` could cause other cards in
+                                              ;; this collection to change position, check that and fix it if needed
+                                              (api/maybe-reconcile-collection-position! card-data)
+                                              (t2/insert-returning-instance! Card (cond-> card-data
+                                                                                    metadata
+                                                                                    (assoc :result_metadata metadata))))]
      (when-not delay-event?
        (events/publish-event! :event/card-create {:object card :user-id (:id creator)}))
-     (when timed-out?
-       (log/info "Metadata not available soon enough. Saving new card and asynchronously updating metadata"))
+     (when metadata-future
+       (log/info "Metadata not available soon enough. Saving new card and asynchronously updating metadata")
+       (card.metadata/save-metadata-async! metadata-future card))
      ;; include same information returned by GET /api/card/:id since frontend replaces the Card it currently has with
      ;; returned one -- See #4283
-     (u/prog1 card
-       (when timed-out?
-         (schedule-metadata-saving result-metadata-chan <>))))))
+     card)))
 
 ;;; ------------------------------------------------- Updating Cards -------------------------------------------------
 
@@ -846,7 +790,7 @@ saved later when it is ready."
                 ;; `collection_id` and `description` can be `nil` (in order to unset them).
                 ;; Other values should only be modified if they're passed in as non-nil
                 (u/select-keys-when card-updates
-                                    :present #{:collection_id :collection_position :description :cache_ttl}
+                                    :present #{:collection_id :collection_position :description :cache_ttl :archived_directly}
                                     :non-nil #{:dataset_query :display :name :visualization_settings :archived
                                                :enable_embedding :type :parameters :parameter_mappings :embedding_params
                                                :result_metadata :collection_preview :verified-result-metadata?})))
@@ -895,57 +839,45 @@ saved later when it is ready."
                                     [(when (:table_id m) #{(serdes/table->path (:table_id m))})
                                      (when (:id m)       #{(serdes/field->path (:id m))})])))))
 
-(defmethod serdes/extract-one "Card"
-  [_model-name _opts card]
-  ;; Cards have :table_id, :database_id, :collection_id, :creator_id that need conversion.
-  ;; :table_id and :database_id are extracted as just :table_id [database_name schema table_name].
-  ;; :collection_id is extracted as its entity_id or identity-hash.
-  ;; :creator_id as the user's email.
-  (try
-    (-> (serdes/extract-one-basics "Card" card)
-        (update :database_id            serdes/*export-fk-keyed* 'Database :name)
-        (update :table_id               serdes/*export-table-fk*)
-        (update :collection_id          serdes/*export-fk* 'Collection)
-        (update :creator_id             serdes/*export-user*)
-        (update :made_public_by_id      serdes/*export-user*)
-        (update :dataset_query          serdes/export-mbql)
-        (update :parameters             serdes/export-parameters)
-        (update :parameter_mappings     serdes/export-parameter-mappings)
-        (update :visualization_settings serdes/export-visualization-settings)
-        (update :result_metadata        export-result-metadata)
-        (dissoc :cache_invalidated_at))
-    (catch Exception e
-      (throw (ex-info (format "Failed to export Card: %s" (ex-message e)) {:card card} e)))))
-
-(defmethod serdes/load-xform "Card"
-  [card]
-  (-> card
-      serdes/load-xform-basics
-      (update :database_id            serdes/*import-fk-keyed* 'Database :name)
-      (update :table_id               serdes/*import-table-fk*)
-      (update :creator_id             serdes/*import-user*)
-      (update :made_public_by_id      serdes/*import-user*)
-      (update :collection_id          serdes/*import-fk* 'Collection)
-      (update :dataset_query          serdes/import-mbql)
-      (update :parameters             serdes/import-parameters)
-      (update :parameter_mappings     serdes/import-parameter-mappings)
-      (update :visualization_settings serdes/import-visualization-settings)
-      (update :result_metadata        import-result-metadata)))
+(defmethod serdes/make-spec "Card"
+  [_model-name _opts]
+  {:copy [:archived :archived_directly :collection_position :collection_preview :created_at :description :display
+          :embedding_params :enable_embedding :entity_id :metabase_version :public_uuid :query_type :type :name]
+   :skip [;; cache invalidation is instance-specific
+          :cache_invalidated_at
+          ;; those are instance-specific analytic columns
+          :view_count :last_used_at :initially_published_at
+          ;; this is data migration column
+          :dataset_query_metrics_v2_migration_backup
+          ;; this column is not used anymore
+          :cache_ttl]
+   :transform
+   {:database_id            (serdes/fk :model/Database :name)
+    :table_id               (serdes/fk :model/Table)
+    :source_card_id         (serdes/fk :model/Card)
+    :collection_id          (serdes/fk :model/Collection)
+    :creator_id             (serdes/fk :model/User)
+    :made_public_by_id      (serdes/fk :model/User)
+    :dataset_query          {:export serdes/export-mbql :import serdes/import-mbql}
+    :parameters             {:export serdes/export-parameters :import serdes/import-parameters}
+    :parameter_mappings     {:export serdes/export-parameter-mappings :import serdes/import-parameter-mappings}
+    :visualization_settings {:export serdes/export-visualization-settings :import serdes/import-visualization-settings}
+    :result_metadata        {:export export-result-metadata :import import-result-metadata}}})
 
 (defmethod serdes/dependencies "Card"
   [{:keys [collection_id database_id dataset_query parameters parameter_mappings
-           result_metadata table_id visualization_settings]}]
-  (->> (map serdes/mbql-deps parameter_mappings)
-       (reduce set/union #{})
-       (set/union (serdes/parameters-deps parameters))
-       (set/union #{[{:model "Database" :id database_id}]})
-       ; table_id and collection_id are nullable.
-       (set/union (when table_id #{(serdes/table->path table_id)}))
-       (set/union (when collection_id #{[{:model "Collection" :id collection_id}]}))
-       (set/union (result-metadata-deps result_metadata))
-       (set/union (serdes/mbql-deps dataset_query))
-       (set/union (serdes/visualization-settings-deps visualization_settings))
-       vec))
+           result_metadata table_id source_card_id visualization_settings]}]
+  (set
+   (concat
+    (mapcat serdes/mbql-deps parameter_mappings)
+    (serdes/parameters-deps parameters)
+    [[{:model "Database" :id database_id}]]
+    (when table_id #{(serdes/table->path table_id)})
+    (when source_card_id #{[{:model "Card" :id source_card_id}]})
+    (when collection_id #{[{:model "Collection" :id collection_id}]})
+    (result-metadata-deps result_metadata)
+    (serdes/mbql-deps dataset_query)
+    (serdes/visualization-settings-deps visualization_settings))))
 
 (defmethod serdes/descendants "Card" [_model-name id]
   (let [card               (t2/select-one Card :id id)
@@ -953,19 +885,17 @@ saved later when it is ready."
         template-tags      (some->> card :dataset_query :native :template-tags vals (keep :card-id))
         parameters-card-id (some->> card :parameters (keep (comp :card_id :values_source_config)))
         snippets           (some->> card :dataset_query :native :template-tags vals (keep :snippet-id))]
-    (set/union
+    (set
+     (concat
       (when (and (string? source-table)
                  (str/starts-with? source-table "card__"))
-        #{["Card" (Integer/parseInt (.substring ^String source-table 6))]})
-      (when (seq template-tags)
-        (set (for [card-id template-tags]
-               ["Card" card-id])))
-      (when (seq parameters-card-id)
-        (set (for [card-id parameters-card-id]
-               ["Card" card-id])))
-      (when (seq snippets)
-        (set (for [snippet-id snippets]
-               ["NativeQuerySnippet" snippet-id]))))))
+        [["Card" (parse-long (subs source-table 6))]])
+      (for [card-id template-tags]
+        ["Card" card-id])
+      (for [card-id parameters-card-id]
+        ["Card" card-id])
+      (for [snippet-id snippets]
+        ["NativeQuerySnippet" snippet-id])))))
 
 
 ;;; ------------------------------------------------ Audit Log --------------------------------------------------------

@@ -1,7 +1,10 @@
 import type { ComponentStory } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
-import { MULTIPLE_SERIES } from "metabase/static-viz/components/RowChart/stories-data";
+import {
+  METRIC_COLUMN_WITH_SCALING,
+  MULTIPLE_SERIES,
+} from "metabase/static-viz/components/RowChart/stories-data";
 
 import RowChart from "./RowChart";
 
@@ -16,3 +19,9 @@ const Template: ComponentStory<typeof RowChart> = args => {
 
 export const Default = Template.bind({});
 Default.args = { ...MULTIPLE_SERIES, getColor: color };
+
+export const MetricColumnWithScaling = Template.bind({});
+MetricColumnWithScaling.args = {
+  ...METRIC_COLUMN_WITH_SCALING,
+  getColor: color,
+};

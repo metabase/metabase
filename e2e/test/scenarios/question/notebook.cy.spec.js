@@ -23,8 +23,9 @@ import {
   visitQuestionAdhoc,
   visualize,
   createQuestion,
+  entityPickerModal,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
-import { createMetric } from "e2e/support/helpers/e2e-table-metadata-helpers";
 
 const { ORDERS, ORDERS_ID, PEOPLE, PEOPLE_ID, PRODUCTS, PRODUCTS_ID } =
   SAMPLE_DATABASE;
@@ -46,7 +47,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Not now").click();
     // enter "notebook" and visualize without changing anything
-    cy.icon("notebook").click();
+    openNotebook();
 
     cy.button("Visualize").click();
 
@@ -175,7 +176,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.findByText("Custom Expression").click();
 
     enterCustomColumnDetails({ formula: "[Price] > 1" });
-    cy.get("@formula").blur();
 
     cy.button("Done").click();
 
@@ -360,7 +360,6 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
       cy.findByText("Custom Expression").click();
 
       enterCustomColumnDetails({ formula: "[Subtotal] - Tax > 140" });
-      cy.get("@formula").blur();
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains(/^redundant input/i).should("not.exist");
@@ -520,7 +519,10 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     openNotebook();
 
     join();
-    popover().findByText("Products model").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Models").click();
+      cy.findByText("Products model").click();
+    });
 
     visualize();
   });
@@ -565,30 +567,28 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     popover().contains("No description");
   });
 
-  it(
-    "should allow to pick a saved question when there are models",
-    { tags: "@flaky" },
-    () => {
-      cy.createNativeQuestion({
-        name: "Orders, Model",
-        type: "model",
-        native: { query: "SELECT * FROM ORDERS" },
-      });
+  it("should allow to pick a saved question when there are models", () => {
+    cy.createNativeQuestion({
+      name: "Orders, Model",
+      type: "model",
+      native: { query: "SELECT * FROM ORDERS" },
+    });
 
-      startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    startNewQuestion();
+
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("Orders, Count").click();
-      visualize();
-    },
-  );
+    });
+
+    visualize();
+  });
 
   it('should not show "median" aggregation option for databases that do not support "percentile-aggregations" driver feature', () => {
     startNewQuestion();
-    popover().within(() => {
-      cy.contains("Raw Data").click();
-      cy.contains("Orders").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
     });
 
     getNotebookStep("summarize")
@@ -630,6 +630,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       visualize();
 
+      cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell").should("contain", "Median of Price");
     });
 
@@ -660,6 +661,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
 
       visualize();
 
+      cy.findByLabelText("Switch to data").click();
       cy.findAllByTestId("header-cell")
         .should("contain", "Median of Median of Mega price")
         .should("contain", "Median of Count");
@@ -691,10 +693,12 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
         cy.icon("play").should("not.be.visible");
       });
 
-    popover().findByTextEnsureVisible("Raw Data").click();
-    cy.get("@dataStep").icon("play").should("not.be.visible");
-    popover().findByTextEnsureVisible("Orders").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Orders").click();
+    });
 
+    cy.get("@dataStep").icon("play").should("be.visible");
     getNotebookStep("filter").icon("play").should("not.be.visible");
     getNotebookStep("summarize").icon("play").should("not.be.visible");
 
@@ -809,42 +813,173 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
   });
 
   it("should not crash notebook when metric is used as an aggregation and breakout is applied (metabase#40553)", () => {
-    createMetric({
-      name: "Revenue",
-      description: "Sum of orders subtotal",
-      table_id: ORDERS_ID,
-      definition: {
-        "source-table": ORDERS_ID,
-        aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
-      },
-    }).then(({ body }) => {
-      const metricId = body.id;
-
-      const questionDetails = {
+    cy.createQuestion(
+      {
         query: {
           "source-table": ORDERS_ID,
-          breakout: [["field", ORDERS.CREATED_AT, null]],
-          aggregation: [["metric", metricId]],
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+        },
+        type: "metric",
+        name: "Revenue",
+      },
+      {
+        wrapId: true,
+        idAlias: "metricId",
+      },
+    );
+
+    cy.get("@metricId").then(metricId => {
+      const questionDetails = {
+        query: {
+          "source-table": `card__${metricId}`,
+          breakout: [
+            ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
+          ],
+          aggregation: ["metric", metricId],
         },
       };
 
       createQuestion(questionDetails, { visitQuestion: true });
+
+      openNotebook();
+
+      getNotebookStep("summarize").contains("Revenue").click();
+
+      popover()
+        .findByTestId("expression-editor-textfield")
+        .contains("[Revenue]");
     });
+  });
 
-    openNotebook();
+  it.skip("should be possible to sort by metric (metabase#8283,metabase#42392)", () => {
+    cy.createQuestion(
+      {
+        name: "Revenue",
+        description: "Sum of orders subtotal",
+        type: "metric",
+        query: {
+          "source-table": ORDERS_ID,
+          aggregation: [["sum", ["field", ORDERS.SUBTOTAL, null]]],
+        },
+      },
+      {
+        wrapId: true,
+        idAlias: "metricId",
+      },
+    );
 
-    getNotebookStep("summarize").contains("Revenue").click();
+    cy.get("@metricId").then(metricId => {
+      const questionDetails = {
+        query: {
+          "source-table": `card__${metricId}`,
+          aggregation: ["metric", metricId],
+        },
+      };
 
-    popover().findByTestId("expression-editor-textfield").contains("[Revenue]");
+      cy.createQuestion(questionDetails, { visitQuestion: true });
+
+      openNotebook();
+
+      cy.findByText("Pick a column to group by").click();
+      cy.findByText("Created At").click();
+      cy.findByText("Sort").click();
+
+      // Sorts ascending by default
+      // Revenue appears twice, but it's the only integer column to order by
+      popover().icon("int").click();
+
+      // Let's make sure it's possible to sort descending as well
+      cy.icon("arrow_up").click();
+
+      cy.icon("arrow_down").parent().contains("Revenue");
+
+      visualize();
+      // Visualization will render line chart by default. Switch to the table.
+      cy.icon("table2").click();
+
+      cy.findAllByRole("grid").as("table");
+      cy.get("@table")
+        .first()
+        .as("tableHeader")
+        .within(() => {
+          cy.get("[data-testid=cell-data]")
+            .eq(1)
+            .invoke("text")
+            .should("eq", "Revenue");
+        });
+
+      cy.get("@table")
+        .last()
+        .as("tableBody")
+        .within(() => {
+          cy.get("[data-testid=cell-data]")
+            .eq(1)
+            .invoke("text")
+            .should("eq", "50,072.98");
+        });
+    });
+  });
+
+  it.skip("should open only one bucketing popover at a time (metabase#45036)", () => {
+    visitQuestionAdhoc(
+      {
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: { "source-table": PRODUCTS_ID, aggregation: [["count"]] },
+          parameters: [],
+        },
+      },
+      { mode: "notebook" },
+    );
+
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+
+    popover()
+      .findByRole("option", { name: "Created At" })
+      .findByText("by month")
+      .click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Year").should("be.visible");
+        cy.findByText("Hour of day").should("not.exist");
+        cy.findByText("More…").click();
+        cy.findByText("Hour of day").should("be.visible");
+      });
+
+    popover()
+      .first()
+      .findByRole("option", { name: "Price" })
+      .findByText("Auto bin")
+      .click();
+
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Auto bin").should("be.visible");
+        cy.findByText("50 bins").should("be.visible");
+        cy.findByText("Don't bin").should("be.visible");
+
+        cy.findByText("Year").should("not.exist");
+        cy.findByText("Hour of day").should("not.exist");
+        cy.findByText("More…").should("not.exist");
+      });
   });
 });
 
 function assertTableRowCount(expectedCount) {
-  cy.get(".Table-ID:not(.Table-FK)").should("have.length", expectedCount);
+  cy.get(".test-Table-ID:not(.test-Table-FK)").should(
+    "have.length",
+    expectedCount,
+  );
 }
 
 function addSimpleCustomColumn(name) {
-  enterCustomColumnDetails({ formula: "C" });
+  enterCustomColumnDetails({ formula: "C", blur: false });
   cy.findByText("ategory").click();
   cy.findByPlaceholderText("Something nice and descriptive").click().type(name);
   cy.button("Done").click();

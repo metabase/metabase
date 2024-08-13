@@ -1,22 +1,29 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import type { Route } from "react-router";
+import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useDispatch } from "metabase/lib/redux";
 import type { TabsValue } from "metabase/ui";
 import { Flex, Tabs } from "metabase/ui";
 
+import { PerformanceTabId } from "../types";
+
+import { ModelPersistenceConfiguration } from "./ModelPersistenceConfiguration";
 import { Tab, TabsList, TabsPanel } from "./PerformanceApp.styled";
 import { StrategyEditorForDatabases } from "./StrategyEditorForDatabases";
 
-export enum TabId {
-  DataCachingSettings = "dataCachingSettings",
-}
-const validTabIds = new Set(Object.values(TabId).map(String));
-const isValidTabId = (tab: TabsValue): tab is TabId =>
+const validTabIds = new Set(Object.values(PerformanceTabId).map(String));
+const isValidTabId = (tab: TabsValue): tab is PerformanceTabId =>
   !!tab && validTabIds.has(tab);
 
-export const PerformanceApp = ({ route }: { route: Route }) => {
-  const [tabId, setTabId] = useState<TabId>(TabId.DataCachingSettings);
+export const PerformanceApp = ({
+  tabId = PerformanceTabId.Databases,
+  route,
+}: {
+  tabId: PerformanceTabId;
+  route: Route;
+}) => {
   const [tabsHeight, setTabsHeight] = useState<number>(300);
   const tabsRef = useRef<HTMLDivElement>(null);
 
@@ -32,19 +39,25 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
     };
     window.addEventListener("resize", handleResize);
     handleResize();
-    // TODO: Is this needed?
-    // setTimeout(handleResize, 50);
     return () => {
       window.removeEventListener("resize", handleResize);
     };
   }, [tabsRef, setTabsHeight]);
+
+  const dispatch = useDispatch();
 
   return (
     <Tabs
       value={tabId}
       onTabChange={value => {
         if (isValidTabId(value)) {
-          setTabId(value);
+          dispatch(
+            push(
+              `/admin/performance/${
+                value === PerformanceTabId.Databases ? "" : value
+              }`,
+            ),
+          );
         } else {
           console.error("Invalid tab value", value);
         }
@@ -55,14 +68,27 @@ export const PerformanceApp = ({ route }: { route: Route }) => {
       h={tabsHeight}
     >
       <TabsList>
-        <Tab key="DataCachingSettings" value={TabId.DataCachingSettings}>
-          {t`Data caching settings`}
+        <Tab
+          key={PerformanceTabId.Databases}
+          value={PerformanceTabId.Databases}
+        >
+          {t`Database caching settings`}
+        </Tab>
+        <Tab key={PerformanceTabId.Models} value={PerformanceTabId.Models}>
+          {t`Model persistence`}
         </Tab>
       </TabsList>
-      <TabsPanel key={tabId} value={tabId} p="1rem 2.5rem">
-        <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
-          <StrategyEditorForDatabases route={route} />
-        </Flex>
+      <TabsPanel key={tabId} value={tabId}>
+        {tabId === PerformanceTabId.Databases && (
+          <Flex style={{ flex: 1, overflow: "hidden" }} bg="bg-light" h="100%">
+            <StrategyEditorForDatabases route={route} />
+          </Flex>
+        )}
+        {tabId === PerformanceTabId.Models && (
+          <Flex style={{ flex: 1 }} bg="bg-light" h="100%">
+            <ModelPersistenceConfiguration />
+          </Flex>
+        )}
       </TabsPanel>
     </Tabs>
   );

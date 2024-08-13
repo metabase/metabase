@@ -29,7 +29,7 @@
 
 (use-fixtures :once (fixtures/initialize :db))
 
-(deftest describe-database-test
+(deftest ^:parallel describe-database-test
   (mt/test-driver :presto-jdbc
     (is (= {:tables #{{:name "test_data_categories" :schema "default"}
                       {:name "test_data_checkins" :schema "default"}
@@ -42,7 +42,7 @@
                                                                  "test_data_users"}
                                                                :name)))))))))
 
-(deftest describe-table-test
+(deftest ^:parallel describe-table-test
   (mt/test-driver :presto-jdbc
     (is (= {:name   "test_data_venues"
             :schema "default"
@@ -74,7 +74,7 @@
                        :database-position 0}}}
            (driver/describe-table :presto-jdbc (mt/db) (t2/select-one 'Table :id (mt/id :venues)))))))
 
-(deftest table-rows-sample-test
+(deftest ^:parallel table-rows-sample-test
   (mt/test-driver :presto-jdbc
     (is (= [[1 "Red Medicine"]
             [2 "Stout Burgers & Beers"]
@@ -129,13 +129,8 @@
   (mt/test-driver :presto-jdbc
     (testing "Make sure date params work correctly when report timezones are set (#10487)"
       (mt/with-temporary-setting-values [report-timezone "Asia/Hong_Kong"]
-        ;; the `read-column-thunk` for `Types/TIMESTAMP` always returns an `OffsetDateTime`, not a `LocalDateTime`, as
-        ;; the original Presto version of this test expected; therefore, convert the `ZonedDateTime` corresponding to
-        ;; midnight on this date (at the report TZ) to `OffsetDateTime` for comparison's sake
-        (is (= [[(-> (t/zoned-date-time 2014 8 2 0 0 0 0 (t/zone-id "Asia/Hong_Kong"))
-                     t/offset-date-time
-                     (t/with-offset-same-instant (t/zone-offset 0)))
-                 (t/local-date 2014 8 2)]]
+        (is (= [[(t/local-date "2014-08-02")
+                 (t/local-date "2014-08-02")]]
                (mt/rows
                  (qp/process-query
                    {:database     (mt/id)
@@ -156,7 +151,7 @@
         (is (= (str "SELECT COUNT(*) AS \"count\" "
                     "FROM \"default\".\"test_data_venues\" "
                     "WHERE \"default\".\"test_data_venues\".\"name\" = 'wow'")
-               (:query (qp.compile/compile-and-splice-parameters query))
+               (:query (qp.compile/compile-with-inline-parameters query))
                (-> (qp/process-query query) :data :native_form :query)))))))
 
 (deftest ^:parallel connection-tests
@@ -197,7 +192,7 @@
   (-> (:details (mt/db))
       (dissoc :ssl-keystore-id :ssl-keystore-password-id
               :ssl-truststore-id :ssl-truststore-password-id)
-      (merge (select-keys (data.presto-jdbc/dbdef->connection-details (:name (mt/db)))
+      (merge (select-keys (data.presto-jdbc/db-connection-details)
                           [:ssl-keystore-path :ssl-keystore-password-value
                            :ssl-truststore-path :ssl-truststore-password-value]))))
 

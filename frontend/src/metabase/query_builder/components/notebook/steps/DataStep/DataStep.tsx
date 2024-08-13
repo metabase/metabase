@@ -1,16 +1,18 @@
 import { useMemo } from "react";
 import { t } from "ttag";
 
-import { FieldPicker } from "metabase/common/components/FieldPicker";
-import { DataSourceSelector } from "metabase/query_builder/components/DataSelector";
+import {
+  FieldPicker,
+  type FieldPickerItem,
+} from "metabase/common/components/FieldPicker";
+import { NotebookDataPicker } from "metabase/query_builder/components/notebook/NotebookDataPicker";
 import { Icon, Popover, Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
-import type { DatabaseId, TableId } from "metabase-types/api";
 
 import { NotebookCell, NotebookCellItem } from "../../NotebookCell";
 import type { NotebookStepUiComponentProps } from "../../types";
 
-import { DataStepCell, DataStepIconButton } from "./DataStep.styled";
+import { DataStepIconButton } from "./DataStep.styled";
 
 export const DataStep = ({
   query,
@@ -20,16 +22,8 @@ export const DataStep = ({
   updateQuery,
 }: NotebookStepUiComponentProps) => {
   const { stageIndex } = step;
-
-  const question = step.question;
-  const collectionId = question.collectionId();
-  const databaseId = Lib.databaseID(query);
   const tableId = Lib.sourceTableOrCardId(query);
-  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : null;
-
-  const pickerLabel = table
-    ? Lib.displayInfo(query, stageIndex, table).displayName
-    : t`Pick your starting data`;
+  const table = tableId ? Lib.tableOrCardMetadata(query, tableId) : undefined;
 
   const isRaw = useMemo(() => {
     return (
@@ -40,11 +34,12 @@ export const DataStep = ({
 
   const canSelectTableColumns = table && isRaw && !readOnly;
 
-  const handleTableSelect = (tableId: TableId, databaseId: DatabaseId) => {
-    const metadata = question.metadata();
-    const metadataProvider = Lib.metadataProvider(databaseId, metadata);
-    const nextTable = Lib.tableOrCardMetadata(metadataProvider, tableId);
-    updateQuery(Lib.queryFromTableOrCardMetadata(metadataProvider, nextTable));
+  const handleTableChange = async (
+    table: Lib.TableMetadata | Lib.CardMetadata,
+    metadataProvider: Lib.MetadataProvider,
+  ) => {
+    const newQuery = Lib.queryFromTableOrCardMetadata(metadataProvider, table);
+    await updateQuery(newQuery);
   };
 
   return (
@@ -65,15 +60,13 @@ export const DataStep = ({
         rightContainerStyle={{ width: 37, height: 37, padding: 0 }}
         data-testid="data-step-cell"
       >
-        <DataSourceSelector
-          hasTableSearch
-          collectionId={collectionId}
-          databaseQuery={{ saved: true }}
-          selectedDatabaseId={databaseId}
-          selectedTableId={tableId}
-          setSourceTableFn={handleTableSelect}
-          isInitiallyOpen={!table}
-          triggerElement={<DataStepCell>{pickerLabel}</DataStepCell>}
+        <NotebookDataPicker
+          title={t`Pick your starting data`}
+          query={query}
+          stageIndex={stageIndex}
+          table={table}
+          hasMetrics
+          onChange={handleTableChange}
         />
       </NotebookCellItem>
     </NotebookCell>
@@ -137,11 +130,6 @@ function DataFieldPicker({
     updateQuery(nextQuery);
   };
 
-  const isColumnSelected = (column: Lib.ColumnMetadata) => {
-    const columnInfo = Lib.displayInfo(query, stageIndex, column);
-    return Boolean(columnInfo.selected);
-  };
-
   const handleSelectAll = () => {
     const nextQuery = Lib.withFields(query, stageIndex, []);
     updateQuery(nextQuery);
@@ -158,9 +146,20 @@ function DataFieldPicker({
       stageIndex={stageIndex}
       columns={columns}
       isColumnSelected={isColumnSelected}
+      isColumnDisabled={isColumnDisabled}
       onToggle={handleToggle}
       onSelectAll={handleSelectAll}
       onSelectNone={handleSelectNone}
     />
   );
+}
+
+function isColumnSelected({ columnInfo }: FieldPickerItem) {
+  return Boolean(columnInfo.selected);
+}
+
+function isColumnDisabled(item: FieldPickerItem, items: FieldPickerItem[]) {
+  const isSelected = isColumnSelected(item);
+  const isOnlySelected = items.filter(isColumnSelected).length === 1;
+  return isSelected && isOnlySelected;
 }

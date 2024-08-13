@@ -2,11 +2,18 @@ import { css } from "@emotion/react";
 
 export const SAVING_DOM_IMAGE_CLASS = "saving-dom-image";
 export const SAVING_DOM_IMAGE_HIDDEN_CLASS = "saving-dom-image-hidden";
+export const SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS =
+  "saving-dom-image-display-none";
+
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
 
 export const saveDomImageStyles = css`
   .${SAVING_DOM_IMAGE_CLASS} {
     .${SAVING_DOM_IMAGE_HIDDEN_CLASS} {
       visibility: hidden;
+    }
+    .${SAVING_DOM_IMAGE_DISPLAY_NONE_CLASS} {
+      display: none;
     }
   }
 `;
@@ -19,14 +26,17 @@ export const saveChartImage = async (selector: string, fileName: string) => {
     return;
   }
 
-  node.classList.add(SAVING_DOM_IMAGE_CLASS);
-
-  const { default: html2canvas } = await import("html2canvas");
+  const { default: html2canvas } = await import("html2canvas-pro");
   const canvas = await html2canvas(node, {
     useCORS: true,
-  });
+    onclone: (doc: Document, node: HTMLElement) => {
+      node.classList.add(SAVING_DOM_IMAGE_CLASS);
+      node.classList.add(EmbedFrameS.WithThemeBackground);
 
-  node.classList.remove(SAVING_DOM_IMAGE_CLASS);
+      node.style.borderRadius = "0px";
+      node.style.border = "none";
+    },
+  });
 
   canvas.toBlob(blob => {
     if (blob) {

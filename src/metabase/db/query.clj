@@ -45,7 +45,7 @@
 (def ^:private NamespacedKeyword
   [:and :keyword [:fn (comp seq namespace)]])
 
-(mu/defn ^:private type-keyword->descendants :- [:set {:min 1} ms/NonBlankString]
+(mu/defn type-keyword->descendants :- [:set {:min 1} ms/NonBlankString]
   "Return a set of descendents of Metabase `type-keyword`. This includes `type-keyword` itself, so the set will always
   have at least one element.
 
@@ -157,25 +157,6 @@
                            :args       (rest sql-args)
                            :uncompiled sql-args-or-honey-sql-map}
                           e)))))))
-
-(defn reducible-query
-  "Replacement for [[toucan.db/reducible-query]] -- uses Honey SQL 2 instead of Honey SQL 1, to ease the transition to
-  the former (and to Toucan 2).
-
-  Query the application database and return an `IReduceInit`.
-
-  See namespace documentation for [[metabase.db.query]] for pro debugging tips."
-  [sql-args-or-honey-sql-map & {:as jdbc-options}]
-  ;; make sure [[metabase.db.setup]] gets loaded so default Honey SQL options and the like are loaded.
-  (classloader/require 'metabase.db.setup)
-  (let [sql-args (compile sql-args-or-honey-sql-map)]
-    ;; It doesn't really make sense to put a try-catch around this since it will return immediately and not execute
-    ;; until we actually reduce it
-    (reify clojure.lang.IReduceInit
-      (reduce [_this rf init]
-        (binding [t2.jdbc.options/*options* (merge t2.jdbc.options/*options* jdbc-options)]
-          (reduce rf init (t2/reducible-query sql-args)))))))
-
 
 (defmacro with-conflict-retry
   "Retry a database mutation a single time if it fails due to concurrent insertions.

@@ -36,7 +36,7 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
     cy.findByTestId("view-footer").within(() => {
       cy.icon("download").should("exist");
-      cy.icon("bell").should("exist");
+      cy.icon("bell").should("not.exist");
       cy.icon("share").should("not.exist");
     });
   });
@@ -152,19 +152,21 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
         visitAndEnableSharing(object);
 
         modal().within(() => {
-          cy.findByRole("tab", { name: "Appearance" }).click();
+          cy.findByRole("tab", { name: "Look and Feel" }).click();
 
-          cy.findByText("Background");
-          cy.findByText(
+          cy.findByText("Theme");
+          cy.findByLabelText(
             object === "dashboard" ? "Dashboard title" : "Question title",
           );
-          cy.findByText("Border");
+          cy.findByLabelText(
+            object === "dashboard" ? "Dashboard border" : "Question border",
+          );
           cy.findByText(
             (_, element) =>
               element.textContent ===
               "You can change the font with a paid plan.",
           );
-          cy.findByText("Download data").should("not.exist");
+          cy.findByText("Download buttons").should("not.exist");
 
           cy.findByRole("tab", { name: "Parameters" }).click();
 
@@ -185,14 +187,13 @@ describe("scenarios > embedding > smoke tests", { tags: "@OSS" }, () => {
 
         cy.findByTestId("embed-frame").within(() => {
           cy.findByRole("heading", { name: objectName });
-          cy.get(".cellData").contains("37.65");
+          cy.get("[data-testid=cell-data]").contains("37.65");
         });
 
         cy.findByRole("contentinfo").within(() => {
-          cy.findByRole("link")
-            .should("have.text", "Powered by Metabase")
-            .and("have.attr", "href")
-            .and("eq", "https://metabase.com/");
+          cy.findByRole("link", { name: "Powered by Metabase" })
+            .should("have.attr", "href")
+            .and("contain", "https://www.metabase.com/powered-by-metabase");
         });
 
         cy.log(

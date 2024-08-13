@@ -34,7 +34,7 @@
     (events/publish-event! :event/segment-create {:object segment :user-id api/*current-user-id*})
     (t2/hydrate segment :creator)))
 
-(mu/defn ^:private hydrated-segment [id :- ms/PositiveInt]
+(mu/defn- hydrated-segment [id :- ms/PositiveInt]
   (-> (api/read-check (t2/select-one Segment :id id))
       (t2/hydrate :creator)))
 

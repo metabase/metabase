@@ -2,11 +2,10 @@
   (:require
    [clojure.set :as set]
    [clojure.test :refer :all]
-   [clojurewerkz.quartzite.conversion :as qc]
    [clojurewerkz.quartzite.scheduler :as qs]
    [malli.core :as mc]
    [malli.error :as me]
-   [metabase.driver :as driver]
+   [metabase.driver.util :as driver.u]
    [metabase.models.card :refer [Card]]
    [metabase.models.model-index
     :as model-index
@@ -105,7 +104,7 @@
                   (is (some? trigger) "Index trigger not found")
                   (is (= (:schedule model-index) (:schedule trigger)))
                   (is (= {"model-index-id" (:id model-index)}
-                         (qc/from-job-data (:data trigger))))))
+                         (:data trigger)))))
               (testing "Deleting the model index removes the indexing task"
                 (t2/delete! ModelIndex :id (:id model-index))
                 (is (nil? (index-trigger!)) "Index trigger not removed")))))))))
@@ -187,7 +186,7 @@
                        [:native (mt/native-query
                                  (qp.compile/compile
                                   (mt/mbql-query products {:fields [$id $title]})))]
-                       (when (driver/database-supports? (:engine (mt/db)) :left-join (mt/db))
+                       (when (driver.u/supports? (:engine (mt/db)) :left-join (mt/db))
                          [:join (mt/$ids
                                  {:type     :query,
                                   :query    {:source-table $$people,

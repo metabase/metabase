@@ -18,7 +18,7 @@ export const AdminListItem = styled.a<AdminListItemProps>`
 `;
 
 export const BackIconContainer = styled.span`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   cursor: pointer;
 `;
 

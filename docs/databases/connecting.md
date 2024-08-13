@@ -21,13 +21,14 @@ The connection settings differ database to database. For the list of connection 
 
 ## Connecting to supported databases
 
-The databases listed below have official drivers maintained by the Metabase team. Customers on [paid plans](https://www.metabase.com/pricing) will get official support.
+The databases listed below have official drivers maintained by the Metabase team. Customers on [Pro and Enterprise](https://www.metabase.com/pricing) will get official support.
 
 - [Amazon Athena](./connections/athena.md)
 - [BigQuery](./connections/bigquery.md) (Google Cloud Platform)
 - [Druid](./connections/druid.md)
 - [MongoDB (recommend version 4.2 or higher)](./connections/mongodb.md)
-- [MySQL (recommend version 8.0.33 or higher, as well as MariaDB version 10.4 or higher)](./connections/mysql.md)
+- [MariaDB](./connections/mariadb.md)
+- [MySQL](./connections/mysql.md)
 - [Oracle](./connections/oracle.md)
 - [PostgreSQL](./connections/postgresql.md)
 - [Presto](./connections/presto.md)

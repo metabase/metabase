@@ -541,7 +541,7 @@
 
 (deftest use-cached-field-values-for-remapped-field-test
   (testing "fetching a remapped field should returns remapped values (#21528)"
-    (mt/with-discard-model-updates [:model/Field]
+    (mt/with-discard-model-updates! [:model/Field]
       (t2/update! :model/Field (mt/id :venues :category_id) {:has_field_values "list"})
       (mt/with-column-remappings [venues.category_id categories.name]
         (is (= {:values          [[2 "American"] [3 "Artisan"] [4 "Asian"]]

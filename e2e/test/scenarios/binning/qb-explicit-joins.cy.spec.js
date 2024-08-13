@@ -1,10 +1,16 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  entityPickerModal,
   restore,
   visualize,
   changeBinningForDimension,
   summarize,
   startNewQuestion,
+  echartsContainer,
+  cartesianChartCircle,
+  chartPathWithFillColor,
+  entityPickerModalTab,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
@@ -62,10 +68,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   context("via simple mode", () => {
     beforeEach(() => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("QB Binning").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("QB Binning").click();
+      });
 
       visualize();
       summarize();
@@ -81,7 +88,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       assertQueryBuilderState({
         columnType: "time",
         title: "Count by People → Birth Date: Year",
-        values: ["1960", "1965", "2000"],
+        values: ["1964", "1971", "1999"],
       });
 
       // Make sure time series footer works as well
@@ -90,10 +97,12 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
-      cy.get(".axis.x")
-        .should("contain", "Q1 1960")
-        .and("contain", "Q1 1965")
-        .and("contain", "Q1 2000");
+      echartsContainer()
+        .get("text")
+        .should("contain", "Q1 1968")
+        .and("contain", "Q1 1978")
+        .and("contain", "Q1 1988")
+        .and("contain", "Q1 1998");
     });
 
     it("should work for number", () => {
@@ -105,11 +114,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       assertQueryBuilderState({
         title: "Count by Products → Price: 50 bins",
-        values: ["14", "18", "20", "100"],
+        values: ["14", "20", "24", "100"],
       });
     });
 
-    it("should work for longitude", { tags: "@flaky" }, () => {
+    it("should work for longitude", () => {
       changeBinningForDimension({
         name: "People → Longitude",
         fromBinning: "Auto bin",
@@ -126,10 +135,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   context("via notebook mode", () => {
     beforeEach(() => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("QB Binning").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("QB Binning").click();
+      });
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
@@ -150,7 +160,7 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
         columnType: "time",
         mode: "notebook",
         title: "Count by People → Birth Date: Year",
-        values: ["1960", "1965", "2000"],
+        values: ["1964", "1971", "1999"],
       });
 
       // Make sure time series footer works as well
@@ -159,9 +169,10 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       cy.findByText("Quarter").click();
 
       cy.wait("@dataset");
-      cy.get(".axis.x")
-        .should("contain", "Q1 1960")
-        .and("contain", "Q1 1965")
+      echartsContainer()
+        .get("text")
+        .should("contain", "Q1 1965")
+        .and("contain", "Q1 1972")
         .and("contain", "Q1 2000");
     });
 
@@ -197,16 +208,17 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
   context("via column popover", () => {
     beforeEach(() => {
       startNewQuestion();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Saved Questions").click();
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("QB Binning").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Saved questions").click();
+        cy.findByText("QB Binning").click();
+      });
+
       visualize();
     });
 
     it("should work for time series", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("People → Birth Date").click();
+      tableHeaderClick("People → Birth Date");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
@@ -216,12 +228,14 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
 
       assertOnXYAxisLabels({ xLabel: "People → Birth Date", yLabel: "Count" });
 
-      cy.get(".axis.x", { timeout: 1000 })
-        .should("contain", "January 1960")
-        .and("contain", "January 1965")
-        .and("contain", "January 2000");
+      echartsContainer()
+        .get("text", { timeout: 1000 })
+        .should("contain", "January 1968")
+        .and("contain", "January 1978")
+        .and("contain", "January 1988")
+        .and("contain", "January 1998");
 
-      cy.get("circle");
+      cartesianChartCircle();
 
       // Make sure time series footer works as well
       cy.findByTestId("timeseries-bucket-button").contains("Month").click();
@@ -232,15 +246,18 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by People → Birth Date: Quarter");
 
-      cy.get(".axis.x")
-        .should("contain", "Q1 1960")
-        .and("contain", "Q1 1965")
+      echartsContainer()
+        .get("text")
+        .should("contain", "Q1 1965")
+        .and("contain", "Q1 1972")
+        .and("contain", "Q1 1979")
+        .and("contain", "Q1 1986")
+        .and("contain", "Q1 1993")
         .and("contain", "Q1 2000");
     });
 
     it("should work for number", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("Products → Price").click();
+      tableHeaderClick("Products → Price");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
@@ -255,12 +272,11 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("25");
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for longitude", () => {
-      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-      cy.findByText("People → Longitude").click();
+      tableHeaderClick("People → Longitude");
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
@@ -278,15 +294,15 @@ describe("scenarios > binning > from a saved QB question with explicit joins", (
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("160° W");
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
   });
 });
 
 function assertOnXYAxisLabels({ xLabel, yLabel } = {}) {
-  cy.get(".x-axis-label").invoke("text").should("eq", xLabel);
+  echartsContainer().get("text").contains(xLabel);
 
-  cy.get(".y-axis-label").invoke("text").should("eq", yLabel);
+  echartsContainer().get("text").contains(yLabel);
 }
 
 function waitAndAssertOnRequest(requestAlias) {
@@ -303,15 +319,20 @@ function assertQueryBuilderState({
 } = {}) {
   mode === "notebook" ? visualize() : waitAndAssertOnRequest("@dataset");
 
-  const visualizaitonSelector = columnType === "time" ? "circle" : ".bar";
-  cy.get(visualizaitonSelector);
+  const visualizationSelector = columnType === "time" ? "circle" : "bar";
+
+  if (visualizationSelector === "circle") {
+    cartesianChartCircle();
+  } else {
+    chartPathWithFillColor("#509EE3");
+  }
 
   cy.findByText(title);
 
-  cy.get(".y-axis-label").invoke("text").should("eq", "Count");
+  echartsContainer().get("text").should("contain", "Count");
 
   values &&
-    cy.get(".axis.x").within(() => {
+    echartsContainer().within(() => {
       values.forEach(value => {
         cy.findByText(value);
       });

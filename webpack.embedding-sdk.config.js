@@ -7,9 +7,11 @@ const webpack = require("webpack");
 const BundleAnalyzerPlugin =
   require("webpack-bundle-analyzer").BundleAnalyzerPlugin;
 const ForkTsCheckerWebpackPlugin = require("fork-ts-checker-webpack-plugin");
-const path = require("path");
 
 const mainConfig = require("./webpack.config");
+const { resolve } = require("path");
+const fs = require("fs");
+const path = require("path");
 
 const SDK_SRC_PATH = __dirname + "/enterprise/frontend/src/embedding-sdk";
 const BUILD_PATH = __dirname + "/resources/embedding-sdk";
@@ -19,6 +21,15 @@ const ENTERPRISE_SRC_PATH =
 // default WEBPACK_BUNDLE to development
 const WEBPACK_BUNDLE = process.env.WEBPACK_BUNDLE || "development";
 const isDevMode = WEBPACK_BUNDLE !== "production";
+
+const sdkPackageTemplateJson = fs.readFileSync(
+  path.resolve("./enterprise/frontend/src/embedding-sdk/package.template.json"),
+  "utf-8",
+);
+const sdkPackageTemplateJsonContent = JSON.parse(sdkPackageTemplateJson);
+const EMBEDDING_SDK_VERSION = JSON.stringify(
+  sdkPackageTemplateJsonContent.version,
+);
 
 // TODO: Reuse babel and css configs from webpack.config.js
 // Babel:
@@ -64,7 +75,7 @@ module.exports = env => {
           use: [{ loader: "babel-loader", options: BABEL_CONFIG }],
         },
         {
-          test: /\.(svg|png|eot|woff2?|ttf)$/,
+          test: /\.(svg|png)$/,
           type: "asset/inline",
           resourceQuery: { not: [/component|source/] },
         },
@@ -136,11 +147,14 @@ module.exports = env => {
       new webpack.ProvidePlugin({
         process: "process/browser.js",
       }),
-
+      new webpack.EnvironmentPlugin({
+        EMBEDDING_SDK_VERSION,
+        IS_EMBEDDING_SDK_BUILD: true,
+      }),
       new ForkTsCheckerWebpackPlugin({
         async: isDevMode,
         typescript: {
-          configFile: path.resolve(__dirname, "./tsconfig.sdk.json"),
+          configFile: resolve(__dirname, "./tsconfig.sdk.json"),
           mode: "write-dts",
           memoryLimit: 4096,
         },
@@ -161,7 +175,7 @@ module.exports = env => {
   };
 
   if (config.cache) {
-    config.cache.cacheDirectory = path.resolve(
+    config.cache.cacheDirectory = resolve(
       __dirname,
       "node_modules/.cache/",
       "webpack-ee",

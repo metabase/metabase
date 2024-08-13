@@ -61,13 +61,15 @@
                 :is_personal false
                 :id   "root"))
 
-(defn- hydrated-root-collection
+(defn hydrated-root-collection
+  "Return the root collection entity."
   []
   (-> (root-collection-with-ui-details nil)
       (hydrate :can_write)))
 
 (defn hydrate-root-collection
   "Hydrate `:collection` onto entity when the id is `nil`."
-  [{:keys [collection_id] :as entity}]
-  (cond-> entity
-    (nil? collection_id) (assoc :collection (hydrated-root-collection))))
+  ([entity] (hydrate-root-collection entity (hydrated-root-collection)))
+  ([{:keys [collection_id] :as entity} root-collection]
+   (cond-> entity
+     (nil? collection_id) (assoc :collection root-collection))))

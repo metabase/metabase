@@ -5,6 +5,7 @@ import {
   describeWithSnowplow,
   editDashboard,
   enableTracking,
+  entityPickerModal,
   expectGoodSnowplowEvent,
   expectNoBadSnowplowEvents,
   findDashCardAction,
@@ -125,15 +126,20 @@ function selectQuestion(question) {
     .findAllByText("Select question")
     .first()
     .click({ force: true });
-  modal().findByText(question).click();
+  entityPickerModal()
+    .findByRole("tab", { name: /Questions/ })
+    .click();
+  entityPickerModal().findByText(question).click();
   cy.wait("@cardQuery");
   dashboardGrid().findByText(question).should("exist");
 }
 
 function overwriteDashCardTitle(dashcardElement, textTitle) {
-  findDashCardAction(dashcardElement, "Show visualization options").click();
+  findDashCardAction(dashcardElement, "Show visualization options").click({
+    force: true,
+  });
   modal().within(() => {
-    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`);
+    cy.findByLabelText("Title").type(`{selectall}{del}${textTitle}`).blur();
     cy.button("Done").click();
   });
 }

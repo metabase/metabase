@@ -6,4 +6,5 @@ export const MapperSettingsContainer = styled.div`
   max-width: 100%;
   margin: 0 2rem;
   z-index: 1;
+  overflow: auto;
 `;

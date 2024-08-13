@@ -53,11 +53,9 @@ export function haveDashboardCardsChanged(
   oldCards: QuestionDashboardCard[],
 ) {
   return (
+    newCards.length !== oldCards.length ||
     !newCards.every(newCard =>
       oldCards.some(oldCard => _.isEqual(oldCard, newCard)),
-    ) ||
-    !oldCards.every(oldCard =>
-      newCards.some(newCard => _.isEqual(oldCard, newCard)),
     )
   );
 }

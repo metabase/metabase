@@ -299,3 +299,46 @@
   "Run `body` in a `future` and throw an exception if it fails to complete after `timeout-ms`."
   [timeout-ms & body]
   `(do-with-timeout ~timeout-ms (fn [] ~@body)))
+
+(defn poll
+  "Returns `(thunk)` if the result satisfies the `done?` predicate within the timeout and nil otherwise.
+  The default timeout is 1000ms and the default interval is 100ms."
+  [{:keys [thunk done? timeout-ms interval-ms]
+    :or   {timeout-ms 1000 interval-ms 100}}]
+  (let [start-time (System/currentTimeMillis)]
+    (loop []
+      (let [response (thunk)]
+        (if (done? response)
+          response
+          (let [current-time (System/currentTimeMillis)
+                elapsed-time (- current-time start-time)]
+            (if (>= elapsed-time timeout-ms)
+              nil ; timeout reached
+              (do
+                (Thread/sleep (long interval-ms))
+                (recur)))))))))
+
+;; Following function is not compatible with Safari 16.3 and older because it uses lookbehind regex.
+(defn parse-currency
+  "Parse a currency String to a BigDecimal. Handles a variety of different formats, such as:
+
+    $1,000.00
+    -£127.54
+    -127,54 €
+    kr-127,54
+    € 127,54-
+    ¥200"
+  ^java.math.BigDecimal [^String s]
+  (when-not (str/blank? s)
+    (bigdec
+     (reduce
+      (partial apply str/replace)
+      s
+      [;; strip out any current symbols
+       [#"[^\d,.-]+"          ""]
+       ;; now strip out any thousands separators
+       [#"(?<=\d)[,.](\d{3})" "$1"]
+       ;; now replace a comma decimal seperator with a period
+       [#","                  "."]
+       ;; move minus sign at end to front
+       [#"(^[^-]+)-$"         "-$1"]]))))

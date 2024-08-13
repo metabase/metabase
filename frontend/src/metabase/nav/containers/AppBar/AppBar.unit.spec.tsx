@@ -9,6 +9,7 @@ import { createMockCard } from "metabase-types/api/mocks";
 import type { EmbedOptions } from "metabase-types/store";
 import {
   createMockAppState,
+  createMockEmbedOptions,
   createMockEmbedState,
   createMockQueryBuilderState,
 } from "metabase-types/store/mocks";
@@ -41,7 +42,7 @@ describe("AppBar", () => {
         expect(await screen.findByText(/Our analytics/)).toBeVisible();
         expect(screen.getByTestId("main-logo")).toBeVisible();
 
-        screen.getByTestId("sidebar-toggle").click();
+        await userEvent.click(screen.getByTestId("sidebar-toggle"));
         expect(screen.getByText(/Our analytics/)).not.toBeVisible();
         expect(screen.getByTestId("main-logo")).toBeVisible();
       });
@@ -66,7 +67,7 @@ describe("AppBar", () => {
         expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
         expect(screen.getByTestId("sidebar-toggle")).toBeVisible();
 
-        screen.getByTestId("sidebar-toggle").click();
+        await userEvent.click(screen.getByTestId("sidebar-toggle"));
         expect(screen.getByText(/Our analytics/)).not.toBeVisible();
         expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
         expect(screen.getByTestId("sidebar-toggle")).toBeVisible();
@@ -108,7 +109,7 @@ describe("AppBar", () => {
 
         expect(await screen.findByText(/Our analytics/)).toBeVisible();
 
-        screen.getByTestId("sidebar-toggle").click();
+        await userEvent.click(screen.getByTestId("sidebar-toggle"));
         expect(screen.queryByText(/Our analytics/)).not.toBeInTheDocument();
         expect(screen.getByTestId("main-logo")).toBeVisible();
       });
@@ -133,7 +134,7 @@ describe("AppBar", () => {
         expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
         expect(screen.getByTestId("sidebar-toggle")).toBeVisible();
 
-        screen.getByTestId("sidebar-toggle").click();
+        await userEvent.click(screen.getByTestId("sidebar-toggle"));
         expect(screen.queryByText(/Our analytics/)).not.toBeInTheDocument();
         expect(screen.queryByTestId("main-logo")).not.toBeInTheDocument();
         expect(screen.getByTestId("sidebar-toggle")).toBeVisible();
@@ -174,8 +175,10 @@ function setup(embedOptions: Partial<EmbedOptions>) {
     storeInitialState: {
       app: createMockAppState({ isNavbarOpen: false }),
       embed: createMockEmbedState({
-        ...DEFAULT_EMBED_OPTIONS,
-        ...embedOptions,
+        options: createMockEmbedOptions({
+          ...DEFAULT_EMBED_OPTIONS,
+          ...embedOptions,
+        }),
       }),
       qb: createMockQueryBuilderState({
         card: createMockCard(),

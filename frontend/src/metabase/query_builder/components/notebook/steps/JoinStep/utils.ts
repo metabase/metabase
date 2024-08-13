@@ -1,21 +1,20 @@
 import * as Lib from "metabase-lib";
 
-export function maybeSyncTemporalBucket(
+export function updateTemporalBucketing(
   query: Lib.Query,
   stageIndex: number,
   condition: Lib.JoinCondition,
-  column1: Lib.ColumnMetadata,
-  column2: Lib.ColumnMetadata,
+  columns: Lib.ColumnMetadata[],
 ) {
-  const bucket = Lib.temporalBucket(column1) ?? Lib.temporalBucket(column2);
-  if (bucket) {
-    return Lib.joinConditionUpdateTemporalBucketing(
-      query,
-      stageIndex,
-      condition,
-      bucket,
-    );
-  }
+  const bucket =
+    columns
+      .map(column => Lib.temporalBucket(column))
+      .find(bucket => bucket != null) ?? null;
 
-  return condition;
+  return Lib.joinConditionUpdateTemporalBucketing(
+    query,
+    stageIndex,
+    condition,
+    bucket,
+  );
 }

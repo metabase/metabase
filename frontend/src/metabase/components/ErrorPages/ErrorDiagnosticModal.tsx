@@ -4,7 +4,6 @@ import _ from "underscore";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
 import Alert from "metabase/core/components/Alert";
-import Link from "metabase/core/components/Link";
 import {
   Form,
   FormCheckbox,
@@ -13,16 +12,8 @@ import {
 } from "metabase/forms";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { capitalize } from "metabase/lib/formatting";
-import {
-  Button,
-  Box,
-  Icon,
-  Loader,
-  Text,
-  Stack,
-  Modal,
-  Flex,
-} from "metabase/ui";
+import { getIsEmbedded } from "metabase/selectors/embed";
+import { Button, Icon, Loader, Text, Stack, Modal, Flex } from "metabase/ui";
 
 import type { ErrorPayload } from "./types";
 import { useErrorInfo } from "./use-error-info";
@@ -157,23 +148,13 @@ export const ErrorDiagnosticModal = ({
 export const ErrorDiagnosticModalTrigger = () => {
   const [isModalOpen, setModalOpen] = useState(false);
 
+  if (getIsEmbedded()) {
+    return null;
+  }
+
   return (
     <ErrorBoundary>
       <Stack justify="center" my="lg">
-        <Box>
-          <Text align="center">
-            {c(
-              "indicates an email address to which to send diagnostic information",
-            )
-              .jt`Click the button below to download diagnostic information to send
-            to
-            ${(
-              <Link key="email" variant="brand" to="mailto:help@metabase.com">
-                {t`help@metabase.com`}
-              </Link>
-            )}`}
-          </Text>
-        </Box>
         <Button
           leftIcon={<Icon name="download" />}
           onClick={() => setModalOpen(true)}
@@ -257,16 +238,11 @@ export const ErrorExplanationModal = ({
       onClose={onClose}
     >
       <Text my="md">
-        {t`We've run into an error, try to refresh the page or go back.`}
+        {t`We’ve run into an error, try to refresh the page or go back.`}
       </Text>
       <Text my="md">
         {c("indicates an email address to which to send diagnostic information")
-          .jt`If the error persists, you can download diagnostic information to send to
-        ${(
-          <Link key="email" variant="brand" to="mailto:help@metabase.com">
-            {t`help@metabase.com`}
-          </Link>
-        )}`}
+          .jt`If the error persists, you can download diagnostic information`}
       </Text>
       <Flex justify="flex-end">
         <Button variant="filled" onClick={openDiagnosticModal}>
@@ -284,6 +260,9 @@ export const KeyboardTriggeredErrorModal = () => {
   ] = useToggle(false);
 
   useEffect(() => {
+    if (getIsEmbedded()) {
+      return;
+    }
     const keyboardListener = (event: KeyboardEvent) => {
       if (
         event.key === "F1" &&

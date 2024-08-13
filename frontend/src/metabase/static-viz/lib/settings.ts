@@ -1,30 +1,68 @@
-import type { OptionsType } from "metabase/lib/formatting/types";
+import {
+  getDefaultCurrency,
+  getDefaultCurrencyInHeader,
+  getDefaultCurrencyStyle,
+  getDefaultNumberSeparators,
+  getDefaultNumberStyle,
+} from "metabase/visualizations/shared/settings/column";
 import type {
   ComputedVisualizationSettings,
   RemappingHydratedDatasetColumn,
 } from "metabase/visualizations/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
-import { normalize } from "metabase-lib/v1/queries/utils/normalize";
+import { getObjectColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
+import { isCoordinate, isNumber } from "metabase-lib/v1/types/utils/isa";
 import type {
   DatasetColumn,
   RawSeries,
   VisualizationSettings,
 } from "metabase-types/api";
 
+export const fillWithDefaultValue = (
+  settings: Record<string, unknown>,
+  key: string,
+  defaultValue: unknown,
+  isValid = true,
+) => {
+  if (typeof settings[key] === "undefined" || !isValid) {
+    settings[key] = defaultValue;
+  }
+};
+
 const getColumnSettings = (
   column: DatasetColumn,
   settings: VisualizationSettings,
-): OptionsType => {
-  const columnKey = Object.keys(settings.column_settings ?? {}).find(
-    possiblyDenormalizedFieldRef =>
-      normalize(possiblyDenormalizedFieldRef) === getColumnKey(column),
+): Record<string, unknown> => {
+  const storedSettings = getObjectColumnSettings(
+    settings.column_settings,
+    column,
   );
+  const columnSettings = { column, ...column.settings, ...storedSettings };
 
-  if (!columnKey) {
-    return { column };
+  if (isNumber(column) && !isCoordinate(column)) {
+    fillWithDefaultValue(columnSettings, "currency", getDefaultCurrency());
+    fillWithDefaultValue(
+      columnSettings,
+      "number_style",
+      getDefaultNumberStyle(column, columnSettings),
+    );
+    fillWithDefaultValue(
+      columnSettings,
+      "currency_style",
+      getDefaultCurrencyStyle(column, columnSettings),
+    );
+    fillWithDefaultValue(
+      columnSettings,
+      "currency_in_header",
+      getDefaultCurrencyInHeader(),
+    );
+    fillWithDefaultValue(
+      columnSettings,
+      "number_separators",
+      getDefaultNumberSeparators(),
+    );
   }
 
-  return { column, ...settings.column_settings?.[columnKey] };
+  return columnSettings;
 };
 
 export const getCommonStaticVizSettings = (

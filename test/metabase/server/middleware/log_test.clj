@@ -2,6 +2,7 @@
   (:require
    [clojure.test :refer :all]
    [metabase.server.middleware.log :as mw.log]
+   [metabase.test :as mt]
    [metabase.test.fixtures :as fixtures]))
 
 (use-fixtures :once (fixtures/initialize :db))
@@ -20,3 +21,11 @@
   (testing `log/stats
     (is (re= #"^App DB connections:.*"
              (#'mw.log/stats (fn [] {:info true}))))))
+
+(deftest should-log-request?-test
+  (testing "Health check logging can be disabled via env var"
+    (mt/with-temp-env-var-value! [mb-health-check-logging-enabled true]
+      (is (#'mw.log/should-log-request? {:uri "/api/health"})))
+
+    (mt/with-temp-env-var-value! [mb-health-check-logging-enabled false]
+      (is (not (#'mw.log/should-log-request? {:uri "/api/health"}))))))

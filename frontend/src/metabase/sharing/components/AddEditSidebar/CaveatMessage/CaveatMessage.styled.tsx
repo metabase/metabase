@@ -8,9 +8,9 @@ export const CaveatText = styled(Text)`
   margin-right: 2rem;
   margin-top: 1rem;
   padding: 0.8rem;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   line-height: 1.25rem;
   border-radius: 8px;
-  background-color: ${alpha("accent4", 0.05)};
-  border: 1px solid ${color("accent4")};
+  background-color: ${() => alpha("accent4", 0.05)};
+  border: 1px solid ${() => color("accent4")};
 `;

@@ -25,10 +25,12 @@ import type {
   CardDisplayType,
   CardType,
   CollectionId,
+  DashboardId,
+  DashCardId,
   DatabaseId,
-  Dataset,
   DatasetData,
   DatasetQuery,
+  Field,
   Parameter as ParameterObject,
   ParameterId,
   ParameterValues,
@@ -41,7 +43,10 @@ import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import { utf8_to_b64url } from "metabase/lib/encoding";
 
 import { getTemplateTagParametersFromCard } from "metabase-lib/v1/parameters/utils/template-tags";
-import { fieldFilterParameterToFilter } from "metabase-lib/v1/parameters/utils/mbql";
+import {
+  applyFilterParameter,
+  applyTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/mbql";
 import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
 import { isTransientId } from "metabase-lib/v1/queries/utils/card";
 import {
@@ -51,6 +56,10 @@ import {
 } from "metabase-lib/v1/Alert";
 
 import type { Query } from "../types";
+import {
+  isFilterParameter,
+  isTemporalUnitParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
 
 export type QuestionCreatorOpts = {
   databaseId?: DatabaseId;
@@ -261,6 +270,10 @@ class Question {
     );
   }
 
+  setArchived(archived: boolean) {
+    return this.setCard(assoc(this.card(), "archived", archived));
+  }
+
   // locking the display prevents auto-selection
   lockDisplay(): Question {
     return this.setDisplayIsLocked(true);
@@ -353,7 +366,9 @@ class Question {
    */
   canRun(): boolean {
     const { isNative } = Lib.queryDisplayInfo(this.query());
-    return isNative ? this.legacyQuery().canRun() : Lib.canRun(this.query());
+    return isNative
+      ? this.legacyQuery().canRun()
+      : Lib.canRun(this.query(), this.type());
   }
 
   canWrite(): boolean {
@@ -444,6 +459,10 @@ class Question {
     const metadata = this.metadataProvider();
     const tableId = getQuestionVirtualTableId(this.id());
     const table = Lib.tableOrCardMetadata(metadata, tableId);
+    if (!table) {
+      return this;
+    }
+
     const query = Lib.queryFromTableOrCardMetadata(metadata, table);
     return this.setQuery(query);
   }
@@ -455,26 +474,6 @@ class Question {
 
     const query = this.composeQuestion().query();
     return Question.create({ metadata: this.metadata() }).setQuery(query);
-  }
-
-  syncColumnsAndSettings(
-    queryResults?: Dataset,
-    prevQueryResults?: Dataset,
-    options?: Lib.SettingsSyncOptions,
-  ) {
-    const settings = this.settings();
-    const newSettings = Lib.syncColumnSettings(
-      settings,
-      queryResults,
-      prevQueryResults,
-      options,
-    );
-
-    if (newSettings !== settings) {
-      return this.setSettings(newSettings);
-    } else {
-      return this;
-    }
   }
 
   /**
@@ -492,11 +491,11 @@ class Question {
     return this.setCard(assoc(this.card(), "name", name));
   }
 
-  collectionId(): number | null | undefined {
+  collectionId(): CollectionId | null | undefined {
     return this._card && this._card.collection_id;
   }
 
-  setCollectionId(collectionId: number | null | undefined) {
+  setCollectionId(collectionId: CollectionId | null | undefined) {
     return this.setCard(assoc(this.card(), "collection_id", collectionId));
   }
 
@@ -518,7 +517,7 @@ class Question {
     dashboardId,
     dashcardId,
   }:
-    | { dashboardId: number; dashcardId: number }
+    | { dashboardId: DashboardId; dashcardId: DashCardId }
     | { dashboardId: undefined; dashcardId: undefined }): Question {
     const card = chain(this.card())
       .assoc("dashboardId", dashboardId)
@@ -585,6 +584,10 @@ class Question {
     return this._card && this._card.archived;
   }
 
+  getResultMetadata() {
+    return this.card().result_metadata ?? [];
+  }
+
   setResultsMetadata(resultsMetadata) {
     const metadataColumns = resultsMetadata && resultsMetadata.columns;
     return this.setCard({
@@ -593,8 +596,13 @@ class Question {
     });
   }
 
-  getResultMetadata() {
-    return this.card().result_metadata ?? [];
+  setResultMetadataDiff(metadataDiff: Record<string, Partial<Field>>) {
+    const metadata = this.getResultMetadata();
+    const newMetadata = metadata.map(column => {
+      const columnDiff = metadataDiff[column.name];
+      return columnDiff ? { ...column, ...columnDiff } : column;
+    });
+    return this.setResultsMetadata({ columns: newMetadata });
   }
 
   /**
@@ -692,14 +700,20 @@ class Question {
     return a.isDirtyComparedTo(b);
   }
 
+  isQueryDirtyComparedTo(originalQuestion: Question) {
+    return !Lib.areLegacyQueriesEqual(
+      this.datasetQuery(),
+      originalQuestion.datasetQuery(),
+    );
+  }
+
   // Internal methods
   _serializeForUrl({
     includeOriginalCardId = true,
-    clean = true,
     includeDisplayIsLocked = false,
     creationType,
   } = {}) {
-    const query = clean ? Lib.dropEmptyStages(this.query()) : this.query();
+    const query = this.query();
 
     const cardCopy = {
       name: this._card.name,
@@ -707,7 +721,11 @@ class Question {
       collection_id: this._card.collection_id,
       dataset_query: Lib.toLegacyQuery(query),
       display: this._card.display,
-      parameters: this._card.parameters,
+      ...(_.isEmpty(this._card.parameters)
+        ? undefined
+        : {
+            parameters: this._card.parameters,
+          }),
       type: this._card.type,
       ...(_.isEmpty(this._parameterValues)
         ? undefined
@@ -736,27 +754,27 @@ class Question {
 
   _convertParametersToMbql(): Question {
     const query = this.query();
+    const stageIndex = -1;
     const { isNative } = Lib.queryDisplayInfo(query);
 
     if (isNative) {
       return this;
     }
 
-    const stageIndex = -1;
-    const filters = this.parameters()
-      .map(parameter =>
-        fieldFilterParameterToFilter(query, stageIndex, parameter),
-      )
-      .filter(mbqlFilter => mbqlFilter != null);
-
-    const newQuery = filters.reduce((query, filter) => {
-      return Lib.filter(query, stageIndex, filter);
+    const newQuery = this.parameters().reduce((query, parameter) => {
+      if (isFilterParameter(parameter)) {
+        return applyFilterParameter(query, stageIndex, parameter);
+      } else if (isTemporalUnitParameter(parameter)) {
+        return applyTemporalUnitParameter(query, stageIndex, parameter);
+      } else {
+        return query;
+      }
     }, query);
     const newQuestion = this.setQuery(newQuery)
       .setParameters(undefined)
       .setParameterValues(undefined);
 
-    const hasQueryBeenAltered = filters.length > 0;
+    const hasQueryBeenAltered = query !== newQuery;
     return hasQueryBeenAltered ? newQuestion.markDirty() : newQuestion;
   }
 

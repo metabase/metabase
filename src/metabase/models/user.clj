@@ -23,6 +23,7 @@
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.setup :as setup]
    [metabase.util :as u]
+   [metabase.util.honey-sql-2 :as h2x]
    [metabase.util.i18n :as i18n :refer [deferred-tru trs tru]]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
@@ -49,7 +50,8 @@
 
 (doto :model/User
   (derive :metabase/model)
-  (derive :hook/updated-at-timestamped?))
+  (derive :hook/updated-at-timestamped?)
+  (derive :hook/entity-id))
 
 (t2/deftransforms :model/User
   {:login_attributes mi/transform-json-no-keywordization
@@ -185,6 +187,8 @@
   "Conditionally add a `:common_name` key to `user` by combining their first and last names, or using their email if names are `nil`.
   The key will only be added if `user` contains the required keys to derive it correctly."
   [{:keys [first_name last_name email], :as user}]
+  ;; This logic is replicated in SQL in [[metabase-enterprise.query-reference-validation.api]]. If the below logic changes,
+  ;; please update the EE ns as well.
   (let [common-name (if (or first_name last_name)
                       (str/trim (str first_name " " last_name))
                       email)]
@@ -236,6 +240,10 @@
    [:id ms/PositiveInt]
    ;; is_group_manager only included if `advanced-permissions` is enabled
    [:is_group_manager {:optional true} :boolean]])
+
+(defmethod mi/exclude-internal-content-hsql :model/User
+  [_model & {:keys [table-alias]}]
+  [:and [:not= (h2x/identifier :field table-alias :type) [:inline "internal"]]])
 
 ;;; -------------------------------------------------- Permissions ---------------------------------------------------
 
@@ -337,6 +345,7 @@
    [:password         {:optional true} [:maybe ms/NonBlankString]]
    [:login_attributes {:optional true} [:maybe LoginAttributes]]
    [:sso_source       {:optional true} [:maybe ms/NonBlankString]]
+   [:locale           {:optional true} [:maybe ms/KeywordOrString]]
    [:type             {:optional true} [:maybe ms/KeywordOrString]]])
 
 (def ^:private Invitor
@@ -345,7 +354,7 @@
    [:email      ms/Email]
    [:first_name [:maybe ms/NonBlankString]]])
 
-(mu/defn ^:private insert-new-user!
+(mu/defn insert-new-user!
   "Creates a new user, defaulting the password when not provided"
   [new-user :- NewUser]
   (first (t2/insert-returning-instances! User (update new-user :password #(or % (str (random-uuid)))))))
@@ -487,6 +496,30 @@
   :visibility :authenticated
   :type       :integer
   :default    nil)
+
+(defsetting expand-browse-in-nav
+  (deferred-tru "User preference for whether the 'Browse' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
+(defsetting expand-bookmarks-in-nav
+  (deferred-tru "User preference for whether the 'Bookmarks' section of the nav is expanded.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
+
+(defsetting browse-filter-only-verified-models
+  (deferred-tru "User preference for whether the 'Browse models' page should be filtered to show only verified models.")
+  :user-local :only
+  :export?    false
+  :visibility :authenticated
+  :type       :boolean
+  :default    true)
 
 ;;; ## ------------------------------------------ AUDIT LOG ------------------------------------------
 

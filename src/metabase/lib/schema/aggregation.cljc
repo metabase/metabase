@@ -100,6 +100,7 @@
              :max
              :median
              :min
+             :offset
              :percentile
              :share
              :stddev

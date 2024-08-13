@@ -42,7 +42,7 @@ driver:
       type: schema-filters
       display-name: Schemas
     - name: role
-      display-name: Role (required for connection impersonation)
+      display-name: Role (optional, required for connection impersonation)
       helper-text: Specify a role to override the database user’s default role.
       placeholder: user
     - cloud-ip-address-info
