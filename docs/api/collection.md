@@ -218,13 +218,19 @@ Modify an existing Collection, including archiving or unarchiving it, or moving 
 Do a batch update of Collections Permissions by passing in a modified graph.
   Will overwrite parts of the graph that are present in the request, and leave the rest unchanged.
 
+  If the `skip_graph` query parameter is true, it will only return the current revision.
+
 You must be a superuser to do this.
 
 ### PARAMS:
 
 -  **`namespace`** nullable value must be a non-blank string.
 
--  **`body`** map.
+-  **`revision`** value must be an integer.
+
+-  **`groups`** map.
+
+-  **`skip_graph`** nullable value must be a valid boolean string ('true' or 'false').
 
 ---
 
