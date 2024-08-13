@@ -101,7 +101,6 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "expand",
     tooltip: "Enter Fullscreen",
   },
-  [DASHBOARD_ACTION.EXPORT_AS_PDF]: {},
 };
 
 const setup = ({

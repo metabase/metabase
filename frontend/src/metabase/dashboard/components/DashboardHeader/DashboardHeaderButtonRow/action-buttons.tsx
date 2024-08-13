@@ -1,10 +1,11 @@
 import { withRouter } from "react-router";
 
 import { DashboardSharingMenu } from "metabase/sharing/components/SharingMenu";
+import { Center, Divider } from "metabase/ui";
 
-import { RefreshWidgetButton } from "../../DashboardActions.styled";
 import { DashboardBookmark } from "../../DashboardBookmark";
 import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
+import { RefreshWidget } from "../../RefreshWidget";
 import {
   AddActionElementButton,
   AddFilterParameterButton,
@@ -49,7 +50,6 @@ export const DASHBOARD_ACTION = {
   DASHBOARD_INFO: "DASHBOARD_INFO",
   DASHBOARD_ACTION_MENU: "DASHBOARD_ACTION_MENU",
   FULLSCREEN_ANALYTICS_DASHBOARD: "FULLSCREEN_ANALYTICS_DASHBOARD",
-  EXPORT_AS_PDF: "EXPORT_AS_PDF",
 } as const;
 
 export const dashboardActionButtons: Record<
@@ -152,11 +152,6 @@ export const dashboardActionButtons: Record<
   [DASHBOARD_ACTION.DASHBOARD_INFO]: {
     component: DashboardInfoButton,
     enabled: ({ isEditing }) => !isEditing,
-  },
-  [DASHBOARD_ACTION.EXPORT_AS_PDF]: {
-    component: ExportAsPdfButton,
-    enabled: ({ isEditing, isEmbeddingSdk = false }) =>
-      !isEditing && isEmbeddingSdk,
   },
   [DASHBOARD_ACTION.DASHBOARD_ACTION_MENU]: {
     component: withRouter<HeaderButtonProps>(
