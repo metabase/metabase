@@ -150,11 +150,12 @@
   [n]
   (let [start-n (quot n 2)
         end-n   (- n start-n)]
-    [{"$facet"
-      {"start" [{"$limit" start-n}]
-       "end"   [{"$sort" {"_id" -1}} {"$limit" end-n}]}}
-     {"$project" {"sample" {"$concatArrays" ["$start" "$end"]}}}
-     {"$unwind" "$sample"}]))
+    [{"$sort" {"_id" 1}}
+     {"$limit" start-n}
+     {"$unionWith"
+      {"coll" "oom_test"
+       "pipeline" [{"$sort" {"_id" -1}}
+                   {"$limit" end-n}]}}]))
 
 (defn- root-query [max-depth]
   (let [depth-k    (fn [depth] (str "depth" depth "K"))
@@ -208,20 +209,20 @@
                                             depths))
                         "mostCommonType" {"$first" (str "$_id." (depth-type depth))}}}
              {"$project" {"_id"            0
-                          "path"           {"$concat" (interpose "." (for [i depths]
-                                                                       (str "$_id." (depth-k i))))}
+                          "path"           {"$concat" (vec (interpose "." (for [i depths]
+                                                                            (str "$_id." (depth-k i)))))}
                           "field"          (str "$_id." (depth-k depth))
                           "index"          (str "$_id." (depth-idx depth))
                           "mostCommonType" 1}}]))
         all-depths (range (inc max-depth))
         facets (into {} (map (juxt #(str "depth" %) facet-stage) all-depths))]
-    (concat (sample-stages describe-table-sample-size)
-            [{"$project" {(depth-kvs 0) {"$objectToArray" "$sample"}}}
-             {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}]
-            (mapcat project-nested-fields all-depths)
-            [{"$facet" facets}
-             {"$project" {"allFields" {"$concatArrays" (map #(str "$" %) (keys facets))}}}
-             {"$unwind" "$allFields"}])))
+    (vec (concat (sample-stages describe-table-sample-size)
+                 [{"$project" {(depth-kvs 0) {"$objectToArray" "$sample"}}}
+                  {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}]
+                 (mapcat project-nested-fields all-depths)
+                 [{"$facet" facets}
+                  {"$project" {"allFields" {"$concatArrays" (mapv #(str "$" %) (keys facets))}}}
+                  {"$unwind" "$allFields"}]))))
 
 (defn- nested-level-query [parent-paths]
   (letfn [(path-query [path]
