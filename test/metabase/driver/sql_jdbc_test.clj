@@ -248,6 +248,7 @@
             (= expected
                (mt/rows (qp/process-query (assoc-in model-query [:query :filter] filt))))
             [[uuid]] [:= (:field_ref col-metadata) [:value (str uuid) {:base_type :type/UUID}]]
+            [[uuid]] [:= (:field_ref col-metadata) (:field_ref col-metadata)]
             [[uuid]] [:= (:field_ref col-metadata) (str uuid)]
             [[uuid]] [:!= (:field_ref col-metadata) (str (random-uuid))]
             [[uuid]] [:starts-with (:field_ref col-metadata) (str uuid)]

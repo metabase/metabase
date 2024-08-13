@@ -1,11 +1,15 @@
 import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   openOrdersTable,
   queryBuilderMain,
+  createNativeQuestion,
 } from "e2e/support/helpers";
+
+const { ORDERS } = SAMPLE_DATABASE;
 
 const STARTING_FROM_UNITS = [
   "minutes",
@@ -82,6 +86,62 @@ describe("scenarios > question > relative-datetime", () => {
       setStartingFromValue(2);
 
       popover().button("Update filter").should("be.enabled");
+    });
+
+    it("should be able to set starting from in a default SQL filter (metabase#46342)", () => {
+      const questionDetails = {
+        name: "46342",
+        native: {
+          "template-tags": {
+            foo: {
+              type: "dimension",
+              name: "foo",
+              id: "73b962fc-86f5-4b10-8958-7c7754334f9f",
+              "display-name": "Foo",
+              default: "past30days",
+              dimension: ["field", ORDERS.CREATED_AT, null],
+              "widget-type": "date/all-options",
+              options: null,
+            },
+          },
+          query: "select * from orders where {{foo}}",
+        },
+        parameters: [
+          {
+            id: "73b962fc-86f5-4b10-8958-7c7754334f9f",
+            type: "date/all-options",
+            target: ["dimension", ["template-tag", "foo"]],
+            name: "Foo",
+            slug: "foo",
+            default: "past30days",
+          },
+        ],
+      };
+
+      createNativeQuestion(questionDetails, { visitQuestion: true });
+
+      cy.log("Open sidebar filter options");
+      cy.findByTestId("visibility-toggler").click();
+      cy.findByTestId("native-query-editor-sidebar").icon("variable").click();
+      cy.findByTestId("sidebar-right")
+        .findByDisplayValue("Previous 30 Days")
+        .click();
+
+      cy.log("Set 'Starting from' to the default filter");
+      cy.findByTestId("date-picker").findByLabelText("Options").click();
+      popover().last().findByText("Starting from...").click();
+      cy.findByTestId("date-picker").within(() => {
+        cy.findByText("Starting from").should("be.visible");
+        cy.findByTestId("starting-from-value")
+          .should("be.visible")
+          .and("have.value", "7");
+        cy.findByTestId("starting-from-unit")
+          .should("be.visible")
+          .and("contain", "days ago");
+        cy.button("Update filter").click();
+      });
+
+      cy.location("search").should("eq", "?foo=past30days-from-7days");
     });
   });
 

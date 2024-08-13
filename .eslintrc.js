@@ -81,6 +81,7 @@ module.exports = {
       { additionalHooks: "(useSyncedQueryString|useSafeAsyncFunction)" },
     ],
     "prefer-const": [1, { destructuring: "all" }],
+    "no-restricted-globals": ["error", "close"],
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": [
       "error",
