@@ -441,7 +441,7 @@ function _PivotTable({
             <div className={cx(CS.flex, CS.flexFull)}>
               {/* left header */}
               <div style={{ width: leftHeaderWidth }}>
-                <AutoSizer disableWidth>
+                <AutoSizer disableWidth nonce={window.MetabaseNonce}>
                   {() => (
                     <Collection
                       ref={leftHeaderRef}
@@ -480,7 +480,7 @@ function _PivotTable({
               </div>
               {/* pivot table body */}
               <div>
-                <AutoSizer disableWidth>
+                <AutoSizer disableWidth nonce={window.MetabaseNonce}>
                   {() => (
                     <Grid
                       aria-label={PIVOT_TABLE_BODY_LABEL}
