@@ -29,7 +29,7 @@ const breakoutQuestionDetails: StructuredQuestionDetails = {
       [
         "field",
         ORDERS.CREATED_AT,
-        { "base-type": "type/DateTime", "temporal-unit": "month-of-year" },
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
       ],
     ],
   },
@@ -65,12 +65,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         .icon("add")
         .click();
       popover().findByText("by month").click();
-      popover()
-        .last()
-        .within(() => {
-          cy.findByText("More…").click();
-          cy.findByText("Month of year").click();
-        });
+      popover().last().findByText("Month").click();
       visualize();
       assertQueryBuilderRowCount(49);
     });
@@ -82,11 +77,13 @@ describe("scenarios > question > multiple column breakouts", () => {
       popover().findByText("Created At: Year").click();
       getNotebookStep("sort").button("Change direction").click();
       getNotebookStep("sort").icon("add").click();
-      popover().findByText("Created At: Month of year").click();
+      popover().findByText("Created At: Month").click();
       visualize();
       tableInteractiveBody().within(() => {
         cy.findAllByTestId("cell-data").eq(0).should("have.text", "2026");
-        cy.findAllByTestId("cell-data").eq(1).should("have.text", "January");
+        cy.findAllByTestId("cell-data")
+          .eq(1)
+          .should("have.text", "January 2026");
       });
     });
   });
