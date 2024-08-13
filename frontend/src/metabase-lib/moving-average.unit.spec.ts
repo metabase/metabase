@@ -1,6 +1,7 @@
 import { ORDERS_ID } from "metabase-types/api/mocks/presets";
 
 import { aggregate, aggregations } from "./aggregation";
+import { expressionParts } from "./expression";
 import { displayInfo } from "./metadata";
 import {
   diffMovingAverageClause,
@@ -88,28 +89,42 @@ describe("movingAverageClause", () => {
         });
 
         it("produces correct aggregation clause", () => {
-          expect(toLegacyQuery(query)).toMatchObject({
-            database: SAMPLE_DATABASE.id,
-            query: {
-              aggregation: [
-                ["count"],
-                [
-                  "aggregation-options",
-                  [
-                    "/",
-                    [
-                      "+",
-                      ["offset", expect.anything(), ["count"], -1],
-                      ["offset", expect.anything(), ["count"], -2],
+          expect(expressionParts(query, -1, clause)).toEqual({
+            operator: "/",
+            args: [
+              {
+                operator: "+",
+                args: [
+                  {
+                    operator: "offset",
+                    args: [
+                      {
+                        operator: "count",
+                        args: [],
+                        options: {},
+                      },
+                      -1,
                     ],
-                    2,
-                  ],
-                  expect.anything(),
+                    options: {},
+                  },
+                  {
+                    operator: "offset",
+                    args: [
+                      {
+                        operator: "count",
+                        args: [],
+                        options: {},
+                      },
+                      -2,
+                    ],
+                    options: {},
+                  },
                 ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                options: {},
+              },
+              2,
+            ],
+            options: {},
           });
         });
       });
@@ -229,28 +244,35 @@ describe("movingAverageClause", () => {
         });
 
         it("produces correct aggregation clause", () => {
-          expect(toLegacyQuery(query)).toMatchObject({
-            database: SAMPLE_DATABASE.id,
-            query: {
-              aggregation: [
-                ["count"],
-                [
-                  "aggregation-options",
-                  [
-                    "/",
-                    [
-                      "+",
-                      expect.anything(),
-                      ["offset", expect.anything(), ["count"], -1],
+          expect(expressionParts(query, -1, clause)).toEqual({
+            operator: "/",
+            args: [
+              {
+                operator: "+",
+                args: [
+                  {
+                    operator: "count",
+                    args: [],
+                    options: {},
+                  },
+                  {
+                    operator: "offset",
+                    args: [
+                      {
+                        operator: "count",
+                        args: [],
+                        options: {},
+                      },
+                      -1,
                     ],
-                    2,
-                  ],
-                  expect.anything(),
+                    options: {},
+                  },
                 ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                options: {},
+              },
+              2,
+            ],
+            options: {},
           });
         });
       });
@@ -394,35 +416,53 @@ describe("diffMovingAverageClause", () => {
         });
 
         it("produces correct aggregation clause", () => {
-          expect(toLegacyQuery(query)).toMatchObject({
-            database: SAMPLE_DATABASE.id,
-            query: {
-              aggregation: [
-                ["count"],
-                [
-                  "aggregation-options",
-                  [
-                    "-",
-                    ["count"],
-                    [
-                      "/",
-                      [
-                        "+",
-                        ["offset", expect.anything(), ["count"], -1],
-                        ["offset", expect.anything(), ["count"], -2],
-                      ],
-                      2,
-                    ],
-                  ],
+          expect(expressionParts(query, -1, clause)).toEqual({
+            operator: "-",
+            args: [
+              {
+                operator: "count",
+                args: [],
+                options: {},
+              },
+              {
+                operator: "/",
+                args: [
                   {
-                    name: "Count (vs 2-period moving average)",
-                    "display-name": "Count (vs 2-period moving average)",
+                    operator: "+",
+                    args: [
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -1,
+                        ],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -2,
+                        ],
+                        options: {},
+                      },
+                    ],
+                    options: {},
                   },
+                  2,
                 ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                options: {},
+              },
+            ],
+            options: {},
           });
         });
       });
@@ -483,36 +523,65 @@ describe("diffMovingAverageClause", () => {
         });
 
         it("produces correct aggregation clause", () => {
-          expect(toLegacyQuery(query)).toMatchObject({
-            database: SAMPLE_DATABASE.id,
-            query: {
-              aggregation: [
-                ["count"],
-                [
-                  "aggregation-options",
-                  [
-                    "-",
-                    ["count"],
-                    [
-                      "/",
-                      [
-                        "+",
-                        ["offset", expect.anything(), ["count"], -1],
-                        ["offset", expect.anything(), ["count"], -2],
-                        ["offset", expect.anything(), ["count"], -3],
-                      ],
-                      3,
-                    ],
-                  ],
+          expect(expressionParts(query, -1, clause)).toEqual({
+            operator: "-",
+            args: [
+              {
+                operator: "count",
+                args: [],
+                options: {},
+              },
+              {
+                operator: "/",
+                args: [
                   {
-                    name: "Count (vs 3-period moving average)",
-                    "display-name": "Count (vs 3-period moving average)",
+                    operator: "+",
+                    args: [
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -1,
+                        ],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -2,
+                        ],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -3,
+                        ],
+                        options: {},
+                      },
+                    ],
+                    options: {},
                   },
+                  3,
                 ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                options: {},
+              },
+            ],
+            options: {},
           });
         });
       });
@@ -577,35 +646,46 @@ describe("diffMovingAverageClause", () => {
         });
 
         it("produces correct aggregation clause", () => {
-          expect(toLegacyQuery(query)).toMatchObject({
-            database: SAMPLE_DATABASE.id,
-            query: {
-              aggregation: [
-                ["count"],
-                [
-                  "aggregation-options",
-                  [
-                    "-",
-                    ["count"],
-                    [
-                      "/",
-                      [
-                        "+",
-                        expect.anything(),
-                        ["offset", expect.anything(), ["count"], -1],
-                      ],
-                      2,
-                    ],
-                  ],
+          expect(expressionParts(query, -1, clause)).toEqual({
+            operator: "-",
+            args: [
+              {
+                operator: "count",
+                args: [],
+                options: {},
+              },
+              {
+                operator: "/",
+                args: [
                   {
-                    name: "Count (vs 2-period moving average)",
-                    "display-name": "Count (vs 2-period moving average)",
+                    operator: "+",
+                    args: [
+                      {
+                        operator: "count",
+                        args: [],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -1,
+                        ],
+                        options: {},
+                      },
+                    ],
+                    options: {},
                   },
+                  2,
                 ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                options: {},
+              },
+            ],
+            options: {},
           });
         });
       });
@@ -666,36 +746,58 @@ describe("diffMovingAverageClause", () => {
         });
 
         it("produces correct aggregation clause", () => {
-          expect(toLegacyQuery(query)).toMatchObject({
-            database: SAMPLE_DATABASE.id,
-            query: {
-              aggregation: [
-                ["count"],
-                [
-                  "aggregation-options",
-                  [
-                    "-",
-                    ["count"],
-                    [
-                      "/",
-                      [
-                        "+",
-                        expect.anything(),
-                        ["offset", expect.anything(), ["count"], -1],
-                        ["offset", expect.anything(), ["count"], -2],
-                      ],
-                      3,
-                    ],
-                  ],
+          expect(expressionParts(query, -1, clause)).toEqual({
+            operator: "-",
+            args: [
+              {
+                operator: "count",
+                args: [],
+                options: {},
+              },
+              {
+                operator: "/",
+                args: [
                   {
-                    name: "Count (vs 3-period moving average)",
-                    "display-name": "Count (vs 3-period moving average)",
+                    operator: "+",
+                    args: [
+                      {
+                        operator: "count",
+                        args: [],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -1,
+                        ],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -2,
+                        ],
+                        options: {},
+                      },
+                    ],
+                    options: {},
                   },
+                  3,
                 ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                options: {},
+              },
+            ],
+            options: {},
           });
         });
       });
@@ -783,35 +885,53 @@ describe("percentDiffMovingAverageClause", () => {
         });
 
         it("produces correct aggregation clause", () => {
-          expect(toLegacyQuery(query)).toMatchObject({
-            database: SAMPLE_DATABASE.id,
-            query: {
-              aggregation: [
-                ["count"],
-                [
-                  "aggregation-options",
-                  [
-                    "/",
-                    ["count"],
-                    [
-                      "/",
-                      [
-                        "+",
-                        ["offset", expect.anything(), ["count"], -1],
-                        ["offset", expect.anything(), ["count"], -2],
-                      ],
-                      2,
-                    ],
-                  ],
+          expect(expressionParts(query, -1, clause)).toEqual({
+            operator: "/",
+            args: [
+              {
+                operator: "count",
+                args: [],
+                options: {},
+              },
+              {
+                operator: "/",
+                args: [
                   {
-                    name: "Count (% vs 2-period moving average)",
-                    "display-name": "Count (% vs 2-period moving average)",
+                    operator: "+",
+                    args: [
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -1,
+                        ],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -2,
+                        ],
+                        options: {},
+                      },
+                    ],
+                    options: {},
                   },
+                  2,
                 ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                options: {},
+              },
+            ],
+            options: {},
           });
         });
       });
@@ -966,35 +1086,46 @@ describe("percentDiffMovingAverageClause", () => {
         });
 
         it("produces correct aggregation clause", () => {
-          expect(toLegacyQuery(query)).toMatchObject({
-            database: SAMPLE_DATABASE.id,
-            query: {
-              aggregation: [
-                ["count"],
-                [
-                  "aggregation-options",
-                  [
-                    "/",
-                    ["count"],
-                    [
-                      "/",
-                      [
-                        "+",
-                        expect.anything(),
-                        ["offset", expect.anything(), ["count"], -1],
-                      ],
-                      2,
-                    ],
-                  ],
+          expect(expressionParts(query, -1, clause)).toEqual({
+            operator: "/",
+            args: [
+              {
+                operator: "count",
+                args: [],
+                options: {},
+              },
+              {
+                operator: "/",
+                args: [
                   {
-                    name: "Count (% vs 2-period moving average)",
-                    "display-name": "Count (% vs 2-period moving average)",
+                    operator: "+",
+                    args: [
+                      {
+                        operator: "count",
+                        args: [],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -1,
+                        ],
+                        options: {},
+                      },
+                    ],
+                    options: {},
                   },
+                  2,
                 ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                options: {},
+              },
+            ],
+            options: {},
           });
         });
       });
@@ -1055,36 +1186,58 @@ describe("percentDiffMovingAverageClause", () => {
         });
 
         it("produces correct aggregation clause", () => {
-          expect(toLegacyQuery(query)).toMatchObject({
-            database: SAMPLE_DATABASE.id,
-            query: {
-              aggregation: [
-                ["count"],
-                [
-                  "aggregation-options",
-                  [
-                    "/",
-                    ["count"],
-                    [
-                      "/",
-                      [
-                        "+",
-                        expect.anything(),
-                        ["offset", expect.anything(), ["count"], -1],
-                        ["offset", expect.anything(), ["count"], -2],
-                      ],
-                      3,
-                    ],
-                  ],
+          expect(expressionParts(query, -1, clause)).toEqual({
+            operator: "/",
+            args: [
+              {
+                operator: "count",
+                args: [],
+                options: {},
+              },
+              {
+                operator: "/",
+                args: [
                   {
-                    name: "Count (% vs 3-period moving average)",
-                    "display-name": "Count (% vs 3-period moving average)",
+                    operator: "+",
+                    args: [
+                      {
+                        operator: "count",
+                        args: [],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -1,
+                        ],
+                        options: {},
+                      },
+                      {
+                        operator: "offset",
+                        args: [
+                          {
+                            operator: "count",
+                            args: [],
+                            options: {},
+                          },
+                          -2,
+                        ],
+                        options: {},
+                      },
+                    ],
+                    options: {},
                   },
+                  3,
                 ],
-              ],
-              "source-table": ORDERS_ID,
-            },
-            type: "query",
+                options: {},
+              },
+            ],
+            options: {},
           });
         });
       });
