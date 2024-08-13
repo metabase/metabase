@@ -165,7 +165,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
   database: Database,
   value: DataPermissionValue,
 ) {
-  // if user sets 'Query builder and native' for a DB, warn them that view data permissions must be 'Unrestricted'
+  // if user sets 'Query builder and native' for a DB, warn them that view data permissions must be 'Can view'
   if (!isSchemaEntityId(entityId)) {
     const nativePermission = getSchemasPermission(
       permissions,
@@ -181,16 +181,22 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
       DataPermission.VIEW_DATA,
     );
 
-    if (
+    const isAddingNativeQueryPermissions =
       value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-      nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-      PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
+      nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
+
+    const canNotViewNativeQueryResults =
       viewPermission !== DataPermissionValue.UNRESTRICTED &&
-      viewPermission !== DataPermissionValue.IMPERSONATED
+      viewPermission !== DataPermissionValue.IMPERSONATED;
+
+    if (
+      isAddingNativeQueryPermissions &&
+      canNotViewNativeQueryResults &&
+      PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn
     ) {
       return {
         title: t`Allow native query editing?`,
-        message: t`This will also change this group's data access to Unrestricted for this database.`,
+        message: t`This will also change this group's data access to “Can view” for this database.`,
         confirmButtonText: t`Allow`,
         cancelButtonText: t`Cancel`,
       };
@@ -198,7 +204,7 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
   }
 
   // if user sets 'No' for a DB/Schema and a sub schema/tables contains 'Blocked' permissions, warn them
-  // that we'll automatically upgrade the DB/Schema to 'Unrestricted' view access
+  // that we'll automatically upgrade the DB/Schema to 'Can view' view access
   const hasCreateQueryAccess = value !== DataPermissionValue.NO;
   if (!hasCreateQueryAccess) {
     return;
@@ -214,12 +220,36 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
   );
 
   if (hasChildWithBlockedPermission) {
-    const entityType = isSchemaEntityId(entityId) ? t`schema` : t`database`;
+    const isSchema = isSchemaEntityId(entityId);
+    const entityType = isSchema ? t`schema` : t`database`;
+
+    const coreMessage = isSchema
+      ? t`This schema contains one or more tables with “Blocked” permissions, which prevents access to the query builder. To grant Create query permissions for this schema, Metabase will also change the View data permissions on this schema to “Can view”.`
+      : t`This database contains one or more schemas and tables with “Blocked” permissions, which prevents access to the query builder. To grant Create query permissions for this database, Metabase will also change the View data permissions on this database to “Can view”.`;
+
+    const hasChildWithSandboxedPermission = hasPermissionValueInSubgraph(
+      permissions,
+      groupId,
+      entityId,
+      database,
+      DataPermission.VIEW_DATA,
+      DataPermissionValue.SANDBOXED,
+    );
+    const sandboxWarningMessage = hasChildWithSandboxedPermission
+      ? t`WARNING: Updating access will remove your sandboxing settings for this ${entityType}. To keep those settings, you’ll need to manually change the View data permissions for the schemas or tables that are set to “Blocked”.`
+      : "";
 
     return {
-      title: t`Upgrade “View Data” to “Unrestricted” for this ${entityType}?`,
-      message: t`Your “Granular” permissions for “View Data” contains “Blocked” which restricts “Create Queries” access. Would you like to upgrade the permissions for this ${entityType} to “Unrestricted” to allow for this change?`,
-      confirmButtonText: t`Allow`,
+      title: t`Change “View data” access for this ${entityType} to “Can view” as well?`,
+      message: (
+        <>
+          {coreMessage}
+          <br />
+          <br />
+          {sandboxWarningMessage}
+        </>
+      ),
+      confirmButtonText: t`Update access`,
       cancelButtonText: t`Cancel`,
     };
   }

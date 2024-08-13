@@ -2,6 +2,7 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertPermissionTable,
+  main,
   modal,
   restore,
   popover,
@@ -68,7 +69,7 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
     cy.visit(
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
     ); // table level
-    modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Blocked");
+    modifyPermission("People", DATA_ACCESS_PERM_IDX, "Blocked");
 
     selectSidebarItem("All Users");
     modifyPermission(
@@ -86,9 +87,38 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
       .should("exist")
       .within(() => {
         cy.findByText(
-          "Upgrade “View Data” to “Unrestricted” for this database?",
+          "Change “View data” access for this database to “Can view” as well?",
         ).should("exist");
-        cy.findByText("Allow").click();
+        cy.findByText(
+          /Updating access will remove your sandboxing settings for this database/,
+        ).should("not.exist");
+        cy.findByText("Cancel").click();
+      });
+
+    main().within(() => {
+      cy.findByText("Sample Database").click();
+    });
+
+    makeOrdersSandboxed();
+
+    selectSidebarItem("All Users");
+
+    modifyPermission(
+      "Sample Database",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder only",
+    );
+
+    modal()
+      .should("exist")
+      .within(() => {
+        cy.findByText(
+          "Change “View data” access for this database to “Can view” as well?",
+        ).should("exist");
+        cy.findByText(
+          /Updating access will remove your sandboxing settings for this database/,
+        ).should("exist");
+        cy.findByText("Update access").click();
       });
 
     assertPermissionForItem(
@@ -117,24 +147,6 @@ describe("scenarios > admin > permissions > view data > granular", () => {
 });
 
 describeEE("scenarios > admin > permissions > view data > granular", () => {
-  function makeOrdersSandboxed() {
-    modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Sandboxed");
-
-    cy.url().should(
-      "include",
-      `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
-    );
-
-    cy.findByText("Restrict access to this table");
-    cy.button("Save").should("be.disabled");
-
-    cy.findByText("Pick a column").click();
-    cy.findByText("User ID").click();
-
-    cy.findByText("Pick a user attribute").click();
-    cy.findByText("attr_uid").click();
-    cy.button("Save").click();
-  }
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -853,4 +865,23 @@ function assertSameBeforeAndAfterSave(assertionCallback) {
   assertionCallback();
   savePermissions();
   assertionCallback();
+}
+
+function makeOrdersSandboxed() {
+  modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Sandboxed");
+
+  cy.url().should(
+    "include",
+    `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}/schema/PUBLIC/${ORDERS_ID}/segmented`,
+  );
+
+  cy.findByText("Restrict access to this table");
+  cy.button("Save").should("be.disabled");
+
+  cy.findByText("Pick a column").click();
+  cy.findByText("User ID").click();
+
+  cy.findByText("Pick a user attribute").click();
+  cy.findByText("attr_uid").click();
+  cy.button("Save").click();
 }

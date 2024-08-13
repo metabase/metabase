@@ -138,7 +138,7 @@ const EditSandboxingModal = ({
       <div>
         <div className={cx(CS.px3, CS.pb3)}>
           <div className={CS.pb2}>
-            {t`When the following restriction rules are applied, users in this group will view a filtered or customized version of the table.`}
+            {t`When the following rules are applied, this group will see a customized version of the table.`}
           </div>
           <div className={CS.pb4}>
             {t`These rules don’t apply to native queries.`}
