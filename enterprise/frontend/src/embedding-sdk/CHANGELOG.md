@@ -1,3 +1,21 @@
+## [0.1.29](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.28...embedding-sdk-0.1.29) (2024-08-09)
+
+
+### Bug Fixes
+
+* **sdk:** Fix unmapped theme colors ([#46650](https://github.com/metabase/metabase/issues/46650)) ([69e0118](https://github.com/metabase/metabase/commit/69e011853d1f514792a8bd26eb4aab5d553f6215))
+
+
+
+## [0.1.28](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.27...embedding-sdk-0.1.28) (2024-08-08)
+
+
+### Features
+
+* **sdk:** connect databases, generate models and x-rays from the CLI ([#46502](https://github.com/metabase/metabase/issues/46502)) ([178997d](https://github.com/metabase/metabase/commit/178997d776355c265be7450c4b8a469b61ec2fca))
+
+
+
 ## [0.1.27](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.26...embedding-sdk-0.1.27) (2024-08-07)
 
 

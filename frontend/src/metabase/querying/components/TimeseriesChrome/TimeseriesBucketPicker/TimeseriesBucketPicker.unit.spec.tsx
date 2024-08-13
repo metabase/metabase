@@ -22,6 +22,7 @@ function findMonthBucket(query: Lib.Query, column: Lib.ColumnMetadata) {
 
 interface QueryWithBreakoutOpts {
   query?: Lib.Query;
+  stageIndex?: number;
   column?: Lib.ColumnMetadata;
   bucket?: Lib.Bucket | null;
 }
@@ -30,28 +31,36 @@ function createQueryWithBreakout({
   query: initialQuery = createQuery(),
   column = findBreakoutColumn(initialQuery),
   bucket = findMonthBucket(initialQuery, column),
+  stageIndex = -1,
 }: QueryWithBreakoutOpts = {}) {
   const query = Lib.breakout(
     initialQuery,
-    0,
+    stageIndex,
     Lib.withTemporalBucket(column, bucket),
   );
-
-  return { query, column: findBreakoutColumn(query) };
+  const [breakout] = Lib.breakouts(query, stageIndex);
+  return {
+    query,
+    breakout,
+    column: Lib.breakoutColumn(query, stageIndex, breakout),
+  };
 }
 
 interface SetupOpts {
   query: Lib.Query;
+  stageIndex?: number;
+  breakout: Lib.BreakoutClause;
   column: Lib.ColumnMetadata;
 }
 
-function setup({ query, column }: SetupOpts) {
+function setup({ query, breakout, column, stageIndex = -1 }: SetupOpts) {
   const onChange = jest.fn();
 
   renderWithProviders(
     <TimeseriesBucketPicker
       query={query}
-      stageIndex={0}
+      stageIndex={stageIndex}
+      breakout={breakout}
       column={column}
       onChange={onChange}
     />,
@@ -68,8 +77,10 @@ function setup({ query, column }: SetupOpts) {
 
 describe("TimeseriesBucketPicker", () => {
   it("should allow to add a temporal bucket", async () => {
-    const { query, column } = createQueryWithBreakout({ bucket: null });
-    const { getNextBucketName } = setup({ query, column });
+    const { query, breakout, column } = createQueryWithBreakout({
+      bucket: null,
+    });
+    const { getNextBucketName } = setup({ query, breakout, column });
 
     await userEvent.click(screen.getByText("Unbinned"));
     await userEvent.click(await screen.findByText("Month"));
@@ -78,8 +89,8 @@ describe("TimeseriesBucketPicker", () => {
   });
 
   it("should allow to update a temporal bucket", async () => {
-    const { query, column } = createQueryWithBreakout();
-    const { getNextBucketName } = setup({ query, column });
+    const { query, breakout, column } = createQueryWithBreakout();
+    const { getNextBucketName } = setup({ query, breakout, column });
 
     await userEvent.click(screen.getByText("Month"));
     await userEvent.click(await screen.findByText("Year"));
@@ -88,8 +99,8 @@ describe("TimeseriesBucketPicker", () => {
   });
 
   it("should allow to show more binning options", async () => {
-    const { query, column } = createQueryWithBreakout();
-    const { getNextBucketName } = setup({ query, column });
+    const { query, breakout, column } = createQueryWithBreakout();
+    const { getNextBucketName } = setup({ query, breakout, column });
 
     await userEvent.click(screen.getByText("Month"));
     await userEvent.click(screen.getByText("More…"));
@@ -99,8 +110,8 @@ describe("TimeseriesBucketPicker", () => {
   });
 
   it("should allow to remove a temporal bucket", async () => {
-    const { query, column } = createQueryWithBreakout();
-    const { getNextBucketName } = setup({ query, column });
+    const { query, breakout, column } = createQueryWithBreakout();
+    const { getNextBucketName } = setup({ query, breakout, column });
 
     await userEvent.click(screen.getByText("Month"));
     await userEvent.click(screen.getByText("More…"));
@@ -110,17 +121,21 @@ describe("TimeseriesBucketPicker", () => {
   });
 
   it("should show all options when the current bucket is below the More button", async () => {
-    const _query = createQuery();
-    const _column = findBreakoutColumn(_query);
-    const bucket = findTemporalBucket(_query, _column, "Quarter of year");
+    const initialQuery = createQuery();
+    const initialColumn = findBreakoutColumn(initialQuery);
+    const bucket = findTemporalBucket(
+      initialQuery,
+      initialColumn,
+      "Quarter of year",
+    );
 
-    const { query, column } = createQueryWithBreakout({
-      query: _query,
-      column: _column,
+    const { query, breakout, column } = createQueryWithBreakout({
+      query: initialQuery,
+      column: initialColumn,
       bucket,
     });
 
-    setup({ query, column });
+    setup({ query, breakout, column });
 
     await userEvent.click(screen.getByText("Quarter of year"));
     expect(await screen.findByText("Month of year")).toBeInTheDocument();

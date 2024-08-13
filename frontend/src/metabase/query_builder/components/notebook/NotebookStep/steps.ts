@@ -5,7 +5,7 @@ import { color } from "metabase/lib/colors";
 import type { IconName } from "metabase/ui";
 
 import { AggregateStep } from "../steps/AggregateStep";
-import BreakoutStep from "../steps/BreakoutStep";
+import { BreakoutStep } from "../steps/BreakoutStep";
 import { DataStep } from "../steps/DataStep";
 import { ExpressionStep } from "../steps/ExpressionStep";
 import { FilterStep } from "../steps/FilterStep";

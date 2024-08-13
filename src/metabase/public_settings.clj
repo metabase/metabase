@@ -938,7 +938,14 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting query-analysis-enabled
   (deferred-tru "Whether or not we analyze any queries at all")
-  :visibility :internal
+  :visibility :admin
   :export?    false
   :default    true
   :type       :boolean)
+
+(defsetting download-row-limit
+  (deferred-tru "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.")
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :doc false)
