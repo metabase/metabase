@@ -10,6 +10,7 @@ import {
   restore,
   startNewQuestion,
   type StructuredQuestionDetails,
+  tableInteractive,
   tableInteractiveBody,
   visualize,
 } from "e2e/support/helpers";
@@ -33,6 +34,7 @@ const breakoutQuestionDetails: StructuredQuestionDetails = {
       ],
     ],
   },
+  display: "table",
   visualization_settings: {
     "table.pivot": false,
   },
@@ -79,12 +81,40 @@ describe("scenarios > question > multiple column breakouts", () => {
       getNotebookStep("sort").icon("add").click();
       popover().findByText("Created At: Month").click();
       visualize();
-      tableInteractiveBody().within(() => {
-        cy.findAllByTestId("cell-data").eq(0).should("have.text", "2026");
-        cy.findAllByTestId("cell-data")
-          .eq(1)
-          .should("have.text", "January 2026");
+      assertTableData({
+        columns: ["Created At: Year", "Created At: Month", "Count"],
+        rows: [
+          ["2026", "January 2026", "580"],
+          ["2026", "February 2026", "543"],
+        ],
       });
     });
   });
 });
+
+interface TableOpts {
+  columns: string[];
+  rows: string[][];
+}
+
+function assertTableData({ columns, rows }: TableOpts) {
+  tableInteractive()
+    .findAllByTestId("header-cell")
+    .should("have.length", columns.length);
+
+  columns.forEach((column, index) => {
+    tableInteractive()
+      .findAllByTestId("header-cell")
+      .eq(index)
+      .should("have.text", column);
+  });
+
+  rows.forEach((row, rowIndex) => {
+    row.forEach((cell, cellIndex) => {
+      tableInteractiveBody()
+        .findAllByTestId("cell-data")
+        .eq(columns.length * rowIndex + cellIndex)
+        .should("have.text", cell);
+    });
+  });
+}
