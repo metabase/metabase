@@ -72,14 +72,9 @@ export const useSummarizeQuery = ({
   );
 
   const handleRemoveBreakout = useCallback(
-    (column: Lib.ColumnMetadata) => {
-      const { breakoutPosition } = Lib.displayInfo(query, STAGE_INDEX, column);
-      if (breakoutPosition != null) {
-        const breakouts = Lib.breakouts(query, STAGE_INDEX);
-        const clause = breakouts[breakoutPosition];
-        const nextQuery = Lib.removeClause(query, STAGE_INDEX, clause);
-        handleChange(nextQuery);
-      }
+    (clause: Lib.BreakoutClause) => {
+      const nextQuery = Lib.removeClause(query, STAGE_INDEX, clause);
+      handleChange(nextQuery);
     },
     [query, handleChange],
   );

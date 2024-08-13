@@ -106,7 +106,7 @@ export const startLocalMetabaseContainer: CliStepMethod = async state => {
       .join(" ");
 
     const { stderr, stdout } = await exec(
-      `docker run --detach -p ${port}:3000 ${envFlags} --name ${CONTAINER_NAME} ${IMAGE_NAME}`,
+      `docker run --pull always --detach -p ${port}:3000 ${envFlags} --name ${CONTAINER_NAME} ${IMAGE_NAME}`,
     );
 
     if (stdout) {

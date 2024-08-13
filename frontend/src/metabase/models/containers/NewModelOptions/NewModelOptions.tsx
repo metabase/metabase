@@ -4,6 +4,7 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import { useListDatabasesQuery } from "metabase/api";
+import { DelayedLoadingSpinner } from "metabase/common/components/EntityPicker/components/LoadingSpinner";
 import { Grid } from "metabase/components/Grid";
 import CS from "metabase/css/core/index.css";
 import Databases from "metabase/entities/databases";
@@ -29,7 +30,7 @@ interface NewModelOptionsProps {
 }
 
 const NewModelOptions = ({ location }: NewModelOptionsProps) => {
-  const { data } = useListDatabasesQuery();
+  const { data, isFetching } = useListDatabasesQuery();
   const databases = data?.data ?? [];
   const hasDataAccess = getHasDataAccess(databases);
   const hasNativeWrite = getHasNativeWrite(databases);
@@ -43,6 +44,10 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
   );
 
   const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  if (isFetching) {
+    return <DelayedLoadingSpinner />;
+  }
 
   if (!hasDataAccess && !hasNativeWrite) {
     return (

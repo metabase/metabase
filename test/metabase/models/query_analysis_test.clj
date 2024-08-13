@@ -12,7 +12,7 @@
   [:card_id :schema :table :table_id])
 
 (def ^:private query-field-keys
-  [:card_id :table :column :table_id :field_id :explicit_reference])
+  [:card_id :schema :table :column :table_id :field_id :explicit_reference])
 
 (defn- qt->map [query-table]
   (-> (select-keys query-table query-table-keys)
@@ -21,6 +21,7 @@
 
 (defn- qf->map [query-field]
   (-> (select-keys query-field query-field-keys)
+      (update :schema u/lower-case-en)
       (update :table u/lower-case-en)
       (update :column u/lower-case-en)))
 
@@ -45,7 +46,7 @@
               :total-id total-id
               :table-id table-id})
           (finally
-            (t2/delete! :model/QueryField :card_id card-id)))))))
+            (t2/delete! :model/QueryAnalysis :card_id card-id)))))))
 
 (defmacro ^:private with-test-setup
   "Creates a new card that queries one column that exists (TOTAL) and one that does not (NOT_TAX). Anaphorically
@@ -68,43 +69,49 @@
 (deftest query-fields-created-by-queries-test
   (with-test-setup
     (let [total-qf     {:card_id            card-id
+                        :schema             "public"
                         :table              "orders"
                         :column             "total"
                         :table_id           table-id
                         :field_id           total-id
                         :explicit_reference true}
           tax-qf       {:card_id            card-id
+                        :schema             "public"
                         :table              "orders"
                         :column             "tax"
                         :table_id           table-id
                         :field_id           tax-id
                         :explicit_reference true}
           not-total-qf {:card_id            card-id
+                        :schema             "public"
                         :table              "orders"
                         :column             "not_total"
                         :table_id           table-id
                         :field_id           nil
                         :explicit_reference true}
           not-tax      {:card_id            card-id
+                        :schema             "public"
                         :table              "orders"
                         :column             "not_tax"
                         :table_id           table-id
                         :field_id           nil
-                        :explicit_reference true}]
+                        :explicit_reference true}
 
-      (testing "A freshly created card has relevant corresponding QueryFields"
-        (is (= #{total-qf not-tax}
-               (query-fields-for-card card-id))))
+          orders-qt   (dissoc total-qf :column :field_id :explicit_reference)]
+
+      (testing "A freshly created card has relevant corresponding Query Analysis"
+        (is (= #{orders-qt} (query-tables-for-card card-id)))
+        (is (= #{total-qf not-tax} (query-fields-for-card card-id))))
 
       (testing "Adding new columns to the query also adds the QueryFields"
         (trigger-parse! card-id "SELECT tax, total FROM orders")
-        (is (= #{tax-qf total-qf}
-               (query-fields-for-card card-id))))
+        (is (= #{orders-qt} (query-tables-for-card card-id)))
+        (is (= #{tax-qf total-qf} (query-fields-for-card card-id))))
 
       (testing "Removing columns from the query removes the QueryFields"
         (trigger-parse! card-id "SELECT tax, not_total FROM orders")
-        (is (= #{tax-qf not-total-qf}
-               (query-fields-for-card card-id))))
+        (is (= #{orders-qt} (query-tables-for-card card-id)))
+        (is (= #{tax-qf not-total-qf} (query-fields-for-card card-id))))
 
       (testing "Columns referenced via field filters are still found"
         (trigger-parse! card-id
@@ -116,47 +123,69 @@
                                                            :dimension    [:field (mt/id :orders :total)
                                                                           {:base-type :type/Number}]
                                                            :widget-type  :number/>=}}}))
-        (is (= #{tax-qf total-qf}
-               (query-fields-for-card card-id)))))))
+        (is (= #{orders-qt} (query-tables-for-card card-id)))
+        (is (= #{tax-qf total-qf} (query-fields-for-card card-id)))))))
 
 (deftest unknown-test
   (with-test-setup
     (testing "selecting an unknown column from an known table"
-      (let [qux-qf {:card_id            card-id
-                    :table              "orders"
-                    :column             "qux"
-                    :table_id           table-id
-                    :field_id           nil
-                    :explicit_reference true}]
+      (let [qux-qf    {:card_id            card-id
+                       :schema             "public"
+                       :table              "orders"
+                       :column             "qux"
+                       :table_id           table-id
+                       :field_id           nil
+                       :explicit_reference true}
+            orders-qt (dissoc qux-qf :column :field_id :explicit_reference)]
         (trigger-parse! card-id "select qux from orders")
+        (is (= #{orders-qt} (query-tables-for-card card-id)))
         (is (= #{qux-qf} (query-fields-for-card card-id)))))
 
+    (testing "selecting nothing from an unknown table"
+      (let [borders-qt {:card_id  card-id
+                        :schema   nil
+                        :table    "borders"
+                        :table_id nil}]
+        (trigger-parse! card-id "select * from borders")
+        (is (= #{borders-qt} (query-tables-for-card card-id)))
+        (is (= nil (query-fields-for-card card-id)))))
+
     (testing "selecting an unknown column from an unknown table"
-      (let [qux-qf {:card_id            card-id
-                    :table              "borders"
-                    :column             "qux"
-                    :table_id           nil
-                    :field_id           nil
-                    :explicit_reference true}]
+      (let [qux-qf     {:card_id            card-id
+                        :schema             nil
+                        :table              "borders"
+                        :column             "qux"
+                        :table_id           nil
+                        :field_id           nil
+                        :explicit_reference true}
+            borders-qt {:card_id  card-id
+                        :schema   nil
+                        :table    "borders"
+                        :table_id nil}]
         (trigger-parse! card-id "select qux from borders")
+        (is (= #{borders-qt} (query-tables-for-card card-id)))
         (is (= #{qux-qf} (query-fields-for-card card-id)))))))
 
 (deftest wildcard-test
   (with-test-setup
-    (let [total-qf {:card_id          card-id
-                    :table            "orders"
-                    :column           "total"
-                    :table_id         table-id
-                    :field_id         total-id
-                    :explicit_reference false}
-          tax-qf   {:card_id          card-id
-                    :table            "orders"
-                    :column           "tax"
-                    :table_id         table-id
-                    :field_id         tax-id
-                    :explicit_reference false}]
+    (let [total-qf  {:card_id            card-id
+                     :schema             "public"
+                     :table              "orders"
+                     :column             "total"
+                     :table_id           table-id
+                     :field_id           total-id
+                     :explicit_reference false}
+          tax-qf    {:card_id            card-id
+                     :schema             "public"
+                     :table              "orders"
+                     :column             "tax"
+                     :table_id           table-id
+                     :field_id           tax-id
+                     :explicit_reference false}
+          orders-qt (dissoc total-qf :column :field_id :explicit_reference)]
       (testing "simple select *"
         (trigger-parse! card-id "select * from orders")
+        (is (= #{orders-qt} (query-tables-for-card card-id)))
         (let [qfs (query-fields-for-card card-id)]
           (is (= 9 (count qfs)))
           (is (not-every? :explicit_reference qfs))
@@ -164,20 +193,28 @@
 
 (deftest table-wildcard-test
   (with-test-setup
-    (let [total-qf {:card_id          card-id
-                    :table            "orders"
-                    :column           "total"
-                    :table_id         table-id
-                    :field_id         total-id
-                    :explicit_reference true}
-          tax-qf   {:card_id          card-id
-                    :table            "orders"
-                    :column           "tax"
-                    :table_id         table-id
-                    :field_id         tax-id
-                    :explicit_reference true}]
+    (let [total-qf  {:card_id            card-id
+                     :schema             "public"
+                     :table              "orders"
+                     :column             "total"
+                     :table_id           table-id
+                     :field_id           total-id
+                     :explicit_reference true}
+          tax-qf    {:card_id            card-id
+                     :schema             "public"
+                     :table              "orders"
+                     :column             "tax"
+                     :table_id           table-id
+                     :field_id           tax-id
+                     :explicit_reference true}
+          orders-qt (dissoc total-qf :column :field_id :explicit_reference)
+          people-qt {:card_id  card-id
+                     :schema   "public"
+                     :table    "people"
+                     :table_id  (mt/id :people)}]
       (testing "mix of select table.* and named columns"
         (trigger-parse! card-id "select p.*, o.tax, o.total from orders o join people p on p.id = o.user_id")
+        (is (= #{orders-qt people-qt} (query-tables-for-card card-id)))
         (let [qfs (query-fields-for-card card-id)]
           (is (= (+ 13 #_people 2 #_tax-and-total 1 #_o.user_id)
                  (count qfs)))
@@ -195,5 +232,5 @@
               :table_id table-id}]
       (testing "simple select count(*)"
         (trigger-parse! card-id "select count(*) from orders")
-        (is (empty? (query-fields-for-card card-id)))
-        (is (= #{qt} (query-tables-for-card card-id)))))))
+        (is (= #{qt} (query-tables-for-card card-id)))
+        (is (empty? (query-fields-for-card card-id)))))))

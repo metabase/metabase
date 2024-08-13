@@ -362,6 +362,8 @@
 
 ;;; Execution Metrics
 
+(def ^:private query-execution-window-days 30)
+
 (defn- summarize-executions
   "Summarize `executions`, by incrementing approriate counts in a summary map."
   ([]
@@ -369,7 +371,8 @@
                                                                                     [:= :error nil ] false
                                                                                     [:= :error "" ] false
                                                                                     :else true] :has_error]]
-                                              :from   [:query_execution]})))
+                                              :from   [:query_execution]
+                                              :where  [:> :started_at (t/minus (t/offset-date-time) (t/days query-execution-window-days))]})))
   ([executions]
    (reduce summarize-executions {:executions 0, :by_status {}, :num_per_user {}, :num_by_latency {}} executions))
   ([summary execution]
