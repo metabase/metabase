@@ -25,7 +25,7 @@
    [:auth-method                   [:enum "none" "header" "query-param" "request-body"]]
    [:auth-info    {:optional true} [:map-of string-or-keyword :any]]
    ;; used by the frontend to display the auth info properly
-   [:fe-form-type {:optional true} [:enum "api-key" "bearer" "basic"]]
+   [:fe-form-type {:optional true} [:enum "api-key" "bearer" "basic" "none"]]
    ;; request method
    [:method       {:optional true} [:enum "get" "post" "put"]]])
 
