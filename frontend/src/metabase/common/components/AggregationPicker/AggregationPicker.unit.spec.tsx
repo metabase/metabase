@@ -167,10 +167,7 @@ function setup({
   );
 
   function getRecentClause(index: number = -1): Lib.Clause | undefined {
-    expect(onQueryChange).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.anything(),
-    );
+    expect(onQueryChange).toHaveBeenCalledWith(expect.anything());
     const [query] = onQueryChange.mock.lastCall;
     return Lib.aggregations(query, stageIndex).at(index);
   }
