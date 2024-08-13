@@ -45,9 +45,9 @@ function buildStructuredQuerySectionOptions(
   query: Lib.Query,
   stageIndex: number,
   group: Lib.ColumnGroup,
+  columns: Lib.ColumnMetadata[],
 ): StructuredQuerySectionOption[] {
   const groupInfo = Lib.displayInfo(query, stageIndex, group);
-  const columns = Lib.getColumnsFromColumnGroup(group);
 
   return columns.map(column => {
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
@@ -165,7 +165,16 @@ export function getParameterMappingOptions(
     const groups = _.uniq(columns, ({ group }) => group);
 
     const options = groups.flatMap(({ stageIndex, group }) => {
-      return buildStructuredQuerySectionOptions(query, stageIndex, group);
+      const groupColumns = columns
+        .filter(column => column.group === group)
+        .map(({ column }) => column);
+
+      return buildStructuredQuerySectionOptions(
+        query,
+        stageIndex,
+        group,
+        groupColumns,
+      );
     });
 
     return options;
