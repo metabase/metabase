@@ -3,15 +3,19 @@ import type Question from "metabase-lib/v1/Question";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 
 export function isQuestionDirty(
-  question: Question,
-  originalQuestion: Question,
+  question: Question | undefined,
+  originalQuestion: Question | undefined,
 ) {
   // When viewing a dataset, its dataset_query is swapped with a clean query using the dataset as a source table
   // (it's necessary for datasets to behave like tables opened in simple mode)
   // We need to escape the isDirty check as it will always be true in this case,
   // and the page will always be covered with a 'rerun' overlay.
   // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-  if (!question || isAdHocModelQuestion(question, originalQuestion)) {
+  if (
+    !question ||
+    !originalQuestion ||
+    isAdHocModelQuestion(question, originalQuestion)
+  ) {
     return false;
   }
 
