@@ -193,6 +193,20 @@ export function getParameterColumns(
   return { query: nextQuery, columns };
 }
 
+function getTemporalColumns(query: Lib.Query) {
+  const stageIndex = -1;
+  const columns = Lib.breakouts(query, stageIndex).map(breakout => {
+    return Lib.breakoutColumn(query, stageIndex, breakout);
+  });
+  const [group] = Lib.groupColumns(columns);
+
+  return columns.map(column => ({
+    stageIndex,
+    column,
+    group,
+  }));
+}
+
 function getFilterableColumns(query: Lib.Query) {
   const stageIndexes = getFilterStageIndexes(query);
 
@@ -210,20 +224,6 @@ function getFilterableColumns(query: Lib.Query) {
       }));
     });
   });
-}
-
-function getTemporalColumns(query: Lib.Query) {
-  const stageIndex = -1;
-  const columns = Lib.breakouts(query, stageIndex).map(breakout => {
-    return Lib.breakoutColumn(query, stageIndex, breakout);
-  });
-  const [group] = Lib.groupColumns(columns); // TODO: is this always only 1 group?
-
-  return columns.map(column => ({
-    stageIndex,
-    column,
-    group,
-  }));
 }
 
 function appendStageIfAggregated(query: Lib.Query) {
