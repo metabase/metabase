@@ -429,28 +429,6 @@
               (mt/rows
                 (qp/process-query query))))))))
 
-;; TODO multi-stage metrics are not supported
-#_(deftest ^:parallel execute-multi-stage-metric
-  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-        stage-one (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
-                      (lib/breakout (lib/with-temporal-bucket
-                                      (lib.metadata/field mp (mt/id :orders :created_at))
-                                      :month))
-                      (lib/aggregate (lib/count))
-                      (lib/append-stage))
-        stage-one-cols (lib/visible-columns stage-one)
-        source-query (-> stage-one
-                         (lib/breakout (m/find-first (comp #{"Created At: Month"} :display-name) stage-one-cols))
-                         (lib/aggregate (lib/avg (m/find-first (comp #{"Count"} :display-name) stage-one-cols))))]
-    (mt/with-temp [:model/Card source-metric {:dataset_query (lib.convert/->legacy-MBQL source-query)
-                                              :database_id (mt/id)
-                                              :table_id (mt/id :orders)
-                                              :name "new_metric"
-                                              :type :metric}]
-      (let [query (lib/query mp (lib.metadata/card mp (:id source-metric)))]
-        (is (=? (mt/rows (qp/process-query source-query))
-                (mt/rows (qp/process-query query))))))))
-
 (deftest ^:parallel execute-single-stage-metric
   (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
         source-query (-> (lib/query mp (lib.metadata/table mp (mt/id :products)))
@@ -650,3 +628,27 @@
                          :filters [[:< {} [:field {} "RATING"] [:value {} 5]]
                                    [:> {} [:field {} "RATING"] [:value {} 3]]]}]}
               (adjust query))))))
+
+(deftest ^:parallel model-based-metric-with-implicit-join-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        model-query (lib/query mp (lib.metadata/table mp (mt/id :orders)))]
+    (mt/with-temp [:model/Card model {:dataset_query (lib.convert/->legacy-MBQL model-query)
+                                      :database_id (mt/id)
+                                      :name "Orders model"
+                                      :type :model}
+                   :model/Card metric {:dataset_query
+                                       (as-> (lib/query mp (lib.metadata/card mp (:id model))) $q
+                                         (lib/breakout $q (m/find-first (comp #{"Category"} :display-name)
+                                                                        (lib/breakoutable-columns $q)))
+                                         (lib/aggregate $q (lib/count))
+                                         (lib.convert/->legacy-MBQL $q))
+                                       :database_id (mt/id)
+                                       :name "Orders model metric"
+                                       :type :metric}]
+      (let [metric-query (lib/query mp (lib.metadata/card mp (:id metric)))
+            etalon-query (as-> (lib/query mp (lib.metadata/card mp (:id model))) $q
+                           (lib/breakout $q (m/find-first (comp #{"Category"} :display-name)
+                                                          (lib/breakoutable-columns $q)))
+                           (lib/aggregate $q (lib/count)))]
+        (is (=? (mt/rows (qp/process-query etalon-query))
+                (mt/rows (qp/process-query metric-query))))))))
