@@ -39,11 +39,21 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
   "M/D/YYYY": {
     month: "M/YYYY",
   },
+  "MM/DD/YYYY": {
+    month: "MM/YYYY",
+  },
   "D/M/YYYY": {
     month: "M/YYYY",
   },
+  "DD/MM/YYYY": {
+    month: "MM/YYYY",
+  },
   "YYYY/M/D": {
     month: "YYYY/M",
+    quarter: "YYYY - [Q]Q",
+  },
+  "YYYY/MM/DD": {
+    month: "YYYY/MM",
     quarter: "YYYY - [Q]Q",
   },
   "MMMM D, YYYY": {
