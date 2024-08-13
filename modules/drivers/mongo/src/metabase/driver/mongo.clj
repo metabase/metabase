@@ -18,10 +18,13 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.metadata.protocols :as lib.metadata.protocols]
+   [metabase.lib.schema.common :as lib.schema.common]
    [metabase.query-processor :as qp]
    [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
@@ -180,7 +183,7 @@
                      (when (not= depth max-depth)
                        {(depth-kvs (inc depth))
                         {"$cond" {"if"   {"$eq" [{"$type" (str "$" (depth-kvs depth) ".v")}, "object"]}
-                                  "then" {"$concatArrays" [[{"k" nil "v" nil}]
+                                  "then" {"$concatArrays" [[{"k" nil "v" nil}] ; this is so that the object is selected as well
                                                            {"$objectToArray" (str "$" (depth-kvs depth) ".v")}]}
                                   "else" [{"k" nil "v" nil}]}}}))}]
             (not= depth max-depth)
@@ -192,23 +195,30 @@
         (fn [depth]
           (let [depths (range (inc depth))]
             [{"$match" {(depth-k depth) {"$ne" nil}}}
-             {"$group" {"_id" (into {(depth-type depth) (str "$" (depth-type depth))}
+             {"$group" {"_id" (into {"type" (str "$" (depth-type depth))}
                                     (map (juxt depth-k #(str "$" (depth-k %))) depths))
-                        "index" {"$first" (str "$" (depth-idx depth))}
-                        "count" {"$sum" 1}}}
+                        ;; "sortKey" is constructed so that sorting fields by "sortKey" under each parent field
+                        ;; yields a stable database-position. The way database-position would be set with imperative
+                        ;; pseudocode:
+                        ;; i = 0
+                        ;; for each row in sample-row:
+                        ;;   for each k,v in row:
+                        ;;     database-position = i
+                        ;;     i = i + 1
+                        "sortKey" {"$min" {"$concat" [{"$toString" "$_id"} "." {"$toString" (str "$" (depth-idx depth))}]}}
+                        "count"   {"$sum" 1}}}
              {"$sort" {"count" -1}}
-             {"$group" {"_id" (into {} (map (juxt depth-k #(str "$_id." (depth-k %))) depths))
-                        "index" {"$first" "$index"}
-                        "types" {"$push" {"type"  (str "$_id." (depth-type depth))
-                                          "count" "$count"}}}}
-             {"$project" {"_id"                  0
-                          "path"                 {"$concat" (vec (interpose "." (for [i depths]
-                                                                                  (str "$_id." (depth-k i)))))}
-                          "k"                    (str "$_id." (depth-k depth))
-                          "index"                1
-                          "mostCommonType"       {"$cond" {"if"   {"$eq"     [{"$arrayElemAt" ["$types.type", 0]}, "null"]}
-                                                           "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
-                                                           "else" {"$arrayElemAt" ["$types.type", 0]}}}}}]))
+             {"$group" {"_id"     (into {} (map (juxt depth-k #(str "$_id." (depth-k %))) depths))
+                        "sortKey" {"$min" "$sortKey"}
+                        "types"   {"$push" {"type" (str "$_id.type")}}}}
+             {"$project" {"_id"            0
+                          "path"           {"$concat" (vec (interpose "." (for [i depths]
+                                                                            (str "$_id." (depth-k i)))))}
+                          "k"              (str "$_id." (depth-k depth))
+                          "sortKey"        1
+                          "mostCommonType" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$types.type", 0]}, "null"]}
+                                                     "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
+                                                     "else" {"$arrayElemAt" ["$types.type", 0]}}}}}]))
         all-depths (range (inc max-depth))
         facets (into {} (map (juxt #(str "depth" %) facet-stage) all-depths))]
     (vec (concat (sample-stages collection-name sample-size)
@@ -219,35 +229,40 @@
                   {"$project" {"allFields" {"$concatArrays" (mapv #(str "$" %) (keys facets))}}}
                   {"$unwind" "$allFields"}]))))
 
-(defn- nested-level-query [collection-name sample-size parent-paths]
+(defn- nested-query [collection-name sample-size parent-paths]
   (letfn [(path-query [path]
             [{"$project" {"path" path
                           "kvs"  {"$objectToArray" (str "$" path)}}}
              {"$unwind" {"path"              "$kvs"
                          "includeArrayIndex" "index"}}
              {"$project"
-              {"path"  "$path"
-               "k"     "$kvs.k"
-               "type"  {"$type" "$kvs.v"}
-               "index" "$index"}}
+              {"path"    "$path"
+               "k"       "$kvs.k"
+               "type"    {"$type" "$kvs.v"}
+               "sortKey" {"$concat" [{"$toString" "$_id"} "." {"$toString" "$index"}]}}}
+             ;; count by k, type
              {"$group"
-              {"_id" {"path"  "$path"
-                      "k"     "$k"
-                      "type"  "$type"}
-               "index" {"$first" "$index"}
-               "count" {"$sum" 1}}}
+              {"_id"     {"path" "$path"
+                          "k"    "$k"
+                          "type" "$type"}
+               "sortKey" {"$min" "$sortKey"}
+               "count"   {"$sum" 1}}}
+             ;; types by k, sorted by count
              {"$sort" {"count" -1}}
              {"$group"
-              {"_id"            {"path"  "$_id.path"
-                                 "k"     "$_id.k"}
-               "index"          {"$first" "$index"}
-               "mostCommonType" {"$first" "$_id.type"}}}
+              {"_id"     {"path" "$_id.path"
+                          "k"    "$_id.k"}
+               "sortKey" {"$min" "$sortKey"}
+               "types"   {"$push" {"type" "$_id.type"}}}}
+             ;; get the first non-null type
              {"$project"
               {"_id"            0
                "path"           {"$concat" ["$_id.path" "." "$_id.k"]}
                "k"              "$_id.k"
-               "index"          "$index"
-               "mostCommonType" 1}}])]
+               "sortKey"        "$sortKey"
+               "mostCommonType" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$types.type", 0]}, "null"]} ;; TODO: handle undefined too?
+                                          "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
+                                          "else" {"$arrayElemAt" ["$types.type", 0]}}}}}])]
     (concat (sample-stages collection-name sample-size)
             [{"$replaceRoot" {"newRoot" "$$ROOT"}}
              {"$project" {"sample" 0}}
@@ -261,12 +276,25 @@
   (dec (count (str/split path #"\."))))
 
 (def root-query-depth
-  "query-depth's value involves a trade-off. The lower the query-depth the faster root-query executes.
-   however the lower it is, the more we might have to do more nested-level-query executions.
-   root-query-depth 4"
+  "The depth of nested objects that [[root-query]] will execute to. If set to 0, the query will only return the
+   root-level fields, and nested fields will be queried with further [[nested-query]] executions. Setting its value
+   involves a trade-off: the lower it is, the faster root-query executes, but the more we might have to do more
+   nested-query executions."
   4)
 
-(defn- infer-schema [db table]
+(mr/def ::FieldInfo
+  [:map {:closed true}
+   [:path           ::lib.schema.common/non-blank-string]
+   [:k              ::lib.schema.common/non-blank-string]
+   [:sortKey        ::lib.schema.common/non-blank-string]
+   [:mostCommonType ::lib.schema.common/non-blank-string]])
+
+(mu/defn- infer-fields :- [:sequential ::FieldInfo]
+  "Queries the database for a sample of the data in `table` and returns a list of field information. Because Mongo
+   documents can have 100 levels of nesting, we query the database with a [[root-query]] first, which gets all the objects
+   until a depth of [[root-query-depth]]. Then for any objects at that depth, we recursively query the database with
+   [[nested-query]] for fields nested inside those objects."
+  [db table]
   (let [collection-name (:name table)
         sample-size metadata-queries/nested-field-sample-limit
         q! (fn [q]
@@ -276,7 +304,7 @@
                                                          :query      (json/generate-string q)}}))))
         fields        (flatten (q! (root-query collection-name sample-size root-query-depth)))
         nested-fields (fn nested-fields [paths]
-                        (let [fields (flatten (first (q! (nested-level-query collection-name sample-size paths))))
+                        (let [fields (flatten (first (q! (nested-query collection-name sample-size paths))))
                               nested (when-let [object-fields (seq (filter #(= (:mostCommonType %) "object") fields))]
                                        (nested-fields (map :path object-fields)))]
                           (concat fields nested)))
@@ -316,7 +344,7 @@
   "Adds :database-position to all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
   [fields i]
   (->> fields
-       (sort-by :index) ; the array index of the key in the object
+       (sort-by :sortKey)
        (reduce (fn [[fields i] field]
                  (let [field             (assoc field :database-position i)
                        i                 (inc i)
@@ -326,26 +354,27 @@
                                            [nested-fields i])
                        field             (-> field
                                              (m/assoc-some :nested-fields nested-fields)
-                                             (dissoc :index))]
+                                             (dissoc :sortKey))]
                    [(conj fields field) i]))
                [#{} i])))
 
 (defmethod driver/describe-table :mongo
   [_driver database table]
-  (let [fields (infer-schema database table)
+  (let [fields (infer-fields database table)
         fields (->> fields
                     (map (fn [x]
                            (cond-> {:name              (:k x)
                                     :database-type     (:mostCommonType x)
                                     :base-type         (type-alias->base-type (:mostCommonType x))
-                                    ; index is used by `set-database-position`, and not present in final result
-                                    :index             (:index x)
+                                    ; sortKey is used by `set-database-position`, and not present in final result
+                                    :sortKey           (:sortKey x)
                                     ; path and depth are used to nest fields, and not present in final result
                                     :path              (str/split (:path x) #"\.")
                                     :depth             (path->depth (:path x))}
                              (= (:k x) "_id")
                              (assoc :pk? true)))))
-        ;; convert flat list of fields into deeply-nested map. :nested-fields are maps from field name to field data
+        ;; convert the flat list of fields into deeply-nested map.
+        ;; `fields` and `:nested-fields` values are maps from name to field
         fields (loop [depth      0
                       new-fields {}]
                  (if-some [fields-at-depth (not-empty (filter #(= (:depth %) depth) fields))]
@@ -355,12 +384,12 @@
                                   new-fields
                                   fields-at-depth))
                    new-fields))
-        ;; replace :nested-field maps with sets of nested fields
-        fields (:nested-fields (walk/postwalk (fn [x]
-                                                (if-let [nested-fields (:nested-fields x)]
-                                                  (assoc x :nested-fields (set (vals nested-fields)))
-                                                  x))
-                                              {:nested-fields fields}))
+        ;; replace maps from name to field with sets of fields
+        fields (walk/postwalk (fn [x]
+                                (cond-> x
+                                  (map? x)
+                                  (m/update-existing :nested-fields #(set (vals %)))))
+                              (set (vals fields)))
         [fields _] (add-database-position fields 0)]
     {:schema nil
      :name   (:name table)

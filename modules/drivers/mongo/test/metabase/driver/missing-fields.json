@@ -1,0 +1,34 @@
+[
+  {
+    "a": "value1",
+    "b": {
+      "b_c": "subvalue1",
+      "b_d": 42,
+      "b_e": {
+        "b_e_f": "deep value"
+      }
+    },
+    "c": null
+  },
+  {
+    "a": "value2",
+    "b": {
+      "b_d": null,
+      "b_e": null,
+      "b_c": null
+    }
+  },
+  {
+    "a": "value2",
+    "b": {
+      "b_e": {}
+    }
+  },
+  {
+    "a": "value3",
+    "b": null
+  },
+  {
+    "f": "value5"
+  }
+]
