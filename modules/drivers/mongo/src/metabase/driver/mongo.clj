@@ -187,7 +187,7 @@
   (let [depths (range (inc depth))]
     [{"$match" {(depth-k depth) {"$ne" nil}}}
      {"$group" {"_id" (into {"type" (str "$" (depth-type depth))
-                             "path" {"$concat" (concat (when (= root-path "$ROOT") [root-path "."])
+                             "path" {"$concat" (concat (when (not= root-path "$ROOT") [root-path "."])
                                                        (interpose "."
                                                                   (map #(str "$" (depth-k %)) depths)))}
                              "k"    (str "$" (depth-k depth))})
@@ -287,21 +287,18 @@
         "object"     :type/Dictionary
         "array"      :type/Array
         "binData"    :type/*
-        "undefined"  :type/*
         "objectId"   :type/MongoBSONID
         "bool"       :type/Boolean
         "date"       :type/Instant
         "null"       :type/*
-        "regex"      :type/Text  ; Regular expressions are typically represented as strings
-        "dbPointer"  :type/*     ; Deprecated. TODO: should this be something else?
-        "javascript" :type/*     ; TODO: should this be text?
-        "symbol"     :type/Text  ; Deprecated. TODO: should this be text?
+        "regex"      :type/*
+        "dbPointer"  :type/*
+        "javascript" :type/*
+        "symbol"     :type/Text
         "int"        :type/Integer
         "timestamp"  :type/Instant
         "long"       :type/Integer
-        "decimal"    :type/Decimal
-        "minKey"     :type/* ; TODO: should this be something else?
-        "maxKey"     :type/*}
+        "decimal"    :type/Decimal}
         type-alias :type/*))
 
 (defn- add-database-position
