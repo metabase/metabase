@@ -9,7 +9,12 @@ import {
   DataPermissionValue,
 } from "metabase/admin/permissions/types";
 import {
+  isTableEntityId,
+  isSchemaEntityId,
+} from "metabase/admin/permissions/utils/data-entity-id";
+import {
   getSchemasPermission,
+  hasPermissionValueInSubgraph,
   updateSchemasPermission,
 } from "metabase/admin/permissions/utils/graph";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -30,10 +35,22 @@ export function shouldRestrictNativeQueryPermissions(
     DataPermission.CREATE_QUERIES,
   );
 
-  return (
-    value === DataPermissionValue.SANDBOXED &&
-    currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
-  );
+  if (isTableEntityId(entityId)) {
+    return (
+      (value === DataPermissionValue.SANDBOXED ||
+        value === DataPermissionValue.BLOCKED) &&
+      currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+    );
+  }
+
+  if (isSchemaEntityId(entityId)) {
+    return (
+      value === DataPermissionValue.BLOCKED &&
+      currDbNativePermission === DataPermissionValue.QUERY_BUILDER_AND_NATIVE
+    );
+  }
+
+  return false;
 }
 
 export function upgradeViewPermissionsIfNeeded(
@@ -50,10 +67,23 @@ export function upgradeViewPermissionsIfNeeded(
     DataPermission.VIEW_DATA,
   );
 
-  if (
+  const requiresUnrestrictedAccess =
     value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    dbPermission !== DataPermissionValue.IMPERSONATED
-  ) {
+    dbPermission !== DataPermissionValue.UNRESTRICTED &&
+    dbPermission !== DataPermissionValue.IMPERSONATED;
+
+  const isGrantingQueryAccessWithBlockedChild =
+    value !== DataPermissionValue.NO &&
+    hasPermissionValueInSubgraph(
+      permissions,
+      groupId,
+      entityId,
+      database,
+      DataPermission.VIEW_DATA,
+      DataPermissionValue.BLOCKED,
+    );
+
+  if (requiresUnrestrictedAccess || isGrantingQueryAccessWithBlockedChild) {
     permissions = updateSchemasPermission(
       permissions,
       groupId,
@@ -61,7 +91,6 @@ export function upgradeViewPermissionsIfNeeded(
       DataPermissionValue.UNRESTRICTED,
       database,
       DataPermission.VIEW_DATA,
-      false,
     );
   }
 

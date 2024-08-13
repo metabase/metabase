@@ -8,6 +8,7 @@ import {
 import {
   getFieldsPermission,
   getSchemasPermission,
+  hasPermissionValueInSubgraph,
 } from "metabase/admin/permissions/utils/graph";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
 import type Database from "metabase-lib/v1/metadata/Database";
@@ -17,7 +18,7 @@ import type {
   ConcreteTableId,
 } from "metabase-types/api";
 
-import type { EntityId } from "../types";
+import type { DatabaseEntityId, EntityId, SchemaEntityId } from "../types";
 import { DataPermission, DataPermissionValue } from "../types";
 
 export const getDefaultGroupHasHigherAccessText = (defaultGroup: Group) =>
@@ -157,39 +158,98 @@ export function getWillRevokeNativeAccessWarningModal(
   }
 }
 
-export function getRawQueryWarningModal(
+export function getViewDataPermissionsTooRestrictiveWarningModal(
   permissions: GroupsPermissions,
   groupId: Group["id"],
-  entityId: EntityId,
+  entityId: DatabaseEntityId | SchemaEntityId,
+  database: Database,
   value: DataPermissionValue,
 ) {
-  const nativePermission = getSchemasPermission(
-    permissions,
-    groupId,
-    entityId,
-    DataPermission.CREATE_QUERIES,
-  );
+  // if user sets 'Query builder and native' for a DB, warn them that view data permissions must be 'Can view'
+  if (!isSchemaEntityId(entityId)) {
+    const nativePermission = getSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermission.CREATE_QUERIES,
+    );
 
-  const viewPermission = getSchemasPermission(
+    const viewPermission = getSchemasPermission(
+      permissions,
+      groupId,
+      entityId,
+      DataPermission.VIEW_DATA,
+    );
+
+    const isAddingNativeQueryPermissions =
+      value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
+      nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE;
+
+    const canNotViewNativeQueryResults =
+      viewPermission !== DataPermissionValue.UNRESTRICTED &&
+      viewPermission !== DataPermissionValue.IMPERSONATED;
+
+    if (
+      isAddingNativeQueryPermissions &&
+      canNotViewNativeQueryResults &&
+      PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn
+    ) {
+      return {
+        title: t`Allow native query editing?`,
+        message: t`This will also change this group's data access to “Can view” for this database.`,
+        confirmButtonText: t`Allow`,
+        cancelButtonText: t`Cancel`,
+      };
+    }
+  }
+
+  // if user sets 'No' for a DB/Schema and a sub schema/tables contains 'Blocked' permissions, warn them
+  // that we'll automatically upgrade the DB/Schema to 'Can view' view access
+  const hasCreateQueryAccess = value !== DataPermissionValue.NO;
+  if (!hasCreateQueryAccess) {
+    return;
+  }
+
+  const hasChildWithBlockedPermission = hasPermissionValueInSubgraph(
     permissions,
     groupId,
     entityId,
+    database,
     DataPermission.VIEW_DATA,
+    DataPermissionValue.BLOCKED,
   );
 
-  if (
-    value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
-    ![
-      DataPermissionValue.UNRESTRICTED,
-      DataPermissionValue.IMPERSONATED,
-    ].includes(viewPermission)
-  ) {
+  if (hasChildWithBlockedPermission) {
+    const isSchema = isSchemaEntityId(entityId);
+    const entityType = isSchema ? t`schema` : t`database`;
+
+    const coreMessage = isSchema
+      ? t`This schema contains one or more tables with “Blocked” permissions, which prevents access to the query builder. To grant Create query permissions for this schema, Metabase will also change the View data permissions on this schema to “Can view”.`
+      : t`This database contains one or more schemas and tables with “Blocked” permissions, which prevents access to the query builder. To grant Create query permissions for this database, Metabase will also change the View data permissions on this database to “Can view”.`;
+
+    const hasChildWithSandboxedPermission = hasPermissionValueInSubgraph(
+      permissions,
+      groupId,
+      entityId,
+      database,
+      DataPermission.VIEW_DATA,
+      DataPermissionValue.SANDBOXED,
+    );
+    const sandboxWarningMessage = hasChildWithSandboxedPermission
+      ? t`WARNING: Updating access will remove your sandboxing settings for this ${entityType}. To keep those settings, you’ll need to manually change the View data permissions for the schemas or tables that are set to “Blocked”.`
+      : "";
+
     return {
-      title: t`Allow native query editing?`,
-      message: t`This will also change this group's data access to Unrestricted for this database.`,
-      confirmButtonText: t`Allow`,
+      title: t`Change “View data” access for this ${entityType} to “Can view” as well?`,
+      message: (
+        <>
+          {coreMessage}
+          <br />
+          <br />
+          {sandboxWarningMessage}
+        </>
+      ),
+      confirmButtonText: t`Update access`,
       cancelButtonText: t`Cancel`,
     };
   }
