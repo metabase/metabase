@@ -145,9 +145,9 @@ export function getTargetsForQuestion(question: Question): Target[] {
 }
 
 function getTargetsForStructuredQuestion(question: Question): Target[] {
-  const { query, stageIndex, columns } = getParameterColumns(question);
+  const { query, columns } = getParameterColumns(question);
 
-  return columns.map(targetColumn => {
+  return columns.map(({ column: targetColumn, stageIndex }) => {
     const dimension: ClickBehaviorDimensionTarget["dimension"] = [
       "dimension",
       Lib.legacyRef(query, stageIndex, targetColumn),

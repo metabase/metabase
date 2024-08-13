@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -80,10 +82,8 @@ export function getParameterTargetField(
       return fields.find(field => field.id === fieldIdOrName);
     }
 
-    const { query, stageIndex, columns } = getParameterColumns(
-      question,
-      parameter,
-    );
+    const { query, columns } = getParameterColumns(question, parameter);
+
     if (columns.length === 0) {
       // query and metadata are not available: 1) no data permissions 2) embedding
       // there is no way to find the correct field so pick the first one matching by name
@@ -92,26 +92,34 @@ export function getParameterTargetField(
       );
     }
 
-    const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
-      query,
-      stageIndex,
-      columns,
-      [fieldRef],
-    );
-    if (columnIndex < 0) {
-      return null;
-    }
+    const stageIndexes = _.uniq(columns.map(({ stageIndex }) => stageIndex));
 
-    const column = columns[columnIndex];
-    const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
-    if (fieldValuesInfo.fieldId == null) {
-      // the column does not represent to a database field, e.g. coming from an aggregation clause
-      return null;
-    }
+    for (const stageIndex of stageIndexes) {
+      const stageColumns = columns
+        .filter(column => column.stageIndex === stageIndex)
+        .map(({ column }) => column);
 
-    // do not use `metadata.field(id)` because it only works for fields loaded
-    // with the original table, not coming from model metadata
-    return fields.find(field => field.id === fieldValuesInfo.fieldId);
+      const [columnIndex] = Lib.findColumnIndexesFromLegacyRefs(
+        query,
+        stageIndex,
+        stageColumns,
+        [fieldRef],
+      );
+
+      if (columnIndex >= 0) {
+        const column = stageColumns[columnIndex];
+        const fieldValuesInfo = Lib.fieldValuesSearchInfo(query, column);
+
+        if (fieldValuesInfo.fieldId == null) {
+          // the column does not represent to a database field, e.g. coming from an aggregation clause
+          return null;
+        }
+
+        // do not use `metadata.field(id)` because it only works for fields loaded
+        // with the original table, not coming from model metadata
+        return fields.find(field => field.id === fieldValuesInfo.fieldId);
+      }
+    }
   }
 
   return null;
@@ -152,9 +160,7 @@ export function getParameterColumns(
   parameter?: Parameter,
 ): {
   query: Lib.Query;
-  stageIndex: number; // TODO: remove this
   columns: {
-    // TODO: remove return type
     stageIndex: number;
     column: Lib.ColumnMetadata;
     group: Lib.ColumnGroup;
@@ -166,21 +172,25 @@ export function getParameterColumns(
     question.type() !== "question"
       ? question.composeQuestionAdhoc().query()
       : question.query();
-  const availableColumns =
-    parameter && isTemporalUnitParameter(parameter)
-      ? getTemporalColumns(query)
-      : getFilterableColumns(query);
-  const filteredColumns = parameter
+
+  if (parameter && isTemporalUnitParameter(parameter)) {
+    const availableColumns = getTemporalColumns(query);
+    const columns = availableColumns.filter(({ column, stageIndex }) => {
+      return columnFilterForParameter(query, stageIndex, parameter)(column);
+    });
+
+    return { query, columns };
+  }
+
+  const nextQuery = appendStageIfAggregated(query);
+  const availableColumns = getFilterableColumns(nextQuery);
+  const columns = parameter
     ? availableColumns.filter(({ column, stageIndex }) =>
-        columnFilterForParameter(query, stageIndex, parameter)(column),
+        columnFilterForParameter(nextQuery, stageIndex, parameter)(column),
       )
     : availableColumns;
 
-  return {
-    query,
-    stageIndex: -1, // TODO: remove this
-    columns: filteredColumns,
-  };
+  return { query: nextQuery, columns };
 }
 
 function getFilterableColumns(baseQuery: Lib.Query) {
@@ -202,7 +212,8 @@ function getFilterableColumns(baseQuery: Lib.Query) {
     });
   });
 }
-export function getTemporalColumns(query: Lib.Query) {
+
+function getTemporalColumns(query: Lib.Query) {
   const stageIndex = -1;
   const columns = Lib.breakouts(query, stageIndex).map(breakout => {
     return Lib.breakoutColumn(query, stageIndex, breakout);

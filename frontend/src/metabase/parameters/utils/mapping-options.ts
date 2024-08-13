@@ -1,3 +1,4 @@
+import { t } from "ttag";
 import _ from "underscore";
 
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
@@ -52,7 +53,7 @@ function buildStructuredQuerySectionOptions(
     const columnInfo = Lib.displayInfo(query, stageIndex, column);
 
     return {
-      sectionName: getColumnGroupName(groupInfo),
+      sectionName: getColumnGroupName(groupInfo) || t`Summaries`,
       name: columnInfo.displayName,
       icon: getColumnIcon(column),
       target: buildColumnTarget(query, stageIndex, column),
