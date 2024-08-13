@@ -1,7 +1,6 @@
 import { t } from "ttag";
 
 import { useListCardAlertsQuery, skipToken } from "metabase/api";
-import { useHasAnyNotificationChannel } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import { canManageSubscriptions as canManageSubscriptionsSelector } from "metabase/selectors/user";
 import { Menu, Center, Icon, Title } from "metabase/ui";
@@ -14,7 +13,6 @@ export function AlertMenuItem({
   question: Question;
   onClick: () => void;
 }) {
-  const hasNotificationChannel = useHasAnyNotificationChannel();
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
   const { data: questionAlerts, isLoading } = useListCardAlertsQuery({
@@ -39,7 +37,6 @@ export function AlertMenuItem({
             <Icon name={hasAlerts ? "alert_filled" : "alert"} />
           </Center>
         }
-        disabled={!hasNotificationChannel}
         onClick={onClick}
       >
         <Title order={4} color="inherit">
