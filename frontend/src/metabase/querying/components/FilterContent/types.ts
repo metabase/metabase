@@ -1,16 +1,6 @@
 import type { IconName } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
-export interface FilterEditorProps {
-  query: Lib.Query;
-  stageIndex: number;
-  column: Lib.ColumnMetadata;
-  filter: Lib.FilterClause | undefined;
-  isSearching: boolean;
-  onChange: (filter: Lib.ExpressionClause | undefined) => void;
-  onInput: () => void;
-}
-
 export interface ColumnItem {
   column: Lib.ColumnMetadata;
   displayName: string;
@@ -30,4 +20,14 @@ export interface GroupItem {
   icon: IconName;
   columnItems: ColumnItem[];
   segmentItems: SegmentItem[];
+}
+
+export interface FilterEditorProps {
+  query: Lib.Query;
+  stageIndex: number;
+  column: Lib.ColumnMetadata;
+  filter: Lib.FilterClause | undefined;
+  isSearching: boolean;
+  onChange: (filter: Lib.ExpressionClause | undefined) => void;
+  onInput: () => void;
 }

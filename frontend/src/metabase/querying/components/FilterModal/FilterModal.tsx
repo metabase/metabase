@@ -2,18 +2,16 @@ import { useMemo, useRef, useState } from "react";
 
 import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
-import {
-  appendStageIfAggregated,
-  getGroupItems,
-  hasFilters,
-  removeFilters,
-} from "metabase/querying/utils/filters";
 import { Flex, Modal } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
 import { ModalBody, ModalFooter, ModalHeader } from "./FilterModal.styled";
 import { SEARCH_KEY } from "./constants";
 import {
+  appendStageIfAggregated,
+  getGroupItems,
+  hasFilters,
+  removeFilters,
   getModalTitle,
   getModalWidth,
   isSearchActive,
