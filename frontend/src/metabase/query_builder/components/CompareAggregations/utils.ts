@@ -171,7 +171,7 @@ export function updateQueryWithCompareOffsetAggregations(
     breakoutIndex = Lib.breakouts(nextQuery, stageIndex).length - 1;
   }
 
-  if (breakoutIndex !== 0) {
+  if (breakoutIndex > 0) {
     const breakouts = Lib.breakouts(nextQuery, stageIndex);
 
     // move the breakout to the front
