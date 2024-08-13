@@ -33,7 +33,7 @@ export default function VersionUpdateNotice() {
 function CloudCustomers({ currentVersion }) {
   return (
     <div>
-      {t`Metabase Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}
+      {t`Omniloy Cloud keeps your instance up-to-date. You're currently on version ${currentVersion}. Thanks for being a customer!`}
     </div>
   );
 }
@@ -46,7 +46,7 @@ function OnLatestVersion({ currentVersion }) {
   return (
     <div>
       <OnLatestVersionMessage>
-        {t`You're running Metabase ${currentVersion} which is the latest and greatest!`}
+        {t`You're running Omniloy ${currentVersion} which is the latest and greatest!`}
       </OnLatestVersionMessage>
     </div>
   );
@@ -75,7 +75,7 @@ function NewVersionAvailable({ currentVersion }) {
         )}
       >
         <span className={cx(CS.textWhite, CS.textBold)}>
-          {t`Metabase ${formatVersion(latestVersion)} is available.`}{" "}
+          {t`Omniloy ${formatVersion(latestVersion)} is available.`}{" "}
           {t`You're running ${currentVersion}`}
         </span>
         <ExternalLink

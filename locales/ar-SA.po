@@ -20267,7 +20267,7 @@ msgstr "ملحقات Metabase Enterprise Edition غير موجودة."
 
 #: metabase/email/messages.clj:130
 #, fuzzy
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "أنت مدعو للانضمام إلى {0} {1}"
 
 #: metabase/email/messages.clj:152
@@ -20282,8 +20282,8 @@ msgstr "{0} قبلوا دعوتهم {1}"
 
 #: metabase/email/messages.clj:184
 #, fuzzy
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] طلب إعادة تعيين كلمة المرور"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy طلب إعادة تعيين كلمة المرور"
 
 #: metabase/email/messages.clj:249
 #, fuzzy

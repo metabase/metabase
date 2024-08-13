@@ -140,7 +140,7 @@ export const ModelPersistenceConfiguration = () => {
         </p>
         <p>
           {c(
-            '{0} is either "Metabase" or the customized name of the application.',
+            '{0} is either "Omniloy" or the customized name of the application.',
           )
             .t`This will create a table for each of your models in a dedicated schema. ${applicationName} will refresh them on a schedule. Questions and queries that use your models will query these tables.`}
           {showMetabaseLinks && (

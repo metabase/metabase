@@ -17282,7 +17282,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Les extensions de Metabase Enterprise Edition ne sont PAS PRÉSENTES."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "Vous êtes invités à rejoindre les {0} {1}"
 
 #: metabase/email/messages.clj:152
@@ -17294,8 +17294,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} a accepté son invitation {1}"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] Demande de réinitialisation de mot de passe"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Demande de réinitialisation de mot de passe"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

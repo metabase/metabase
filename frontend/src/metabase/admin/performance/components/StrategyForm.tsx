@@ -197,7 +197,7 @@ const StrategyFormBody = ({
                   title={t`Minimum query duration`}
                   subtitle={
                     <Text size="sm">
-                      {t`Metabase will cache all saved questions with an average query execution time greater than this many seconds.`}
+                      {t`Omniloy will cache all saved questions with an average query execution time greater than this many seconds.`}
                     </Text>
                   }
                 >

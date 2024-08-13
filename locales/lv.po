@@ -17257,7 +17257,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Metabase Enterprise Edition paplašinājumi NAV KLĀT."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "Jūs esat uzaicināts pievienoties lietotāja {0} {1}"
 
 #: metabase/email/messages.clj:152
@@ -17269,8 +17269,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} pieņēma viņu {1} ielūgumu"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] Paroles atiestatīšanas pieprasījums"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Paroles atiestatīšanas pieprasījums"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

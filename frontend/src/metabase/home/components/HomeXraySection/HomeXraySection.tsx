@@ -97,7 +97,9 @@ const HomeXrayView = ({ database, candidates = [] }: HomeXrayViewProps) => {
             message={tableMessages[index]}
           />
         ))}
+        {/**
         <HomeHelpCard />
+        */}
       </SectionBody>
     </div>
   );

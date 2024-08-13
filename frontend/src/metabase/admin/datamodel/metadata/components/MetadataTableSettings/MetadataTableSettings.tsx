@@ -89,7 +89,7 @@ const MetadataTableSettings = ({
         <MetadataSection>
           <MetadataSectionHeader
             title={t`Cached field values`}
-            description={t`Metabase can scan the values in this table to enable checkbox filters in dashboards and questions.`}
+            description={t`Omniloy can scan the values in this table to enable checkbox filters in dashboards and questions.`}
           />
           <ActionButton
             className={cx(ButtonsS.Button, CS.mr2)}

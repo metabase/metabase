@@ -137,13 +137,13 @@ export const createMockSettingDefinition = (
 export const createMockSettings = (
   opts?: Partial<Settings | EnterpriseSettings>,
 ): EnterpriseSettings => ({
-  "admin-email": "admin@metabase.test",
+  "admin-email": "admin@omniloy.test",
   "anon-tracking-enabled": false,
   "application-colors": {},
   "application-font": "Lato",
   "application-font-files": [],
   // eslint-disable-next-line no-literal-metabase-strings -- This is a mock
-  "application-name": "Metabase",
+  "application-name": "Omniloy",
   "available-fonts": [],
   "available-locales": null,
   "bcc-enabled?": true,

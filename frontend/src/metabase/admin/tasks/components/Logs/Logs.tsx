@@ -45,7 +45,7 @@ export const Logs = ({
     <LogsContainer loading={!loaded} error={error}>
       {processUUIDs.length > 1 && (
         <div className={CS.pb1}>
-          <label>{t`Select Metabase process:`}</label>
+          <label>{t`Select Omniloy process:`}</label>
           <Select
             defaultValue="ALL"
             value={selectedProcessUUID}
@@ -56,7 +56,7 @@ export const Logs = ({
             className={cx(CS.inlineBlock, CS.ml1)}
             width={400}
           >
-            <Option value="ALL" key="ALL">{t`All Metabase processes`}</Option>
+            <Option value="ALL" key="ALL">{t`All Omniloy processes`}</Option>
             {processUUIDs.map(uuid => (
               <Option key={uuid} value={uuid}>
                 <code>{uuid}</code>

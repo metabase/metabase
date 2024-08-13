@@ -12030,8 +12030,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} قبلت دعوة عملية التمثيل"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] طلب إعادة تعيين كلمة المرور"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy طلب إعادة تعيين كلمة المرور"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17354,7 +17354,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Metabase Enterprise Edition extensions غير موجودة."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "تمت دعوتك للانضمام {0} '' s {1}"
 
 #: metabase/email/messages.clj:152
@@ -17366,8 +17366,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} قبلت دعوتهم {1}"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] طلب إعادة تعيين كلمة المرور"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy طلب إعادة تعيين كلمة المرور"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

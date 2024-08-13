@@ -12,4 +12,4 @@ export const enhanceRequestsReducer = originalRequestsReducer => {
     originalRequestsReducer(requestsReducer(state, action), action);
 };
 
-(window.Metabase = window.Metabase || {}).entities = entities;
+(window.Omniloy = window.Omniloy || {}).entities = entities;

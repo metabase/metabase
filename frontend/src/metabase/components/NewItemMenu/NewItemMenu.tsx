@@ -91,11 +91,11 @@ const NewItemMenu = ({
         icon: "dashboard",
         action: () => dispatch(setOpenModal("dashboard")),
       },
-      {
+      /*{
         title: t`Collection`,
         icon: "folder",
         action: () => dispatch(setOpenModal("collection")),
-      },
+      },*/
     );
 
     if (hasNativeWrite) {

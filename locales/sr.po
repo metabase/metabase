@@ -11988,8 +11988,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} je prihvatio njihov poziv za Metabejs"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] Zahtev za resetovanje lozinke"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Zahtev za resetovanje lozinke"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17276,7 +17276,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Dodaci za Metabejs Enterprise Edition NISU PRISUTNI."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "Pozvani ste da se pridružite korisnicima {0} {1}"
 
 #: metabase/email/messages.clj:152
@@ -17288,8 +17288,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} je prihvatio njihov {1} poziv"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] Zahtev za ponovno postavljanje lozinke"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Zahtev za ponovno postavljanje lozinke"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

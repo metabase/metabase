@@ -11993,8 +11993,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0}已接受其元数据库邀请"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase]密码重置请求"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy密码重置请求"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17255,7 +17255,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Metabase 企业版扩展不存在。"
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "邀请您加入{0}的{1}"
 
 #: metabase/email/messages.clj:152
@@ -17267,8 +17267,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0}接受了他们的{1}邀请"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}]密码重置请求"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy密码重置请求"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

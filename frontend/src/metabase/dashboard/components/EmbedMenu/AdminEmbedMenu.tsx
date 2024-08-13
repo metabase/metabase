@@ -84,7 +84,7 @@ export const AdminEmbedMenu = ({
             </Stack>
           )}
         </Menu.Item>
-
+        {/** 
         <Menu.Item
           data-testid="embed-menu-embed-modal-item"
           py="md"
@@ -105,6 +105,7 @@ export const AdminEmbedMenu = ({
             </Stack>
           )}
         </Menu.Item>
+        */}
       </AdminEmbedMenuContainer>
     </Menu>
   );

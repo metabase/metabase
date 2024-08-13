@@ -12,7 +12,7 @@ export function UpsellMetabaseBanner() {
       source="static-embed-settings-look-and-feel"
       fullWidth
     >
-      {t`The “Powered by Metabase” banner appears on all static embeds created with the open source version. You’ll need to upgrade to remove it.`}
+      {t`The “Powered by Omniloy banner appears on all static embeds created with the open source version. You’ll need to upgrade to remove it.`}
     </UpsellCard>
   );
 }

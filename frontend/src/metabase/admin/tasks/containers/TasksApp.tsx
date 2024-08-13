@@ -70,7 +70,7 @@ export const TasksApp = ({ children }: TasksAppProps) => {
         <SectionTitle>
           <AdminHeader title={t`Troubleshooting logs`} />
           <Tooltip
-            label={t`Trying to get to the bottom of something? This section shows logs of Metabase's background tasks, which can help shed light on what's going on.`}
+            label={t`Trying to get to the bottom of something? This section shows logs of Omniloy's background tasks, which can help shed light on what's going on.`}
           >
             <InfoIcon name="info" />
           </Tooltip>

@@ -20,7 +20,7 @@ export const MigrationCreationError = ({
           <Icon size="1.5rem" name="warning" />
         </LargeIconContainer>
         <Box>
-          <Text fw="bold">{t`Migration to Metabase Cloud failed`}</Text>
+          <Text fw="bold">{t`Migration to Omniloy Cloud failed`}</Text>
           {error.data && <Text mt=".5rem">{error.data}</Text>}
           <Text mt="1rem">
             {c("{0} is an email address")

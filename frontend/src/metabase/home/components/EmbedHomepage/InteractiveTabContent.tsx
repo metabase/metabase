@@ -49,9 +49,9 @@ export const InteractiveTabContent = ({
         )}
 
         {/* eslint-disable-next-line no-literal-metabase-strings -- this homepage is only visible to admins*/}
-        <List.Item>{t`Implement SSO to sign app users into Metabase`}</List.Item>
+        <List.Item>{t`Implement SSO to sign app users into Omniloy`}</List.Item>
         {/* eslint-disable-next-line no-literal-metabase-strings -- this homepage is only visible to admins*/}
-        <List.Item>{t`Embed Metabase in your app`}</List.Item>
+        <List.Item>{t`Embed Omniloy in your app`}</List.Item>
         <List.Item>{t`Configure collection permissions`}</List.Item>
         <List.Item>{t`Setup data sandboxing to automatically scope data access based on user attributes`}</List.Item>
         <List.Item>{t`Hide any features you don't want to expose to your app’s users`}</List.Item>

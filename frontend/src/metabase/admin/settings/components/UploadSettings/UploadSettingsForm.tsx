@@ -288,7 +288,7 @@ const NoValidDatabasesMessage = () => (
       {t`None of your databases are compatible with this version of the uploads feature.`}
     </p>
     <p>
-      {jt`Metabase currently supports ${(
+      {jt`Omniloy currently supports ${(
         <strong key="db-types">{t`Postgres, MySQL, and H2`}</strong>
       )} for uploads and needs a connection with write privileges.`}
     </p>

@@ -27,8 +27,8 @@ interface MigrationInProgressProps {
 }
 
 const progressMessage: Record<InProgressStates, string> = {
-  init: t`Talking to Metabase Cloud...`,
-  setup: t`Talking to Metabase Cloud...`,
+  init: t`Talking to Omniloy Cloud...`,
+  setup: t`Talking to Omniloy Cloud...`,
   dump: t`Taking a snapshot of this instance...`,
   upload: t`Uploading the snapshot to the cloud...`,
 };
@@ -52,7 +52,7 @@ export const MigrationInProgress = ({
     dispatch(
       addUndo({
         icon: "info_filled",
-        message: t`Migration to Metabase Cloud has been canceled.`,
+        message: t`Migration to Omniloy Cloud has been canceled.`,
         undo: false,
       }),
     );
@@ -76,14 +76,14 @@ export const MigrationInProgress = ({
             />
           </Flex>
           <Box style={{ flex: "1 0 0" }}>
-            <Text fw="bold">{t`Migrating to Metabase Cloud…`}</Text>
+            <Text fw="bold">{t`Migrating to Omniloy Cloud…`}</Text>
             {readOnly ? (
               <List size="md" mt="md">
-                <List.Item>{t`To complete the migration, set up your account in the Metabase Store`}</List.Item>
-                <List.Item>{t`While we snapshot your Metabase data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes`}</List.Item>
+                <List.Item>{t`To complete the migration, set up your account in the Omniloy Store`}</List.Item>
+                <List.Item>{t`While we snapshot your Omniloy data, people will be able to view questions and dashboards, but they won't be able to edit or create anything new. It should only take up to 30 minutes`}</List.Item>
               </List>
             ) : (
-              <Text mt="md">{t`To complete the migration, set up your account in the Metabase Store`}</Text>
+              <Text mt="md">{t`To complete the migration, set up your account in the Omniloy Store`}</Text>
             )}
 
             <Box mt="lg" mb="md">
@@ -104,7 +104,7 @@ export const MigrationInProgress = ({
                 component={ExternalLink}
                 href={checkoutUrl}
                 variant="filled"
-              >{t`Go to Metabase Store`}</Button>
+              >{t`Go to Omniloy Store`}</Button>
             </Flex>
           </Box>
         </Flex>

@@ -264,6 +264,7 @@ function CollectionSectionHeading({
   return (
     <SidebarHeadingWrapper>
       <SidebarHeading>{t`Collections`}</SidebarHeading>
+      {/**
       <CollectionsMoreIconContainer>
         <TippyPopoverWithTrigger
           renderTrigger={({ onClick }) => (
@@ -272,6 +273,7 @@ function CollectionSectionHeading({
           popoverContent={renderMenu}
         />
       </CollectionsMoreIconContainer>
+      */}
     </SidebarHeadingWrapper>
   );
 }
