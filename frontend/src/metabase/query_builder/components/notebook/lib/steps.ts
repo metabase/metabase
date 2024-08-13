@@ -33,11 +33,7 @@ const STEPS: NotebookStepDef[] = [
     clauseType: "joins",
     valid: (query, stageIndex, metadata) => {
       const database = metadata.database(Lib.databaseID(query));
-      return (
-        hasData(query) &&
-        Boolean(database?.hasFeature("join")) &&
-        !Lib.isMetricBased(query, stageIndex)
-      );
+      return hasData(query) && Boolean(database?.hasFeature("join"));
     },
     subSteps: (query, stageIndex) => {
       return Lib.joins(query, stageIndex).length;
