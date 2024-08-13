@@ -1,6 +1,5 @@
 import type { ComponentPropsWithoutRef } from "react";
 import { forwardRef, useCallback } from "react";
-import { useDeepCompareEffect } from "react-use";
 import { t } from "ttag";
 
 import { Checkbox, Flex, MultiSelect, Text } from "metabase/ui";
@@ -28,10 +27,6 @@ export const ColumnPicker = ({ value, onChange, comparisonType }: Props) => {
     },
     [onChange],
   );
-
-  useDeepCompareEffect(() => {
-    onChange(convertValues(value, comparisonType));
-  }, [value, onChange, comparisonType]);
 
   return (
     <MultiSelect
@@ -123,30 +118,4 @@ function getColumnOptions(comparisonType: string): ItemType[] {
     ];
   }
   return [];
-}
-
-const comparisonTypeMapping = {
-  offset: {
-    offset: "offset",
-    "diff-offset": "diff-offset",
-    "percent-diff-offset": "percent-diff-offset",
-    "moving-average": "offset",
-    "diff-moving-average": "diff-offset",
-    "percent-diff-moving-average": "percent-diff-offset",
-  },
-  "moving-average": {
-    offset: "moving-average",
-    "diff-offset": "diff-moving-average",
-    "percent-diff-offset": "percent-diff-moving-average",
-    "moving-average": "moving-average",
-    "diff-moving-average": "diff-moving-average",
-    "percent-diff-moving-average": "percent-diff-moving-average",
-  },
-} as const;
-
-function convertValues(
-  values: ColumnType[],
-  comparisonType: ComparisonType,
-): ColumnType[] {
-  return values.map(value => comparisonTypeMapping[comparisonType][value]);
 }

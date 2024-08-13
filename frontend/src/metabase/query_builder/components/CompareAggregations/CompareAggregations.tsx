@@ -58,11 +58,12 @@ export const CompareAggregations = ({
   const handleComparisonTypeChange = useCallback(
     (comparisonType: ComparisonType) => {
       setComparisonType(comparisonType);
+      setColumns(convertColumnTypes(columns, comparisonType));
       if (comparisonType === "moving-average" && offset === 1) {
         setOffset(2);
       }
     },
-    [offset],
+    [offset, columns],
   );
 
   const handleBack = () => {
@@ -146,3 +147,31 @@ export const CompareAggregations = ({
     </Box>
   );
 };
+
+const comparisonTypeMapping = {
+  offset: {
+    offset: "offset",
+    "diff-offset": "diff-offset",
+    "percent-diff-offset": "percent-diff-offset",
+    "moving-average": "offset",
+    "diff-moving-average": "diff-offset",
+    "percent-diff-moving-average": "percent-diff-offset",
+  },
+  "moving-average": {
+    offset: "moving-average",
+    "diff-offset": "diff-moving-average",
+    "percent-diff-offset": "percent-diff-moving-average",
+    "moving-average": "moving-average",
+    "diff-moving-average": "diff-moving-average",
+    "percent-diff-moving-average": "percent-diff-moving-average",
+  },
+} as const;
+
+function convertColumnTypes(
+  columnTypes: ColumnType[],
+  comparisonType: ComparisonType,
+): ColumnType[] {
+  return columnTypes.map(
+    columnType => comparisonTypeMapping[comparisonType][columnType],
+  );
+}
