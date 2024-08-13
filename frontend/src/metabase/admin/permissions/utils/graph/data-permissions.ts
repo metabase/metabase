@@ -297,7 +297,7 @@ export function hasPermissionValueInSubgraph(
           {
             databaseId: entityId.databaseId,
             schemaName: schema.name,
-            tableId: table.id,
+            tableId: table.id as ConcreteTableId,
           },
           permission,
         )
