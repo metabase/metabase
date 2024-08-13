@@ -261,7 +261,6 @@
                                               :type     "native"
                                               :native   {:collection collection-name
                                                          :query      (json/generate-string q)}}))))
-        fields        (flatten (q! (infer-fields-query collection-name sample-size query-depth "$ROOT")))
         nested-fields (fn nested-fields [path]
                         (let [fields (flatten (q! (infer-fields-query collection-name sample-size query-depth path)))
                               nested (when-let [fields-to-explore (seq (filter (fn [x]
@@ -269,9 +268,9 @@
                                                                                       (= (path->depth (:path x))
                                                                                          (inc (+ (path->depth path) query-depth)))))
                                                                                fields))]
-                                       (mapcat nested-fields
-                                               (map :path fields-to-explore)))]
+                                       (mapcat nested-fields (map :path fields-to-explore)))]
                           (concat fields nested)))
+        fields        (flatten (q! (infer-fields-query collection-name sample-size query-depth "$ROOT")))
         nested        (when-let [fields-to-explore (seq (filter (fn [x]
                                                                   (and (= (:mostCommonType x) "object")
                                                                        (= (path->depth (:path x)) query-depth)))
