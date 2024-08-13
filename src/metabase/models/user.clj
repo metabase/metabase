@@ -9,6 +9,7 @@
    [metabase.integrations.common :as integrations.common]
    [metabase.models.audit-log :as audit-log]
    [metabase.models.collection :as collection]
+   [metabase.models.collection-permissions :as collection-perms]
    [metabase.models.interface :as mi]
    [metabase.models.permissions :as perms]
    [metabase.models.permissions-group :as perms-group]
@@ -252,8 +253,7 @@
   [user-or-id]
   (set (when-let [user-id (u/the-id user-or-id)]
          (concat
-          ;; Current User always gets readwrite perms for their Personal Collection and for its descendants! (1 DB Call)
-          (map perms/collection-readwrite-path (collection/user->personal-collection-and-descendant-ids user-or-id))
+          (collection-perms/permissions-set user-or-id)
           ;; include the other Perms entries for any Group this User is in (1 DB Call)
           (map :object (mdb.query/query {:select [:p.object]
                                          :from   [[:permissions_group_membership :pgm]]

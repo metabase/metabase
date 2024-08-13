@@ -9,6 +9,7 @@
    [metabase.db.query :as mdb.query]
    [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.collection-permission-graph-revision :as c-perm-revision]
+   [metabase.models.collection-permissions :as collection-perms]
    [metabase.models.permissions :as perms :refer [Permissions]]
    [metabase.models.permissions-group
     :as perms-group
@@ -141,11 +142,9 @@
   (let [collection-id (if (= collection-id :root)
                         (assoc collection/root-collection :namespace collection-namespace)
                         collection-id)]
-    ;; remove whatever entry is already there (if any) and add a new entry if applicable
-    (perms/revoke-collection-permissions! group-id collection-id)
     (case new-collection-perms
-      :write (perms/grant-collection-readwrite-permissions! group-id collection-id)
-      :read  (perms/grant-collection-read-permissions! group-id collection-id)
+      :write (collection-perms/grant-readwrite! group-id collection-id)
+      :read  (collection-perms/grant-read! group-id collection-id)
       :none  nil)))
 
 (mu/defn- update-group-permissions!
