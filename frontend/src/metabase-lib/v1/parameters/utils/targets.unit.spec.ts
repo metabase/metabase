@@ -278,11 +278,13 @@ describe("parameters/utils/targets", () => {
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([
-            ...ordersColumns,
-            ...productsColumns,
-            ...peopleColumns,
-          ]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(-1, [
+              ...ordersColumns,
+              ...productsColumns,
+              ...peopleColumns,
+            ]),
+          );
         });
 
         it("complex 1-stage query", () => {
@@ -300,13 +302,13 @@ describe("parameters/utils/targets", () => {
           ];
 
           expect(columnsInfos).toEqual([
-            ...ordersColumns,
-            [undefined, "User's 18th birthday"],
-            ...reviewsJoinProductsColumns,
-            ...productsColumns,
-            ...peopleColumns,
-            ...productsColumns,
-            ...summaryColumns,
+            ...withColumnsStage(-2, ordersColumns),
+            withColumnStage(-2, [undefined, "User's 18th birthday"]),
+            ...withColumnsStage(-2, reviewsJoinProductsColumns),
+            ...withColumnsStage(-2, productsColumns),
+            ...withColumnsStage(-2, peopleColumns),
+            ...withColumnsStage(-2, productsColumns),
+            ...withColumnsStage(-1, summaryColumns),
           ]);
         });
       });
@@ -320,19 +322,21 @@ describe("parameters/utils/targets", () => {
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([
-            ["Question", "ID"],
-            ["Question", "User ID"],
-            ["Question", "Product ID"],
-            ["Question", "Subtotal"],
-            ["Question", "Tax"],
-            ["Question", "Total"],
-            ["Question", "Discount"],
-            ["Question", "Created At"],
-            ["Question", "Quantity"],
-            ...productsColumns,
-            ...peopleColumns,
-          ]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(-1, [
+              ["Question", "ID"],
+              ["Question", "User ID"],
+              ["Question", "Product ID"],
+              ["Question", "Subtotal"],
+              ["Question", "Tax"],
+              ["Question", "Total"],
+              ["Question", "Discount"],
+              ["Question", "Created At"],
+              ["Question", "Quantity"],
+              ...productsColumns,
+              ...peopleColumns,
+            ]),
+          );
         });
       });
     });
@@ -360,7 +364,9 @@ describe("parameters/utils/targets", () => {
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([["Orders", "Created At"]]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(-1, [["Orders", "Created At"]]),
+          );
         });
 
         it("2 date breakouts - returns 2 date columns", () => {
@@ -368,10 +374,12 @@ describe("parameters/utils/targets", () => {
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([
-            ["Orders", "Created At"],
-            ["Products", "Product → Created At"],
-          ]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(-1, [
+              ["Orders", "Created At"],
+              ["Products", "Product → Created At"],
+            ]),
+          );
         });
 
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
@@ -379,7 +387,9 @@ describe("parameters/utils/targets", () => {
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([["Orders", "Created At: Month"]]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(-1, [["Orders", "Created At: Month"]]),
+          );
         });
       });
 
@@ -446,12 +456,14 @@ describe("parameters/utils/targets", () => {
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([
-            ["Orders", "Created At"],
-            ["Products", "Product → Created At"],
-            ["People", "User → Birth Date"],
-            ["People", "User → Created At"],
-          ]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(-1, [
+              ["Orders", "Created At"],
+              ["Products", "Product → Created At"],
+              ["People", "User → Birth Date"],
+              ["People", "User → Created At"],
+            ]),
+          );
         });
       });
 
@@ -464,12 +476,14 @@ describe("parameters/utils/targets", () => {
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          expect(columnsInfos).toEqual([
-            ["Question", "Created At"],
-            ["Products", "Product → Created At"],
-            ["People", "User → Birth Date"],
-            ["People", "User → Created At"],
-          ]);
+          expect(columnsInfos).toEqual(
+            withColumnsStage(-1, [
+              ["Question", "Created At"],
+              ["Products", "Product → Created At"],
+              ["People", "User → Birth Date"],
+              ["People", "User → Created At"],
+            ]),
+          );
         });
       });
     });
@@ -612,6 +626,17 @@ function getColumnsInfos(
 ) {
   return columns.map(({ column, stageIndex }) => {
     const info = Lib.displayInfo(query, stageIndex, column);
-    return [info.table?.displayName, info.longDisplayName];
+    return [stageIndex, info.table?.displayName, info.longDisplayName];
   });
+}
+
+function withColumnsStage(
+  stageIndex: number,
+  columns: (string | undefined)[][],
+) {
+  return columns.map(column => withColumnStage(stageIndex, column));
+}
+
+function withColumnStage(stageIndex: number, column: (string | undefined)[]) {
+  return [stageIndex, ...column];
 }
