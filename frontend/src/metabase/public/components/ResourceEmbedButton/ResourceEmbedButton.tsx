@@ -2,10 +2,9 @@ import type { MouseEvent, Ref } from "react";
 import { forwardRef } from "react";
 import { t } from "ttag";
 
-import { DashboardHeaderButton } from "metabase/dashboard/components/DashboardHeader/DashboardHeader.styled";
+import { ToolbarButton } from "metabase/components/ToolbarButton";
 import { useSelector } from "metabase/lib/redux";
 import { getSetting } from "metabase/selectors/settings";
-import { Flex, Tooltip } from "metabase/ui";
 
 export type ResourceEmbedButtonProps = {
   onClick?: () => void;
@@ -36,18 +35,16 @@ export const ResourceEmbedButton = forwardRef(function ResourceEmbedButton(
   };
 
   return (
-    <Tooltip label={tooltipLabel}>
-      <Flex>
-        <DashboardHeaderButton
-          data-disabled={disabled}
-          data-testid="resource-embed-button"
-          icon="share"
-          disabled={disabled}
-          onClick={onHeaderButtonClick}
-          ref={ref}
-          hasBackground={hasBackground}
-        />
-      </Flex>
-    </Tooltip>
+    <ToolbarButton
+      data-disabled={disabled || undefined}
+      data-testid="resource-embed-button"
+      icon="share"
+      disabled={disabled}
+      onClick={onHeaderButtonClick}
+      ref={ref}
+      hasBackground={hasBackground}
+      aria-label={tooltipLabel}
+      tooltipLabel={tooltipLabel}
+    />
   );
 });

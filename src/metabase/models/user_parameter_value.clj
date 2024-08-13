@@ -34,24 +34,27 @@
   "Delete param with nil value and upsert the rest."
   [user-id         :- ms/PositiveInt
    dashboard-id    :- ms/PositiveInt
-   param-id->value :- [:map-of :string :any]]
-  (let [to-delete (filter (comp nil? second) param-id->value)
-        to-upsert (filter (comp some? second) param-id->value)]
+   parameters      :- [:sequential :map]]
+  (let [;; delete param with nil value and no default
+        to-delete-pred (fn [{:keys [value default]}]
+                         (and (nil? value) (nil? default)))
+        to-delete      (filter to-delete-pred parameters)
+        to-upsert      (filter (complement to-delete-pred) parameters)]
     (t2/with-transaction [_conn]
-      (doseq [[param-id value] to-upsert]
+      (doseq [{:keys [id value]} to-upsert]
         (or (pos? (t2/update! :model/UserParameterValue {:user_id      user-id
                                                          :dashboard_id dashboard-id
-                                                         :parameter_id param-id}
+                                                         :parameter_id id}
                               {:value value}))
             (t2/insert! :model/UserParameterValue {:user_id      user-id
                                                    :dashboard_id dashboard-id
-                                                   :parameter_id param-id
+                                                   :parameter_id id
                                                    :value        value})))
       (when (seq to-delete)
         (t2/delete! :model/UserParameterValue
                     :user_id user-id
                     :dashboard_id dashboard-id
-                    :parameter_id [:in (map first to-delete)])))))
+                    :parameter_id [:in (map :id to-delete)])))))
 
 ;; hydration
 
@@ -71,5 +74,6 @@
            (update-vals result (fn [upvs]
                                  (into {}
                                        (map (juxt :parameter_id :value) upvs)))))))
-     :id)
+     :id
+     {:default {}})
     dashboards))

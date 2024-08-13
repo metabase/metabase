@@ -549,6 +549,24 @@ describe("scenarios > collection defaults", () => {
           children: ["Third collection"],
         });
       });
+
+      cy.log(
+        "the collection picker should show an error if we are unable to move a collection (metabase#40700)",
+      );
+      cy.intercept("PUT", `/api/collection/${THIRD_COLLECTION_ID}`, {
+        statusCode: 500,
+        body: { message: "Ryan said no" },
+      });
+      openCollectionMenu();
+      popover().findByText("Move").click();
+
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Collections").click();
+        entityPickerModalItem(0, "Our analytics").click();
+        cy.button("Move").click();
+        cy.log("Entity picker should show an error message");
+        cy.findByText("Ryan said no").should("exist");
+      });
     });
 
     describe("bulk actions", () => {

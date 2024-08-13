@@ -8,7 +8,7 @@ import type { PieChartModel } from "./model/types";
 
 export interface PieChartFormatters {
   formatDimension: (value: unknown) => string;
-  formatMetric: (value: unknown) => string;
+  formatMetric: (value: unknown, isCompact?: boolean) => string;
   formatPercent: (value: unknown, location: "legend" | "chart") => string;
 }
 
@@ -34,9 +34,10 @@ export function getPieChartFormatters(
       ...dimensionColSettings,
     });
 
-  const formatMetric = (value: unknown) =>
+  const formatMetric = (value: unknown, isCompact: boolean = false) =>
     renderingContext.formatValue(value, {
       ...metricColSettings,
+      compact: isCompact,
     });
 
   const formatPercent = (value: unknown, location: "legend" | "chart") => {
