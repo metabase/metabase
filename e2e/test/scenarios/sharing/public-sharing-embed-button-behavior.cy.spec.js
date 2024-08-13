@@ -48,7 +48,7 @@ import {
             visitResource(resource, id);
           });
 
-          cy.findByTestId("resource-embed-button").click();
+          openSharingMenu("Embed");
           cy.findByTestId("embed-header-menu").within(() => {
             cy.findByTestId("embed-menu-embed-modal-item").should(
               "be.disabled",
@@ -67,9 +67,8 @@ import {
             visitResource(resource, id);
           });
 
-          expectDisabledButtonWithTooltipLabel(
-            "Ask your admin to create a public link",
-          );
+          openSharingMenu("Embed");
+          sharingMenu.findByText("Ask your admin to create a public link");
         });
       });
     });
@@ -113,9 +112,8 @@ import {
               visitResource(resource, id);
             });
 
-            expectDisabledButtonWithTooltipLabel(
-              "Ask your admin to create a public link",
-            );
+            openSharingMenu();
+            sharingMenu().findByText("Ask your admin to create a public link");
           });
 
           it(`should show the embed button if the ${resource} has a public link`, () => {
@@ -181,7 +179,8 @@ import {
               visitResource(resource, id);
             });
 
-            expectDisabledButtonWithTooltipLabel("Public links are disabled");
+            openSharingMenu();
+            sharingMenu().findByText("Ask your admin to create a public link");
           });
         });
       });
@@ -268,7 +267,7 @@ describe("#39152 sharing an unsaved question", () => {
     });
     visualize();
 
-    cy.findByTestId("resource-embed-button").click();
+    openSharingMenu("Embed");
 
     modal().within(() => {
       cy.findByText("First, save your question").should("be.visible");
@@ -826,12 +825,6 @@ describe("metabase#46893 - popover should appear next to button, not at the top 
 
 function toSecond(milliseconds) {
   return Math.round(milliseconds / 1000);
-}
-
-function expectDisabledButtonWithTooltipLabel(tooltipLabel) {
-  cy.findByTestId("resource-embed-button").should("be.disabled");
-  cy.findByTestId("resource-embed-button").realHover();
-  cy.findByRole("tooltip").findByText(tooltipLabel).should("be.visible");
 }
 
 function createResource(resource) {

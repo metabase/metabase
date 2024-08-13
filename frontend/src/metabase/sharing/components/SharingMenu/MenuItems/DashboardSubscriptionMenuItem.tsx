@@ -1,12 +1,12 @@
 import { t } from "ttag";
 
-import { useHasAnyNotificationChannel } from "metabase/common/hooks";
+import { useHasEmailSetup } from "metabase/common/hooks";
 import { useSelector } from "metabase/lib/redux";
 import {
   canManageSubscriptions as canManageSubscriptionsSelector,
   getUserIsAdmin,
 } from "metabase/selectors/user";
-import { Menu, Center, Icon, Title } from "metabase/ui";
+import { Menu, Center, Icon, Title, Stack, Text } from "metabase/ui";
 
 export function DashboardSubscriptionMenuItem({
   onClick,
@@ -14,14 +14,35 @@ export function DashboardSubscriptionMenuItem({
   onClick: () => void;
 }) {
   const isAdmin = useSelector(getUserIsAdmin);
-  const hasNotificationChannel = useHasAnyNotificationChannel();
+  const hasEmailSetup = useHasEmailSetup();
+
   const canManageSubscriptions = useSelector(canManageSubscriptionsSelector);
 
-  const showSubscriptions =
-    (isAdmin || hasNotificationChannel) && canManageSubscriptions;
-
-  if (!showSubscriptions) {
+  if (!canManageSubscriptions) {
     return null;
+  }
+
+  if (!isAdmin && !hasEmailSetup) {
+    return (
+      <Menu.Item
+        data-testid="dashboard-subscription-menu-item"
+        my="sm"
+        icon={
+          <Center mr="xs">
+            <Icon name="subscription" />
+          </Center>
+        }
+        disabled
+      >
+        <Stack spacing="xs">
+          <Title order={4} color="inherit">{t`Can't send subscriptions`}</Title>
+          <Text
+            size="sm"
+            color="inherit"
+          >{t`As your admin to set up email`}</Text>
+        </Stack>
+      </Menu.Item>
+    );
   }
 
   return (

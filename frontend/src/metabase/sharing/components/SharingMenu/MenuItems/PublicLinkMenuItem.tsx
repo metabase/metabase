@@ -56,7 +56,7 @@ export function PublicLinkMenuItem({
       onClick={onClick}
       disabled={!hasPublicLink}
     >
-      <Title order={4}>
+      <Title order={4} color="inherit">
         {hasPublicLink
           ? t`Public link`
           : t`Ask your admin to create a public link`}

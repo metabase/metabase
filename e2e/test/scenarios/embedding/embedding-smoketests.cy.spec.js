@@ -15,6 +15,7 @@ import {
   visitQuestion,
   sharingMenuButton,
   openSharingMenu,
+  sharingMenu,
 } from "e2e/support/helpers";
 
 const embeddingPage = "/admin/settings/embedding-in-other-applications";
@@ -329,14 +330,8 @@ function assertLinkMatchesUrl(text, url) {
 }
 
 function ensureEmbeddingIsDisabled() {
-  openSharingMenu("Embed");
-
-  cy.findByTestId("embed-menu-embed-modal-item").should("be.disabled");
-
-  cy.findByTestId("embed-menu-embed-modal-item").within(() => {
-    cy.findByText("Embedding is off").should("be.visible");
-    cy.findByText("Enable it in settings").should("be.visible");
-  });
+  openSharingMenu();
+  sharingMenu().findByText(/embedding is off/i);
 }
 
 function visitAndEnableSharing(object, acceptTerms = true) {

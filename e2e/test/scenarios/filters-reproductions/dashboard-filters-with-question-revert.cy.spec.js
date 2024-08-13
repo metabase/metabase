@@ -15,6 +15,7 @@ import {
   visitDashboard,
   visitEmbeddedPage,
   visitQuestion,
+  openSharingMenu,
 } from "e2e/support/helpers";
 
 const { REVIEWS, REVIEWS_ID } = SAMPLE_DATABASE;
@@ -219,8 +220,7 @@ describe("issue 35954", () => {
         });
 
         visitDashboard(id);
-        cy.findByTestId("resource-embed-button").click();
-        cy.findByTestId("embed-menu-embed-modal-item").click();
+        openSharingMenu("Embed");
         modal().findByText("Static embed").click();
 
         cy.findByTestId("embedding-preview").within(() => {
