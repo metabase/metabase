@@ -200,27 +200,27 @@
     (is (= {:schema nil
             :name   "venues"
             :fields #{{:name              "name"
-                       :database-type     "java.lang.String"
+                       :database-type     "string"
                        :base-type         :type/Text
                        :database-position 1}
                       {:name              "latitude"
-                       :database-type     "java.lang.Double"
+                       :database-type     "double"
                        :base-type         :type/Float
                        :database-position 3}
                       {:name              "longitude"
-                       :database-type     "java.lang.Double"
+                       :database-type     "double"
                        :base-type         :type/Float
                        :database-position 4}
                       {:name              "price"
-                       :database-type     "java.lang.Long"
+                       :database-type     "long"
                        :base-type         :type/Integer
                        :database-position 5}
                       {:name              "category_id"
-                       :database-type     "java.lang.Long"
+                       :database-type     "long"
                        :base-type         :type/Integer
                        :database-position 2}
                       {:name              "_id"
-                       :database-type     "java.lang.Long"
+                       :database-type     "long"
                        :base-type         :type/Integer
                        :pk?               true
                        :database-position 0}}}
