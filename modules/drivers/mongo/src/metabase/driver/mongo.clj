@@ -24,7 +24,6 @@
    [metabase.util :as u]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.registry :as mr]
    [taoensso.nippy :as nippy])
   (:import
    (com.mongodb.client MongoClient MongoDatabase)
@@ -239,14 +238,12 @@
    infer-fields-query executes, but the more queries we might have to execute."
   5)
 
-(mr/def ::FieldInfo
-  [:map {:closed true}
-   [:path           ::lib.schema.common/non-blank-string]
-   [:k              ::lib.schema.common/non-blank-string]
-   [:sortKey        ::lib.schema.common/non-blank-string]
-   [:mostCommonType ::lib.schema.common/non-blank-string]])
-
-(mu/defn- infer-fields :- [:sequential ::FieldInfo]
+(mu/defn- infer-fields :- [:sequential
+                           [:map {:closed true}
+                            [:path           ::lib.schema.common/non-blank-string]
+                            [:k              ::lib.schema.common/non-blank-string]
+                            [:sortKey        ::lib.schema.common/non-blank-string]
+                            [:mostCommonType ::lib.schema.common/non-blank-string]]]
   "Queries the database for a sample of the data in `table` and returns a list of field information. Because Mongo
    documents can have 100 levels of nesting, we query the database with a [[root-query]] first, which gets all the objects
    until a depth of [[root-query-depth]]. Then for any objects at that depth, we recursively query the database with
