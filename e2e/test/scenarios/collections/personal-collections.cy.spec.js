@@ -61,7 +61,9 @@ describe("personal collections", () => {
       });
 
       cy.visit("/collection/root");
-      cy.findByRole("tree").findByText("Your personal collection");
+      cy.findAllByRole("tree")
+        .contains("Your personal collection")
+        .should("be.visible");
       navigationSidebar().within(() => {
         cy.icon("ellipsis").click();
       });
