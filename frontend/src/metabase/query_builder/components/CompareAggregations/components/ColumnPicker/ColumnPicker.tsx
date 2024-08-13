@@ -127,7 +127,7 @@ function getColumnOptions(comparisonType: string): ItemType[] {
 
 function convertValues(
   values: ColumnType[],
-  comparisonType: string,
+  comparisonType: ComparisonType,
 ): ColumnType[] {
   if (comparisonType === "offset") {
     return values.map(
