@@ -171,7 +171,7 @@
                :database (meta/id)
                :stages
                [{:lib/type :mbql.stage/mbql
-                 :source-card 1
+                 :source-table (meta/id :orders)
                  :breakout
                  [[:field
                    {:base-type :type/DateTimeWithLocalTZ, :temporal-unit :month}
