@@ -19,7 +19,7 @@ import type {
 } from "metabase/visualizations/shared/types/format";
 import { getLabelsMetricColumn } from "metabase/visualizations/shared/utils/series";
 import type { RemappingHydratedDatasetColumn } from "metabase/visualizations/types";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { rangeForValue } from "metabase-lib/v1/queries/utils/range-for-value";
 import {
   isCoordinate,
@@ -109,7 +109,7 @@ export const getStaticFormatters = (
 ): ChartTicksFormatters => {
   const yTickFormatter = (value: StringLike) => {
     const column = chartColumns.dimension.column;
-    const columnSettings = settings.column_settings?.[getColumnKey(column)];
+    const columnSettings = getColumnSettings(settings, column);
     const valueToFormat = getRemappedValue(value, column);
 
     const options = getFormattingOptionsWithoutScaling({
@@ -125,8 +125,10 @@ export const getStaticFormatters = (
 
   const percentXTicksFormatter = (percent: NumberLike) => {
     const column = metricColumn.column;
-    const number_separators =
-      settings.column_settings?.[getColumnKey(column)]?.number_separators;
+    const number_separators = getColumnSettings(
+      settings,
+      column,
+    )?.number_separators;
 
     const options = getFormattingOptionsWithoutScaling({
       column,
@@ -141,7 +143,7 @@ export const getStaticFormatters = (
 
   const xTickFormatter = (value: NumberLike) => {
     const column = metricColumn.column;
-    const columnSettings = settings.column_settings?.[getColumnKey(column)];
+    const columnSettings = getColumnSettings(settings, column);
     const valueToFormat = getRemappedValue(value, column);
 
     const options = getFormattingOptionsWithoutScaling({
@@ -168,7 +170,7 @@ export const getLabelsStaticFormatter = (
   settings: VisualizationSettings,
 ): ValueFormatter => {
   const column = getLabelsMetricColumn(chartColumns).column;
-  const columnSettings = settings.column_settings?.[getColumnKey(column)];
+  const columnSettings = getColumnSettings(settings, column);
   const options = getFormattingOptionsWithoutScaling({
     column,
     ...columnSettings,

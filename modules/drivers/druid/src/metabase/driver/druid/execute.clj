@@ -81,7 +81,7 @@
                   (for [event results]
                     (merge {:timestamp (ts-getter event)} (:result event))))})
 
-(mu/defn ^:private col-names->getter-fns :- [:sequential [:or :keyword fn?]]
+(mu/defn- col-names->getter-fns :- [:sequential [:or :keyword fn?]]
   "Given a sequence of `columns` keywords, return a sequence of appropriate getter functions to get values from a single
   result row. Normally, these are just the keyword column names themselves, but for `:timestamp___int`, we'll also
   parse the result as an integer (for further explanation, see the docstring for

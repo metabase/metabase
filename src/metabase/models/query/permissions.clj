@@ -80,7 +80,7 @@
   Useful when bulk loading cards from different databases."
   nil)
 
-(mu/defn ^:private card-instance :- [:and
+(mu/defn- card-instance :- [:and
                                      (ms/InstanceOf :model/Card)
                                      [:map [:collection_id [:maybe ms/PositiveInt]]]]
   [card-id :- ::lib.schema.id/card]
@@ -91,7 +91,7 @@
         (t2/select-one [:model/Card :collection_id] :id card-id))
       (throw (Exception. (tru "Card {0} does not exist." card-id)))))
 
-(mu/defn ^:private source-card-read-perms :- [:set perms.u/PathSchema]
+(mu/defn- source-card-read-perms :- [:set perms.u/PathSchema]
   "Calculate the permissions needed to run an ad-hoc query that uses a Card with `source-card-id` as its source
   query."
   [source-card-id :- ::lib.schema.id/card]
@@ -133,9 +133,7 @@
   (try
     (let [query (mbql.normalize/normalize query)]
       ;; if we are using a Card as our source, our perms are that Card's (i.e. that Card's Collection's) read perms
-      (if-let [source-card-id (if already-preprocessed?
-                                (:qp/source-card-id query)
-                                (qp.util/query->source-card-id query))]
+      (if-let [source-card-id (qp.util/query->source-card-id query)]
         {:paths (source-card-read-perms source-card-id)}
         ;; otherwise if there's no source card then calculate perms based on the Tables referenced in the query
         (let [query               (cond-> query
@@ -265,14 +263,7 @@
 (mu/defn can-run-query?
   "Return `true` if the current user has sufficient permissions to run `query`, and `false` otherwise."
   [query]
-  (let [preprocessed-query (try ((requiring-resolve 'metabase.query-processor.preprocess/preprocess) query)
-                                (catch Exception e
-                                 (log/info e "Failed to preprocess query, falling back to unprocessed")
-                                 false))
-        query (or preprocessed-query query)
-        required-perms (required-perms-for-query query
-                                                 :already-preprocessed?
-                                                 (boolean preprocessed-query))]
+  (let [required-perms (required-perms-for-query query)]
     (check-data-perms query required-perms :throw-exceptions? false)))
 
 (defn can-query-table?

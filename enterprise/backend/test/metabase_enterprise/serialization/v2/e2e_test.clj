@@ -193,30 +193,7 @@
                                                                 :collection_id [:coll 10 100]})
                :timeline                (many-random-fks 10 {} {:creator_id    [:u 10]
                                                                 :collection_id [:coll 100]})
-               :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})
-               :pulse                   (vec (concat
-                                               ;; 10 classic pulses, from collections
-                                              (many-random-fks 10 {} {:collection_id [:coll 100]})
-                                               ;; 10 classic pulses, no collection
-                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}} {})
-                                               ;; 10 dashboard subs
-                                              (many-random-fks 10 {:refs {:collection_id ::rs/omit}}
-                                                               {:dashboard_id  [:d 100]})))
-               :pulse-card              (vec (concat
-                                               ;; 60 pulse cards for the classic pulses
-                                              (many-random-fks 60 {} {:card_id       [:c 100]
-                                                                      :pulse_id      [:pulse 10]})
-                                               ;; 60 pulse cards connected to dashcards for the dashboard subs
-                                              (many-random-fks 60 {} {:card_id           [:c 100]
-                                                                      :pulse_id          [:pulse 10 20]
-                                                                      :dashboard_card_id [:dc 300]})))
-               :pulse-channel           (vec (concat
-                                               ;; 15 channels for the classic pulses
-                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10]})
-                                               ;; 15 channels for the dashboard subs
-                                              (many-random-fks 15 {} {:pulse_id  [:pulse 10 20]})))
-               :pulse-channel-recipient (many-random-fks 40 {} {:pulse_channel_id [:pulse-channel 30]
-                                                                :user_id          [:u 100]})}))
+               :timeline-event          (many-random-fks 90 {} {:timeline_id   [:timeline 10]})}))
 
           (is (= 101 (count (t2/select-fn-set :email 'User)))) ; +1 for the internal user
 
@@ -227,7 +204,7 @@
                                                  (fnil conj []) entity))
                                        {} @extraction))
             ;; +1 for the Trash collection
-            (is (= 111 (-> @entities (get "Collection") count))))
+            (is (= 110 (-> @entities (get "Collection") count))))
 
           (testing "storage"
             (storage/store! (seq @extraction) dump-dir)
@@ -237,7 +214,7 @@
 
             (testing "for Collections"
               ;; +1 for the Trash collection
-              (is (= 111 (count (for [f (file-set (io/file dump-dir))
+              (is (= 110 (count (for [f (file-set (io/file dump-dir))
                                       :when (and (= (first f) "collections")
                                                  (let [[a b] (take-last 2 f)]
                                                    (= b (str a ".yaml"))))]
@@ -744,7 +721,7 @@
         (ts/with-dbs [source-db dest-db]
           (ts/with-db source-db
             ;; preparation
-            (t2.with-temp/with-temp [Dashboard _ {:name "some dashboard"}]
+            (mt/with-temp [Dashboard _ {:name "some dashboard"}]
               (testing "export (v2-dump) command"
                 (is (cmd/v2-dump! dump-dir {})
                     "works"))
@@ -752,8 +729,9 @@
               (testing "import (v2-load) command"
                 (ts/with-db dest-db
                   (testing "doing ingestion"
-                    (is (cmd/v2-load! dump-dir {})
-                        "works"))))))))))
+                    (mt/with-temp [:model/User _ {}]
+                      (is (cmd/v2-load! dump-dir {})
+                          "works")))))))))))
 
   (testing "without :serialization feature enabled"
     (ts/with-random-dump-dir [dump-dir "serdesv2-"]
@@ -770,9 +748,10 @@
               (testing "import (v2-load) command"
                 (ts/with-db dest-db
                   (testing "doing ingestion"
-                    (is (thrown-with-msg? Exception #"Please upgrade"
-                                          (cmd/v2-load! dump-dir {}))
-                        "throws")))))))))))
+                    (mt/with-temp [:model/User _ {}]
+                      (is (thrown-with-msg? Exception #"Please upgrade"
+                                            (cmd/v2-load! dump-dir {}))
+                          "throws"))))))))))))
 
 (deftest pivot-export-test
   (testing "Pivot table export and load correctly"
@@ -859,7 +838,7 @@
             (let [logs (mt/with-log-messages-for-level ['metabase-enterprise :error]
                          (let [files (->> (#'ingest/ingest-all (io/file dump-dir))
                                           (map (comp second second))
-                                          (map #(.getName %))
+                                          (map #(.getName ^File %))
                                           set)]
                            (testing "Hidden YAML wasn't read even though it's not throwing errors"
                              (is (not (contains? files ".hidden.yaml"))))))]

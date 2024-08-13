@@ -4,6 +4,7 @@
    [clojure.string :as str]
    [metabase.db :as mdb]
    [metabase.models]
+   [metabase.models.collection :as collection]
    [metabase.models.serialization :as serdes]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs]]
@@ -122,10 +123,15 @@
                                (entity-id-models))]
     (zero? error-count)))
 
+(defn- drop-entity-id-conditions-for-model [model]
+  (case model
+    :model/Collection {:id [:not= (collection/trash-collection-id)]}
+    {}))
+
 (defn- drop-entity-ids-for-model! [model]
   (log/infof "Dropping Entity IDs for model %s" (name model))
   (try
-    (let [update-count (t2/update! model {:entity_id nil})]
+    (let [update-count (t2/update! model (drop-entity-id-conditions-for-model model) {:entity_id nil})]
       (when (pos? update-count)
         (log/infof "Updated %d %s instance(s) successfully." update-count (name model)))
       {:update-count update-count})

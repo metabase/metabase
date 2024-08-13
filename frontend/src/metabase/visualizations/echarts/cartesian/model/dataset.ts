@@ -21,7 +21,6 @@ import type {
   Datum,
   XAxisModel,
   NumericAxisScaleTransforms,
-  ShowWarning,
   TimeSeriesXAxisModel,
   StackModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
@@ -43,6 +42,7 @@ import type {
   XAxisScale,
 } from "metabase-types/api";
 
+import type { ShowWarning } from "../../types";
 import { tryGetDate } from "../utils/timeseries";
 
 import { isCategoryAxis, isNumericAxis, isTimeSeriesAxis } from "./guards";

@@ -2,7 +2,10 @@ import type { ComponentStory } from "@storybook/react";
 
 import { color } from "metabase/lib/colors";
 import { formatStaticValue } from "metabase/static-viz/lib/format";
-import { measureTextWidth } from "metabase/static-viz/lib/text";
+import {
+  measureTextHeight,
+  measureTextWidth,
+} from "metabase/static-viz/lib/text";
 import { DEFAULT_VISUALIZATION_THEME } from "metabase/visualizations/shared/utils/theme";
 import type { RenderingContext } from "metabase/visualizations/types";
 
@@ -27,6 +30,7 @@ const renderingContext: RenderingContext = {
   formatValue: formatStaticValue as any,
   measureText: (text, style) =>
     measureTextWidth(text, Number(style.size), Number(style.weight)),
+  measureTextHeight: (_, style) => measureTextHeight(Number(style.size)),
   fontFamily: "Lato",
   theme: DEFAULT_VISUALIZATION_THEME,
 };

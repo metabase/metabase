@@ -1,4 +1,4 @@
-import type { Location } from "history";
+import type { Query } from "history";
 import { useState } from "react";
 import { useMount } from "react-use";
 import { t } from "ttag";
@@ -20,7 +20,7 @@ import {
 import type {
   DashboardFullscreenControls,
   DashboardRefreshPeriodControls,
-  EmbedNightModeControls,
+  DashboardNightModeControls,
 } from "metabase/dashboard/types";
 import { useDispatch, useSelector } from "metabase/lib/redux";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
@@ -36,11 +36,11 @@ import { CancelEditButton, SaveEditButton } from "./buttons";
 export type DashboardHeaderProps = {
   dashboard: Dashboard;
   dashboardBeforeEditing?: Dashboard | null;
-  location: Location;
+  parameterQueryParams: Query;
   isAdditionalInfoVisible: boolean;
 } & DashboardFullscreenControls &
   DashboardRefreshPeriodControls &
-  EmbedNightModeControls;
+  DashboardNightModeControls;
 
 export const DashboardHeaderInner = ({
   dashboard,
@@ -48,7 +48,7 @@ export const DashboardHeaderInner = ({
   hasNightModeToggle,
   isFullscreen,
   isNightMode,
-  location: { query },
+  parameterQueryParams,
   onFullscreenChange,
   onNightModeChange,
   onRefreshPeriodChange,
@@ -88,7 +88,7 @@ export const DashboardHeaderInner = ({
     dispatch(
       fetchDashboard({
         dashId: dashboard.id,
-        queryParams: query,
+        queryParams: parameterQueryParams,
         options: { preserveParameters: true },
       }),
     );
@@ -182,5 +182,6 @@ export const DashboardHeader = (props: DashboardHeaderProps) => {
   if (!dashboard) {
     return null;
   }
+
   return <DashboardHeaderInner {...props} />;
 };

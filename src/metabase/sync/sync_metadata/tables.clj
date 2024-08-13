@@ -77,7 +77,7 @@
     ;; MSSQL
     #"^syncobj_0x.*"})
 
-(mu/defn ^:private is-crufty-table?
+(mu/defn- is-crufty-table?
   "Should we give newly created TABLE a `visibility_type` of `:cruft`?"
   [table-name]
   (some #(re-find % (u/lower-case-en table-name)) crufty-table-patterns))
@@ -85,7 +85,7 @@
 
 ;;; ---------------------------------------------------- Syncing -----------------------------------------------------
 
-(mu/defn ^:private update-database-metadata!
+(mu/defn- update-database-metadata!
   "If there is a version in the db-metadata update the DB to have that in the DB model"
   [database    :- i/DatabaseInstance
    db-metadata :- i/DatabaseMetadata]
@@ -130,7 +130,7 @@
 
 ;; TODO - should we make this logic case-insensitive like it is for fields?
 
-(mu/defn ^:private create-or-reactivate-tables!
+(mu/defn- create-or-reactivate-tables!
   "Create `new-tables` for database, or if they already exist, mark them as active."
   [database :- i/DatabaseInstance
    new-tables :- [:set i/DatabaseMetadataTable]]
@@ -140,7 +140,7 @@
   (doseq [table new-tables]
     (create-or-reactivate-table! database table)))
 
-(mu/defn ^:private retire-tables!
+(mu/defn- retire-tables!
   "Mark any `old-tables` belonging to `database` as inactive."
   [database   :- i/DatabaseInstance
    old-tables :- [:set [:map
@@ -156,7 +156,7 @@
                        :active true}
                 {:active false})))
 
-(mu/defn ^:private update-table-metadata-if-needed!
+(mu/defn- update-table-metadata-if-needed!
   "Update the table metadata if it has changed."
   [table-metadata :- i/DatabaseMetadataTable
    metabase-table :- (ms/InstanceOf :model/Table)]
@@ -182,7 +182,7 @@
     (when (seq changes)
       (t2/update! :model/Table (:id metabase-table) changes))))
 
-(mu/defn ^:private update-tables-metadata-if-needed!
+(mu/defn- update-tables-metadata-if-needed!
   [table-metadatas :- [:set i/DatabaseMetadataTable]
    metabase-tables :- [:set (ms/InstanceOf :model/Table)]]
   (let [name+schema->table-metadata (m/index-by (juxt :name :schema) table-metadatas)
@@ -190,7 +190,7 @@
     (doseq [name+schema (set/intersection (set (keys name+schema->table-metadata)) (set (keys name+schema->metabase-table)))]
       (update-table-metadata-if-needed! (name+schema->table-metadata name+schema) (name+schema->metabase-table name+schema)))))
 
-(mu/defn ^:private table-set :- [:set i/DatabaseMetadataTable]
+(mu/defn- table-set :- [:set i/DatabaseMetadataTable]
   "So there exist tables for the user and metabase metadata tables for internal usage by metabase.
   Get set of user tables only, excluding metabase metadata tables."
   [db-metadata :- i/DatabaseMetadata]
@@ -198,7 +198,7 @@
         (remove metabase-metadata/is-metabase-metadata-table?)
         (:tables db-metadata)))
 
-(mu/defn ^:private db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
+(mu/defn- db->our-metadata :- [:set (ms/InstanceOf :model/Table)]
   "Return information about what Tables we have for this DB in the Metabase application DB."
   [database :- i/DatabaseInstance]
   (set (t2/select [:model/Table :id :name :schema :description :database_require_filter :estimated_row_count]

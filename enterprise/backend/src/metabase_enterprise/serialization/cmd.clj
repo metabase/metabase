@@ -2,7 +2,6 @@
   (:refer-clojure :exclude [load])
   (:require
    [clojure.java.io :as io]
-   [clojure.set :as set]
    [clojure.string :as str]
    [metabase-enterprise.serialization.dump :as dump]
    [metabase-enterprise.serialization.load :as load]
@@ -87,7 +86,8 @@
   `opts` are passed to [[v2.load/load-metabase]]."
   [path :- :string
    opts :- [:map
-            [:backfill? {:optional true} [:maybe :boolean]]]
+            [:backfill? {:optional true} [:maybe :boolean]]
+            [:continue-on-error {:optional true} [:maybe :boolean]]]
    ;; Deliberately separate from the opts so it can't be set from the CLI.
    & {:keys [token-check?
              require-initialized-db?]
@@ -112,7 +112,8 @@
    opts are passed to load-metabase"
   [path :- :string
    opts :- [:map
-            [:backfill? {:optional true} [:maybe :boolean]]]]
+            [:backfill? {:optional true} [:maybe :boolean]]
+            [:continue-on-error {:optional true} [:maybe :int]]]]
   (let [start    (System/nanoTime)
         err      (atom nil)
         report   (try
@@ -128,6 +129,7 @@
                             :count         (if (contains? imported "Setting")
                                              (inc (count (remove #(= "Setting" (:model (first %))) (:seen report))))
                                              (count (:seen report)))
+                            :error_count   (count (:errors report))
                             :success       (nil? @err)
                             :error_message (some-> @err str)})
     (when @err
@@ -237,30 +239,23 @@
     (.mkdirs f)
     (when-not (.canWrite f)
       (throw (ex-info (format "Destination path is not writeable: %s" path) {:filename path}))))
-  (let [start                (System/nanoTime)
-        ;; we _ALWAYS_ export the Trash. Its descendants are empty, so we won't export anything extra as a result, but
-        ;; we will export items that are currently in the Trash, assuming they were trashed *from* a place we're
-        ;; exporting.
-        collection-ids+trash (set/union collection-ids
-                                        #{(collection/trash-collection-id)})
-        err                  (atom nil)
-        report               (try
-                               (serdes/with-cache
-                                 (-> (cond-> opts
-                                       (seq collection-ids)
-                                       (assoc :targets
-                                              (v2.extract/make-targets-of-type
-                                               "Collection"
-                                               collection-ids+trash)))
-                                     v2.extract/extract
-                                     (v2.storage/store! path)))
-                               (catch Exception e
-                                 (reset! err e)))]
+  (let [start  (System/nanoTime)
+        err    (atom nil)
+        opts   (cond-> opts
+                 (seq collection-ids)
+                 (assoc :targets (v2.extract/make-targets-of-type "Collection" collection-ids)))
+        report (try
+                 (serdes/with-cache
+                   (-> (v2.extract/extract opts)
+                       (v2.storage/store! path)))
+                 (catch Exception e
+                   (reset! err e)))]
     (snowplow/track-event! ::snowplow/serialization nil
                            {:direction       "export"
                             :source          "cli"
                             :duration_ms     (int (/ (- (System/nanoTime) start) 1e6))
                             :count           (count (:seen report))
+                            :error_count     (count (:errors report))
                             :collection      (str/join "," collection-ids)
                             :all_collections (and (empty? collection-ids)
                                                   (not (:no-collections opts)))

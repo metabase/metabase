@@ -52,7 +52,7 @@ describe("issue 6010", () => {
       name: "Question",
       display: "line",
       query: {
-        "source-table": `card__${metric_id}`,
+        "source-table": ORDERS_ID,
         breakout: [["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }]],
         aggregation: [["metric", metric_id]],
       },
@@ -76,7 +76,7 @@ describe("issue 6010", () => {
 
     cartesianChartCircle().eq(0).click();
 
-    popover().findByText("See these Metrics").click();
+    popover().findByText("See these Orders").click();
     cy.wait("@dataset");
 
     cy.findByTestId("qb-filters-panel").within(() => {
@@ -1086,6 +1086,56 @@ describe("issue 12368", () => {
       cy.button("Add or remove columns").should("be.visible");
       cy.findByText("Pivot column").should("not.exist");
       cy.findByText("Cell column").should("not.exist");
+    });
+  });
+});
+
+describe("issue 32718", () => {
+  const questionDetails = {
+    display: "table",
+    query: {
+      "source-table": PRODUCTS_ID,
+      fields: [
+        ["field", PRODUCTS.ID, { "base-type": "type/BigInteger" }],
+        ["field", PRODUCTS.EAN, { "base-type": "type/Text" }],
+        ["field", PRODUCTS.CATEGORY, { "base-type": "type/Text" }],
+        ["field", PRODUCTS.CREATED_AT, { "base-type": "type/DateTime" }],
+      ],
+      limit: 1,
+    },
+    visualization_settings: {
+      "table.columns": [
+        { name: "ID", enabled: true },
+        { name: "EAN", enabled: false },
+        { name: "CATEGORY", enabled: true },
+        { name: "CREATED_AT", enabled: true },
+      ],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+    cy.request("PUT", `/api/field/${PRODUCTS.CATEGORY}`, {
+      visibility_type: "details-only",
+    });
+  });
+
+  it("should honor visibility_type of the field when the question has viz settings (metabase#32718)", () => {
+    createQuestion(questionDetails, { visitQuestion: true });
+    tableInteractive().within(() => {
+      cy.findByText("ID").should("be.visible");
+      cy.findByText("Ean").should("not.exist");
+      cy.findByText("Category").should("not.exist");
+      cy.findByText("Created At").should("be.visible");
+    });
+    cy.findByTestId("viz-type-button").click();
+    cy.findByTestId("Detail-button").click();
+    cy.findByTestId("object-detail").within(() => {
+      cy.findByText("ID").should("be.visible");
+      cy.findByText("Ean").should("not.exist");
+      cy.findByText("Category").should("be.visible");
+      cy.findByText("Created At").should("be.visible");
     });
   });
 });

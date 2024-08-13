@@ -6,10 +6,14 @@ import _ from "underscore";
 import Groups from "metabase/entities/groups";
 import Tables from "metabase/entities/tables";
 import { isAdminGroup, isDefaultGroup } from "metabase/lib/groups";
-import { PLUGIN_FEATURE_LEVEL_PERMISSIONS } from "metabase/plugins";
+import {
+  PLUGIN_AUDIT,
+  PLUGIN_FEATURE_LEVEL_PERMISSIONS,
+} from "metabase/plugins";
 import { getMetadataWithHiddenTables } from "metabase/selectors/metadata";
 import type Schema from "metabase-lib/v1/metadata/Schema";
 import type {
+  Database,
   DatabaseId,
   Group,
   GroupsPermissions,
@@ -249,6 +253,7 @@ export const getDatabasesPermissionEditor = createSelector(
       permissionSubject = "schemas";
       entities = metadata
         .databasesList({ savedQuestions: false })
+        .filter(db => !PLUGIN_AUDIT.isAuditDb(db as Database))
         .map(database => {
           const entityId = getDatabaseEntityId(database);
           return {

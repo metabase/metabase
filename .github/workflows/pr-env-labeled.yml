@@ -1,4 +1,4 @@
-name: PR
+name: PR-Env labeled
 
 on:
   pull_request:

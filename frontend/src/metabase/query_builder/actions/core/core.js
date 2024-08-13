@@ -221,15 +221,15 @@ export const apiCreateQuestion = question => {
     // Saving a card, locks in the current display as though it had been
     // selected in the UI.
     const card = createdQuestion.lockDisplay().card();
-
     dispatch({ type: API_CREATE_QUESTION, payload: card });
+
+    await dispatch(loadMetadataForCard(card));
 
     const isModel = question.type() === "model";
     const isMetric = question.type() === "metric";
-    const metadataOptions = { reload: isModel || isMetric };
-    await dispatch(loadMetadataForCard(card, metadataOptions));
-
-    return createdQuestion;
+    if (isModel || isMetric) {
+      dispatch(runQuestionQuery());
+    }
   };
 };
 
@@ -241,7 +241,6 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
 
     const isResultDirty = getIsResultDirty(getState());
     const isModel = question.type() === "model";
-    const isMetric = question.type() === "metric";
 
     const { isNative } = Lib.queryDisplayInfo(question.query());
 
@@ -283,8 +282,7 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       await dispatch(updateModelIndexes(question));
     }
 
-    const metadataOptions = { reload: isModel || isMetric };
-    await dispatch(loadMetadataForCard(question.card(), metadataOptions));
+    await dispatch(loadMetadataForCard(question.card()));
 
     if (rerunQuery) {
       dispatch(runQuestionQuery());

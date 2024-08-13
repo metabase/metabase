@@ -174,7 +174,7 @@ DashCardMenu.shouldRender = ({
   );
 
   if (isPublicOrEmbedded) {
-    return downloadsEnabled;
+    return downloadsEnabled && !!result?.data && !result?.error;
   }
   return (
     !isInternalQuery &&

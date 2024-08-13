@@ -283,7 +283,7 @@ export const useCommandPalette = ({
       })
       .map(([slug, section]) => ({
         id: `admin-settings-${slug}`,
-        name: `Settings - ${section.name}`,
+        name: `${t`Settings`} - ${section.name}`,
         icon: "gear",
         perform: () => dispatch(push(`/admin/settings/${slug}`)),
         section: "admin",

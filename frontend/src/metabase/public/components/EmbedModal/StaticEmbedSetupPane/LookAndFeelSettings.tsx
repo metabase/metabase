@@ -4,7 +4,6 @@ import { jt, t } from "ttag";
 import { UpsellMetabaseBanner } from "metabase/admin/upsells/UpsellMetabaseBanner";
 import { getPlan } from "metabase/common/utils/plan";
 import ExternalLink from "metabase/core/components/ExternalLink";
-import { useUniqueId } from "metabase/hooks/use-unique-id";
 import { color } from "metabase/lib/colors";
 import { useSelector } from "metabase/lib/redux";
 import type {
@@ -63,8 +62,6 @@ export const LookAndFeelSettings = ({
     getSetting(state, "available-fonts"),
   );
   const utmTags = `?utm_source=${plan}&utm_media=static-embed-settings-appearance`;
-
-  const downloadDataId = useUniqueId("download-data");
 
   return (
     <>
@@ -180,26 +177,19 @@ export const LookAndFeelSettings = ({
           />
 
           {canWhitelabel && (
-            // We only show the "Download Data" toggle if the users are pro/enterprise
-            <DisplayOptionSection
-              title={t`Download data`}
-              titleId={downloadDataId}
-            >
-              <Switch
-                aria-labelledby={downloadDataId}
-                label={t`Enable users to download data from this embed`}
-                labelPosition="left"
-                size="sm"
-                variant="stretch"
-                checked={displayOptions.downloads ?? true}
-                onChange={e =>
-                  onChangeDisplayOptions({
-                    ...displayOptions,
-                    downloads: e.target.checked,
-                  })
-                }
-              />
-            </DisplayOptionSection>
+            <Switch
+              label={t`Download buttons`}
+              labelPosition="left"
+              size="sm"
+              variant="stretch"
+              checked={displayOptions.downloads ?? true}
+              onChange={e =>
+                onChangeDisplayOptions({
+                  ...displayOptions,
+                  downloads: e.target.checked,
+                })
+              }
+            />
           )}
         </Stack>
       </StaticEmbedSetupPaneSettingsContentSection>

@@ -24,6 +24,7 @@ import {
 import { CompatibleSeriesButton } from "metabase/query_builder/components/view/ViewHeader/components/CompatibleSeriesButton";
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -138,6 +139,7 @@ export function ViewTitleHeaderRightSide({
 
   const canSave = Lib.canSave(question.query(), question.type());
   const isSaveDisabled = !canSave;
+  const isBrandNew = !isSaved && !result && queryBuilderMode === "notebook";
   const disabledSaveTooltip = getDisabledSaveTooltip(isEditable);
 
   return (
@@ -182,6 +184,7 @@ export function ViewTitleHeaderRightSide({
       {QuestionNotebookButton.shouldRender({
         question,
         isActionListVisible,
+        isBrandNew,
       }) && (
         <QuestionNotebookButton
           isShowingNotebook={isShowingNotebook}
@@ -235,7 +238,7 @@ export function ViewTitleHeaderRightSide({
             onClick={event => {
               event.preventDefault();
               if (!isSaveDisabled) {
-                onOpenModal("save");
+                onOpenModal(MODAL_TYPES.SAVE);
               }
             }}
           >

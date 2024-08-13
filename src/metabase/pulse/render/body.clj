@@ -66,7 +66,7 @@
 
 ;;; --------------------------------------------------- Formatting ---------------------------------------------------
 
-(mu/defn ^:private format-cell
+(mu/defn- format-cell
   [timezone-id :- [:maybe :string] value col visualization-settings]
   (cond
     (types/temporal-field? col)
@@ -129,7 +129,7 @@
        100)
     (- max-value min-value))))
 
-(mu/defn ^:private query-results->row-seq
+(mu/defn- query-results->row-seq
   "Returns a seq of stringified formatted rows that can be rendered into HTML"
   [timezone-id :- [:maybe :string]
    remapping-lookup
@@ -153,7 +153,7 @@
                                                 [fmt-fn maybe-remapped-row-cell])]]
               (fmt-fn row-cell))})))
 
-(mu/defn ^:private prep-for-html-rendering
+(mu/defn- prep-for-html-rendering
   "Convert the query results (`cols` and `rows`) into a formatted seq of rows (list of strings) that can be rendered as
   HTML"
   ([timezone-id :- [:maybe :string]
@@ -226,15 +226,16 @@
    timezone-id :- [:maybe :string]
    card
    _dashcard
-   {:keys [rows viz-settings format-rows?] :as data}]
-  (let [[ordered-cols ordered-rows] (order-data data viz-settings)
-        data                        (-> data
+   {:keys [rows viz-settings format-rows?] :as unordered-data}]
+  (let [[ordered-cols ordered-rows] (order-data unordered-data viz-settings)
+        data                        (-> unordered-data
                                         (assoc :rows ordered-rows)
                                         (assoc :cols ordered-cols))
         table-body                  [:div
                                      (table/render-table
-                                      (color/make-color-selector data viz-settings)
-                                      (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)
+                                      (color/make-color-selector unordered-data viz-settings)
+                                      {:cols-for-color-lookup (mapv :name ordered-cols)
+                                       :col-names             (common/column-titles ordered-cols (::mb.viz/column-settings viz-settings) format-rows?)}
                                       (prep-for-html-rendering timezone-id card data))
                                      (render-truncation-warning (public-settings/attachment-table-row-limit) (count rows))]]
     {:attachments
@@ -312,12 +313,6 @@
       y-col-settings
       (assoc :y y-col-settings))))
 
-(def ^:private colors
-  "Colors to cycle through for charts. These are copied from https://stats.metabase.com/_internal/colors"
-  ["#509EE3" "#88BF4D" "#A989C5" "#EF8C8C" "#F9D45C" "#F2A86F" "#98D9D9" "#7172AD" "#6450e3" "#4dbf5e"
-   "#c589b9" "#efce8c" "#b5f95c" "#e35850" "#554dbf" "#bec589" "#8cefc6" "#5cc2f9" "#55e350" "#bf4d4f"
-   "#89c3c5" "#be8cef" "#f95cd0" "#50e3ae" "#bf974d" "#899bc5" "#ef8cde" "#f95c67"])
-
 (defn format-percentage
   "Format a percentage which includes site settings for locale. The first arg is a numeric value to format. The second
   is an optional string of decimal and grouping symbols to be used, ie \".,\". There will soon be a values.clj file
@@ -332,103 +327,6 @@
                                       (cond-> grouping (.setGroupingSeparator grouping))))
                (DecimalFormat. base))]
      (.format fmt value))))
-
-(defn- donut-info
-  "Process rows with a minimum slice threshold. Collapses any segments below the threshold given as a percentage (the
-  value 25 for 25%) into a single category as \"Other\". "
-  [threshold-percentage rows]
-  (let [total                    (reduce + 0 (map second rows))
-        threshold                (* total (/ threshold-percentage 100))
-        {as-is true clump false} (group-by (comp #(> % threshold) second) rows)
-        rows (cond-> as-is
-               (seq clump)
-               (conj [(tru "Other") (reduce (fnil + 0) 0 (map second clump))]))]
-    {:rows        rows
-     :percentages (into {}
-                        (for [[label value] rows]
-                          [label (if (zero? total)
-                                   (tru "N/A")
-                                   (format-percentage (/ value total)))]))}))
-
-(defn- donut-legend
-  [legend-entries]
-  (letfn [(table-fn [entries]
-            (into [:table {:style (style/style {:color       "#4C5773"
-                                                :font-family "Lato, sans-serif"
-                                                :font-size   "24px"
-                                                :font-weight "bold"
-                                                :box-sizing  "border-box"
-                                                :white-space "nowrap"})}]
-                  (for [{:keys [label percentage color]} entries]
-                    [:tr {:style (style/style {:margin-right "12px"})}
-                     [:td {:style (style/style {:color         color
-                                                :padding-right "7px"
-                                                :line-height   "0"})}
-                      [:span {:style (style/style {:font-size   "2.875rem"
-                                                   :line-height "0"
-                                                   :position    "relative"
-                                                   :top         "-4px"})} "•"]]
-                     [:td {:style (style/style {:padding-right "30px"})}
-                      label]
-                     [:td percentage]])))]
-    (if (< (count legend-entries) 8)
-      (table-fn legend-entries)
-      [:table (into [:tr]
-                    (map (fn [some-entries]
-                           [:td {:style (style/style {:padding-right  "20px"
-                                                      :vertical-align "top"})}
-                            (table-fn some-entries)])
-                         (split-at (/ (count legend-entries) 2) legend-entries)))])))
-
-(defn- replace-nils [rows]
-  (mapv (fn [row]
-          (if (nil? (first row))
-            (assoc row 0 "(empty)")
-            row))
-        rows))
-
-(mu/defmethod render :categorical/donut :- formatter/RenderedPulseCard
-  [_chart-type
-   render-type
-   timezone-id :- [:maybe :string]
-   card
-   _dashcard
-   {:keys [rows cols viz-settings] :as data}]
-  (let [[x-axis-rowfn y-axis-rowfn] (formatter/graphing-column-row-fns card data)
-        rows                        (map (juxt (comp str x-axis-rowfn) y-axis-rowfn)
-                                         (formatter/row-preprocess x-axis-rowfn y-axis-rowfn (replace-nils rows)))
-        slice-threshold             (or (get viz-settings :pie.slice_threshold)
-                                        2.5)
-        {:keys [rows percentages]}  (donut-info slice-threshold rows)
-        legend-colors               (merge (zipmap (map first rows) (cycle colors))
-                                           (update-keys (:pie.colors viz-settings) name))
-        settings                    {:percent_visibility (:pie.percent_visibility viz-settings) :show_total (:pie.show_total viz-settings)}
-        image-bundle                (image-bundle/make-image-bundle
-                                     render-type
-                                     (js-svg/categorical-donut rows legend-colors settings))
-        {label-viz-settings :x}     (->js-viz (x-axis-rowfn cols) (y-axis-rowfn cols) viz-settings)]
-    {:attachments
-     (when image-bundle
-       (image-bundle/image-bundle->attachment image-bundle))
-
-     :content
-     [:div
-      [:img {:style (style/style {:display :block :width :100%})
-             :src   (:image-src image-bundle)}]
-      (donut-legend
-       (mapv (fn [row]
-               (let [label (first row)]
-                 {:percentage (percentages (first row))
-                  :color      (legend-colors (first row))
-                  :label      (if (and (contains? label-viz-settings :date_style)
-                                       (formatter/temporal-string? label))
-                                (formatter/format-temporal-str
-                                 timezone-id
-                                 (first row)
-                                 (x-axis-rowfn cols)
-                                 viz-settings)
-                                label)}))
-             rows))]}))
 
 (mu/defmethod render :progress :- formatter/RenderedPulseCard
   [_chart-type

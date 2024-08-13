@@ -19,13 +19,13 @@ describe("ExecutionTime", () => {
   it("renders formatted time when time is provided", () => {
     render(<ExecutionTime time={100} />);
 
-    expect(screen.getByTestId("execution-time")).toHaveTextContent("100 ms");
+    expect(screen.getByTestId("execution-time")).toHaveTextContent("100ms");
   });
 
   it("renders formatted time when time is provided, but the time is 0", () => {
     render(<ExecutionTime time={0} />);
 
-    expect(screen.getByTestId("execution-time")).toHaveTextContent("0 ms");
+    expect(screen.getByTestId("execution-time")).toHaveTextContent("0ms");
   });
 
   it("shows tooltip", async () => {
@@ -33,7 +33,7 @@ describe("ExecutionTime", () => {
 
     await userEvent.hover(screen.getByTestId("execution-time"));
     expect(screen.getByRole("tooltip")).toHaveTextContent(
-      "Query execution time",
+      "How long this query took",
     );
   });
 });

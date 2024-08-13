@@ -1,11 +1,11 @@
 import type { ScheduleSettings } from "./settings";
 import type { Table } from "./table";
 
-import type { ISO8601Time } from ".";
+import type { ISO8601Time, LongTaskStatus } from ".";
 
 export type DatabaseId = number;
 
-export type InitialSyncStatus = "incomplete" | "complete" | "aborted";
+export type InitialSyncStatus = LongTaskStatus;
 
 export type DatabaseSettings = {
   [key: string]: any;
@@ -53,6 +53,7 @@ export interface Database extends DatabaseData {
   uploads_enabled: boolean;
   uploads_schema_name: string | null;
   uploads_table_prefix: string | null;
+  is_audit?: boolean;
 
   // Only appears in  GET /api/database/:id
   "can-manage"?: boolean;

@@ -44,7 +44,7 @@
    {:error/message "Valid BigQuery project-id"}
    valid-project-identifier?])
 
-(mu/defn ^:private project-id-for-current-query :- ProjectIdentifierString
+(mu/defn- project-id-for-current-query :- ProjectIdentifierString
   "Fetch the project-id for the current database associated with this query, if defined AND different from the
   project ID associated with the service account credentials."
   []

@@ -17,7 +17,7 @@ export const onlyOnOSS = () => cy.onlyOn(isOSS);
  *
  * @param {boolean} cond
  */
-const conditionalDescribe = cond => (cond ? describe : describe.skip);
+export const conditionalDescribe = cond => (cond ? describe : describe.skip);
 
 export const describeEE = conditionalDescribe(isEE);
 
@@ -78,5 +78,21 @@ export const deleteToken = () => {
     body: {
       value: null,
     },
+  });
+};
+
+export const mockSessionPropertiesTokenFeatures = features => {
+  cy.intercept({ method: "GET", url: "/api/session/properties" }, request => {
+    request.on("response", response => {
+      if (typeof response.body === "object") {
+        response.body = {
+          ...response.body,
+          "token-features": {
+            ...response.body["token-features"],
+            ...features,
+          },
+        };
+      }
+    });
   });
 };

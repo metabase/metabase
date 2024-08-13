@@ -1,7 +1,6 @@
-import type { Location, Query } from "history";
+import type { Query } from "history";
 import type { ReactNode } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { Route } from "react-router";
 import { usePrevious, useUnmount } from "react-use";
 import _ from "underscore";
 
@@ -9,11 +8,12 @@ import { deletePermanently } from "metabase/archive/actions";
 import { ArchivedEntityBanner } from "metabase/archive/components/ArchivedEntityBanner";
 import {
   moveDashboardToCollection,
-  type navigateToNewCardFromDashboard,
   type NewDashCardOpts,
   setArchivedDashboard,
   type SetDashboardAttributesOpts,
 } from "metabase/dashboard/actions";
+import type { NavigateToNewCardFromDashboardOpts } from "metabase/dashboard/components/DashCard/types";
+import { useHasDashboardScroll } from "metabase/dashboard/components/Dashboard/use-has-dashboard-scroll";
 import { DashboardHeader } from "metabase/dashboard/components/DashboardHeader";
 import type {
   DashboardDisplayOptionControls,
@@ -22,7 +22,6 @@ import type {
 } from "metabase/dashboard/types";
 import Bookmarks from "metabase/entities/bookmarks";
 import Dashboards from "metabase/entities/dashboards";
-import { getMainElement } from "metabase/lib/dom";
 import { useDispatch } from "metabase/lib/redux";
 import type {
   CardId,
@@ -31,19 +30,18 @@ import type {
   DashboardId,
   DashboardTabId,
   DashCardId,
+  DashCardVisualizationSettings,
   ParameterId,
   ParameterValueOrArray,
-  RowValue,
+  TemporalUnit,
   ValuesQueryType,
   ValuesSourceConfig,
   ValuesSourceType,
-  VisualizationSettings,
 } from "metabase-types/api";
 import type {
   DashboardSidebarName,
   SelectedTabId,
   State,
-  StoreDashcard,
 } from "metabase-types/store";
 
 import { DASHBOARD_PDF_EXPORT_ROOT_ID, SIDEBAR_NAME } from "../../constants";
@@ -65,10 +63,6 @@ import {
 } from "./DashboardEmptyState/DashboardEmptyState";
 
 export type DashboardProps = {
-  route: Route;
-  params: {
-    slug: string;
-  };
   children?: ReactNode;
   canManageSubscriptions: boolean;
   isAdmin: boolean;
@@ -82,7 +76,7 @@ export type DashboardProps = {
   slowCards: Record<DashCardId, boolean>;
   parameterValues: Record<ParameterId, ParameterValueOrArray>;
   loadingStartTime: number | null;
-  clickBehaviorSidebarDashcard: StoreDashcard | null;
+  clickBehaviorSidebarDashcard: DashboardCard | null;
   isAddParameterPopoverOpen: boolean;
   sidebar: State["dashboard"]["sidebar"];
   isHeaderVisible: boolean;
@@ -91,7 +85,6 @@ export type DashboardProps = {
   isNavigatingBackToDashboard: boolean;
   addCardOnLoad?: DashCardId;
   editingOnLoad?: string | string[] | boolean;
-  location: Location;
   dashboardId: DashboardId;
   parameterQueryParams: Query;
 
@@ -114,14 +107,18 @@ export type DashboardProps = {
 
   closeNavbar: () => void;
   setErrorPage: (error: unknown) => void;
-  onChangeLocation: (location: Location) => void;
 
   setParameterName: (id: ParameterId, name: string) => void;
-  setParameterType: (id: ParameterId, type: string) => void;
-  navigateToNewCardFromDashboard: typeof navigateToNewCardFromDashboard;
-  setParameterDefaultValue: (id: ParameterId, value: RowValue) => void;
+  setParameterType: (id: ParameterId, type: string, sectionId: string) => void;
+  navigateToNewCardFromDashboard: (
+    opts: NavigateToNewCardFromDashboardOpts,
+  ) => void;
+  setParameterDefaultValue: (id: ParameterId, value: unknown) => void;
   setParameterRequired: (id: ParameterId, value: boolean) => void;
-  setParameterTemporalUnits: (id: ParameterId, value: boolean) => void;
+  setParameterTemporalUnits: (
+    id: ParameterId,
+    temporalUnits: TemporalUnit[],
+  ) => void;
   setParameterIsMultiSelect: (id: ParameterId, isMultiSelect: boolean) => void;
   setParameterQueryType: (id: ParameterId, queryType: ValuesQueryType) => void;
   setParameterSourceType: (
@@ -132,17 +129,20 @@ export type DashboardProps = {
     id: ParameterId,
     config: ValuesSourceConfig,
   ) => void;
-  setParameterFilteringParameters: (parameters: ParameterId[]) => void;
+  setParameterFilteringParameters: (
+    parameterId: ParameterId,
+    filteringParameters: ParameterId[],
+  ) => void;
   showAddParameterPopover: () => void;
   removeParameter: (id: ParameterId) => void;
 
   onReplaceAllDashCardVisualizationSettings: (
     id: DashCardId,
-    settings: Partial<VisualizationSettings>,
+    settings: DashCardVisualizationSettings | null | undefined,
   ) => void;
   onUpdateDashCardVisualizationSettings: (
     id: DashCardId,
-    settings: Partial<VisualizationSettings>,
+    settings: DashCardVisualizationSettings | null | undefined,
   ) => void;
   onUpdateDashCardColumnSettings: (
     id: DashCardId,
@@ -156,7 +156,7 @@ export type DashboardProps = {
 
   fetchDashboard: (opts: {
     dashId: DashboardId;
-    queryParams?: Query;
+    queryParams: Query;
     options?: {
       clearCache?: boolean;
       preserveParameters?: boolean;
@@ -195,14 +195,15 @@ function Dashboard(props: DashboardProps) {
     setSharing,
     toggleSidebar,
     parameterQueryParams,
-    location,
+    downloadsEnabled = true,
   } = props;
 
   const dispatch = useDispatch();
 
   const [isInitialized, setIsInitialized] = useState(false);
   const [error, setError] = useState<unknown>(null);
-  const [hasScroll, setHasScroll] = useState(getMainElement()?.scrollTop > 0);
+
+  const hasScroll = useHasDashboardScroll({ isInitialized });
 
   const previousDashboard = usePrevious(dashboard);
   const previousDashboardId = usePrevious(dashboardId);
@@ -334,22 +335,6 @@ function Dashboard(props: DashboardProps) {
     selectedTabId,
   ]);
 
-  useEffect(() => {
-    if (!isInitialized) {
-      return;
-    }
-
-    const node = getMainElement();
-
-    const handleScroll = (event: any) => {
-      setHasScroll(event.target.scrollTop > 0);
-    };
-
-    node.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => node.removeEventListener("scroll", handleScroll);
-  }, [isInitialized]);
-
   useUnmount(() => {
     cancelFetchDashboardCardData();
   });
@@ -395,9 +380,7 @@ function Dashboard(props: DashboardProps) {
         navigateToNewCardFromDashboard={props.navigateToNewCardFromDashboard}
         selectedTabId={selectedTabId}
         onEditingChange={handleSetEditing}
-        // downloads are always enabled on internal dashboards
-        // you will still need to have permissions to download the data
-        downloadsEnabled
+        downloadsEnabled={downloadsEnabled}
       />
     );
   };
@@ -439,7 +422,7 @@ function Dashboard(props: DashboardProps) {
 
             <DashboardHeaderContainer
               data-element-id="dashboard-header-container"
-              id="Dashboard-Header-Container"
+              data-testid="dashboard-header-container"
               isFullscreen={isFullscreen}
               isNightMode={shouldRenderAsNightMode}
             >
@@ -449,7 +432,7 @@ function Dashboard(props: DashboardProps) {
                * in Redux state which kicks off a fetch for the dashboard cards.
                */}
               <DashboardHeader
-                location={location}
+                parameterQueryParams={parameterQueryParams}
                 dashboard={dashboard}
                 isNightMode={shouldRenderAsNightMode}
                 isFullscreen={isFullscreen}
@@ -512,10 +495,9 @@ function Dashboard(props: DashboardProps) {
                 setParameterRequired={props.setParameterRequired}
                 setParameterTemporalUnits={props.setParameterTemporalUnits}
                 isFullscreen={props.isFullscreen}
-                params={props.params}
                 sidebar={props.sidebar}
                 closeSidebar={props.closeSidebar}
-                selectedTabId={props.selectedTabId}
+                selectedTabId={selectedTabId}
                 onCancel={() => setSharing(false)}
               />
             </DashboardBody>

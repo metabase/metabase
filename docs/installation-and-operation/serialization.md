@@ -322,6 +322,8 @@ Metabase will not delete items from target instance during import, but it will o
 
 Metabase relies on [Entity IDs](#metabase-uses-entity-ids-to-identify-and-reference-metabase-items) to figure out which items to create or overwrite, and what are the relationships between items. When importing into an instance that already has some content in it, keep in mind:
 
+- If you import an item with an `entity_id` that doesn't exist in your target Metabase, Metabase will create a new item.
+
 - If you import an item with an `entity_id` that already exists in your target Metabase, the existing item will be overwritten.
 
   In particular, this means that if you export a question, then make a change in an exported YAML file — like rename a question by directly editing the `name` field — and then import the edited file back, Metabase will try to apply the changes you made to the YAML.
@@ -584,7 +586,7 @@ To keep file sizes over the network under control, both the `export` and `import
 To compress a directory (e.g., a directory named `metabase_data`).
 
 ```sh
-tar -czf  metabase_data
+tar -czf  metabase_data.tgz metabase_data
 ```
 
 #### Extract a directory

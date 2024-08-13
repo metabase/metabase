@@ -151,7 +151,8 @@
    {metabase.actions               #{metabase.actions.core}
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
-                                     metabase.analytics.stats}                                      ; TODO -- consolidate these into a real API namespace.
+                                     metabase.analytics.stats
+                                     metabase.analytics.sdk}                                      ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
@@ -265,6 +266,7 @@
     metabase.api                   :any
     metabase.async                 :any
     metabase.audit                 :any
+    metabase.auth-provider         #{metabase.util}
     metabase.bootstrap             #{}
     metabase.cmd                   :any
     metabase.compatibility         :any
@@ -369,6 +371,7 @@
     metabase-enterprise.audit-app.pages.common                    common
     metabase-enterprise.sandbox.api.table                         table
     metabase-enterprise.test                                      met
+    metabase.analytics.sdk                                        sdk
     metabase.analytics.stats                                      stats
     metabase.analyze.query-results                                qr
     metabase.analyze.classifiers.category                         classifiers.category
@@ -608,7 +611,9 @@
     toucan.models                                                 models}}}
 
  :lint-as
- {clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
+ {cljs.cache/defcache                                                                  clojure.core/deftype
+  clojure.core.cache/defcache                                                          clojure.core/deftype
+  clojure.core.logic/defne                                                             clj-kondo.lint-as/def-catch-all
   clojure.test.check.clojure-test/defspec                                              clojure.test/deftest
   clojurewerkz.quartzite.jobs/defjob                                                   clojure.core/defn
   honeysql.helpers/defhelper                                                           clj-kondo.lint-as/def-catch-all
@@ -664,9 +669,11 @@
   metabase.upload-test/with-upload-table!                                              clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
   metabase.util.malli.defn/defn                                                        schema.core/defn
+  metabase.util.malli.defn/defn-                                                       schema.core/defn
   metabase.util.malli.fn/fn                                                            schema.core/fn
   metabase.util.malli/defmethod                                                        schema.core/defmethod
   metabase.util.malli/defn                                                             schema.core/defn
+  metabase.util.malli/defn-                                                            schema.core/defn
   metabase.util.malli/fn                                                               schema.core/fn
   metabase.util.ssh/with-ssh-tunnel                                                    clojure.core/let
   metabase.xrays.domain-entities.malli/defn                                            schema.core/defn
@@ -772,6 +779,7 @@
    metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
+   metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
    metabase.util/format-color                                                                                                hooks.metabase.util/format-color
@@ -795,10 +803,12 @@
    clojurewerkz.quartzite.schedule.simple/schedule                              macros.quartz/simple-schedule
    clojurewerkz.quartzite.triggers/build                                        macros.quartz/build-trigger
    metabase-enterprise.sandbox.test-util/with-gtaps!                            macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.sandbox.test-util/with-gtaps-for-user!                   macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.serialization.test-util/with-world                       macros.metabase-enterprise.serialization.test-util/with-world
    metabase-enterprise.test/with-gtaps!                                         macros.metabase-enterprise.sandbox.test-util/with-gtaps!
+   metabase-enterprise.test/with-gtaps-for-user!                                macros.metabase-enterprise.sandbox.test-util/with-gtaps!
    metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!  macros.metabase-enterprise.advanced-permissions.api.util-test/with-impersonations!
-   metabase-enterprise.query-field-validation.api-test/with-test-setup          macros.metabase-enterprise.query-field-validation.api-test/with-test-setup
+   metabase-enterprise.query-reference-validation.api-test/with-test-setup      macros.metabase-enterprise.query-reference-validation.api-test/with-test-setup
    metabase.api.card-test/with-ordered-items                                    macros.metabase.api.card-test/with-ordered-items
    metabase.api.collection-test/with-collection-hierarchy                       macros.metabase.api.collection-test/with-collection-hierarchy
    metabase.api.collection-test/with-some-children-of-collection                macros.metabase.api.collection-test/with-some-children-of-collection
@@ -811,7 +821,7 @@
    metabase.lib.common/defop                                                    macros.metabase.lib.common/defop
    metabase.models.params.chain-filter-test/chain-filter                        macros.metabase.models.params.chain-filter-test/chain-filter
    metabase.models.params.chain-filter-test/chain-filter-search                 macros.metabase.models.params.chain-filter-test/chain-filter
-   metabase.models.query-field-test/with-test-setup                             macros.metabase.models.query-field-test/with-test-setup
+   metabase.models.query-analysis-test/with-test-setup                          macros.metabase.models.query-analysis-test/with-test-setup
    metabase.models.user-test/with-groups                                        macros.metabase.models.user-test/with-groups
    metabase.query-processor.streaming/streaming-response                        macros.metabase.query-processor.streaming/streaming-response
    metabase.related-test/with-world                                             macros.metabase.related-test/with-world

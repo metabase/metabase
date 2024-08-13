@@ -2,7 +2,6 @@ import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import { ListRoot } from "metabase/components/tree/TreeNodeList.styled";
 import Link from "metabase/core/components/Link";
 import { alpha, color, darken } from "metabase/lib/colors";
 import { NAV_SIDEBAR_WIDTH } from "metabase/nav/constants";
@@ -74,17 +73,6 @@ export const collectionDragAndDropHoverStyle = css`
 
 export const CollectionNodeRoot = styled(NodeRoot)<{ hovered?: boolean }>`
   ${props => props.hovered && collectionDragAndDropHoverStyle}
-`;
-
-// accommodate for trash collection having margin above
-export const CollectionLinkRoot = styled.div`
-  ${ListRoot} > &:last-child {
-    margin-top: 1rem;
-  }
-
-  ${ListRoot} ${ListRoot} > &:last-child {
-    margin-top: 0;
-  }
 `;
 
 const itemContentStyle = css`

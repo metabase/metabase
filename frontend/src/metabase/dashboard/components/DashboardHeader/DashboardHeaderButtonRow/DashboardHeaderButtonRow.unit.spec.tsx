@@ -109,6 +109,7 @@ const DASHBOARD_EXPECTED_DATA_MAP: Record<
     icon: "expand",
     tooltip: "Enter Fullscreen",
   },
+  [DASHBOARD_ACTION.EXPORT_AS_PDF]: {},
 };
 
 const setup = ({
@@ -165,6 +166,8 @@ const setup = ({
       path="*"
       component={() => (
         <DashboardHeaderButtonRow
+          canResetFilters
+          onResetFilters={jest.fn()}
           refreshPeriod={null}
           onRefreshPeriodChange={jest.fn()}
           setRefreshElapsedHook={jest.fn()}

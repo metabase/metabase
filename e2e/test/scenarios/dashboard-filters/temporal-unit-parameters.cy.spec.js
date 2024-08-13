@@ -387,9 +387,9 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         .should("contain.text", "Started from")
         .should("contain.text", multiBreakoutQuestionDetails.name);
       queryBuilderMain().within(() => {
-        cy.findByText("Product → Created At: Week").should("be.visible");
-        cy.findByText("2022").should("be.visible");
-        cy.findByText("2023").should("be.visible");
+        cy.findByText("Created At: Year").should("be.visible");
+        cy.findByText("April 24, 2022").should("be.visible");
+        cy.findByText("May 1, 2022").should("be.visible");
       });
     });
 
@@ -477,8 +477,26 @@ describe("scenarios > dashboard > temporal unit parameters", () => {
         extraQuestions: [nativeUnitQuestionDetails],
       }).then(dashboard => visitDashboard(dashboard.id));
 
-      cy.log("setup click behavior");
+      cy.log("unsupported column types are ignored");
       editDashboard();
+      getDashboardCard(0)
+        .findByLabelText("Click behavior")
+        .click({ force: true });
+      sidebar().within(() => {
+        cy.log("datetime columns cannot be mapped");
+        cy.findByText("Created At").click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText("No available targets").should("be.visible");
+        cy.icon("chevronleft").click();
+
+        cy.log("number columns cannot be mapped");
+        cy.findByText("Count").click();
+        cy.findByText("Update a dashboard filter").click();
+        cy.findByText("No available targets").should("be.visible");
+        cy.button("Cancel").click();
+      });
+
+      cy.log("setup a valid click behavior with a text column");
       getDashboardCard(1)
         .findByLabelText("Click behavior")
         .click({ force: true });

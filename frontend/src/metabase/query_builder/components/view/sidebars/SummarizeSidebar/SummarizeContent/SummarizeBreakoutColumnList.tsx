@@ -1,7 +1,5 @@
-import cx from "classnames";
 import { t } from "ttag";
 
-import CS from "metabase/css/core/index.css";
 import { Stack, type StackProps } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 
@@ -16,7 +14,7 @@ type SummarizeBreakoutColumnListProps = {
     clause: Lib.BreakoutClause,
     column: Lib.ColumnMetadata,
   ) => void;
-  onRemoveBreakout: (column: Lib.ColumnMetadata) => void;
+  onRemoveBreakout: (clause: Lib.BreakoutClause) => void;
   onReplaceBreakouts: (column: Lib.ColumnMetadata) => void;
 } & StackProps;
 
@@ -30,9 +28,9 @@ export const SummarizeBreakoutColumnList = ({
   ...containerProps
 }: SummarizeBreakoutColumnListProps) => (
   <Stack
+    data-testid="summarize-breakout-column-list"
     h="100%"
     spacing="0"
-    className={cx(CS.flex1, CS.overflowYScroll)}
     {...containerProps}
   >
     <SectionTitle>{t`Group by`}</SectionTitle>
@@ -42,7 +40,7 @@ export const SummarizeBreakoutColumnList = ({
       onAddBreakout={onAddBreakout}
       onUpdateBreakout={onUpdateBreakout}
       onRemoveBreakout={onRemoveBreakout}
-      onReplaceBreakout={onReplaceBreakouts}
+      onReplaceBreakouts={onReplaceBreakouts}
     />
   </Stack>
 );

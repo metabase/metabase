@@ -145,7 +145,7 @@
   #_{:clj-kondo/ignore [:discouraged-var]}
   (str/lower-case (lib.temporal-bucket/describe-temporal-unit amount unit)))
 
-(mu/defn ^:private interval-display-name  :- ::lib.schema.common/non-blank-string
+(mu/defn- interval-display-name  :- ::lib.schema.common/non-blank-string
   "e.g. something like \"- 2 days\""
   [amount :- :int
    unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
@@ -156,7 +156,7 @@
        (lib.util/format "+ %d %s" amount                    unit-str)
        (lib.util/format "- %d %s" (clojure.core/abs amount) unit-str)))))
 
-(mu/defn ^:private interval-column-name  :- ::lib.schema.common/non-blank-string
+(mu/defn- interval-column-name  :- ::lib.schema.common/non-blank-string
   "e.g. something like `minus_2_days`"
   [amount :- :int
    unit   :- ::lib.schema.temporal-bucketing/unit.date-time.interval]
@@ -291,7 +291,7 @@
 (lib.common/defop day-name [n])
 (lib.common/defop offset [x n])
 
-(mu/defn ^:private expression-metadata :- ::lib.schema.metadata/column
+(mu/defn- expression-metadata :- ::lib.schema.metadata/column
   [query                 :- ::lib.schema/query
    stage-number          :- :int
    expression-definition :- ::lib.schema.expression/expression]

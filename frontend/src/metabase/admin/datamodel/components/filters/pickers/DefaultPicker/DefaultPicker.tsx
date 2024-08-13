@@ -11,7 +11,7 @@ import {
   isFuzzyOperator,
 } from "metabase-lib/v1/operators/utils";
 import type Filter from "metabase-lib/v1/queries/structured/Filter";
-import { getColumnKey } from "metabase-lib/v1/queries/utils/get-column-key";
+import { getColumnSettings } from "metabase-lib/v1/queries/utils/column-key";
 import { isCurrency } from "metabase-lib/v1/types/utils/isa";
 import type { DatasetColumn, FieldId, RowValue } from "metabase-types/api";
 
@@ -64,11 +64,9 @@ export function DefaultPicker({
     ?.question()
     ?.settings();
 
-  const key = dimension?.column?.()
-    ? getColumnKey(dimension.column() as DatasetColumn)
-    : "";
-
-  const columnSettings = visualizationSettings?.column_settings?.[key];
+  const column = dimension?.column?.();
+  const columnSettings =
+    column && getColumnSettings(visualizationSettings, column as DatasetColumn);
 
   const fieldMetadata = field?.metadata?.fields[field?.id as FieldId];
   const fieldSettings = {

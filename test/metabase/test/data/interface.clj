@@ -515,14 +515,14 @@
 ;; TODO - not sure everything below belongs in this namespace
 ;; Tech debt issue: #39363
 
-(mu/defn ^:private dataset-field-definition :- ValidFieldDefinition
+(mu/defn- dataset-field-definition :- ValidFieldDefinition
   "Parse a Field definition (from a `defdatset` form or EDN file) and return a FieldDefinition instance for
   comsumption by various test-data-loading methods."
   [field-definition-map :- DatasetFieldDefinition]
   ;; if definition uses a coercion strategy they need to provide the effective-type
   (map->FieldDefinition field-definition-map))
 
-(mu/defn ^:private dataset-table-definition :- ValidTableDefinition
+(mu/defn- dataset-table-definition :- ValidTableDefinition
   "Parse a Table definition (from a `defdatset` form or EDN file) and return a TableDefinition instance for
   comsumption by various test-data-loading methods."
   ([tabledef :- DatasetTableDefinition]
@@ -667,7 +667,7 @@
 ;; TODO - maybe this should go in a different namespace
 ;; Tech debt issue: #39363
 
-(mu/defn ^:private tabledef-with-name :- ValidTableDefinition
+(mu/defn- tabledef-with-name :- ValidTableDefinition
   "Return `TableDefinition` with `table-name` in `dbdef`."
   [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
@@ -677,25 +677,25 @@
        tabledef))
    table-definitions))
 
-(mu/defn ^:private fielddefs-for-table-with-name :- [:sequential ValidFieldDefinition]
+(mu/defn- fielddefs-for-table-with-name :- [:sequential ValidFieldDefinition]
   "Return the `FieldDefinitions` associated with table with `table-name` in `dbdef`."
   [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (:field-definitions (tabledef-with-name dbdef table-name)))
 
-(mu/defn ^:private tabledef->id->row :- [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]
+(mu/defn- tabledef->id->row :- [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]
   [{:keys [field-definitions rows]} :- (ms/InstanceOfClass TableDefinition)]
   (let [field-names (map :field-name field-definitions)]
     (into {} (for [[i values] (m/indexed rows)]
                [(inc i) (zipmap field-names values)]))))
 
-(mu/defn ^:private dbdef->table->id->row :- [:map-of ms/NonBlankString [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]]
+(mu/defn- dbdef->table->id->row :- [:map-of ms/NonBlankString [:map-of ms/PositiveInt [:map-of ms/NonBlankString :any]]]
   "Return a map of table name -> map of row ID -> map of column key -> value."
   [{:keys [table-definitions]} :- (ms/InstanceOfClass DatabaseDefinition)]
   (into {} (for [{:keys [table-name] :as tabledef} table-definitions]
              [table-name (tabledef->id->row tabledef)])))
 
-(mu/defn ^:private nest-fielddefs
+(mu/defn- nest-fielddefs
   [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (let [nest-fielddef (fn nest-fielddef [{:keys [fk field-name], :as fielddef}]
@@ -706,7 +706,7 @@
                               (update nested-fielddef :field-name (partial vector field-name fk))))))]
     (mapcat nest-fielddef (fielddefs-for-table-with-name dbdef table-name))))
 
-(mu/defn ^:private flatten-rows
+(mu/defn- flatten-rows
   [dbdef :- (ms/InstanceOfClass DatabaseDefinition)
    table-name :- ms/NonBlankString]
   (let [nested-fielddefs (nest-fielddefs dbdef table-name)

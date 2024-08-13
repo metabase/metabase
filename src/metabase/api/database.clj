@@ -77,7 +77,7 @@
     (for [db dbs]
       (assoc db :tables (get db-id->tables (:id db) [])))))
 
-(mu/defn ^:private add-native-perms-info :- [:maybe
+(mu/defn- add-native-perms-info :- [:maybe
                                              [:sequential
                                               [:map
                                                [:native_permissions [:enum :write :none]]]]]
@@ -149,7 +149,7 @@
                      (log/error e "Error determining whether Database supports nested queries"))))
                (t2/select-pks-set Database))))
 
-(mu/defn ^:private source-query-cards
+(mu/defn- source-query-cards
   "Fetch the Cards that can be used as source queries (e.g. presented as virtual tables)."
   [card-type :- ::card/type
    & {:keys [additional-constraints xform], :or {xform identity}}]
@@ -158,10 +158,10 @@
      (comp (map (partial mi/do-after-select Card))
            (filter card-can-be-used-as-source-query?)
            xform)
-     (completing conj #(t2/hydrate % :collection))
+     (completing conj #(t2/hydrate % :collection :metrics))
      []
      (t2/reducible-query {:select   [:name :description :database_id :dataset_query :id :collection_id
-                                     :result_metadata :type
+                                     :result_metadata :type :source_card_id
                                      [{:select   [:status]
                                        :from     [:moderation_review]
                                        :where    [:and
@@ -184,12 +184,12 @@
                                           additional-constraints)
                           :order-by [[:%lower.name :asc]]}))))
 
-(mu/defn ^:private source-query-cards-exist?
+(mu/defn- source-query-cards-exist?
   "Truthy if a single Card that can be used as a source query exists."
   [card-type :- ::card/type]
   (seq (source-query-cards card-type :xform (take 1))))
 
-(mu/defn ^:private cards-virtual-tables
+(mu/defn- cards-virtual-tables
   "Return a sequence of 'virtual' Table metadata for eligible Cards.
    (This takes the Cards from `source-query-cards` and returns them in a format suitable for consumption by the Query
    Builder.)"
@@ -198,7 +198,7 @@
   (for [card (source-query-cards card-type)]
     (api.table/card->virtual-table card :include-fields? include-fields?)))
 
-(mu/defn ^:private saved-cards-virtual-db-metadata
+(mu/defn- saved-cards-virtual-db-metadata
   [card-type :- ::card/type
    & {:keys [include-tables? include-fields?]}]
   (when (public-settings/enable-nested-queries)
@@ -318,7 +318,7 @@
 
 ;;; --------------------------------------------- GET /api/database/:id ----------------------------------------------
 
-(mu/defn ^:private expanded-schedules [db :- (ms/InstanceOf Database)]
+(mu/defn- expanded-schedules [db :- (ms/InstanceOf Database)]
   {:metadata_sync      (u.cron/cron-string->schedule-map (:metadata_sync_schedule db))
    :cache_field_values (some-> (:cache_field_values_schedule db) u.cron/cron-string->schedule-map)})
 
@@ -756,7 +756,7 @@
                             (:name field)))]
     (contains? driver-props "ssl")))
 
-(mu/defn ^:private test-connection-details :- :map
+(mu/defn- test-connection-details :- :map
   "Try a making a connection to database `engine` with `details`.
 
   If the `details` has SSL explicitly enabled, go with that and do not accept plaintext connections. If it is disabled,

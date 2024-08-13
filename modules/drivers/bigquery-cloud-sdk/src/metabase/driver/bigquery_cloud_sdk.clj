@@ -52,7 +52,7 @@
   '("https://www.googleapis.com/auth/bigquery"
     "https://www.googleapis.com/auth/drive"))
 
-(mu/defn ^:private database-details->client
+(mu/defn- database-details->client
   ^BigQuery [details :- :map]
   (let [creds   (bigquery.common/database-details->service-account-credential details)
         bq-bldr (doto (BigQueryOptions/newBuilder)
@@ -108,7 +108,7 @@
                 _        (*page-callback*)
                 new-page (.getNextPage page)]
             (log/trace "BigQuery: New page returned")
-            (recur new-page (values-iterator page) acc (inc n)))
+            (recur new-page (values-iterator new-page) acc (inc n)))
 
           ;; All pages exhausted, so just return.
           ;; Make sure to close the cancel-chan as well, to prevent thread leaks in execute-bigquery.
@@ -167,7 +167,7 @@
 (def ^:private empty-table-options
   (u/varargs BigQuery$TableOption))
 
-(mu/defn ^:private get-table :- (lib.schema.common/instance-of-class Table)
+(mu/defn- get-table :- (lib.schema.common/instance-of-class Table)
   (^Table [{{:keys [project-id]} :details, :as database} dataset-id table-id]
    (get-table (database-details->client (:details database)) project-id dataset-id table-id))
 
@@ -254,7 +254,7 @@
       "BIGNUMERIC" :type/Decimal
       :type/*)))
 
-(mu/defn ^:private table-schema->metabase-field-info
+(mu/defn- table-schema->metabase-field-info
   [^Schema schema :- (lib.schema.common/instance-of-class Schema)]
   (for [[idx ^Field field] (m/indexed (.getFields schema))]
     (let [type-name (.. field getType name)
@@ -471,7 +471,7 @@
         :error  (handle-bigquery-exception payload sql parameters)
         :cancel nil))))
 
-(mu/defn ^:private execute-bigquery-on-db :- some?
+(mu/defn- execute-bigquery-on-db :- some?
   ^TableResult
   [database :- [:map [:details :map]] sql parameters cancel-chan]
   (execute-bigquery
@@ -480,7 +480,7 @@
    parameters
    cancel-chan))
 
-(mu/defn ^:private post-process-native :- some?
+(mu/defn- post-process-native :- some?
   "Parse results of a BigQuery query. `respond` is the same function passed to
   `metabase.driver/execute-reducible-query`, and has the signature
 
@@ -503,7 +503,7 @@
                       (mapv parse-field-value row parsers)))
                (reducible-bigquery-results resp cancel-chan)))))
 
-(mu/defn ^:private ^:dynamic *process-native*
+(mu/defn- ^:dynamic *process-native*
   [respond  :- fn?
    database :- [:map [:details :map]]
    sql

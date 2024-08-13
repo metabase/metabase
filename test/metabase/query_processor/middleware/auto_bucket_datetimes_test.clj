@@ -19,7 +19,7 @@
             [:stages 0]
             (lib.normalize/normalize :mbql.clause/field [:field {:temporal-unit :month} (meta/id :checkins :date)]))))))
 
-(mu/defn ^:private auto-bucket [query :- :map]
+(mu/defn- auto-bucket [query :- :map]
   (if (= (:lib/type query) :mbql/query)
     (qp.auto-bucket-datetimes/auto-bucket-datetimes query)
     (let [metadata-provider (if (qp.store/initialized?)

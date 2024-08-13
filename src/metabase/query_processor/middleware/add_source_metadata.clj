@@ -26,7 +26,7 @@
                   (every? #(lib.util.match/match-one % [:field (_ :guard string?) _])
                           fields))))))
 
-(mu/defn ^:private native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
+(mu/defn- native-source-query->metadata :- [:maybe [:sequential mbql.s/SourceQueryMetadata]]
   "Given a `source-query`, return the source metadata that should be added at the parent level (i.e., at the same
   level where this `source-query` was present.) This metadata is used by other middleware to determine what Fields to
   expect from the source query."
@@ -61,7 +61,7 @@
       (log/errorf e "Error determining expected columns for query: %s" (ex-message e))
       nil)))
 
-(mu/defn ^:private add-source-metadata :- [:map
+(mu/defn- add-source-metadata :- [:map
                                            [:source-metadata
                                             {:optional true}
                                             [:maybe [:sequential mbql.s/SourceQueryMetadata]]]]

@@ -22,7 +22,7 @@
   (when (integer? metric-id)
     (lib.metadata/metric query metric-id)))
 
-(mu/defn ^:private metric-definition :- [:maybe ::lib.schema/stage.mbql]
+(mu/defn- metric-definition :- [:maybe ::lib.schema/stage.mbql]
   [{:keys [dataset-query], :as _metric-metadata} :- ::lib.schema.metadata/metric]
   (when dataset-query
     (let [normalized-definition (cond-> dataset-query
@@ -130,7 +130,6 @@
                                                       index])))
                                    (lib.aggregation/aggregations query stage-number))
          s-metric (source-metric query (lib.util/query-stage query stage-number))
-         source-table (lib.util/source-table-id query)
          maybe-add-aggregation-pos (fn [metric-metadata]
                                      (let [aggregation-pos (-> metric-metadata
                                                                ((juxt :id ::lib.join/join-alias))
@@ -141,8 +140,11 @@
        (and first-stage? s-metric)
        [(maybe-add-aggregation-pos s-metric)]
 
-       (and first-stage? source-table)
-       (let [metrics (lib.metadata/metadatas-for-table query :metadata/metric source-table)]
+       first-stage?
+       (let [source-table (lib.util/source-table-id query)
+             metrics (if source-table
+                       (lib.metadata/metadatas-for-table query :metadata/metric source-table)
+                       (lib.metadata/metadatas-for-card query :metadata/metric (lib.util/source-card-id query)))]
          (not-empty
           (into []
                 (comp (filter (fn [metric-card]

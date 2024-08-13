@@ -156,6 +156,15 @@ describe("DashCardMenu", () => {
     expect(screen.getByText("Download full results")).toBeInTheDocument();
   });
 
+  it("should not display query export options when query is running", async () => {
+    setup({ result: {} as any });
+
+    await userEvent.click(getIcon("ellipsis"));
+
+    expect(await screen.findByText("Edit question")).toBeInTheDocument();
+    expect(screen.queryByText("Download results")).not.toBeInTheDocument();
+  });
+
   it("should not display query export options when there is a query error", async () => {
     setup({ result: TEST_RESULT_ERROR });
 

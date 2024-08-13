@@ -736,6 +736,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :attached_dwh                   (premium-features/has-attached-dwh?)
                       :audit_app                      (premium-features/enable-audit-app?)
                       :cache_granular_controls        (premium-features/enable-cache-granular-controls?)
+                      :collection_cleanup             (premium-features/enable-collection-cleanup?)
                       :config_text_file               (premium-features/enable-config-text-file?)
                       :content_verification           (premium-features/enable-content-verification?)
                       :dashboard_subscription_filters (premium-features/enable-dashboard-subscription-filters?)
@@ -746,6 +747,7 @@ See [fonts](../configuring-metabase/fonts.md).")
                       :hosting                        (premium-features/is-hosted?)
                       :official_collections           (premium-features/enable-official-collections?)
                       :sandboxes                      (premium-features/enable-sandboxes?)
+                      :scim                           (premium-features/enable-scim?)
                       :session_timeout_config         (premium-features/enable-session-timeout-config?)
                       :snippet_collections            (premium-features/enable-snippet-collections?)
                       :sso_google                     (premium-features/enable-sso-google?)
@@ -886,6 +888,8 @@ See [fonts](../configuring-metabase/fonts.md).")
                    :table_prefix (:uploads_table_prefix db)}))
   :setter     (fn [{:keys [db_id schema_name table_prefix]}]
                 (cond
+                  (premium-features/has-feature? :attached-dwh)
+                  (api/throw-403)
                   (nil? db_id)
                   (t2/update! :model/Database :uploads_enabled true {:uploads_enabled      false
                                                                      :uploads_schema_name  nil
@@ -934,7 +938,14 @@ See [fonts](../configuring-metabase/fonts.md).")
 
 (defsetting query-analysis-enabled
   (deferred-tru "Whether or not we analyze any queries at all")
-  :visibility :internal
+  :visibility :admin
   :export?    false
   :default    true
   :type       :boolean)
+
+(defsetting download-row-limit
+  (deferred-tru "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.")
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :doc false)

@@ -111,6 +111,36 @@
      (temporal-value :guard optimizable-temporal-value?)]
     (field-and-temporal-value-have-compatible-units? field temporal-value)))
 
+(defn- not-default-bucket-clause
+  [clause]
+  (and (vector? clause)
+       (not= :default (get-in clause [2 :temporal-unit]))))
+
+;; TODO: I believe we do not generate __filter clauses that have default temporal bucket on column arg which should be
+;;       optimized__. Unfortunately I'm not certain about that. If I was, the following `can-optimize-filter? :>=` and
+;;       `can-optimize-filter? :>=` definitions would be redundant after update of `optimizable-expr?`, ie. changing
+;;       the logic to something along "if `expr` has default temporal unit we should not optimize".
+
+(defmethod can-optimize-filter? :>=
+  [filter-clause]
+  (lib.util.match/match-one
+   filter-clause
+   [_tag
+    ;; Don't optimize >= with column that has default temporal bucket
+    (field :guard (every-pred not-default-bucket-clause optimizable-expr?))
+    (temporal-value :guard optimizable-temporal-value?)]
+   (field-and-temporal-value-have-compatible-units? field temporal-value)))
+
+(defmethod can-optimize-filter? :<
+  [filter-clause]
+  (lib.util.match/match-one
+   filter-clause
+   [_tag
+    ;; Don't optimize < with column that has default temporal bucket
+    (field :guard (every-pred not-default-bucket-clause optimizable-expr?))
+    (temporal-value :guard optimizable-temporal-value?)]
+   (field-and-temporal-value-have-compatible-units? field temporal-value)))
+
 (defmethod can-optimize-filter? :between
   [filter-clause]
   (lib.util.match/match-one filter-clause
@@ -133,12 +163,12 @@
 (mr/def ::temporal
   (lib.schema.common/instance-of-class java.time.temporal.Temporal))
 
-  (mu/defn ^:private temporal-literal-lower-bound :- ::temporal
+  (mu/defn- temporal-literal-lower-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
    t    :- ::temporal]
   (:start (u.date/range t unit)))
 
-(mu/defn ^:private temporal-literal-upper-bound :- ::temporal
+(mu/defn- temporal-literal-upper-bound :- ::temporal
   [unit :- (into [:enum] u.date/add-units)
    t    :- ::temporal]
   (:end (u.date/range t unit)))
@@ -171,7 +201,7 @@
   [_temporal-value-clause _temporal-unit]
   nil)
 
-(mu/defn ^:private target-unit-for-new-bound :- [:maybe (into [:enum] u.date/add-units)]
+(mu/defn- target-unit-for-new-bound :- [:maybe (into [:enum] u.date/add-units)]
   [value-unit :- [:maybe :keyword]
    field-unit :- [:maybe :keyword]]
   (or (when (and value-unit

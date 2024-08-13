@@ -112,7 +112,12 @@ export const InteractiveQuestionResult = ({
 
         <FilterBar />
 
-        <Group h="100%" pos="relative" align="flex-start">
+        <Group
+          h="100%"
+          pos="relative"
+          align="flex-start"
+          className={CS.overflowHidden}
+        >
           <ResultView
             questionView={questionView}
             setQuestionView={setQuestionView}

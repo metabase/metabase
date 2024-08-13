@@ -80,14 +80,14 @@
 
 (def rv-models
   "These are models for which we will retrieve recency."
-  [:card :model ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
-                ;; needed to distinguish between them.
+  [:card :dataset ;; n.b.: `:card` and `:model` are stored in recent_views as "card", and a join with report_card is
+                  ;; needed to distinguish between them.
    :dashboard :table :collection])
 
 (mu/defn rv-model->model
   "Given a rv-model, returns the toucan model identifier for it."
   [rvm :- (into [:enum] rv-models)]
-  (get {:model      :model/Card
+  (get {:dataset    :model/Card
         :card       :model/Card
         :dashboard  :model/Dashboard
         :table      :model/Table
@@ -100,13 +100,13 @@
                     {:select [:rv.id]
                      :from [[:recent_views :rv]]
                      :where [:and
-                             [:= :rv.model (get {:model "card"} model (name model))]
+                             [:= :rv.model (get {:dataset "card"} model (name model))]
                              [:= :rv.user_id user-id]
                              [:= :rv.context (h2x/literal (name context))]
-                             (when (#{:card :model} model) ;; TODO add metric
+                             (when (#{:card :dataset} model) ;; TODO add metric
                                [:= :rc.type (cond (= model :card) (h2x/literal "question")
                                                   ;; TODO add metric
-                                                  (= model :model) (h2x/literal "model"))])]
+                                                  (= model :dataset) (h2x/literal "model"))])]
                      :left-join [[:report_card :rc]
                                  [:and
                                   [:= :rc.id :rv.model_id]
@@ -469,7 +469,7 @@
                                               [:= :coll.id :rv.model_id]]]
                                  :order-by  [[:rv.timestamp :desc]]}))
 
-(mu/defn ^:private model->return-model [model :- :keyword]
+(mu/defn- model->return-model [model :- :keyword]
   (if (= :question model) :card model))
 
 (defn- post-process [entity->id->data recent-view]

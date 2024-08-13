@@ -1,3 +1,6 @@
+// polyfills useSyncExternalStore for React 17
+import "./lib/polyfill-use-sync-external-store";
+
 import "metabase/lib/dayjs";
 
 // we need to manually import them here to make sure they are included in the bundle

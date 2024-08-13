@@ -4,8 +4,8 @@
   (:require
     [clojure.data.csv :as csv]
     [clojure.java.io :as io]
-    [hiccup.core :as hiccup]
     [dev.util :as dev.u]
+    [hiccup.core :as hiccup]
     [metabase.email.messages :as messages]
     [metabase.models :refer [Card]]
     [metabase.models.card :as card]

@@ -65,7 +65,7 @@
   "Schema for valid values of the `result_metadata` column."
   [:ref ::ResultsMetadata])
 
-(mu/defn ^:private maybe-infer-semantic-type :- ResultColumnMetadata
+(mu/defn- maybe-infer-semantic-type :- ResultColumnMetadata
   "Infer the semantic type and add it to the result metadata. If the inferred semantic type is nil, don't override the
   semantic type with a nil semantic type"
   [col]
@@ -79,7 +79,7 @@
        (nil :type/Number) (classifiers.name/infer-semantic-type-by-name col)
        original-value))))
 
-(mu/defn ^:private col->ResultColumnMetadata :- ResultColumnMetadata
+(mu/defn- col->ResultColumnMetadata :- ResultColumnMetadata
   "Make sure a `column` as it comes back from a driver's initial results metadata matches the schema for valid results
   column metadata, adding placeholder values and removing nil keys."
   [column]

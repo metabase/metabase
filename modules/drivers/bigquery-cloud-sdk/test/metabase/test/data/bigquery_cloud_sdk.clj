@@ -94,7 +94,7 @@
   [_driver table-or-field-name]
   (str/replace table-or-field-name #"-" "_"))
 
-(mu/defn ^:private create-dataset! [^String dataset-id :- ::dataset-id]
+(mu/defn- create-dataset! [^String dataset-id :- ::dataset-id]
   (.create (bigquery) (DatasetInfo/of (DatasetId/of (project-id) dataset-id)) (u/varargs BigQuery$DatasetOption))
   (log/info (u/format-color 'blue "Created BigQuery dataset `%s.%s`." (project-id) dataset-id)))
 
@@ -123,13 +123,13 @@
 (def ^:private ValidFieldName
   [:re #"^[A-Za-z_](\w| ){0,127}$"])
 
-(mu/defn ^:private delete-table!
+(mu/defn- delete-table!
   [dataset-id :- ::lib.schema.common/non-blank-string
    table-id   :- ::lib.schema.common/non-blank-string]
   (.delete (bigquery) (TableId/of dataset-id table-id))
   (log/error (u/format-color 'red "Deleted table `%s.%s.%s`" (project-id) dataset-id table-id)))
 
-(mu/defn ^:private create-table!
+(mu/defn- create-table!
   [^String dataset-id :- ::lib.schema.common/non-blank-string
    ^String table-id   :- ::lib.schema.common/non-blank-string
    field-name->type   :- [:map-of ValidFieldName (into [:enum] valid-field-types)]]

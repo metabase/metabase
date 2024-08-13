@@ -14,9 +14,13 @@ import {
   addPostgresDatabase,
   focusNativeEditor,
   createQuestion,
+  startNewNativeModel,
 } from "e2e/support/helpers";
 
-import { runQuery } from "../native-filters/helpers/e2e-sql-filter-helpers";
+import {
+  getRunQueryButton,
+  runQuery,
+} from "../native-filters/helpers/e2e-sql-filter-helpers";
 
 const { PRODUCTS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -556,18 +560,15 @@ describe("issue 30680", () => {
     cy.signInAsAdmin();
   });
 
-  it("should not render native editor buttons when 'Metadata' tab is open", () => {
-    cy.visit("/model/new");
+  it("should not render native editor buttons when 'Metadata' tab is open (metabase#30680)", () => {
+    startNewNativeModel({ query: "select 1" });
+    cy.findByTestId("editor-tabs-metadata").should("be.disabled");
 
-    cy.findByTestId("new-model-options")
-      .findByText("Use a native query")
-      .click();
-
-    focusNativeEditor().type("select * from orders ", { delay: 100 });
     runNativeQuery();
-
+    cy.findByTestId("editor-tabs-metadata").should("not.be.disabled");
     cy.findByTestId("editor-tabs-metadata-name").click();
 
+    cy.findByTestId("sidebar-content").should("exist");
     cy.findByTestId("native-query-editor-sidebar").should("not.exist");
   });
 });
@@ -757,5 +758,52 @@ describe("issue 22991", () => {
       "not.contain",
       "Sorry, you don’t have permission to see that",
     );
+  });
+});
+
+describe("issue 46308", () => {
+  const nativeQuery =
+    "select category, count(*) from products where category != {{exclude}} group by category";
+
+  const questionDetails = {
+    native: {
+      query: nativeQuery,
+      "template-tags": {
+        exclude: {
+          id: "ddf7c404-38db-8b65-f90d-c6f4bd8127ec",
+          name: "exclude",
+          "display-name": "Exclude",
+          type: "text",
+        },
+      },
+    },
+    display: "line",
+    visualization_settings: {
+      "graph.metrics": ["category"],
+      "graph.dimensions": ["count"],
+    },
+  };
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+    cy.createNativeQuestion(questionDetails, { visitQuestion: true });
+  });
+
+  it("should persist viz settings when saving a question without a required filter selected (metabase#46308)", () => {
+    cy.findByTestId("native-query-editor-container")
+      .findByTestId("visibility-toggler")
+      .click();
+
+    cy.icon("variable").click();
+    cy.get("input[value=Exclude]").eq(0).type(" Category").blur();
+
+    cy.findByTestId("qb-save-button").click();
+    cy.findByTestId("save-question-modal").findByText("Save").click();
+
+    cy.findByPlaceholderText("Exclude Category").type("Doohickey");
+    getRunQueryButton().click();
+
+    cartesianChartCircle().should("have.length", 3);
   });
 });

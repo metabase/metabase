@@ -14,7 +14,6 @@
    [metabase.driver.util :as driver.u]
    [metabase.lib.test-util :as lib.tu]
    [metabase.models.database :refer [Database]]
-   [metabase.models.field :refer [Field]]
    [metabase.models.table :refer [Table]]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.query-processor :as qp]
@@ -289,9 +288,14 @@
           (execute! "CREATE TABLE \"%s\".\"messages\" (\"id\" %s, \"message\" CLOB)"            username pk-type)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (1, 'Hello')" username)
           (execute! "INSERT INTO \"%s\".\"messages\" (\"id\", \"message\") VALUES (2, NULL)"    username)
-          (t2.with-temp/with-temp [Table table    {:schema username, :name "messages", :db_id (mt/id)}
-                                   Field id-field {:table_id (u/the-id table), :name "id", :base_type "type/Integer"}
-                                   Field _        {:table_id (u/the-id table), :name "message", :base_type "type/Text"}]
+          (sync/sync-database! (mt/db) {:scan :schema})
+          (let [table    (t2/select-one :model/Table :schema username, :name "messages", :db_id (mt/id))
+                id-field (t2/select-one :model/Field :table_id (u/the-id table), :name "id")]
+            (testing "The CLOB is synced as a text field"
+              (let [base-type (t2/select-one-fn :base_type :model/Field :table_id (u/the-id table), :name "message")]
+                ;; type/OracleCLOB is important for skipping fingerprinting and field values scanning #44109
+                (is (= :type/OracleCLOB base-type))
+                (is (isa? base-type :type/Text))))
             (is (= [[1M "Hello"]
                     [2M nil]]
                    (mt/rows

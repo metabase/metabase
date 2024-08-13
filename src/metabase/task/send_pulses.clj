@@ -66,7 +66,7 @@
       (qp.timezone/system-timezone-id)
       "UTC"))
 
-(mu/defn ^:private send-pulse-trigger
+(mu/defn- send-pulse-trigger
   "Build a Quartz trigger to send a pulse to a list of channel-ids."
   ^CronTrigger
   ([pulse-id     :- pos-int?

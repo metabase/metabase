@@ -1,10 +1,14 @@
 (ns metabase.task.sweep-query-analysis
+  "A background worker making sure that analyze the queries for all active cards, and that it is up-to-date."
   (:require
    [clojurewerkz.quartzite.jobs :as jobs]
    [clojurewerkz.quartzite.schedule.cron :as cron]
    [clojurewerkz.quartzite.triggers :as triggers]
+   [metabase.public-settings :as public-settings]
    [metabase.query-analysis :as query-analysis]
    [metabase.task :as task]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
    [toucan2.core :as t2])
   (:import
    (org.quartz DisallowConcurrentExecution)))
@@ -33,6 +37,7 @@
   ([]
    (analyze-cards-without-query-fields! query-analysis/analyze-sync!))
   ([analyze-fn]
+   ;; TODO once we are storing the hash of the query used for analysis, we'll be able to filter this properly.
    (let [cards (t2/reducible-select [:model/Card :id])]
      (run! analyze-fn cards))))
 
@@ -43,11 +48,11 @@
    (fn
      ([final-count] final-count)
      ([running-count ids]
-      (t2/delete! :model/QueryField :id [:in ids])
+      (t2/delete! :model/QueryAnalysis :id [:in ids])
       (+ running-count (count ids))))
    0
-   (t2/reducible-select [:model/QueryField :id]
-                        {:join  [[:report_card :c] [:= :c.id :query_field.card_id]]
+   (t2/reducible-select [:model/QueryAnalysis :id]
+                        {:join  [[:report_card :c] [:= :c.id :query_analysis.card_id]]
                          :where :c.archived})))
 
 (defn- sweep-query-analysis-loop!
@@ -55,24 +60,31 @@
    (sweep-query-analysis-loop! (not @has-run?))
    (reset! has-run? true))
   ([first-time?]
-   (sweep-query-analysis-loop! first-time? query-analysis/analyze-sync!))
+   (sweep-query-analysis-loop! first-time?
+                               (fn [card-or-id]
+                                 (log/infof "Queueing card %s for query analysis" (u/the-id card-or-id))
+                                 (query-analysis/analyze-sync! card-or-id))))
   ([first-time? analyze-fn]
    ;; prioritize cards that are missing analysis
+   (log/info "Calculating analysis for cards without any")
    (analyze-cards-without-query-fields! analyze-fn)
 
    ;; we run through all the existing analysis on our first run, as it may be stale due to an old macaw version, etc.
    (when first-time?
+     (log/info "Recalculating potentially stale analysis")
      ;; this will repeat the cards we've just back-filled, but in the steady state there should be none of those.
      ;; in the future, we will track versions, hashes, and timestamps to reduce the cost of this operation.
      (analyze-stale-cards! analyze-fn))
 
    ;; empty out useless records
-   (delete-orphan-analysis!)))
+   (log/info "Deleting analysis for archived cards")
+   (log/infof "Deleted analysis for %s cards" (delete-orphan-analysis!))))
 
 (jobs/defjob ^{DisallowConcurrentExecution true
                :doc                        "Backfill QueryField for cards created earlier. Runs once per instance."}
              SweepQueryAnalysis [_ctx]
-  (sweep-query-analysis-loop!))
+  (when (public-settings/query-analysis-enabled)
+    (sweep-query-analysis-loop!)))
 
 (defmethod task/init! ::SweepQueryAnalysis [_]
   (let [job     (jobs/build

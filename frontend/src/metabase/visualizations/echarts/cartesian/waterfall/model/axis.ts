@@ -5,10 +5,10 @@ import type {
   DateRange,
   DimensionModel,
   Extent,
-  ShowWarning,
   TimeSeriesXAxisModel,
   WaterfallXAxisModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
+import type { ShowWarning } from "metabase/visualizations/echarts/types";
 import type {
   ComputedVisualizationSettings,
   RenderingContext,

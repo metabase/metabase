@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Tooltip } from "metabase/ui";
+import { FixedSizeIcon, Flex, Tooltip } from "metabase/ui";
 
 import { formatDuration } from "./utils";
 
@@ -17,10 +17,22 @@ export const ExecutionTime = ({ time }: Props) => {
   if (time == null) {
     return null;
   }
-
+  const label = t`How long this query took`;
   return (
-    <Tooltip label={t`Query execution time`}>
-      <span data-testid="execution-time">{formatDuration(time)}</span>
+    <Tooltip label={label}>
+      <Flex
+        align="center"
+        gap="xs"
+        fw="bold"
+        data-testid="execution-time"
+        aria-label={label}
+      >
+        <FixedSizeIcon name="bolt" />
+        {formatDuration(time)}
+      </Flex>
     </Tooltip>
   );
 };
+
+ExecutionTime.shouldRender = ({ result }: { result: any }) =>
+  result && !result.cached && result.running_time !== undefined;

@@ -19,7 +19,7 @@
 
 ;;; ------------------------------------------------- source=static-list --------------------------------------------------
 
-(mu/defn ^:private normalize-query :- :string
+(mu/defn- normalize-query :- :string
   "Normalize a `query` to lower-case."
   [query :- :string]
   (u/lower-case-en (str/trim query)))
@@ -72,7 +72,7 @@
                                         (-> card :dataset_query :query))]
                  ;; MBQL query - hijack the final stage, drop its aggregation and breakout (if any).
                  (-> inner-mbql
-                     (dissoc :aggregation)
+                     (dissoc :aggregation :order-by)
                      (assoc :breakout [value-field-ref])
                      (update :limit (fnil min *max-rows*) *max-rows*)
                      (update :filter (fn [old]

@@ -12,6 +12,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card :as card]
    [metabase.models.interface :as mi]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.card-test :as qp.card-test]
@@ -567,6 +568,18 @@
         (is (= []
                (t2/select :model/ParameterCard :card_id source-card-id)))))))
 
+(deftest do-not-update-parameter-card-if-it-doesn't-change-test
+  (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
+    (mt/with-temp [:model/Card  {source-card-id :id} {}
+                   :model/Card  {card-id-1 :id}      {:parameters [{:name       "Category Name"
+                                                                    :slug       "category_name"
+                                                                    :id         "_CATEGORY_NAME_"
+                                                                    :type       "category"
+                                                                    :values_source_type    "card"
+                                                                    :values_source_config {:card_id source-card-id}}]}]
+      (mt/with-dynamic-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
+        (t2/update! :model/Card card-id-1 {:name "new name"})))))
+
 (deftest cleanup-parameter-on-card-changes-test
   (mt/dataset test-data
     (mt/with-temp
@@ -781,6 +794,7 @@
 (deftest record-revision-and-description-completeness-test
   (t2.with-temp/with-temp
     [:model/Database   db   {:name "random db"}
+     :model/Card       base-card {}
      :model/Card       card {:name                "A Card"
                              :description         "An important card"
                              :collection_position 0
@@ -808,6 +822,7 @@
                             (= col :embedding_params)  {:category_name "locked"}
                             (= col :public_uuid)       (str (random-uuid))
                             (= col :table_id)          (mt/id :venues)
+                            (= col :source_card_id)    (:id base-card)
                             (= col :database_id)       (:id db)
                             (= col :query_type)        :native
                             (= col :type)              "model"
@@ -828,7 +843,7 @@
               (is (= 1 (t2/count :model/Revision :model "Card" :model_id (:id card)))))
             (when-not (#{;; these columns are expected to not have a description because it's always
                          ;; comes with a dataset_query changes
-                         :table_id :database_id :query_type
+                         :table_id :database_id :query_type :source_card_id
                          ;; we don't need a description for made_public_by_id because whenever this field changes
                          ;; public_uuid will change and we have a description for it.
                          :made_public_by_id

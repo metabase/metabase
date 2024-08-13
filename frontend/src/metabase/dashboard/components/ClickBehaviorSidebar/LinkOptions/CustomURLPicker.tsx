@@ -12,7 +12,7 @@ import { clickBehaviorIsValid } from "metabase-lib/v1/parameters/utils/click-beh
 import type {
   ArbitraryCustomDestinationClickBehavior,
   ClickBehavior,
-  QuestionDashboardCard,
+  DashboardCard,
 } from "metabase-types/api";
 
 import { SidebarItem } from "../SidebarItem";
@@ -27,7 +27,7 @@ import {
 import { ValuesYouCanReference } from "./ValuesYouCanReference";
 
 interface Props {
-  dashcard: QuestionDashboardCard;
+  dashcard: DashboardCard;
   clickBehavior: ArbitraryCustomDestinationClickBehavior;
   parameters: UiParameter[];
   updateSettings: (settings: ClickBehavior) => void;

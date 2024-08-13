@@ -673,7 +673,7 @@
     true                    (h2x/* bin-width)
     (not (zero? min-value)) (h2x/+ min-value)))
 
-(mu/defn ^:private field-source-table-aliases :- [:maybe [:sequential ::lib.schema.common/non-blank-string]]
+(mu/defn- field-source-table-aliases :- [:maybe [:sequential ::lib.schema.common/non-blank-string]]
   "Get sequence of alias that should be used to qualify a `:field` clause when compiling (e.g. left-hand side of an
   `AS`).
 
@@ -1291,7 +1291,7 @@
     [:fn {:error/message "string value"} #(string? (second %))]]
    ::mbql.s/FieldOrExpressionDef])
 
-(mu/defn ^:private generate-pattern
+(mu/defn- generate-pattern
   "Generate pattern to match against in like clause. Lowercasing for case insensitive matching also happens here."
   [driver
    pre
@@ -1306,27 +1306,32 @@
         expr
         [:lower expr]))))
 
-(mu/defn ^:private maybe-cast-uuid-for-equality
+(defn- uuid-field?
+  [x]
+  (and (mbql.u/mbql-clause? x)
+       (isa? (or (:effective-type (get x 2))
+                 (:base-type (get x 2)))
+             :type/UUID)))
+
+(mu/defn- maybe-cast-uuid-for-equality
   "For := and :!=. Comparing UUID fields against non-uuid values requires casting."
   [driver field arg]
-  (if (and (isa? (or (:effective-type (get field 2))
-                     (:base-type (get field 2)))
-                 :type/UUID)
-           ;; If we could not convert the arg to a UUID then we have to cast the Field.
-           ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
-           (not (uuid? (->honeysql driver arg)))
-           ;; Check for inlined values
-           (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
-    [::cast field "varchar"]
-    field))
+  (if (and (uuid-field? field)
+             ;; If the arg is a uuid we are happy especially for joins (#46558)
+             (not (uuid-field? arg))
+             ;; If we could not convert the arg to a UUID then we have to cast the Field.
+             ;; This will not hit indexes, but then we're passing an arg that can only be compared textually.
+             (not (uuid? (->honeysql driver arg)))
+             ;; Check for inlined values
+             (not (= (:database-type (h2x/type-info (->honeysql driver arg))) "uuid")))
+      [::cast field "varchar"]
+      field))
 
-(mu/defn ^:private maybe-cast-uuid-for-text-compare
+(mu/defn- maybe-cast-uuid-for-text-compare
   "For :contains, :starts-with, and :ends-with.
    Comparing UUID fields against with these operations requires casting as the right side will have `%` for `LIKE` operations."
   [field]
-  (if (isa? (or (:effective-type (get field 2))
-                (:base-type (get field 2)))
-            :type/UUID)
+  (if (uuid-field? field)
     [::cast field "varchar"]
     field))
 
@@ -1724,7 +1729,7 @@
 ;;; around [[qp.util.transformations.nest-breakouts/nest-breakouts-in-stages-with-window-aggregation]], which is
 ;;; written for pMBQL, so we can use it with a legacy inner query. Once we rework the SQL QP to use pMBQL we can remove
 ;;; this.
-(mu/defn ^:private nest-breakouts-in-queries-with-window-fn-aggregations :- mbql.s/MBQLQuery
+(mu/defn- nest-breakouts-in-queries-with-window-fn-aggregations :- mbql.s/MBQLQuery
   [inner-query :- mbql.s/MBQLQuery]
   (let [metadata-provider (qp.store/metadata-provider)
         database-id       (u/the-id (lib.metadata/database (qp.store/metadata-provider)))]

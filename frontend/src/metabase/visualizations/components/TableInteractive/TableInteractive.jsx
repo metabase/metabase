@@ -3,7 +3,6 @@ import cx from "classnames";
 import PropTypes from "prop-types";
 import { createRef, forwardRef, Component } from "react";
 import { findDOMNode } from "react-dom";
-import { createRoot } from "react-dom/client";
 import { connect } from "react-redux";
 import { Grid, ScrollSync } from "react-virtualized";
 import { t } from "ttag";
@@ -20,6 +19,7 @@ import CS from "metabase/css/core/index.css";
 import { withMantineTheme } from "metabase/hoc/MantineTheme";
 import { getScrollBarSize } from "metabase/lib/dom";
 import { formatValue } from "metabase/lib/formatting";
+import { renderRoot, unmountRoot } from "metabase/lib/react-compat";
 import { setUIControls, zoomInRow } from "metabase/query_builder/actions";
 import {
   getRowIndexToPKMap,
@@ -29,7 +29,13 @@ import {
 } from "metabase/query_builder/selectors";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import { EmotionCacheProvider } from "metabase/styled-components/components/EmotionCacheProvider";
-import { Box, Button as UIButton, Icon, DelayGroup } from "metabase/ui";
+import {
+  ThemeProvider,
+  Box,
+  Button as UIButton,
+  Icon,
+  DelayGroup,
+} from "metabase/ui";
 import {
   getTableCellClickedObject,
   getTableHeaderClickedObject,
@@ -246,8 +252,9 @@ class TableInteractive extends Component {
       column => column.source === "aggregation",
     );
     const isNotebookPreview = this.props.queryBuilderMode === "notebook";
+    const isModelEditor = this.props.queryBuilderMode === "dataset";
     const newShowDetailState =
-      !(isPivoted || hasAggregation || isNotebookPreview) &&
+      !(isPivoted || hasAggregation || isNotebookPreview || isModelEditor) &&
       !this.props.isEmbeddingSdk;
 
     if (newShowDetailState !== this.state.showDetailShortcut) {
@@ -330,33 +337,35 @@ class TableInteractive extends Component {
       data: { cols, rows },
     } = this.props;
 
-    this._root = createRoot(this._div);
-
-    this._root.render(
+    const content = (
       <EmotionCacheProvider>
-        <div style={{ display: "flex" }} ref={this.onMeasureHeaderRender}>
-          {cols.map((column, columnIndex) => (
-            <div className="fake-column" key={"column-" + columnIndex}>
-              {this.tableHeaderRenderer({
-                columnIndex,
-                rowIndex: 0,
-                key: "header",
-                style: {},
-                isVirtual: true,
-              })}
-              {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
-                this.cellRenderer({
-                  rowIndex,
+        <ThemeProvider>
+          <div style={{ display: "flex" }} ref={this.onMeasureHeaderRender}>
+            {cols.map((column, columnIndex) => (
+              <div className="fake-column" key={"column-" + columnIndex}>
+                {this.tableHeaderRenderer({
                   columnIndex,
-                  key: "row-" + rowIndex,
+                  rowIndex: 0,
+                  key: "header",
                   style: {},
-                }),
-              )}
-            </div>
-          ))}
-        </div>
-      </EmotionCacheProvider>,
+                  isVirtual: true,
+                })}
+                {pickRowsToMeasure(rows, columnIndex).map(rowIndex =>
+                  this.cellRenderer({
+                    rowIndex,
+                    columnIndex,
+                    key: "row-" + rowIndex,
+                    style: {},
+                  }),
+                )}
+              </div>
+            ))}
+          </div>
+        </ThemeProvider>
+      </EmotionCacheProvider>
     );
+
+    this._root = renderRoot(content, this._div);
   }
 
   onMeasureHeaderRender = div => {
@@ -390,7 +399,7 @@ class TableInteractive extends Component {
 
     // Doing this on next tick makes sure it actually gets removed on initial measure
     setTimeout(() => {
-      this._root.unmount();
+      unmountRoot(this._root, this._div);
     }, 0);
 
     delete this.columnNeedsResize;

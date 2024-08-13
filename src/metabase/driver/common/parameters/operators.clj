@@ -15,7 +15,7 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]))
 
-(mu/defn ^:private operator-arity :- [:maybe [:enum :unary :binary :variadic]]
+(mu/defn- operator-arity :- [:maybe [:enum :unary :binary :variadic]]
   [param-type]
   (get-in lib.schema.parameter/types [param-type :operator]))
 
@@ -32,7 +32,7 @@
   [param-type]
   (boolean (operator-arity param-type)))
 
-(mu/defn ^:private verify-type-and-arity
+(mu/defn- verify-type-and-arity
   [field param-type param-value]
   (letfn [(maybe-arity-error [n]
             (when (not= n (count param-value))

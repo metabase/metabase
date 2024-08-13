@@ -71,7 +71,7 @@
   (for [[k v] metadata]
     (assoc v :name (name k))))
 
-(mu/defn ^:private format-results [{:keys [results metadata]} :- [:map
+(mu/defn- format-results [{:keys [results metadata]} :- [:map
                                                                   [:results  [:sequential :map]]
                                                                   [:metadata audit.i/ResultsMetadata]]]
   (check-results-and-metadata-keys-match results metadata)
@@ -121,7 +121,7 @@
      reduce-reducible-results
      reduce-legacy-results) rff results))
 
-(mu/defn ^:private process-internal-query
+(mu/defn- process-internal-query
   [{qualified-fn-str :fn, args :args, :as query} :- InternalQuery
    rff                                           :- ::qp.schema/rff]
   ;; Make sure current user is a superuser or has monitoring permissions

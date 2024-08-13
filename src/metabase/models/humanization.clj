@@ -51,7 +51,7 @@
                           {:display_name new-strategy-display-name}))))
         (t2/reducible-select [model :id :name :display_name])))
 
-(mu/defn ^:private re-humanize-table-and-field-names!
+(mu/defn- re-humanize-table-and-field-names!
   "Update the non-custom display names of all Tables & Fields in the database using new values obtained from
   the (obstensibly swapped implementation of) `name->human-readable-name`."
   [old-strategy :- :keyword]

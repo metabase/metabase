@@ -6,6 +6,7 @@ import type { AdminState } from "./admin";
 import type { AppState } from "./app";
 import type { AuthState } from "./auth";
 import type { DashboardState } from "./dashboard";
+import type { DownloadsState } from "./downloads";
 import type { EmbedState } from "./embed";
 import type { EntitiesState } from "./entities";
 import type { MetabotState } from "./metabot";
@@ -16,7 +17,6 @@ import type { SettingsState } from "./settings";
 import type { SetupState } from "./setup";
 import type { UndoState } from "./undo";
 import type { FileUploadState } from "./upload";
-import type { VisualizerState } from "./visualizer";
 
 type ModalName = null | "collection" | "dashboard" | "action";
 
@@ -38,7 +38,7 @@ export interface State {
   upload: FileUploadState;
   modal: ModalName;
   undo: UndoState;
-  visualizer: VisualizerState;
+  downloads: DownloadsState;
 }
 
 export type Dispatch<T = any> = (action: T) => unknown | Promise<unknown>;

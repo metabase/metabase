@@ -54,6 +54,11 @@ const getQuestionStepsForMBQLQuery = (query: StructuredQueryObject) => {
   return getQuestionSteps(question, metadata, {});
 };
 
+const getMetricStepsForMBQLQuery = (query: StructuredQueryObject) => {
+  const question = database.question(query).setType("metric");
+  return getQuestionSteps(question, metadata, {});
+};
+
 describe("raw data query", () => {
   const steps = getQuestionStepsForMBQLQuery(rawDataQuery);
   const [dataStep] = steps;
@@ -81,6 +86,30 @@ describe("filtered and summarized query", () => {
   describe("getQuestionSteps", () => {
     it("`getQuestionSteps()` should return data, filter, and summarize steps", () => {
       expect(steps.map(s => s.type)).toEqual(["data", "filter", "summarize"]);
+    });
+
+    it("should allow adding a new stage for questions", () => {
+      expect(summarizeStep.type).toBe("summarize");
+      expect(summarizeStep.actions.map(({ type }) => type)).toEqual([
+        "sort",
+        "limit",
+        "join",
+        "expression",
+        "filter",
+        "summarize",
+      ]);
+    });
+
+    it("should not allow adding a new stage for metrics", () => {
+      const steps = getMetricStepsForMBQLQuery(filteredAndSummarizedQuery);
+      const [dataStep, filterStep, summarizeStep] = steps;
+      expect(dataStep.type).toBe("data");
+      expect(filterStep.type).toBe("filter");
+      expect(summarizeStep.type).toBe("summarize");
+      expect(summarizeStep.actions.map(({ type }) => type)).toEqual([
+        "sort",
+        "limit",
+      ]);
     });
   });
 
