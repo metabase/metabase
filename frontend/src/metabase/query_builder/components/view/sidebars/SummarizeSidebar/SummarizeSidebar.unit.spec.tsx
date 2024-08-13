@@ -48,7 +48,7 @@ function createQueryWithBreakoutsForSameColumn() {
       {
         tableName: "ORDERS",
         columnName: "CREATED_AT",
-        temporalBucketName: "Month of year",
+        temporalBucketName: "Quarter",
       },
     ],
   });
@@ -249,17 +249,17 @@ describe("SummarizeSidebar", () => {
     });
 
     await userEvent.click(await screen.findByText("by year"));
-    await userEvent.click(await screen.findByText("Quarter"));
+    await userEvent.click(await screen.findByText("Day"));
     expect(getNextBreakouts()).toMatchObject([
+      { displayName: "Created At: Day" },
       { displayName: "Created At: Quarter" },
-      { displayName: "Created At: Month of year" },
     ]);
 
-    await userEvent.click(await screen.findByText("by month of year"));
-    await userEvent.click(await screen.findByText("Quarter of year"));
+    await userEvent.click(await screen.findByText("by quarter"));
+    await userEvent.click(await screen.findByText("Month"));
     expect(getNextBreakouts()).toMatchObject([
-      { displayName: "Created At: Quarter" },
-      { displayName: "Created At: Quarter of year" },
+      { displayName: "Created At: Day" },
+      { displayName: "Created At: Month" },
     ]);
   });
 
@@ -269,10 +269,10 @@ describe("SummarizeSidebar", () => {
     });
 
     await userEvent.click(await screen.findByText("by year"));
-    await userEvent.click(await screen.findByText("Month of year"));
+    await userEvent.click(await screen.findByText("Quarter"));
     expect(getNextBreakouts()).toMatchObject([
       { displayName: "Created At: Year" },
-      { displayName: "Created At: Month of year" },
+      { displayName: "Created At: Quarter" },
     ]);
   });
 
@@ -294,7 +294,7 @@ describe("SummarizeSidebar", () => {
       within(getUnpinnedColumnList()).getAllByText("Created At"),
     ).toHaveLength(2);
     expect(getNextBreakouts()).toMatchObject([
-      { displayName: "Created At: Month of year" },
+      { displayName: "Created At: Quarter" },
     ]);
 
     const [secondBreakout] = within(getPinnedColumnList()).getAllByLabelText(
