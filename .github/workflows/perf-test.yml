@@ -147,4 +147,4 @@ jobs:
           TEST_NAME: test
       - name: Deploy PR Review ENV
         run: |
-          kubectl apply -f ./metabase.yml
+          kubectl apply -f ./perf-test-pr.yml
