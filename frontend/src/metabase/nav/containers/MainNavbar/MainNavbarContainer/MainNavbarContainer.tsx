@@ -126,7 +126,8 @@ function MainNavbarContainer({
         icon: getCollectionIcon(rootCollection),
         children: [],
       };
-      return [root, ...tree];
+      //return [root, ...tree];
+      return [...tree];
     } else {
       return tree;
     }
