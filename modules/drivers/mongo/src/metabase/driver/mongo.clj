@@ -212,7 +212,7 @@
              {"$project" {"_id"            0
                           "path"           {"$concat" (vec (interpose "." (for [i depths]
                                                                             (str "$_id." (depth-k i)))))}
-                          "field"          (str "$_id." (depth-k depth))
+                          "k"              (str "$_id." (depth-k depth))
                           "index"          (str "$_id." (depth-idx depth))
                           "mostCommonType" 1}}]))
         all-depths (range (inc max-depth))
@@ -251,7 +251,7 @@
              {"$project"
               {"_id"            0
                "path"           {"$concat" ["$_id.path" "." "$_id.k"]}
-               "field"          "$_id.k"
+               "k"              "$_id.k"
                "index"          "$_id.index"
                "mostCommonType" 1}}])]
     (concat (sample-stages collection-name describe-table-sample-size)
@@ -337,15 +337,15 @@
   (let [fields (infer-schema database table)
         fields (->> fields
                     (map (fn [x]
-                           (cond-> {:name              (:field x)
+                           (cond-> {:name              (:k x)
                                     :database-type     (:mostCommonType x)
                                     :base-type         (type-alias->base-type (:mostCommonType x))
-                                    ; index are used by `set-database-position`, and not present in final result
+                                    ; index is used by `set-database-position`, and not present in final result
                                     :index             (:index x)
                                     ; path and depth are used to nest fields, and not present in final result
                                     :path              (str/split (:path x) #"\.")
                                     :depth             (path->depth (:path x))}
-                             (= (:field x) "_id")
+                             (= (:k x) "_id")
                              (assoc :pk? true)))))
         ;; convert flat list of fields into deeply-nested map. :nested-fields are maps from field name to field data
         fields (loop [depth      0
