@@ -29,15 +29,17 @@ export const OffsetInput = ({
     [query, stageIndex, comparisonType],
   );
 
+  const minimum = comparisonType === "offset" ? 1 : 2;
+
   const handleChange = useCallback(
     (value: number | "") => {
       if (typeof value === "number") {
-        onChange(Math.floor(Math.max(Math.abs(value), 1)));
+        onChange(Math.floor(Math.max(Math.abs(value), minimum)));
       } else {
         onChange(value);
       }
     },
-    [onChange],
+    [onChange, minimum],
   );
 
   return (
@@ -48,7 +50,7 @@ export const OffsetInput = ({
           wrapper: S.wrapper,
         }}
         label={t`Compare to`}
-        min={comparisonType === "offset" ? 1 : 2}
+        min={minimum}
         precision={0}
         size="md"
         step={1}
