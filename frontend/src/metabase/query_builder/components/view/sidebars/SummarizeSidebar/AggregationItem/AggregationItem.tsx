@@ -3,7 +3,6 @@ import { useState, useCallback } from "react";
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
 
-import type { SummarizeQueryChangeDetails } from "../SummarizeContent";
 import { AggregationPicker } from "../SummarizeSidebar.styled";
 
 import { AggregationName, RemoveIcon, Root } from "./AggregationItem.styled";
@@ -13,10 +12,7 @@ interface AggregationItemProps {
   stageIndex: number;
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
-  onQueryChange: (
-    query: Lib.Query,
-    details: SummarizeQueryChangeDetails,
-  ) => void;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 export function AggregationItem({
@@ -36,7 +32,7 @@ export function AggregationItem({
 
   const handleRemove = useCallback(() => {
     const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
-    onQueryChange(nextQuery, { type: "remove" });
+    onQueryChange(nextQuery);
   }, [query, stageIndex, aggregation, onQueryChange]);
 
   return (

@@ -4,16 +4,11 @@ import type * as Lib from "metabase-lib";
 import { AddAggregationButton } from "../AddAggregationButton";
 import { AggregationItem } from "../AggregationItem";
 
-import type { SummarizeQueryChangeDetails } from "./use-summarize-query";
-
 type SummarizeAggregationItemListProps = {
   query: Lib.Query;
   stageIndex: number;
   aggregations: Lib.AggregationClause[];
-  onQueryChange: (
-    query: Lib.Query,
-    details: SummarizeQueryChangeDetails,
-  ) => void;
+  onQueryChange: (query: Lib.Query) => void;
 } & GroupProps;
 
 export const SummarizeAggregationItemList = ({

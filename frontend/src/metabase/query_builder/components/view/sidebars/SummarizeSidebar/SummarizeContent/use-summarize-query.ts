@@ -4,10 +4,6 @@ import * as Lib from "metabase-lib";
 
 const STAGE_INDEX = -1;
 
-export type SummarizeQueryChangeDetails = {
-  type: "add" | "update" | "remove";
-};
-
 interface UseSummarizeQueryProps {
   query: Lib.Query;
   onQueryChange: (nextQuery: Lib.Query) => void;
@@ -41,18 +37,15 @@ export const useSummarizeQuery = ({
   );
 
   const handleQueryChange = useCallback(
-    (nextQuery: Lib.Query, details: SummarizeQueryChangeDetails) => {
-      if (details.type === "remove") {
-        if (hasDefaultAggregation) {
-          setHasDefaultAggregation(false);
-        } else {
-          handleChange(nextQuery);
-        }
-      } else {
-        handleChange(nextQuery);
+    (nextQuery: Lib.Query) => {
+      const newAggregations = Lib.aggregations(nextQuery, STAGE_INDEX);
+      if (newAggregations.length === 0) {
+        setHasDefaultAggregation(false);
       }
+
+      handleChange(nextQuery);
     },
-    [handleChange, hasDefaultAggregation],
+    [handleChange],
   );
 
   const handleAddBreakout = useCallback(
