@@ -25,9 +25,8 @@
     (update :query assoc :limit max-rows, ::original-limit original-limit)))
 
 (defn- xlsx-export?
-  [& {info :info}]
-  (let [context (:context info)]
-    (= context :xlsx-download)))
+  [query]
+  (= (-> query :info :context) :xlsx-download))
 
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is either:
