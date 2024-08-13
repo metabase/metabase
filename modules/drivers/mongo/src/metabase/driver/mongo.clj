@@ -159,128 +159,85 @@
        "pipeline" [{"$sort" {"_id" -1}}
                    {"$limit" end-n}]}}]))
 
-(defn- root-query [collection-name sample-size max-depth]
-  (let [depth-k    (fn [depth] (str "depth" depth "K"))
-        depth-type (fn [depth] (str "depth" depth "Type"))
-        depth-idx  (fn [depth] (str "depth" depth "Index"))
-        depth-kvs  (fn [depth] (str "depth" depth "Kvs"))
-        project-nested-fields
-        (fn [depth]
-          (cond-> [{"$project"
-                    (merge
-                     ;; Include all fields from previous depths
-                     (into {} (mapcat
-                               (fn [i]
-                                 [[(depth-k i) 1]
-                                  [(depth-idx i) 1]
-                                  [(depth-type i) 1]])
-                               (range depth)))
-                     ;; Project current depth field and type
-                     {(depth-k depth)    (str "$" (depth-kvs depth) ".k")
-                      (depth-idx depth)  (str "$" (depth-idx depth))
-                      (depth-type depth) {"$type" (str "$" (depth-kvs depth) ".v")}}
-                     ;; Project next depth fields if they exist
-                     (when (not= depth max-depth)
-                       {(depth-kvs (inc depth))
-                        {"$cond" {"if"   {"$eq" [{"$type" (str "$" (depth-kvs depth) ".v")}, "object"]}
-                                  "then" {"$concatArrays" [[{"k" nil "v" nil}] ; this is so that the object is selected as well
-                                                           {"$objectToArray" (str "$" (depth-kvs depth) ".v")}]}
-                                  "else" [{"k" nil "v" nil}]}}}))}]
-            (not= depth max-depth)
-            (conj {"$unwind"
-                   {"path"                       (str "$" (depth-kvs (inc depth)))
-                    "includeArrayIndex"          (depth-idx (inc depth))
-                    "preserveNullAndEmptyArrays" true}})))
-        facet-stage
-        (fn [depth]
-          (let [depths (range (inc depth))]
-            [{"$match" {(depth-k depth) {"$ne" nil}}}
-             {"$group" {"_id" (into {"type" (str "$" (depth-type depth))}
-                                    (map (juxt depth-k #(str "$" (depth-k %))) depths))
-                        ;; "sortKey" is constructed so that sorting fields by "sortKey" under each parent field
-                        ;; yields a stable database-position. The way database-position would be set with imperative
-                        ;; pseudocode:
-                        ;; i = 0
-                        ;; for each row in sample-row:
-                        ;;   for each k,v in row:
-                        ;;     database-position = i
-                        ;;     i = i + 1
-                        "sortKey" {"$min" {"$concat" [{"$toString" "$_id"} "." {"$toString" (str "$" (depth-idx depth))}]}}
-                        "count"   {"$sum" 1}}}
-             {"$sort" {"count" -1}}
-             {"$group" {"_id"     (into {} (map (juxt depth-k #(str "$_id." (depth-k %))) depths))
-                        "sortKey" {"$min" "$sortKey"}
-                        "types"   {"$push" {"type" (str "$_id.type")}}}}
-             {"$project" {"_id"            0
-                          "path"           {"$concat" (vec (interpose "." (for [i depths]
-                                                                            (str "$_id." (depth-k i)))))}
-                          "k"              (str "$_id." (depth-k depth))
-                          "sortKey"        1
-                          "mostCommonType" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$types.type", 0]}, "null"]}
-                                                     "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
-                                                     "else" {"$arrayElemAt" ["$types.type", 0]}}}}}]))
-        all-depths (range (inc max-depth))
-        facets (into {} (map (juxt #(str "depth" %) facet-stage) all-depths))]
-    (vec (concat (sample-stages collection-name sample-size)
-                 [{"$project" {(depth-kvs 0) {"$objectToArray" "$$ROOT"}}}
-                  {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}]
-                 (mapcat project-nested-fields all-depths)
-                 [{"$facet" facets}
-                  {"$project" {"allFields" {"$concatArrays" (mapv #(str "$" %) (keys facets))}}}
-                  {"$unwind" "$allFields"}]))))
+(defn- depth-k    [depth] (str "depth" depth "K"))
+(defn- depth-type [depth] (str "depth" depth "Type"))
+(defn- depth-idx  [depth] (str "depth" depth "Index"))
+(defn- depth-kvs  [depth] (str "depth" depth "Kvs"))
 
-(defn- nested-query [collection-name sample-size parent-paths]
-  (letfn [(path-query [path]
-            [{"$project" {"path" path
-                          "kvs"  {"$objectToArray" (str "$" path)}}}
-             {"$unwind" {"path"              "$kvs"
-                         "includeArrayIndex" "index"}}
-             {"$project"
-              {"path"    "$path"
-               "k"       "$kvs.k"
-               "type"    {"$type" "$kvs.v"}
-               "sortKey" {"$concat" [{"$toString" "$_id"} "." {"$toString" "$index"}]}}}
-             ;; count by k, type
-             {"$group"
-              {"_id"     {"path" "$path"
-                          "k"    "$k"
-                          "type" "$type"}
-               "sortKey" {"$min" "$sortKey"}
-               "count"   {"$sum" 1}}}
-             ;; types by k, sorted by count
-             {"$sort" {"count" -1}}
-             {"$group"
-              {"_id"     {"path" "$_id.path"
-                          "k"    "$_id.k"}
-               "sortKey" {"$min" "$sortKey"}
-               "types"   {"$push" {"type" "$_id.type"}}}}
-             ;; get the first non-null type
-             {"$project"
-              {"_id"            0
-               "path"           {"$concat" ["$_id.path" "." "$_id.k"]}
-               "k"              "$_id.k"
-               "sortKey"        "$sortKey"
-               "mostCommonType" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$types.type", 0]}, "null"]} ;; TODO: handle undefined too?
-                                          "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
-                                          "else" {"$arrayElemAt" ["$types.type", 0]}}}}}])]
+(defn- project-nested-fields [max-depth depth]
+  (cond-> [{"$addFields"
+            (merge
+             {(depth-k depth)    (str "$" (depth-kvs depth) ".k")
+              (depth-idx depth)  (str "$" (depth-idx depth))
+              (depth-type depth) {"$type" (str "$" (depth-kvs depth) ".v")}})}]
+    ;; if depth is not the max-depth, add kvs from any objects
+    (not= depth max-depth)
+    (into [{"$addFields"
+            {(depth-kvs (inc depth))
+             {"$cond" {"if"   {"$eq" [{"$type" (str "$" (depth-kvs depth) ".v")}, "object"]}
+                       "then" {"$concatArrays" [[{"k" nil "v" nil}] ; this is so that the object is selected as well
+                                                {"$objectToArray" (str "$" (depth-kvs depth) ".v")}]}
+                       "else" [{"k" nil "v" nil}]}}}}
+           {"$unwind"
+            {"path"                       (str "$" (depth-kvs (inc depth)))
+             "includeArrayIndex"          (depth-idx (inc depth))
+             "preserveNullAndEmptyArrays" true}}])))
+
+(defn- facet-stage [root-path depth]
+  (let [depths (range (inc depth))]
+    [{"$match" {(depth-k depth) {"$ne" nil}}}
+     {"$group" {"_id" (into {"type" (str "$" (depth-type depth))
+                             "path" {"$concat" (concat (when (= root-path "$ROOT") [root-path "."])
+                                                       (interpose "."
+                                                                  (map #(str "$" (depth-k %)) depths)))}
+                             "k"    (str "$" (depth-k depth))})
+                ;; "sortKey" is constructed so that sorting fields by "sortKey" under each parent field
+                ;; yields a stable database-position. The way database-position would be set with imperative
+                ;; pseudocode:
+                ;; i = 0
+                ;; for each row in sample-row:
+                ;;   for each k,v in row:
+                ;;     database-position = i
+                ;;     i = i + 1
+                "sortKey" {"$min" {"$concat" [{"$toString" "$_id"}
+                                              "."
+                                              {"$toString" (str "$" (depth-idx depth))}]}}
+                "count"   {"$sum" 1}}}
+     {"$sort" {"count" -1}}
+     {"$group" {"_id"     {"path" "$_id.path", "k" "$_id.k"}
+                "sortKey" {"$min" "$sortKey"}
+                "types"   {"$push" {"type" (str "$_id.type")}}}}
+     {"$project" {"_id"            0
+                  "path"           "$_id.path"
+                  "k"              "$_id.k"
+                  "sortKey"        1
+                  "mostCommonType" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$types.type", 0]}, "null"]}
+                                             "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
+                                             "else" {"$arrayElemAt" ["$types.type", 0]}}}}}]))
+
+(defn- project-from-root [root-path]
+  [{"$project" {"path" root-path, (depth-kvs 0) {"$objectToArray" (str "$" root-path)}}}
+   {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}])
+
+(defn- infer-fields-query [collection-name sample-size max-depth root-path]
+  (let [all-depths (range (inc max-depth))
+        facets     (into {} (map (juxt #(str "depth" %) #(facet-stage root-path %)) all-depths))]
     (concat (sample-stages collection-name sample-size)
-            [{"$replaceRoot" {"newRoot" "$$ROOT"}}
-             {"$project" {"sample" 0}}
-             {"$facet"
-              (into {}
-                    (map-indexed (fn [idx path]
-                                   [idx (path-query path)]))
-                    parent-paths)}])))
+            (project-from-root root-path)
+            (mapcat #(project-nested-fields max-depth %) all-depths)
+            [{"$facet" facets}
+             {"$project" {"allFields" {"$concatArrays" (mapv #(str "$" %) (keys facets))}}}
+             {"$unwind" "$allFields"}])))
 
 (defn- path->depth [path]
   (dec (count (str/split path #"\."))))
 
-(def root-query-depth
-  "The depth of nested objects that [[root-query]] will execute to. If set to 0, the query will only return the
-   root-level fields, and nested fields will be queried with further [[nested-query]] executions. Setting its value
-   involves a trade-off: the lower it is, the faster root-query executes, but the more we might have to do more
-   nested-query executions."
-  4)
+(def query-depth
+  "The depth of nested objects that [[infer-fields-query]] will execute to. If set to 0, the query will only return the
+   fields under `root-path`, and nested fields will be queried with further executions. Setting its value
+   involves a trade-off: the lower it is, the faster infer-fields-query executes, but the more executions we might have to
+   do."
+  5)
 
 (mr/def ::FieldInfo
   [:map {:closed true}
@@ -296,23 +253,30 @@
    [[nested-query]] for fields nested inside those objects."
   [db table]
   (let [collection-name (:name table)
-        sample-size metadata-queries/nested-field-sample-limit
+        ;; Cal 2024-08-14: sample-size is twice [[metadata-queries/nested-field-sample-limit]] for backwards
+        ;; compatibility, because this is how the sample was created before. I'm not sure why.
+        sample-size (* metadata-queries/nested-field-sample-limit 2)
         q! (fn [q]
              (:rows (:data (qp/process-query {:database (:id db)
                                               :type     "native"
                                               :native   {:collection collection-name
                                                          :query      (json/generate-string q)}}))))
-        fields        (flatten (q! (root-query collection-name sample-size root-query-depth)))
-        nested-fields (fn nested-fields [paths]
-                        (let [fields (flatten (first (q! (nested-query collection-name sample-size paths))))
-                              nested (when-let [object-fields (seq (filter #(= (:mostCommonType %) "object") fields))]
-                                       (nested-fields (map :path object-fields)))]
+        fields        (flatten (q! (infer-fields-query collection-name sample-size query-depth "$ROOT")))
+        nested-fields (fn nested-fields [path]
+                        (let [fields (flatten (q! (infer-fields-query collection-name sample-size query-depth path)))
+                              nested (when-let [fields-to-explore (seq (filter (fn [x]
+                                                                                 (and (= (:mostCommonType x) "object")
+                                                                                      (= (path->depth (:path x))
+                                                                                         (inc (+ (path->depth path) query-depth)))))
+                                                                               fields))]
+                                       (mapcat nested-fields
+                                               (map :path fields-to-explore)))]
                           (concat fields nested)))
         nested        (when-let [fields-to-explore (seq (filter (fn [x]
                                                                   (and (= (:mostCommonType x) "object")
-                                                                       (= (path->depth (:path x)) root-query-depth)))
+                                                                       (= (path->depth (:path x)) query-depth)))
                                                                 fields))]
-                        (nested-fields (map :path fields-to-explore)))]
+                        (mapcat nested-fields (map :path fields-to-explore)))]
     (concat fields nested)))
 
 (defn- type-alias->base-type [type-alias]
