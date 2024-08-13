@@ -852,3 +852,10 @@ See [fonts](../configuring-metabase/fonts.md).")
                   (if-not (pos-int? value)
                     20
                     value))))
+
+(defsetting download-row-limit
+  (deferred-tru "Exports row limit excluding the header. xlsx downloads are limited to 1048575 rows even if this limit is higher.")
+  :visibility :internal
+  :export?    true
+  :type       :integer
+  :doc false)
