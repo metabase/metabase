@@ -2,6 +2,7 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertQueryBuilderRowCount,
   createQuestion,
+  enterCustomColumnDetails,
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
@@ -10,14 +11,18 @@ import {
   restore,
   startNewQuestion,
   type StructuredQuestionDetails,
+  tableInteractiveBody,
   visualize,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
+const FIELD_COUNT = 1;
+
 const breakoutQuestionDetails: StructuredQuestionDetails = {
   query: {
     "source-table": ORDERS_ID,
+    aggregation: [["count"]],
     breakout: [
       [
         "field",
@@ -30,6 +35,9 @@ const breakoutQuestionDetails: StructuredQuestionDetails = {
         { "base-type": "type/DateTime", "temporal-unit": "month-of-year" },
       ],
     ],
+  },
+  visualization_settings: {
+    "table.pivot": false,
   },
 };
 
@@ -79,6 +87,28 @@ describe("scenarios > question > multiple column breakouts", () => {
       getNotebookStep("sort").icon("add").click();
       popover().findByText("Created At: Month of year").click();
       visualize();
+      tableInteractiveBody().within(() => {
+        cy.findAllByTestId("cell-data").eq(0).should("have.text", "2026");
+        cy.findAllByTestId("cell-data").eq(1).should("have.text", "January");
+      });
+    });
+
+    it("should allow to use post-aggregation expressions", () => {
+      createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+      openNotebook();
+      getNotebookStep("summarize").findByText("Custom column").click();
+      enterCustomColumnDetails({
+        formula: "year([Created At: Year]) + 100",
+        name: "Year",
+        blur: true,
+      });
+      popover().button("Done").click();
+      visualize();
+      tableInteractiveBody().within(() => {
+        cy.findAllByTestId("cell-data")
+          .eq(FIELD_COUNT + 1)
+          .should("have.text", "2,122");
+      });
     });
   });
 });
