@@ -22,7 +22,10 @@ export function isQuestionDirty(
   return question.isDirtyComparedToWithoutParameters(originalQuestion);
 }
 
-export function isQuestionRunnable(question: Question, isDirty: boolean) {
+export function isQuestionRunnable(
+  question: Question | undefined,
+  isDirty: boolean,
+) {
   if (!question) {
     return false;
   }

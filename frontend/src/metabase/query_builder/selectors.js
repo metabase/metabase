@@ -48,7 +48,7 @@ import { LOAD_COMPLETE_FAVICON } from "metabase/hoc/Favicon";
 import { isNotNull } from "metabase/lib/types";
 import { getQuestionWithDefaultVisualizationSettings } from "./actions/core/utils";
 import { createRawSeries, getWritableColumnProperties } from "./utils";
-import { isQuestionDirty, isQuestionRunnable } from "./question";
+import { isQuestionDirty, isQuestionRunnable } from "./utils/question";
 
 export const getUiControls = state => state.qb.uiControls;
 export const getQueryStatus = state => state.qb.queryStatus;
