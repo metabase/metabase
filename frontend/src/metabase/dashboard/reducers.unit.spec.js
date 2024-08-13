@@ -215,9 +215,9 @@ describe("dashboard reducers", () => {
       id: 1,
       "last-edit-info": {
         id: 1,
-        email: "testin@metabase.com",
+        email: "testin@omniloy.com",
         first_name: "Test",
-        last_name: "Metabase",
+        last_name: "Omniloy",
         timestamp: "2021-01-01T01:01:01.001",
       },
       parameters: [],

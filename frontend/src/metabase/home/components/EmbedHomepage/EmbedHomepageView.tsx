@@ -45,7 +45,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
     <Stack maw={550}>
       <Group position="apart">
         {/*  eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
-        <Text fw="bold">{t`Get started with Embedding Metabase in your app`}</Text>
+        <Text fw="bold">{t`Get started with Embedding Omniloy in your app`}</Text>
         <Menu trigger="hover" closeDelay={200}>
           <Menu.Target>
             <Text
@@ -69,7 +69,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
       </Group>
       <Card px="xl" py="lg">
         {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
-        <Title order={2} mb="md">{t`Embedding Metabase`}</Title>
+        <Title order={2} mb="md">{t`Embedding Omniloy`}</Title>
         <Tabs defaultValue={initialTab}>
           <Tabs.List>
             <Tabs.Tab value="interactive">{t`Interactive`}</Tabs.Tab>
@@ -94,7 +94,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
           >{t`Embedding has been automatically enabled for you`}</Text>
           <Text color="text-light" size="sm">
             {/* eslint-disable-next-line no-literal-metabase-strings -- only visible to admins */}
-            {jt`Because you expressed interest in embedding Metabase, we took this step for you so that you can more easily try it out. You can turn it off anytime in ${(
+            {jt`Because you expressed interest in embedding Omniloy, we took this step for you so that you can more easily try it out. You can turn it off anytime in ${(
               <Anchor
                 size="sm"
                 component={Link}
@@ -122,7 +122,7 @@ export const EmbedHomepageView = (props: EmbedHomepageViewProps) => {
               key="customer-facing-analytics-docs"
               href={analyticsDocsUrl}
             >{t`customer-facing analytics articles`}</ExternalLink>
-          )} to learn more about what Metabase offers.`}
+          )} to learn more about what Omniloy offers.`}
         </Text>
       </Card>
     </Stack>

@@ -17,12 +17,12 @@ export const UpsellCacheConfig = ({ source }: { source: string }) => {
       <UpsellCard
         title={t`Control your caching`}
         campaign="cache-granular-controls"
-        buttonText={t`Try Metabase Pro`}
+        buttonText={t`Try Omniloy Pro`}
         buttonLink="https://www.metabase.com/upgrade"
         source={source}
       >
         {jt`Get granular caching controls for each database, dashboard, and query with ${(
-          <strong>{t`Metabase Pro.`}</strong>
+          <strong>{t`Omniloy Pro.`}</strong>
         )}`}
       </UpsellCard>
     </Box>

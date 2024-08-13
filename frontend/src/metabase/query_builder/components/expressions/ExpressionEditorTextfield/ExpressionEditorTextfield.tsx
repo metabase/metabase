@@ -79,7 +79,7 @@ export function suggestWithExtras(
 
   if (args.showMetabaseLinks && args.source === "") {
     suggestions.push(...(args.shortcuts ?? []));
-
+    /*
     if (args.startRule === "aggregation") {
       suggestions.push({
         footer: true,
@@ -95,6 +95,7 @@ export function suggestWithExtras(
         href: "https://www.metabase.com/docs/latest/questions/query-builder/expressions-list#functions",
       });
     }
+    */
   }
 
   return {

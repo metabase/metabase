@@ -191,14 +191,14 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "email-from-name",
         display_name: t`From Name`,
-        placeholder: "Metabase",
+        placeholder: "Omniloy",
         type: "string",
         required: false,
       },
       {
         key: "email-from-address",
         display_name: t`From Address`,
-        placeholder: "metabase@yourcompany.com",
+        placeholder: "omniloy@yourcompany.com",
         type: "string",
         required: true,
         validations: [["email", t`That's not a valid email address`]],
@@ -206,7 +206,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "email-reply-to",
         display_name: t`Reply-To Address`,
-        placeholder: "metabase-replies@yourcompany.com",
+        placeholder: "omniloy-replies@yourcompany.com",
         type: "string",
         required: false,
         widget: SettingCommaDelimitedInput,
@@ -304,7 +304,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
       {
         key: "map-tile-server-url",
         display_name: t`Map tile server URL`,
-        note: t`Metabase uses OpenStreetMaps by default.`,
+        note: t`Omniloy uses OpenStreetMaps by default.`,
         type: "string",
       },
       {

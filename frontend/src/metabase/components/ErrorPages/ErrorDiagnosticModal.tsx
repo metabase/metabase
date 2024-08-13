@@ -124,7 +124,7 @@ export const ErrorDiagnosticModal = ({
             <FormCheckbox
               name="bugReportDetails"
               // eslint-disable-next-line no-literal-metabase-strings -- we're mucking around in the software here
-              label={t`Metabase instance version information`}
+              label={t`Omniloy instance version information`}
             />
           </Stack>
           <Alert variant="warning">

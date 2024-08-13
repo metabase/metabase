@@ -11994,8 +11994,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} prijal pozvanie do Metabase"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] Žiadosť o obnovenie hesla"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Žiadosť o obnovenie hesla"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17292,7 +17292,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Rozšírenia Metabase Enterprise Edition NIE SÚ PRÍTOMNÉ."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "Ste pozvaní, aby ste sa pripojili k položke {1} používateľa {0}"
 
 #: metabase/email/messages.clj:152
@@ -17304,8 +17304,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} prijal (a) svoje pozvanie {1}"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] Žiadosť o obnovenie hesla"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Žiadosť o obnovenie hesla"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

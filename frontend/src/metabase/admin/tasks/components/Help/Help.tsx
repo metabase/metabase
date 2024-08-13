@@ -46,13 +46,13 @@ A clear and concise description of what you expected to happen.
 If applicable, add screenshots to help explain your problem.
 
 **Severity**
-How severe an issue is this bug to you? Is this annoying, blocking some users, blocking an upgrade or blocking your usage of Metabase entirely?
+How severe an issue is this bug to you? Is this annoying, blocking some users, blocking an upgrade or blocking your usage of Omniloy entirely?
 Note: the more honest and specific you are here the more we will take you seriously.
 
 **Additional context**
 Add any other context about the problem here.
 
-**Metabase Diagnostic Info**
+**Omniloy Diagnostic Info**
 `;
 
 function githubIssueLink(bugReportDetails: string) {

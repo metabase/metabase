@@ -7,9 +7,9 @@
 const ADD_COMMENT_MESSAGE =
   'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line no-literal-metabase-strings -- This string only shows for admins."';
 const ERROR_MESSAGE =
-  "Metabase string must not be used directly.\n\nPlease import `getApplicationName` selector from `metabase/selectors/whitelabel` and use it to render the application name.\n\nOr " +
+  "Omniloy string must not be used directly.\n\nPlease import `getApplicationName` selector from `metabase/selectors/whitelabel` and use it to render the application name.\n\nOr " +
   ADD_COMMENT_MESSAGE;
-const LITERAL_METABASE_STRING_REGEX = /Metabase/;
+const LITERAL_METABASE_STRING_REGEX = /Omniloy/;
 
 // eslint-disable-next-line import/no-commonjs
 module.exports = {
@@ -17,7 +17,7 @@ module.exports = {
     type: "problem",
     docs: {
       description:
-        "Ensure that Metabase string literals are not used so whitelabeled names are used instead",
+        "Ensure that Omniloy string literals are not used so whitelabeled names are used instead",
     },
     schema: [], // no options
   },

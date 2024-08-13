@@ -38,7 +38,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
   if (!isStepActive) {
     const title = isStepCompleted
       ? COMPLETED_STEP_TITLE[usageReason]
-      : t`What will you use Metabase for?`;
+      : t`What will you use Omniloy for?`;
     return (
       <InactiveStep
         title={title}
@@ -49,7 +49,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
   }
 
   return (
-    <ActiveStep title={t`What will you use Metabase for?`} label={stepLabel}>
+    <ActiveStep title={t`What will you use Omniloy for?`} label={stepLabel}>
       <Radio.Group
         name="usage-reason"
         defaultValue="self-service-analytics"
@@ -59,7 +59,7 @@ export const UsageQuestionStep = ({ stepLabel }: NumberedStepProps) => {
           <Text
             color="text-light"
             fw="normal"
-          >{t`Let us know your plans with Metabase so that we can best guide you`}</Text>
+          >{t`Let us know your plans with Omniloy so that we can best guide you`}</Text>
         }
       >
         <Stack pt="lg">

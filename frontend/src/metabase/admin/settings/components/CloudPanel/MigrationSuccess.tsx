@@ -37,12 +37,12 @@ export const MigrationSuccess = ({
             </Text>
             <Text size="sm">{t`On ${uploadedAt}`}</Text>
             <Text my="2rem">
-              {t`To complete the migration, set up your account in the Metabase Store`}
+              {t`To complete the migration, set up your account in the Omniloy Store`}
             </Text>
 
             <Box mt="1.5rem">
               <ExternalLink href={checkoutUrl}>
-                <Button variant="filled">{t`Go to Metabase Store`}</Button>
+                <Button variant="filled">{t`Go to Omniloy Store`}</Button>
               </ExternalLink>
             </Box>
           </Box>

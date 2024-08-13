@@ -18,7 +18,7 @@ import {
 const REGULAR_ITEMS = [
   "Account settings",
   "Help",
-  "About Metabase",
+  "About Omniloy",
   "Sign out",
 ];
 const ADMIN_ITEMS = [...REGULAR_ITEMS, "Admin settings"];

@@ -20639,7 +20639,7 @@ msgid "{0} accepted their {1} invite"
 msgstr ""
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
+msgid "Omniloy Password Reset Request"
 msgstr ""
 
 #: metabase/email/messages.clj:704
@@ -20647,7 +20647,7 @@ msgid "Your Slack connection stopped working"
 msgstr ""
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr ""
 
 #: metabase/email/messages.clj:271

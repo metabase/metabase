@@ -127,7 +127,7 @@
                                                   :logoHeader    true
                                                   :sentFromSetup sent-from-setup?}))]
     (email/send-message!
-     {:subject      (str (trs "You''re invited to join {0}''s {1}" company (app-name-trs)))
+     {:subject      (str (trs "You''re invited to join {0}" company))
       :recipients   [(:email invited)]
       :message-type :html
       :message      message-body})))
@@ -181,7 +181,7 @@
                               :adminEmail       (public-settings/admin-email)
                               :adminEmailSet    (boolean (public-settings/admin-email))}))]
     (email/send-message!
-     {:subject      (trs "[{0}] Password Reset Request" (app-name-trs))
+     {:subject      (trs "Omniloy Password Reset Request")
       :recipients   [email]
       :message-type :html
       :message      message-body})))

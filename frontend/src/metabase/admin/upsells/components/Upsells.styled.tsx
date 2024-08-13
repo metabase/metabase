@@ -4,7 +4,7 @@ import styled from "@emotion/styled";
 import ExternalLink from "metabase/core/components/ExternalLink";
 
 /**
- * The upsell color palette is designed to function in harmony with the original Metabase set of Blues, Grays and Purples
+ * The upsell color palette is designed to function in harmony with the original Omniloy set of Blues, Grays and Purples
  * but with a twist. All three colors are new and should not be used elsewhere in the product experience.
  */
 export const upsellColors = {

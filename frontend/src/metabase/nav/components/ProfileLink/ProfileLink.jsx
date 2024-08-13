@@ -61,6 +61,7 @@ function ProfileLink({ adminItems, onLogout }) {
         link: "/admin",
         event: `Navbar;Profile Dropdown;Enter Admin`,
       },
+      /*
       helpLink.visible && {
         title: t`Help`,
         icon: null,
@@ -68,6 +69,7 @@ function ProfileLink({ adminItems, onLogout }) {
         externalLink: true,
         event: `Navbar;Profile Dropdown;About ${tag}`,
       },
+      */
       {
         title: t`About ${applicationName}`,
         icon: null,
@@ -148,9 +150,9 @@ function ProfileLink({ adminItems, onLogout }) {
             >
               <span className={CS.block}>
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
-                <span className={CS.textBold}>Metabase</span>{" "}
+                <span className={CS.textBold}>Omniloy</span>{" "}
                 {/* eslint-disable-next-line no-literal-metabase-strings -- This only shows on OSS instance */}
-                {t`is a Trademark of`} Metabase, Inc
+                {t`is a Trademark of`} Omniloy, Inc
               </span>
               <span>{t`and is built with care by a team from all across this pale blue dot.`}</span>
             </div>

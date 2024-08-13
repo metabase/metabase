@@ -11961,8 +11961,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} hyväksyi Metabase kutsun"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] Salasanan palautuspyyntö"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Salasanan palautuspyyntö"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17237,7 +17237,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Metabase Enterprise Edition -laajennukset EIVÄT OLE KÄYTÖSSÄ."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "Sinut on kutsuttu liittymään {0}:n {1}"
 
 #: metabase/email/messages.clj:152
@@ -17249,8 +17249,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} hyväksyi {1} kutsun"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] Salasanan palautuspyyntö"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Salasanan palautuspyyntö"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

@@ -86,9 +86,9 @@ function _init(reducers, getRoutes, callback) {
 
   PLUGIN_APP_INIT_FUNCTIONS.forEach(init => init());
 
-  window.Metabase = window.Metabase || {};
-  window.Metabase.store = store;
-  window.Metabase.settings = MetabaseSettings;
+  window.Omniloy = window.Omniloy || {};
+  window.Omniloy.store = store;
+  window.Omniloy.settings = MetabaseSettings;
 
   if (callback) {
     callback(store);

@@ -21,7 +21,7 @@ function getImportNodeLocation(node) {
 const ADD_COMMENT_MESSAGE =
   'add comment to indicate the reason why this rule needs to be disabled.\nExample: "// eslint-disable-next-line no-unconditional-metabase-links-render -- This links only shows for admins."';
 const ERROR_MESSAGE =
-  "Metabase links must be rendered conditionally.\n\nPlease import `getShowMetabaseLinks` selector from `metabase/selectors/whitelabel` and use it to conditionally render Metabase links.\n\nOr " +
+  "Omniloy links must be rendered conditionally.\n\nPlease import `getShowMetabaseLinks` selector from `metabase/selectors/whitelabel` and use it to conditionally render Omniloy links.\n\nOr " +
   ADD_COMMENT_MESSAGE;
 const LITERAL_METABASE_URL_REGEX =
   /(metabase\.com\/docs|metabase\.com\/learn)($|\/)/;
@@ -32,7 +32,7 @@ module.exports = {
     type: "problem",
     docs: {
       description:
-        "Ensure that Metabase links are rendered conditionally using a `show-metabase-links` setting",
+        "Ensure that Omniloy links are rendered conditionally using a `show-metabase-links` setting",
     },
     schema: [], // no options
   },

@@ -29,10 +29,10 @@ export const UpsellSSO = ({ source }: { source: string }) => {
       style={{ maxWidth: 242 }}
     >
       <Box px=".5rem">
-        {t`Metabase Pro and Enterprise plans include:`}
+        {t`Omniloy Pro and Enterprise plans include:`}
         <List size="sm">
           <List.Item>{t`SSO with SAML and JWT`}</List.Item>
-          <List.Item>{t`Metabase group sync with SAML, JWT, and LDAP`}</List.Item>
+          <List.Item>{t`Omniloy group sync with SAML, JWT, and LDAP`}</List.Item>
           <List.Item>{t`User provisioning with SCIM`}</List.Item>
         </List>
       </Box>

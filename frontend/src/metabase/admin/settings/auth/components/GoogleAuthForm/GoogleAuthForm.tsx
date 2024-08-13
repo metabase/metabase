@@ -65,10 +65,10 @@ const GoogleAuthForm = ({
           <Breadcrumbs crumbs={BREADCRUMBS} />
           <GoogleFormHeader>{t`Sign in with Google`}</GoogleFormHeader>
           <GoogleFormCaption>
-            {t`Allows users with existing Metabase accounts to login with a Google account that matches their email address in addition to their Metabase username and password.`}
+            {t`Allows users with existing Omniloy accounts to login with a Google account that matches their email address in addition to their Omniloy username and password.`}
           </GoogleFormCaption>
           <GoogleFormCaption>
-            {jt`To allow users to sign in with Google you'll need to give Metabase a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
+            {jt`To allow users to sign in with Google you'll need to give Omniloy a Google Developers console application client ID. It only takes a few steps and instructions on how to create a key can be found ${(
               <ExternalLink key="link" href={getDocsLink()}>
                 {t`here`}
               </ExternalLink>

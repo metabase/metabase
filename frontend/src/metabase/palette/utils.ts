@@ -19,9 +19,10 @@ export const processResults = (
   const search = processSection(t`Search results`, groupedResults["search"]);
   const recent = processSection(t`Recent items`, groupedResults["recent"]);
   const admin = processSection(t`Admin`, groupedResults["admin"]);
-  const docs = processSection(t`Documentation`, groupedResults["docs"]);
+  //const docs = processSection(t`Documentation`, groupedResults["docs"]);
+  //return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
 
-  return [...recent, ...actions.slice(0, 6), ...admin, ...search, ...docs];
+  return [...recent, ...actions.slice(0, 6), ...admin, ...search];
 };
 
 export const processSection = (

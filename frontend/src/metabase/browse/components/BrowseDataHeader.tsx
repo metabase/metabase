@@ -44,10 +44,12 @@ const LearnAboutDataLink = () => (
   >
     <Link to="reference">
       <BrowseHeaderIconContainer>
+        {/** 
         <LearnAboutDataIcon size={14} name="reference" />
         <Text size="md" lh="1" fw="bold" ml=".5rem" c="inherit">
           {t`Learn about our data`}
         </Text>
+        */}
       </BrowseHeaderIconContainer>
     </Link>
   </Flex>

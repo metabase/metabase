@@ -11955,8 +11955,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} menerima undangan metabase mereka"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] Permintaan Reset Kata Sandi"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Permintaan Reset Kata Sandi"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17219,7 +17219,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Ekstensi Edisi Enterprise Metabase tidak ada."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "Anda diundang untuk bergabung {0} '' s {1}"
 
 #: metabase/email/messages.clj:152
@@ -17231,8 +17231,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} menerima undangan {1} mereka"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] Permintaan Reset Kata Sandi"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Permintaan Reset Kata Sandi"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

@@ -11975,8 +11975,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} ha aceptado su invitación a Metabase"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] Solicitud Reestablecer Contraseña"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Solicitud Reestablecer Contraseña"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17250,7 +17250,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Las extensiones de Metabase Enterprise Edition NO ESTÁN PRESENTES."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "Estás invitado a unirte al {0} de {1}"
 
 #: metabase/email/messages.clj:152
@@ -17262,8 +17262,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} aceptó su invitación a {1}"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] Solicitud de restablecimiento de contraseña"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Solicitud de restablecimiento de contraseña"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

@@ -11943,8 +11943,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} đã chấp nhận lời mời Metabase của họ"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] Yêu cầu cài đặt lại mật khẩ"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Yêu cầu cài đặt lại mật khẩ"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17205,7 +17205,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Phần mở rộng Metabase Enterprise Edition KHÔNG TỒN TẠI."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "Bạn được mời tham gia {0} của {1}"
 
 #: metabase/email/messages.clj:152
@@ -17217,8 +17217,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} đã chấp nhận lời mời {1} của họ"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] Yêu cầu đặt lại mật khẩu"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Yêu cầu đặt lại mật khẩu"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

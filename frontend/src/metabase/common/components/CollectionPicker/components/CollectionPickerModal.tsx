@@ -93,6 +93,7 @@ export const CollectionPickerModal = ({
 
   const modalActions = options.allowCreateNew
     ? [
+      /*
         <Button
           key="collection-on-the-go"
           miw="21rem"
@@ -102,6 +103,7 @@ export const CollectionPickerModal = ({
         >
           {t`Create a new collection`}
         </Button>,
+      */
       ]
     : [];
 

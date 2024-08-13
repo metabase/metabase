@@ -30,8 +30,8 @@ export const MigrationStart = ({
       <Box mt="1rem">
         <Text size="md">
           {isProSelfHosted
-            ? t`Migrate this instance to Metabase Cloud at no extra cost and get high availability, automatic upgrades, backups, and enterprise grade compliance.`
-            : t`Migrate this instance to Metabase Cloud with a free 14-day trial and get high availability, automatic upgrades, backups, and official support.`}{" "}
+            ? t`Migrate this instance to Omniloy Cloud at no extra cost and get high availability, automatic upgrades, backups, and enterprise grade compliance.`
+            : t`Migrate this instance to Omniloy Cloud with a free 14-day trial and get high availability, automatic upgrades, backups, and official support.`}{" "}
           <ExternalLink href="https://www.metabase.com/cloud/">{t`Learn More.`}</ExternalLink>
         </Text>
 
@@ -56,10 +56,10 @@ export const MigrationStart = ({
           <Modal.Body mt="md" py="0" px="6rem" ta="center">
             {/* TODO: get filled cloud icon from design */}
             <Icon name="cloud_filled" size="3rem" color={color("brand")} />
-            <Modal.Title mt="1.5rem">{t`Get started with Metabase Cloud`}</Modal.Title>
+            <Modal.Title mt="1.5rem">{t`Get started with Omniloy Cloud`}</Modal.Title>
 
             <Text mt="1.5rem">
-              {t`Just a heads up: your Metabase will be read-only for up to 30
+              {t`Just a heads up: your Omniloy will be read-only for up to 30
               minutes while we prep it for migration.`}{" "}
               <ExternalLink href="https://www.metabase.com/cloud/">{t`Learn More.`}</ExternalLink>
             </Text>

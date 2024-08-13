@@ -8,6 +8,8 @@ import { SetupFooterRoot } from "./SetupHelp.styled";
 
 export const SetupHelp = (): JSX.Element => {
   return (
+    <>
+      {/** 
     <SetupFooterRoot>
       {t`If you feel stuck`},{" "}
       <ExternalLink
@@ -18,6 +20,7 @@ export const SetupHelp = (): JSX.Element => {
         target="_blank"
       >{t`our getting started guide`}</ExternalLink>{" "}
       {t`is just a click away.`}
-    </SetupFooterRoot>
+    </SetupFooterRoot>*/}
+    </>
   );
 };

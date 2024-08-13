@@ -11961,8 +11961,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} Metabase davetlerini kabul etti"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] Şifre Sıfırlama İsteği"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Şifre Sıfırlama İsteği"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17237,7 +17237,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Metabase Enterprise Edition uzantıları MEVCUT DEĞİLDİR."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "{0} adlı kullanıcının {1} grubuna davetlisiniz"
 
 #: metabase/email/messages.clj:152
@@ -17249,8 +17249,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0}, {1} davetini kabul etti"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] Şifre Sıfırlama İsteği"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Şifre Sıfırlama İsteği"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

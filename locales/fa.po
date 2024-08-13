@@ -11978,8 +11978,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} دعوتنامه Metabase خود را پذیرفتند"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] درخواست بازنشانی گذرواژه"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy درخواست بازنشانی گذرواژه"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17243,7 +17243,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "برنامه های افزودنی Metabase Enterprise Edition موجود نیستند."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "از شما دعوت شده است به {0} \"{1}\" بپیوندید"
 
 #: metabase/email/messages.clj:152
@@ -17255,8 +17255,8 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} دعوت {1} خود را پذیرفت"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
-msgstr "[{0}] درخواست بازنشانی گذرواژه"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy درخواست بازنشانی گذرواژه"
 
 #: metabase/email/messages.clj:249
 msgid "[{0}] Notification"

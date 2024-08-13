@@ -11998,8 +11998,8 @@ msgid "{0} accepted their Metabase invite"
 msgstr "{0} zaakceptował zaproszenie do Metabase"
 
 #: src/metabase/email/messages.clj
-msgid "[Metabase] Password Reset Request"
-msgstr "[Metabase] Żądanie Resetu Hasła"
+msgid "Omniloy Password Reset Request"
+msgstr "Omniloy Żądanie Resetu Hasła"
 
 #: src/metabase/email/messages.clj
 msgid "[Metabase] Notification"
@@ -17299,7 +17299,7 @@ msgid "Metabase Enterprise Edition extensions are NOT PRESENT."
 msgstr "Rozszerzenia Metabase Enterprise Edition NIE są PREZENTNE."
 
 #: metabase/email/messages.clj:130
-msgid "You''re invited to join {0}''s {1}"
+msgid "You''re invited to join {0}"
 msgstr "Jesteś zaproszony do przyłączenia się {0}''s {1}'."
 
 #: metabase/email/messages.clj:152
@@ -17311,7 +17311,7 @@ msgid "{0} accepted their {1} invite"
 msgstr "{0} zaakceptował zaproszenie {1}"
 
 #: metabase/email/messages.clj:184
-msgid "[{0}] Password Reset Request"
+msgid "Omniloy Password Reset Request"
 msgstr "Prośba o zresetowanie hasła."
 
 #: metabase/email/messages.clj:249

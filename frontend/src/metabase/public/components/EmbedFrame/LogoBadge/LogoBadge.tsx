@@ -22,7 +22,7 @@ export const LogoBadge = ({ dark }: { dark: boolean }) => {
     >
       <span>{t`Powered by`}</span>
       {/* eslint-disable-next-line no-literal-metabase-strings -- This embedding badge which we don't want to show the whitelabeled name */}
-      <MetabaseLogoWithText height={32} aria-label="Metabase" />
+      <MetabaseLogoWithText height={32} aria-label="Omniloy" />
     </ExternalLink>
   );
 };
