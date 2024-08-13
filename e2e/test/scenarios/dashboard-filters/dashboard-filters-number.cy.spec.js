@@ -96,7 +96,9 @@ describe("scenarios > dashboard > filters > number", () => {
   });
 
   it("should support being required", () => {
-    cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query").as("foo");
+    cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashboardData",
+    );
 
     setFilter("Number", "Equal to", "Equal to");
     selectDashboardFilter(cy.findByTestId("dashcard"), "Tax");
@@ -121,19 +123,19 @@ describe("scenarios > dashboard > filters > number", () => {
     sidebar().findByText("Default value").next().click();
     addWidgetNumberFilter("2.07", { buttonLabel: "Update filter" });
 
-    saveDashboard({ awaitRequest: true });
-    cy.wait("@foo");
+    saveDashboard();
+    cy.wait("@dashboardData");
     ensureDashboardCardHasText("37.65");
 
     // Updates the filter value
     setFilterWidgetValue("5.27", "Enter a number");
-    cy.wait("@foo");
+    cy.wait("@dashboardData");
     ensureDashboardCardHasText("95.77");
 
     // Resets the value back by clicking widget icon
     resetFilterWidgetToDefault();
     filterWidget().findByText("2.07");
-    cy.wait("@foo");
+    cy.wait("@dashboardData");
     ensureDashboardCardHasText("37.65");
 
     // Removing value resets back to default
