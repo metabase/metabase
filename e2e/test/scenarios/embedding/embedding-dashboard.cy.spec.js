@@ -26,7 +26,6 @@ import {
   publishChanges,
   setEmbeddingParameter,
   assertEmbeddingParameter,
-  dismissDownloadStatus,
 } from "e2e/support/helpers";
 import { createMockParameter } from "metabase-types/api/mocks";
 
@@ -506,7 +505,6 @@ describe("scenarios > embedding > dashboard parameters", () => {
         assertSheetRowsCount(54)(sheet);
       },
     );
-    dismissDownloadStatus();
   });
 });
 
