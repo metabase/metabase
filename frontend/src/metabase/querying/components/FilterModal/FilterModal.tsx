@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import CS from "metabase/css/core/index.css";
 import { FilterContent } from "metabase/querying/components/FilterContent";
 import {
+  appendStageIfAggregated,
   getGroupItems,
   hasFilters,
   removeFilters,
@@ -30,7 +31,7 @@ export const useFilterContent = (
   onSubmit: (newQuery: Lib.Query) => void,
 ) => {
   const [query, setQuery] = useState(() =>
-    Lib.appendStageIfSummarized(initialQuery),
+    appendStageIfAggregated(initialQuery),
   );
   const queryRef = useRef(query);
   const [version, setVersion] = useState(1);
