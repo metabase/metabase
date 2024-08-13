@@ -430,7 +430,7 @@
   (into [:enum {:decode/json keyword}] (mapcat (juxt identity u/qualified-name)) card/card-types))
 
 (api/defendpoint POST "/"
-  "Create a new `Card`."
+  "Create a new `Card`. A card can be of type `question`, `model`, or `metric`."
   [:as {{:keys [collection_id collection_position dataset_query description display name
                 parameters parameter_mappings result_metadata visualization_settings cache_ttl type], :as body} :body}]
   {name                   ms/NonBlankString
