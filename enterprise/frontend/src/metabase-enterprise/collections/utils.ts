@@ -1,4 +1,3 @@
-import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import type { IconData, ObjectWithModel } from "metabase/lib/icon";
 import { getIconBase } from "metabase/lib/icon";
 import type { ItemWithCollection } from "metabase/plugins";
@@ -36,6 +35,14 @@ export function getCollectionType({
   | CollectionInstanceAnaltyicsConfig {
   return (
     COLLECTION_TYPES?.[String(type || authority_level)] ?? REGULAR_COLLECTION
+  );
+}
+
+export function isInstanceAnalyticsCollection(
+  collection?: Pick<Collection, "type">,
+): boolean {
+  return (
+    !!collection && getCollectionType(collection).type === "instance-analytics"
   );
 }
 
