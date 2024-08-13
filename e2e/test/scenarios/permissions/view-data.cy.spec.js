@@ -1,5 +1,6 @@
 import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   assertPermissionTable,
   main,
@@ -15,6 +16,12 @@ import {
   getPermissionRowPermissions,
   createTestRoles,
   selectPermissionRow,
+  savePermissions,
+  selectImpersonatedAttribute,
+  saveImpersonationSettings,
+  assertSameBeforeAndAfterSave,
+  createNativeQuestion,
+  visitQuestion,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -23,6 +30,8 @@ const { ALL_USERS_GROUP, COLLECTION_GROUP } = USER_GROUPS;
 const DATA_ACCESS_PERM_IDX = 0;
 const CREATE_QUERIES_PERM_IDX = 1;
 const DOWNLOAD_PERM_IDX = 2;
+
+// EDITOR RELATED TESTS
 
 describeEE("scenarios > admin > permissions > view data > blocked", () => {
   beforeEach(() => {
@@ -843,28 +852,111 @@ describeEE("scenarios > admin > permissions > view data > unrestricted", () => {
   });
 });
 
-function savePermissions() {
-  cy.findByTestId("edit-bar").button("Save changes").click();
-  cy.findByRole("dialog").findByText("Yes").click();
-  cy.findByTestId("edit-bar").should("not.exist");
+// ENFORMCENT RELATED TESTS
+
+describeEE(
+  "scenarios > admin > permissions > view data > blocked (enforcement)",
+  () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+    });
+
+    it("should deny view access to a query builder question that makes use of a blocked table", () => {
+      assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
+      cy.visit(
+        `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+      );
+      removeCollectionGroupPermissions();
+      assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
+    });
+
+    it("should deny view access to a query builder question that makes use of a blocked database", () => {
+      assertCollectionGroupUserHasAccess(ORDERS_QUESTION_ID, true);
+      cy.visit(`/admin/permissions/data/database/${SAMPLE_DB_ID}`);
+      removeCollectionGroupPermissions();
+      assertCollectionGroupHasNoAccess(ORDERS_QUESTION_ID, true);
+    });
+
+    it("should deny view access to any native question if the user has blocked view data for any table or database", () => {
+      createNativeQuestion({
+        native: { query: "select 1" },
+      }).then(({ body: { id: nativeQuestionId } }) => {
+        assertCollectionGroupUserHasAccess(nativeQuestionId, false);
+        cy.visit(
+          `/admin/permissions/data/database/${SAMPLE_DB_ID}/schema/PUBLIC/table/${ORDERS_ID}`,
+        );
+        removeCollectionGroupPermissions();
+        assertCollectionGroupHasNoAccess(nativeQuestionId, false);
+      });
+    });
+  },
+);
+
+function lackPermissionsView(isQbQuestion, shouldExist) {
+  if (isQbQuestion) {
+    cy.findByText("There was a problem with your question").should(
+      shouldExist ? "exist" : "not.exist",
+    );
+
+    if (shouldExist) {
+      cy.findByText("Show error details").click();
+    }
+  }
+
+  cy.findByText(/You do not have permissions to run this query/).should(
+    shouldExist ? "exist" : "not.exist",
+  );
 }
 
-function selectImpersonatedAttribute(attribute) {
-  cy.findByRole("dialog").within(() => {
-    cy.findByTestId("select-button").click();
+// NOTE: all helpers below make user of the "sandboxed" user and "collection" group to test permissions
+// as this user is of only one group and has permission to view existing question
+
+function assertCollectionGroupUserHasAccess(questionId, isQbQuestion) {
+  cy.signOut();
+  cy.signIn("sandboxed");
+
+  visitQuestion(questionId);
+  lackPermissionsView(isQbQuestion, false);
+
+  cy.signOut();
+  cy.signInAsAdmin();
+}
+
+function assertCollectionGroupHasNoAccess(questionId, isQbQuestion) {
+  cy.signOut();
+  cy.signIn("sandboxed");
+
+  visitQuestion(questionId);
+
+  lackPermissionsView(isQbQuestion, true);
+}
+
+function removeCollectionGroupPermissions() {
+  assertPermissionForItem("All Users", DATA_ACCESS_PERM_IDX, "Can view", false);
+  assertPermissionForItem(
+    "collection",
+    DATA_ACCESS_PERM_IDX,
+    "Can view",
+    false,
+  );
+  modifyPermission("All Users", DATA_ACCESS_PERM_IDX, "Blocked");
+  modifyPermission("collection", DATA_ACCESS_PERM_IDX, "Blocked");
+  assertSameBeforeAndAfterSave(() => {
+    assertPermissionForItem(
+      "All Users",
+      DATA_ACCESS_PERM_IDX,
+      "Blocked",
+      false,
+    );
+    assertPermissionForItem(
+      "collection",
+      DATA_ACCESS_PERM_IDX,
+      "Blocked",
+      false,
+    );
   });
-
-  popover().findByText(attribute).click();
-}
-
-function saveImpersonationSettings() {
-  cy.findByRole("dialog").findByText("Save").click();
-}
-
-function assertSameBeforeAndAfterSave(assertionCallback) {
-  assertionCallback();
-  savePermissions();
-  assertionCallback();
 }
 
 function makeOrdersSandboxed() {
