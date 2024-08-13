@@ -65,18 +65,20 @@
                          (and (nil? value) (nil? default)))
         to-delete      (filter to-delete-pred parameters)
         to-upsert      (filter (complement to-delete-pred) parameters)]
-    (t2/with-transaction [_conn]
-      (batched-upsert!* (map (fn [{:keys [id value]}]
-                               {:user_id      user-id
-                                :dashboard_id dashboard-id
-                                :parameter_id id
-                                :value        value})
-                             to-upsert))
-      (when (seq to-delete)
-        (t2/delete! :model/UserParameterValue
-                    :user_id user-id
-                    :dashboard_id dashboard-id
-                    :parameter_id [:in (map :id to-delete)])))))
+    (when (or (seq to-upsert) (seq to-delete))
+      (t2/with-transaction [_conn]
+        (when (seq to-upsert)
+          (batched-upsert!* (map (fn [{:keys [id value]}]
+                                   {:user_id      user-id
+                                    :dashboard_id dashboard-id
+                                    :parameter_id id
+                                    :value        value})
+                                 to-upsert)))
+        (when (seq to-delete)
+          (t2/delete! :model/UserParameterValue
+                      :user_id user-id
+                      :dashboard_id dashboard-id
+                      :parameter_id [:in (map :id to-delete)]))))))
 
 ;; hydration
 
