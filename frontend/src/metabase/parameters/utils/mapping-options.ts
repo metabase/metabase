@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { tag_names } from "cljs/metabase.shared.parameters.parameters";
 import { isActionDashCard } from "metabase/actions/utils";
 import { getColumnGroupName } from "metabase/common/utils/column-groups";
@@ -154,15 +156,16 @@ export function getParameterMappingOptions(
 
   const { isNative } = Lib.queryDisplayInfo(question.query());
   if (!isNative) {
-    const { query, stageIndex, columns } = getParameterColumns(
+    const { query, columns } = getParameterColumns(
       question,
       parameter ?? undefined,
     );
-    const columnGroups = Lib.groupColumns(columns);
 
-    const options = columnGroups.flatMap(group =>
-      buildStructuredQuerySectionOptions(query, stageIndex, group),
-    );
+    const groups = _.uniq(columns, ({ group }) => group);
+
+    const options = groups.flatMap(({ stageIndex, group }) => {
+      return buildStructuredQuerySectionOptions(query, stageIndex, group);
+    });
 
     return options;
   }

@@ -152,8 +152,13 @@ export function getParameterColumns(
   parameter?: Parameter,
 ): {
   query: Lib.Query;
-  stageIndex: number;
-  columns: Lib.ColumnMetadata[];
+  stageIndex: number; // TODO: remove this
+  columns: {
+    // TODO: remove return type
+    stageIndex: number;
+    column: Lib.ColumnMetadata;
+    group: Lib.ColumnGroup;
+  }[];
 } {
   // treat the dataset/model question like it is already composed so that we can apply
   // dataset/model-specific metadata to the underlying dimension options
@@ -161,12 +166,9 @@ export function getParameterColumns(
     question.type() !== "question"
       ? question.composeQuestionAdhoc().query()
       : question.query();
-  const stageIndex = -1;
   const availableColumns =
     parameter && isTemporalUnitParameter(parameter)
-      ? Lib.breakouts(query, stageIndex)
-          .map(breakout => Lib.breakoutColumn(query, stageIndex, breakout))
-          .map(column => ({ column, stageIndex }))
+      ? getTemporalColumns(query)
       : getFilterableColumns(query);
   const filteredColumns = parameter
     ? availableColumns.filter(({ column, stageIndex }) =>
@@ -176,8 +178,8 @@ export function getParameterColumns(
 
   return {
     query,
-    stageIndex, // TODO: make this per column
-    columns: filteredColumns.map(({ column }) => column),
+    stageIndex: -1, // TODO: remove this
+    columns: filteredColumns,
   };
 }
 
@@ -189,16 +191,29 @@ function getFilterableColumns(baseQuery: Lib.Query) {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
 
-    return groups.flatMap((group, groupIndex) => {
+    return groups.flatMap(group => {
       const columns = Lib.getColumnsFromColumnGroup(group);
 
       return columns.map(column => ({
         stageIndex,
-        groupIndex,
         column,
+        group,
       }));
     });
   });
+}
+export function getTemporalColumns(query: Lib.Query) {
+  const stageIndex = -1;
+  const columns = Lib.breakouts(query, stageIndex).map(breakout => {
+    return Lib.breakoutColumn(query, stageIndex, breakout);
+  });
+  const [group] = Lib.groupColumns(columns); // TODO: is this always only 1 group?
+
+  return columns.map(column => ({
+    stageIndex,
+    column,
+    group,
+  }));
 }
 
 function appendStageIfAggregated(query: Lib.Query) {
