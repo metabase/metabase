@@ -59,7 +59,7 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
   "MMMM D, YYYY": {
     month: "MMMM YYYY",
   },
-  "D MMMM, YYYY": {
+  "D MMMM YYYY": {
     month: "MMMM YYYY",
   },
   "dddd, MMMM D, YYYY": {
