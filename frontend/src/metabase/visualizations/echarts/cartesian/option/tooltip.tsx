@@ -17,8 +17,6 @@ interface ChartItemTooltip {
   seriesId?: DataKey | null;
   settings: ComputedVisualizationSettings;
   chartModel: BaseCartesianChartModel;
-  showMarkers: boolean;
-  showPreviousValueComparison: boolean;
 }
 
 const ChartItemTooltip = ({
@@ -26,8 +24,6 @@ const ChartItemTooltip = ({
   settings,
   dataIndex,
   seriesId,
-  showMarkers,
-  showPreviousValueComparison,
 }: ChartItemTooltip) => {
   if (dataIndex == null || seriesId == null) {
     return null;
@@ -38,8 +34,6 @@ const ChartItemTooltip = ({
     settings,
     dataIndex,
     seriesId,
-    showMarkers,
-    showPreviousValueComparison,
   );
 
   if (!tooltipModel) {
@@ -52,8 +46,6 @@ const ChartItemTooltip = ({
 export const getTooltipOption = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
-  showMarkers = true,
-  showPreviousValueComparison = true,
 ): TooltipOption => {
   return {
     trigger: "item",
@@ -78,8 +70,6 @@ export const getTooltipOption = (
           chartModel={chartModel}
           dataIndex={dataIndex}
           seriesId={seriesId}
-          showMarkers={showMarkers}
-          showPreviousValueComparison={showPreviousValueComparison}
         />,
       );
     },

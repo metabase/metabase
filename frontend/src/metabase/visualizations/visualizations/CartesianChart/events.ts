@@ -343,8 +343,6 @@ export const getTooltipModel = (
   settings: ComputedVisualizationSettings,
   echartsDataIndex: number,
   seriesDataKey: DataKey,
-  showMarkers: boolean,
-  showPreviousValueComparison: boolean,
 ): EChartsTooltipModel | null => {
   const dataIndex = getDataIndex(
     chartModel.transformedDataset,
@@ -392,8 +390,6 @@ export const getTooltipModel = (
     datum,
     dataIndex,
     seriesDataKey,
-    showMarkers,
-    showPreviousValueComparison,
   );
 };
 
@@ -430,8 +426,6 @@ export const getSeriesOnlyTooltipModel = (
   datum: Datum,
   dataIndex: number,
   seriesDataKey: DataKey,
-  showMarkers: boolean,
-  showPreviousValueComparison: boolean,
 ): EChartsTooltipModel | null => {
   const header = String(
     formatValueForTooltip({
@@ -453,9 +447,7 @@ export const getSeriesOnlyTooltipModel = (
           chartModel.seriesModels.length > 1 &&
           seriesModel.dataKey === seriesDataKey,
         name: seriesModel.name,
-        markerColorClass: showMarkers
-          ? getMarkerColorClass(seriesModel.color)
-          : undefined,
+        markerColorClass: getMarkerColorClass(seriesModel.color),
         values: [
           formatValueForTooltip({
             value: datum[seriesModel.dataKey],
@@ -463,7 +455,7 @@ export const getSeriesOnlyTooltipModel = (
             settings,
             isAlreadyScaled: true,
           }),
-          ...(showPreviousValueComparison ? [prevValue] : []),
+          prevValue,
         ],
       };
     },

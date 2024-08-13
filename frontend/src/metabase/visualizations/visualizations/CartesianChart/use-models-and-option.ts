@@ -10,6 +10,7 @@ import type {
   WaterfallChartModel,
 } from "metabase/visualizations/echarts/cartesian/model/types";
 import { getCartesianChartOption } from "metabase/visualizations/echarts/cartesian/option";
+import { getTooltipOption } from "metabase/visualizations/echarts/cartesian/option/tooltip";
 import { getScatterPlotModel } from "metabase/visualizations/echarts/cartesian/scatter/model";
 import { getScatterPlotOption } from "metabase/visualizations/echarts/cartesian/scatter/option";
 import { getTimelineEventsModel } from "metabase/visualizations/echarts/cartesian/timeline-events/model";
@@ -103,6 +104,10 @@ export function useModelsAndOption({
     return ids;
   }, [selectedTimelineEventIds, hovered?.timelineEvents]);
 
+  const tooltipOption = useMemo(() => {
+    return getTooltipOption(chartModel, settings);
+  }, [chartModel, settings]);
+
   const option = useMemo(() => {
     if (width === 0 || height === 0) {
       return {};
@@ -110,9 +115,10 @@ export function useModelsAndOption({
 
     const shouldAnimate = !isPlaceholder && !isReducedMotionPreferred();
 
+    let baseOption;
     switch (card.display) {
       case "waterfall":
-        return getWaterfallChartOption(
+        baseOption = getWaterfallChartOption(
           chartModel as WaterfallChartModel,
           width,
           chartMeasurements,
@@ -122,8 +128,9 @@ export function useModelsAndOption({
           shouldAnimate,
           renderingContext,
         );
+        break;
       case "scatter":
-        return getScatterPlotOption(
+        baseOption = getScatterPlotOption(
           chartModel as ScatterPlotModel,
           chartMeasurements,
           timelineEventsModel,
@@ -133,8 +140,9 @@ export function useModelsAndOption({
           shouldAnimate,
           renderingContext,
         );
+        break;
       default:
-        return getCartesianChartOption(
+        baseOption = getCartesianChartOption(
           chartModel as CartesianChartModel,
           chartMeasurements,
           timelineEventsModel,
@@ -145,17 +153,23 @@ export function useModelsAndOption({
           renderingContext,
         );
     }
+
+    return {
+      ...baseOption,
+      tooltip: tooltipOption,
+    };
   }, [
-    card.display,
-    chartModel,
-    chartMeasurements,
-    renderingContext,
-    settings,
-    timelineEventsModel,
     width,
     height,
     isPlaceholder,
+    card.display,
+    tooltipOption,
+    chartModel,
+    chartMeasurements,
+    timelineEventsModel,
     selectedOrHoveredTimelineEventIds,
+    settings,
+    renderingContext,
   ]);
 
   return { chartModel, timelineEventsModel, option };

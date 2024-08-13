@@ -35,7 +35,6 @@ import type { ChartMeasurements } from "../../chart-measurements/types";
 import { isCategoryAxis } from "../../model/guards";
 import { getSharedEChartsOptions } from "../../option";
 import { buildAxes } from "../../option/axis";
-import { getTooltipOption } from "../../option/tooltip";
 import { getTimelineEventsSeries } from "../../timeline-events/option";
 import type { TimelineEventsModel } from "../../timeline-events/types";
 
@@ -258,6 +257,5 @@ export const getWaterfallChartOption = (
       hasTimelineEvents,
       renderingContext,
     ),
-    tooltip: getTooltipOption(chartModel, settings, false, false),
   };
 };
