@@ -19,7 +19,6 @@ import {
   getPercent,
   getSortedRows,
   getTotalValue,
-  groupExcessiveTooltipRows,
 } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
 import {
@@ -480,8 +479,6 @@ export const getSeriesOnlyTooltipModel = (
   };
 };
 
-const MAX_STAKCED_TOOLTIP_ROWS = 8;
-
 export const getStackedTooltipModel = (
   chartModel: BaseCartesianChartModel,
   settings: ComputedVisualizationSettings,
@@ -497,17 +494,13 @@ export const getStackedTooltipModel = (
       )
       .map(seriesModel => {
         return {
+          isFocused: seriesModel.dataKey === seriesDataKey,
           name: seriesModel.name,
           color: seriesModel.color,
           value: chartModel.dataset[dataIndex][seriesModel.dataKey],
           dataKey: seriesModel.dataKey,
         };
       }),
-  );
-
-  const [[topRow], restRows] = _.partition(
-    stackSeriesRows,
-    row => row.dataKey === seriesDataKey,
   );
 
   const formatter = (value: unknown) =>
@@ -520,13 +513,8 @@ export const getStackedTooltipModel = (
       }),
     );
 
-  const rowsTotal = getTotalValue([topRow], restRows);
+  const rowsTotal = getTotalValue(stackSeriesRows);
   const isShowingTotalSensible = stackSeriesRows.length > 1;
-  const groupedRows = groupExcessiveTooltipRows(
-    restRows,
-    MAX_STAKCED_TOOLTIP_ROWS,
-  );
-
   const header = String(
     formatValueForTooltip({
       value: datum[X_AXIS_DATA_KEY],
@@ -535,21 +523,20 @@ export const getStackedTooltipModel = (
     }),
   );
 
-  const formattedTooltipRows: EChartsTooltipRow[] = [
-    topRow,
-    ...groupedRows.filter(row => row.value != null),
-  ].map(tooltipRow => {
-    return {
-      name: tooltipRow.name,
-      markerColorClass: tooltipRow.color
-        ? getMarkerColorClass(tooltipRow.color)
-        : undefined,
-      values: [
-        formatter(tooltipRow.value),
-        formatPercent(getPercent(rowsTotal, tooltipRow.value) ?? 0),
-      ],
-    };
-  });
+  const formattedTooltipRows: EChartsTooltipRow[] = stackSeriesRows
+    .filter(row => row.value != null)
+    .map(tooltipRow => {
+      return {
+        name: tooltipRow.name,
+        markerColorClass: tooltipRow.color
+          ? getMarkerColorClass(tooltipRow.color)
+          : undefined,
+        values: [
+          formatter(tooltipRow.value),
+          formatPercent(getPercent(rowsTotal, tooltipRow.value) ?? 0),
+        ],
+      };
+    });
 
   return {
     header,

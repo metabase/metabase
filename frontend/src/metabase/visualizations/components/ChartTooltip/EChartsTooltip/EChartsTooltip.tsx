@@ -105,6 +105,11 @@ const BaseRow = ({ className, name, values, markerContent }: BaseRowProps) => (
     )}
     {values.map((value, i) => {
       const isMainValue = i === 0;
+
+      if (!isMainValue && value == null) {
+        return null;
+      }
+
       return (
         <td
           key={i}
