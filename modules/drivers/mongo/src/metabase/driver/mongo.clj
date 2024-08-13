@@ -146,18 +146,19 @@
 (def ^:private describe-table-sample-size 1000)
 
 (defn- sample-stages
-  "Query stages which get a sample of the data in the collection, of size `n`."
-  [n]
+  "Query stages which get a sample of the data in the collection, of size `n`. Half of the sample is from the first
+   inserted documents and the other half from the last inserted documents."
+  [collection-name n]
   (let [start-n (quot n 2)
         end-n   (- n start-n)]
     [{"$sort" {"_id" 1}}
      {"$limit" start-n}
      {"$unionWith"
-      {"coll" "oom_test"
+      {"coll" collection-name
        "pipeline" [{"$sort" {"_id" -1}}
                    {"$limit" end-n}]}}]))
 
-(defn- root-query [max-depth]
+(defn- root-query [collection-name max-depth]
   (let [depth-k    (fn [depth] (str "depth" depth "K"))
         depth-type (fn [depth] (str "depth" depth "Type"))
         depth-idx  (fn [depth] (str "depth" depth "Index"))
@@ -216,15 +217,15 @@
                           "mostCommonType" 1}}]))
         all-depths (range (inc max-depth))
         facets (into {} (map (juxt #(str "depth" %) facet-stage) all-depths))]
-    (vec (concat (sample-stages describe-table-sample-size)
-                 [{"$project" {(depth-kvs 0) {"$objectToArray" "$sample"}}}
+    (vec (concat (sample-stages collection-name describe-table-sample-size)
+                 [{"$project" {(depth-kvs 0) {"$objectToArray" "$$ROOT"}}}
                   {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}]
                  (mapcat project-nested-fields all-depths)
                  [{"$facet" facets}
                   {"$project" {"allFields" {"$concatArrays" (mapv #(str "$" %) (keys facets))}}}
                   {"$unwind" "$allFields"}]))))
 
-(defn- nested-level-query [parent-paths]
+(defn- nested-level-query [collection-name parent-paths]
   (letfn [(path-query [path]
             [{"$project" {"path" path
                           "kvs"  {"$objectToArray" (str "$" path)}}}
@@ -253,8 +254,8 @@
                "field"          "$_id.k"
                "index"          "$_id.index"
                "mostCommonType" 1}}])]
-    (concat (sample-stages describe-table-sample-size)
-            [{"$replaceRoot" {"newRoot" "$sample"}}
+    (concat (sample-stages collection-name describe-table-sample-size)
+            [{"$replaceRoot" {"newRoot" "$$ROOT"}}
              {"$project" {"sample" 0}}
              {"$facet"
               (into {}
@@ -266,18 +267,18 @@
   (dec (count (str/split path #"\."))))
 
 (defn- infer-schema [db table]
-  (let [q! (fn [q]
+  (let [collection-name (:name table)
+        q! (fn [q]
              (:rows (:data (qp/process-query {:database (:id db)
                                               :type     "native"
-                                              :native   {:collection (:name table)
+                                              :native   {:collection collection-name
                                                          :query      (json/generate-string q)}}))))
         ;; query-depth's value involves a trade-off. The lower the query-depth the faster root-query executes.
-        ;; however it can mean we have to do more nested-level-query executions.
+        ;; however the lower it is, the more we might have to do more nested-level-query executions.
         query-depth   4
-        fields        (flatten (q! (root-query query-depth)))
-        ;; object-fields of the maximum depth need to be explored further
+        fields        (flatten (q! (root-query collection-name query-depth)))
         nested-fields (fn nested-fields [paths]
-                        (let [fields (flatten (first (q! (nested-level-query paths))))
+                        (let [fields (flatten (first (q! (nested-level-query  collection-name paths))))
                               nested (when-let [object-fields (seq (filter #(= (:mostCommonType %) "object") fields))]
                                        (nested-fields (map :path object-fields)))]
                           (concat fields nested)))
@@ -313,8 +314,8 @@
         "maxKey"     :type/*}
         type-alias :type/*))
 
-(defn- set-database-position
-  "Sets :database-position on all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
+(defn- add-database-position
+  "Adds :database-position to all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
   [fields i]
   (->> fields
        (sort-by :index) ; the array index of the key in the object
@@ -323,7 +324,7 @@
                        i                 (inc i)
                        nested-fields     (:nested-fields field)
                        [nested-fields i] (if nested-fields
-                                           (set-database-position nested-fields i)
+                                           (add-database-position nested-fields i)
                                            [nested-fields i])
                        field             (-> field
                                              (m/assoc-some :nested-fields nested-fields)
@@ -336,12 +337,16 @@
   (let [fields (infer-schema database table)
         fields (->> fields
                     (map (fn [x]
-                           {:name              (:field x)
-                            :database-type     (:mostCommonType x)
-                            :index             (:index x)
-                            :base-type         (type-alias->base-type (:mostCommonType x))
-                            :path              (str/split (:path x) #"\.")
-                            :depth             (path->depth (:path x))})))
+                           (cond-> {:name              (:field x)
+                                    :database-type     (:mostCommonType x)
+                                    :base-type         (type-alias->base-type (:mostCommonType x))
+                                    ; index are used by `set-database-position`, and not present in final result
+                                    :index             (:index x)
+                                    ; path and depth are used to nest fields, and not present in final result
+                                    :path              (str/split (:path x) #"\.")
+                                    :depth             (path->depth (:path x))}
+                             (= (:field x) "_id")
+                             (assoc :pk? true)))))
         ;; convert flat list of fields into deeply-nested map. :nested-fields are maps from field name to field data
         fields (loop [depth      0
                       new-fields {}]
@@ -358,7 +363,7 @@
                                                   (assoc x :nested-fields (set (vals nested-fields)))
                                                   x))
                                               {:nested-fields fields}))
-        [fields _] (set-database-position fields 0)]
+        [fields _] (add-database-position fields 0)]
     {:schema nil
      :name   (:name table)
      :fields fields}))
