@@ -245,7 +245,8 @@ export function ObjectDetailView({
   );
 
   const areImplicitActionsEnabled =
-    question &&
+    question != null &&
+    question.isSaved() &&
     question.canWrite() &&
     question.type() === "model" &&
     question.supportsImplicitActions();

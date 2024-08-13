@@ -11,6 +11,7 @@ import { testDataset } from "__support__/testDataset";
 import { renderWithProviders, screen, within } from "__support__/ui";
 import { getNextId } from "__support__/utils";
 import { checkNotNull } from "metabase/lib/types";
+import Question from "metabase-lib/v1/Question";
 import type { WritebackAction } from "metabase-types/api";
 import {
   createMockCard,
@@ -24,6 +25,7 @@ import {
   PEOPLE,
   PEOPLE_ID,
   createSampleDatabase,
+  createAdHocCard,
 } from "metabase-types/api/mocks/presets";
 
 import { ObjectDetailView } from "./ObjectDetailView";
@@ -148,7 +150,7 @@ const metadata = createMockMetadata({
 
 const mockQuestion = checkNotNull(metadata.question(mockCard.id));
 
-const mockDataset = checkNotNull(metadata.question(mockDatasetCard.id));
+const mockModel = checkNotNull(metadata.question(mockDatasetCard.id));
 
 const mockDatasetNoPk = checkNotNull(metadata.question(mockDatasetNoPkCard.id));
 
@@ -326,7 +328,7 @@ describe("ObjectDetailView", () => {
     beforeEach(() => {
       setupDatabasesEndpoints([databaseWithActionsEnabled]);
       setupActionsEndpoints(actions);
-      setup({ question: mockDataset });
+      setup({ question: mockModel });
     });
 
     it("should not show implicit create action", async () => {
@@ -373,7 +375,7 @@ describe("ObjectDetailView", () => {
   it("should not render actions menu for models based on database with actions disabled", async () => {
     setupDatabasesEndpoints([databaseWithActionsDisabled]);
     setupActionsEndpoints(actionsFromDatabaseWithDisabledActions);
-    setup({ question: mockDataset });
+    setup({ question: mockModel });
 
     const actionsMenu = await findActionsMenu();
     expect(actionsMenu).toBeUndefined();
@@ -388,10 +390,19 @@ describe("ObjectDetailView", () => {
     expect(actionsMenu).toBeUndefined();
   });
 
+  it("should not render actions menu for adhoc questions", async () => {
+    setupDatabasesEndpoints([databaseWithActionsEnabled]);
+    const question = new Question(createAdHocCard(), metadata);
+    setup({ question });
+
+    const actionsMenu = await findActionsMenu();
+    expect(actionsMenu).toBeUndefined();
+  });
+
   it(`should not render actions menu when "showControls" is "false"`, async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
-    setup({ question: mockDataset, showControls: false });
+    setup({ question: mockModel, showControls: false });
 
     const actionsMenu = await findActionsMenu();
     expect(actionsMenu).toBeUndefined();
@@ -400,7 +411,7 @@ describe("ObjectDetailView", () => {
   it("should render actions menu when user has write permission", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
-    setup({ question: mockDataset });
+    setup({ question: mockModel });
 
     const actionsMenu = await findActionsMenu();
     expect(actionsMenu).toBeInTheDocument();
@@ -450,7 +461,7 @@ describe("ObjectDetailView", () => {
   it("should show update object modal on update action click", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
-    setup({ question: mockDataset });
+    setup({ question: mockModel });
     setupPrefetch();
 
     expect(
@@ -476,7 +487,7 @@ describe("ObjectDetailView", () => {
   it("should show delete object modal on delete action click", async () => {
     setupDatabasesEndpoints([databaseWithActionsEnabled]);
     setupActionsEndpoints(actions);
-    setup({ question: mockDataset });
+    setup({ question: mockModel });
 
     expect(screen.queryByTestId("delete-object-modal")).not.toBeInTheDocument();
 
