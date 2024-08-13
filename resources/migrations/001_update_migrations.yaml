@@ -6832,6 +6832,21 @@ databaseChangeLog:
             indexName: idx_data_permissions_group_id
 
   - changeSet:
+      id: v50.2024-01-10T03:27:20
+      author: noahmoss
+      comment: Analyze permissions table in preparation for subsequent migrations
+      validCheckSum: ANY
+      runInTransaction: false
+      changes:
+        - sql:
+            sql: ANALYZE permissions;
+            dbms: postgresql
+        - sql:
+            sql: ANALYZE TABLE permissions;
+            dbms: mysql,mariadb
+      rollback: # not needed
+
+  - changeSet:
       id: v50.2024-01-10T03:27:29
       author: noahmoss
       comment: Drop foreign key constraint on sandboxes.permissions_id
@@ -6852,10 +6867,16 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:30
       author: noahmoss
       comment: Migrate data-access permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/data_access.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_data_access.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -6888,10 +6909,16 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:32
       author: noahmoss
       comment: Migrate download-results permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/download_results.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_download_results.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -6911,10 +6938,16 @@ databaseChangeLog:
       id: v50.2024-01-10T03:27:33
       author: noahmoss
       comment: Migrate manage-data-metadata permissions from `permissions` to `data_permissions`
+      validCheckSum: ANY
+      runInTransaction: false
       changes:
         - sqlFile:
-            dbms: postgresql,h2
+            dbms: postgresql
             path: permissions/manage_table_metadata.sql
+            relativeToChangelogFile: true
+        - sqlFile:
+            dbms: h2
+            path: permissions/h2_manage_table_metadata.sql
             relativeToChangelogFile: true
         - sqlFile:
             dbms: mysql,mariadb
@@ -7042,6 +7075,7 @@ databaseChangeLog:
                   name: db_id
               - column:
                   name: perm_value
+      rollback: # not needed
 
   - changeSet:
       id: v50.2024-02-26T22:15:53
@@ -7066,6 +7100,7 @@ databaseChangeLog:
                   name: table_id
               - column:
                   name: perm_value
+      rollback: # not needed
 
   - changeSet:
       id: v50.2024-02-26T22:15:54
