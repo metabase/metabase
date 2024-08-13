@@ -1,7 +1,3 @@
-import {
-  appendStageIfAggregated,
-  getGroupItems,
-} from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 import { TemplateTagDimension } from "metabase-lib/v1/Dimension";
 import type Question from "metabase-lib/v1/Question";
@@ -185,7 +181,31 @@ export function getParameterColumns(
   };
 }
 
-function getFilterableColumns(query: Lib.Query) {
-  const groupItems = getGroupItems(appendStageIfAggregated(query));
-  return groupItems.flatMap(group => group.columnItems);
+function getFilterableColumns(baseQuery: Lib.Query) {
+  const query = appendStageIfAggregated(baseQuery);
+  const stageIndexes = Lib.getFilterStageIndexes(query);
+
+  return stageIndexes.flatMap(stageIndex => {
+    const columns = Lib.filterableColumns(query, stageIndex);
+    const groups = Lib.groupColumns(columns);
+
+    return groups.flatMap((group, groupIndex) => {
+      const columns = Lib.getColumnsFromColumnGroup(group);
+
+      return columns.map(column => ({
+        stageIndex,
+        groupIndex,
+        column,
+      }));
+    });
+  });
+}
+
+function appendStageIfAggregated(query: Lib.Query) {
+  const aggregations = Lib.aggregations(query, -1);
+  const breakouts = Lib.breakouts(query, -1);
+
+  return aggregations.length > 0 && breakouts.length > 0
+    ? Lib.appendStage(query)
+    : query;
 }
