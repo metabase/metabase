@@ -37,7 +37,7 @@ import {
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameters,
@@ -602,7 +602,7 @@ export const getIsDirty = createSelector(
     // We need to escape the isDirty check as it will always be true in this case,
     // and the page will always be covered with a 'rerun' overlay.
     // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-    if (!question || isAdHocModelQuestion(question, originalQuestion)) {
+    if (!question || isAdHocModelOrMetricQuestion(question, originalQuestion)) {
       return false;
     }
     return question.isDirtyComparedToWithoutParameters(originalQuestion);

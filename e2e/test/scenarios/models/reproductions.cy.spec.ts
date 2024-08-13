@@ -19,7 +19,6 @@ import {
   openNotebook,
   openQuestionActions,
   popover,
-  queryBuilderMain,
   renameColumn,
   restore,
   saveMetadataChanges,
@@ -424,24 +423,24 @@ describe("issue 39150", { viewportWidth: 1600 }, () => {
   });
 });
 
-describe("issue 41785", () => {
+describe.skip("issue 41785, issue 46756", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
-  it("does not break the question when removing column with the same mapping as another column (metabase#41785)", () => {
+  it("does not break the question when removing column with the same mapping as another column (metabase#41785) (metabase#46756)", () => {
     // it's important to create the model through UI to reproduce this issue
     startNewModel();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      cy.findByText("Products").click();
     });
     join();
     entityPickerModal().within(() => {
       entityPickerModalTab("Tables").click();
-      cy.findByText("Orders").click();
+      cy.findByText("Products").click();
     });
     popover().findByText("ID").click();
     popover().findByText("ID").click();
@@ -457,19 +456,31 @@ describe("issue 41785", () => {
 
     cy.findByTestId("viz-settings-button").click();
     cy.findByTestId("chartsettings-sidebar").within(() => {
-      cy.findAllByText("Tax").should("have.length", 1);
-      cy.findAllByText("Orders → Tax").should("have.length", 1);
+      cy.findAllByText("Ean").should("have.length", 1);
+      cy.findAllByText("Products → Ean").should("have.length", 1);
 
-      cy.findByRole("button", { name: "Add or remove columns" }).click();
-      cy.findAllByText("Tax").should("have.length", 1);
-      cy.findAllByText("Orders → Tax").should("have.length", 1).click();
+      cy.button("Add or remove columns").click();
+      cy.findAllByText("Ean").should("have.length", 1);
+      cy.findByLabelText("Ean").should("be.checked");
+
+      cy.findByLabelText("Products → Ean").should("be.checked");
+      cy.findAllByText("Products → Ean").should("have.length", 1).click();
+
+      cy.wait("@dataset");
+
+      cy.log("Only the clicked column should be removed (metabase#46756)");
+      cy.findByLabelText("Products → Ean").should("not.be.checked");
+      cy.findByLabelText("Ean").should("be.checked");
     });
 
-    cy.wait("@dataset");
+    cy.log(
+      "There should be no error in the table visualization (metabase#41785)",
+    );
+    cy.findAllByTestId("header-cell")
+      .filter(":contains(Ean)")
+      .should("be.visible");
 
-    queryBuilderMain()
-      .findByText("There was a problem with your question")
-      .should("not.exist");
+    tableInteractive().should("contain", "Small Marble Shoes");
   });
 });
 

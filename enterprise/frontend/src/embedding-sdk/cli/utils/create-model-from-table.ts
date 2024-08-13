@@ -55,5 +55,5 @@ export async function createModelFromTable(options: Options) {
 
   const { id: modelId } = (await res.json()) as { id: number };
 
-  return modelId;
+  return { modelId, modelName: table.display_name };
 }

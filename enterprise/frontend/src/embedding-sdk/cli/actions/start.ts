@@ -2,6 +2,9 @@ import { runCli } from "../run";
 import { printError } from "../utils/print";
 
 export async function start() {
+  // When the user runs the CLI with npx, there will be some deprecation warnings that we should clear.
+  console.clear();
+
   try {
     await runCli();
   } catch (error) {
