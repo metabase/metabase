@@ -1,9 +1,8 @@
 import type { MouseEvent } from "react";
-import { useCallback, useMemo } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import ErrorBoundary from "metabase/ErrorBoundary";
 import { useUserSetting } from "metabase/common/hooks";
 import { useHasTokenFeature } from "metabase/common/hooks/use-has-token-feature";
 import { useIsAtHomepageDashboard } from "metabase/common/hooks/use-is-at-homepage-dashboard";
@@ -32,7 +31,6 @@ import {
   SidebarHeading,
   SidebarHeadingWrapper,
   SidebarSection,
-  TrashSidebarSection,
 } from "../MainNavbar.styled";
 import { SidebarCollectionLink, SidebarLink } from "../SidebarItems";
 import type { SelectedItem } from "../types";
@@ -124,99 +122,76 @@ function MainNavbarView({
   );
 
   return (
-    <ErrorBoundary>
-      <SidebarContentRoot>
-        <div>
-          <SidebarSection>
-            <PaddedSidebarLink
-              isSelected={nonEntityItem?.url === "/"}
-              icon="home"
-              onClick={handleHomeClick}
-              url="/"
-            >
-              {t`Home`}
-            </PaddedSidebarLink>
+    <SidebarContentRoot>
+      <div>
+        <SidebarSection>
+          <PaddedSidebarLink
+            isSelected={nonEntityItem?.url === "/"}
+            icon="home"
+            onClick={handleHomeClick}
+            url="/"
+          >
+            {t`Home`}
+          </PaddedSidebarLink>
 
-            {hasAttachedDWHFeature && uploadDbId && rootCollection && (
-              <UploadCSV collection={rootCollection} />
-            )}
-          </SidebarSection>
-
-          {bookmarks.length > 0 && (
-            <SidebarSection>
-              <ErrorBoundary>
-                <BookmarkList
-                  bookmarks={bookmarks}
-                  selectedItem={cardItem ?? dashboardItem ?? collectionItem}
-                  onSelect={onItemSelect}
-                  reorderBookmarks={reorderBookmarks}
-                  onToggle={setExpandBookmarks}
-                  initialState={expandBookmarks ? "expanded" : "collapsed"}
-                />
-              </ErrorBoundary>
-            </SidebarSection>
+          {hasAttachedDWHFeature && uploadDbId && rootCollection && (
+            <UploadCSV collection={rootCollection} />
           )}
-
-          <SidebarSection>
-            <ErrorBoundary>
-              <CollectionSectionHeading
-                currentUser={currentUser}
-                handleCreateNewCollection={handleCreateNewCollection}
-              />
-              <Tree
-                data={collections}
-                selectedId={collectionItem?.id}
-                onSelect={onItemSelect}
-                TreeNode={SidebarCollectionLink}
-                role="tree"
-                aria-label="collection-tree"
-              />
-            </ErrorBoundary>
-          </SidebarSection>
-
-          <SidebarSection>
-            <ErrorBoundary>
-              <BrowseNavSection
-                nonEntityItem={nonEntityItem}
-                onItemSelect={onItemSelect}
-                hasDataAccess={hasDataAccess}
-              />
-              {hasDataAccess && (
-                <>
-                  {!hasOwnDatabase && isAdmin && (
-                    <AddYourOwnDataLink
-                      icon="add"
-                      url={ADD_YOUR_OWN_DATA_URL}
-                      isSelected={nonEntityItem?.url?.startsWith(
-                        ADD_YOUR_OWN_DATA_URL,
-                      )}
-                      onClick={onItemSelect}
-                    >
-                      {t`Add your own data`}
-                    </AddYourOwnDataLink>
+        </SidebarSection>
+        <SidebarSection>
+          <BrowseNavSection
+            nonEntityItem={nonEntityItem}
+            onItemSelect={onItemSelect}
+            hasDataAccess={hasDataAccess}
+          />
+          {hasDataAccess && (
+            <>
+              {!hasOwnDatabase && isAdmin && (
+                <AddYourOwnDataLink
+                  icon="add"
+                  url={ADD_YOUR_OWN_DATA_URL}
+                  isSelected={nonEntityItem?.url?.startsWith(
+                    ADD_YOUR_OWN_DATA_URL,
                   )}
-                </>
+                  onClick={onItemSelect}
+                >
+                  {t`Add your own data`}
+                </AddYourOwnDataLink>
               )}
-            </ErrorBoundary>
-          </SidebarSection>
-
-          {trashCollection && (
-            <TrashSidebarSection>
-              <ErrorBoundary>
-                <Tree
-                  data={[trashCollection]}
-                  selectedId={collectionItem?.id}
-                  onSelect={onItemSelect}
-                  TreeNode={SidebarCollectionLink}
-                  role="tree"
-                />
-              </ErrorBoundary>
-            </TrashSidebarSection>
+            </>
           )}
-        </div>
-        <WhatsNewNotification />
-      </SidebarContentRoot>
-    </ErrorBoundary>
+        </SidebarSection>
+
+        {bookmarks.length > 0 && (
+          <SidebarSection>
+            <BookmarkList
+              bookmarks={bookmarks}
+              selectedItem={cardItem ?? dashboardItem ?? collectionItem}
+              onSelect={onItemSelect}
+              reorderBookmarks={reorderBookmarks}
+              onToggle={setExpandBookmarks}
+              initialState={expandBookmarks ? "expanded" : "collapsed"}
+            />
+          </SidebarSection>
+        )}
+
+        <SidebarSection>
+          <CollectionSectionHeading
+            currentUser={currentUser}
+            handleCreateNewCollection={handleCreateNewCollection}
+          />
+          <Tree
+            data={collections}
+            selectedId={collectionItem?.id}
+            onSelect={onItemSelect}
+            TreeNode={SidebarCollectionLink}
+            role="tree"
+            aria-label="collection-tree"
+          />
+        </SidebarSection>
+      </div>
+      <WhatsNewNotification />
+    </SidebarContentRoot>
   );
 }
 interface CollectionSectionHeadingProps {
