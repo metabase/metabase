@@ -193,26 +193,19 @@
           (let [depths (range (inc depth))]
             [{"$match" {(depth-k depth) {"$ne" nil}}}
              {"$group" {"_id" (into {(depth-type depth) (str "$" (depth-type depth))}
-                                    (mapcat (fn [i]
-                                              [[(depth-k i)   (str "$" (depth-k i))]
-                                               [(depth-idx i) (str "$" (depth-idx i))]])
-                                            depths))
+                                    (map (juxt depth-k #(str "$" (depth-k %))) depths))
+                        "index" {"$first" (str "$" (depth-idx depth))}
                         "count" {"$sum" 1}}}
-             {"$sort" (into {"count" -1}
-                            (for [i depths]
-                              [(str "_id." (depth-k i)) 1]))}
-             {"$group" {"_id" (into {}
-                                    (mapcat (fn [i]
-                                              [[(depth-k i)   (str "$_id." (depth-k i))]
-                                               [(depth-idx i) (str "$_id." (depth-idx i))]])
-                                            depths))
-                        "types" {"$push" {"type" (str "$_id." (depth-type depth))
+             {"$sort" {"count" -1}}
+             {"$group" {"_id" (into {} (map (juxt depth-k #(str "$_id." (depth-k %))) depths))
+                        "index" {"$first" "$index"}
+                        "types" {"$push" {"type"  (str "$_id." (depth-type depth))
                                           "count" "$count"}}}}
              {"$project" {"_id"                  0
                           "path"                 {"$concat" (vec (interpose "." (for [i depths]
                                                                                   (str "$_id." (depth-k i)))))}
                           "k"                    (str "$_id." (depth-k depth))
-                          "index"                (str "$_id." (depth-idx depth))
+                          "index"                1
                           "mostCommonType"       {"$cond" {"if"   {"$eq"     [{"$arrayElemAt" ["$types.type", 0]}, "null"]}
                                                            "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
                                                            "else" {"$arrayElemAt" ["$types.type", 0]}}}}}]))
@@ -226,7 +219,7 @@
                   {"$project" {"allFields" {"$concatArrays" (mapv #(str "$" %) (keys facets))}}}
                   {"$unwind" "$allFields"}]))))
 
-(defn- nested-level-query [collection-name parent-paths sample-size]
+(defn- nested-level-query [collection-name sample-size parent-paths]
   (letfn [(path-query [path]
             [{"$project" {"path" path
                           "kvs"  {"$objectToArray" (str "$" path)}}}
@@ -240,20 +233,20 @@
              {"$group"
               {"_id" {"path"  "$path"
                       "k"     "$k"
-                      "type"  "$type"
-                      "index" "$index"}
+                      "type"  "$type"}
+               "index" {"$first" "$index"}
                "count" {"$sum" 1}}}
              {"$sort" {"count" -1}}
              {"$group"
               {"_id"            {"path"  "$_id.path"
-                                 "k"     "$_id.k"
-                                 "index" "$_id.index"}
+                                 "k"     "$_id.k"}
+               "index"          {"$first" "$index"}
                "mostCommonType" {"$first" "$_id.type"}}}
              {"$project"
               {"_id"            0
                "path"           {"$concat" ["$_id.path" "." "$_id.k"]}
                "k"              "$_id.k"
-               "index"          "$_id.index"
+               "index"          "$index"
                "mostCommonType" 1}}])]
     (concat (sample-stages collection-name sample-size)
             [{"$replaceRoot" {"newRoot" "$$ROOT"}}
