@@ -22,6 +22,7 @@
    [metabase.models.setting :as setting]
    [metabase.test :as mt]
    [metabase.test.generate :as test-gen]
+   [metabase.util :as u]
    [metabase.util.yaml :as yaml]
    [reifyhealth.specmonstah.core :as rs]
    [toucan2.core :as t2]
@@ -53,6 +54,9 @@
 (defn- by-model [entities model-name]
   (filter #(-> % :serdes/meta last :model (= model-name))
           entities))
+
+(defn- by-eid [entities entity-id]
+  (u/seek #(= (:entity_id %) entity-id) entities))
 
 (defn- collections [dir]
   (for [coll-dir (subdirs dir)
@@ -463,7 +467,7 @@
                                                                 ["my-db" nil "CUSTOMERS" (:name field1s)]
                                                                 nil]},
                            :values_source_type   "card"}]
-                         (:parameters (first (by-model extraction "Card")))))
+                         (:parameters (by-eid extraction (:entity_id card2s)))))
 
                   (storage/store! (seq extraction) dump-dir)))
 
