@@ -160,7 +160,7 @@ export type ColumnDisplayInfo = {
   table?: TableInlineDisplayInfo;
   fingerprint?: FingerprintDisplayInfo;
 
-  breakoutPosition?: number;
+  breakoutPositions?: number[];
   filterPositions?: number[];
   orderByPosition?: number;
   selected?: boolean; // used in aggregation and field clauses

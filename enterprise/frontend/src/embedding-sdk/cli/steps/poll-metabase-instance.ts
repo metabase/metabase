@@ -18,7 +18,7 @@ export const pollMetabaseInstance: CliStepMethod = async state => {
   while (attempts < HEALTH_CHECK_MAX_ATTEMPTS) {
     // fetch will throw an error if the server is not reachable
     try {
-      const res = await fetch(`${state.instanceUrl}/health`, {
+      const res = await fetch(`${state.instanceUrl}/api/health`, {
         method: "GET",
       });
 

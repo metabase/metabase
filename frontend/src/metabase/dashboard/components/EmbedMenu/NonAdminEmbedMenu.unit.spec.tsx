@@ -1,4 +1,6 @@
-import userEvent from "@testing-library/user-event";
+import userEvent, {
+  PointerEventsCheckLevel,
+} from "@testing-library/user-event";
 
 import { setupDashboardPublicLinkEndpoints } from "__support__/server-mocks";
 import { mockSettings } from "__support__/settings";
@@ -80,7 +82,10 @@ describe("NonAdminEmbedMenu", () => {
     });
 
     it("should render a disabled button with a `Ask your admin to create a public link` tooltip", async () => {
-      await userEvent.hover(screen.getByLabelText("share icon"));
+      await userEvent.hover(screen.getByLabelText("share icon"), {
+        // The button is disabled so pointer events should be disabled
+        pointerEventsCheck: PointerEventsCheckLevel.Never,
+      });
       expect(
         screen.getByText("Ask your admin to create a public link"),
       ).toBeInTheDocument();
@@ -93,7 +98,10 @@ describe("NonAdminEmbedMenu", () => {
     });
 
     it("should render a disabled button with a `Public links are disabled` tooltip", async () => {
-      await userEvent.hover(screen.getByLabelText("share icon"));
+      await userEvent.hover(screen.getByLabelText("share icon"), {
+        // The button is disabled so pointer events should be disabled
+        pointerEventsCheck: PointerEventsCheckLevel.Never,
+      });
       expect(screen.getByText("Public links are disabled")).toBeInTheDocument();
     });
   });
