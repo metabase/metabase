@@ -245,9 +245,9 @@
                             [:sortKey        ::lib.schema.common/non-blank-string]
                             [:mostCommonType ::lib.schema.common/non-blank-string]]]
   "Queries the database for a sample of the data in `table` and returns a list of field information. Because Mongo
-   documents can have 100 levels of nesting, we query the database with a [[root-query]] first, which gets all the objects
-   until a depth of [[root-query-depth]]. Then for any objects at that depth, we recursively query the database with
-   [[nested-query]] for fields nested inside those objects."
+   documents can have many levels of nesting (up to 200) than we can query with one query, we query the fields at the
+   root first, which gets all the fields until a depth of [[infer-fields-query-depth]]. Then for any objects at that
+   depth, we recursively query the database for fields nested inside those objects."
   [db table]
   (let [collection-name (:name table)
         ;; Cal 2024-08-14: sample-size is twice [[metadata-queries/nested-field-sample-limit]] for backwards
