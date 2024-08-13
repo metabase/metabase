@@ -3670,7 +3670,7 @@
               (is (not (mi/can-read? card))))
             (is (blocked? (process-query))))))
 
-      (testing "SHOULD be able to run the parent Card with :blocked data-perms and valid collection perms"
+      (testing "should NOT be able to run native queries with :blocked data-perms on any table"
         (mt/with-no-data-perms-for-all-users!
           (mt/with-non-admin-groups-no-collection-perms collection
             (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :blocked)
@@ -3683,10 +3683,10 @@
       ;; delete these in place so we can reset them below, you cannot set them twice in a row
       (perms/revoke-collection-permissions! (perms-group/all-users) collection)
 
-      (testing "SHOULD be able to run the parent Card with valid data-perms and valid collection perms"
+      (testing "should NOT be able to run the parent Card when data-perms and valid collection perms"
         (mt/with-no-data-perms-for-all-users!
           (mt/with-non-admin-groups-no-collection-perms collection
-            (data-perms/set-table-permission! (perms-group/all-users) (mt/id :venues) :perms/view-data :unrestricted)
+            (data-perms/set-database-permission! (perms-group/all-users) (mt/id) :perms/view-data :unrestricted)
             (perms/grant-collection-read-permissions! (perms-group/all-users) collection)
             (mt/with-test-user :rasta
               (is (mi/can-read? collection))
