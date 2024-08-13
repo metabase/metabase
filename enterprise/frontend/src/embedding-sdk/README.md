@@ -54,7 +54,7 @@ This will start a local Metabase instance with Docker and generate sample dashbo
 
 Prerequisites:
 
-- [Node.js 20.x LTS](https://nodejs.org/en) or higher
+- [Node.js 18.x LTS](https://nodejs.org/en) or higher
 - [Docker](https://docker.com)
 
 ## Start Metabase
