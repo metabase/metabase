@@ -30,7 +30,7 @@
 
 (defn determine-query-max-rows
   "Given a `query`, return the max rows that should be returned. This is either:
-  1. the output of [[metabase.legacy-mbql.util/query->max-rows-limit]] when called on the given query
+  1. the output of [[metabase.mbql.util/query->max-rows-limit]] when called on the given query
   2. the value of `pubic-settings/download-row-limit`
      a. if it is less than [[metabase.query-processor.interface/absolute-max-results]] or
      b. if it is greater and the export is NOT xlsx otherwise,
