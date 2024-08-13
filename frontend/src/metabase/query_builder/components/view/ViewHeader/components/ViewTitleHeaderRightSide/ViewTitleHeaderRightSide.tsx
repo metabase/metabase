@@ -24,6 +24,7 @@ import {
 import { canExploreResults } from "metabase/query_builder/components/view/ViewHeader/utils";
 import type { QueryModalType } from "metabase/query_builder/constants";
 import { MODAL_TYPES } from "metabase/query_builder/constants";
+import { QuestionSharingMenu } from "metabase/sharing/components/SharingMenu";
 import { Tooltip } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
@@ -211,6 +212,7 @@ export function ViewTitleHeaderRightSide({
           />
         </ViewHeaderIconButtonContainer>
       )}
+      <QuestionSharingMenu question={question} />
       {isSaved && (
         <QuestionActions
           question={question}

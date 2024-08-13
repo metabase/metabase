@@ -84,6 +84,10 @@ export const SharingModals = ({
     );
   }
 
+  if (modalType === "question-embed" && question) {
+    return <QuestionEmbedWidget card={question._card} onClose={onClose} />;
+  }
+
   if (modalType === "dashboard-public-link") {
     return (
       <DashboardPublicLinkPopover
@@ -93,10 +97,6 @@ export const SharingModals = ({
         isOpen
       />
     );
-  }
-
-  if (modalType === "question-embed" && question) {
-    return <QuestionEmbedWidget card={question._card} onClose={onClose} />;
   }
 
   if (modalType === "dashboard-embed" && dashboard) {

@@ -3,7 +3,9 @@ import { t } from "ttag";
 
 import { isInstanceAnalyticsCollection } from "metabase/collections/utils";
 import { useSetting } from "metabase/common/hooks";
-import { useSelector } from "metabase/lib/redux";
+import { useSelector, useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
+import { MODAL_TYPES } from "metabase/query_builder/constants";
 import {
   getUserIsAdmin,
   canManageSubscriptions as canManageSubscriptionsSelector,
@@ -19,6 +21,7 @@ import { SharingModals } from "./SharingModals";
 import type { QuestionSharingModalType } from "./types";
 
 export function QuestionSharingMenu({ question }: { question: Question }) {
+  const dispatch = useDispatch();
   const [modalType, setModalType] = useState<QuestionSharingModalType | null>(
     null,
   );
@@ -33,6 +36,19 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
 
   if (isModel || isArchived || isAnalytics) {
     return null;
+  }
+
+  if (!question.isSaved()) {
+    const openSaveQuestionModal = () => {
+      dispatch(setUIControls({ modal: MODAL_TYPES.SAVE }));
+    };
+
+    return (
+      <SharingButton
+        tooltip={t`You must save this question before sharing`}
+        onClick={openSaveQuestionModal}
+      />
+    );
   }
 
   if (
@@ -63,9 +79,6 @@ export function QuestionSharingMenu({ question }: { question: Question }) {
       </Flex>
     );
   }
-
-  // TODO: handle prompt to save before sharing
-  // TODO: prompt admins to setup notification channels
 
   return (
     <Flex>
