@@ -210,7 +210,7 @@ describe("CompareAggregations", () => {
     });
 
     it("should not allow setting a moving average for less than 2 periods", async () => {
-      const { onSubmit } = setup({ query: queryWithCountAggregation });
+      setup({ query: queryWithCountAggregation });
 
       expect(screen.getByText("Moving average")).toBeInTheDocument();
       await userEvent.click(screen.getByText("Moving average"));
@@ -219,11 +219,9 @@ describe("CompareAggregations", () => {
       expect(input).toHaveValue(2);
       await userEvent.clear(input);
       await userEvent.type(input, "1");
+      await userEvent.tab();
 
-      expect(input).not.toBeValid();
-
-      await userEvent.click(screen.getByRole("button", { name: "Done" }));
-      expect(onSubmit).not.toHaveBeenCalled();
+      expect(input).toHaveValue(2);
     });
   });
 });
