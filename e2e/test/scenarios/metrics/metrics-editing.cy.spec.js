@@ -297,7 +297,7 @@ describe("scenarios > metrics > editing", () => {
       });
     });
 
-    it("should not be possible to join data on the first stage of a metric-based query", () => {
+    it("should be possible to join data on the first stage of a metric-based query", () => {
       createQuestion(ORDERS_SCALAR_METRIC);
       startNewQuestion();
       entityPickerModal().within(() => {
@@ -306,7 +306,7 @@ describe("scenarios > metrics > editing", () => {
       });
       getNotebookStep("data").within(() => {
         getActionButton("Custom column").should("be.visible");
-        getActionButton("Join data").should("not.exist");
+        getActionButton("Join data").should("be.visible");
       });
     });
   });
@@ -344,17 +344,6 @@ describe("scenarios > metrics > editing", () => {
       addAggregation({ operatorName: "Average of ...", columnName: "Price2" });
       saveMetric();
       verifyScalarValue("111.38");
-    });
-
-    it("should open the expression editor automatically when the source metric is already used in an aggregation expression", () => {
-      createQuestion(ORDERS_SCALAR_METRIC);
-      startNewMetric();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Metrics").click();
-        cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      });
-      startNewAggregation();
-      cy.findByTestId("expression-editor").should("be.visible");
     });
   });
 
