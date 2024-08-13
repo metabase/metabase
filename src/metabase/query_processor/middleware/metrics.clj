@@ -108,7 +108,7 @@
                              (map (juxt :fk-field-id :alias))
                              (lib/joins query agg-stage-index))
         new-joins (remove (comp existing-joins (juxt :fk-field-id :alias)) metric-joins)
-        source-field->join-alias (into {} (map (juxt :fk-field-id :alias)) new-joins)
+        source-field->join-alias (dissoc (into {} (map (juxt :fk-field-id :alias)) new-joins) nil)
         query-with-joins (reduce #(lib/join %1 agg-stage-index %2)
                                  query
                                  new-joins)]

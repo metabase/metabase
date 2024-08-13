@@ -652,3 +652,20 @@
                            (lib/aggregate $q (lib/count)))]
         (is (=? (mt/rows (qp/process-query etalon-query))
                 (mt/rows (qp/process-query metric-query))))))))
+
+(deftest ^:parallel metric-with-explicit-join-test
+  (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+        metric-query (-> (lib/query mp (lib.metadata/table mp (mt/id :orders)))
+                         (lib/join (-> (lib/join-clause (lib.metadata/table mp (mt/id :people))
+                                                        [(lib/=
+                                                          (lib.metadata/field mp (mt/id :orders :user_id))
+                                                          (lib.metadata/field mp (mt/id :people :id)))])))
+                         (lib/aggregate (lib/sum (lib.metadata/field mp (mt/id :orders :total))))
+                         (lib/breakout (lib.metadata/field mp (mt/id :orders :created_at))))]
+    (mt/with-temp [:model/Card metric {:dataset_query (lib.convert/->legacy-MBQL metric-query)
+                                       :database_id (mt/id)
+                                       :name "Orders Total Sum metric"
+                                       :type :metric}]
+      (let [query (lib/query mp (lib.metadata/card mp (:id metric)))]
+        (is (=? (mt/rows (qp/process-query metric-query))
+                (mt/rows (qp/process-query query))))))))
