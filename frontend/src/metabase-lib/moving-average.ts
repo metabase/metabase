@@ -46,7 +46,6 @@ export function movingAverageClause(
     stageIndex,
     clause,
     offset,
-    includeCurrentPeriod,
     "",
   );
 
@@ -69,7 +68,6 @@ export function diffMovingAverageClause(
     stageIndex,
     clause,
     offset,
-    includeCurrentPeriod,
     t`vs `,
   );
 
@@ -92,7 +90,6 @@ export function percentDiffMovingAverageClause(
     stageIndex,
     clause,
     offset,
-    includeCurrentPeriod,
     t`% vs `,
   );
 
@@ -104,7 +101,6 @@ function getMovingAverageClauseName(
   stageIndex: number,
   clause: AggregationClause | ExpressionClause,
   offset: number,
-  _includeCurrentPeriod: boolean,
   prefix = "",
 ) {
   if (offset >= 0) {
