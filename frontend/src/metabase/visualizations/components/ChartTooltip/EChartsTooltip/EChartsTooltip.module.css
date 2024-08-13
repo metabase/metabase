@@ -40,7 +40,7 @@
   font-weight: 600;
 }
 
-.Cell + .Cell {
+.Cell + .Cell:not(.NameCell) {
   padding-left: 0.75rem;
 }
 

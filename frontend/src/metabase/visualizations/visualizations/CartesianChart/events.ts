@@ -519,6 +519,7 @@ export const getStackedTooltipModel = (
     .filter(row => row.value != null)
     .map(tooltipRow => {
       return {
+        isFocused: tooltipRow.isFocused,
         name: tooltipRow.name,
         markerColorClass: tooltipRow.color
           ? getMarkerColorClass(tooltipRow.color)
