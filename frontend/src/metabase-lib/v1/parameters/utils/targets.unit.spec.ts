@@ -542,18 +542,17 @@ function createComplex1StageQuery() {
 }
 
 function ordersJoinReviewsOnProductId() {
+  const stageIndex = -1;
   const {
     table,
     defaultStrategy,
     defaultOperator,
     findLHSColumn,
     findRHSColumn,
-  } = getJoinQueryHelpers(queryOrders, 0, REVIEWS_ID);
+  } = getJoinQueryHelpers(queryOrders, stageIndex, REVIEWS_ID);
 
   const productsId = findLHSColumn("ORDERS", "PRODUCT_ID");
   const reviewsProductId = findRHSColumn("REVIEWS", "PRODUCT_ID");
-
-  const stageIndex = -1;
   const condition = Lib.joinConditionClause(
     queryOrders,
     stageIndex,
@@ -562,8 +561,8 @@ function ordersJoinReviewsOnProductId() {
     productsId,
   );
   const join = Lib.joinClause(table, [condition], defaultStrategy);
-
   const query = Lib.join(queryOrders, stageIndex, join);
+
   return query;
 }
 
