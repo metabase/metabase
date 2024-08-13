@@ -82,37 +82,37 @@ export const getAggregations = (
 
   if (columns.includes("moving-average")) {
     aggregations.push(
-      Lib.movingAverageClause(
+      Lib.movingAverageClause({
         query,
         stageIndex,
-        aggregation,
-        -offset,
+        clause: aggregation,
+        offset: -offset,
         includeCurrentPeriod,
-      ),
+      }),
     );
   }
 
   if (columns.includes("diff-moving-average")) {
     aggregations.push(
-      Lib.diffMovingAverageClause(
+      Lib.diffMovingAverageClause({
         query,
         stageIndex,
-        aggregation,
-        -offset,
+        clause: aggregation,
+        offset: -offset,
         includeCurrentPeriod,
-      ),
+      }),
     );
   }
 
   if (columns.includes("percent-diff-moving-average")) {
     aggregations.push(
-      Lib.percentDiffMovingAverageClause(
+      Lib.percentDiffMovingAverageClause({
         query,
         stageIndex,
-        aggregation,
-        -offset,
+        clause: aggregation,
+        offset: -offset,
         includeCurrentPeriod,
-      ),
+      }),
     );
   }
 
