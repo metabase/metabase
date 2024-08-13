@@ -1,7 +1,8 @@
 import { t } from "ttag";
 
-import type { SegmentItem } from "metabase/querying/utils/filters";
 import { Flex, Grid, Icon, MultiSelect, Text } from "metabase/ui";
+
+import type { SegmentItem } from "../types";
 
 interface SegmentFilterEditorProps {
   segmentItems: SegmentItem[];

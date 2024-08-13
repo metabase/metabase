@@ -4,9 +4,10 @@ import {
   getColumnGroupIcon,
   getColumnGroupName,
 } from "metabase/common/utils/column-groups";
+import type { GroupItem } from "metabase/querying/components/FilterContent";
 import * as Lib from "metabase-lib";
 
-import type { FilterOperatorOption, GroupItem } from "./types";
+import type { FilterOperatorOption } from "./types";
 
 export function getAvailableOperatorOptions<
   T extends FilterOperatorOption<Lib.FilterOperatorName>,

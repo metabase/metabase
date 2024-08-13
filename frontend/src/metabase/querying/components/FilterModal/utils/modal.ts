@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import type { GroupItem } from "metabase/querying/utils/filters";
+import type { GroupItem } from "../../FilterContent";
 
 export function getModalTitle(groupItems: GroupItem[]) {
   return groupItems.length === 1

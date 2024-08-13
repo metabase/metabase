@@ -1,8 +1,8 @@
-import type { GroupItem } from "metabase/querying/utils/filters";
 import type * as Lib from "metabase-lib";
 
 import { TabPanelColumnItemList } from "../TabPanelColumn";
 import { TabPanelSegmentItem } from "../TabPanelItem";
+import type { GroupItem } from "../types";
 
 import { TabPanelRoot } from "./TabPanel.styled";
 

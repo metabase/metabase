@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 
-import type { ColumnItem } from "metabase/querying/utils/filters";
 import type * as Lib from "metabase-lib";
+
+import type { ColumnItem } from "../types";
 
 import { TabPanelColumnItem } from "./TabPanelColumnItem";
 import { sortColumns } from "./sorting";

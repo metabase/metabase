@@ -1,7 +1,7 @@
-import type { ColumnItem } from "metabase/querying/utils/filters";
 import * as Lib from "metabase-lib";
 
 import { ColumnFilterSection } from "../ColumnFilterSection";
+import type { ColumnItem } from "../types";
 
 import { TabPanelItem } from "./TabPanelItem.styled";
 
