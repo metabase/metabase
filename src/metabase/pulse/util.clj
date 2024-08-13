@@ -20,18 +20,18 @@
     (try
       (when-let [{query :dataset_query
                   :keys [dataset result_metadata]
-                  :as card} (t2/select-one :model/Card :id card-id, :archived false)]
+                  :as   card} (t2/select-one :model/Card :id card-id, :archived false)]
         (let [query         (assoc query :async? false)
               process-query (fn []
                               (binding [qp.perms/*card-id* card-id]
-                                (qp/process-query-and-save-with-max-results-constraints!
+                                (qp/process-query-and-save-execution!
                                  (assoc query :middleware {:skip-results-metadata? true
                                                            :process-viz-settings?  true
                                                            :js-int-to-string?      false})
                                  (merge (cond->
-                                          {:executed-by               pulse-creator-id
-                                           :context                   :pulse
-                                           :card-id                   card-id}
+                                            {:executed-by               pulse-creator-id
+                                             :context                   :pulse
+                                             :card-id                   card-id}
                                           dataset
                                           (assoc :metadata/dataset-metadata result_metadata))
                                         options))))
