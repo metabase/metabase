@@ -17,7 +17,6 @@ import {
   setParameterType as setParamType,
 } from "metabase/parameters/utils/dashboards";
 import { addUndo, dismissUndo } from "metabase/redux/undo";
-import { buildTemporalUnitOption } from "metabase-lib/v1/parameters/utils/operators";
 import { getParameterValuesByIdFromQueryParams } from "metabase-lib/v1/parameters/utils/parameter-parsing";
 import {
   isParameterValueEmpty,
@@ -143,15 +142,6 @@ export const addParameter = createThunkAction(
         }),
       );
     }
-  },
-);
-
-export const ADD_TEMPORAL_UNIT_PARAMETER =
-  "metabase/dashboard/ADD_TEMPORAL_UNIT_PARAMETER";
-export const addTemporalUnitParameter = createThunkAction(
-  ADD_TEMPORAL_UNIT_PARAMETER,
-  () => async dispatch => {
-    await dispatch(addParameter(buildTemporalUnitOption()));
   },
 );
 

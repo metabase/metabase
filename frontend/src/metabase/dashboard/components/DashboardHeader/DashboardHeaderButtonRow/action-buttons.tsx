@@ -13,7 +13,6 @@ import {
   AddLinkCardButton,
   AddQuestionButton,
   AddSectionButton,
-  AddTemporalUnitButton,
   CopyAnalyticsDashboardButton,
   DashboardActionMenu,
   DashboardInfoButton,
@@ -38,7 +37,6 @@ export const DASHBOARD_ACTION = {
   ADD_HEADING_OR_TEXT: "ADD_HEADING_OR_TEXT",
   ADD_LINK_CARD: "ADD_LINK_CARD",
   ADD_SECTION: "ADD_SECTION",
-  ADD_TEMPORAL_UNIT: "ADD_TEMPORAL_UNIT",
   ADD_FILTER_PARAMETER: "ADD_FILTER_PARAMETER",
   ADD_ACTION_ELEMENT: "ADD_ACTION_ELEMENT",
   EXTRA_EDIT_BUTTONS_MENU: "EXTRA_EDIT_BUTTONS_MENU",
@@ -76,10 +74,6 @@ export const dashboardActionButtons: Record<
   },
   [DASHBOARD_ACTION.ADD_SECTION]: {
     component: AddSectionButton,
-    enabled: ({ isEditing }) => isEditing,
-  },
-  [DASHBOARD_ACTION.ADD_TEMPORAL_UNIT]: {
-    component: AddTemporalUnitButton,
     enabled: ({ isEditing }) => isEditing,
   },
   [DASHBOARD_ACTION.ADD_FILTER_PARAMETER]: {
