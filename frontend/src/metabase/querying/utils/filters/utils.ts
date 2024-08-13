@@ -50,7 +50,7 @@ export function appendStageIfAggregated(query: Lib.Query) {
 }
 
 export function getGroupItems(query: Lib.Query): GroupItem[] {
-  const stageIndexes = Lib.getFilterStageIndexes(query);
+  const stageIndexes = getFilterStageIndexes(query);
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
     const groups = Lib.groupColumns(columns);
@@ -88,7 +88,7 @@ export function getGroupItems(query: Lib.Query): GroupItem[] {
 }
 
 export function hasFilters(query: Lib.Query) {
-  const stageIndexes = Lib.getFilterStageIndexes(query);
+  const stageIndexes = getFilterStageIndexes(query);
   const filters = stageIndexes.flatMap(stageIndex =>
     Lib.filters(query, stageIndex),
   );
@@ -96,9 +96,16 @@ export function hasFilters(query: Lib.Query) {
 }
 
 export function removeFilters(query: Lib.Query) {
-  const stageIndexes = Lib.getFilterStageIndexes(query);
+  const stageIndexes = getFilterStageIndexes(query);
   return stageIndexes.reduce(
     (newQuery, stageIndex) => Lib.removeFilters(newQuery, stageIndex),
     query,
   );
+}
+
+/**
+ * Returns indexes of stages from which columns are exposed for filtering
+ */
+export function getFilterStageIndexes(query: Lib.Query): number[] {
+  return Lib.stageCount(query) > 1 ? [-2, -1] : [-1];
 }

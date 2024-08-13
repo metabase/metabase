@@ -27,7 +27,7 @@ import {
 import { expressionClause, expressionParts } from "./expression";
 import { isColumnMetadata } from "./internal";
 import { displayInfo } from "./metadata";
-import { removeClause, stageCount } from "./query";
+import { removeClause } from "./query";
 import {
   availableTemporalBuckets,
   temporalBucket,
@@ -966,11 +966,4 @@ export function updateTemporalFilter(
     start,
     end,
   );
-}
-
-/**
- * Returns indexes of stages from which columns are exposed for filtering
- */
-export function getFilterStageIndexes(query: Query): number[] {
-  return stageCount(query) > 1 ? [-2, -1] : [-1];
 }

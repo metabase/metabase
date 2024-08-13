@@ -183,7 +183,7 @@ export function getParameterColumns(
 
 function getFilterableColumns(baseQuery: Lib.Query) {
   const query = appendStageIfAggregated(baseQuery);
-  const stageIndexes = Lib.getFilterStageIndexes(query);
+  const stageIndexes = getFilterStageIndexes(query);
 
   return stageIndexes.flatMap(stageIndex => {
     const columns = Lib.filterableColumns(query, stageIndex);
@@ -208,4 +208,11 @@ function appendStageIfAggregated(query: Lib.Query) {
   return aggregations.length > 0 && breakouts.length > 0
     ? Lib.appendStage(query)
     : query;
+}
+
+/**
+ * Returns indexes of stages from which columns are exposed for filtering
+ */
+function getFilterStageIndexes(query: Lib.Query): number[] {
+  return Lib.stageCount(query) > 1 ? [-2, -1] : [-1];
 }
