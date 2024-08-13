@@ -1,10 +1,8 @@
-import type { LocationDescriptorObject } from "history";
-
 import type { Deferred } from "metabase/lib/promise";
 import type { QueryParams } from "metabase/query_builder/actions";
 import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
 import type Question from "metabase-lib/v1/Question";
-import type { Card } from "metabase-types/api";
+import type { Card, CardId } from "metabase-types/api";
 
 export interface SdkQuestionState {
   question?: Question;
@@ -12,8 +10,9 @@ export interface SdkQuestionState {
 }
 
 export interface LoadSdkQuestionParams {
-  location: LocationDescriptorObject;
-  params: QueryParams;
+  options: QueryParams;
+  deserializedCard?: Card;
+  cardId?: CardId;
   cancelDeferred?: Deferred;
 }
 

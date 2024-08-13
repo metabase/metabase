@@ -1249,7 +1249,7 @@ describe("issue 43294", () => {
 
     cy.log("compare action");
     cy.button("Add column").click();
-    popover().findByText("Compare “Count” to previous months").click();
+    popover().findByText("Compare to the past").click();
     popover().button("Done").click();
 
     cy.log("extract action");

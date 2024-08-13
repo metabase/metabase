@@ -1,3 +1,4 @@
+import { Global } from "@emotion/react";
 import { useMemo } from "react";
 
 import type { MetabaseTheme } from "embedding-sdk";
@@ -7,7 +8,8 @@ import {
 } from "embedding-sdk/lib/theme";
 import { useSelector } from "metabase/lib/redux";
 import { getSettings } from "metabase/selectors/settings";
-import { ThemeProvider } from "metabase/ui";
+import { getMetabaseSdkCssVariables } from "metabase/styled-components/theme/css-variables";
+import { ThemeProvider, useMantineTheme } from "metabase/ui";
 import { getApplicationColors } from "metabase-enterprise/settings/selectors";
 
 interface Props {
@@ -28,5 +30,15 @@ export const SdkThemeProvider = ({ theme, children }: Props) => {
     return theme && getEmbeddingThemeOverride(theme);
   }, [appColors, theme]);
 
-  return <ThemeProvider theme={themeOverride}>{children}</ThemeProvider>;
+  return (
+    <ThemeProvider theme={themeOverride}>
+      <GlobalStyles />
+      {children}
+    </ThemeProvider>
+  );
 };
+
+function GlobalStyles() {
+  const theme = useMantineTheme();
+  return <Global styles={getMetabaseSdkCssVariables(theme)} />;
+}
