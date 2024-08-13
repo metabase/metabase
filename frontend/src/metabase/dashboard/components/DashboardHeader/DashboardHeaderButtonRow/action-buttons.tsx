@@ -1,10 +1,11 @@
 import { withRouter } from "react-router";
 
-import { RefreshWidgetButton } from "../../DashboardActions.styled";
+import { RefreshWidget } from "metabase/dashboard/components/RefreshWidget";
+import { Center, Divider } from "metabase/ui";
+
 import { DashboardBookmark } from "../../DashboardBookmark";
 import { DashboardEmbedAction } from "../../DashboardEmbedAction";
 import { ExtraEditButtonsMenu } from "../../ExtraEditButtonsMenu";
-import { DashboardHeaderActionDivider } from "../DashboardHeader.styled";
 import {
   AddActionElementButton,
   AddFilterParameterButton,
@@ -133,7 +134,7 @@ export const dashboardActionButtons: Record<
       setRefreshElapsedHook,
       onRefreshPeriodChange,
     }) => (
-      <RefreshWidgetButton
+      <RefreshWidget
         period={refreshPeriod}
         setRefreshElapsedHook={setRefreshElapsedHook}
         onChangePeriod={onRefreshPeriodChange}
@@ -236,7 +237,11 @@ export const dashboardActionButtons: Record<
 
   //   UTILITY
   [DASHBOARD_ACTION.DASHBOARD_HEADER_ACTION_DIVIDER]: {
-    component: () => <DashboardHeaderActionDivider />,
+    component: () => (
+      <Center h="1.25rem" px="sm">
+        <Divider orientation="vertical" />
+      </Center>
+    ),
     enabled: () => true,
   },
 };
