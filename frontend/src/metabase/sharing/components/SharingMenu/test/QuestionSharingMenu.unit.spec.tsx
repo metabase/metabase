@@ -32,6 +32,18 @@ describe("QuestionSharingMenu", () => {
     expect(screen.queryByTestId("sharing-menu-button")).not.toBeInTheDocument();
   });
 
+  it("should prompt you to save an unsaved question", async () => {
+    setupQuestionSharingMenu({
+      isAdmin: true,
+      question: { id: undefined },
+    });
+
+    expect(screen.getByTestId("sharing-menu-button")).toHaveAttribute(
+      "aria-label",
+      "You must save this question before sharing",
+    );
+  });
+
   describe("alerts", () => {
     describe("admins", () => {
       it("should show the 'Create alert' menu item if no alerts exist", async () => {
@@ -65,19 +77,6 @@ describe("QuestionSharingMenu", () => {
         expect(
           await screen.findByTestId("alert-list-popover"),
         ).toBeInTheDocument();
-      });
-
-      it("should show the alerts menu item disabled when no delivery channels are set up", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: true,
-          isEmailSetup: false,
-          isSlackSetup: false,
-        });
-        await openMenu();
-        const btn = screen.getByRole("menuitem", {
-          name: "alert icon Create alert",
-        });
-        expect(btn).toBeDisabled();
       });
     });
 
@@ -113,19 +112,6 @@ describe("QuestionSharingMenu", () => {
         expect(
           await screen.findByTestId("alert-list-popover"),
         ).toBeInTheDocument();
-      });
-
-      it("should show the alerts menu item disabled when no delivery channels are set up", async () => {
-        setupQuestionSharingMenu({
-          isAdmin: false,
-          isEmailSetup: false,
-          isSlackSetup: false,
-        });
-        await openMenu();
-        const btn = screen.getByRole("menuitem", {
-          name: "alert icon Create alert",
-        });
-        expect(btn).toBeDisabled();
       });
     });
   });

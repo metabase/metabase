@@ -212,7 +212,7 @@ export function ViewTitleHeaderRightSide({
           />
         </ViewHeaderIconButtonContainer>
       )}
-      <QuestionSharingMenu question={question} />
+      {!isShowingNotebook && <QuestionSharingMenu question={question} />}
       {isSaved && (
         <QuestionActions
           question={question}
