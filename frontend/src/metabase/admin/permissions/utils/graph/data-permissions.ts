@@ -252,7 +252,7 @@ type SchemaPartial = {
   name: string;
   getTables: () => { id: number | string }[];
 };
-type DatabaseParital = {
+type DatabasePartial = {
   schemas?: SchemaPartial[];
   schema(schemaName: string | undefined): SchemaPartial | null | undefined;
 };
@@ -261,7 +261,7 @@ export function hasPermissionValueInSubgraph(
   permissions: GroupsPermissions,
   groupId: number,
   entityId: DatabaseEntityId | SchemaEntityId,
-  database: DatabaseParital,
+  database: DatabasePartial,
   permission: DataPermission,
   value: DataPermissionValue,
 ) {

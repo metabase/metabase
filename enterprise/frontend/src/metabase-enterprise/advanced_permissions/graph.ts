@@ -69,10 +69,8 @@ export function upgradeViewPermissionsIfNeeded(
 
   const requiresUnrestrictedAccess =
     value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    ![
-      DataPermissionValue.UNRESTRICTED,
-      DataPermissionValue.IMPERSONATED,
-    ].includes(dbPermission);
+    dbPermission !== DataPermissionValue.UNRESTRICTED &&
+    dbPermission !== DataPermissionValue.IMPERSONATED;
 
   const isGrantingQueryAccessWithBlockedChild =
     value !== DataPermissionValue.NO &&

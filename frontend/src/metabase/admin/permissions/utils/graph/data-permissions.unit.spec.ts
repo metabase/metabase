@@ -169,7 +169,7 @@ describe("data permissions", () => {
       ).toBe(false);
     });
 
-    it("should permissions omited from the graph", async () => {
+    it("should handle default permissions omitted from the graph", async () => {
       const schemas = [
         { name: "public", getTables: () => [{ id: 1 }] },
         { name: "public2", getTables: () => [{ id: 2 }] },
@@ -184,7 +184,7 @@ describe("data permissions", () => {
           "1": {
             [DataPermission.VIEW_DATA]: {
               public: DataPermissionValue.UNRESTRICTED,
-              // public2 omited from graph to indicate blocked
+              // public2 omitted from graph to indicate blocked
             },
           },
         },

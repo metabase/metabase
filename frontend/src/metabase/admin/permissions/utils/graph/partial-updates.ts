@@ -48,7 +48,7 @@ export function mergeGroupsPermissionsUpdates(
   ]);
 
   const latestPermissionsEntries = allGroupIds.map(groupId => {
-    // values can be omited from the graph to save space or to indicate that the group has default permissions for all entities
+    // values can be omitted from the graph to save space or to indicate that the group has default permissions for all entities
     // this means we need to determine the value if we need to use the value currently in memory or default to an empty object
     // which is the FE definition of completely default permissions for all entities
     const defaultValue = modifiedGroupIdsSet.has(groupId)

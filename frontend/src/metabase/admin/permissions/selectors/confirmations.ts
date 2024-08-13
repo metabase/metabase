@@ -185,10 +185,8 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
       value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
       nativePermission !== DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
       PLUGIN_ADVANCED_PERMISSIONS.shouldShowViewDataColumn &&
-      ![
-        DataPermissionValue.UNRESTRICTED,
-        DataPermissionValue.IMPERSONATED,
-      ].includes(viewPermission)
+      viewPermission !== DataPermissionValue.UNRESTRICTED &&
+      viewPermission !== DataPermissionValue.IMPERSONATED
     ) {
       return {
         title: t`Allow native query editing?`,

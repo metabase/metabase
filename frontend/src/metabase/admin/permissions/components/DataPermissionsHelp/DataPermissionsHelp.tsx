@@ -131,20 +131,19 @@ export const DataPermissionsHelp = () => {
                 name={t`Blocked (Pro)`}
                 description={
                   <>
-                    <Text>{`The group can't view:`}</Text>
-                    <List mr="1rem">
+                    <Text>{t`The group can’t view:`}</Text>
+                    <List style={{ marginInlineEnd: "1rem" }}>
                       <List.Item>
-                        <Text>The schema/table when browsing data.</Text>
+                        <Text>{t`The schema/table when browsing data.`}</Text>
                       </List.Item>
                       <List.Item>
                         <Text>
-                          Query-builder questions using that schema/table.
+                          {t`Query-builder questions using that schema/table.`}
                         </Text>
                       </List.Item>
                       <List.Item>
                         <Text>
-                          ANY native questions querying the database, regardless
-                          of schema/table.
+                          {t`ANY native questions querying the database, regardless of schema/table.`}
                         </Text>
                       </List.Item>
                     </List>
