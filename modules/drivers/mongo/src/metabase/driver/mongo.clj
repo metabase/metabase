@@ -232,11 +232,11 @@
 (defn- path->depth [path]
   (dec (count (str/split path #"\."))))
 
-(def query-depth
+(def infer-fields-query-depth
   "The depth of nested objects that [[infer-fields-query]] will execute to. If set to 0, the query will only return the
-   fields under `root-path`, and nested fields will be queried with further executions. Setting its value
-   involves a trade-off: the lower it is, the faster infer-fields-query executes, but the more executions we might have to
-   do."
+   fields under `root-path`, and nested fields will be queried with further executions. If set to K, the query will
+   return fields at K levels of nesting. Setting its value involves a trade-off: the lower it is, the faster
+   infer-fields-query executes, but the more queries we might have to execute."
   5)
 
 (mr/def ::FieldInfo
@@ -262,20 +262,22 @@
                                               :native   {:collection collection-name
                                                          :query      (json/generate-string q)}}))))
         nested-fields (fn nested-fields [path]
-                        (let [fields (flatten (q! (infer-fields-query collection-name sample-size query-depth path)))
-                              nested (when-let [fields-to-explore (seq (filter (fn [x]
-                                                                                 (and (= (:mostCommonType x) "object")
-                                                                                      (= (path->depth (:path x))
-                                                                                         (inc (+ (path->depth path) query-depth)))))
-                                                                               fields))]
-                                       (mapcat nested-fields (map :path fields-to-explore)))]
+                        (let [fields (flatten (q! (infer-fields-query collection-name sample-size infer-fields-query-depth path)))
+                              nested (->> fields
+                                          (filter (fn [x]
+                                                    (and (= (:mostCommonType x) "object")
+                                                         (= (path->depth (:path x))
+                                                            (inc (+ (path->depth path) infer-fields-query-depth))))))
+                                          (map :path)
+                                          (mapcat nested-fields))]
                           (concat fields nested)))
-        fields        (flatten (q! (infer-fields-query collection-name sample-size query-depth "$ROOT")))
-        nested        (when-let [fields-to-explore (seq (filter (fn [x]
-                                                                  (and (= (:mostCommonType x) "object")
-                                                                       (= (path->depth (:path x)) query-depth)))
-                                                                fields))]
-                        (mapcat nested-fields (map :path fields-to-explore)))]
+        fields        (flatten (q! (infer-fields-query collection-name sample-size infer-fields-query-depth "$ROOT")))
+        nested        (->> fields
+                           (filter (fn [x]
+                                     (and (= (:mostCommonType x) "object")
+                                          (= (path->depth (:path x)) infer-fields-query-depth))))
+                           (map :path)
+                           (mapcat nested-fields))]
     (concat fields nested)))
 
 (defn- type-alias->base-type [type-alias]

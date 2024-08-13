@@ -199,7 +199,7 @@
 (deftest describe-table-test
   (mt/test-driver :mongo
     (doseq [root-query-depth [0 5]]
-      (with-redefs [mongo/query-depth root-query-depth]
+      (with-redefs [mongo/infer-fields-query-depth root-query-depth]
         (is (= {:schema nil
                 :name   "venues"
                 :fields #{{:name              "name"
@@ -269,7 +269,7 @@
 (deftest sync-indexes-top-level-and-nested-column-with-same-name-test
   (mt/test-driver :mongo
     (doseq [root-query-depth [0 5]]
-      (with-redefs [mongo/query-depth root-query-depth])
+      (with-redefs [mongo/infer-fields-query-depth root-query-depth])
         (testing "when a table has fields at the top level and nested level with the same name
                  we shouldn't mistakenly mark both of them as indexed if one is(#46312)"
           (mt/dataset (mt/dataset-definition "index-duplicate-name"
@@ -412,7 +412,7 @@
 (deftest all-null-columns-test
   (mt/test-driver :mongo
     (doseq [root-query-depth [0 5]]
-      (with-redefs [mongo/query-depth root-query-depth]
+      (with-redefs [mongo/infer-fields-query-depth root-query-depth]
         (mt/dataset all-null-columns
           ;; do a full sync on the DB to get the correct semantic type info
           (sync/sync-database! (mt/db))
@@ -429,7 +429,7 @@
   (mt/test-driver :mongo
     (doseq [root-query-depth [0 5]]
       (with-redefs [metadata-queries/nested-field-sample-limit 2
-                    mongo/query-depth root-query-depth]
+                    mongo/infer-fields-query-depth root-query-depth]
         (binding [tdm/*remove-nil?* true]
           (mt/with-temp-test-data
             [["bird_species"
@@ -711,7 +711,7 @@
 (deftest sync-missing-fields-test
   (mt/test-driver :mongo
     (doseq [root-query-depth [0 1 5]]
-      (with-redefs [mongo/query-depth root-query-depth]
+      (with-redefs [mongo/infer-fields-query-depth root-query-depth]
         (mt/with-db (missing-fields-db)
           (sync/sync-database! (missing-fields-db))
           (testing "Test that fields with missing or null values get synced correctly"
