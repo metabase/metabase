@@ -91,8 +91,8 @@
 
 (defn- explicit-references [field-ids]
   (let [field-refs (explicit-field-references field-ids)]
-    {:fields field-refs
-     :tables (distinct (map #(dissoc % :field-id :field) field-refs))}))
+    {:fields (distinct field-refs)
+     :tables (distinct (map #(dissoc % :field-id :column :explicit-reference) field-refs))}))
 
 (defn- query-references
   "Find out ids of all fields used in a query. Conforms to the same protocol as [[query-analyzer/field-ids-for-sql]],
