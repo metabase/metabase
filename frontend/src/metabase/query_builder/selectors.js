@@ -37,7 +37,6 @@ import {
   isTimeseries,
 } from "metabase/visualizations/lib/renderer_utils";
 import { isAbsoluteDateTimeUnit } from "metabase-types/guards/date-time";
-import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import { getCardUiParameters } from "metabase-lib/v1/parameters/utils/cards";
 import {
   normalizeParameters,
