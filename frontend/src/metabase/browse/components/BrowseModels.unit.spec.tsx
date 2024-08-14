@@ -4,7 +4,6 @@ import {
   setupSettingsEndpoints,
 } from "__support__/server-mocks";
 import { renderWithProviders, screen, within } from "__support__/ui";
-import { defaultRootCollection } from "metabase/admin/permissions/pages/CollectionPermissionsPage/tests/setup";
 import {
   createMockCollection,
   createMockSearchResult,
@@ -14,6 +13,11 @@ import { createMockSetupState } from "metabase-types/store/mocks";
 import { createMockModelResult, createMockRecentModel } from "../test-utils";
 
 import { BrowseModels } from "./BrowseModels";
+
+const defaultRootCollection = createMockCollection({
+  id: "root",
+  name: "Our analytics",
+});
 
 const setup = (modelCount: number, recentModelCount = 5) => {
   const mockModelResults = mockModels.map(model =>
@@ -249,14 +253,14 @@ const mockModels = [
   {
     id: 21,
     name: "Model 21",
-    collection: defaultRootCollection,
+    collection: defaultRootCollection, // Our analytics
     last_editor_common_name: "Bobby",
     last_edited_at: "2000-01-01T00:00:00.000Z",
   },
   {
     id: 22,
     name: "Model 22",
-    collection: defaultRootCollection,
+    collection: defaultRootCollection, // Our analytics
     last_editor_common_name: "Bobby",
     last_edited_at: "2000-01-01T00:00:00.000Z",
   },
@@ -282,7 +286,9 @@ describe("BrowseModels", () => {
     const modelsTable = await screen.findByRole("table");
     expect(modelsTable).toBeInTheDocument();
     expect(
-      await screen.findAllByTestId("path-for-collection: Our analytics"),
+      await within(modelsTable).findAllByTestId(
+        "path-for-collection: Our analytics",
+      ),
     ).toHaveLength(2);
     expect(
       await within(modelsTable).findByText("Model 20"),
@@ -300,9 +306,7 @@ describe("BrowseModels", () => {
     const modelsTable = await screen.findByRole("table");
     expect(await within(modelsTable).findByText("Model 1")).toBeInTheDocument();
     expect(
-      await within(modelsTable).findAllByTestId(
-        "breadcrumbs-for-collection: Alpha",
-      ),
+      await within(modelsTable).findAllByTestId("path-for-collection: Alpha"),
     ).toHaveLength(3);
   });
 
