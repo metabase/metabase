@@ -11,9 +11,9 @@ import VisualizationResult from "metabase/query_builder/components/Visualization
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { push } from "react-router-redux";
 import Modal from "metabase/components/Modal";
+import { assistant_url } from "metabase/env";
 
 const WebSocketHandler = () => {
-    const { REACT_APP_WEBSOCKET_SERVER } = process.env;
     const [inputValue, setInputValue] = useState("");
     const [messages, setMessages] = useState([]);
     const [card, setCard] = useState(null);
@@ -24,7 +24,7 @@ const WebSocketHandler = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [id, setId] = useState(0);
     const { ws, isConnected } = useWebSocket(
-        REACT_APP_WEBSOCKET_SERVER,
+        assistant_url,
         async e => {
             if (e.data) {
                 const data = JSON.parse(e.data);
