@@ -13,6 +13,7 @@ import {
   tableInteractive,
   tableInteractiveBody,
   visualize,
+  summarize,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -91,6 +92,33 @@ describe("scenarios > question > multiple column breakouts", () => {
             ["2026", "January 2026", "580"],
             ["2026", "February 2026", "543"],
           ],
+        });
+      });
+    });
+
+    describe("summarize sidebar", () => {
+      it("should allow to change temporal units for multiple breakouts of the same column", () => {
+        createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+        summarize();
+        cy.findByTestId("pinned-dimensions")
+          .findAllByLabelText("Created At")
+          .should("have.length", 2)
+          .eq(0)
+          .findByText("by year")
+          .click();
+        popover().findByText("Quarter").click();
+        cy.wait("@dataset");
+        cy.findByTestId("pinned-dimensions")
+          .findAllByLabelText("Created At")
+          .should("have.length", 2)
+          .eq(1)
+          .findByText("by month")
+          .click();
+        popover().findByText("Week").click();
+        cy.wait("@dataset");
+        assertTableData({
+          columns: ["Created At: Quarter", "Created At: Week", "Count"],
+          rows: [["Q2 2022", "April 24, 2022 – April 30, 2022", "1"]],
         });
       });
     });
