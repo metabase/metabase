@@ -287,7 +287,7 @@ describe("issue 20393", () => {
 
     editDashboard();
 
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // map the date parameter to the card
     cy.findByTestId("dashcard-container").contains("Select").click();

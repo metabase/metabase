@@ -610,7 +610,7 @@ describe("scenarios > dashboard > parameters", () => {
 
       // create a disconnected filter + a default value
       editDashboard();
-      setFilter("Time", "Relative Date");
+      setFilter("Date picker", "Relative Date");
 
       sidebar().findByText("Default value").next().click();
       popover().contains("Previous 7 days").click({ force: true });

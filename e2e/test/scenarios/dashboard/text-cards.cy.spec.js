@@ -353,7 +353,7 @@ describe("scenarios > dashboard > parameters in text and heading cards", () => {
     addHeadingWhileEditing("Variable: {{foo}}", {
       parseSpecialCharSequences: false,
     });
-    setFilter("Time", "Relative Date");
+    setFilter("Date picker", "Relative Date");
 
     getDashboardCard(0).findByText("Select…").click();
     popover().findByText("foo").click();

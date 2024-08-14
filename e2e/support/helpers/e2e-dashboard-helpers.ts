@@ -103,11 +103,10 @@ export function checkFilterLabelAndValue(label: string, value: string) {
   cy.get("fieldset").contains(value);
 }
 
-export function setFilter(type: string, subType: string, name: string) {
+export function setFilter(type: string, subType?: string, name?: string) {
   cy.icon("filter").click();
 
-  cy.findByText("What do you want to filter?");
-
+  popover().findByText("Add a filter or parameter").should("be.visible");
   popover().findByText(type).click();
 
   if (subType) {

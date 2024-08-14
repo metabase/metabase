@@ -963,7 +963,7 @@ describe("issue 16177", () => {
   it("should not lose the default value of the parameter connected to a field with a coercion strategy applied (metabase#16177)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
     selectDashboardFilter(getDashboardCard(), "Quantity");
     dashboardParameterSidebar().findByText("No default").click();
     popover().findByText("Yesterday").click();
@@ -1182,7 +1182,7 @@ describe("issue 22482", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
@@ -2941,7 +2941,7 @@ describe("issue 27579", () => {
   it("should be able to remove the last exclude hour option (metabase#27579)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
     editDashboard();
-    setFilter("Time", "All Options");
+    setFilter("Date picker", "All Options");
     selectDashboardFilter(getDashboardCard(), "Created At");
     saveDashboard();
     filterWidget().click();
@@ -3573,10 +3573,10 @@ describe("issue 34955", () => {
       visitDashboard(dashboard_id);
       editDashboard();
 
-      setFilter("Time", "Single Date", "On");
+      setFilter("Date picker", "Single Date", "On");
       connectFilterToColumn(ccName);
 
-      setFilter("Time", "Date Range", "Between");
+      setFilter("Date picker", "Date Range", "Between");
       connectFilterToColumn(ccName);
 
       saveDashboard();

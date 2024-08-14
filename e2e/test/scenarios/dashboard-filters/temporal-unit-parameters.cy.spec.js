@@ -962,9 +962,7 @@ function backToDashboard() {
 }
 
 function addTemporalUnitParameter() {
-  cy.findByTestId("dashboard-header")
-    .findByLabelText("Add a Unit of Time widget")
-    .click();
+  setFilter("Time grouping");
 }
 
 function addQuestion(name) {
