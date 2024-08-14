@@ -20,8 +20,7 @@ const initialValues = {
   name: "",
   description: "",
   "auth-method": "none" as const,
-  "fe-auth-type": "none" as const,
-  "auth-info": { "": "" },
+  "fe-form-type": "none" as const,
 };
 
 export const CreateWebhookModal = ({

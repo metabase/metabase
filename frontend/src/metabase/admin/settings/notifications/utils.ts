@@ -2,7 +2,9 @@ import type { NotificationChannel } from "metabase-types/api";
 
 import type { WebhookFormProps } from "./WebhookForm";
 
-export const buildAuthInfo = (form: WebhookFormProps) => {
+export const buildAuthInfo = (
+  form: WebhookFormProps,
+): Record<string, string> => {
   const { "fe-form-type": authType } = form;
   if (authType === "basic") {
     const { "auth-username": username, "auth-password": password } = form;
@@ -11,8 +13,12 @@ export const buildAuthInfo = (form: WebhookFormProps) => {
     return { Authorization: `Bearer ${form["auth-info-value"]}` };
   } else if (authType === "api-key") {
     const { "auth-info-key": key, "auth-info-value": value } = form;
-    return { [key]: value };
+    if (key && value) {
+      return { [key]: value };
+    }
   }
+
+  return {};
 };
 
 export const channelToForm = ({ details }: NotificationChannel) => {

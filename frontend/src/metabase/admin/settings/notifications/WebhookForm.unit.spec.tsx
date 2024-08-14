@@ -9,15 +9,16 @@ const INITIAL_FORM_VALUES = {
   url: "",
   name: "",
   description: "",
+  "fe-form-type": "none" as const,
   "auth-method": "none" as const,
-  "auth-info": { "": "" },
 };
 
-const setup = ({
+const setup = async ({
   onSubmit = jest.fn(),
   onCancel = jest.fn(),
   onDelete = jest.fn(),
   initialValues = INITIAL_FORM_VALUES,
+  populateForm = false,
 } = {}) => {
   renderWithProviders(
     <WebhookForm
@@ -28,56 +29,7 @@ const setup = ({
     />,
   );
 
-  return {
-    onSubmit,
-  };
-};
-
-describe("WebhookForm", () => {
-  afterEach(() => {
-    jest.useRealTimers();
-  });
-
-  it("should error when an invalid url is given", async () => {
-    setup();
-    await userEvent.type(
-      await screen.findByLabelText("Webhook URL"),
-      "A-bad-url{tab}",
-    );
-    expect(
-      await screen.findByText("Please enter a correctly formatted URL"),
-    ).toBeInTheDocument();
-  });
-
-  it("should error when no name is provided", async () => {
-    setup();
-    await userEvent.type(
-      await screen.findByLabelText("Give it a name"),
-      "{tab}",
-    );
-    expect(await screen.findByText("Please add a name")).toBeInTheDocument();
-  });
-
-  it("should error when no description is provided", async () => {
-    setup();
-    await userEvent.type(await screen.findByLabelText("Description"), "{tab}");
-    expect(
-      await screen.findByText("Please add a description"),
-    ).toBeInTheDocument();
-  });
-
-  it("should show auth info when an authentication method is selected", async () => {
-    setup();
-    await userEvent.click(
-      await screen.findByRole("radio", { name: "HTTP headers" }),
-    );
-    expect(await screen.findByText("Auth info")).toBeInTheDocument();
-    expect(await screen.findByPlaceholderText("Key")).toBeInTheDocument();
-    expect(await screen.findByPlaceholderText("Value")).toBeInTheDocument();
-  });
-
-  it("should allow you to submit a form when it is complete", async () => {
-    const { onSubmit } = setup();
+  if (populateForm) {
     await userEvent.type(
       await screen.findByLabelText("Webhook URL"),
       "http://my-awesome-hook.com/",
@@ -90,15 +42,114 @@ describe("WebhookForm", () => {
       await screen.findByLabelText("Description"),
       "Really though, it's the best",
     );
+  }
+
+  return {
+    onSubmit,
+  };
+};
+
+describe("WebhookForm", () => {
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it("should error when an invalid url is given", async () => {
+    await setup();
+    await userEvent.type(
+      await screen.findByLabelText("Webhook URL"),
+      "A-bad-url{tab}",
+    );
+    expect(
+      await screen.findByText("Please enter a correctly formatted URL"),
+    ).toBeInTheDocument();
+  });
+
+  it("should error when no name is provided", async () => {
+    await setup();
+    await userEvent.type(
+      await screen.findByLabelText("Give it a name"),
+      "{tab}",
+    );
+    expect(await screen.findByText("Please add a name")).toBeInTheDocument();
+  });
+
+  it("should error when no description is provided", async () => {
+    await setup();
+    await userEvent.type(await screen.findByLabelText("Description"), "{tab}");
+    expect(
+      await screen.findByText("Please add a description"),
+    ).toBeInTheDocument();
+  });
+
+  it("should show a username and password field when basic auth is selected", async () => {
+    const { onSubmit } = await setup({ populateForm: true });
+
+    await userEvent.click(await screen.findByRole("radio", { name: "Basic" }));
+
+    await userEvent.type(
+      await screen.findByLabelText("Username"),
+      "foo@bar.com",
+    );
+    await userEvent.type(await screen.findByLabelText("Password"), "pass");
+
     await userEvent.click(
-      await screen.findByRole("radio", { name: "Url params" }),
+      await screen.findByRole("button", { name: "Create destination" }),
     );
 
-    await userEvent.type(await screen.findByPlaceholderText("Key"), "token");
-    await userEvent.type(
-      await screen.findByPlaceholderText("Value"),
-      "ItsASecret",
+    expect(onSubmit).toHaveBeenCalledWith(
+      {
+        name: "The best hook",
+        description: "Really though, it's the best",
+        url: "http://my-awesome-hook.com/",
+        "auth-method": "header",
+        "fe-form-type": "basic",
+        "auth-username": "foo@bar.com",
+        "auth-password": "pass",
+      },
+      expect.anything(),
     );
+  });
+
+  it("should show a token field when bearer auth is selected", async () => {
+    const { onSubmit } = await setup({ populateForm: true });
+
+    await userEvent.click(await screen.findByRole("radio", { name: "Bearer" }));
+
+    await userEvent.type(
+      await screen.findByLabelText("Bearer token"),
+      "SecretToken",
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Create destination" }),
+    );
+
+    expect(onSubmit).toHaveBeenCalledWith(
+      {
+        name: "The best hook",
+        description: "Really though, it's the best",
+        url: "http://my-awesome-hook.com/",
+        "auth-method": "header",
+        "fe-form-type": "bearer",
+        "auth-info-value": "SecretToken",
+      },
+      expect.anything(),
+    );
+  });
+
+  it("should show a allow you to add a key/value pair to header or query param", async () => {
+    const { onSubmit } = await setup({ populateForm: true });
+
+    await userEvent.click(
+      await screen.findByRole("radio", { name: "API Key" }),
+    );
+    await userEvent.click(
+      await screen.findByRole("radio", { name: "Query param" }),
+    );
+
+    await userEvent.type(await screen.findByLabelText("Key"), "Foo");
+
+    await userEvent.type(await screen.findByLabelText("Value"), "Bar");
 
     await userEvent.click(
       await screen.findByRole("button", { name: "Create destination" }),
@@ -110,9 +161,9 @@ describe("WebhookForm", () => {
         description: "Really though, it's the best",
         url: "http://my-awesome-hook.com/",
         "auth-method": "query-param",
-        "auth-info": {
-          token: "ItsASecret",
-        },
+        "fe-form-type": "api-key",
+        "auth-info-key": "Foo",
+        "auth-info-value": "Bar",
       },
       expect.anything(),
     );
@@ -122,11 +173,13 @@ describe("WebhookForm", () => {
     jest.useFakeTimers({
       advanceTimers: true,
     });
+
     fetchMock.post("path:/api/channel/test", async (_url, opts) => {
       const body = JSON.parse((await opts.body) as string);
       return body.details.url?.endsWith("good") ? { ok: true } : 400;
     });
-    setup();
+
+    await setup();
 
     await userEvent.type(
       screen.getByLabelText("Webhook URL"),

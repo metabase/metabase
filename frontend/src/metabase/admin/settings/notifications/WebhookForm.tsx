@@ -28,7 +28,7 @@ const validationSchema = Yup.object({
     .url(t`Please enter a correctly formatted URL`)
     .required(t`Please enter a correctly formatted URL`),
   name: Yup.string().required(t`Please add a name`),
-  description: Yup.string(),
+  description: Yup.string().required(t`Please add a description`),
   "auth-method": Yup.string()
     .required()
     .equals(["none", "header", "query-param", "request-body"]),
@@ -53,10 +53,10 @@ export type WebhookFormProps = {
   name: string;
   description: string;
   "auth-method": NotificationAuthMethods;
-  "auth-info-key": string;
-  "auth-info-value": string;
-  "auth-username": string;
-  "auth-password": string;
+  "auth-info-key"?: string;
+  "auth-info-value"?: string;
+  "auth-username"?: string;
+  "auth-password"?: string;
   "fe-form-type": NotificationAuthType;
 };
 

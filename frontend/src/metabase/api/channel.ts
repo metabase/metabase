@@ -1,4 +1,4 @@
-import type { NotificationChannel } from "metabase-types/api";
+import type { NotificationChannel, ChannelDetails } from "metabase-types/api";
 
 import { Api } from "./api";
 import { idTag, invalidateTags, listTag, provideChannelListTags } from "./tags";
@@ -11,7 +11,7 @@ const channelApi = Api.injectEndpoints({
     }),
     testChannel: builder.mutation<
       void,
-      Omit<Pick<NotificationChannel, "details">, "fe-form-type">
+      { details: Omit<ChannelDetails, "fe-form-type"> }
     >({
       query: body => ({
         method: "POST",

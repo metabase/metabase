@@ -5,6 +5,7 @@ export const createMockChannelDetails = (
 ): ChannelDetails => ({
   url: "http://google.com",
   "auth-method": "none",
+  "fe-form-type": "none",
   ...opts,
 });
 

@@ -62,7 +62,7 @@ export const EditWebhookModal = ({
       name: channel.name,
       description: channel.description,
       "auth-method": channel.details["auth-method"],
-      "auth-info": channel.details["auth-info"] || { "": "" },
+      // "auth-info": channel.details["auth-info"] || { "": "" },
       "fe-form-type": channel.details["fe-form-type"],
       ...channelToForm(channel),
     }),

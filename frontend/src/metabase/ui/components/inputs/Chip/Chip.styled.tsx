@@ -27,7 +27,7 @@ export const getChipOverrides = (): MantineThemeOverride["components"] => ({
             },
           },
           input: {
-            display: "none",
+            display: "block",
           },
         };
       },

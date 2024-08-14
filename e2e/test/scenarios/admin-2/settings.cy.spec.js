@@ -1148,7 +1148,9 @@ describe("notifications", { tags: "@external" }, () => {
     cy.findByRole("heading", { name: "Add a webhook" }).click();
 
     modal().within(() => {
-      cy.findByRole("heading", { name: "New alert webhook" }).should("exist");
+      cy.findByRole("heading", { name: "New webhook destination" }).should(
+        "exist",
+      );
 
       cy.findByLabelText("Webhook URL").type(`${WEBHOOK_TEST_URL}/404`);
       cy.findByLabelText("Give it a name").type("Awesome Hook");
