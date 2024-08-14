@@ -266,7 +266,7 @@ describe("ViewTitleHeader", () => {
           await userEvent.hover(refreshButton);
           const tooltip = screen.getByRole("tooltip");
           expect(tooltip).toHaveAttribute("data-placement", "top");
-          expect(tooltip).toHaveTextContent("Clear cache and refresh");
+          expect(tooltip).toHaveTextContent("Refresh");
         });
       });
     });
