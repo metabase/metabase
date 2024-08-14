@@ -110,6 +110,8 @@
                                  ;; Webpack dev server
                                  (when config/is-dev?
                                    "*:8080 ws://*:8080")
+                                   (when config/is-dev?
+                                   "*:8090 ws://*:8090")
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "ws://*:9630")]

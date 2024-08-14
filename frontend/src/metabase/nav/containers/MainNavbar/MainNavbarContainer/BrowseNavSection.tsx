@@ -21,6 +21,7 @@ export const BrowseNavSection = ({
 }) => {
   const BROWSE_MODELS_URL = "/browse/models";
   const BROWSE_DATA_URL = "/browse/databases";
+  const BROWSE_CHAT = "/browse/chat";
 
   const {
     hasModels,
@@ -83,6 +84,15 @@ export const BrowseNavSection = ({
           {t`Databases`}
         </PaddedSidebarLink>
       )}
+      <PaddedSidebarLink
+        icon="chat"
+        url={BROWSE_CHAT}
+        isSelected={nonEntityItem?.url?.startsWith(BROWSE_CHAT)}
+        onClick={onItemSelect}
+        aria-label={t`Ask Omni`}
+      >
+        {t`Ask Omni`}
+      </PaddedSidebarLink>
     </CollapseSection>
   );
 };
