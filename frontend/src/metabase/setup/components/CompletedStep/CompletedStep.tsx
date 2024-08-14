@@ -4,7 +4,7 @@ import { t } from "ttag";
 
 import ButtonsS from "metabase/css/components/buttons.module.css";
 import { useSelector } from "metabase/lib/redux";
-import { SUBSCRIBE_TOKEN, SUBSCRIBE_URL } from "metabase/setup/constants";
+import { subscribeToNewsletter } from "metabase/setup/utils";
 import { Switch } from "metabase/ui";
 
 import { getIsStepActive } from "../../selectors";
@@ -31,20 +31,7 @@ export const CompletedStep = (): JSX.Element | null => {
 
   const handleClick = () => {
     if (checkboxValue && email) {
-      const body = new FormData();
-      body.append("EMAIL", email);
-      body.append(SUBSCRIBE_TOKEN, "");
-
-      if ("sendBeacon" in navigator) {
-        navigator.sendBeacon(SUBSCRIBE_URL, body);
-      } else {
-        fetch(SUBSCRIBE_URL, {
-          method: "POST",
-          mode: "no-cors",
-          body,
-          keepalive: true,
-        });
-      }
+      subscribeToNewsletter(email);
     }
   };
 
