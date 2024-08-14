@@ -93,11 +93,10 @@
        (let [upvs (t2/select :model/UserParameterValue
                              :dashboard_id [:in (map :id dashboards)]
                              :user_id user-id)]
-         (as-> upvs result
-           (group-by :dashboard_id result)
-           (update-vals result (fn [upvs]
-                                 (into {}
-                                       (map (juxt :parameter_id :value) upvs)))))))
+         (-> (group-by :dashboard_id upvs)
+             (update-vals (fn [upvs]
+                            (into {}
+                                  (map (juxt :parameter_id :value) upvs)))))))
      :id
      {:default {}})
     dashboards))
