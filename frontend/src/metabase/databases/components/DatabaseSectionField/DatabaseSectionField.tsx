@@ -1,7 +1,9 @@
-import React, { useCallback } from "react";
 import { useField } from "formik";
+import { useCallback } from "react";
 import { t } from "ttag";
+
 import FormField from "metabase/core/components/FormField";
+
 import { SectionButton } from "./DatabaseSectionField.styled";
 
 export interface DatabaseSectionFieldProps {
@@ -30,4 +32,5 @@ const DatabaseSectionField = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseSectionField;

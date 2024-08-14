@@ -1,7 +1,9 @@
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
+
 import Tooltip from "metabase/core/components/Tooltip";
+import { Icon } from "metabase/ui";
+
 import {
   CodeContainer,
   CodeCopyButton,
@@ -15,7 +17,7 @@ interface NativeCodePanelProps {
   isCopyEnabled?: boolean;
 }
 
-const NativeCodePanel = ({
+export const NativeCodePanel = ({
   value,
   isHighlighted,
   isCopyEnabled,
@@ -55,5 +57,3 @@ const useCopyButton = (value: string) => {
 
   return { isCopied, handleCopy };
 };
-
-export default NativeCodePanel;

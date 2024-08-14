@@ -1,0 +1,77 @@
+name: Find and download uberjar for E2E tests
+description: Download previously built artifact from one of the previous commits.
+inputs:
+  edition:
+    description: Metabase edition.
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Download previously stored uberjar
+      uses: actions/github-script@v7
+      with:
+        script: | # js
+          const fs = require('fs');
+          const execSync = require("child_process").execSync;
+
+          const getCommit = (ref = "HEAD") => {
+            const [commit] = execSync(`git rev-parse ${ref}`, { encoding: "utf8" }).split(
+              "\n",
+            );
+            return commit;
+          };
+
+          const baseConfig = {
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+          };
+
+          async function getArtifact(commit, depth = 0) {
+            if (depth > 20) {
+              throw new Error("Couldn't find the artifact!");
+            }
+
+            const artifactName = `metabase-${{ inputs.edition }}-${commit}-uberjar`;
+
+            const {
+              data: { artifacts },
+            } = await github.rest.actions.listArtifactsForRepo({
+              ...baseConfig,
+              name: artifactName,
+              per_page: 1,
+            });
+
+            const [artifact] = artifacts;
+
+            if (!artifact) {
+              const parentCommit = getCommit(`${commit}^`);
+              console.log(`Didn't find ${artifactName}.\n`);
+              console.log(`Switching to the parent commit: ${parentCommit}`);
+              return getArtifact(parentCommit, depth + 1);
+            } else {
+              return artifact;
+            }
+          }
+
+          const currentCommit = "${{ github.event.pull_request.head.sha || github.sha }}";
+          const { id } = await getArtifact(currentCommit);
+
+          const download = await github.rest.actions.downloadArtifact({
+            ...baseConfig,
+            artifact_id: id,
+            archive_format: 'zip',
+          });
+
+          fs.writeFileSync(`${process.env.GITHUB_WORKSPACE}/mb.zip`, Buffer.from(download.data));
+
+    - name: Unzip Metabase artifact containing an uberjar
+      run: unzip mb.zip
+      shell: bash
+
+    - name: Get the version info
+      run: |
+        jar xf target/uberjar/metabase.jar version.properties
+        cat version.properties
+        mv version.properties resources/
+      shell: bash

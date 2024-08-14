@@ -1,0 +1,210 @@
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Icon } from "metabase/ui";
+import { Button, Flex, Text } from "metabase/ui";
+import { Menu } from "./";
+
+export const args = {
+  trigger: "click",
+  position: "bottom",
+  disabled: false,
+  closeOnClickOutside: true,
+  closeOnEscape: true,
+  closeOnItemClick: true,
+};
+
+export const argTypes = {
+  trigger: {
+    options: ["click", "hover"],
+    control: { type: "inline-radio" },
+  },
+  position: {
+    options: [
+      "bottom",
+      "left",
+      "right",
+      "top",
+      "bottom-end",
+      "bottom-start",
+      "left-end",
+      "left-start",
+      "right-end",
+      "right-start",
+      "top-end",
+      "top-start",
+    ],
+    control: { type: "select" },
+  },
+  width: {
+    control: { type: "number" },
+  },
+  disabled: {
+    control: { type: "boolean" },
+  },
+  openDelay: {
+    control: { type: "number" },
+  },
+  closeDelay: {
+    control: { type: "number" },
+  },
+  closeOnClickOutside: {
+    control: { type: "boolean" },
+  },
+  closeOnEscape: {
+    control: { type: "boolean" },
+  },
+  closeOnItemClick: {
+    control: { type: "boolean" },
+  },
+};
+
+<Meta title="Overlays/Menu" component={Menu} args={args} argTypes={argTypes} />
+
+# Menu
+
+Our themed wrapper around [Mantine Menu](https://v6.mantine.dev/core/menu/).
+
+## When to use Menu
+
+Use this menu in the following cases:
+
+- To display a list (up to 10) of static actions
+- Use it as the primary menu without additional flyout popups
+- Examples: + New, Settings, More on Metabase’s main UI
+
+Not to use:
+
+- As filter popup, selector or multi-selector
+- GUI editor dropdowns
+- Dynamic and composite menu items, e.g., group by month
+- Dynamic dropdown for table column picker
+- Any other advanced popups such as column popup on chill mode
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/MZhwfwmOaa8HeCBBUCeq7R/Menu?type=design&node-id=1-96&mode=design&t=vj3dPYMbYVYVuKBy-0)
+- [Mantine Menu Docs](https://v6.mantine.dev/core/menu/)
+
+## Caveats
+
+- The position of menu is auto-programmed responsively according to the location of the trigger button on the page
+- Limit the menu items to 10 or fewer
+
+## Usage guidelines
+
+- Although menu item label can be as long as you wish, keep it simple and concise
+- In general, use sentence casing for menu item labels
+- Use icon + label when applicable for better visual affordance
+
+## Examples
+
+export const DefaultTemplate = args => (
+  <Flex justify="center">
+    <Menu {...args}>
+      <Menu.Target>
+        <Button variant="filled">Toggle menu</Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item>Question</Menu.Item>
+        <Menu.Item>SQL query</Menu.Item>
+        <Menu.Item>Dashboard</Menu.Item>
+        <Menu.Item>Collection</Menu.Item>
+        <Menu.Item>Model</Menu.Item>
+        <Menu.Item>Action</Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  </Flex>
+);
+
+export const RightSectionTemplate = args => (
+  <Flex justify="center">
+    <Menu {...args}>
+      <Menu.Target>
+        <Button variant="filled">Toggle menu</Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item rightSection={<Text color="inherit">⌘K</Text>}>
+          Question
+        </Menu.Item>
+        <Menu.Item>SQL query</Menu.Item>
+        <Menu.Item>Dashboard</Menu.Item>
+        <Menu.Item>Collection</Menu.Item>
+        <Menu.Item>Model</Menu.Item>
+        <Menu.Item>Action</Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  </Flex>
+);
+
+export const IconsTemplate = args => (
+  <Flex justify="center">
+    <Menu {...args}>
+      <Menu.Target>
+        <Button variant="filled">Toggle menu</Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Item icon={<Icon name="insight" />}>Question</Menu.Item>
+        <Menu.Item icon={<Icon name="sql" />}>SQL query</Menu.Item>
+        <Menu.Item icon={<Icon name="dashboard" />}>Dashboard</Menu.Item>
+        <Menu.Item icon={<Icon name="folder" />}>Collection</Menu.Item>
+        <Menu.Item icon={<Icon name="model" />}>Model</Menu.Item>
+        <Menu.Item icon={<Icon name="bolt" />}>Action</Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  </Flex>
+);
+
+export const LabelsAndDividersTemplate = args => (
+  <Flex justify="center">
+    <Menu {...args}>
+      <Menu.Target>
+        <Button variant="filled">Toggle menu</Button>
+      </Menu.Target>
+      <Menu.Dropdown>
+        <Menu.Label>Data</Menu.Label>
+        <Menu.Item
+          icon={<Icon name="insight" />}
+          rightSection={<Text color="inherit">⌘K</Text>}
+        >
+          Question
+        </Menu.Item>
+        <Menu.Item icon={<Icon name="sql" />}>SQL query</Menu.Item>
+        <Menu.Item icon={<Icon name="model" />}>Model</Menu.Item>
+        <Menu.Item icon={<Icon name="bolt" />}>Action</Menu.Item>
+        <Menu.Divider />
+        <Menu.Label>Other</Menu.Label>
+        <Menu.Item icon={<Icon name="dashboard" />}>Dashboard</Menu.Item>
+        <Menu.Item icon={<Icon name="folder" />}>Collection</Menu.Item>
+      </Menu.Dropdown>
+    </Menu>
+  </Flex>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+### Right section
+
+export const RightSection = RightSectionTemplate.bind({});
+
+<Canvas>
+  <Story name="Right section">{RightSection}</Story>
+</Canvas>
+
+### Icons
+
+export const Icons = IconsTemplate.bind({});
+
+<Canvas>
+  <Story name="Icons">{Icons}</Story>
+</Canvas>
+
+### Labels and dividers
+
+export const LabelsAndDividers = LabelsAndDividersTemplate.bind({});
+
+<Canvas>
+  <Story name="Labels and dividers">{LabelsAndDividers}</Story>
+</Canvas>

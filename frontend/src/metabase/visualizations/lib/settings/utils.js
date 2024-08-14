@@ -1,10 +1,11 @@
 import _ from "underscore";
+
 import {
   getFriendlyName,
   columnsAreValid,
   getDefaultDimensionAndMetric,
 } from "metabase/visualizations/lib/utils";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
 
 export function getOptionFromColumn(col) {
   return {
@@ -29,7 +30,16 @@ export function dimensionSetting(id, def = {}) {
   });
 }
 
-const DEFAULT_FIELD_FILTER = () => true;
+const DEFAULT_FIELD_FILTER = column => true;
+
+export function getDefaultColumn(
+  series,
+  vizSettings,
+  fieldFilter = DEFAULT_FIELD_FILTER,
+) {
+  const [{ data }] = series;
+  return data.cols.find(fieldFilter)?.name;
+}
 
 export function fieldSetting(
   id,
@@ -40,7 +50,8 @@ export function fieldSetting(
       widget: "field",
       isValid: ([{ card, data }], vizSettings) =>
         columnsAreValid(card.visualization_settings[id], data, fieldFilter),
-      getDefault: ([{ data }]) => (_.find(data.cols, fieldFilter) || {}).name,
+      getDefault: (series, vizSettings) =>
+        getDefaultColumn(series, vizSettings, fieldFilter),
       getProps: ([{ card, data }], vizSettings) => ({
         options: data.cols.filter(fieldFilter).map(getOptionFromColumn),
         columns: data.cols,

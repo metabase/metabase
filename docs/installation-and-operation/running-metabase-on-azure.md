@@ -1,6 +1,6 @@
 ---
 title: Running Metabase on Microsoft Azure
-redirect_from: 
+redirect_from:
   - /docs/latest/operations-guide/running-metabase-on-azure
 ---
 
@@ -117,9 +117,9 @@ Now click on the huge plus sign next to **Add VNET** and select the VNET that yo
 
 Return to the application configuration page and click on **Settings** -> **Configuration** on the left side of the page. You should see a few Application Settings already configured.
 
-You'll need to add the [Environment Variables]() for connecting Metabase to its [PostgreSQL Application Database](https://www.metabase.com/docs/latest/operations-guide/configuring-application-database.html#postgres). Make sure that you use the full **MB_DB_CONNECTION_URI**.
+You'll need to add the [environment Variables](../configuring-metabase/environment-variables.md) for connecting Metabase to its [PostgreSQL Application Database](../installation-and-operation/configuring-application-database.md#postgresql). Make sure that you use the full **MB_DB_CONNECTION_URI**.
 
-Also, take into account that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows: 
+Also, take into account that the username in Azure PostgreSQL is `user@name_of_your_database_engine` so in this case the entire connection uri would be as follows:
 
 ```
 postgresql://databasePrivateIPAddress:port/postgres?user=user@name_of_your_database_engine&password=configuredpassword&ssl=true&sslmode=required
@@ -133,15 +133,16 @@ For example, if your values are:
 4) **username of the database**: metabase
 5) **password**: Password1!
 
-then your connection string would be: 
+then your connection string would be:
 
 ```
-postgresql://10.0.2.4:5432/postgres?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require
+postgresql://10.0.2.4:5432/postgres?user=metabase%40metabase-app-database&password=Password1!&ssl=true&sslmode=require
 ```
+Note: the "@" character has been replaced for "%40", as the "@" will no longer work in versions > 43
 
-Click **Save** and the instance will restart. 
+Click **Save** and the instance will restart.
 
-Once it finishes, you should be able to visit your Metabase at the URL shown in the "Overview" tab in the web app (under the URL section). 
+Once it finishes, you should be able to visit your Metabase at the URL shown in the "Overview" tab in the web app (under the URL section).
 
 ## Additional configurations
 
@@ -186,11 +187,11 @@ In case you're embedding Metabase, you might need to enable CORS in **Settings**
 
 ### Database name
 
-Azure does not let users create a database upon service creation, that's the reason why we used `postgres` as the database to install Metabase. Althought this shouldn't be a problem, a good practice would be to install the database in a separate database named `metabase`. If you are not in a hurry to try the product, you should create a database named `metabase` as soon as you create the database and then use the appropiate connection string when deploying the docker container.
-In the example above the connection string would be 
+Azure does not let users create a database upon service creation, that's the reason why we used `postgres` as the database to install Metabase. Although this shouldn't be a problem, a good practice would be to install the database in a separate database named `metabase`. If you are not in a hurry to try the product, you should create a database named `metabase` as soon as you create the database and then use the appropriate connection string when deploying the docker container.
+In the example above the connection string would be
 
 ```
 postgresql://10.0.2.4:5432/metabase?user=metabase@metabase-app-database&password=Password1!&ssl=true&sslmode=require
 ```
 
-If you have trouble connecting, refer to the [postgres configuration instructions](https://www.metabase.com/docs/latest/installation-and-operation/configuring-application-database#postgres) as you may run into a problem with an `@` symbol in the username portion of the connection string.  Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASSWORD` fields also works.
+If you have trouble connecting, refer to the [postgres configuration instructions](../installation-and-operation/configuring-application-database.md#postgresql) as you may run into a problem with an `@` symbol in the username portion of the connection string.  Using a combination of `MB_DB_CONNECTION_URI` with separate `MB_DB_USER` and `MB_DB_PASSWORD` fields also works.

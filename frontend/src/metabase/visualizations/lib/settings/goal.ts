@@ -1,6 +1,9 @@
 import { t } from "ttag";
-import { VisualizationSettings } from "metabase-types/api";
-import { ChartGoal } from "metabase/visualizations/shared/types/settings";
+
+import { getDefaultGoalLabel } from "metabase/visualizations/shared/settings/cartesian-chart";
+import type { ChartGoal } from "metabase/visualizations/shared/types/settings";
+import type { VisualizationSettings } from "metabase-types/api";
+
 import { getStackOffset } from "./stacking";
 
 const getGoalValue = (value: number, isPercent: boolean) =>
@@ -16,7 +19,7 @@ export const getChartGoal = (
 
   return {
     value: getGoalValue(settings["graph.goal_value"] ?? 0, isPercent),
-    label: settings["graph.goal_label"] ?? t`Goal`,
+    label: settings["graph.goal_label"] ?? getDefaultGoalLabel(),
   };
 };
 
@@ -42,7 +45,7 @@ export const GRAPH_GOAL_SETTINGS = {
     section: t`Display`,
     title: t`Goal label`,
     widget: "input",
-    default: t`Goal`,
+    getDefault: getDefaultGoalLabel,
     getHidden: (_series: unknown, vizSettings: VisualizationSettings) =>
       vizSettings["graph.show_goal"] !== true,
     readDependencies: ["graph.show_goal"],

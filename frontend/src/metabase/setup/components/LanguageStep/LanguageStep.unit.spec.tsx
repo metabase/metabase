@@ -1,46 +1,56 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { Locale } from "metabase-types/store";
-import LanguageStep, { LanguageStepProps } from "./LanguageStep";
+
+import { renderWithProviders, screen } from "__support__/ui";
+import type { SetupStep } from "metabase/setup/types";
+import type { Locale } from "metabase-types/store";
+import {
+  createMockLocale,
+  createMockSettingsState,
+  createMockSetupState,
+  createMockState,
+} from "metabase-types/store/mocks";
+
+import { LanguageStep } from "./LanguageStep";
+
+interface SetupOpts {
+  step?: SetupStep;
+  locale?: Locale;
+}
+
+const setup = ({ step = "language", locale }: SetupOpts = {}) => {
+  const state = createMockState({
+    setup: createMockSetupState({
+      step,
+      locale,
+    }),
+    settings: createMockSettingsState({
+      "available-locales": [["en", "English"]],
+    }),
+  });
+
+  renderWithProviders(<LanguageStep stepLabel={0} />, {
+    storeInitialState: state,
+  });
+};
 
 describe("LanguageStep", () => {
   it("should render in inactive state", () => {
-    const props = getProps({
-      locale: getLocale({ name: "English" }),
-      isStepActive: false,
+    setup({
+      step: "user_info",
+      locale: createMockLocale({ name: "English" }),
     });
-
-    render(<LanguageStep {...props} />);
 
     expect(screen.getByText(/set to English/)).toBeInTheDocument();
   });
 
-  it("should allow language selection", () => {
-    const props = getProps({
-      isStepActive: true,
-      onLocaleChange: jest.fn(),
+  it("should allow language selection", async () => {
+    setup({
+      step: "language",
     });
 
-    render(<LanguageStep {...props} />);
-    userEvent.click(screen.getByText("English"));
+    const option = screen.getByRole("radio", { name: "English" });
+    await userEvent.click(option);
 
-    expect(props.onLocaleChange).toHaveBeenCalled();
+    expect(option).toBeChecked();
   });
-});
-
-const getProps = (opts?: Partial<LanguageStepProps>): LanguageStepProps => ({
-  isStepActive: false,
-  isSetupCompleted: false,
-  isStepCompleted: false,
-  onLocaleChange: jest.fn(),
-  onStepSelect: jest.fn(),
-  onStepSubmit: jest.fn(),
-  ...opts,
-});
-
-const getLocale = (opts?: Partial<Locale>): Locale => ({
-  code: "en",
-  name: "English",
-  ...opts,
 });

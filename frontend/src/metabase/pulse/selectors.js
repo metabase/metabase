@@ -1,9 +1,9 @@
-import { createSelector } from "reselect";
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
 
 export const getEditingPulse = state => state.pulse.editingPulse;
 
-export const getPulseFormInput = state => state.pulse.formInput;
+export const getPulseFormInput = state => state.pulse?.formInput;
 
 export const hasLoadedChannelInfoSelector = createSelector(
   [getPulseFormInput],

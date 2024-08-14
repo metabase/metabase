@@ -1,7 +1,9 @@
+import { TextEncoder, TextDecoder } from "util";
 import "cross-fetch/polyfill";
 import "raf/polyfill";
 import "jest-localstorage-mock";
 import "jest-canvas-mock";
+import "metabase/lib/dayjs";
 import "__support__/mocks";
 
 // NOTE: this is needed because sometimes asynchronous code tries to access
@@ -23,3 +25,19 @@ if (process.env["DISABLE_LOGGING"] || process.env["DISABLE_LOGGING_FRONTEND"]) {
     trace: jest.fn(),
   };
 }
+
+// global TextEncoder is not available in jsdom + Jest, see
+// https://stackoverflow.com/questions/70808405/how-to-set-global-textdecoder-in-jest-for-jsdom-if-nodes-util-textdecoder-is-ty
+// (hacky fix)
+global.TextEncoder = TextEncoder;
+global.TextDecoder = TextDecoder;
+
+// https://github.com/jsdom/jsdom/issues/3002
+Range.prototype.getBoundingClientRect = () => ({
+  bottom: 0,
+  height: 0,
+  left: 0,
+  right: 0,
+  top: 0,
+  width: 0,
+});

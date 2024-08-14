@@ -3,7 +3,7 @@
    [buddy.core.codecs :as codecs]
    [clojure.string :as str]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver :as driver]
    [metabase.driver.sql-jdbc.connection :as sql-jdbc.conn]
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
@@ -11,7 +11,7 @@
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
    [metabase.driver.sql.util :as sql.u]
-   [metabase.driver.sql.util.unprepare :as unprepare]
+   [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x])
   (:import
@@ -24,8 +24,9 @@
                   :parent #{:sql-jdbc ::sql-jdbc.legacy/use-legacy-classes-for-read-and-set}
                   :abstract? true)
 
-(defmethod driver/database-supports? [:hive-like :now] [_driver _feat _db] true)
-(defmethod driver/database-supports? [:hive-like :datetime-diff] [_driver _feat _db] true)
+(doseq [[feature supported?] {:now           true
+                              :datetime-diff true}]
+  (defmethod driver/database-supports? [:hive-like feature] [_driver _feature _db] supported?))
 
 (defmethod driver/escape-alias :hive-like
   [driver s]
@@ -51,7 +52,7 @@
 
 (defmethod sql-jdbc.sync/database-type->base-type :hive-like
   [_ database-type]
-  (condp re-matches (name database-type)
+  (condp re-matches (u/lower-case-en (name database-type))
     #"boolean"          :type/Boolean
     #"tinyint"          :type/Integer
     #"smallint"         :type/Integer
@@ -73,10 +74,6 @@
     #"map"              :type/Dictionary
     #".*"               :type/*))
 
-(defmethod sql.qp/honey-sql-version :hive-like
-  [_driver]
-  2)
-
 (defmethod sql.qp/current-datetime-honeysql-form :hive-like
   [_]
   (h2x/with-database-type-info :%now "timestamp"))
@@ -94,7 +91,7 @@
 (defn- trunc-with-format [format-str expr]
   (str-to-date format-str (date-format format-str expr)))
 
-(defmethod sql.qp/date [:hive-like :default]         [_ _ expr] (h2x/->timestamp expr))
+(defmethod sql.qp/date [:hive-like :default]         [_ _ expr] expr)
 (defmethod sql.qp/date [:hive-like :minute]          [_ _ expr] (trunc-with-format "yyyy-MM-dd HH:mm" (h2x/->timestamp expr)))
 (defmethod sql.qp/date [:hive-like :minute-of-hour]  [_ _ expr] [:minute (h2x/->timestamp expr)])
 (defmethod sql.qp/date [:hive-like :hour]            [_ _ expr] (trunc-with-format "yyyy-MM-dd HH" (h2x/->timestamp expr)))
@@ -228,31 +225,31 @@
   [_driver _unit x y]
   [:- [:unix_timestamp y] [:unix_timestamp x]])
 
-(def ^:dynamic *param-splice-style*
-  "How we should splice params into SQL (i.e. 'unprepare' the SQL). Either `:friendly` (the default) or `:paranoid`.
-  `:friendly` makes a best-effort attempt to escape strings and generate SQL that is nice to look at, but should not
-  be considered safe against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes
-  strings so SQL injection is impossible; this isn't nice to look at, so use this for actually running a query."
+(def ^:dynamic *inline-param-style*
+  "How we should include inline params when compiling SQL. `:friendly` (the default) or `:paranoid`. `:friendly` makes a
+  best-effort attempt to escape strings and generate SQL that is nice to look at, but should not be considered safe
+  against all SQL injection -- use this for 'convert to SQL' functionality. `:paranoid` hex-encodes strings so SQL
+  injection is impossible; this isn't nice to look at, so use this for actually running a query."
   :friendly)
 
-(defmethod unprepare/unprepare-value [:hive-like String]
-  [_ ^String s]
+(defmethod sql.qp/inline-value [:hive-like String]
+  [_driver ^String s]
   ;; Because Spark SQL doesn't support parameterized queries (e.g. `?`) convert the entire String to hex and decode.
   ;; e.g. encode `abc` as `decode(unhex('616263'), 'utf-8')` to prevent SQL injection
-  (case *param-splice-style*
+  (case *inline-param-style*
     :friendly (str \' (sql.u/escape-sql s :backslashes) \')
     :paranoid (format "decode(unhex('%s'), 'utf-8')" (codecs/bytes->hex (.getBytes s "UTF-8")))))
 
 ;; Hive/Spark SQL doesn't seem to like DATEs so convert it to a DATETIME first
-(defmethod unprepare/unprepare-value [:hive-like LocalDate]
+(defmethod sql.qp/inline-value [:hive-like LocalDate]
   [driver t]
-  (unprepare/unprepare-value driver (t/local-date-time t (t/local-time 0))))
+  (sql.qp/inline-value driver (t/local-date-time t (t/local-time 0))))
 
-(defmethod unprepare/unprepare-value [:hive-like OffsetDateTime]
+(defmethod sql.qp/inline-value [:hive-like OffsetDateTime]
   [_ t]
   (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-offset t)))
 
-(defmethod unprepare/unprepare-value [:hive-like ZonedDateTime]
+(defmethod sql.qp/inline-value [:hive-like ZonedDateTime]
   [_ t]
   (format "to_utc_timestamp('%s', '%s')" (u.date/format-sql (t/local-date-time t)) (t/zone-id t)))
 
@@ -262,6 +259,9 @@
   (sql-jdbc.execute/set-parameter driver ps i (t/local-date-time t (t/local-time 0))))
 
 ;; TIMEZONE FIXME — not sure what timezone the results actually come back as
+;;
+;; Also, pretty sure Spark SQL doesn't have a TIME type anyway.
+;; https://spark.apache.org/docs/latest/sql-ref-datatypes.html
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIME]
   [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
@@ -271,8 +271,8 @@
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/DATE]
   [_ ^ResultSet rs _rsmeta ^Integer i]
   (fn []
-    (when-let [t (.getDate rs i)]
-      (t/zoned-date-time (t/local-date t) (t/local-time 0) (t/zone-id "UTC")))))
+    (when-let [s (.getString rs i)]
+      (u.date/parse s))))
 
 (defmethod sql-jdbc.execute/read-column-thunk [:hive-like Types/TIMESTAMP]
   [_ ^ResultSet rs _rsmeta ^Integer i]

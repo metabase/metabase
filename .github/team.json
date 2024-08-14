@@ -1,0 +1,70 @@
+{
+  "teams": [
+    {
+      "name": "Querying Components",
+      "label": ".Team/QueryingComponents",
+      "projectUrl": "https://github.com/orgs/metabase/projects/97/views/1",
+      "members": [
+        "ranquild",
+        "kamilmielnik",
+        "nemanjaglumac",
+        "romeovs"
+      ]
+    },
+    {
+      "name": "Embedding",
+      "label": ".Team/Embedding",
+      "projectUrl": "https://github.com/orgs/metabase/projects/88/views/1",
+      "members": ["WiNloSt", "deniskaber", "oisincoveney", "npretto", "heypoom"]
+    },
+    {
+      "name": "BEC",
+      "label": ".Team/BackendComponents",
+      "projectUrl": "https://github.com/orgs/metabase/projects/50/views/1",
+      "members": [
+        "tsmacdonald",
+        "qnkhuat",
+        "calherries",
+        "piranha",
+        "crisptrutski"
+      ]
+    },
+    {
+      "name": "Query Processor",
+      "label": ".Team/QueryProcessor",
+      "projectUrl": "https://github.com/orgs/metabase/projects/83/views/8",
+      "members": ["camsaul", "snoe", "bshepherdson", "metamben", "lbrdnk", "appleby"]
+    },
+    {
+      "name": "Admin Webapp",
+      "label": ".Team/AdminWebapp",
+      "members": [
+        "noahmoss",
+        "escherize",
+        "npfitz",
+        "johnswanson",
+        "rafpaf",
+        "sloansparger",
+        "iethree"
+      ]
+    },
+    {
+      "name": "DashViz",
+      "label": ".Team/DashViz",
+      "members": [
+        "alxnddr",
+        "EmmadUsmani",
+        "JesseSDevaney",
+        "kulyk",
+        "adam-james-v"
+      ]
+    },
+    {
+      "name": "DevEx",
+      "label": ".Team/DevEx",
+      "members": [
+        "uladzimirdev"
+      ]
+    }
+  ]
+}

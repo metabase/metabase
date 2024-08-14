@@ -1,0 +1,39 @@
+/*
+legend item needs to be in the scope in order to control the font size in
+fullscreen dashboard mode
+*/
+.LegendItem {
+  font-weight: bold;
+  transition: opacity 0.25s linear;
+  opacity: 1;
+}
+
+.LegendHeader {
+  margin-top: 0.25em;
+  margin-bottom: 0.25em;
+}
+
+.LegendItem.LegendItemMuted {
+  opacity: 0.4;
+}
+
+.Legend.none {
+  display: none;
+}
+
+.Legend.vertical {
+  display: flex;
+  flex-direction: column;
+  margin-right: 1em;
+}
+
+.Legend.horizontal {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-top: 1em;
+}
+
+.DashCard.LegendItem {
+  font-size: 12px;
+}

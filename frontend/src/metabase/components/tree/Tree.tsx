@@ -1,10 +1,12 @@
-import React, { useState, useCallback, useEffect } from "react";
-import _ from "underscore";
+import { useState, useCallback, useEffect } from "react";
+import * as React from "react";
 import { usePrevious } from "react-use";
-import { TreeNodeList } from "./TreeNodeList";
+import _ from "underscore";
+
 import { TreeNode as DefaultTreeNode } from "./TreeNode";
+import { TreeNodeList } from "./TreeNodeList";
+import type { ITreeNodeItem } from "./types";
 import { getInitialExpandedIds } from "./utils";
-import { ITreeNodeItem, TreeNodeComponent } from "./types";
 
 interface TreeProps {
   data: ITreeNodeItem[];
@@ -12,7 +14,7 @@ interface TreeProps {
   role?: string;
   emptyState?: React.ReactNode;
   onSelect?: (item: ITreeNodeItem) => void;
-  TreeNode?: TreeNodeComponent;
+  TreeNode?: any; // This was previously set to TreeNodeComponent, but after upgrading to react 18, the type no longer played nice with forward ref compontents, including styled components
 }
 
 function BaseTree({
@@ -43,7 +45,7 @@ function BaseTree({
   }, [prevData, data, selectedId, previousSelectedId, expandedIds]);
 
   const handleToggleExpand = useCallback(
-    itemId => {
+    (itemId: string | number) => {
       if (expandedIds.has(itemId)) {
         setExpandedIds(prev => new Set([...prev].filter(id => id !== itemId)));
       } else {

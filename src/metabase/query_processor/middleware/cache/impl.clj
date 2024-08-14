@@ -18,7 +18,7 @@
   (let [byte-count  (atom 0)
         check-total (fn [current-total]
                       (when (> current-total max-bytes)
-                        (log/info (trs "Results are too large to cache.") (u/emoji "😫"))
+                        (log/info "Results are too large to cache." (u/emoji "😫"))
                         (throw (ex-info (trs "Results are too large to cache.") {:type ::max-bytes}))))]
     (proxy [FilterOutputStream] [os]
       (write
@@ -43,7 +43,7 @@
 
 (nippy/extend-thaw :flatland/ordered-map
                    [data-input]
-                   (ordered-map/ordered-map-reader (nippy/thaw-from-in! data-input)))
+                   (ordered-map/ordered-map-reader-clj (nippy/thaw-from-in! data-input)))
 
 (defn- freeze!
   [^OutputStream os obj]

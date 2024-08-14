@@ -86,7 +86,7 @@ For more gory details, see [Limitations](#limitations).
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `convertTimezone` |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `convertTimezone` |
 | ------------------------------------------------------------------------------------------------ | ---------------------------- |
 | String                                                                                           | ❌                           |
 | Number                                                                                           | ❌                           |
@@ -96,7 +96,7 @@ For more gory details, see [Limitations](#limitations).
 
 We use "timestamp" and "datetime" to talk about any temporal data type that's supported by Metabase.
 
-If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Data Model page.
+If your timestamps are stored as strings or numbers in your database, an admin can [cast them to timestamps](../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type) from the Table Metadata page.
 
 To use `convertTimezone` without running into errors or pesky undetectable mistakes, you should know that there are a few varieties of `timestamp` data types:
 
@@ -116,12 +116,11 @@ Note that the first part of the timestamp is in UTC (same thing as GMT). The tim
 
 - Amazon Athena
 - Druid
-- Google Analytics
-- H2
 - MongoDB
 - Presto
 - SparkSQL
 - SQLite
+- Metabase Sample Database
 
 ### Notes on source time zones
 
@@ -244,6 +243,4 @@ convertTimezone(convertTimezone([Source Time], "UTC"), "Canada/Eastern", "UTC")
 
 - [Custom expressions documentation](../expressions.md)
 - [Custom expressions tutorial](https://www.metabase.com/learn/questions/custom-expressions)
-- [Time series comparisons](https://www.metabase.com/learn/questions/time-series-comparisons)
-- [How to compare one time period to another](https://www.metabase.com/learn/dashboards/compare-times)
-- [Working with dates in SQL](https://www.metabase.com/learn/sql-questions/dates-in-sql)
+- [Time series analysis](https://www.metabase.com/learn/time-series/start)

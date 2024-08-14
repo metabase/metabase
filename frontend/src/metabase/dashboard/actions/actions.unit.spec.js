@@ -1,6 +1,8 @@
 import { DashboardApi } from "metabase/services";
+import { createMockRoutingState } from "metabase-types/store/mocks/index";
 
 import { SIDEBAR_NAME } from "../constants";
+
 import {
   setSidebar,
   SET_SIDEBAR,
@@ -12,6 +14,8 @@ import {
   openAddQuestionSidebar,
   removeParameter,
   SET_DASHBOARD_ATTRIBUTES,
+  updateDashboardAndCards,
+  setEditingDashboard,
 } from "./index";
 
 DashboardApi.parameterSearch = jest.fn();
@@ -148,6 +152,75 @@ describe("dashboard actions", () => {
             parameters: getState().dashboard.dashboards[1].parameters,
           },
         },
+      });
+    });
+  });
+
+  describe("updateDashboardAndCards", () => {
+    it("should not save anything if the dashboard has not changed", async () => {
+      const dashboard = {
+        id: 1,
+        name: "Foo",
+        parameters: [],
+        dashcards: [
+          { id: 1, name: "Foo", card_id: 1 },
+          { id: 2, name: "Bar", card_id: 2 },
+        ],
+      };
+
+      const getState = () => ({
+        dashboard: {
+          editingDashboard: dashboard,
+          dashboardId: 1,
+          dashboards: {
+            1: {
+              ...dashboard,
+              dashcards: [1, 2],
+            },
+          },
+          dashcards: {
+            1: dashboard.dashcards[0],
+            2: dashboard.dashcards[1],
+          },
+        },
+      });
+
+      await updateDashboardAndCards()(dispatch, getState);
+
+      // if this is called only once, it means that the dashboard was not saved
+      expect(dispatch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe("setEditingDashboard", () => {
+    const getState = () => ({
+      routing: createMockRoutingState({
+        locationBeforeTransitions: {
+          pathname: "/dashboard/1",
+          hash: "#hashparam",
+        },
+      }),
+    });
+
+    it("should remove any hash parameters from url when not editing", () => {
+      setEditingDashboard(null)(dispatch, getState);
+
+      expect(dispatch).toHaveBeenCalledWith({
+        payload: {
+          args: [
+            {
+              action: "POP",
+              hash: "",
+              key: "",
+              pathname: "/dashboard/1",
+              query: {},
+              search: "",
+              state: undefined,
+            },
+          ],
+          method: "push",
+        },
+        type: "@@router/CALL_HISTORY_METHOD",
       });
     });
   });

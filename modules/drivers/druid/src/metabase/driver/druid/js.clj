@@ -61,7 +61,7 @@
 
 
 (defn or
-  "Interpose the JavaScript or operator (`||`) betwen `args`, and wrap the entire expression in parens.
+  "Interpose the JavaScript or operator (`||`) between `args`, and wrap the entire expression in parens.
 
      (or :x :y) -> \"(x || y)\""
   ^String [& args]

@@ -1,0 +1,1220 @@
+[
+  {
+    "card": {
+      "original_card_id": 186,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-04-23T20:41:04.338726Z",
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (df01716)",
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "visualization_settings": {
+        "table.cell_column": "SUBTOTAL",
+        "graph.dimensions": ["CREATED_AT"],
+        "graph.metrics": ["sum_3", "min_3", "max_3"]
+      },
+      "collection_preview": true,
+      "entity_id": "7LgC3kVdHRl8vLwelM_I-",
+      "display": "line",
+      "parameter_mappings": [],
+      "dataset_query": {
+        "database": 1,
+        "type": "query",
+        "query": {
+          "source-table": 5,
+          "aggregation": [
+            [
+              "avg",
+              [
+                "field",
+                38,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "sum",
+              [
+                "field",
+                38,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "min",
+              [
+                "field",
+                38,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "max",
+              [
+                "field",
+                38,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "avg",
+              [
+                "field",
+                44,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "sum",
+              [
+                "field",
+                44,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "min",
+              [
+                "field",
+                44,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "max",
+              [
+                "field",
+                44,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "avg",
+              [
+                "field",
+                42,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "sum",
+              [
+                "field",
+                42,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "min",
+              [
+                "field",
+                42,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "max",
+              [
+                "field",
+                42,
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ]
+          ],
+          "filter": [
+            "between",
+            [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime"
+              }
+            ],
+            "2023-09-01",
+            "2023-09-30"
+          ]
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-04-23T21:00:43.121275Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 236,
+      "type": "question",
+      "dashboard_count": 0,
+      "last_query_start": "2024-04-23T21:00:42.92887Z",
+      "query_type": "query",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "id": 41,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "display_name": "Average of Tax",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 0],
+          "name": "avg",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 2.6579479768786127,
+                "q1": 2.6579479768786127,
+                "q3": 2.6579479768786127,
+                "max": 2.6579479768786127,
+                "sd": null,
+                "avg": 2.6579479768786127
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Sum of Tax",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "sum",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 919.65,
+                "q1": 919.65,
+                "q3": 919.65,
+                "max": 919.65,
+                "sd": null,
+                "avg": 919.65
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Min of Tax",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 2],
+          "name": "min",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 0,
+                "q3": 0,
+                "max": 0,
+                "sd": null,
+                "avg": 0
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Max of Tax",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 3],
+          "name": "max",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 7.11,
+                "q1": 7.11,
+                "q3": 7.11,
+                "max": 7.11,
+                "sd": null,
+                "avg": 7.11
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Subtotal",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 4],
+          "name": "avg_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 53.04154817005059,
+                "q1": 53.04154817005059,
+                "q3": 53.04154817005059,
+                "max": 53.04154817005059,
+                "sd": null,
+                "avg": 53.04154817005059
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Sum of Subtotal",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 5],
+          "name": "sum_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 18352.375666837503,
+                "q1": 18352.375666837503,
+                "q3": 18352.375666837503,
+                "max": 18352.375666837503,
+                "sd": null,
+                "avg": 18352.375666837503
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Min of Subtotal",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 6],
+          "name": "min_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 15.691943673970439,
+                "q1": 15.691943673970439,
+                "q3": 15.691943673970439,
+                "max": 15.691943673970439,
+                "sd": null,
+                "avg": 15.691943673970439
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Max of Subtotal",
+          "semantic_type": null,
+          "settings": null,
+          "field_ref": ["aggregation", 7],
+          "name": "max_2",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 98.81933684368194,
+                "q1": 98.81933684368194,
+                "q3": 98.81933684368194,
+                "max": 98.81933684368194,
+                "sd": null,
+                "avg": 98.81933684368194
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Total",
+          "semantic_type": "type/Currency",
+          "settings": {
+            "currency": "BTC"
+          },
+          "field_ref": ["aggregation", 8],
+          "name": "avg_3",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 55.31539352496647,
+                "q1": 55.31539352496647,
+                "q3": 55.31539352496647,
+                "max": 55.31539352496647,
+                "sd": null,
+                "avg": 55.31539352496647
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Sum of Total",
+          "semantic_type": "type/Currency",
+          "settings": {
+            "currency": "BTC"
+          },
+          "field_ref": ["aggregation", 9],
+          "name": "sum_3",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 19139.126159638396,
+                "q1": 19139.126159638396,
+                "q3": 19139.126159638396,
+                "max": 19139.126159638396,
+                "sd": null,
+                "avg": 19139.126159638396
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Min of Total",
+          "semantic_type": "type/Currency",
+          "settings": {
+            "currency": "BTC"
+          },
+          "field_ref": ["aggregation", 10],
+          "name": "min_3",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 12.93166873225176,
+                "q1": 12.93166873225176,
+                "q3": 12.93166873225176,
+                "max": 12.93166873225176,
+                "sd": null,
+                "avg": 12.93166873225176
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Max of Total",
+          "semantic_type": "type/Currency",
+          "settings": {
+            "currency": "BTC"
+          },
+          "field_ref": ["aggregation", 11],
+          "name": "max_3",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 1,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 103.75933684368194,
+                "q1": 103.75933684368194,
+                "q3": 103.75933684368194,
+                "max": 103.75933684368194,
+                "sd": null,
+                "avg": 103.75933684368194
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 5,
+      "collection_position": null,
+      "archived": false,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [
+          "2023-09-01T00:00:00-03:00",
+          2.6579479768786127,
+          919.65,
+          0,
+          7.11,
+          53.04154817005059,
+          18352.375666837503,
+          15.691943673970439,
+          98.81933684368194,
+          55.31539352496647,
+          19139.126159638396,
+          12.93166873225176,
+          103.75933684368194
+        ]
+      ],
+      "cols": [
+        {
+          "description": "The date and time an order was submitted.",
+          "semantic_type": "type/CreationTimestamp",
+          "table_id": 5,
+          "coercion_strategy": null,
+          "unit": "month",
+          "name": "CREATED_AT",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": [
+            "field",
+            41,
+            {
+              "base-type": "type/DateTime",
+              "temporal-unit": "month"
+            }
+          ],
+          "effective_type": "type/DateTime",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 41,
+          "position": 7,
+          "visibility_type": "normal",
+          "display_name": "Created At",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 10001,
+              "nil%": 0
+            },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2022-04-30T18:56:13.352Z",
+                "latest": "2026-04-19T14:07:15.657Z"
+              }
+            }
+          },
+          "base_type": "type/DateTime"
+        },
+        {
+          "semantic_type": null,
+          "name": "avg",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "effective_type": "type/Float",
+          "aggregation_index": 0,
+          "display_name": "Average of Tax",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": null,
+          "name": "sum",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "effective_type": "type/Float",
+          "aggregation_index": 1,
+          "display_name": "Sum of Tax",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": null,
+          "name": "min",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 2],
+          "effective_type": "type/Float",
+          "aggregation_index": 2,
+          "display_name": "Min of Tax",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": null,
+          "name": "max",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 3],
+          "effective_type": "type/Float",
+          "aggregation_index": 3,
+          "display_name": "Max of Tax",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": null,
+          "name": "avg_2",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 4],
+          "effective_type": "type/Float",
+          "aggregation_index": 4,
+          "display_name": "Average of Subtotal",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": null,
+          "name": "sum_2",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 5],
+          "effective_type": "type/Float",
+          "aggregation_index": 5,
+          "display_name": "Sum of Subtotal",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": null,
+          "name": "min_2",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 6],
+          "effective_type": "type/Float",
+          "aggregation_index": 6,
+          "display_name": "Min of Subtotal",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": null,
+          "name": "max_2",
+          "settings": null,
+          "source": "aggregation",
+          "field_ref": ["aggregation", 7],
+          "effective_type": "type/Float",
+          "aggregation_index": 7,
+          "display_name": "Max of Subtotal",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": "type/Currency",
+          "name": "avg_3",
+          "settings": {
+            "currency": "BTC"
+          },
+          "source": "aggregation",
+          "field_ref": ["aggregation", 8],
+          "effective_type": "type/Float",
+          "aggregation_index": 8,
+          "display_name": "Average of Total",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": "type/Currency",
+          "name": "sum_3",
+          "settings": {
+            "currency": "BTC"
+          },
+          "source": "aggregation",
+          "field_ref": ["aggregation", 9],
+          "effective_type": "type/Float",
+          "aggregation_index": 9,
+          "display_name": "Sum of Total",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": "type/Currency",
+          "name": "min_3",
+          "settings": {
+            "currency": "BTC"
+          },
+          "source": "aggregation",
+          "field_ref": ["aggregation", 10],
+          "effective_type": "type/Float",
+          "aggregation_index": 10,
+          "display_name": "Min of Total",
+          "base_type": "type/Float"
+        },
+        {
+          "semantic_type": "type/Currency",
+          "name": "max_3",
+          "settings": {
+            "currency": "BTC"
+          },
+          "source": "aggregation",
+          "field_ref": ["aggregation", 11],
+          "effective_type": "type/Float",
+          "aggregation_index": 11,
+          "display_name": "Max of Total",
+          "base_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") AS \"CREATED_AT\", AVG(\"PUBLIC\".\"ORDERS\".\"TAX\") AS \"avg\", SUM(\"PUBLIC\".\"ORDERS\".\"TAX\") AS \"sum\", MIN(\"PUBLIC\".\"ORDERS\".\"TAX\") AS \"min\", MAX(\"PUBLIC\".\"ORDERS\".\"TAX\") AS \"max\", AVG(\"PUBLIC\".\"ORDERS\".\"SUBTOTAL\") AS \"avg_2\", SUM(\"PUBLIC\".\"ORDERS\".\"SUBTOTAL\") AS \"sum_2\", MIN(\"PUBLIC\".\"ORDERS\".\"SUBTOTAL\") AS \"min_2\", MAX(\"PUBLIC\".\"ORDERS\".\"SUBTOTAL\") AS \"max_2\", AVG(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"avg_3\", SUM(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"sum_3\", MIN(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"min_3\", MAX(\"PUBLIC\".\"ORDERS\".\"TOTAL\") AS \"max_3\" FROM \"PUBLIC\".\"ORDERS\" WHERE (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" >= timestamp '2023-09-01 00:00:00.000') AND (\"PUBLIC\".\"ORDERS\".\"CREATED_AT\" < timestamp '2023-10-01 00:00:00.000') GROUP BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ORDER BY DATE_TRUNC('month', \"PUBLIC\".\"ORDERS\".\"CREATED_AT\") ASC",
+        "params": null
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Pacific/Guam",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": "The date and time an order was submitted.",
+            "semantic_type": "type/CreationTimestamp",
+            "coercion_strategy": null,
+            "unit": "month",
+            "name": "CREATED_AT",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": [
+              "field",
+              41,
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "month"
+              }
+            ],
+            "effective_type": "type/DateTime",
+            "id": 41,
+            "visibility_type": "normal",
+            "display_name": "Created At",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 10001,
+                "nil%": 0
+              },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2022-04-30T18:56:13.352Z",
+                  "latest": "2026-04-19T14:07:15.657Z"
+                }
+              }
+            },
+            "base_type": "type/DateTime"
+          },
+          {
+            "display_name": "Average of Tax",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 0],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 2.6579479768786127,
+                  "q1": 2.6579479768786127,
+                  "q3": 2.6579479768786127,
+                  "max": 2.6579479768786127,
+                  "sd": null,
+                  "avg": 2.6579479768786127
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Tax",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "sum",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 919.65,
+                  "q1": 919.65,
+                  "q3": 919.65,
+                  "max": 919.65,
+                  "sd": null,
+                  "avg": 919.65
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Min of Tax",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 2],
+            "name": "min",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 0,
+                  "q3": 0,
+                  "max": 0,
+                  "sd": null,
+                  "avg": 0
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Max of Tax",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 3],
+            "name": "max",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 7.11,
+                  "q1": 7.11,
+                  "q3": 7.11,
+                  "max": 7.11,
+                  "sd": null,
+                  "avg": 7.11
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Subtotal",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 4],
+            "name": "avg_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 53.04154817005059,
+                  "q1": 53.04154817005059,
+                  "q3": 53.04154817005059,
+                  "max": 53.04154817005059,
+                  "sd": null,
+                  "avg": 53.04154817005059
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Subtotal",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 5],
+            "name": "sum_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 18352.375666837503,
+                  "q1": 18352.375666837503,
+                  "q3": 18352.375666837503,
+                  "max": 18352.375666837503,
+                  "sd": null,
+                  "avg": 18352.375666837503
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Min of Subtotal",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 6],
+            "name": "min_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 15.691943673970439,
+                  "q1": 15.691943673970439,
+                  "q3": 15.691943673970439,
+                  "max": 15.691943673970439,
+                  "sd": null,
+                  "avg": 15.691943673970439
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Max of Subtotal",
+            "semantic_type": null,
+            "settings": null,
+            "field_ref": ["aggregation", 7],
+            "name": "max_2",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 98.81933684368194,
+                  "q1": 98.81933684368194,
+                  "q3": 98.81933684368194,
+                  "max": 98.81933684368194,
+                  "sd": null,
+                  "avg": 98.81933684368194
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "BTC"
+            },
+            "field_ref": ["aggregation", 8],
+            "name": "avg_3",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 55.31539352496647,
+                  "q1": 55.31539352496647,
+                  "q3": 55.31539352496647,
+                  "max": 55.31539352496647,
+                  "sd": null,
+                  "avg": 55.31539352496647
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Sum of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "BTC"
+            },
+            "field_ref": ["aggregation", 9],
+            "name": "sum_3",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 19139.126159638396,
+                  "q1": 19139.126159638396,
+                  "q3": 19139.126159638396,
+                  "max": 19139.126159638396,
+                  "sd": null,
+                  "avg": 19139.126159638396
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Min of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "BTC"
+            },
+            "field_ref": ["aggregation", 10],
+            "name": "min_3",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 12.93166873225176,
+                  "q1": 12.93166873225176,
+                  "q3": 12.93166873225176,
+                  "max": 12.93166873225176,
+                  "sd": null,
+                  "avg": 12.93166873225176
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Max of Total",
+            "semantic_type": "type/Currency",
+            "settings": {
+              "currency": "BTC"
+            },
+            "field_ref": ["aggregation", 11],
+            "name": "max_3",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 1,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 103.75933684368194,
+                  "q1": 103.75933684368194,
+                  "q3": 103.75933684368194,
+                  "max": 103.75933684368194,
+                  "sd": null,
+                  "avg": 103.75933684368194
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": [
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "avg",
+          "slope": null,
+          "last-value": 2.6579479768786127,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "sum",
+          "slope": null,
+          "last-value": 919.65,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "min",
+          "slope": null,
+          "last-value": 0,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "max",
+          "slope": null,
+          "last-value": 7.11,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "avg_2",
+          "slope": null,
+          "last-value": 53.04154817005059,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "sum_2",
+          "slope": null,
+          "last-value": 18352.375666837503,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "min_2",
+          "slope": null,
+          "last-value": 15.691943673970439,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "max_2",
+          "slope": null,
+          "last-value": 98.81933684368194,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "avg_3",
+          "slope": null,
+          "last-value": 55.31539352496647,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "sum_3",
+          "slope": null,
+          "last-value": 19139.126159638396,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "min_3",
+          "slope": null,
+          "last-value": 12.93166873225176,
+          "best-fit": null
+        },
+        {
+          "previous-value": null,
+          "unit": "month",
+          "offset": null,
+          "last-change": null,
+          "col": "max_3",
+          "slope": null,
+          "last-value": 103.75933684368194,
+          "best-fit": null
+        }
+      ]
+    }
+  }
+]

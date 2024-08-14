@@ -1,15 +1,16 @@
-import React, { useEffect } from "react";
+import type { LocationDescriptor } from "history";
+import { useEffect } from "react";
 import { connect } from "react-redux";
+import type { Route } from "react-router";
 import { replace } from "react-router-redux";
 import _ from "underscore";
-import type { LocationDescriptor } from "history";
 
-import * as Urls from "metabase/lib/urls";
-import Actions from "metabase/entities/actions";
+import { skipToken, useGetActionQuery } from "metabase/api";
 import Models from "metabase/entities/questions";
+import * as Urls from "metabase/lib/urls";
 import { setErrorPage } from "metabase/redux/app";
-
-import type { Card, WritebackAction } from "metabase-types/api";
+import type Question from "metabase-lib/v1/Question";
+import type { WritebackAction } from "metabase-types/api";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 import ActionCreator from "../ActionCreator";
@@ -25,8 +26,12 @@ interface OwnProps {
 
 interface EntityLoaderProps {
   action?: WritebackAction;
-  model: Card;
+  model: Question;
   loading?: boolean;
+}
+
+interface RouteProps {
+  route: Route;
 }
 
 interface DispatchProps {
@@ -34,7 +39,10 @@ interface DispatchProps {
   onChangeLocation: (location: LocationDescriptor) => void;
 }
 
-type ActionCreatorModalProps = OwnProps & EntityLoaderProps & DispatchProps;
+type ActionCreatorModalProps = OwnProps &
+  EntityLoaderProps &
+  RouteProps &
+  DispatchProps;
 
 const mapDispatchToProps = {
   setErrorPage,
@@ -42,25 +50,31 @@ const mapDispatchToProps = {
 };
 
 function ActionCreatorModal({
-  action,
   model,
   params,
-  loading,
+  loading: isModelLoading,
+  route,
   onClose,
   setErrorPage,
   onChangeLocation,
 }: ActionCreatorModalProps) {
   const actionId = Urls.extractEntityId(params.actionId);
   const modelId = Urls.extractEntityId(params.slug);
-  const databaseId = model.database_id || model.dataset_query.database;
+  const databaseId = model.databaseId();
+
+  const { isLoading: isActionLoading, data: action } = useGetActionQuery(
+    actionId === undefined ? skipToken : { id: actionId },
+  );
+
+  const loading = isModelLoading || isActionLoading;
 
   useEffect(() => {
     if (loading === false) {
-      const notFound = params.actionId && !action;
+      const notFound = actionId && !action;
       const hasModelMismatch = action != null && action.model_id !== modelId;
 
       if (notFound || action?.archived) {
-        const nextLocation = Urls.modelDetail(model, "actions");
+        const nextLocation = Urls.modelDetail(model.card(), "actions");
         onChangeLocation(nextLocation);
       } else if (hasModelMismatch) {
         setErrorPage({ status: 404 });
@@ -79,24 +93,21 @@ function ActionCreatorModal({
       actionId={actionId}
       modelId={modelId}
       databaseId={databaseId}
+      route={route}
       onClose={onClose}
     />
   );
-}
-
-function getActionId(state: State, props: OwnProps) {
-  return Urls.extractEntityId(props.params.actionId);
 }
 
 function getModelId(state: State, props: OwnProps) {
   return Urls.extractEntityId(props.params.slug);
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Models.load({
     id: getModelId,
     entityAlias: "model",
   }),
-  Actions.load({ id: getActionId, loadingAndErrorWrapper: false }),
   connect(null, mapDispatchToProps),
 )(ActionCreatorModal);

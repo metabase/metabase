@@ -1,6 +1,6 @@
-import React from "react";
 import { t } from "ttag";
-import { TimelineIcon } from "./QuestionTimelineWidget.styled";
+
+import { ViewFooterButton } from "metabase/components/ViewFooterButton";
 
 export interface QuestionTimelineWidgetProps {
   className?: string;
@@ -16,11 +16,11 @@ const QuestionTimelineWidget = ({
   onCloseTimelines,
 }: QuestionTimelineWidgetProps): JSX.Element => {
   return (
-    <TimelineIcon
-      className={className}
-      name="calendar"
-      tooltip={t`Events`}
+    <ViewFooterButton
+      icon="calendar"
+      tooltipLabel={t`Events`}
       onClick={isShowingTimelineSidebar ? onCloseTimelines : onOpenTimelines}
+      className={className}
     />
   );
 };
@@ -35,4 +35,5 @@ QuestionTimelineWidget.shouldRender = ({
   return isTimeseries;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuestionTimelineWidget;

@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
 
 export const InfoBody = styled.div`
   display: flex;
@@ -8,7 +7,7 @@ export const InfoBody = styled.div`
 `;
 
 export const InfoTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.25rem;
   font-weight: 700;
   line-height: 1.5rem;
@@ -17,7 +16,7 @@ export const InfoTitle = styled.div`
 `;
 
 export const InfoMessage = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   text-align: center;
   margin-bottom: 2.5rem;
 `;

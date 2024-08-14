@@ -1,8 +1,11 @@
-import React, { Component } from "react";
+import cx from "classnames";
 import PropTypes from "prop-types";
+import { Component } from "react";
+import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
-import { formatQueryDescription } from "metabase-lib/queries/utils/description";
+import CS from "metabase/css/core/index.css";
+import { Icon } from "metabase/ui";
+
 import ObjectActionSelect from "./ObjectActionSelect";
 
 export default class SegmentItem extends Component {
@@ -14,28 +17,22 @@ export default class SegmentItem extends Component {
   render() {
     const { segment, onRetire } = this.props;
 
-    const description = formatQueryDescription(segment.query_description, {
-      sections: ["filter"],
-      jsx: true,
-    });
-
     return (
-      <tr className="mt1 mb3">
-        <td className="px1 py1 text-wrap">
-          <span className="flex align-center">
-            <Icon
-              {...segment.getIcon()}
-              size={12}
-              className="mr1 text-medium"
-            />
-            <span className="text-dark text-bold">{segment.name}</span>
+      <tr className={cx(CS.mt1, CS.mb3)}>
+        <td className={cx(CS.px1, CS.py1, CS.textWrap)}>
+          <span className={cx(CS.flex, CS.alignCenter)}>
+            <Icon name="segment" className={cx(CS.mr1, CS.textMedium)} />
+            <span className={cx(CS.textDark, CS.textBold)}>{segment.name}</span>
           </span>
         </td>
-        <td className="px1 py1 text-wrap">{description}</td>
-        <td className="px1 py1 text-centered">
+        <td className={cx(CS.px1, CS.py1, CS.textWrap)}>
+          {segment.definition_description}
+        </td>
+        <td className={cx(CS.px1, CS.py1, CS.textCentered)}>
           <ObjectActionSelect
             object={segment}
             objectType="segment"
+            objectTypeLocalized={t`Segment`}
             onRetire={onRetire}
           />
         </td>

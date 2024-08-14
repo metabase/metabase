@@ -1,0 +1,39 @@
+name: Is admin?
+description: null
+entity_id: 3CtVT_JDxNvMM5aFLtEHR
+created_at: '2023-06-15T01:41:47.345244Z'
+creator_id: internal@metabase.com
+display: scalar
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_users
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table: 0wVIfjBJWclD0lKeABYYl
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings: null
+  scalar.field: is_admin
+serdes/meta:
+- id: 3CtVT_JDxNvMM5aFLtEHR
+  label: is_admin_
+  model: Card
+initially_published_at: null
+metabase_version: null
+type: question

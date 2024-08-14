@@ -4,9 +4,9 @@
    [clojure.string :as str]
    [medley.core :as m]
    [metabase-enterprise.serialization.names :refer [fully-qualified-name]]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.schema.id :as lib.schema.id]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.models.card :refer [Card]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.dashboard-card :refer [DashboardCard]]
@@ -15,7 +15,6 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :as field :refer [Field]]
    [metabase.models.interface :as mi]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -25,7 +24,7 @@
    [metabase.models.user :refer [User]]
    [metabase.shared.models.visualization-settings :as mb.viz]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -36,6 +35,10 @@
   ;; version 2 - start adding namespace portion to /collections/ paths
   2)
 
+(def ^:dynamic *include-entity-id*
+  "If entity_id should be included in v1 serialization dump"
+  false)
+
 (def ^:private ^{:arglists '([form])} mbql-entity-reference?
   "Is given form an MBQL entity reference?"
   (partial mbql.normalize/is-clause? #{:field :field-id :fk-> :metric :segment}))
@@ -44,7 +47,7 @@
   [mbql]
   (-> mbql
       mbql.normalize/normalize-tokens
-      (mbql.u/replace
+      (lib.util.match/replace
         ;; `integer?` guard is here to make the operation idempotent
         [:field (id :guard integer?) opts]
         [:field (fully-qualified-name Field id) (mbql-id->fully-qualified-name opts)]
@@ -59,22 +62,19 @@
         {:source-field (id :guard integer?)}
         (assoc &match :source-field (fully-qualified-name Field id))
 
-        [:metric (id :guard integer?)]
-        [:metric (fully-qualified-name Metric id)]
-
         [:segment (id :guard integer?)]
         [:segment (fully-qualified-name Segment id)])))
 
 (defn- ids->fully-qualified-names
   [entity]
-  (mbql.u/replace entity
+  (lib.util.match/replace entity
     mbql-entity-reference?
     (mbql-id->fully-qualified-name &match)
 
     map?
     (as-> &match entity
       (m/update-existing entity :database (fn [db-id]
-                                            (if (= db-id mbql.s/saved-questions-virtual-database-id)
+                                            (if (= db-id lib.schema.id/saved-questions-virtual-database-id)
                                               "database/__virtual"
                                               (fully-qualified-name Database db-id))))
       (m/update-existing entity :card_id (partial fully-qualified-name Card)) ; attibutes that refer to db fields use _
@@ -101,10 +101,11 @@
   "Removes unneeded fields that can either be reconstructed from context or are meaningless
    (eg. :created_at)."
   [entity]
-  (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :location
+  (cond-> (dissoc entity :id :creator_id :created_at :updated_at :db_id :location :last_used_at
                   :dashboard_id :fields_hash :personal_owner_id :made_public_by_id :collection_id
-                  :pulse_id :result_metadata :entity_id)
-    (some #(instance? % entity) (map type [Metric Field Segment])) (dissoc :table_id)))
+                  :pulse_id :result_metadata :action_id)
+    (not *include-entity-id*)   (dissoc :entity_id)
+    (some #(instance? % entity) (map type [Field Segment])) (dissoc :table_id)))
 
 (defmulti ^:private serialize-one
   {:arglists '([instance])}
@@ -135,7 +136,7 @@
 
 (defn- convert-column-settings-key [k]
   (if-let [field-id (::mb.viz/field-id k)]
-    (-> (db/select-one Field :id field-id)
+    (-> (t2/select-one Field :id field-id)
         fully-qualified-name
         mb.viz/field-str->column-ref)
     k))
@@ -165,9 +166,9 @@
 
 (defn- convert-click-behavior [{:keys [::mb.viz/link-type ::mb.viz/link-target-id] :as click}]
   (-> (if-let [new-target-id (case link-type
-                               ::mb.viz/card      (-> (db/select-one Card :id link-target-id)
+                               ::mb.viz/card      (-> (t2/select-one Card :id link-target-id)
                                                       fully-qualified-name)
-                               ::mb.viz/dashboard (-> (db/select-one Dashboard :id link-target-id)
+                               ::mb.viz/dashboard (-> (t2/select-one Dashboard :id link-target-id)
                                                       fully-qualified-name)
                                nil)]
         (assoc click ::mb.viz/link-target-id new-target-id)
@@ -190,9 +191,9 @@
 
 (defn- dashboard-cards-for-dashboard
   [dashboard]
-  (let [dashboard-cards   (db/select DashboardCard :dashboard_id (u/the-id dashboard))
+  (let [dashboard-cards   (t2/select DashboardCard :dashboard_id (u/the-id dashboard))
         series            (when (not-empty dashboard-cards)
-                            (db/select DashboardCardSeries
+                            (t2/select DashboardCardSeries
                               :dashboardcard_id [:in (map u/the-id dashboard-cards)]))]
     (for [dashboard-card dashboard-cards]
       (-> dashboard-card
@@ -218,11 +219,11 @@
 (defmethod serialize-one Pulse
   [pulse]
   (assoc pulse
-    :cards    (for [card (db/select PulseCard :pulse_id (u/the-id pulse))]
+    :cards    (for [card (t2/select PulseCard :pulse_id (u/the-id pulse))]
                 (-> card
                     (dissoc :id :pulse_id)
                     (update :card_id (partial fully-qualified-name Card))))
-    :channels (for [channel (db/select PulseChannel :pulse_id (u/the-id pulse))]
+    :channels (for [channel (t2/select PulseChannel :pulse_id (u/the-id pulse))]
                 (strip-crud channel))))
 
 (defmethod serialize-one User

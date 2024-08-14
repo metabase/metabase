@@ -1,0 +1,12 @@
+.queryButton {
+  composes: textBrand py1 from "style";
+  text-decoration: none;
+  align-items: center;
+  display: flex;
+}
+
+.queryButtonText {
+  composes: ml2 from "style";
+  flex: 1 0 auto;
+  max-width: 100%;
+}

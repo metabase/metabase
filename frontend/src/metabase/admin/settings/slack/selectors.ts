@@ -1,6 +1,6 @@
 import { getSetting } from "metabase/selectors/settings";
-import type { State } from "metabase-types/store";
 import type { SlackSettings } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 export const getSlackSettings = (state: State): SlackSettings => {
   return {

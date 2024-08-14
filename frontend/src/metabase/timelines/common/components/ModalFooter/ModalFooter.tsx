@@ -1,4 +1,5 @@
-import React, { ReactNode } from "react";
+import type { ReactNode } from "react";
+
 import { FooterRoot } from "./ModalFooter.styled";
 
 export interface ModalFooterProps {
@@ -13,4 +14,5 @@ const ModalFooter = ({
   return <FooterRoot hasPadding={hasPadding}>{children}</FooterRoot>;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModalFooter;

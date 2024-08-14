@@ -1,11 +1,12 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
   getBinningButtonForDimension,
   summarize,
+  rightSidebar,
 } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { TIME_OPTIONS } from "./shared/constants";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -38,15 +39,12 @@ describe("scenarios > binning > correctness > time series", () => {
   });
 
   Object.entries(TIME_OPTIONS).forEach(
-    ([bucketSize, { selected, representativeValues }]) => {
-      // We are forced to ignore the case here because we construct titles like so:
-      // "Day of Month" (bucket) -> "Day of month" (title)
-      // This feels weird and is probably worth investigating further.
-      const titleRegex = new RegExp(`Count by Created At: ${bucketSize}`, "i");
-      const bucketRegex = new RegExp(bucketSize, "i");
-
+    ([bucketSize, { selected, isHiddenByDefault, representativeValues }]) => {
       it(`should return correct values for ${bucketSize}`, () => {
         popover().within(() => {
+          if (isHiddenByDefault) {
+            cy.button("More…").click();
+          }
           cy.findByText(bucketSize).click();
           cy.wait("@dataset");
         });
@@ -56,14 +54,14 @@ describe("scenarios > binning > correctness > time series", () => {
           isSelected: true,
         }).should("have.text", selected);
 
-        cy.findByText("Done").click();
+        rightSidebar().button("Done").click();
 
-        getTitle(titleRegex);
+        getTitle(`Count by Created At: ${bucketSize}`);
 
         assertOnHeaderCells(bucketSize);
         assertOnTableValues(representativeValues);
 
-        assertOnTimeSeriesFooter(bucketRegex);
+        assertOnTimeSeriesFooter(bucketSize);
       });
     },
   );
@@ -80,11 +78,8 @@ function getTitle(title) {
 }
 
 function assertOnHeaderCells(bucketSize) {
-  const headerRegex = new RegExp(`Created At: ${bucketSize}`, "i");
-
-  cy.get(".cellData").eq(0).contains(headerRegex);
-
-  cy.get(".cellData").eq(1).contains("Count");
+  cy.get("[data-testid=cell-data]").eq(0).contains(`Created At: ${bucketSize}`);
+  cy.get("[data-testid=cell-data]").eq(1).contains("Count");
 }
 
 function assertOnTableValues(values) {
@@ -93,13 +88,11 @@ function assertOnTableValues(values) {
   });
 }
 
-function assertOnTimeSeriesFooter(regex) {
-  cy.findAllByTestId("select-button-content")
-    .first()
+function assertOnTimeSeriesFooter(str) {
+  cy.findByTestId("timeseries-filter-button")
     .invoke("text")
-    .should("eq", "All Time");
-  cy.findAllByTestId("select-button-content")
-    .last()
+    .should("eq", "All time");
+  cy.findByTestId("timeseries-bucket-button")
     .invoke("text")
-    .should("match", regex);
+    .should("contain", str);
 }

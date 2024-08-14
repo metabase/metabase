@@ -11,7 +11,7 @@
    [metabase.util.files :as u.files]
    [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [yaml.core :as yaml])
+   [metabase.util.yaml :as yaml])
   (:import
    (java.io File)
    (java.nio.file Files Path)))
@@ -38,11 +38,11 @@
        (catch Throwable e
          (log/warn
           e
-          (trs "Metabase cannot use the plugins directory {0}" filename)
+          (format "Metabase cannot use the plugins directory %s" filename)
           "\n"
-          (trs "Please make sure the directory exists and that Metabase has permission to write to it.")
-          (trs "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR.")
-          (trs "Falling back to a temporary directory for now."))
+          "Please make sure the directory exists and that Metabase has permission to write to it."
+          "You can change the directory Metabase uses for modules by setting the environment variable MB_PLUGINS_DIR."
+          "Falling back to a temporary directory for now.")
          ;; Check whether the fallback temporary directory is writable. If it's not, there's no way for us to
          ;; gracefully proceed here. Throw an Exception detailing the critical issues.
          (let [path (u.files/get-path (System/getProperty "java.io.tmpdir"))]
@@ -114,12 +114,12 @@
                             ;; if different JARs with `metabase` packages have different signing keys. Go ahead and
                             ;; ignore it but let people know they can get rid of it.
                             (log/warn
-                             (trs "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory."))))]
+                             "spark-deps.jar is no longer needed by Metabase 0.32.0+. You can delete it from the plugins directory.")))]
     path))
 
 (when (or config/is-dev? config/is-test?)
   (defn- load-local-plugin-manifest! [^Path path]
-    (some-> (slurp (str path)) yaml.core/parse-string plugins.init/init-plugin-with-info!))
+    (some-> (slurp (str path)) yaml/parse-string plugins.init/init-plugin-with-info!))
 
   (defn- driver-manifest-paths
     "Return a sequence of [[java.io.File]] paths for `metabase-plugin.yaml` plugin manifests for drivers on the classpath."
@@ -149,7 +149,7 @@
     []
     ;; TODO - this should probably do an actual search in case we ever add any additional directories
     (doseq [manifest-path (driver-manifest-paths)]
-      (log/info (trs "Loading local plugin manifest at {0}" (str manifest-path)))
+      (log/infof "Loading local plugin manifest at %s" (str manifest-path))
       (load-local-plugin-manifest! manifest-path))))
 
 (defn- has-manifest? ^Boolean [^Path path]
@@ -165,10 +165,10 @@
     (try
       (init-plugin! path)
       (catch Throwable e
-        (log/error e (trs "Failied to initialize plugin {0}" (.getFileName path)))))))
+        (log/errorf e "Failied to initialize plugin %s" (.getFileName path))))))
 
 (defn- load! []
-  (log/info (trs "Loading plugins in {0}..." (str (plugins-dir))))
+  (log/infof "Loading plugins in %s..." (str (plugins-dir)))
   (extract-system-modules!)
   (let [paths (plugins-paths)]
     (init-plugins! paths))

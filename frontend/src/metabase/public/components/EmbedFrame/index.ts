@@ -1,1 +1,2 @@
-export { default } from "./EmbedFrame";
+export { EmbedFrame } from "./EmbedFrame";
+export { SyncedEmbedFrame } from "./SyncedEmbedFrame";

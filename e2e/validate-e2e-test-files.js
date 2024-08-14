@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 const { execSync } = require("child_process");
 
-const path = require("path");
-const glob = require("glob");
 const chalk = require("chalk");
+const glob = require("glob");
+const path = require("path");
 
-const E2E_FILE_EXTENSION = ".cy.spec.js";
+const E2E_FILE_EXTENSION = /\.cy\.spec\.(js|ts)$/;
 const E2E_HOME = "e2e/test/";
 
 init();
@@ -16,7 +16,7 @@ function validateE2EFileNames(files) {
   }
 
   const invalidFileNames = files.filter(fullPath => {
-    return !path.basename(fullPath).endsWith(E2E_FILE_EXTENSION);
+    return !path.basename(fullPath).match(E2E_FILE_EXTENSION);
   });
 
   printFeedback(invalidFileNames);
@@ -36,7 +36,7 @@ function validateAllFiles() {
 
 function getAllE2EFiles() {
   // Will match all files in the scenarios dir, except the ones in helpers and shared directories
-  const PATTERN = `${E2E_HOME}*/{*.js,!(helpers|shared)/*.js}`;
+  const PATTERN = `${E2E_HOME}*/{*.(js|ts),!(helpers|shared)/*.(js|ts)}`;
 
   return glob.sync(PATTERN);
 }
@@ -67,7 +67,7 @@ function printHints() {
     `• Please make sure E2E specs have '${E2E_FILE_EXTENSION}' file extension.`,
   );
   console.log(
-    `• You can place helpers and support files in 'helpers' or 'support' directories.`,
+    "• You can place helpers and support files in 'helpers' or 'support' directories.",
   );
   console.log(
     "- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -",

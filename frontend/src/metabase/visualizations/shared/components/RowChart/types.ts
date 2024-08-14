@@ -1,5 +1,6 @@
-import { StringLike } from "@visx/scale";
-import { AxisStyle, ChartFont, GoalStyle } from "../../types/style";
+import type { StringLike } from "@visx/scale";
+
+import type { AxisStyle, ChartFont, GoalStyle } from "../../types/style";
 
 export type XValue = number | null;
 export type YValue = string | number | boolean | null;

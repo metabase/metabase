@@ -6,17 +6,14 @@ redirect_from:
 
 # Overview of premium features
 
-Metabase's [Enterprise and Pro](https://www.metabase.com/pricing) plans provide additional features that help organizations scale Metabase and deliver self-service, embedded analytics.
+Metabase's [Enterprise and Pro](https://www.metabase.com/pricing) plans provide additional features that help organizations scale Metabase and deliver self-service internal or embedded analytics.
 
-## Setting up
-
-Metabase Pro is hosted, so you should already be setup with all the paid features, but you may have to activate a Metabase Enterprise edition to access all the features.
-
-- [Getting and activating the Enterprise edition](activating-the-enterprise-edition.md)
+- **If you're on Metabase Cloud**, your Pro/Enterprise features will activate automatically.
+- **If you're self-hosting,** you'll need to [activate your license](./activating-the-enterprise-edition.md).
 
 ## Authentication
 
-Paid plans include more ways to authenticate people and manage groups.
+Pro and Enterprise plans include more ways to authenticate people and manage groups.
 
 - [Authenticating with SAML](../people-and-groups/authenticating-with-saml.md)
   - [Setting up SAML with Auth0](../people-and-groups/saml-auth0.md)
@@ -25,62 +22,83 @@ Paid plans include more ways to authenticate people and manage groups.
   - [Setting up SAML with Keycloak](../people-and-groups/saml-keycloak.md)
   - [Setting up SAML with Okta](../people-and-groups/saml-okta.md)
 - [Authenticating with JWT](../people-and-groups/authenticating-with-jwt.md)
+- [Multiple domains with Google Sign-in](../people-and-groups/google-and-ldap.md#multiple-domains-for-google-sign-in)
 
 ## Permissions
 
-Paid plans include more ways to manage permissions, including data sandboxing, which brings row and column-level permissions to Metabase.
+Pro and Enterprise plans include more ways to manage permissions, including data sandboxing, which brings row and column-level permissions to Metabase.
 
 - [Data sandboxes](../permissions/data-sandboxes.md)
-- [Block permissions](../permissions/data.md#block-access)
+- [Blocked view data permissions](../permissions/data.md#blocked-view-data-permission)
 - [SQL snippet folder permissions](../permissions/snippets.md)
 - [Application permissions](../permissions/application.md)
+- [Download permissions](../permissions/data.md#download-results-permissions)
+- [Connection impersonation](../permissions/data.md#impersonated-view-data-permission)
+- [Database management permissions](../permissions/data.md#manage-database-permissions)
+- [Table metadata management permissions](../permissions/data.md#manage-table-metadata-permissions)
 
-## Embedding
+## People and group management
+
+- [Group managers](../people-and-groups/managing.md#group-managers)
+
+## Interactive embedding
 
 You can embed all of Metabase in your app.
 
-- [Embedding the entire Metabase app in your app](../embedding/full-app-embedding.md)
+- [Embedding the entire Metabase app in your app](../embedding/interactive-embedding.md)
 - [Customizing Metabase's appearance](../configuring-metabase/appearance.md)
 
-## Dashboard subscription customization
+## Dashboard subscription and alert customization
 
-Send different groups of people the contents of the dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber.
+### Custom filter values
+
+Send different groups of people the contents of a dashboard with different filters applied. You only need to maintain one dashboard, which you can use to send results relevant to each subscriber.
 
 - [Customizing filter values for each dashboard subscription](../dashboards/subscriptions.md)
 
-## Restrict which domains people can send alerts and subscriptions to
+### Restrict which domains people can send alerts and subscriptions to
 
 As an additional security layer, you can whitelist domains, which restricts people from sending alerts and subscriptions to email addresses that don't use an approved domain.
 
-- [Approved domains for notifications](../configuring-metabase/settings.md#approved-domains-for-notifications)
+- [Approved domains for notifications](../configuring-metabase/email.md#approved-domains-for-notifications)
 
-## Official collections
+### Suggest recipients on dashboard subscriptions and alerts
 
-You can mark certain collections as [official](../exploration-and-organization/collections.md#official-collections), which helps people find your most important questions, dashboards, and models.
+You can also control which recipients Metabase suggests when people create dashboard subscriptions and alert.
 
-## Question moderation
+- [Recipient suggestion controls](../configuring-metabase/email.md#suggest-recipients-on-dashboard-subscriptions-and-alerts)
 
-People can ask administrators to verify their questions and models.
+## Content moderation tools
 
+Tools for keeping your Metabase organized, so people can find your most important, verified items.
+
+- [Official collections](../exploration-and-organization/collections.md#official-collections)
 - [Verified items](../exploration-and-organization/exploration.md#verified-items)
 
 ## Advanced caching controls
 
-All Metabase editions include global caching controls. Paid plans includes additional caching options that let you control caching for individual questions.
+All Metabase editions include global caching controls. Pro and Enterprise plans includes additional caching options that let you control caching for individual questions.
 
-- [Caching controls for individual questions](../questions/sharing/answers.md#caching-results)
+- [Caching questions](../configuring-metabase/caching.md#question-caching-policy)
+- [Caching dashboards](../configuring-metabase/caching.md#dashboard-caching-policy)
+- [Caching databases](../configuring-metabase/caching.md#database-caching-policy)
 
-## Auditing
+## Model persistence for individual models
+
+- [Toggle persistence for individual models](../data-modeling/model-persistence.md#turn-on-model-persistence-for-individual-models)
+
+## Usage analytics
 
 See how people are using your Metabase.
 
-- [Using the audit logs](../usage-and-performance-tools/audit.md)
+- [Metabase analytics](../usage-and-performance-tools/usage-analytics.md)
 
 ## Admin tools
 
 See which queries are failing to help keep your Metabase tidy.
 
 - [Tracking query errors](../usage-and-performance-tools/tools.md)
+- [Deleting uploaded tables](../databases/uploads.md#deleting-tables-created-by-uploads)
 
 ## Serialization
 

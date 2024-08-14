@@ -1,7 +1,7 @@
-import React from "react";
-import { t } from "ttag";
 import PropTypes from "prop-types";
-import { PLUGIN_MODERATION } from "metabase/plugins";
+import { t } from "ttag";
+
+import { CollectionIcon } from "./CollectionIcon";
 import { HeaderRoot, HeaderTitle } from "./SavedQuestionHeaderButton.styled";
 
 SavedQuestionHeaderButton.propTypes = {
@@ -14,13 +14,17 @@ function SavedQuestionHeaderButton({ question, onSave }) {
   return (
     <HeaderRoot>
       <HeaderTitle
-        isDisabled={!question.canWrite()}
+        isDisabled={!question.canWrite() || question.isArchived()}
         initialValue={question.displayName()}
         placeholder={t`Add title`}
         onChange={onSave}
         data-testid="saved-question-header-title"
       />
-      <PLUGIN_MODERATION.QuestionModerationIcon question={question} />
+
+      <CollectionIcon
+        collection={question?._card?.collection}
+        question={question}
+      />
     </HeaderRoot>
   );
 }

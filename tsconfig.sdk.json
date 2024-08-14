@@ -1,0 +1,36 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "./resources/embedding-sdk/dist",
+    "paths": {
+      "*": [
+        "./frontend/src/*",
+        "./frontend/test/*",
+        "./enterprise/frontend/src/*",
+        "./enterprise/frontend/test/*"
+      ],
+      "cljs/*": ["./target/cljs_release/*"]
+    }
+  },
+  "include": [
+    "frontend/src/**/*.ts",
+    "frontend/src/**/*.tsx",
+    "enterprise/frontend/src/**/*.ts",
+    "enterprise/frontend/src/**/*.tsx"
+  ],
+  "exclude": [
+    "node_modules",
+    "**/*.unit.spec.*",
+    "**/mocks/*",
+    "**/tests/*",
+    "**/test/*",
+    "**/__support__/*",
+    "**/test-utils.ts",
+    "**/test-utils.tsx",
+    "**/test-helpers.ts",
+    "**/testMocks.ts",
+    "**/*.stories.tsx"
+  ]
+}

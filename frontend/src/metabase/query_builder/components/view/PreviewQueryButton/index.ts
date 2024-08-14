@@ -1,1 +1,1 @@
-export { default } from "./PreviewQueryButton";
+export * from "./PreviewQueryButton";

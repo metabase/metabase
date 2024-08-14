@@ -1,11 +1,8 @@
-import React from "react";
-
 import type { FieldSettings } from "metabase-types/api";
 
-import { OptionPopover } from "./OptionEditor";
 import { FieldSettingsPopover } from "./FieldSettingsPopover";
-
 import { FieldSettingsButtonsContainer } from "./FormCreator.styled";
+import { OptionPopover } from "./OptionEditor";
 
 export function FieldSettingsButtons({
   fieldSettings,
@@ -32,6 +29,7 @@ export function FieldSettingsButtons({
     <FieldSettingsButtonsContainer>
       {hasOptions && (
         <OptionPopover
+          fieldType={fieldSettings.fieldType}
           options={fieldSettings.valueOptions ?? []}
           onChange={updateOptions}
         />

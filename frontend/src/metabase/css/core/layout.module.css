@@ -1,0 +1,96 @@
+/* When converting to styled components, use FullWidthContainer */
+.wrapper {
+  width: 100%;
+  margin: 0 auto;
+  padding: 0 1em;
+}
+
+@media screen and (--breakpoint-min-sm) {
+  .wrapper {
+    padding-left: 2em;
+    padding-right: 2em;
+  }
+}
+
+@media screen and (--breakpoint-min-md) {
+  .wrapper {
+    padding-left: 3em;
+    padding-right: 3em;
+  }
+}
+
+/* set height full relative to the parent */
+.fullHeight {
+  height: 100%;
+}
+
+/* display utilities */
+.block {
+  display: block;
+}
+
+.inline {
+  display: inline;
+}
+
+.inlineBlock {
+  display: inline-block;
+}
+
+.full,
+.fullWidth {
+  width: 100%;
+}
+
+.half {
+  width: 50%;
+}
+
+/* position utilities */
+.fixed {
+  position: fixed;
+}
+
+.relative {
+  position: relative;
+}
+
+.absolute {
+  position: absolute;
+}
+
+.top {
+  top: 0;
+}
+
+.right {
+  right: 0;
+}
+
+.bottom {
+  bottom: 0;
+}
+
+.left {
+  left: 0;
+}
+
+@media screen and (--breakpoint-min-md) {
+  .wrapper.wrapperTrim {
+    max-width: 940px;
+  }
+}
+
+/* fully fit the parent element - use as a base for app-y pages like QB or settings */
+.spread {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+/* force a stacking context for adding z-index to children */
+.stackingContext {
+  transform: scale(1);
+}

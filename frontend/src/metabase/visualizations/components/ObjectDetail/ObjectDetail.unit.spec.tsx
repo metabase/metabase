@@ -1,253 +1,190 @@
-import React from "react";
-import { render, screen } from "@testing-library/react";
+import fetchMock from "fetch-mock";
 
-import testDataset from "__support__/testDataset";
 import {
-  ObjectDetailFn as ObjectDetail,
-  ObjectDetailHeader,
-  ObjectDetailBody,
-  ObjectDetailWrapper,
-} from "./ObjectDetail";
+  setupActionsEndpoints,
+  setupDatabasesEndpoints,
+  setupTableEndpoints,
+} from "__support__/server-mocks";
+import { createMockEntitiesState } from "__support__/store";
+import { testDataset } from "__support__/testDataset";
+import {
+  getBrokenUpTextMatcher,
+  renderWithProviders,
+  screen,
+} from "__support__/ui";
+import { checkNotNull } from "metabase/lib/types";
+import type { Field } from "metabase-types/api";
+import { createMockCard, createMockDataset } from "metabase-types/api/mocks";
+import {
+  PRODUCTS_ID,
+  SAMPLE_DB_ID,
+  createOrdersTable,
+  createProductsTable,
+  createReviewsTable,
+} from "metabase-types/api/mocks/presets";
+import {
+  createMockQueryBuilderState,
+  createMockState,
+} from "metabase-types/store/mocks";
 
-describe("Object Detail", () => {
-  it("renders an object detail header", () => {
-    render(
-      <ObjectDetailHeader
-        canZoom={false}
-        objectName="Large Sandstone Socks"
-        objectId={778}
-        canZoomNextRow={false}
-        canZoomPreviousRow={false}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-    expect(screen.getByText(/Large Sandstone Socks/i)).toBeInTheDocument();
-    expect(screen.getByText(/778/i)).toBeInTheDocument();
+import ObjectDetail from "./ObjectDetail";
+
+const PRODUCTS_TABLE = createProductsTable();
+const ORDERS_TABLE = createOrdersTable();
+const HIDDEN_ORDERS_TABLE = createOrdersTable({
+  visibility_type: "hidden",
+});
+const REVIEWS_TABLE = createReviewsTable();
+
+const PRODUCTS_RECORD_RELATED_ORDERS_COUNT = 93;
+const PRODUCTS_RECORD_RELATED_REVIEWS_COUNT = 8;
+
+interface SetupOpts {
+  hideOrdersTable?: boolean;
+}
+
+function setup({ hideOrdersTable = false }: SetupOpts = {}) {
+  setupDatabasesEndpoints([]);
+  setupActionsEndpoints([]);
+  const productsId = checkNotNull(findField(PRODUCTS_TABLE.fields, "ID"));
+  const ordersProductId = checkNotNull(
+    findField(ORDERS_TABLE.fields, "PRODUCT_ID"),
+  );
+  const reviewsProductId = checkNotNull(
+    findField(REVIEWS_TABLE.fields, "PRODUCT_ID"),
+  );
+  setupTableEndpoints(PRODUCTS_TABLE, [
+    {
+      origin: ordersProductId,
+      origin_id: ordersProductId.id as number,
+      destination: productsId,
+      destination_id: productsId.id as number,
+      relationship: "Mt1",
+    },
+    {
+      origin: reviewsProductId,
+      origin_id: reviewsProductId.id as number,
+      destination: productsId,
+      destination_id: productsId.id as number,
+      relationship: "Mt1",
+    },
+  ]);
+  setupForeignKeyCountQueryEndpoints();
+
+  const ROW_ID_INDEX = 0;
+  const state = createMockState({
+    entities: createMockEntitiesState({
+      tables: [
+        PRODUCTS_TABLE,
+        hideOrdersTable ? HIDDEN_ORDERS_TABLE : ORDERS_TABLE,
+        REVIEWS_TABLE,
+      ],
+    }),
+    qb: createMockQueryBuilderState({
+      card: createMockCard({
+        dataset_query: {
+          database: SAMPLE_DB_ID,
+          type: "query",
+          query: {
+            "source-table": PRODUCTS_ID,
+          },
+        },
+      }),
+      zoomedRowObjectId: testDataset.rows[0][ROW_ID_INDEX] as string,
+      queryResults: [
+        createMockDataset({
+          data: testDataset,
+        }),
+      ],
+    }),
   });
+  renderWithProviders(
+    <ObjectDetail
+      data={testDataset}
+      settings={{}}
+      isObjectDetail
+      onVisualizationClick={jest.fn()}
+      visualizationIsClickable={jest.fn()}
+    />,
+    {
+      storeInitialState: state,
+    },
+  );
+}
 
-  it("renders an object detail header with enabled next object button and disabled previous object button", () => {
-    render(
-      <ObjectDetailHeader
-        canZoom={true}
-        objectName="Large Sandstone Socks"
-        objectId={778}
-        canZoomNextRow={true}
-        canZoomPreviousRow={false}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-    const nextDisabled = screen
-      .getByTestId("view-next-object-detail")
-      .getAttribute("disabled");
+function setupForeignKeyCountQueryEndpoints() {
+  fetchMock.post(
+    {
+      name: "ordersCountQuery",
+      url: "path:/api/dataset",
+      matchPartialBody: true,
+      body: {
+        query: { "source-table": ORDERS_TABLE.id },
+      },
+    },
+    createMockDataset({
+      status: "completed",
+      data: {
+        rows: [[PRODUCTS_RECORD_RELATED_ORDERS_COUNT]],
+      },
+    }),
+  );
+  fetchMock.post(
+    {
+      name: "reviewsCountQuery",
+      url: "path:/api/dataset",
+      matchPartialBody: true,
+      body: {
+        query: { "source-table": REVIEWS_TABLE.id },
+      },
+    },
+    createMockDataset({
+      status: "completed",
+      data: {
+        rows: [[PRODUCTS_RECORD_RELATED_REVIEWS_COUNT]],
+      },
+    }),
+  );
+}
 
-    const prevDisabled = screen
-      .getByTestId("view-previous-object-detail")
-      .getAttribute("disabled");
+function findField(fields: Field[] | undefined, name: string) {
+  return fields?.find(field => field.name === name);
+}
 
-    expect(nextDisabled).toBeNull();
-    expect(prevDisabled).not.toBeNull();
-  });
+describe("ObjectDetail", () => {
+  it("should render foreign key count when no table is hidden", async () => {
+    setup();
 
-  it("renders an object detail body", () => {
-    render(
-      <ObjectDetailBody
-        data={testDataset as any}
-        objectName="Large Sandstone Socks"
-        zoomedRow={testDataset.rows[2]}
-        settings={{
-          column: () => null,
-        }}
-        hasRelationships={false}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={{}}
-        followForeignKey={() => null}
-      />,
-    );
-
-    expect(screen.getByText("Synergistic Granite Chair")).toBeInTheDocument();
-    expect(screen.getByText("Doohickey")).toBeInTheDocument();
-  });
-
-  it("renders an object detail component", () => {
-    render(
-      <ObjectDetail
-        data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
-        table={
-          {
-            objectName: () => "Product",
-          } as any
-        }
-        zoomedRow={testDataset.rows[0]}
-        zoomedRowID={0}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={[]}
-        settings={{
-          column: () => null,
-        }}
-        showHeader
-        canZoom={true}
-        canZoomPreviousRow={false}
-        canZoomNextRow={false}
-        followForeignKey={() => null}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        fetchTableFks={() => null}
-        loadObjectDetailFKReferences={() => null}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-
-    expect(screen.getByText(/Product/i)).toBeInTheDocument();
     expect(
-      screen.getByText(testDataset.rows[0][2].toString()),
+      await screen.findByText(
+        getBrokenUpTextMatcher(
+          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
+        ),
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(testDataset.rows[0][3].toString()),
+      await screen.findByText(
+        getBrokenUpTextMatcher(
+          [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
+        ),
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("should render related objects count only for foreign keys referencing non-hidden tables (metabase#32654)", async () => {
+    setup({ hideOrdersTable: true });
+
+    expect(
+      await screen.findByText(
+        getBrokenUpTextMatcher(
+          [PRODUCTS_RECORD_RELATED_REVIEWS_COUNT, "Reviews"].join(""),
+        ),
+      ),
     ).toBeInTheDocument();
     expect(
-      screen.getByText(testDataset.rows[0][4].toString()),
-    ).toBeInTheDocument();
-  });
-
-  it("renders an object detail with a paginator", () => {
-    render(
-      <ObjectDetailWrapper
-        data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
-        table={
-          {
-            objectName: () => "Product",
-          } as any
-        }
-        zoomedRow={testDataset.rows[0]}
-        zoomedRowID={0}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={[]}
-        settings={{
-          column: () => null,
-        }}
-        showHeader
-        canZoom={true}
-        canZoomPreviousRow={false}
-        canZoomNextRow={false}
-        followForeignKey={() => null}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        fetchTableFks={() => null}
-        loadObjectDetailFKReferences={() => null}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-
-    expect(screen.getByText(/Item 1 of 10/i)).toBeInTheDocument();
-  });
-
-  it("shows object detail header", () => {
-    render(
-      <ObjectDetailWrapper
-        data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
-        table={
-          {
-            objectName: () => "Product",
-          } as any
-        }
-        zoomedRow={testDataset.rows[0]}
-        zoomedRowID={0}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={[]}
-        settings={{
-          column: () => null,
-          "detail.showHeader": true,
-        }}
-        canZoom={true}
-        canZoomPreviousRow={false}
-        canZoomNextRow={false}
-        followForeignKey={() => null}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        fetchTableFks={() => null}
-        loadObjectDetailFKReferences={() => null}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-
-    expect(screen.getByText(/Product/i)).toBeInTheDocument();
-  });
-
-  it("hides object detail header", () => {
-    render(
-      <ObjectDetailWrapper
-        data={testDataset as any}
-        question={
-          {
-            displayName: () => "Product",
-            database: () => ({
-              getPlainObject: () => ({}),
-            }),
-          } as any
-        }
-        table={
-          {
-            objectName: () => "Product",
-          } as any
-        }
-        zoomedRow={testDataset.rows[0]}
-        zoomedRowID={0}
-        tableForeignKeys={[]}
-        tableForeignKeyReferences={[]}
-        settings={{
-          column: () => null,
-          "detail.showHeader": false,
-        }}
-        canZoom={true}
-        canZoomPreviousRow={false}
-        canZoomNextRow={false}
-        followForeignKey={() => null}
-        onVisualizationClick={() => null}
-        visualizationIsClickable={() => false}
-        fetchTableFks={() => null}
-        loadObjectDetailFKReferences={() => null}
-        viewPreviousObjectDetail={() => null}
-        viewNextObjectDetail={() => null}
-        closeObjectDetail={() => null}
-      />,
-    );
-
-    expect(screen.queryByText(/Product/i)).not.toBeInTheDocument();
+      screen.queryByText(
+        [PRODUCTS_RECORD_RELATED_ORDERS_COUNT, "Orders"].join(""),
+      ),
+    ).not.toBeInTheDocument();
   });
 });

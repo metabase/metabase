@@ -1,4 +1,4 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 
 import { explainCronExpression as _explainCronExpression } from "metabase/lib/cron";
@@ -36,4 +36,5 @@ function CustomScheduleExplainer({
   return <Description>{explanation}</Description>;
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CustomScheduleExplainer;

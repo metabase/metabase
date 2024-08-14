@@ -5,10 +5,23 @@
    [metabase.util.i18n :refer [tru]]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms]
-   [toucan.db :as db]
-   [toucan.models :as models]))
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
 
-(models/defmodel ParameterCard :parameter_card)
+;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
+(def ParameterCard
+  "Used to be the toucan1 model name defined using [[toucan.models/defmodel]], not it's a reference to the toucan2 model name.
+  We'll keep this till we replace all these symbols in our codebase."
+  :model/ParameterCard)
+
+(methodical/defmethod t2/table-name :model/ParameterCard [_model] :parameter_card)
+
+(doto :model/ParameterCard
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
+
+(t2/deftransforms :model/ParameterCard
+ {:parameterized_object_type mi/transform-keyword})
 
 (defonce ^{:doc "Set of valid parameterized_object_type for a ParameterCard"}
   valid-parameterized-object-type #{"dashboard" "card"})
@@ -19,25 +32,16 @@
     (throw (ex-info (tru "invalid parameterized_object_type")
                     {:allowed-types valid-parameterized-object-type}))))
 
-;;; ----------------------------------------------- Entity & Lifecycle -----------------------------------------------
-
-(defn- pre-insert
+(t2/define-before-insert :model/ParameterCard
   [pc]
   (u/prog1 pc
     (validate-parameterized-object-type pc)))
 
-(defn- pre-update
+(t2/define-before-update :model/ParameterCard
   [pc]
-  (u/prog1 pc
-    (validate-parameterized-object-type pc)))
-
-(mi/define-methods
- ParameterCard
- {:properties (constantly {::mi/timestamped? true
-                           ::mi/entity-id    true})
-  :types      (constantly {:parameterized_object_type :keyword})
-  :pre-insert pre-insert
-  :pre-update pre-update})
+  (u/prog1 (t2/changes pc)
+    (when (:parameterized_object_type <>)
+      (validate-parameterized-object-type <>))))
 
 (defn delete-all-for-parameterized-object!
   "Delete all ParameterCard for a give Parameterized Object and NOT listed in the optional
@@ -50,7 +54,7 @@
                              :parameterized_object_id parameterized-object-id]
                             (when (seq parameter-ids-still-in-use)
                               [:parameter_id [:not-in parameter-ids-still-in-use]]))]
-     (apply db/delete! ParameterCard conditions))))
+     (apply t2/delete! ParameterCard conditions))))
 
 (defn- upsert-from-parameters!
   [parameterized-object-type parameterized-object-id parameters]
@@ -59,14 +63,14 @@
           conditions {:parameterized_object_id   parameterized-object-id
                       :parameterized_object_type parameterized-object-type
                       :parameter_id              id}]
-      (or (db/update-where! ParameterCard conditions :card_id card-id)
-          (db/insert! ParameterCard (merge conditions {:card_id card-id}))))))
+      (or (pos? (t2/update! ParameterCard conditions {:card_id card-id}))
+          (t2/insert! ParameterCard (merge conditions {:card_id card-id}))))))
 
 (mu/defn upsert-or-delete-from-parameters!
   "From a parameters list on card or dashboard, create, update,
   or delete appropriate ParameterCards for each parameter in the dashboard"
   [parameterized-object-type :- ms/NonBlankString
-   parameterized-object-id   :- ms/IntGreaterThanZero
+   parameterized-object-id   :- ms/PositiveInt
    parameters                :- [:maybe [:sequential ms/Parameter]]]
   (let [upsertable?           (fn [{:keys [values_source_type values_source_config id]}]
                                 (and values_source_type id (:card_id values_source_config)

@@ -1,13 +1,18 @@
 (ns ^:mb/once metabase.util-test
   "Tests for functions in `metabase.util`."
   (:require
+   #?@(:clj [[metabase.test :as mt]
+             [malli.generator :as mg]])
+   [clojure.string :as str]
    [clojure.test :refer [are deftest is testing]]
    [clojure.test.check.clojure-test :refer [defspec]]
    [clojure.test.check.generators :as gen]
    [clojure.test.check.properties :as prop]
    [flatland.ordered.map :refer [ordered-map]]
-   [metabase.util :as u]
-   #?@(:clj [[metabase.test :as mt]])))
+   [metabase.util :as u])
+  #?(:clj (:import [java.time DayOfWeek Month])))
+
+#?(:clj (set! *warn-on-reflection* true))
 
 (deftest ^:parallel add-period-test
   (is (= "This sentence needs a period."
@@ -202,9 +207,18 @@
     nil          nil
     []           nil))
 
+(deftest ^:parallel index-of-lazy-test
+  (testing "index-of should be lazy"
+    (let [evaluated? (atom false)]
+      (is (= 3
+             (u/index-of string? (lazy-cat [1 2 3 "STRING"]
+                                           (reset! evaluated? true)
+                                           [4]))))
+      (is (false? @evaluated?)))))
+
 (deftest ^:parallel snake-key-test
   (is (= {:num_cans 2, :lisp_case? {:nested_maps? true}}
-         (u/snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
+         (u/deep-snake-keys {:num-cans 2, :lisp-case? {:nested-maps? true}}))))
 
 (deftest ^:parallel one-or-many-test
   (are [input expected] (= expected
@@ -227,39 +241,43 @@
     {}  nil
     nil nil))
 
-;; TODO Can we achieve something like with-locale in CLJS?
+(deftest ^:parallel lower-case-en-test
+  (is (= "id"
+         (u/lower-case-en "ID"))))
+
 #?(:clj
-   (deftest lower-case-en-test
+   (deftest lower-case-en-turkish-test
+     ;; TODO Can we achieve something like with-locale in CLJS?
      (mt/with-locale "tr"
        (is (= "id"
               (u/lower-case-en "ID"))))))
 
+(deftest ^:parallel upper-case-en-test
+  (is (= "ID"
+         (u/upper-case-en "id"))))
+
 #?(:clj
-   (deftest upper-case-en-test
+   (deftest upper-case-en-turkish-test
      (mt/with-locale "tr"
        (is (= "ID"
               (u/upper-case-en "id"))))))
 
-(deftest ^:parallel parse-currency-test
+(deftest ^:parallel capitalize-en-test
   (are [s expected] (= expected
-                       (u/parse-currency s))
-    nil             nil
-    ""              nil
-    "   "           nil
-    "$1,000"        1000.0M
-    "$1,000,000"    1000000.0M
-    "$1,000.00"     1000.0M
-    "€1.000"        1000.0M
-    "€1.000,00"     1000.0M
-    "€1.000.000,00" 1000000.0M
-    "-£127.54"      -127.54M
-    "-127,54 €"     -127.54M
-    "kr-127,54"     -127.54M
-    "€ 127,54-"     -127.54M
-    "¥200"          200.0M
-    "¥200."         200.0M
-    "$.05"          0.05M
-    "0.05"          0.05M))
+                       (u/capitalize-en s))
+    nil    nil
+    ""     ""
+    "ibis" "Ibis"
+    "IBIS" "Ibis"
+    "Ibis" "Ibis"))
+
+#?(:clj
+   (deftest capitalize-en-turkish-test
+     (mt/with-locale "tr"
+       (is (= "Ibis"
+              (u/capitalize-en "ibis")
+              (u/capitalize-en "IBIS")
+              (u/capitalize-en "Ibis"))))))
 
 (deftest ^:parallel email->domain-test
   (are [domain email] (= domain
@@ -290,7 +308,7 @@
                              (= x m)
                              (= ys (concat non-pos rest))))))))
 
-(deftest normalize-map-test
+(deftest ^:parallel normalize-map-test
   (testing "nil and empty maps return empty maps"
     (is (= {} (u/normalize-map nil)))
     (is (= {} (u/normalize-map {}))))
@@ -306,6 +324,12 @@
        (testing "JS objects get turned into Clojure maps"
          (is (= exp (u/normalize-map #js {"kebab-key" 1 "snake_key" 2 "camelKey" 3})))))))
 
+#?(:clj
+   (deftest normalize-map-turkish-test
+     (mt/with-locale "tr"
+       (is (= {:bird "Toucan"}
+              (u/normalize-map {:BIRD "Toucan"}))))))
+
 (deftest ^:parallel or-with-test
   (testing "empty case"
     (is (= nil (u/or-with identity))))
@@ -320,3 +344,203 @@
              [2 [1 2]]))))
   (testing "failure"
     (is (nil? (u/or-with even? 1 3 5)))))
+
+(deftest ^:parallel dispatch-type-test
+  (are [x expected] (= expected
+                       (u/dispatch-type-keyword x))
+    nil                                   :dispatch-type/nil
+    "x"                                   :dispatch-type/string
+    :x                                    :dispatch-type/keyword
+    1                                     :dispatch-type/integer
+    1.1                                   :dispatch-type/number
+    {:a 1}                                :dispatch-type/map
+    [1]                                   :dispatch-type/sequential
+    #{:a}                                 :dispatch-type/set
+    'str                                  :dispatch-type/symbol
+    #"\d+"                                :dispatch-type/regex
+    str                                   :dispatch-type/fn
+    #?(:clj (Object.) :cljs (js/Object.)) :dispatch-type/*)
+  (testing "All type keywords should derive from :dispatch-type/*"
+    (are [x] (isa? (u/dispatch-type-keyword x) :dispatch-type/*)
+      :dispatch-type/nil
+      :dispatch-type/string
+      :dispatch-type/keyword
+      :dispatch-type/integer
+      :dispatch-type/number
+      :dispatch-type/map
+      :dispatch-type/sequential
+      :dispatch-type/set
+      :dispatch-type/symbol
+      :dispatch-type/regex
+      :dispatch-type/fn
+      :dispatch-type/*)))
+
+(deftest ^:parallel assoc-dissoc-test
+  (testing `lib.options/with-option-value
+    (is (= {:foo "baz"}
+           (u/assoc-dissoc {:foo "bar"} :foo "baz")))
+    (is (= {}
+           (u/assoc-dissoc {:foo "bar"} :foo nil)))
+    (is (= {:foo false}
+           (u/assoc-dissoc {:foo "bar"} :foo false))
+        "false should be assoc'd")))
+
+(deftest ^:parallel assoc-default-test
+  (testing "nil map"
+    (is (= {:x 0}
+           (u/assoc-default nil :x 0))))
+  (testing "empty map"
+    (is (= {0 :x}
+           (u/assoc-default {} 0 :x))))
+  (testing "existing key"
+    (is (= {:x 0}
+           (u/assoc-default {:x 0} :x 1))))
+  (testing "nil value"
+    (is (= {:x 0}
+           (u/assoc-default {:x 0} :y nil))))
+  (testing "multiple defaults"
+    (is (= {:x nil, :z 1}
+           (u/assoc-default {:x nil} :x 0 :y nil :z 1))))
+  (testing "multiple defaults for the same key"
+    (is (= {:x nil, :y 1, :z 2}
+           (u/assoc-default {:x nil} :x 0, :y nil, :y 1, :z 2, :x 3, :z 4))))
+  (testing "preserves metadata"
+    (is (= {:m true}
+           (meta (u/assoc-default ^:m {:x 0} :y 1 :z 2 :a nil))))))
+
+(deftest ^:parallel row-diff-test
+  (testing "classify correctly"
+    (is (= {:to-update [{:id 2 :name "c3"}]
+            :to-delete [{:id 1 :name "c1"} {:id 3 :name "c3"}]
+            :to-create [{:id -1 :name "-c1"}]
+            :to-skip   [{:id 4 :name "c4"}]}
+           (u/row-diff
+            [{:id 1 :name "c1"}   {:id 2 :name "c2"} {:id 3 :name "c3"} {:id 4 :name "c4"}]
+            [{:id -1 :name "-c1"} {:id 2 :name "c3"} {:id 4 :name "c4"}])))
+    (is (= {:to-skip   [{:god_id 10, :name "Zeus", :job "God of Thunder"}]
+            :to-delete [{:id 2, :god_id 20, :name "Odin", :job "God of Thunder"}]
+            :to-update [{:god_id 30, :name "Osiris", :job "God of Afterlife"}]
+            :to-create [{:god_id 40, :name "Perun", :job "God of Thunder"}]}
+           (u/row-diff [{:id 1 :god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:id 2 :god_id 20 :name "Odin" :job "God of Thunder"}
+                        {:id 3 :god_id 30 :name "Osiris" :job "God of Fertility"}]
+                       [{:god_id 10 :name "Zeus" :job "God of Thunder"}
+                        {:god_id 30 :name "Osiris" :job "God of Afterlife"}
+                        {:god_id 40 :name "Perun" :job "God of Thunder"}]
+                       {:id-fn   :god_id
+                        :to-compare #(dissoc % :id :god_id)})))))
+
+(deftest ^:parallel empty-or-distinct?-test
+  (are [xs expected] (= expected
+                        (u/empty-or-distinct? xs))
+    nil     true
+    []      true
+    '()     true
+    #{}     true
+    {}      true
+    [1]     true
+    [1 1]   false
+    '(1 1)  false
+    #{1}    true
+    [1 2]   true
+    [1 2 1] false))
+
+(deftest ^:parallel round-to-decimals-test
+  (are [decimal-place expected] (= expected
+                                   (u/round-to-decimals decimal-place 1250.04253))
+    5 1250.04253
+    4 1250.0425
+    3 1250.043
+    2 1250.04
+    1 1250.0
+    0 1250.0))
+
+(deftest conflicting-keys-test
+  (testing "non intersecting maps should not return any conflicts"
+    (is (= [] (u/conflicting-keys {:a 1 :b 2}
+                                  {:c 3 :d 4}))))
+  (testing "consistent maps should not return any conflicts"
+    (is (= [] (u/conflicting-keys {:a 1 :b 2}
+                                  {:b 2 :c 3}))))
+  (testing "conflicting maps should return the correct conflicts"
+    (is (= [:c :e] (u/conflicting-keys {:a 1 :b 2 :c 3 :e nil}
+                                       {:b 2 :c 4 :d 5 :e 6})))))
+
+(deftest map-all-test
+  (testing "map-all with 1 collection is just map"
+    (is (= [[0] [1] [2] [3] [4]] (u/map-all vector (range 5)))))
+  (testing "map-all works with 3 collections"
+    (is (=  [[0 0] [1 1] [2 2] [3 nil] [4 nil]] (u/map-all vector (range 5) (range 3)))))
+  (testing "map-all works with higher arity"
+    (is (= [[0 0 0] [1 1 1] [2 2 2] [3 nil 3] [nil nil 4]] (u/map-all vector (range 4) (range 3) (range 5))))))
+
+#?(:clj
+   (defspec map-all-returns-max-coll-input-size-test 1000
+     (prop/for-all [xs (mg/generator [:sequential :int])
+                    ys (mg/generator [:sequential :int])
+                    zs (mg/generator [:sequential :int])]
+       (let [total-result-count (count (u/map-all vector xs ys zs))]
+         (= total-result-count (max (count xs) (count ys) (count zs)))))))
+
+#?(:clj
+   (defspec map-all-consumes-all-lengths-of-inputs-test 1000
+     (prop/for-all [xs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
+                    ys (mg/generator [:sequential [:int {:min -1000 :max 1000}]])
+                    zs (mg/generator [:sequential [:int {:min -1000 :max 1000}]])]
+       (let [expected (reduce + (u/map-all (fnil + 0 0 0) xs ys zs))
+             sum (+ (reduce + 0 xs) (reduce + 0 ys) (reduce + 0 zs))]
+         (= expected sum)))))
+
+#?(:clj
+   (deftest ^:parallel case-enum-test
+     (testing "case does not work"
+       (is (= 3 (case Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
+     (testing "case-enum works"
+       (is (= 2 (u/case-enum Month/MAY
+                  Month/APRIL 1
+                  Month/MAY   2
+                  3))))
+     (testing "checks for type of cases"
+       (is (thrown? Exception #"`case-enum` only works.*"
+                    (u/case-enum Month/JANUARY
+                      Month/JANUARY    1
+                      DayOfWeek/SUNDAY 2))))))
+
+(deftest ^:parallel truncate-string-to-byte-count-test
+  (letfn [(truncate-string-to-byte-count [s byte-length]
+            (let [truncated (#'u/truncate-string-to-byte-count s byte-length)]
+              (is (<= (#'u/string-byte-count truncated) byte-length))
+              (is (str/starts-with? s truncated))
+              truncated))]
+    (doseq [[s max-length->expected] {"12345"
+                                      {1  "1"
+                                       2  "12"
+                                       3  "123"
+                                       4  "1234"
+                                       5  "12345"
+                                       6  "12345"
+                                       10 "12345"}
+
+                                      "가나다라"
+                                      {1  ""
+                                       2  ""
+                                       3  "가"
+                                       4  "가"
+                                       5  "가"
+                                       6  "가나"
+                                       7  "가나"
+                                       8  "가나"
+                                       9  "가나다"
+                                       10 "가나다"
+                                       11 "가나다"
+                                       12 "가나다라"
+                                       13 "가나다라"
+                                       15 "가나다라"
+                                       20 "가나다라"}}
+            [max-length expected] max-length->expected]
+      (testing (pr-str (list `lib.util/truncate-string-to-byte-count s max-length))
+        (is (= expected
+               (truncate-string-to-byte-count s max-length)))))))

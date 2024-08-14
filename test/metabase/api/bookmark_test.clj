@@ -5,19 +5,19 @@
    [metabase.models.bookmark
     :refer [BookmarkOrdering CardBookmark CollectionBookmark DashboardBookmark]]
    [metabase.models.card :refer [Card]]
-   [metabase.models.collection :refer [Collection]]
+   [metabase.models.collection :as collection :refer [Collection]]
    [metabase.models.dashboard :refer [Dashboard]]
    [metabase.models.interface :as mi]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (deftest bookmarks-test
   (mt/initialize-if-needed! :db)
   (testing "POST /api/bookmark/:model/:model-id"
-    (mt/with-temp* [Collection [{coll-id :id :as collection} {:name "Test Collection"}]
-                    Card       [card {:name "Test Card", :display "area", :collection_id coll-id}]
-                    Dashboard  [dashboard {:name "Test Dashboard", :collection_id coll-id}]]
+    (mt/with-temp [Collection {coll-id :id :as collection} {:name "Test Collection"}
+                   Card       card {:name "Test Card", :display "area", :collection_id coll-id}
+                   Dashboard  dashboard {:name "Test Dashboard", :collection_id coll-id}]
       (testing "check that we can bookmark a Collection"
         (is (= (u/the-id collection)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/collection/" (u/the-id collection)))
@@ -31,8 +31,8 @@
                              first)]
         (testing "check a card bookmark has `:display` key"
           (is (contains? card-result :display)))
-        (testing "check a card bookmark has `:dataset` key"
-          (is (contains? card-result :dataset))))
+        (testing "check a card bookmark has `:type` key"
+          (is (contains? card-result :type))))
       (testing "check that we can bookmark a Dashboard"
         (is (= (u/the-id dashboard)
                (->> (mt/user-http-request :rasta :post 200 (str "bookmark/dashboard/" (u/the-id dashboard)))
@@ -58,17 +58,17 @@
   (doseq [model models]
     (cond
       (mi/instance-of? Collection model)
-      (db/insert! CollectionBookmark
+      (t2/insert! CollectionBookmark
                   {:user_id user-id
                    :collection_id (u/the-id model)})
 
       (mi/instance-of? Card model)
-      (db/insert! CardBookmark
+      (t2/insert! CardBookmark
                   {:user_id user-id
                    :card_id (u/the-id model)})
 
       (mi/instance-of? Dashboard model)
-      (db/insert! DashboardBookmark
+      (t2/insert! DashboardBookmark
                   {:user_id user-id
                    :dashboard_id (u/the-id model)})
 
@@ -77,9 +77,10 @@
 
 (deftest bookmarks-on-archived-items-test
   (testing "POST /api/bookmark/:model/:model-id"
-    (mt/with-temp* [Collection [archived-collection {:name "Test Collection" :archived true}]
-                    Card       [archived-card {:name "Test Card" :archived true}]
-                    Dashboard  [archived-dashboard {:name "Test Dashboard" :archived true}]]
+    (mt/with-temp [Collection archived-collection {:name "Test Collection"
+                                                   :archived true}
+                   Card       archived-card {:name "Test Card" :archived true}
+                   Dashboard  archived-dashboard {:name "Test Dashboard" :archived true}]
       (bookmark-models (mt/user->id :rasta) archived-collection archived-card archived-dashboard)
       (testing "check that we don't receive bookmarks of archived items"
         (is (= #{}
@@ -89,9 +90,9 @@
 
 (deftest bookmarks-ordering-test
   (testing "PUT /api/bookmark/ordering"
-    (mt/with-temp* [Collection [collection {:name "Test Collection"}]
-                    Card       [card {:name "Test Card"}]
-                    Dashboard  [dashboard {:name "Test Dashboard"}]]
+    (mt/with-temp [Collection collection {:name "Test Collection"}
+                   Card       card {:name "Test Card"}
+                   Dashboard  dashboard {:name "Test Dashboard"}]
       (mt/with-model-cleanup [BookmarkOrdering]
         (bookmark-models (mt/user->id :rasta) collection card dashboard)
         (testing "Check that ordering works"

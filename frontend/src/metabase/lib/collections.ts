@@ -1,6 +1,7 @@
 import { t } from "ttag";
-import { isNotNull } from "metabase/core/utils/types";
-import { Collection, CollectionId } from "metabase-types/api";
+
+import { isNotNull } from "metabase/lib/types";
+import type { Collection, CollectionId } from "metabase-types/api";
 
 export const getCrumbs = (
   collection: Collection,

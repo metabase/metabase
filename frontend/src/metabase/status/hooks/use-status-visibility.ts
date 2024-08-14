@@ -1,6 +1,6 @@
 import { useState, useLayoutEffect } from "react";
 
-const HIDE_DELAY = 6000;
+export const HIDE_DELAY = 6000;
 
 const useStatusVisibility = (isActive: boolean) => {
   const [isVisible, setIsVisible] = useState(isActive);
@@ -17,4 +17,5 @@ const useStatusVisibility = (isActive: boolean) => {
   return isVisible;
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default useStatusVisibility;

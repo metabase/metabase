@@ -1,6 +1,12 @@
-import React from "react";
+import cx from "classnames";
 import { t } from "ttag";
-import NewsletterForm from "../../containers/NewsletterForm";
+
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import { useSelector } from "metabase/lib/redux";
+
+import { getIsStepActive } from "../../selectors";
+import { NewsletterForm } from "../NewsletterForm";
+
 import {
   StepBody,
   StepFooter,
@@ -8,18 +14,15 @@ import {
   StepTitle,
 } from "./CompletedStep.styled";
 
-export interface CompletedStepProps {
-  isStepActive: boolean;
-}
-
-const CompletedStep = ({
-  isStepActive,
-}: CompletedStepProps): JSX.Element | null => {
+export const CompletedStep = (): JSX.Element | null => {
+  const isStepActive = useSelector(state =>
+    getIsStepActive(state, "completed"),
+  );
   if (!isStepActive) {
     return null;
   }
 
-  const baseUrl = (window as any).MetabaseRoot || "/";
+  const baseUrl = window.MetabaseRoot ?? "/";
 
   return (
     <StepRoot>
@@ -28,12 +31,13 @@ const CompletedStep = ({
         <NewsletterForm />
       </StepBody>
       <StepFooter>
-        <a className="Button Button--primary" href={baseUrl}>
+        <a
+          className={cx(ButtonsS.Button, ButtonsS.ButtonPrimary)}
+          href={baseUrl}
+        >
           {t`Take me to Metabase`}
         </a>
       </StepFooter>
     </StepRoot>
   );
 };
-
-export default CompletedStep;

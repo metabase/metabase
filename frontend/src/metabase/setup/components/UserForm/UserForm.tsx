@@ -1,12 +1,15 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
-import * as Yup from "yup";
 import _ from "underscore";
-import FormProvider from "metabase/core/components/FormProvider";
+import * as Yup from "yup";
+
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import * as Errors from "metabase/core/utils/errors";
-import { UserInfo } from "metabase-types/store";
+import { useFormSubmitButton, FormProvider } from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
+import { Flex } from "metabase/ui";
+import type { UserInfo } from "metabase-types/store";
+
 import { UserFieldGroup, UserFormRoot } from "./UserForm.styled";
 
 const USER_SCHEMA = Yup.object({
@@ -30,10 +33,14 @@ const USER_SCHEMA = Yup.object({
 interface UserFormProps {
   user?: UserInfo;
   onValidatePassword: (password: string) => Promise<string | undefined>;
-  onSubmit: (user: UserInfo) => void;
+  onSubmit: (user: UserInfo) => Promise<void>;
 }
 
-const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
+export const UserForm = ({
+  user,
+  onValidatePassword,
+  onSubmit,
+}: UserFormProps) => {
   const initialValues = useMemo(() => {
     return user ?? USER_SCHEMA.getDefault();
   }, [user]);
@@ -91,10 +98,22 @@ const UserForm = ({ user, onValidatePassword, onSubmit }: UserFormProps) => {
           title={t`Confirm your password`}
           placeholder={t`Shhh... but one more time so we get it right`}
         />
-        <FormSubmitButton title={t`Next`} primary />
+        <UserFormSubmitButton />
       </UserFormRoot>
     </FormProvider>
   );
 };
 
-export default UserForm;
+const UserFormSubmitButton = () => {
+  const { status } = useFormSubmitButton({ isDisabled: false });
+
+  return (
+    <Flex align="center">
+      <FormSubmitButton
+        title={t`Next`}
+        activeTitle={t`Saving`}
+        primary={status === "idle"}
+      />
+    </Flex>
+  );
+};

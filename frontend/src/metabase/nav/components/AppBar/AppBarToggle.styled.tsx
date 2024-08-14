@@ -1,8 +1,7 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
-import { AppBarLeftContainer } from "./AppBarLarge.styled";
+import styled from "@emotion/styled";
+
+import { Icon } from "metabase/ui";
 
 interface SidebarButtonProps {
   isSmallAppBar?: boolean;
@@ -12,20 +11,11 @@ interface SidebarButtonProps {
 
 export const SidebarButton = styled.button<SidebarButtonProps>`
   cursor: pointer;
-  display: block;
-
-  ${({ isNavBarEnabled, isLogoVisible, isSmallAppBar }) =>
-    isLogoVisible && !isSmallAppBar
-      ? css`
-          opacity: ${isNavBarEnabled ? 0 : 1};
-
-          ${AppBarLeftContainer}:hover & {
-            opacity: ${isNavBarEnabled ? 1 : 0};
-          }
-        `
-      : css`
-          opacity: 1;
-        `}
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  padding: ${({ isSmallAppBar }) => (isSmallAppBar ? `0.5rem 0` : `1rem 0`)};
 `;
 
 interface SidebarIconProps {
@@ -33,16 +23,16 @@ interface SidebarIconProps {
 }
 
 export const SidebarIcon = styled(Icon)<SidebarIconProps>`
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   display: block;
 
   ${props =>
     !props.isLogoVisible &&
     css`
-      color: ${color("text-medium")};
+      color: var(--mb-color-text-medium);
 
       &:hover {
-        color: ${color("brand")};
+        color: var(--mb-color-brand);
       }
     `}
 `;

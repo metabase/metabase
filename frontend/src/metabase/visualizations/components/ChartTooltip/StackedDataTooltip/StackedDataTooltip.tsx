@@ -1,7 +1,10 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
+
 import { color } from "metabase/lib/colors";
+import type { StackedTooltipModel } from "metabase/visualizations/types";
+
 import { TooltipRow, TooltipTotalRow } from "../TooltipRow";
-import type { StackedTooltipModel } from "../types";
+
 import {
   DataPointHeader,
   DataPointTableHeader,
@@ -10,7 +13,12 @@ import {
   DataPointTable,
   DataPointTableFooter,
 } from "./StackedDataTooltip.styled";
-import { getPercent, getTotalValue, groupExcessiveTooltipRows } from "./utils";
+import {
+  getPercent,
+  getSortedRows,
+  getTotalValue,
+  groupExcessiveTooltipRows,
+} from "./utils";
 
 const MAX_BODY_ROWS = 8;
 
@@ -25,14 +33,22 @@ const StackedDataTooltip = ({
   showPercentages,
   totalFormatter = (value: unknown) => String(value),
 }: StackedDataTooltipProps) => {
-  const rowsTotal = useMemo(
-    () => getTotalValue(headerRows, bodyRows),
-    [headerRows, bodyRows],
+  const sortedHeaderRows = useMemo(
+    () => getSortedRows(headerRows),
+    [headerRows],
   );
-  const isShowingTotalSensible = headerRows.length + bodyRows.length > 1;
+  const sortedBodyRows = useMemo(() => getSortedRows(bodyRows), [bodyRows]);
+  const rowsTotal = useMemo(
+    () => getTotalValue(sortedHeaderRows, sortedBodyRows),
+    [sortedHeaderRows, sortedBodyRows],
+  );
+
+  const isShowingTotalSensible =
+    sortedHeaderRows.length + sortedBodyRows.length > 1;
   const hasColorIndicators = useMemo(
-    () => [...bodyRows, ...headerRows].some(row => row.color != null),
-    [headerRows, bodyRows],
+    () =>
+      [...sortedBodyRows, ...sortedHeaderRows].some(row => row.color != null),
+    [sortedHeaderRows, sortedBodyRows],
   );
 
   // For some charts such as PieChart we intentionally show only certain data rows that do not represent the full data.
@@ -40,7 +56,7 @@ const StackedDataTooltip = ({
   const percentCalculationTotal = grandTotal ?? rowsTotal;
 
   const trimmedBodyRows = groupExcessiveTooltipRows(
-    bodyRows,
+    sortedBodyRows,
     MAX_BODY_ROWS,
     hasColorIndicators ? color("text-light") : undefined,
   );
@@ -53,8 +69,8 @@ const StackedDataTooltip = ({
         </DataPointHeader>
       )}
       <DataPointTable>
-        <DataPointTableHeader hasBottomSpacing={bodyRows.length > 0}>
-          {headerRows.map((row, index) => (
+        <DataPointTableHeader hasBottomSpacing={sortedBodyRows.length > 0}>
+          {sortedHeaderRows.map((row, index) => (
             <TooltipRow
               key={index}
               isHeader
@@ -98,4 +114,5 @@ const StackedDataTooltip = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default StackedDataTooltip;

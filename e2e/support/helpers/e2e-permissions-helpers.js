@@ -16,7 +16,7 @@ export function modifyPermission(
   value,
   shouldPropagate = null,
 ) {
-  getPermissionRowPermissions(item).eq(permissionIndex).click();
+  selectPermissionRow(item, permissionIndex);
 
   popover().within(() => {
     if (shouldPropagate !== null) {
@@ -28,20 +28,27 @@ export function modifyPermission(
           }
         });
     }
-    cy.findByText(value).click();
+    value && cy.findByText(value).click();
   });
 }
 
-function getPermissionRowPermissions(item) {
+export function selectPermissionRow(item, permissionIndex) {
+  getPermissionRowPermissions(item).eq(permissionIndex).click();
+}
+
+export function getPermissionRowPermissions(item) {
   return cy
-    .get("tbody > tr")
+    .findByTestId("permission-table")
+    .find("tbody > tr")
     .contains(item)
     .closest("tr")
     .findAllByTestId("permissions-select");
 }
 
 export function assertPermissionTable(rows) {
-  cy.get("tbody > tr").should("have.length", rows.length);
+  cy.findByTestId("permission-table")
+    .find("tbody > tr")
+    .should("have.length", rows.length);
 
   rows.forEach(row => {
     const [item, ...permissions] = row;
@@ -49,6 +56,16 @@ export function assertPermissionTable(rows) {
     getPermissionRowPermissions(item).each(($permissionEl, index) => {
       cy.wrap($permissionEl).should("have.text", permissions[index]);
     });
+  });
+}
+
+export function assertPermissionOptions(options) {
+  popover().within(() => {
+    cy.findAllByRole("option")
+      .should("have.length", options.length)
+      .each(($accessEl, index) => {
+        cy.wrap($accessEl).findByText(options[index]);
+      });
   });
 }
 
@@ -75,3 +92,9 @@ export function isPermissionDisabled(index, permission, isDisabled) {
     .closest("a")
     .should("have.attr", "aria-disabled", isDisabled.toString());
 }
+
+export const dismissSplitPermsModal = () => {
+  cy.findByRole("dialog", { name: /permissions may look different/ })
+    .findByRole("button", { name: "Got it" })
+    .click();
+};

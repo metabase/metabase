@@ -1,0 +1,76 @@
+:root {
+  --breadcrumbs-color: var(--mb-color-text-light);
+  --breadcrumb-page-color: var(--mb-color-text-dark);
+  --breadcrumb-divider-spacing: 0.75em;
+
+  /* taken from Sidebar.css, should probably factor them out into variables */
+  --sidebar-breadcrumbs-color: var(--mb-color-text-medium);
+}
+
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  color: var(--breadcrumbs-color);
+}
+
+.breadcrumb {
+  font-size: 0.75rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  cursor: default;
+}
+
+.breadcrumb.fontLarge {
+  font-size: 0.875rem;
+}
+
+.breadcrumbDivider {
+  margin-left: var(--breadcrumb-divider-spacing);
+  margin-right: var(--breadcrumb-divider-spacing);
+  flex-shrink: 0;
+}
+
+/* the breadcrumb path will always inherit the color of the breadcrumbs object */
+.breadcrumb.breadcrumbPath {
+  color: currentColor;
+  transition: color 0.3s linear;
+  cursor: pointer;
+}
+
+.breadcrumb.breadcrumbPath:hover {
+  color: var(--breadcrumb-page-color);
+  transition: color 0.3s linear;
+}
+
+/* the breadcrumb page (current page) should be a different contrasting color  */
+.breadcrumb.breadcrumbPage {
+  color: var(--breadcrumb-page-color);
+}
+
+.sidebarBreadcrumbs {
+  display: flex;
+  composes: breadcrumbs;
+  color: var(--sidebar-breadcrumbs-color);
+  max-width: 100%;
+}
+
+.sidebarBreadcrumb {
+  composes: breadcrumb;
+  height: 15px;
+}
+
+/* the breadcrumb path will always inherit the color of the breadcrumbs object */
+.sidebarBreadcrumb.breadcrumbPath {
+  color: currentColor;
+  transition: color 0.3s linear;
+}
+
+.sidebarBreadcrumb.breadcrumbPath:hover {
+  color: var(--mb-color-brand);
+  transition: color 0.3s linear;
+}
+
+/* the breadcrumb page (current page) should be a different contrasting color  */
+.sidebarBreadcrumb.breadcrumbPage {
+  color: var(--mb-color-brand);
+}

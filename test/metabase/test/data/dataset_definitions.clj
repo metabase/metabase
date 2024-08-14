@@ -1,7 +1,7 @@
 (ns metabase.test.data.dataset-definitions
   "Definitions of various datasets for use in tests with `data/dataset` and the like."
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.test.data.interface :as tx]
    [metabase.util.date-2 :as u.date])
@@ -43,6 +43,9 @@
   As an added bonus this dataset has a table with a name in a slash in it, so the driver will need to support that
   correctly in order for this to work!")
 
+(tx/defdataset-edn crazy-names
+  "A small dataset with a table and column both with spaces in their names")
+
 (tx/defdataset-edn office-checkins
   "A small dataset that includes TIMESTAMP dates. People who stopped by the Metabase office and the time they did so.")
 
@@ -61,13 +64,6 @@
 
   There are some `nil` `:name` strings in the `region` and `municipality` tables. `airport` has a row with an airport
   whose `:code` is an empty string.")
-
-(tx/defdataset-edn sample-dataset
-  "The sample database that ships with Metabase, but converted to an EDN dataset definition so it can be used in tests.
-  This dataset is pretty large (over 20k rows) so it can take a long time to load -- keep that in mind. There is one
-  difference from the H2 version that ships with Metabase -- this version uses `:type/DateTimeWithTZ` `updated_at`
-  columns (i.e., `TIMESTAMP WITH TIME ZONE`) instead of `:type/DateType`, to make it easier to use this test data
-  across multiple databases.")
 
 (tx/defdataset-edn json
   "Dataset with some JSON columns in it. Used to test JSON columns.")
@@ -99,8 +95,8 @@
 
 (defonce ^{:doc "The main `test-data` dataset, but only the `users` table, and with `last_login_date` and
   `last_login_time` instead of `last_login`."}
-  test-data-with-time
-  (tx/transformed-dataset-definition "test-data-with-time" test-data
+  time-test-data
+  (tx/transformed-dataset-definition "time-test-data" test-data
     (tx/transform-dataset-only-tables "users")
     (tx/transform-dataset-update-table "users"
       :table
@@ -119,8 +115,8 @@
           [username (date-only last-login) (time-only last-login) password-text])))))
 
 (defonce ^{:doc "The main `test-data` dataset, with an additional (all-null) `null_only_date` Field."}
-  test-data-with-null-date-checkins
-  (tx/transformed-dataset-definition "test-data-with-null-date-checkins" test-data
+  test-data-null-date
+  (tx/transformed-dataset-definition "test-data-null-date" test-data
     (tx/transform-dataset-update-table "checkins"
       :table
       (fn [tabledef]
@@ -138,8 +134,8 @@
           [date nil user-id venue-id])))))
 
 (defonce ^{:doc "The main `test-data` dataset, but `last_login` has a base type of `:type/DateTimeWithTZ`."}
-  test-data-with-timezones
-  (tx/transformed-dataset-definition "test-data-with-timezones" test-data
+  tz-test-data
+  (tx/transformed-dataset-definition "tz-test-data" test-data
     (tx/transform-dataset-update-table "users"
       :table
       (fn [tabledef]

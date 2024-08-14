@@ -95,7 +95,7 @@ Note: two snippets cannot share the same name, as even if a snippet is archived,
 
 Any user who has SQL editor permissions to at least one of your connected databases will be able to view the snippets sidebar, and will be able to create, edit, and archive or unarchive any and all snippets — even snippets intended to be used with databases the user lacks SQL editing access to.
 
-Some plans contain additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on SQL snippet folders and permissions](./sql-snippets.md).
+Some plans contain additional functionality for organizing snippets into folders and setting permissions on those folders. See our [docs on SQL snippet folders and permissions](../../permissions/snippets.md).
 
 ## Learn more
 

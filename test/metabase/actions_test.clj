@@ -2,14 +2,22 @@
   (:require
    [clojure.test :refer :all]
    [metabase.actions :as actions]
+   [metabase.actions.execution :as actions.execution]
    [metabase.api.common :refer [*current-user-permissions-set*]]
    [metabase.driver :as driver]
    [metabase.models :refer [Database Table]]
+   [metabase.models.action :as action]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [metabase.util.schema :as su]
-   [schema.core :as s]))
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2])
+  (:import
+   (org.apache.sshd.server SshServer)
+   (org.apache.sshd.server.forward AcceptAllForwardingFilter)))
+
+(set! *warn-on-reflection* true)
 
 (defmacro with-actions-test-data-and-actions-permissively-enabled
   "Combines [[mt/with-actions-test-data-and-actions-enabled]] with full permissions."
@@ -19,27 +27,13 @@
      (binding [*current-user-permissions-set* (delay #{"/"})]
        ~@body)))
 
-(deftest normalize-as-mbql-query-test
-  (testing "Make sure normalize-as-mbql-query can exclude certain keys from normalization"
-    (is (= {:database    1
-            :type        :query
-            :updated-row {:my_snake_case_column 1000
-                          "CamelCaseColumn"     {:ABC 200}}
-            :query       {:source-table 2}}
-           (#'actions/normalize-as-mbql-query
-            {"database"   1
-             :updated_row {:my_snake_case_column 1000
-                           "CamelCaseColumn"     {:ABC 200}}
-             :query       {"source_table" 2}}
-            :exclude #{:updated-row})))))
-
-(defn- format-field-name
+(mu/defn- format-field-name :- :string
   "Format `field-name` appropriately for the current driver (e.g. uppercase it if we're testing against H2)."
   [field-name]
-  (keyword (mt/format-name (name field-name))))
+  (mt/format-name (name field-name)))
 
 (defn- categories-row-count []
-  (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]]}))))
+  (first (mt/first-row (mt/run-mbql-query categories {:aggregation [[:count]], :limit 1}))))
 
 (deftest create-test
   (testing "row/create"
@@ -47,9 +41,9 @@
       (with-actions-test-data-and-actions-permissively-enabled
         (let [response (actions/perform-action! :row/create
                                                 (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"}))]
-          (is (schema= {:created-row {(format-field-name :id)   (s/eq 76)
-                                      (format-field-name :name) (s/eq "created_row")}}
-                       response)
+          (is (=? {:created-row {(format-field-name :id)   76
+                                 (format-field-name :name) "created_row"}}
+                  response)
               "Create should return the entire row")
           (let [created-id (get-in response [:created-row (format-field-name :id)])]
             (is (= "created_row" (-> (mt/rows (mt/run-mbql-query categories {:filter [:= $id created-id]})) last last))
@@ -109,9 +103,11 @@
     :request-body (assoc (mt/mbql-query categories) :create-row {(format-field-name :name) "created_row"})
     :expect-fn    (fn [result]
                     ;; check that we return the entire row
-                    (is (schema= {:created-row {(format-field-name :id)   su/IntGreaterThanZero
-                                                (format-field-name :name) su/NonBlankString}}
-                                 result)))}
+                    (is (malli= [:map {:closed true}
+                                 [:created-row [:map {:closed true}
+                                                [(format-field-name :id)   ms/PositiveInt]
+                                                [(format-field-name :name) ms/NonBlankString]]]]
+                         result)))}
    {:action       :row/update
     :request-body (assoc (mt/mbql-query categories {:filter [:= $id 1]})
                          :update_row {(format-field-name :name) "updated_row"})
@@ -130,11 +126,15 @@
       (mt/with-temp-vals-in-db Database (mt/id) {:settings {:database-enable-actions false}}
         (binding [*current-user-permissions-set* (delay #{"/"})]
           (testing "Should return a 400 if Database feature flag is disabled."
-            (is (partial= ["Actions are not enabled." {:database-id (mt/id)}]
-                          (try
-                            (actions/perform-action! action request-body)
-                            (catch Exception e
-                              [(ex-message e) (ex-data e)]))))))))))
+            (is (thrown-with-msg?
+                 Throwable
+                 #"\QActions are not enabled.\E"
+                 (actions/perform-action! action request-body)))
+            (try
+              (actions/perform-action! action request-body)
+              (catch Throwable e
+                (is (=? {:database-id (mt/id)}
+                        (ex-data e)))))))))))
 
 (driver/register! ::feature-flag-test-driver, :parent :h2)
 
@@ -144,10 +144,10 @@
 
 (deftest actions-feature-test
   (testing "Only allow actions for drivers that support the `:actions` driver feature. (#22557)"
-    (mt/with-temp* [Database [{db-id :id} {:name     "Birds"
-                                           :engine   ::feature-flag-test-driver
-                                           :settings {:database-enable-actions true}}]
-                    Table    [{table-id :id} {:db_id db-id}]]
+    (mt/with-temp [Database {db-id :id}    {:name     "Birds"
+                                            :engine   ::feature-flag-test-driver
+                                            :settings {:database-enable-actions true}}
+                   Table    {table-id :id} {:db_id db-id}]
       (is (thrown-with-msg? Exception (re-pattern
                                        (format "%s Database %d \"Birds\" does not support actions."
                                                (u/qualified-name ::feature-flag-test-driver)
@@ -167,8 +167,10 @@
     (doseq [{:keys [action request-body]} (mock-requests)
             :when (row-action? action)]
       (testing (str action " without :query")
-        (is (thrown-with-msg? Exception #"Value does not match schema:.*"
-                              (actions/perform-action! action (dissoc request-body :query))))))))
+        (is (thrown-with-msg?
+             Exception
+             #"\QMBQL queries must specify `:query`.\E"
+             (actions/perform-action! action (dissoc request-body :query))))))))
 
 (deftest row-update-action-gives-400-when-matching-more-than-one
   (mt/test-drivers (mt/normal-drivers-with-feature :actions)
@@ -176,10 +178,14 @@
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query users {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
+              query-that-returns-zero-row      (assoc (mt/mbql-query users {:filter [:= $id Integer/MAX_VALUE]})
+                                                      :update_row {(format-field-name :name) "new-name"})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would update [\d|,]+ rows, but you can only act on 1"
                                 (actions/perform-action! :row/update query-that-returns-more-than-one)))
+          (is (thrown-with-msg? Exception #"Sorry, the row you're trying to update doesn't exist"
+                                (actions/perform-action! :row/update query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
@@ -189,10 +195,14 @@
       (binding [*current-user-permissions-set* (delay #{"/"})]
         (let [query-that-returns-more-than-one (assoc (mt/mbql-query checkins {:filter [:>= $id 1]})
                                                       :update_row {(format-field-name :name) "new-name"})
+              query-that-returns-zero-row      (assoc (mt/mbql-query checkins {:filter [:= $id Integer/MAX_VALUE]})
+                                                      :update_row {(format-field-name :name) "new-name"})
               result-count                     (count (mt/rows (qp/process-query query-that-returns-more-than-one)))]
           (is (< 1 result-count))
           (is (thrown-with-msg? Exception #"Sorry, this would delete [\d|,]+ rows, but you can only act on 1"
                                 (actions/perform-action! :row/delete query-that-returns-more-than-one)))
+          (is (thrown-with-msg? Exception #"Sorry, the row you're trying to delete doesn't exist"
+                                (actions/perform-action! :row/delete query-that-returns-zero-row)))
           (is (= result-count (count (mt/rows (qp/process-query query-that-returns-more-than-one))))
               "The result-count after a rollback must remain the same!"))))))
 
@@ -233,12 +243,14 @@
               (is (= 75
                      (categories-row-count))))))))))
 
-(defmacro is-ex-data [expected actual-call]
+(defmacro ^:private is-ex-data [expected-schema actual-call]
   `(try
-    ~actual-call
-    (is (= true false))
-    (catch clojure.lang.ExceptionInfo e#
-      (is (~'schema= ~expected (ex-data e#))))))
+     ~actual-call
+     (is (= true false))
+     (catch clojure.lang.ExceptionInfo e#
+       (is (~'=?
+            ~expected-schema
+            (assoc (ex-data e#) ::message (ex-message e#)))))))
 
 (deftest bulk-create-happy-path-test
   (testing "bulk/create"
@@ -269,22 +281,20 @@
                  (categories-row-count)))
           (testing "Should report indices of bad rows"
             (is-ex-data
-             {:errors [(s/one {:index (s/eq 1)
-                               :error (case driver/*driver*
-                                        :h2       #"^NULL not allowed for column \"NAME\""
-                                        :postgres #"^ERROR: null value in column \"name\""
-                                        :mysql    #"Column 'name' cannot be null")}
-                              "first error")
-                       (s/one {:index (s/eq 3)
-                               :error (case driver/*driver*
-                                        :h2       #"^Data conversion error converting \"STRING\""
-                                        :postgres #"^ERROR: invalid input syntax for (?:type )?integer: \"STRING\""
-                                        ;; Newer versions of MySQL check for not null fields without default values
-                                        ;; before checking the type of the parameter.
-                                        ;; MySQL 5.7 checks the type of the parameter first.
-                                        :mysql    #"Field 'name' doesn't have a default value|Incorrect integer value: 'STRING' for column 'id'")}
-                              "second error")]
-              :status-code (s/eq 400)}
+             {:errors [{:index 1
+                        :error (case driver/*driver*
+                                 :h2       #"(?s)^NULL not allowed for column \"NAME\".*"
+                                 :postgres #"(?s)^ERROR: null value in column \"name\".*"
+                                 :mysql    #"(?s).*Column 'name' cannot be null.*")}
+                       {:index 3
+                        :error (case driver/*driver*
+                                 :h2       #"(?s)^Data conversion error converting \"STRING\".*"
+                                 :postgres #"(?s)^ERROR: invalid input syntax for (?:type )?integer: \"STRING\".*"
+                                 ;; Newer versions of MySQL check for not null fields without default values
+                                 ;; before checking the type of the parameter.
+                                 ;; MySQL 5.7 checks the type of the parameter first.
+                                 :mysql    #"(?s)(?:.*Field 'name' doesn't have a default value.*)|(?:.*Incorrect integer value: 'STRING' for column 'id'.*)")}]
+              :status-code 400}
              (actions/perform-action! :bulk/create
                                       {:database (mt/id)
                                        :table-id (mt/id :categories)
@@ -323,15 +333,11 @@
           (testing "Should report indices of bad rows"
             (is-ex-data
              {:errors
-              [(s/one
-                {:index (s/eq 1)
-                 :error #"Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
-                "first error")
-               (s/one
-                {:index (s/eq 3)
-                 :error #"Sorry, this would delete 0 rows, but you can only act on 1"}
-                "second error")]
-              :status-code (s/eq 400)}
+              [{:index 1
+                :error #".*Error filtering against :type/(?:Big)?Integer Field: unable to parse String \"foo\" to a :type/(?:Big)?Integer"}
+               {:index 3
+                :error #"Sorry, the row you're trying to delete doesn't exist"}]
+              :status-code 400}
              (actions/perform-action! :bulk/delete
                                       {:database (mt/id)
                                        :table-id (mt/id :categories)
@@ -414,8 +420,7 @@
                                    (actions/perform-action! :bulk/update
                                                             {:database (mt/id)
                                                              :table-id (mt/id :categories)
-                                                             :arg
-                                                             rows}))]
+                                                             :arg rows}))]
           (testing "Initial values"
             (is (= [[1 "African"]
                     [2 "American"]
@@ -423,19 +428,14 @@
                    (first-three-categories))))
           (testing "Should report the index of input rows with errors in the data warehouse"
             (let [error-message-regex (case driver/*driver*
-                                        :h2       #"^NULL not allowed for column \"NAME\""
-                                        :postgres #"^ERROR: null value in column \"name\" (?:of relation \"categories\" )?violates not-null constraint"
-                                        :mysql    #"Column 'name' cannot be null")]
+                                        :h2       #"(?s)^NULL not allowed for column \"NAME\".*"
+                                        :postgres #"(?s)^ERROR: null value in column \"name\" (?:of relation \"categories\" )?violates not-null constraint.*"
+                                        :mysql    #"(?s).*Column 'name' cannot be null.*")]
               (is-ex-data
-               {:errors   [(s/one
-                            {:index (s/eq 0)
-                             :error error-message-regex}
-                            "first error")
-                           (s/one
-                            {:index (s/eq 2)
-                             :error error-message-regex}
-                            "second error")]
-                s/Keyword s/Any}
+               {:errors   [{:index 0
+                            :error error-message-regex}
+                           {:index 2
+                            :error error-message-regex}]}
                (update-categories! [{id 1, name nil}
                                     {id 2, name "Millet Treat"}
                                     {id 3, name nil}]))))
@@ -451,14 +451,11 @@
                                   (update-categories! [{id 1, name "Seed Bowl"}
                                                        {name "Millet Treat"}]))))
           (testing "Should validate that the fields in the row maps are valid for the Table"
-            (is-ex-data {:errors [(s/one
-                                   {:index (s/eq 0)
-                                    :error (case driver/*driver*
-                                             :h2       #"^Column \"FAKE\" not found"
-                                             :postgres #"ERROR: column \"fake\" of relation \"categories\" does not exist"
-                                             :mysql    #"Unknown column 'fake'")}
-                                   "first error")]
-                         s/Keyword s/Any}
+            (is-ex-data {:errors [{:index 0
+                                   :error (case driver/*driver*
+                                            :h2       #"(?s)^Column \"FAKE\" not found.*"
+                                            :postgres #"(?s).*ERROR: column \"fake\" of relation \"categories\" does not exist.*"
+                                            :mysql    #"(?s).*Unknown column 'fake'.*")}]}
                         (update-categories! [{id 1, (format-field-name :fake) "FAKE"}])))
           (testing "Should throw error if row does not contain any non-PK columns"
             (is (thrown-with-msg? Exception (re-pattern (format "Invalid update row map: no non-PK columns. Got #\\{%s\\}, all of which are PKs."
@@ -469,3 +466,96 @@
                     [2 "American"]
                     [3 "Artisan"]]
                    (first-three-categories)))))))))
+
+(defn basic-auth-ssh-server ^java.io.Closeable [username password]
+  (try
+    (let [password-auth    (reify org.apache.sshd.server.auth.password.PasswordAuthenticator
+                             (authenticate [_ auth-username auth-password _session]
+                               (and
+                                (= auth-username username)
+                                (= auth-password password))))
+          keypair-provider (org.apache.sshd.server.keyprovider.SimpleGeneratorHostKeyProvider.)
+          sshd             (doto (SshServer/setUpDefaultServer)
+                             (.setPort 0)
+                             (.setKeyPairProvider keypair-provider)
+                             (.setPasswordAuthenticator password-auth)
+                             (.setForwardingFilter AcceptAllForwardingFilter/INSTANCE)
+                             .start)]
+      sshd)
+    (catch Throwable e
+      (throw (ex-info (format "Error starting SSH mock server with password")
+                      {:username username :password password}
+                      e)))))
+
+(deftest actions-on-ssh-tunneled-db
+  ;; testing actions against dbs with ssh tunnels. Use an in-memory ssh server that just forwards to the correct port
+  ;; through localhost. Since it is local, it's possible for the application to ignore the ssh tunnel and just talk to
+  ;; the db on the correct port. So we do the tests twice, once expecting the correct answer, and then again with the
+  ;; wrong password for the ssh tunnel and we expect failures. This ensures that the correct result is actually going
+  ;; through the ssh tunnel
+  (mt/test-drivers (disj (mt/normal-drivers-with-feature :actions) :h2)
+    (let [username "username", password "password"]
+      (with-open [ssh-server (basic-auth-ssh-server username password)]
+        (doseq [[correct-password? ssh-password] [[true password] [false "wrong-password"]]]
+          (with-actions-test-data-and-actions-permissively-enabled
+            (let [ssh-port (.getPort ^SshServer ssh-server)]
+              (let [details (t2/select-one-fn :details 'Database :id (mt/id))]
+                (t2/update! 'Database (mt/id)
+                            ;; enable ssh tunnel
+                            {:details (assoc details
+                                             :tunnel-enabled true
+                                             :tunnel-host "localhost"
+                                             :tunnel-auth-option "password"
+                                             :tunnel-port ssh-port
+                                             :tunnel-user username
+                                             :tunnel-pass ssh-password)}))
+              (testing "Can perform implicit actions on ssh-enabled database"
+                (let [response (try (actions/perform-action! :bulk/update
+                                                             {:database (mt/id)
+                                                              :table-id (mt/id :categories)
+                                                              :arg
+                                                              (let [id   (format-field-name :id)
+                                                                    name (format-field-name :name)]
+                                                                [{id 1, name "Seed Bowl"}
+                                                                 {id 2, name "Millet Treat"}])})
+                                    (catch Exception e e))]
+                  (if correct-password?
+                    (is (= {:rows-updated 2} response))
+                    (do
+                      (is (instance? Exception response) "Did not get an error with wrong password")
+                      (is (some (partial instance? org.apache.sshd.common.SshException)
+                                (u/full-exception-chain response))
+                          "None of the errors are from ssh")))))
+              (testing "Can perform custom actions on ssh-enabled database"
+                (let [query (update (mt/native-query
+                                     {:query "update categories set name = 'foo' where id = {{id}}"
+                                      :template-tags {:id {:id "id"
+                                                           :name "id"
+                                                           :type "number"
+                                                           :display-name "Id"}}})
+                                    :type name)]
+                  (mt/with-actions [{card-id :id} {:type :model
+                                                   :dataset_query (mt/mbql-query categories)}
+                                    {action-id :action-id} {:name                   "Query example"
+                                                            :type                   :query
+                                                            :model_id               card-id
+                                                            :dataset_query          query
+                                                            :database_id            (mt/id)
+                                                            :parameters             [{:id "id"
+                                                                                      :type :number/=
+                                                                                      :target [:variable
+                                                                                               [:template-tag "id"]]
+                                                                                      :name "Id"
+                                                                                      :slug "id"
+                                                                                      :hasVariableTemplateTagTarget true}]
+                                                            :visualization_settings {:position "top"}}]
+                    (let [action (action/select-action :id action-id)]
+                      (if correct-password?
+                        (is (= {:rows-affected 1}
+                               (actions.execution/execute-action! action {"id" 1})))
+                        (let [response (try (actions.execution/execute-action! action {"id" 1})
+                                            (catch Exception e e))]
+                          (is (instance? Exception response) "Did not get an error with wrong password")
+                          (is (some (partial instance? org.apache.sshd.common.SshException)
+                                    (u/full-exception-chain response))
+                              "None of the errors are from ssh"))))))))))))))

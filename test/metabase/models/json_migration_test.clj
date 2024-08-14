@@ -8,7 +8,7 @@
 (defmethod migrate-birds [1 2] [bird-facts _]
   (assoc bird-facts :favorite :toucan))
 
-(deftest basic-usage-test
+(deftest ^:parallel basic-usage-test
   (testing "No-ops with no version change"
     (is (= {:favorite :pigeon, :version 1}
            (migrate-birds {:favorite :pigeon, :version 1} 1))))
@@ -19,7 +19,7 @@
     (is (= {:favorite :toucan, :version 1} ;; version is handled separately :(
            (migrate-birds {:favorite :pigeon, :version 1} 2)))))
 
-(deftest version-updating-test
+(deftest ^:parallel version-updating-test
   (testing "It updates the :version key"
     (is (= {:favorite :toucan, :version 2}
            (jm/update-version {:favorite :toucan, :version 1} 2)))))

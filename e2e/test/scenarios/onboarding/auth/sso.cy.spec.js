@@ -1,9 +1,10 @@
+import { USERS } from "e2e/support/cypress_data";
 import {
   describeEE,
   restore,
   mockCurrentUserProperty,
+  setTokenFeatures,
 } from "e2e/support/helpers";
-import { USERS } from "e2e/support/cypress_data";
 
 const { admin } = USERS;
 
@@ -22,6 +23,7 @@ describe("scenarios > auth > signin > SSO", () => {
     it(`login history tab should be available with ${auth} enabled (metabase#15558)`, () => {
       mockCurrentUserProperty(auth, true);
       cy.visit("/account/profile");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Login History");
     });
   });
@@ -33,6 +35,7 @@ describe("scenarios > auth > signin > SSO", () => {
     });
 
     it("should show SSO button", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sign in with email");
 
       // Google SSO button is piped through an iframe
@@ -40,18 +43,22 @@ describe("scenarios > auth > signin > SSO", () => {
     });
 
     it("should show login form when directed to sign in with email", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sign in with email").click();
       cy.findByLabelText("Email address");
       cy.findByLabelText("Password");
       cy.button("Sign in").should("be.disabled");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sign in with Google");
     });
 
     it("should surface login errors with Google sign in enabled (metabase#16122)", () => {
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sign in with email").click();
       cy.findByLabelText("Email address").type("foo@bar.test");
       cy.findByLabelText("Password").type("123");
       cy.button("Sign in").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.contains("Password: did not match stored password");
     });
 
@@ -59,6 +66,7 @@ describe("scenarios > auth > signin > SSO", () => {
       const loginProtectedURL = "/admin/permissions/data";
 
       cy.visit(loginProtectedURL);
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sign in with email").click();
       fillInAuthForm();
 
@@ -68,6 +76,7 @@ describe("scenarios > auth > signin > SSO", () => {
 
   describeEE("EE", () => {
     beforeEach(() => {
+      setTokenFeatures("all");
       // Disable password log-in
       cy.request("PUT", "api/setting/enable-password-login", {
         value: false,
@@ -79,6 +88,7 @@ describe("scenarios > auth > signin > SSO", () => {
       cy.visit("/");
       // Google SSO button is piped through an iframe
       cy.get("iframe");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Sign in with email").should("not.exist");
     });
   });

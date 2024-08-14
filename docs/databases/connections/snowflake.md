@@ -18,19 +18,26 @@ The display name for the database in the Metabase interface.
 
 ### Account name
 
-Enter your Account ID with the region that your Snowflake cluster is running on. E.g., `xxxxxxxxx.us-east-3.aws`.
+Enter your Snowflake [Account Identifier](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html).
 
-Enter your Snowflake [Account Identifier](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html). For example, if you're running Snowflake on AWS and your account URL is `https://az12345.ca-central-1.snowflakecomputing.com`:
+**If you're on AWS**, Enter your Account identifier with the region that your Snowflake cluster is running on. E.g., `xxxxxxxxx.us-east-3.aws`. For example, if you're running Snowflake on AWS and your account URL is `https://az12345.ca-central-1.snowflakecomputing.com`:
+
 - `<account_identifier>`: `az12345.ca-central-1`.
 - `<cloud_platform>`: `aws`.
 
 You'd enter `az12345.ca-central-1.aws` as the account name in Metabase.
 
-> Not all regions require the cloud platform identifier. If you are in `us-west-2`, you would enter `az12345` as the account name. For the requirements per region, see [the official Snowflake's documentation](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html#non-vps-account-locator-formats-by-cloud-platform-and-region).
+Not all regions require the cloud platform identifier. If you're in `us-west-2`, you would enter `az12345` as the account name. For the requirements per region, see [the official Snowflake's documentation](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html#non-vps-account-locator-formats-by-cloud-platform-and-region).
+
+**If you're on app.snowflake.com**, you can get your account name by going to Admin > Accounts. The Account name will be under Accounts. For the account you want to use, click on the three dot menu and select "Manage URLs". The "Current URL" contains your account identifier. E.g.,  `https://<account-identifier>.snowflakecomputing.com`.
+
+Learn more about [Account Identifiers in Snowflake](https://docs.snowflake.com/en/user-guide/admin-account-identifier.html).
 
 ### Username
 
-The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of privileges.
+The database username for the account that you want to use to connect to your database. You can set up multiple connections to the same database using different user accounts to connect to the same database, each with different sets of [privileges](../users-roles-privileges.md).
+
+On your app.snowflake.com account page, you can find Users and roles under Admin > Users & Roles.
 
 ### Password
 
@@ -38,15 +45,17 @@ The password for the username that you use to connect to the database.
 
 ### RSA private key (PEM)
 
-You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
+Not required. You have the option of using a **Local file path** or an **Uploaded file path**. If you're on Metabase Cloud, you'll need to select **Uploaded file path** and upload your certificate.
 
 ### Warehouse
 
 Snowflake warehouse. If the user lacks a default warehouse, you'll need to enter the warehouse to connect to.
 
+On app.snowflake.com, you can find warehouses under Admin > Warehouses.
+
 ### Database name (case sensitive)
 
-The name of the database you want to connect to in Snowflake.
+The name of the database you want to connect to in Snowflake. On app.snowflake.com you can find databases under Data > Databases.
 
 ### Schemas (optional)
 
@@ -76,6 +85,7 @@ Note that only the `*` wildcard is supported; you can't use other special charac
 ### Role (optional)
 
 Specify a role to override the database user's default role. For example, if the database user `METABASE` has the roles:
+
 - Default role `APPLICATION`.
 - Additional role `ANALYTICS`.
 
@@ -93,18 +103,18 @@ Some databases allow you to append options to the connection string that Metabas
 
 Turn this option **OFF** if people want to click **Run** (the play button) before applying any [Summarize](../../questions/query-builder/introduction.md#grouping-your-metrics) or filter selections.
 
-By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [action menu](https://www.metabase.com/glossary/action_menu). If your database is slow, you may want to disable re-running to avoid loading data on each click.
+By default, Metabase will execute a query as soon as you choose an grouping option from the **Summarize** menu or a filter condition from the [drill-through menu](https://www.metabase.com/learn/questions/drill-through). If your database is slow, you may want to disable re-running to avoid loading data on each click.
 
 ### Choose when Metabase syncs and scans
 
-Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../connecting.md#syncing-and-scanning-databases).
+Turn this option **ON** to manage the queries that Metabase uses to stay up to date with your database. For more information, see [Syncing and scanning databases](../sync-scan.md).
 
 #### Database syncing
 
-If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Database syncing**:
+If you've selected **Choose when syncs and scans happen** > **ON**, you'll be able to set:
 
-- **Scan** sets the frequency of the [sync query](../connecting.md#how-database-syncs-work) to hourly (default) or daily.
-- **at** sets the time when your sync query will run against your database (in the timezone of the server where your Metabase app is running).
+- The frequency of the [sync](../sync-scan.md#how-database-syncs-work): hourly (default) or daily.
+- The time to run the sync, in the timezone of the server where your Metabase app is running.
 
 #### Scanning for filter values
 
@@ -112,28 +122,17 @@ Metabase can scan the values present in each field in this database to enable ch
 
 If you've selected **Choose when syncs and scans happen** > **ON**, you'll see the following options under **Scanning for filter values**:
 
-- **Regularly, on a schedule** allows you to run [scan queries](../connecting.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
+- **Regularly, on a schedule** allows you to run [scan queries](../sync-scan.md#how-database-scans-work) at a frequency that matches the rate of change to your database. The time is set in the timezone of the server where your Metabase app is running. This is the best option for a small database, or tables with distinct values that get updated often.
 - **Only when adding a new filter widget** is a great option if you want scan queries to run on demand. Turning this option **ON** means that Metabase will only scan and cache the values of the field(s) that are used when a new filter is added to a dashboard or SQL question.
-- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../connecting.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
+- **Never, I'll do this manually if I need to** is an option for databases that are either prohibitively large, or which never really have new values added. Use the [Re-scan field values now](../sync-scan.md#manually-scanning-column-values) button to run a manual scan and bring your filter values up to date.
 
 ### Periodically refingerprint tables
 
-Turn this option **ON** to scan a _sample_ of values every time Metabase runs a [sync](../connecting.md#how-database-syncs-work).
+> Periodic refingerprinting will increase the load on your database.
 
-A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you turn this option **OFF**, Metabase will only fingerprint your columns once during setup.
+Turn this option **ON** to scan a sample of values every time Metabase runs a [sync](../sync-scan.md#how-database-syncs-work).
 
-### Default result cache duration
-
-{% include plans-blockquote.html feature="Database-specific caching" %}
-
-How long to keep question results. By default, Metabase will use the value you supply on the [cache settings page](../../configuring-metabase/caching.md), but if this database has other factors that influence the freshness of data, it could make sense to set a custom duration. You can also choose custom durations on individual questions or dashboards to help improve performance.
-
-Options are:
-
-- **Use instance default (TTL)**. TTL is time to live, meaning how long the cache remains valid before Metabase should run the query again.
-- **Custom**.
-
-If you are on a paid plan, you can also set cache duration per questions. See [Advanced caching controls](../../configuring-metabase/caching.md#advanced-caching-controls).
+A fingerprinting query examines the first 10,000 rows from each column and uses that data to guesstimate how many unique values each column has, what the minimum and maximum values are for numeric and timestamp columns, and so on. If you leave this option **OFF**, Metabase will only fingerprint your columns once during setup.
 
 ## Further reading
 

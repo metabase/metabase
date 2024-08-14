@@ -1,6 +1,6 @@
 (ns metabase.driver.bigquery-cloud-sdk.params
   (:require
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.util.date-2 :as u.date]
    [metabase.util.log :as log])
   (:import
@@ -48,10 +48,10 @@
 (def ^:private ^:const ^BigDecimal min-bq-numeric-val (.negate max-bq-numeric-val))
 
 (defmethod ->QueryParameterValue java.math.BigDecimal [^BigDecimal v]
-  (if (or (and (< 0 (.signum v))
-            (< 0 (.compareTo v min-bq-numeric-val)))
-        (and (> 0 (.signum v))
-             (> 0 (.compareTo v max-bq-numeric-val))))
+  (if (or (and (pos? (.signum v))
+               (pos? (.compareTo v min-bq-numeric-val)))
+          (and (neg? (.signum v))
+               (neg? (.compareTo v max-bq-numeric-val))))
     (param "BIGNUMERIC" v)
     (param "NUMERIC" v)))
 

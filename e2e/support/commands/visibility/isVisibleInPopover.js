@@ -1,3 +1,5 @@
+import { POPOVER_ELEMENT } from "e2e/support/helpers";
+
 Cypress.Commands.add(
   "isVisibleInPopover",
   {
@@ -5,7 +7,7 @@ Cypress.Commands.add(
   },
   subject => {
     cy.wrap(subject)
-      .closest(".PopoverContainer.PopoverContainer--open")
+      .closest(POPOVER_ELEMENT)
       .then($popover => {
         /**
          * Helper function that:

@@ -1,0 +1,301 @@
+name: Dashboard cards
+description: Records of all dashboard cards (including text cards).
+entity_id: pKdvc0pwu1zDi8NqnyJkt
+created_at: '2023-09-21T13:24:15.758371Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: 15
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_dashboardcard
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - entity_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - entity_qualified_id
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - dashboard_qualified_id
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - dashboardtab_id
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - card_qualified_id
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - created_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - updated_at
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - visualization_settings
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - parameter_mappings
+      - base-type: type/Text
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_dashboardcard
+  type: query
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - entity_id
+  - base-type: type/Integer
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - entity_id
+  name: entity_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Entity Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - entity_qualified_id
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - entity_qualified_id
+  name: entity_qualified_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Dashboard Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - dashboard_qualified_id
+  - base-type: type/Text
+  fk_target_field_id: 1484
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - dashboard_qualified_id
+  name: dashboard_qualified_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Dashboardtab ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - dashboardtab_id
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - dashboardtab_id
+  name: dashboardtab_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Card Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - card_qualified_id
+  - base-type: type/Text
+  fk_target_field_id: 1484
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - card_qualified_id
+  name: card_qualified_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - created_at
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - created_at
+  name: created_at
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - updated_at
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - updated_at
+  name: updated_at
+  semantic_type: type/UpdatedTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Visualization Settings
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - visualization_settings
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - visualization_settings
+  name: visualization_settings
+  semantic_type: type/SerializedJSON
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Parameter Mappings
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_dashboardcard
+    - parameter_mappings
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_dashboardcard
+  - parameter_mappings
+  name: parameter_mappings
+  semantic_type: type/SerializedJSON
+  settings: null
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+  table.cell_column: size_x
+  table.pivot_column: dashboardtab_id
+serdes/meta:
+- id: pKdvc0pwu1zDi8NqnyJkt
+  label: dashboard_cards
+  model: Card
+initially_published_at: null
+last_used_at: '2024-05-15T20:43:54.773216Z'
+metabase_version: null
+type: model

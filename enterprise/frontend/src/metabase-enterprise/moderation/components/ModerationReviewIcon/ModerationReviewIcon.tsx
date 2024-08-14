@@ -1,10 +1,11 @@
-import React from "react";
+import Tooltip from "metabase/core/components/Tooltip";
 import { color } from "metabase/lib/colors";
 import { getRelativeTime } from "metabase/lib/time";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
-import { ModerationReview, User } from "metabase-types/api";
+import { Icon } from "metabase/ui";
+import type { ModerationReview, User } from "metabase-types/api";
+
 import { getIconForReview, getModeratorDisplayText } from "../../service";
+
 import { TooltipTime } from "./ModerationReviewIcon.styled";
 
 export interface ModerationReviewIconProps {
@@ -36,4 +37,5 @@ const ModerationReviewIcon = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModerationReviewIcon;

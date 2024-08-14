@@ -1,0 +1,239 @@
+[
+  {
+    "card": {
+      "original_card_id": 324,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-05-25T01:52:38.995041Z",
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (683ce7f)",
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "visualization_settings": {
+        "graph.dimensions": ["X"],
+        "graph.series_order_dimension": null,
+        "graph.series_order": null,
+        "graph.show_values": true,
+        "graph.metrics": ["Y"]
+      },
+      "collection_preview": true,
+      "entity_id": "pQcB_6Cjn77S5-8s728_5",
+      "display": "bar",
+      "parameter_mappings": [],
+      "id": 324,
+      "dataset_query": {
+        "database": 1,
+        "type": "native",
+        "native": {
+          "template-tags": {},
+          "query": "SELECT\n  1 x,\n  100000000 y\nUNION ALL\nSELECT\n  2,\n  100\nUNION ALL\nSELECT\n  3,\n  1\nUNION ALL\nSELECT\n  4,\n  0\nUNION ALL\nSELECT\n  5,\n  NULL"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-06-01T01:48:03.142878Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": 113.46031746031746,
+      "type": "question",
+      "last_used_at": "2024-06-01T01:48:03.141264Z",
+      "dashboard_count": 0,
+      "last_query_start": "2024-06-01T01:48:03.118893Z",
+      "name": "min-height-test",
+      "query_type": "native",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 1,
+      "trashed_from_collection_id": null,
+      "can_write": true,
+      "initially_published_at": null,
+      "result_metadata": [
+        {
+          "display_name": "X",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 1.75,
+                "q3": 4.25,
+                "max": 5,
+                "sd": 1.5811388300841898,
+                "avg": 3
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Y",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 5,
+              "nil%": 0.2
+            },
+            "type": {
+              "type/Number": {
+                "min": 0,
+                "q1": 0.5,
+                "q3": 50000050,
+                "max": 100000000,
+                "sd": 49999983.16668867,
+                "avg": 25000025.25
+              }
+            }
+          }
+        }
+      ],
+      "table_id": null,
+      "collection_position": null,
+      "view_count": 62,
+      "archived": false,
+      "description": null,
+      "cache_invalidated_at": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [1, 100000000],
+        [2, 100],
+        [3, 1],
+        [4, 0],
+        [5, null]
+      ],
+      "cols": [
+        {
+          "display_name": "X",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "X",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "X",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        },
+        {
+          "display_name": "Y",
+          "source": "native",
+          "field_ref": [
+            "field",
+            "Y",
+            {
+              "base-type": "type/Integer"
+            }
+          ],
+          "name": "Y",
+          "base_type": "type/Integer",
+          "effective_type": "type/Integer"
+        }
+      ],
+      "native_form": {
+        "params": null,
+        "query": "SELECT\n  1 x,\n  100000000 y\nUNION ALL\nSELECT\n  2,\n  100\nUNION ALL\nSELECT\n  3,\n  1\nUNION ALL\nSELECT\n  4,\n  0\nUNION ALL\nSELECT\n  5,\n  NULL"
+      },
+      "format-rows?": true,
+      "results_timezone": "America/Montevideo",
+      "requested_timezone": "Etc/GMT",
+      "results_metadata": {
+        "columns": [
+          {
+            "display_name": "X",
+            "field_ref": [
+              "field",
+              "X",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "X",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 1.75,
+                  "q3": 4.25,
+                  "max": 5,
+                  "sd": 1.5811388300841898,
+                  "avg": 3
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Y",
+            "field_ref": [
+              "field",
+              "Y",
+              {
+                "base-type": "type/Integer"
+              }
+            ],
+            "name": "Y",
+            "base_type": "type/Integer",
+            "effective_type": "type/Integer",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 5,
+                "nil%": 0.2
+              },
+              "type": {
+                "type/Number": {
+                  "min": 0,
+                  "q1": 0.5,
+                  "q3": 50000050,
+                  "max": 100000000,
+                  "sd": 49999983.16668867,
+                  "avg": 25000025.25
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

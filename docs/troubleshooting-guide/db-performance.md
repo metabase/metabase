@@ -14,13 +14,13 @@ To fix problems with your Metabase [application database](../installation-and-op
 
 ## Identifying bottlenecks
 
-1. Optional: use Metabase's [auditing tools](../usage-and-performance-tools/audit.md) to look at your Metabase usage stats.\*
+1. Optional: use Metabase's [Usage analytics](../usage-and-performance-tools/usage-analytics.md) to look at your Metabase usage stats.\*
 2. Go to your database's server logs and check whether:
    - Your tables are growing in size,
    - More people are using Metabase to access your database,
    - People are accessing your database more often, or
    - A script or application (other than Metabase) is accessing the database frequently.
-3. If specific tables are being queried a lot, try [Optimizing your table schemas](https://www.metabase.com/learn/administration/making-dashboards-faster#organize-data-to-anticipate-common-questions).
+3. If specific tables are being queried a lot, try [Optimizing your table schemas](https://www.metabase.com/learn/metabase-basics/administration/administration-and-operation/making-dashboards-faster#organize-data-to-anticipate-common-questions).
 4. Run a question from Metabase, then [run the same query](../questions/query-builder/introduction.md#viewing-the-sql-that-powers-your-question) directly against your database.
    - If the queries take about the same time, your data or usage might be outgrowing your database. You can give your database more resources, or consider [upgrading your hardware](https://www.metabase.com/learn/analytics/which-data-warehouse).
    - If the query in Metabase takes longer than a direct query against your database, you might need to adjust the deployment of your Metabase app. Check out some options in [Metabase at scale](https://www.metabase.com/learn/administration/metabase-at-scale).
@@ -28,7 +28,7 @@ To fix problems with your Metabase [application database](../installation-and-op
    - Stop your script or application, and [clear any queued queries](#clearing-queued-queries).
    - Recommended: add a timeout to your script, schedule the script or application to run during off-hours, or replicate your database (and point your tools there instead).
 
-\* Available on paid plans.
+\* Available on Pro and Enterprise plans.
 
 ## Resetting a database connection
 
@@ -54,7 +54,7 @@ If someone or something creates 100 queries at the same time, this stampede of q
 
 ## Managing resource-intensive queries
 
-1. [Reschedule or disable Metabase syncs and scans](../databases/connecting.md#syncing-and-scanning-databases).
+1. [Reschedule or disable Metabase syncs and scans](../databases/sync-scan.md).
 
 **Explanation**
 
@@ -63,7 +63,7 @@ By default, Metabase makes regular sync and scan queries against your database t
 ## Questions that use number, date, or timestamp columns
 
 1. Update your database schema so that the columns are typed correctly.
-2. [Sync the updated columns](../databases/connecting.md#manually-syncing-tables-and-columns) to bring the changes into Metabase.
+2. [Sync the updated columns](../databases/sync-scan.md#manually-syncing-tables-and-columns) to bring the changes into Metabase.
 
 **Explanation**
 

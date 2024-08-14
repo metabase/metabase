@@ -3,11 +3,12 @@
   (:require
    [clojure.test :refer :all]
    [metabase.driver :as driver]
-   [metabase.models.metric :refer [Metric]]
+   [metabase.models.card :refer [Card]]
    [metabase.models.segment :refer [Segment]]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp]))
 
-(deftest basic-test
+(deftest ^:parallel basic-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (is (= [[0.94]]
            (mt/formatted-rows [2.0]
@@ -52,24 +53,26 @@
 (deftest segments-metrics-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations)
     (testing "Share containing a Segment"
-      (mt/with-temp Segment [{segment-id :id} {:table_id   (mt/id :venues)
-                                               :definition {:source-table (mt/id :venues)
-                                                            :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
+      (t2.with-temp/with-temp [Segment {segment-id :id} {:table_id   (mt/id :venues)
+                                                         :definition {:source-table (mt/id :venues)
+                                                                      :filter       [:< [:field (mt/id :venues :price) nil] 4]}}]
         (is (= [[0.94]]
                (mt/formatted-rows [2.0]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:share [:segment segment-id]]]}))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:share [:segment segment-id]]]}))))))
 
     (testing "Share inside a Metric"
-      (mt/with-temp Metric [{metric-id :id} {:table_id   (mt/id :venues)
-                                             :definition {:source-table (mt/id :venues)
-                                                          :aggregation  [:share [:< [:field (mt/id :venues :price) nil] 4]]}}]
+      (t2.with-temp/with-temp [Card {metric-id :id} {:dataset_query (mt/mbql-query venues
+                                                                      {:aggregation [:share [:< $price 4]]
+                                                                       :source-table $$venues})
+                                                     :type :metric}]
         (is (= [[0.94]]
                (mt/formatted-rows [2.0]
-                 (mt/run-mbql-query venues
-                   {:aggregation [[:metric metric-id]]}))))))))
+                                  (mt/run-mbql-query venues
+                                    {:aggregation [[:metric metric-id]]
+                                     :source-table (str "card__" metric-id)}))))))))
 
-(deftest expressions-test
+(deftest ^:parallel expressions-test
   (mt/test-drivers (mt/normal-drivers-with-feature :basic-aggregations :expressions)
     (testing "Share containing an expression"
       (is (= [[2 0.0]

@@ -17,7 +17,6 @@ A clear and concise description of what you want to happen.
 A clear and concise description of any alternative solutions or features you've considered.
 
 **How important is this feature to you?**
-Note: the more honest and specific you are here the more we will take you seriously. 
 
 **Additional context**
 Add any other context or screenshots about the feature request here.

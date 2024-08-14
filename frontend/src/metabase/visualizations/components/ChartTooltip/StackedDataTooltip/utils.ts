@@ -1,5 +1,6 @@
 import { t } from "ttag";
-import { TooltipRowModel } from "../types";
+
+import type { TooltipRowModel } from "metabase/visualizations/types";
 
 export const getTotalValue = (
   headerRows: TooltipRowModel[] = [],
@@ -16,7 +17,7 @@ export const getPercent = (total: number, value: unknown) => {
     return undefined;
   }
 
-  return value / total;
+  return value / Math.abs(total);
 };
 
 export const groupExcessiveTooltipRows = (
@@ -51,4 +52,13 @@ export const groupExcessiveTooltipRows = (
   );
 
   return [...rowsToKeep, groupedRow];
+};
+
+export const getSortedRows = (rows: TooltipRowModel[]) => {
+  return [...rows].sort(({ value: leftValue }, { value: rightValue }) => {
+    return (
+      (typeof rightValue === "number" ? rightValue : 0) -
+      (typeof leftValue === "number" ? leftValue : 0)
+    );
+  });
 };

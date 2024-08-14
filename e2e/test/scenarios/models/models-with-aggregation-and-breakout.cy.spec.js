@@ -1,6 +1,6 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { restore } from "e2e/support/helpers";
 
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { turnIntoModel } from "./helpers/e2e-models-helpers";
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -31,7 +31,9 @@ describe("scenarios > models with aggregation and breakout", () => {
     turnIntoModel();
     cy.wait("@updateCard");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Created At: Month");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Distinct values of Product ID");
   });
 });

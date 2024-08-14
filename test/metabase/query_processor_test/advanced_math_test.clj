@@ -3,8 +3,7 @@
    [clojure.test :refer :all]
    [metabase.driver :as driver]
    [metabase.driver.util :as driver.u]
-   [metabase.test :as mt]
-   [metabase.util :as u]))
+   [metabase.test :as mt]))
 
 (defn- test-math-expression
   [expr]
@@ -14,11 +13,9 @@
         :order-by    [[:asc [:field (mt/id :venues :id) nil]]]
         :limit       1}
        (mt/run-mbql-query venues)
-       mt/rows
-       ffirst
-       double
        ;; Round to prevent minute differences across DBs due to differences in how float point math is handled
-       (u/round-to-decimals 2)))
+       (mt/formatted-rows [2.0])
+       ffirst))
 
 (deftest ^:parallel test-round
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
@@ -42,7 +39,6 @@
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
     (is (= 2.0 (test-math-expression [:abs -2])))))
 
-
 (deftest ^:parallel test-power
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 4.0 (test-math-expression [:power 2.0 2])))
@@ -60,7 +56,6 @@
 (deftest ^:parallel test-log
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
     (is (= 1.0 (test-math-expression [:log 10.0])))))
-
 
 (deftest ^:parallel test-filter
   (mt/test-drivers (mt/normal-drivers-with-feature :advanced-math-expressions)
@@ -81,7 +76,7 @@
                (ffirst
                 (mt/formatted-rows [1.0]
                   (mt/process-query query))))))))
-  (when (driver/database-supports? driver/*driver* :expression-aggregations (mt/db))
+  (when (driver.u/supports? driver/*driver* :expression-aggregations (mt/db))
     (testing "Inside an expression aggregation"
       (let [query (mt/mbql-query venues
                     {:aggregation [[:+ agg 1]]})]

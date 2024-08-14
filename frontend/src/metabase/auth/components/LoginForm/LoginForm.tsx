@@ -1,14 +1,15 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import * as Yup from "yup";
-import Form from "metabase/core/components/Form";
-import FormProvider from "metabase/core/components/FormProvider";
+
 import FormCheckBox from "metabase/core/components/FormCheckBox";
 import FormErrorMessage from "metabase/core/components/FormErrorMessage";
 import FormInput from "metabase/core/components/FormInput";
 import FormSubmitButton from "metabase/core/components/FormSubmitButton";
-import * as Errors from "metabase/core/utils/errors";
-import { LoginData } from "../../types";
+import { Form, FormProvider } from "metabase/forms";
+import * as Errors from "metabase/lib/errors";
+
+import type { LoginData } from "../../types";
 
 const LOGIN_SCHEMA = Yup.object().shape({
   username: Yup.string()
@@ -21,13 +22,13 @@ const LOGIN_SCHEMA = Yup.object().shape({
   remember: Yup.boolean(),
 });
 
-export interface LoginFormProps {
+interface LoginFormProps {
   isLdapEnabled: boolean;
   hasSessionCookies: boolean;
   onSubmit: (data: LoginData) => void;
 }
 
-const LoginForm = ({
+export const LoginForm = ({
   isLdapEnabled,
   hasSessionCookies,
   onSubmit,
@@ -80,5 +81,3 @@ const LoginForm = ({
     </FormProvider>
   );
 };
-
-export default LoginForm;

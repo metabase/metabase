@@ -1,0 +1,152 @@
+name: Member of
+description: null
+entity_id: zn_VtBXm5-teZmXpwGcNu
+created_at: '2023-06-15T02:00:12.773345Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_group_members
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - group_name
+      - base-type: type/Text
+    joins:
+    - alias: People - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - User
+      fields: none
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
+    source-table: lTp-ATFsCUFEr9I0fMEaO
+  type: query
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Group ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_group_members
+    - group_id
+  - base-type: type/Integer
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  - group_id
+  name: group_id
+  nfc_path: null
+  parent_id: null
+  position: 1
+  semantic_type: type/PK
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Group Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_group_members
+    - group_name
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  - group_name
+  name: group_name
+  nfc_path: null
+  parent_id: null
+  position: 2
+  semantic_type: type/Name
+  settings: null
+  source: fields
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_group_members
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+  table.cell_column: group_name
+  table.columns:
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_group_members
+      - group_id
+    - null
+    name: group_id
+  - enabled: true
+    fieldRef:
+    - field
+    - - Internal Metabase Database
+      - public
+      - v_group_members
+      - group_name
+    - null
+    name: group_name
+  table.pivot_column: group_id
+serdes/meta:
+- id: zn_VtBXm5-teZmXpwGcNu
+  label: member_of
+  model: Card
+initially_published_at: null
+metabase_version: null
+type: question

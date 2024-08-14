@@ -3,26 +3,42 @@ import { popover } from "e2e/support/helpers";
 const currentYearString = new Date().getFullYear().toString();
 
 export function setMonthAndYear({ month, year } = {}) {
-  cy.findByText(currentYearString).click();
+  cy.findByTestId("select-year-picker")
+    .should("have.value", currentYearString)
+    .click();
 
   cy.findByText(year).click();
   cy.findByText(month).click();
 }
 
 export function setQuarterAndYear({ quarter, year } = {}) {
-  cy.findByText(currentYearString).click();
+  cy.findByTestId("select-year-picker")
+    .should("have.value", currentYearString)
+    .click();
 
-  cy.findByText(year).click();
-  cy.findByText(quarter).click();
+  popover().last().findByText(year).click();
+  popover().findByText(quarter).click();
 }
 
-export function setSingleDate(day) {
-  cy.findByText(day).click();
+function setDate(date, container) {
+  container.findByRole("textbox").clear().type(date).blur();
+}
+
+export function setSingleDate(date) {
+  setDate(date, cy.findByTestId("specific-date-picker"));
+}
+
+export function setTime({ hours, minutes }) {
+  popover().within(() => {
+    cy.findByText("Add a time").click();
+    cy.findByPlaceholderText("hh").clear().type(hours);
+    cy.findByPlaceholderText("mm").clear().type(minutes);
+  });
 }
 
 export function setDateRange({ startDate, endDate } = {}) {
-  cy.findByText(startDate).click();
-  cy.findByText(endDate).click();
+  setDate(startDate, cy.findAllByTestId("specific-date-picker").first());
+  setDate(endDate, cy.findAllByTestId("specific-date-picker").last());
 }
 
 export function setRelativeDate(term) {
@@ -39,7 +55,7 @@ export function setAdHocFilter({
   if (condition) {
     cy.findByText(condition).click({ force: true });
   } else {
-    cy.findByText("Past").click({ force: true });
+    cy.findByText("Previous").click({ force: true });
   }
 
   if (quantity) {
@@ -47,7 +63,9 @@ export function setAdHocFilter({
   }
 
   if (timeBucket) {
-    cy.findAllByTestId("relative-datetime-unit").contains("days").click();
+    cy.findAllByTestId("relative-datetime-unit")
+      .should("have.value", "days")
+      .click();
 
     popover().last().contains(timeBucket).click();
   }
@@ -59,5 +77,5 @@ export function setAdHocFilter({
     cy.findByText(/^Include/).click();
   }
 
-  cy.button("Update filter").click();
+  cy.button("Add filter").click();
 }

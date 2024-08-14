@@ -4,7 +4,7 @@ title: Substring
 
 # Substring
 
-`substring` extracts part of some text. This function is useful for cleaning up text (or any value with a [string data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types)) that has a consistent format.
+`substring` extracts part of some text. This function is useful for cleaning up text (or any value with a [string data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types)) that has a consistent format.
 
 For example, `substring` should work well on strings like SKU numbers, ISO codes, and standardized email addresses.
 
@@ -56,7 +56,7 @@ substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `substring`  |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `substring`  |
 | ----------------------- | -------------------- |
 | String                  | ✅                   |
 | Number                  | ❌                   |
@@ -68,7 +68,7 @@ substring([Mission ID], (1 + length([Mission ID]) - 3), 3)
 
 `substring` extracts text by counting a fixed number of characters. If you need to extract text based on some more complicated logic, try [`regexextract`](../expressions-list.md#regexextract).
 
-And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`lefttrim`](../expressions-list.md#lefttrim), or [`righttrim`](../expressions-list.md#righttrim) expressions instead.
+And if you only need to clean up extra whitespace around your text, you can use the [`trim`](../expressions-list.md#trim), [`ltrim`](../expressions-list.md#ltrim), or [`rtrim`](../expressions-list.md#rtrim) expressions instead.
 
 ## Related functions
 

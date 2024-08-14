@@ -149,7 +149,7 @@
         (catch Exception e
           [lib-name {:error e}])))))
 
-(defn write-license [success-os [lib {:keys [coords license]}]]
+(defn- write-license [success-os [lib {:keys [coords license]}]]
   (binding [*out* success-os]
     (println "The following software may be included in this product:"
              (str lib ": " (:version coords) ".")
@@ -158,7 +158,7 @@
     (println license)
     (println "\n\n----------\n")))
 
-(defn report-missing [error-os [jar {:keys [coords]}]]
+(defn- report-missing [error-os [jar {:keys [coords]}]]
   (let [{:keys [group artifact]} coords
         dep-name (or (when artifact
                        (str (when group (str group ":")) artifact))

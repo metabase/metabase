@@ -1,22 +1,19 @@
 import { updateIn } from "icepick";
 
+import GoogleAuthCard from "metabase/admin/settings/auth/containers/GoogleAuthCard";
+import GoogleSettingsForm from "metabase/admin/settings/auth/containers/GoogleAuthForm";
+import MetabaseSettings from "metabase/lib/settings";
 import {
   PLUGIN_AUTH_PROVIDERS,
   PLUGIN_ADMIN_SETTINGS_UPDATES,
   PLUGIN_IS_PASSWORD_USER,
 } from "metabase/plugins";
 
-import MetabaseSettings from "metabase/lib/settings";
-
-import FormikForm from "metabase/containers/FormikForm";
-import GoogleAuthCard from "metabase/admin/settings/auth/containers/GoogleAuthCard";
-import GoogleSettingsForm from "metabase/admin/settings/auth/containers/GoogleAuthForm";
-
 PLUGIN_AUTH_PROVIDERS.push(providers => {
   const googleProvider = {
     name: "google",
     // circular dependencies
-    Button: require("metabase/auth/containers/GoogleButton").default,
+    Button: require("metabase/auth/components/GoogleButton").GoogleButton,
   };
 
   return MetabaseSettings.isGoogleAuthEnabled()
@@ -39,7 +36,7 @@ PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections => ({
   ...sections,
   "authentication/google": {
-    component: GoogleSettingsForm ?? FormikForm,
+    component: GoogleSettingsForm,
     settings: [
       { key: "google-auth-client-id" },
       { key: "google-auth-auto-create-accounts-domain" },

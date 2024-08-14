@@ -1,9 +1,11 @@
 /* eslint-disable react/prop-types */
-import React from "react";
+import cx from "classnames";
+import { Droppable, Draggable } from "react-beautiful-dnd";
 import { t } from "ttag";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
-import { moveElement } from "metabase/core/utils/arrays";
+import { DragDropContext } from "metabase/core/components/DragDropContext";
+import CS from "metabase/css/core/index.css";
+import { moveElement } from "metabase/lib/arrays";
 
 import ChartSettingFieldPicker from "./ChartSettingFieldPicker";
 import { AddAnotherContainer } from "./ChartSettingFieldsPicker.styled";
@@ -30,9 +32,11 @@ const ChartSettingFieldsPicker = ({
     );
   };
 
+  const isDragDisabled = fields?.length <= 1;
+
   return (
     <div>
-      {Array.isArray(fields) ? (
+      {fields?.length >= 0 ? (
         <DragDropContext onDragEnd={handleDragEnd}>
           <Droppable droppableId="droppable">
             {provided => (
@@ -43,13 +47,14 @@ const ChartSettingFieldsPicker = ({
                       key={`draggable-${field}`}
                       draggableId={`draggable-${field}`}
                       index={fieldIndex}
+                      isDragDisabled={isDragDisabled}
                     >
                       {provided => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
                           {...provided.dragHandleProps}
-                          className="mb1"
+                          className={CS.mb1}
                         >
                           <ChartSettingFieldPicker
                             {...props}
@@ -100,12 +105,12 @@ const ChartSettingFieldsPicker = ({
           </Droppable>
         </DragDropContext>
       ) : (
-        <span className="text-error">{t`error`}</span>
+        <span className={CS.textError}>{t`error`}</span>
       )}
       {addAnother && (
         <AddAnotherContainer>
           <a
-            className="text-brand text-bold py1"
+            className={cx(CS.textBrand, CS.textBold, CS.py1)}
             onClick={() => {
               const remaining = options.filter(
                 o => fields.indexOf(o.value) < 0,

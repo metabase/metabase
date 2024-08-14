@@ -1,23 +1,24 @@
 /* eslint "react/prop-types": "warn" */
-import React from "react";
+import cx from "classnames";
+import { useFormik } from "formik";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
-import { useFormik } from "formik";
 import { t } from "ttag";
+
 import List from "metabase/components/List";
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-
+import Link from "metabase/core/components/Link";
+import CS from "metabase/css/core/index.css";
+import * as metadataActions from "metabase/redux/metadata";
+import Detail from "metabase/reference/components/Detail";
 import EditHeader from "metabase/reference/components/EditHeader";
 import EditableReferenceHeader from "metabase/reference/components/EditableReferenceHeader";
-import Detail from "metabase/reference/components/Detail";
+import { Formula } from "metabase/reference/components/Formula";
 import UsefulQuestions from "metabase/reference/components/UsefulQuestions";
-import Formula from "metabase/reference/components/Formula";
-import Link from "metabase/core/components/Link";
-
-import * as metadataActions from "metabase/redux/metadata";
 import * as actions from "metabase/reference/reference";
-import { getQuestionUrl } from "../utils";
+import { getMetadata } from "metabase/selectors/metadata";
 
+import S from "../components/Detail.module.css";
 import {
   getSegment,
   getTable,
@@ -28,10 +29,9 @@ import {
   getIsEditing,
   getIsFormulaExpanded,
 } from "../selectors";
+import { getQuestionUrl } from "../utils";
 
-import S from "../components/Detail.css";
-
-const interestingQuestions = (table, segment) => {
+const interestingQuestions = (table, segment, metadata) => {
   return [
     {
       text: t`Number of ${segment.name}`,
@@ -41,6 +41,7 @@ const interestingQuestions = (table, segment) => {
         tableId: table.id,
         segmentId: segment.id,
         getCount: true,
+        metadata,
       }),
     },
     {
@@ -50,6 +51,7 @@ const interestingQuestions = (table, segment) => {
         dbId: table && table.db_id,
         tableId: table.id,
         segmentId: segment.id,
+        metadata,
       }),
     },
   ];
@@ -63,6 +65,7 @@ const mapStateToProps = (state, props) => {
     entity,
     table: getTable(state, props),
     metadataFields: fields,
+    metadata: getMetadata(state),
     loading: getLoading(state, props),
     // naming this 'error' will conflict with redux form
     loadingError: getError(state, props),
@@ -100,6 +103,7 @@ const propTypes = {
   isFormulaExpanded: PropTypes.bool,
   loading: PropTypes.bool,
   loadingError: PropTypes.object,
+  metadata: PropTypes.object.isRequired,
   onSubmit: PropTypes.func.isRequired,
 };
 
@@ -108,6 +112,7 @@ const SegmentDetail = props => {
     style,
     entity,
     table,
+    metadata,
     loadingError,
     loading,
     user,
@@ -139,7 +144,7 @@ const SegmentDetail = props => {
   });
 
   return (
-    <form style={style} className="full" onSubmit={handleSubmit}>
+    <form style={style} className={CS.full} onSubmit={handleSubmit}>
       {isEditing && (
         <EditHeader
           hasRevisionHistory={true}
@@ -159,6 +164,7 @@ const SegmentDetail = props => {
           dbId: table && table.db_id,
           tableId: entity.table_id,
           segmentId: entity.id,
+          metadata,
         })}
         name={t`Details`}
         user={user}
@@ -174,8 +180,19 @@ const SegmentDetail = props => {
         error={loadingError}
       >
         {() => (
-          <div className="wrapper">
-            <div className="pl4 pr3 pt4 mb4 mb1 bg-white rounded bordered">
+          <div className={CS.wrapper}>
+            <div
+              className={cx(
+                CS.pl4,
+                CS.pr3,
+                CS.pt4,
+                CS.mb4,
+                CS.mb1,
+                CS.bgWhite,
+                CS.rounded,
+                CS.bordered,
+              )}
+            >
               <List>
                 <li>
                   <div className={S.detail}>
@@ -187,10 +204,16 @@ const SegmentDetail = props => {
                         {table && (
                           <div>
                             <Link
-                              className="text-brand text-bold text-paragraph"
+                              className={cx(
+                                CS.textBrand,
+                                CS.textBold,
+                                CS.textParagraph,
+                              )}
                               to={`/reference/databases/${table.db_id}/tables/${table.id}`}
                             >
-                              <span className="pt1">{table.display_name}</span>
+                              <span className={CS.pt1}>
+                                {table.display_name}
+                              </span>
                             </Link>
                           </div>
                         )}
@@ -198,7 +221,7 @@ const SegmentDetail = props => {
                     </div>
                   </div>
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="description"
                     name={t`Description`}
@@ -208,7 +231,7 @@ const SegmentDetail = props => {
                     field={getFormField("description")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="points_of_interest"
                     name={t`Why this Segment is interesting`}
@@ -218,7 +241,7 @@ const SegmentDetail = props => {
                     field={getFormField("points_of_interest")}
                   />
                 </li>
-                <li className="relative">
+                <li className={CS.relative}>
                   <Detail
                     id="caveats"
                     name={t`Things to be aware of about this Segment`}
@@ -229,17 +252,14 @@ const SegmentDetail = props => {
                   />
                 </li>
                 {!isEditing && (
-                  <li className="relative">
+                  <li className={CS.relative}>
                     <UsefulQuestions
-                      questions={interestingQuestions(
-                        props.table,
-                        props.entity,
-                      )}
+                      questions={interestingQuestions(table, entity, metadata)}
                     />
                   </li>
                 )}
                 {table && !isEditing && (
-                  <li className="relative mb4">
+                  <li className={cx(CS.relative, CS.mb4)}>
                     <Formula
                       type="segment"
                       entity={entity}

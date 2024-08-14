@@ -1,58 +1,68 @@
-import React, { useEffect, useMemo } from "react";
+import type * as React from "react";
+import { useEffect, useMemo } from "react";
 import { t } from "ttag";
-
 import _ from "underscore";
-import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
-import { DatasetData, VisualizationSettings } from "metabase-types/api";
 
+import ExplicitSize from "metabase/components/ExplicitSize";
+import CS from "metabase/css/core/index.css";
+import { measureTextWidth } from "metabase/lib/measure-text";
+import { extractRemappedColumns } from "metabase/visualizations";
 import {
-  getChartColumns,
+  getCartesianChartColumns,
   hasValidColumnsSelected,
 } from "metabase/visualizations/lib/graph/columns";
-import { measureText } from "metabase/lib/measure-text";
-import ExplicitSize from "metabase/components/ExplicitSize";
-import {
-  getClickData,
-  getHoverData,
-  getLegendClickData,
-} from "metabase/visualizations/visualizations/RowChart/utils/events";
-
-import { getChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
-import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
-import {
-  RowChart,
-  RowChartProps,
-} from "metabase/visualizations/shared/components/RowChart";
-import {
-  getGroupedDataset,
-  getSeries,
-  trimData,
-} from "metabase/visualizations/shared/utils/data";
 import { getChartGoal } from "metabase/visualizations/lib/settings/goal";
-import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
+import { GRAPH_DATA_SETTINGS } from "metabase/visualizations/lib/settings/graph";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import {
-  GroupedDatum,
-  RemappingHydratedChartData,
-  SeriesInfo,
-} from "metabase/visualizations/shared/types/data";
-import { IconProps } from "metabase/components/Icon";
 import {
   validateChartDataSettings,
   validateDatasetRows,
   validateStacking,
 } from "metabase/visualizations/lib/settings/validation";
-import { BarData } from "metabase/visualizations/shared/components/RowChart/types";
-import { FontStyle } from "metabase/visualizations/shared/types/measure-text";
-import { extractRemappedColumns } from "metabase/visualizations";
-import { isDimension, isMetric } from "metabase-lib/types/utils/isa";
-import { getChartWarnings } from "./utils/warnings";
+import { getComputedSettingsForSeries } from "metabase/visualizations/lib/settings/visualization";
+import type { RowChartProps } from "metabase/visualizations/shared/components/RowChart";
+import { RowChart } from "metabase/visualizations/shared/components/RowChart";
+import type { BarData } from "metabase/visualizations/shared/components/RowChart/types";
+import type {
+  GroupedDatum,
+  SeriesInfo,
+} from "metabase/visualizations/shared/types/data";
+import type { HoveredData } from "metabase/visualizations/shared/types/events";
+import type { FontStyle } from "metabase/visualizations/shared/types/measure-text";
+import {
+  getGroupedDataset,
+  getSeries,
+  trimData,
+} from "metabase/visualizations/shared/utils/data";
+import { getTwoDimensionalChartSeries } from "metabase/visualizations/shared/utils/series";
+import {
+  getDefaultSize,
+  getMinSize,
+} from "metabase/visualizations/shared/utils/sizes";
+import type {
+  RemappingHydratedChartData,
+  VisualizationProps,
+} from "metabase/visualizations/types";
+import {
+  getClickData,
+  getHoverData,
+  getLegendClickData,
+} from "metabase/visualizations/visualizations/RowChart/utils/events";
+import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
+import { isDimension, isMetric } from "metabase-lib/v1/types/utils/isa";
+import type { DatasetData, VisualizationSettings } from "metabase-types/api";
+
 import {
   RowVisualizationRoot,
   RowChartContainer,
   RowChartLegendLayout,
   RowLegendCaption,
 } from "./RowChart.styled";
+import {
+  getColumnValueFormatter,
+  getFormatters,
+  getLabelsFormatter,
+} from "./utils/format";
 import { getLegendItems } from "./utils/legend";
 import {
   getAxesVisibility,
@@ -61,44 +71,24 @@ import {
   getXValueRange,
 } from "./utils/settings";
 import { ROW_CHART_SETTINGS } from "./utils/settings-definitions";
-import {
-  getColumnValueFormatter,
-  getFormatters,
-  getLabelsFormatter,
-} from "./utils/format";
+import { getChartWarnings } from "./utils/warnings";
 
-const RowChartRenderer = ExplicitSize({
+interface RowChartRendererProps extends RowChartProps<GroupedDatum> {
+  className?: string;
+}
+
+function RowChartRendererInner(props: RowChartRendererProps) {
+  return (
+    <RowChartContainer>
+      <RowChart {...props} />
+    </RowChartContainer>
+  );
+}
+
+const RowChartRenderer = ExplicitSize<RowChartRendererProps>({
   wrapped: true,
   refreshMode: "throttle",
-  selector: false,
-})((props: RowChartProps<GroupedDatum>) => (
-  <RowChartContainer>
-    <RowChart {...props} />
-  </RowChartContainer>
-));
-
-interface RowChartVisualizationProps {
-  className: string;
-  width: number;
-  height: number;
-  rawSeries: { data: DatasetData }[];
-  series: { data: DatasetData }[];
-  settings: VisualizationSettings;
-  visualizationIsClickable: (data: Record<string, unknown>) => boolean;
-  onVisualizationClick: (data: Record<string, unknown>) => void;
-  card: any;
-  isPlaceholder?: boolean;
-  hovered: any;
-  headerIcon: IconProps;
-  actionButtons: React.ReactNode;
-  isFullscreen: boolean;
-  isQueryBuilder: boolean;
-  showTitle: boolean;
-  onRender: (data: Record<string, unknown>) => void;
-  onHoverChange: (data: Record<string, unknown> | null) => void;
-  onChangeCardAndRun: (data: Record<string, unknown>) => void;
-  fontFamily: string;
-}
+})(RowChartRendererInner);
 
 const RowChartVisualization = ({
   card,
@@ -112,6 +102,7 @@ const RowChartVisualization = ({
   actionButtons,
   isFullscreen,
   isQueryBuilder,
+  isDashboard,
   onRender,
   onHoverChange,
   showTitle,
@@ -119,7 +110,10 @@ const RowChartVisualization = ({
   rawSeries: rawMultipleSeries,
   series: multipleSeries,
   fontFamily,
-}: RowChartVisualizationProps) => {
+  width: outerWidth,
+  height: outerHeight,
+  getHref,
+}: VisualizationProps) => {
   const formatColumnValue = useMemo(() => {
     return getColumnValueFormatter();
   }, []);
@@ -139,12 +133,13 @@ const RowChartVisualization = ({
   );
 
   const groupedData = useMemo(
-    () => getGroupedDataset(data.rows, chartColumns, formatColumnValue),
-    [chartColumns, data, formatColumnValue],
+    () =>
+      getGroupedDataset(data.rows, chartColumns, settings, formatColumnValue),
+    [chartColumns, data, settings, formatColumnValue],
   );
   const goal = useMemo(() => getChartGoal(settings), [settings]);
-  const theme = useMemo(getChartTheme, []);
   const stackOffset = getStackOffset(settings);
+  const theme = useRowChartTheme(fontFamily, isDashboard, isFullscreen);
 
   const chartWarnings = useMemo(
     () => getChartWarnings(chartColumns, data.rows),
@@ -177,12 +172,12 @@ const RowChartVisualization = ({
     }
 
     const clickData = getClickData(bar, settings, chartColumns, data.cols);
-    onVisualizationClick({ ...clickData, element: event.target });
+    onVisualizationClick({ ...clickData, element: event.currentTarget });
   };
 
   const handleHover = (
     event: React.MouseEvent,
-    bar: BarData<GroupedDatum, SeriesInfo>,
+    bar: BarData<GroupedDatum, SeriesInfo> | null,
   ) => {
     if (bar == null) {
       onHoverChange?.(null);
@@ -199,8 +194,11 @@ const RowChartVisualization = ({
 
     onHoverChange?.({
       ...hoverData,
+      // since we already scaled the dataset, we do not want the tool-tip
+      // formatter to apply scaling a second time
+      isAlreadyScaled: true,
       event: event.nativeEvent,
-      element: event.target,
+      element: event.currentTarget,
     });
   };
 
@@ -208,7 +206,6 @@ const RowChartVisualization = ({
     if (onChangeCardAndRun) {
       onChangeCardAndRun({
         nextCard: card,
-        seriesIndex: 0,
       });
     }
   };
@@ -221,17 +218,23 @@ const RowChartVisualization = ({
       chartColumns,
     );
 
+    const areMultipleCards = rawMultipleSeries.length > 1;
+    if (areMultipleCards) {
+      openQuestion();
+      return;
+    }
+
     if ("breakout" in chartColumns && visualizationIsClickable(clickData)) {
       onVisualizationClick({
         ...clickData,
         element: event.currentTarget,
       });
-    } else {
+    } else if (isDashboard) {
       openQuestion();
     }
   };
 
-  const hoverData =
+  const hoverData: HoveredData | null =
     hovered?.index != null
       ? {
           seriesIndex: hovered?.index,
@@ -244,7 +247,7 @@ const RowChartVisualization = ({
   const description = settings["card.description"];
   const canSelectTitle = !!onChangeCardAndRun;
 
-  const { labels, colors } = useMemo(
+  const legendItems = useMemo(
     () => getLegendItems(series, seriesColors, settings),
     [series, seriesColors, settings],
   );
@@ -265,11 +268,15 @@ const RowChartVisualization = ({
 
   const textMeasurer = useMemo(() => {
     return (text: string, style: FontStyle) =>
-      measureText(text, {
+      measureTextWidth(text, {
         ...style,
         family: fontFamily,
       });
   }, [fontFamily]);
+
+  const hasBreakout =
+    settings["graph.dimensions"] && settings["graph.dimensions"]?.length > 1;
+  const hasLegend = series.length > 1 || hasBreakout;
 
   return (
     <RowVisualizationRoot className={className} isQueryBuilder={isQueryBuilder}>
@@ -280,12 +287,15 @@ const RowChartVisualization = ({
           icon={headerIcon}
           actionButtons={actionButtons}
           onSelectTitle={canSelectTitle ? openQuestion : undefined}
+          width={outerWidth}
+          getHref={getHref}
         />
       )}
       <RowChartLegendLayout
-        hasLegend={series.length > 1}
-        labels={labels}
-        colors={colors}
+        width={outerWidth}
+        height={outerHeight}
+        hasLegend={hasLegend}
+        items={legendItems}
         actionButtons={!hasTitle ? actionButtons : undefined}
         hovered={hovered}
         onHoverChange={onHoverChange}
@@ -294,7 +304,7 @@ const RowChartVisualization = ({
         onSelectSeries={handleSelectSeries}
       >
         <RowChartRenderer
-          className="flex-full"
+          className={CS.flexFull}
           data={groupedData}
           trimData={trimData}
           series={series}
@@ -304,7 +314,7 @@ const RowChartVisualization = ({
           stackOffset={stackOffset}
           tickFormatters={tickFormatters}
           labelsFormatter={labelsFormatter}
-          measureText={textMeasurer}
+          measureTextWidth={textMeasurer}
           hoveredData={hoverData}
           onClick={handleClick}
           onHover={handleHover}
@@ -327,7 +337,8 @@ RowChartVisualization.iconName = "horizontal_bar";
 RowChartVisualization.noun = t`row chart`;
 
 RowChartVisualization.noHeader = true;
-RowChartVisualization.minSize = { width: 5, height: 4 };
+RowChartVisualization.minSize = getMinSize("row");
+RowChartVisualization.defaultSize = getDefaultSize("row");
 
 RowChartVisualization.settings = {
   ...ROW_CHART_SETTINGS,
@@ -370,7 +381,7 @@ RowChartVisualization.transformSeries = (originalMultipleSeries: any) => {
     return originalMultipleSeries;
   }
 
-  const chartColumns = getChartColumns(data, settings);
+  const chartColumns = getCartesianChartColumns(data.cols, settings);
 
   const computedSeries = getSeries(
     data,
@@ -427,4 +438,5 @@ RowChartVisualization.placeholderSeries = [
   },
 ];
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default RowChartVisualization;

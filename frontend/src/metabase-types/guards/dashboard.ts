@@ -1,4 +1,7 @@
-import { LinkEntity, RestrictedLinkEntity } from "metabase-types/api/dashboard";
+import type {
+  LinkEntity,
+  RestrictedLinkEntity,
+} from "metabase-types/api/dashboard";
 
 export const isRestrictedLinkEntity = (
   value: LinkEntity,

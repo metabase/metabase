@@ -1,6 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
 
 export interface QuarterRootProps {
   isSelected: boolean;
@@ -15,14 +14,14 @@ export const QuarterRoot = styled.li<QuarterRootProps>`
   cursor: pointer;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: var(--mb-color-text-hover);
+    background-color: var(--mb-color-background-hover);
   }
 
   ${({ isSelected }) =>
     isSelected &&
     css`
-      color: ${color("white")};
-      background-color: ${color("brand")};
+      color: var(--mb-color-text-selected);
+      background-color: var(--mb-color-background-selected);
     `}
 `;

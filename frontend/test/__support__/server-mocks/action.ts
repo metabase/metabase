@@ -1,4 +1,5 @@
 import fetchMock from "fetch-mock";
+
 import type { CardId, WritebackAction } from "metabase-types/api";
 import {
   createMockQueryAction,
@@ -11,19 +12,7 @@ export function setupActionEndpoints(action: WritebackAction) {
   fetchMock.delete(`path:/api/action/${action.id}`, action);
 }
 
-export function setupActionsEndpoints(
-  modelId: CardId,
-  actions: WritebackAction[],
-) {
-  fetchMock.get(
-    {
-      url: "path:/api/action",
-      query: { "model-id": modelId },
-      overwriteRoutes: false,
-    },
-    actions,
-  );
-
+function setupActionPostEndpoint() {
   fetchMock.post(
     { url: "path:/api/action", overwriteRoutes: true },
     async url => {
@@ -38,6 +27,30 @@ export function setupActionsEndpoints(
       throw new Error(`Unknown action type: ${data.type}`);
     },
   );
+}
+
+export function setupActionsEndpoints(actions: WritebackAction[]) {
+  fetchMock.get("path:/api/action", actions);
+
+  setupActionPostEndpoint();
+
+  actions.forEach(action => setupActionEndpoints(action));
+}
+
+export function setupModelActionsEndpoints(
+  actions: WritebackAction[],
+  modelId: CardId,
+) {
+  fetchMock.get(
+    {
+      url: "path:/api/action",
+      query: { "model-id": modelId },
+      overwriteRoutes: false,
+    },
+    actions,
+  );
+
+  setupActionPostEndpoint();
 
   actions.forEach(action => setupActionEndpoints(action));
 }

@@ -1,0 +1,33 @@
+# This migration intentionally fails but is set with `failOnError: false` to avoid stopping startup. However,
+# this means it won't be logged in the `databasechangelog` table,  causing issues with the `MB_DB_AUTOMIGRATE`
+# env variable as it will still consider this migration as pending. Migrations that have an expected chance of
+# failure should generally use preConditions to detect these cases and mark the migration as ran.
+databaseChangeLog:
+  - changeSet:
+      id: '1'
+      author: noahmoss
+      changes:
+        - createTable:
+            tableName: migration_error_test
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true
+
+  - changeSet:
+      id: '2'
+      author: noahmoss
+      failOnError: false
+      changes:
+        - createTable:
+            tableName: migration_error_test
+            columns:
+              - column:
+                  name: id
+                  type: int
+                  autoIncrement: true
+                  constraints:
+                    primaryKey: true

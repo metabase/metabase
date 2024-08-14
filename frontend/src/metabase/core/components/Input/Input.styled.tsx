@@ -1,14 +1,16 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
-import { monospaceFontFamily, space } from "metabase/styled-components/theme";
+import styled from "@emotion/styled";
+
 import IconButtonWrapper from "metabase/components/IconButtonWrapper";
 import {
   focusOutlineStyle,
   inputPadding,
   inputTypography,
 } from "metabase/core/style/input";
-import { InputSize } from "../../style/types";
+import { color } from "metabase/lib/colors";
+import { monospaceFontFamily, space } from "metabase/styled-components/theme";
+
+import type { InputSize } from "../../style/types";
 
 export interface InputProps {
   fieldSize?: InputSize;
@@ -54,10 +56,13 @@ export const InputField = styled.input<InputProps>`
   ${props => inputPadding(props.fieldSize)}
   ${props => inputTypography(props.fieldSize)}
   font-family: inherit;
-  color: ${color("text-dark")};
-  border: 1px solid ${color("border")};
+  color: var(--mb-color-text-primary);
+  border: 1px solid var(--mb-color-border);
   border-radius: ${space(1)};
-  background-color: ${props => color(props.readOnly ? "bg-light" : "bg-white")};
+  background-color: ${props =>
+    props.readOnly
+      ? "var(--mb-color-background-disabled)"
+      : "var(--mb-color-background)"};
   outline: none;
   text-align: inherit;
 
@@ -67,12 +72,17 @@ export const InputField = styled.input<InputProps>`
     transition: border 300ms ease-in-out;
   }
 
+  &:disabled {
+    cursor: default;
+    background-color: var(--mb-color-bg-light);
+  }
+
   ${props => focusOutlineStyle(props.colorScheme)};
 
   ${props =>
     props.hasError &&
     css`
-      border-color: ${color("error")};
+      border-color: var(--mb-color-error);
     `};
 
   ${props =>
@@ -137,10 +147,14 @@ export const InputResetButton = styled(InputButton)<InputResetButtonProps>`
 `;
 
 export const InputSubtitle = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   position: absolute;
   top: 1.25em;
   left: 1.25em;
   font-family: ${monospaceFontFamily};
   font-size: 0.75em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: 90%;
 `;

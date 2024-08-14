@@ -1,17 +1,19 @@
-import React, { useState, useMemo, useCallback } from "react";
-import PropTypes from "prop-types";
 import * as TippyReact from "@tippyjs/react";
-import * as tippy from "tippy.js";
 import cx from "classnames";
 import { merge } from "icepick";
+import { useState, useMemo, useCallback } from "react";
+import type * as tippy from "tippy.js";
 
-import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { EMBEDDING_SDK_ROOT_ELEMENT_ID } from "embedding-sdk/config";
 import EventSandbox from "metabase/components/EventSandbox";
+import { DEFAULT_Z_INDEX } from "metabase/components/Popover/constants";
 import { isCypressActive } from "metabase/env";
 import useSequencedContentCloseHandler from "metabase/hooks/use-sequenced-content-close-handler";
+import { isReducedMotionPreferred } from "metabase/lib/dom";
+import { useMantineTheme } from "metabase/ui";
 
-import { DEFAULT_Z_INDEX } from "./constants";
-import { sizeToFitModifierFn, SizeToFitOptions } from "./SizeToFitModifier";
+import type { SizeToFitOptions } from "./SizeToFitModifier";
+import { sizeToFitModifierFn } from "./SizeToFitModifier";
 
 const TippyComponent = TippyReact.default;
 type TippyProps = TippyReact.TippyProps;
@@ -27,14 +29,10 @@ export interface ITippyPopoverProps extends TippyProps {
 
 const OFFSET: [number, number] = [0, 5];
 
-const propTypes = {
-  disablContentSandbox: PropTypes.bool,
-  lazy: PropTypes.bool,
-  ...TippyComponent.propTypes,
-};
-
 function appendTo() {
-  return document.body;
+  return (
+    document.getElementById(EMBEDDING_SDK_ROOT_ELEMENT_ID) || document.body
+  );
 }
 
 function getPopperOptions({
@@ -63,6 +61,9 @@ function getPopperOptions({
   );
 }
 
+/**
+ * @deprecated prefer Popover from "metabase/ui" instead
+ */
 function TippyPopover({
   className,
   disableContentSandbox,
@@ -83,6 +84,9 @@ function TippyPopover({
   const [mounted, setMounted] = useState(!lazy);
   const shouldShowContent = mounted && content != null;
   const isControlled = props.visible != null;
+
+  const theme = useMantineTheme();
+  const { zIndex = DEFAULT_Z_INDEX } = theme.other.popover ?? {};
 
   const { setupCloseHandler, removeCloseHandler } =
     useSequencedContentCloseHandler();
@@ -133,7 +137,7 @@ function TippyPopover({
     <TippyComponent
       className={cx("popover", className)}
       theme="popover"
-      zIndex={DEFAULT_Z_INDEX}
+      zIndex={zIndex}
       arrow={false}
       offset={OFFSET}
       appendTo={appendTo}
@@ -156,6 +160,5 @@ function TippyPopover({
   );
 }
 
-TippyPopover.propTypes = propTypes;
-
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TippyPopover;

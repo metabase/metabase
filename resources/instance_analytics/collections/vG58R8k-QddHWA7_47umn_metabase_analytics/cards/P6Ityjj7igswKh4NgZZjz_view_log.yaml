@@ -1,0 +1,222 @@
+name: View log
+description: Each row describes a question, model, table or dashboard view
+entity_id: P6Ityjj7igswKh4NgZZjz
+created_at: '2023-10-31T13:40:12.944134Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: 3
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_view_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_type
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_qualified_id
+      - base-type: type/Text
+    order-by:
+    - - desc
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - timestamp
+        - base-type: type/DateTimeWithLocalTZ
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_view_log
+  type: query
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_view_log
+    - id
+  - base-type: type/Integer
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_view_log
+  - id
+  name: id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Timestamp
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_view_log
+    - timestamp
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_view_log
+  - timestamp
+  name: timestamp
+  semantic_type: null
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: User ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_view_log
+    - user_id
+  - base-type: type/Integer
+  fk_target_field_id: 739
+  id:
+  - Internal Metabase Database
+  - public
+  - v_view_log
+  - user_id
+  name: user_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Entity Type
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_view_log
+    - entity_type
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_view_log
+  - entity_type
+  name: entity_type
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_view_log
+    - entity_id
+  - base-type: type/Integer
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_view_log
+  - entity_id
+  name: entity_id
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Entity Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_view_log
+    - entity_qualified_id
+  - base-type: type/Text
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_view_log
+  - entity_qualified_id
+  name: entity_qualified_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+  table.cell_column: user_id
+  table.pivot_column: details
+serdes/meta:
+- id: P6Ityjj7igswKh4NgZZjz
+  label: view_log
+  model: Card
+initially_published_at: null
+metabase_version: vUNKNOWN (7c47e04)
+type: model

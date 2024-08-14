@@ -1,11 +1,11 @@
-import { AdminAppState, AdminState } from "metabase-types/store";
+import type { AdminAppState, AdminState } from "metabase-types/store";
 
 export const createMockAdminState = (
   opts?: Partial<AdminState>,
 ): AdminState => ({
   app: createMockAdminAppState(),
   permissions: createMockPermissionsState(),
-  settings: { settings: [] },
+  settings: { settings: [], warnings: {} },
   ...opts,
 });
 
@@ -23,6 +23,13 @@ export const createMockPermissionsState = (
   return {
     dataPermissions: {},
     originalDataPermissions: {},
+    collectionPermissions: {},
+    originalCollectionPermissions: {},
+    isHelpReferenceOpen: false,
+    hasRevisionChanged: {
+      revision: null,
+      hasChanged: false,
+    },
     ...opts,
   };
 };

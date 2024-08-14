@@ -3,10 +3,8 @@ import { push } from "react-router-redux";
 import _ from "underscore";
 
 import NewItemMenu from "metabase/components/NewItemMenu";
-
 import Databases from "metabase/entities/databases";
 import Search from "metabase/entities/search";
-
 import { closeNavbar } from "metabase/redux/app";
 import {
   getHasDataAccess,
@@ -14,8 +12,8 @@ import {
   getHasNativeWrite,
   getHasDatabaseWithActionsEnabled,
 } from "metabase/selectors/data";
-
-import type { Database, CollectionItem } from "metabase-types/api";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { CollectionItem } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
 interface MenuDatabaseProps {
@@ -39,6 +37,7 @@ const mapDispatchToProps = {
   onChangeLocation: push,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Databases.loadList({
     loadingAndErrorWrapper: false,
@@ -46,7 +45,7 @@ export default _.compose(
   Search.loadList({
     // Checking if there is at least one model,
     // so we can decide if "Action" option should be shown
-    query: { models: "dataset", limit: 1 },
+    query: { models: ["dataset"], limit: 1 },
     loadingAndErrorWrapper: false,
     listName: "models",
   }),

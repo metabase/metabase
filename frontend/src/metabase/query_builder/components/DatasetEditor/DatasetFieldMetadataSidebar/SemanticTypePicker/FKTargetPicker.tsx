@@ -1,13 +1,13 @@
-import React, { useEffect, useMemo } from "react";
+import { useField } from "formik";
+import { useEffect, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Select from "metabase/core/components/Select";
-
 import Databases from "metabase/entities/databases";
-
-import Field from "metabase-lib/metadata/Field";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type { DatabaseId } from "metabase-types/api";
 
 type FieldObject = {
   id: number;
@@ -24,13 +24,9 @@ type StateProps = {
 };
 
 type OwnProps = {
-  field: {
-    value: number | null;
-    onChange: (e: { target: { value: number } }) => void;
-  };
-  formField: {
-    databaseId: number;
-  };
+  name: "string";
+  databaseId: DatabaseId;
+  onChange?: (value: string) => void;
 };
 
 type Props = OwnProps & StateProps;
@@ -39,7 +35,7 @@ function getOptionValue(option: FieldObject) {
   return option.id;
 }
 
-function getOptionIcon(option: FieldObject) {
+function getOptionIcon() {
   return null;
 }
 
@@ -55,26 +51,25 @@ const SEARCH_PROPERTIES = [
 
 function mapStateToProps(
   state: Record<string, unknown>,
-  { formField }: OwnProps,
+  { databaseId }: OwnProps,
 ) {
-  const { databaseId } = formField;
   return {
-    IDFields: Databases.selectors.getIdfields(state, { databaseId }),
+    IDFields: Databases.selectors.getIdFields(state, { databaseId }),
   };
 }
 
 const mapDispatchToProps = {
-  fetchDatabaseIDFields: Databases.objectActions.fetchIdfields,
+  fetchDatabaseIDFields: Databases.objectActions.fetchIdFields,
 };
 
 function FKTargetPicker({
-  field,
-  formField,
+  name,
+  databaseId,
   IDFields,
   fetchDatabaseIDFields,
+  onChange,
 }: Props) {
-  const { value, onChange } = field;
-  const { databaseId } = formField;
+  const [{ value }, __, { setValue }] = useField(name);
 
   useEffect(() => {
     fetchDatabaseIDFields({ id: databaseId });
@@ -85,14 +80,22 @@ function FKTargetPicker({
     [IDFields],
   );
 
+  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setValue(e.target.value);
+    onChange?.(e.target.value);
+  };
+
   return (
     <Select
       placeholder={t`Select a target`}
       value={value}
       options={options}
-      onChange={onChange}
+      onChange={handleChange}
       searchable
       searchProp={SEARCH_PROPERTIES}
+      buttonProps={{
+        "aria-label": t`Foreign key target`,
+      }}
       optionValueFn={getOptionValue}
       optionNameFn={getFieldName}
       optionIconFn={getOptionIcon}
@@ -100,4 +103,5 @@ function FKTargetPicker({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(mapStateToProps, mapDispatchToProps)(FKTargetPicker);

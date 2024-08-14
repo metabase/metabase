@@ -1,60 +1,52 @@
-import _ from "underscore";
 import { getIn } from "icepick";
 import { t } from "ttag";
+import _ from "underscore";
 
+import { DEFAULT_METABASE_COMPONENT_THEME } from "embedding-sdk/lib/theme";
+import { sumArray } from "metabase/lib/arrays";
 import { isPivotGroupColumn } from "metabase/lib/data_grid";
 import { measureText } from "metabase/lib/measure-text";
-import { sumArray } from "metabase/core/utils/arrays";
-
-import type { Column, DatasetData } from "metabase-types/types/Dataset";
-import type { Card } from "metabase-types/types/Card";
-import type { VisualizationSettings } from "metabase-types/api";
-import type StructuredQuery from "metabase-lib/queries/StructuredQuery";
-
+import type StructuredQuery from "metabase-lib/v1/queries/StructuredQuery";
 import type {
-  PivotSetting,
-  FieldOrAggregationReference,
-  HeaderItem,
-  CustomColumnWidth,
-} from "./types";
-
-import { partitions } from "./partitions";
+  Card,
+  DatasetColumn,
+  DatasetData,
+  FieldReference,
+  VisualizationSettings,
+} from "metabase-types/api";
 
 import {
   ROW_TOGGLE_ICON_WIDTH,
   CELL_PADDING,
   MIN_HEADER_CELL_WIDTH,
   MAX_HEADER_CELL_WIDTH,
-  PIVOT_TABLE_FONT_SIZE,
   MAX_ROWS_TO_MEASURE,
   LEFT_HEADER_LEFT_SPACING,
   CELL_HEIGHT,
   DEFAULT_CELL_WIDTH,
 } from "./constants";
+import { partitions } from "./partitions";
+import type { PivotSetting, HeaderItem, CustomColumnWidth } from "./types";
 
 // adds or removes columns from the pivot settings based on the current query
 export function updateValueWithCurrentColumns(
   storedValue: PivotSetting,
-  columns: Column[],
+  columns: DatasetColumn[],
 ) {
   const currentQueryFieldRefs = columns.map(c => JSON.stringify(c.field_ref));
   const currentSettingFieldRefs = Object.values(storedValue).flatMap(
-    (fieldRefs: FieldOrAggregationReference[]) =>
-      fieldRefs.map((field_ref: FieldOrAggregationReference) =>
-        JSON.stringify(field_ref),
-      ),
+    (fieldRefs: FieldReference[]) =>
+      fieldRefs.map((field_ref: FieldReference) => JSON.stringify(field_ref)),
   );
   const toAdd = _.difference(currentQueryFieldRefs, currentSettingFieldRefs);
   const toRemove = _.difference(currentSettingFieldRefs, currentQueryFieldRefs);
 
   // remove toRemove
-  const value = _.mapObject(
-    storedValue,
-    (fieldRefs: FieldOrAggregationReference[]) =>
-      fieldRefs.filter(
-        (field_ref: FieldOrAggregationReference) =>
-          !toRemove.includes(JSON.stringify(field_ref)),
-      ),
+  const value = _.mapObject(storedValue, (fieldRefs: FieldReference[]) =>
+    fieldRefs.filter(
+      (field_ref: FieldReference) =>
+        !toRemove.includes(JSON.stringify(field_ref)),
+    ),
   );
 
   // add toAdd to first partitions where it matches the filter
@@ -64,7 +56,7 @@ export function updateValueWithCurrentColumns(
         c => JSON.stringify(c.field_ref) === fieldRef,
       );
       if (filter == null || filter(column)) {
-        value[name].push(column?.field_ref as FieldOrAggregationReference);
+        value[name].push(column?.field_ref as FieldReference);
         break;
       }
     }
@@ -88,7 +80,7 @@ export function addMissingCardBreakouts(setting: PivotSetting, card: Card) {
   return { ...setting, columns, rows };
 }
 
-export function isColumnValid(col: Column) {
+export function isColumnValid(col: DatasetColumn) {
   return (
     col.source === "aggregation" ||
     col.source === "breakout" ||
@@ -96,7 +88,7 @@ export function isColumnValid(col: Column) {
   );
 }
 
-export function isFormattablePivotColumn(column: Column) {
+export function isFormattablePivotColumn(column: DatasetColumn) {
   return column.source === "aggregation";
 }
 
@@ -104,15 +96,20 @@ interface GetLeftHeaderWidthsProps {
   rowIndexes: number[];
   getColumnTitle: (columnIndex: number) => string;
   leftHeaderItems?: HeaderItem[];
-  fontFamily?: string;
+  font: { fontFamily?: string; fontSize?: string };
 }
 
 export function getLeftHeaderWidths({
   rowIndexes,
   getColumnTitle,
   leftHeaderItems = [],
-  fontFamily = "Lato",
+  font,
 }: GetLeftHeaderWidthsProps) {
+  const {
+    fontFamily = "var(--mb-default-font-family)",
+    fontSize = DEFAULT_METABASE_COMPONENT_THEME.pivotTable.cell.fontSize,
+  } = font ?? {};
+
   const cellValues = getColumnValues(leftHeaderItems);
 
   const widths = rowIndexes.map((rowIndex, depthIndex) => {
@@ -120,8 +117,8 @@ export function getLeftHeaderWidths({
       measureText(getColumnTitle(rowIndex), {
         weight: "bold",
         family: fontFamily,
-        size: PIVOT_TABLE_FONT_SIZE,
-      }) + ROW_TOGGLE_ICON_WIDTH,
+        size: fontSize,
+      }).width + ROW_TOGGLE_ICON_WIDTH,
     );
 
     const computedCellWidth = Math.ceil(
@@ -132,8 +129,8 @@ export function getLeftHeaderWidths({
             measureText(value, {
               weight: "normal",
               family: fontFamily,
-              size: PIVOT_TABLE_FONT_SIZE,
-            }) +
+              size: fontSize,
+            }).width +
             (cellValues[rowIndex]?.hasSubtotal ? ROW_TOGGLE_ICON_WIDTH : 0),
         ) ?? [0]),
       ),
@@ -193,16 +190,24 @@ export function getColumnValues(leftHeaderItems: HeaderItem[]) {
   return columnValues;
 }
 
-export function databaseSupportsPivotTables(query: StructuredQuery) {
-  if (query && query.database && query.database() != null) {
-    // if we don't have metadata, we can't check this
-    return query.database()?.supportsPivots();
+function databaseSupportsPivotTables(query: StructuredQuery) {
+  if (!query) {
+    return true;
   }
-  return true;
+
+  const question = query.question();
+  const database = question.database();
+
+  if (!database) {
+    // if we don't have metadata, we can't check this
+    return true;
+  }
+
+  return database.supportsPivots();
 }
 
 export function isSensible(
-  { cols }: { cols: Column[] },
+  { cols }: { cols: DatasetColumn[] },
   query: StructuredQuery,
 ) {
   return (
@@ -271,8 +276,8 @@ export const topHeaderCellSizeAndPositionGetter = (
 
 export const getWidthForRange = (
   widths: CustomColumnWidth,
-  start: number,
-  end: number,
+  start?: number,
+  end?: number,
 ) => {
   let total = 0;
   for (let i = start ?? 0; i < (end ?? Object.keys(widths).length); i++) {

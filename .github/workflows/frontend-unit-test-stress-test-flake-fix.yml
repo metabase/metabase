@@ -1,0 +1,59 @@
+name: Frontend Unit Test Stress Test Flake Fix
+
+on:
+  workflow_dispatch:
+    inputs:
+      spec:
+        description: "Relative path of the target spec"
+        type: string
+        required: true
+      burn_in:
+        description: "Number of times to run the test (e.g. 20)"
+        type: string
+        required: true
+      grep:
+        description: "Grep and filter tests to run in isolation"
+        type: string
+        required: false
+
+jobs:
+  workflow-summary:
+    name: Stress test inputs
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    steps:
+      - name: Generate workflow summary
+        run: |
+          echo '**Inputs:**' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo '- `branch`: ${{ github.ref_name }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `spec`: ${{ inputs.spec }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `burn_in`: ${{ inputs.burn_in }}' >> $GITHUB_STEP_SUMMARY
+          echo '- `grep`: "${{ inputs.grep }}"' >> $GITHUB_STEP_SUMMARY
+          echo '' >> $GITHUB_STEP_SUMMARY
+          echo 'triggered by: @${{ github.event.sender.login }}' >> $GITHUB_STEP_SUMMARY
+
+  frontend-unit-test-stress-test-flake-fix:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    name: Stress test frontend unit test flake fix
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Build cljs
+        run: yarn build:cljs
+      - name: Stress-test ${{ github.event.inputs.spec }} ${{ github.event.inputs.burn_in }} times
+        run: |
+          for i in {1..${{ github.event.inputs.burn_in }}}; do
+            yarn jest --runInBand --ci --silent --no-cache \
+              --testPathPattern '${{ github.event.inputs.spec }}' \
+              --testNamePattern '${{ github.event.inputs.grep }}'
+            if [[ "$?" != 0 ]]; then
+              echo "Failed after $i attempts" && break;
+            fi
+          done

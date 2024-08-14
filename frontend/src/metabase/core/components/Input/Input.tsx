@@ -1,14 +1,12 @@
-import React, {
-  forwardRef,
-  InputHTMLAttributes,
-  MouseEvent,
-  ReactNode,
-  Ref,
-} from "react";
+import type { InputHTMLAttributes, MouseEvent, ReactNode, Ref } from "react";
+import { forwardRef } from "react";
 import { t } from "ttag";
-import Icon from "metabase/components/Icon";
-import Tooltip from "metabase/core/components/Tooltip";
-import { InputSize } from "../../style/types";
+
+import type { IconName } from "metabase/ui";
+import { Icon, Tooltip } from "metabase/ui";
+
+import type { InputSize } from "../../style/types";
+
 import {
   InputField,
   InputLeftButton,
@@ -30,10 +28,10 @@ export interface InputProps extends InputAttributes {
   size?: InputSize;
   error?: boolean;
   fullWidth?: boolean;
-  leftIcon?: string;
+  leftIcon?: IconName;
   leftIconTooltip?: ReactNode;
-  rightIcon?: string;
-  rightIconTooltip?: ReactNode;
+  rightIcon?: IconName;
+  rightIconTooltip?: string;
   subtitle?: string;
   colorScheme?: InputColorScheme;
   onLeftIconClick?: (event: MouseEvent<HTMLButtonElement>) => void;
@@ -41,7 +39,7 @@ export interface InputProps extends InputAttributes {
   onResetClick?: () => void;
 }
 
-const Input = forwardRef(function Input(
+const BaseInput = forwardRef(function Input(
   {
     className,
     style,
@@ -91,7 +89,7 @@ const Input = forwardRef(function Input(
         onChange={onChange}
       />
       {leftIcon && (
-        <Tooltip tooltip={leftIconTooltip} placement="left">
+        <Tooltip label={leftIconTooltip} position="left">
           <InputLeftButton
             data-testid="input-left-icon-button"
             size={size}
@@ -103,7 +101,7 @@ const Input = forwardRef(function Input(
         </Tooltip>
       )}
       {rightIcon && (
-        <Tooltip tooltip={rightIconTooltip} placement="right">
+        <Tooltip label={rightIconTooltip} position="right">
           <InputRightButton
             data-testid="input-right-icon-button"
             size={size}
@@ -116,7 +114,7 @@ const Input = forwardRef(function Input(
       )}
 
       {showResetButton && (
-        <Tooltip tooltip={t`Clear`} placement="right">
+        <Tooltip label={t`Clear`} position="right">
           <InputResetButton
             data-testid="input-reset-button"
             size={size}
@@ -131,8 +129,14 @@ const Input = forwardRef(function Input(
   );
 });
 
-export default Object.assign(Input, {
+/**
+ * @deprecated: use TextInput from "metabase/ui"
+ */
+const Input = Object.assign(BaseInput, {
   Root: InputRoot,
   Field: InputField,
   Subtitle: InputSubtitle,
 });
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Input;

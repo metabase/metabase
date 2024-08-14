@@ -1,0 +1,13 @@
+.pointerEventsNone,
+.pointerEventsNone * {
+  pointer-events: none;
+}
+
+.disabled {
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.circle {
+  border-radius: 99px;
+}

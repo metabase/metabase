@@ -1,0 +1,24 @@
+name: v_view_log
+display_name: V View Log
+description: null
+created_at: '2023-10-31T13:16:53.281011Z'
+db_id: Internal Metabase Database
+schema: public
+entity_type: entity/EventTable
+active: true
+is_upload: false
+field_order: database
+visibility_type: null
+show_in_getting_started: false
+initial_sync_status: complete
+points_of_interest: null
+caveats: null
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_view_log
+  model: Table
+database_require_filter: null
+estimated_row_count: null

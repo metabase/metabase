@@ -1,1 +1,1 @@
-export { default } from "./SetupHelp";
+export * from "./SetupHelp";

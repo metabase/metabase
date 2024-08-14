@@ -1,0 +1,113 @@
+name: Alerts and subscriptions created last week
+description: null
+entity_id: ybsNZp-876qEMoA1U51dc
+created_at: '2023-06-14T19:55:26.986705Z'
+creator_id: internal@metabase.com
+display: smartscalar
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_subscriptions
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_subscriptions
+        - created_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: week
+    joins:
+    - alias: Group Members - Creator
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_subscriptions
+          - creator_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - Creator
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+      strategy: left-join
+    source-table: 5ojUtU9iE-DCggHdFPIll
+  type: query
+result_metadata:
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_subscriptions
+    - created_at
+  - base-type: type/DateTimeWithLocalTZ
+    temporal-unit: week
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  - created_at
+  name: created_at
+  nfc_path: null
+  parent_id: null
+  position: 2
+  semantic_type: type/CreationTimestamp
+  settings: null
+  source: breakout
+  table_id:
+  - Internal Metabase Database
+  - public
+  - v_subscriptions
+  unit: week
+  visibility_type: normal
+- aggregation_index: 0
+  base_type: type/Integer
+  display_name: Count
+  field_ref:
+  - aggregation
+  - 0
+  name: count
+  semantic_type: type/Quantity
+  source: aggregation
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - created_at
+  - group_name
+  graph.metrics:
+  - count
+serdes/meta:
+- id: ybsNZp-876qEMoA1U51dc
+  label: alerts_and_subscriptions_created_last_week
+  model: Card
+initially_published_at: null
+metabase_version: null
+type: question

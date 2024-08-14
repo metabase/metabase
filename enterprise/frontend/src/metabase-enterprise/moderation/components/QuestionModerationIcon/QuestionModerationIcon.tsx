@@ -1,7 +1,7 @@
-import React from "react";
-import Question from "metabase-lib/Question";
-import { getLatestModerationReview } from "../../service";
+import type Question from "metabase-lib/v1/Question";
+
 import ModerationReviewIcon from "../../containers/ModerationReviewIcon";
+import { getLatestModerationReview } from "../../service";
 
 export interface QuestionModerationIconProps {
   question: Question;
@@ -19,4 +19,5 @@ const QuestionModerationIcon = ({
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default QuestionModerationIcon;

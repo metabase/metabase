@@ -1,13 +1,13 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
+
+import { Icon } from "metabase/ui";
 
 export const TimelineIcon = styled(Icon)`
-  width: 1rem;
-  height: 1rem;
+  width: 1.25rem;
+  height: 1.25rem;
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;

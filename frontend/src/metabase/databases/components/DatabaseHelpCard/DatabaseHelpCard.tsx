@@ -1,21 +1,22 @@
-import React from "react";
 import { jt, t } from "ttag";
-import Settings from "metabase/lib/settings";
+
 import HelpCard from "metabase/components/HelpCard";
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { useSelector } from "metabase/lib/redux";
+import { getDocsUrl, getSetting } from "metabase/selectors/settings";
 
 export interface DatabaseHelpCardProps {
   className?: string;
-  isHosted?: boolean;
 }
 
-const DatabaseHelpCard = ({
+export const DatabaseHelpCard = ({
   className,
-  isHosted,
 }: DatabaseHelpCardProps): JSX.Element => {
-  const docsUrl = Settings.docsUrl(
-    "administration-guide/01-managing-databases",
+  const docsUrl = useSelector(state =>
+    // eslint-disable-next-line no-unconditional-metabase-links-render -- Metabase setup
+    getDocsUrl(state, { page: "databases/connecting" }),
   );
+  const isHosted = useSelector(state => getSetting(state, "is-hosted?"));
 
   return (
     <HelpCard
@@ -37,5 +38,3 @@ const DatabaseHelpCard = ({
     </HelpCard>
   );
 };
-
-export default DatabaseHelpCard;

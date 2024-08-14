@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+
 import Button from "metabase/core/components/Button";
+import { Icon } from "metabase/ui";
 
 export const EmptyStateRoot = styled.div`
   display: flex;
@@ -11,14 +11,14 @@ export const EmptyStateRoot = styled.div`
 `;
 
 export const EmptyStateIcon = styled(Icon)`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
   width: 5rem;
   height: 5rem;
   margin-bottom: 2.5rem;
 `;
 
 export const EmptyStateText = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 0.875rem;
   line-height: 1.5rem;
   text-align: center;

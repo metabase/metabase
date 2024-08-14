@@ -1,7 +1,7 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import CheckBox from "metabase/core/components/CheckBox";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/ui";
 
 export const CardRoot = styled.div`
   &:not(:last-child) {
@@ -22,14 +22,14 @@ export const CardCheckbox = styled(CheckBox)`
 export const CardLabel = styled.span`
   flex: 1 1 auto;
   margin: 0 0.5rem;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-weight: bold;
   font-size: 0.875rem;
   min-width: 0;
 `;
 
 export const CardIcon = styled(Icon)`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   width: 1.125rem;
   height: 1.125rem;
 `;

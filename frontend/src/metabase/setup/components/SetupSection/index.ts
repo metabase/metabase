@@ -1,1 +1,1 @@
-export { default } from "./SetupSection";
+export * from "./SetupSection";

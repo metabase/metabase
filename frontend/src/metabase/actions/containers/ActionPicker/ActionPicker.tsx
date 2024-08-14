@@ -1,17 +1,15 @@
-import React, { useState, useMemo } from "react";
+import type { MouseEvent } from "react";
+import { useState, useMemo } from "react";
 import { t } from "ttag";
+import _ from "underscore";
 
+import ActionCreator from "metabase/actions/containers/ActionCreator";
 import Modal from "metabase/components/Modal";
-import { useToggle } from "metabase/hooks/use-toggle";
-
+import CS from "metabase/css/core/index.css";
 import Actions from "metabase/entities/actions";
 import Search from "metabase/entities/search";
-
-import { isImplicitAction } from "metabase/actions/utils";
-import ActionCreator from "metabase/actions/containers/ActionCreator";
-
+import { useToggle } from "metabase/hooks/use-toggle";
 import type { Card, WritebackAction } from "metabase-types/api";
-import type { State } from "metabase-types/store";
 
 import {
   ActionsList,
@@ -22,13 +20,16 @@ import {
   EmptyModelStateContainer,
   NewActionButton,
 } from "./ActionPicker.styled";
+import { sortAndGroupActions } from "./utils";
 
-export default function ActionPicker({
+export function ActionPicker({
   models,
+  actions,
   onClick,
   currentAction,
 }: {
   models: Card[];
+  actions: WritebackAction[];
   onClick: (action: WritebackAction) => void;
   currentAction?: WritebackAction;
 }) {
@@ -38,12 +39,15 @@ export default function ActionPicker({
       [models],
     ) ?? [];
 
+  const actionsByModel = useMemo(() => sortAndGroupActions(actions), [actions]);
+
   return (
-    <div className="scroll-y">
+    <div className={CS.scrollY}>
       {sortedModels.map(model => (
-        <ConnectedModelActionPicker
+        <ModelActionPicker
           key={model.id}
           model={model}
+          actions={actionsByModel[model.id] ?? []}
           onClick={onClick}
           currentAction={currentAction}
         />
@@ -86,33 +90,39 @@ function ModelActionPicker({
 
   const hasCurrentAction = currentAction?.model_id === model.id;
 
+  const handleModalSubmit = (updatedAction: WritebackAction) => {
+    onClick(updatedAction);
+  };
+
   return (
     <>
       <ModelCollapseSection
         header={<h4>{model.name}</h4>}
         initialState={hasCurrentAction ? "expanded" : "collapsed"}
       >
-        {actions?.length ? (
+        {actions.length ? (
           <ActionsList>
-            {actions?.map(action => (
+            {actions.map(action => (
               <ActionItem
                 key={action.id}
                 role="button"
                 isSelected={currentAction?.id === action.id}
                 aria-selected={currentAction?.id === action.id}
                 onClick={() => onClick(action)}
+                data-testid={`action-item-${action.name}`}
               >
                 <span>{action.name}</span>
-                {!isImplicitAction(action) && (
-                  <EditButton
-                    icon="pencil"
-                    onlyIcon
-                    onClick={() => {
-                      setEditingActionId(action.id);
-                      toggleIsActionCreatorVisible();
-                    }}
-                  />
-                )}
+                <EditButton
+                  icon="pencil"
+                  onlyIcon
+                  onClick={(event: MouseEvent<HTMLButtonElement>) => {
+                    // we have a click listener on the parent
+                    event.stopPropagation();
+
+                    setEditingActionId(action.id);
+                    toggleIsActionCreatorVisible();
+                  }}
+                />
               </ActionItem>
             ))}
             <NewActionButton onlyText onClick={toggleIsActionCreatorVisible}>
@@ -129,12 +139,13 @@ function ModelActionPicker({
         )}
       </ModelCollapseSection>
       {isActionCreatorOpen && (
-        <Modal wide onClose={closeModal}>
+        <Modal wide onClose={closeModal} closeOnClickOutside>
           <ActionCreator
             modelId={model.id}
             databaseId={model.database_id}
             actionId={editingActionId}
             onClose={closeModal}
+            onSubmit={handleModalSubmit}
           />
         </Modal>
       )}
@@ -142,17 +153,14 @@ function ModelActionPicker({
   );
 }
 
-const ConnectedModelActionPicker = Actions.loadList({
-  query: (state: State, props: { model: { id: number | null } }) => ({
-    "model-id": props?.model?.id,
+export const ConnectedActionPicker = _.compose(
+  Search.loadList({
+    query: () => ({
+      models: ["dataset"],
+    }),
+    listName: "models",
   }),
-  loadingAndErrorWrapper: false,
-})(ModelActionPicker);
-
-export const ConnectedActionPicker = Search.loadList({
-  query: () => ({
-    models: ["dataset"],
+  Actions.loadList({
+    loadingAndErrorWrapper: false,
   }),
-  loadingAndErrorWrapper: true,
-  listName: "models",
-})(ActionPicker);
+)(ActionPicker);

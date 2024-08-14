@@ -1,9 +1,11 @@
 import { connect } from "react-redux";
 import _ from "underscore";
+
 import Collections, { ROOT_COLLECTION } from "metabase/entities/collections";
 import TimelineEvents from "metabase/entities/timeline-events";
-import { TimelineEvent } from "metabase-types/api";
-import { State } from "metabase-types/store";
+import type { TimelineEvent } from "metabase-types/api";
+import type { State } from "metabase-types/store";
+
 import TimelinePanel from "../../components/TimelinePanel";
 
 interface TimelinePanelProps {
@@ -22,6 +24,7 @@ const mapDispatchToProps = (dispatch: any) => ({
   },
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Collections.load(collectionProps),
   connect(null, mapDispatchToProps),

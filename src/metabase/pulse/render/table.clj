@@ -3,13 +3,13 @@
    [clojure.string :as str]
    [hiccup.core :refer [h]]
    [medley.core :as m]
+   [metabase.formatter]
    [metabase.pulse.render.color :as color]
-   [metabase.pulse.render.common]
    [metabase.pulse.render.style :as style])
   (:import
-   (metabase.pulse.render.common NumericWrapper)))
+   (metabase.formatter NumericWrapper)))
 
-(comment metabase.pulse.render.common/keep-me)
+(comment metabase.formatter/keep-me)
 
 (defn- bar-th-style []
   (merge
@@ -82,12 +82,19 @@
     (str (str/trim (subs text 0 max-column-character-length)) "...")
     text))
 
-(defn- render-table-head [{:keys [bar-width row]}]
+(defn- render-table-head [column-names {:keys [bar-width row]}]
   [:thead
    (conj (into [:tr]
-               (for [header-cell row]
-                 [:th {:style (style/style (row-style-for-type header-cell) (heading-style-for-type header-cell) {:min-width :42px}) :title header-cell}
-                  (truncate-text (h header-cell))]))
+               (map-indexed
+                (fn [idx header-cell]
+                  (let [title (get column-names idx)]
+                    [:th {:style (style/style
+                                  (row-style-for-type header-cell)
+                                  (heading-style-for-type header-cell)
+                                  {:min-width :42px})
+                          :title title}
+                     (truncate-text (h title))]))
+                row))
          (when bar-width
            [:th {:style (style/style (bar-td-style) (bar-th-style) {:width (str bar-width "%")})}]))])
 
@@ -133,20 +140,23 @@
       (some-> bar-width (render-bar normalized-zero))])])
 
 (defn render-table
-  "This function returns the HTML data structure for the pulse table. `color-selector` is a function that returns the
-  background color for a given cell. `column-names` is different from the header in `header+rows` as the header is the
-  display_name (i.e. human friendly. `header+rows` includes the text contents of the table we're about ready to
-  create. If `normalized-zero` is set (defaults to 0), render values less than it as negative"
-  ([color-selector column-names contents]
-   (render-table color-selector 0 column-names contents))
+  "This function returns the HTML data structure for the pulse table.
 
-  ([color-selector normalized-zero column-names [header & rows]]
-   [:table {:style (style/style {:max-width "100%"
-                                 :white-space :nowrap
-                                 :border  (str "1px solid " style/color-border)
-                                 :border-radius :6px
-                                 :width "1%"})
+  `color-selector` is a function that returns the background color for a given cell.
+  `column-names-map` contains keys:
+    `:col-names`, which is the is display_names of the visible columns
+    `:cols-for-color-lookup`, is the original column names, which the color-selector requires for color lookup.
+  If `normalized-zero` is set (defaults to 0), render values less than it as negative"
+  ([color-selector column-names-map contents]
+   (render-table color-selector 0 column-names-map contents))
+
+  ([color-selector normalized-zero {:keys [col-names cols-for-color-lookup]} [header & rows]]
+   [:table {:style       (style/style {:max-width     "100%"
+                                       :white-space   :nowrap
+                                       :border        (str "1px solid " style/color-border)
+                                       :border-radius :6px
+                                       :width         "1%"})
             :cellpadding "0"
             :cellspacing "0"}
-    (render-table-head header)
-    (render-table-body (partial color/get-background-color color-selector) normalized-zero column-names rows)]))
+    (render-table-head (vec col-names) header)
+    (render-table-body (partial color/get-background-color color-selector) normalized-zero cols-for-color-lookup rows)]))

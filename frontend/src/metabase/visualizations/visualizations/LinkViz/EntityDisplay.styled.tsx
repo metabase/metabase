@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
 
-import Icon from "metabase/components/Icon";
+import { Ellipsified } from "metabase/core/components/Ellipsified";
 
 export const EntityDisplayContainer = styled.div`
   width: 100%;
@@ -15,8 +15,9 @@ export const LeftContainer = styled.div`
   width: 100%;
   display: flex;
   align-items: center;
+  gap: 0.5rem;
 `;
 
-export const IconWithHorizontalMargin = styled(Icon)`
-  margin: 0 1rem;
+export const EllipsifiedEntityContainer = styled(Ellipsified)`
+  flex: 1;
 `;

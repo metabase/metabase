@@ -1,12 +1,11 @@
-import React from "react";
 import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
 import Tooltip from "metabase/core/components/Tooltip";
+import { Icon } from "metabase/ui";
 
 import { CheckboxLabelRoot } from "./DashboardCopyModalShallowCheckboxLabel.styled";
 
-const DashboardCopyModalShallowCheckboxLabel = () => (
+export const DashboardCopyModalShallowCheckboxLabel = () => (
   <CheckboxLabelRoot>
     {t`Only duplicate the dashboard`}
     <Tooltip
@@ -16,5 +15,3 @@ const DashboardCopyModalShallowCheckboxLabel = () => (
     </Tooltip>
   </CheckboxLabelRoot>
 );
-
-export default DashboardCopyModalShallowCheckboxLabel;

@@ -1,17 +1,15 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { connect } from "react-redux";
 import { t } from "ttag";
 
+import CS from "metabase/css/core/index.css";
+import { PLUGIN_MODERATION } from "metabase/plugins";
 import {
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
 } from "metabase/query_builder/actions";
+import Question from "metabase-lib/v1/Question";
 
-import { PLUGIN_MODERATION } from "metabase/plugins";
-import Question from "metabase-lib/Question";
-
-import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 import {
   Button,
   MetadataIndicatorContainer,
@@ -19,22 +17,23 @@ import {
   SectionContent,
   SectionTitle,
 } from "./DatasetManagementSection.styled";
+import DatasetMetadataStrengthIndicator from "./DatasetMetadataStrengthIndicator";
 
 const mapDispatchToProps = {
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
 };
 
 DatasetManagementSection.propTypes = {
   dataset: PropTypes.instanceOf(Question).isRequired,
   setQueryBuilderMode: PropTypes.func.isRequired,
-  turnDatasetIntoQuestion: PropTypes.func.isRequired,
+  turnModelIntoQuestion: PropTypes.func.isRequired,
 };
 
 function DatasetManagementSection({
   dataset,
   setQueryBuilderMode,
-  turnDatasetIntoQuestion,
+  turnModelIntoQuestion,
 }) {
   const onEditQueryDefinitionClick = () => {
     setQueryBuilderMode("dataset", {
@@ -66,13 +65,13 @@ function DatasetManagementSection({
           </MetadataIndicatorContainer>
         </Row>
         <Button
-          icon="model_framed"
-          onClick={turnDatasetIntoQuestion}
+          icon="insight"
+          onClick={turnModelIntoQuestion}
         >{t`Turn back into a saved question`}</Button>
         <PLUGIN_MODERATION.QuestionModerationSection
           question={dataset}
           VerifyButton={Button}
-          reviewBannerClassName="mt1"
+          reviewBannerClassName={CS.mt1}
         />
       </SectionContent>
     </div>

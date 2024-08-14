@@ -1,7 +1,7 @@
-import { VisualizationSettings } from "metabase-types/api";
 import { getStackOffset } from "metabase/visualizations/lib/settings/stacking";
-import { Series } from "metabase/visualizations/shared/components/RowChart/types";
-import { Range } from "metabase/visualizations/shared/types/scale";
+import type { Series } from "metabase/visualizations/shared/components/RowChart/types";
+import type { Range } from "metabase/visualizations/shared/types/scale";
+import type { VisualizationSettings } from "metabase-types/api";
 
 export const getLabelledSeries = <TDatum>(
   settings: VisualizationSettings,
@@ -43,10 +43,7 @@ export const getXValueRange = (
     return undefined;
   }
 
-  return [
-    parseInt(settings["graph.y_axis.min"], 10),
-    parseInt(settings["graph.y_axis.max"], 10),
-  ];
+  return [settings["graph.y_axis.min"] ?? 0, settings["graph.y_axis.max"] ?? 0];
 };
 
 export const getLabels = (settings: VisualizationSettings) => {

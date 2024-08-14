@@ -1,6 +1,7 @@
 import {
   restore,
   popover,
+  clearFilterWidget,
   filterWidget,
   editDashboard,
   saveDashboard,
@@ -10,6 +11,7 @@ import {
 } from "e2e/support/helpers";
 
 import { applyFilterByType } from "../native-filters/helpers/e2e-field-filter-helpers";
+
 import {
   DASHBOARD_SQL_TEXT_FILTERS,
   questionDetails,
@@ -17,6 +19,10 @@ import {
 
 describe("scenarios > dashboard > filters > SQL > text/category", () => {
   beforeEach(() => {
+    cy.intercept("POST", "/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
+
     restore();
     cy.signInAsAdmin();
 
@@ -31,61 +37,64 @@ describe("scenarios > dashboard > filters > SQL > text/category", () => {
     editDashboard();
   });
 
-  it(`should work when set through the filter widget`, () => {
-    Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(([filter]) => {
-      cy.log(`Make sure we can connect ${filter} filter`);
-      setFilter("Text or Category", filter);
+  it(
+    "should work when set through the filter widget",
+    { tags: "@flaky" },
+    () => {
+      Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(([filter]) => {
+        cy.log(`Make sure we can connect ${filter} filter`);
+        setFilter("Text or Category", filter);
 
-      cy.findByText("Select…").click();
-      popover().contains(filter).click();
-    });
+        cy.findByText("Select…").click();
+        popover().contains(filter).click();
+      });
 
-    saveDashboard();
+      saveDashboard();
 
-    Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
-      ([filter, { value, representativeResult }], index) => {
-        filterWidget().eq(index).click();
-        applyFilterByType(filter, value);
+      Object.entries(DASHBOARD_SQL_TEXT_FILTERS).forEach(
+        ([filter, { value, representativeResult }], index) => {
+          filterWidget().eq(index).click();
+          applyFilterByType(filter, value);
 
-        cy.log(`Make sure ${filter} filter returns correct result`);
-        cy.get(".Card").within(() => {
-          cy.contains(representativeResult);
-        });
+          cy.log(`Make sure ${filter} filter returns correct result`);
+          cy.findByTestId("dashcard").within(() => {
+            cy.contains(representativeResult);
+          });
 
-        clearFilter(index);
-      },
-    );
-  });
+          clearFilterWidget(index);
+          cy.wait("@dashcardQuery");
+        },
+      );
+    },
+  );
 
-  it(`should work when set as the default filter and when that filter is removed (metabase#20493)`, () => {
+  it("should work when set as the default filter and when that filter is removed (metabase#20493)", () => {
     setFilter("Text or Category", "Is");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Select…").click();
     popover().contains("Is").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Default value").next().click();
 
     applyFilterByType("Is", "Gizmo");
 
     saveDashboard();
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.contains("Rustic Paper Wallet");
     });
 
-    filterWidget().find(".Icon-close").click();
+    clearFilterWidget();
 
     cy.url().should("not.include", "Gizmo");
 
     filterWidget().click();
 
-    applyFilterByType("Is", "Doohickey");
+    applyFilterByType("Is", "Doohickey", { buttonLabel: "Update filter" });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Rustic Paper Wallet").should("not.exist");
   });
 });
-
-function clearFilter(index) {
-  filterWidget().eq(index).find(".Icon-close").click();
-  cy.wait("@dashcardQuery2");
-}

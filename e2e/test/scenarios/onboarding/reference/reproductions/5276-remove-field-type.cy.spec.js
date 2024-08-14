@@ -10,16 +10,26 @@ describe("issue 5276", () => {
   it("should allow removing the field type (metabase#5276)", () => {
     cy.visit("/reference/databases");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sample Database").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Tables in Sample Database").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Products").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Fields in this table").click();
-    cy.findByText("Edit").click();
 
+    // Calling .click on this element goes into edit more and immediately calls resetForm to pull us back out
+    // no idea why. TODO: Fix
+    cy.button(/Edit/).trigger("click");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Score").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     popover().within(() => cy.findByText("No field type").click());
     cy.button("Save").click();
     cy.wait("@updateField");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Score").should("not.exist");
   });
 });

@@ -13,6 +13,8 @@ Models:
 - Let you update column descriptions and customize metadata to create great starting points for exploration.
 - Show up higher in search results and get highlighted when other users start new questions to promote reuse.
 - Live in collections to keep them separate from messy database schemas.
+- Can [surface individual records in search results](#surface-individual-records-in-search-by-matching-against-this-column).
+- Can be [persisted for faster loading](./model-persistence.md).
 
 For a deep dive on why and how to use models, check out our [Learn article on models][learn-models].
 
@@ -21,7 +23,8 @@ For a deep dive on why and how to use models, check out our [Learn article on mo
 You can use models to:
 
 - Create, uh, models, with model here meaning an intuitive description of some concept in your business that you codify as a set of columns. An example model could be a "customer", which is a table that pulls together customer information from multiple tables and adds computed columns, like adding a lifetime value (LTV) column. This model represents the [measures and dimensions][measures-dimensions] that you think are relevant to your understanding of your customers.
-- Create summary tables that aggregate data from multiple tables.
+- Let people explore the results of SQL queries with the drill-through menu and query builder (provided you [set the column types](#column-type)).
+- Create summary tables that pull in or aggregate data from multiple tables.
 - Clean up tables with unnecessary columns and rows filtered out.
 
 The idea with models is to give other people a good "starting point table" that makes it easier to answer any questions they have about the subject being modeled.
@@ -79,7 +82,7 @@ You can also edit the model's metadata.
 
 ## Add metadata to columns in a model
 
-Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visulization for the results.
+Metadata is the secret sauce of models. When you write a SQL query, Metabase can display the results, but it can't "know" what kind of data it's returning (like it can with questions built using the query builder). What this means in practice is that people won't be able to drill-through the results, or explore the results with the query builder, because Metabase doesn't understand what the results are. With models, however, you can tell Metabase what kind of data is in each returned column so that Metabase can still do its drill-through magic. Metadata will also make filtering nicer by showing the correct filter widget, and it will help Metabase to pick the right visualization for the results.
 
 If you only set one kind of metadata, set the **Column type** to let Metabase know what kind of data it's working with.
 
@@ -97,7 +100,9 @@ For models based on SQL queries, you can tell Metabase if the column has the sam
 
 ### Column type
 
-You can set the [column type][column-type]. The default is "No special type". Be sure to set the Column type so people can interact with the results.
+You can set the [column type][column-type]. The default is "No special type".
+
+If your model is based on a SQL query and you want people to be able to explore the results with the query builder and drill-through menu, you'll need to set the [column type](./field-types.md) for each column in your model.
 
 ### This column should appear in...
 
@@ -110,6 +115,18 @@ You can specify whether a column should appear in the table view, or just in a d
 
 - Text
 - Link (it's a URL people should be able to click on)
+
+### Surface individual records in search by matching against this column
+
+For string fields in records with integer entity keys, Metabase will give you the option make the values in that field show up when people search your Metabase. Essentially, Metabase will index these values and make them available to Metabase's search engine. This option is handy when people often want to jump straight to an individual record in your model.
+
+For example, if you have a model with accounts, you could turn on this option for a column listing the account's name or email so that people can quickly search for specific accounts in the model from anywhere in your Metabase. When people click on a record in the search results, Metabase will jump straight to the model and the object detail for that record.
+
+There are some limitations to this indexing:
+
+- The indexed field must be a text/string type.
+- The record containing the field must have an integer entity key.
+- To keep your search speedy, Metabase will only index 5000 unique values from that field, so this option isn't the best choice to turn on for tables with a ton of records.
 
 ## Edit a model's query
 
@@ -155,57 +172,9 @@ See [History](../exploration-and-organization/history.md).
 
 Just like with a question, admins can verify models. Verifying a model will give it a check mark to let others know an admin vetted the model. If anyone makes any changes to the model, the check mark will disappear. An admin will have to verify the question again to restore the check mark.
 
-## Model caching
+## Model persistence
 
-_Currently available for PostgreSQL, MySQL, and Redshift_.
-
-Metabase can cache the results of your models so that the models load faster. Metabase caches models by creating tables in a bespoke schema in your data warehouse, and saves the results of the queries that underlie your models in those tables. When people ask questions based on your models, Metabase will substitute those cached results in place of running the model's query.
-
-To set up model caching:
-
-1. [Enable model caching in Metabase](#enable-model-caching-in-metabase).
-2. [Create a schema to store cached models](#create-a-schema-to-store-cached-models).
-
-### Enable model caching in Metabase
-
-Go to **Admin settings** > **Settings** > **Caching** > **Models** to turn the feature on.
-
-![Model caching](./images/model-caching-custom.png)
-
-You can set models to refresh based on one of the default frequencies, or select the **Custom** option to use [cron syntax](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) to specify your own caching update frequency. We recommend scheduling the cache to refresh on a frequency that makes sense with how often your source tables update with new data.
-
-If someone [changes the query definition of a model](#edit-a-models-query), any question based on that model will skip the cache until the next cache refresh.
-
-### Create a schema to store cached models
-
-Go to **Admin settings** > **Databases** > your database > **Turn model caching on**.
-
-![Cache models UI](./images/cache-model-schema.png)
-
-If the credentials you've given Metabase to connect to your database are permissive, Metabase should do all the work for you: Metabase will check if the schema exists, or otherwise attempt to create it.
-
-If the connection's credentials lack the necessary permissions to create the schema in your database, you'll need to create the schema in the database yourself:
-
-1. Click on the **info icon** to get the schema name.
-
-   > In the above image, the schema name is "metabase_cache_134ba_7", but your schema name will differ.
-
-2. Create the schema in your database---make sure you use the exact schema name from step 1.
-3. Ensure that the credentials Metabase uses can manage and write to that schema.
-
-### Refreshing a model's cached results
-
-To refresh a model's cached results, go to the model and click on the **i** info icon. In the info sidebar that opens, you'll see a note about when Metabase last refreshed the model's cache, and an icon to refresh the cache.
-
-### View model caching logs
-
-You can view the logs for model caching by clicking on the **gear** icon in the upper right and selecting **Admin settings** > **Tools** > **Model caching logs**. See [Admin tools](../usage-and-performance-tools/tools.md).
-
-### Caching individual models
-
-{% include plans-blockquote.html feature="Caching individual models" %}
-
-On some paid plans, you can also toggle caching on or off for individual models. When viewing a model, click on the **...** in the upper right and select **Turn model caching on/off**.
+See [Model persistence](./model-persistence.md)
 
 ## Further reading
 

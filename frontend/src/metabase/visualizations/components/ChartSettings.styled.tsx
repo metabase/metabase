@@ -1,8 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
-import Radio from "metabase/core/components/Radio";
+import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
+import Radio from "metabase/core/components/Radio";
+import { color } from "metabase/lib/colors";
 import Warnings from "metabase/query_builder/components/Warnings";
 
 interface SectionContainerProps {
@@ -16,7 +17,7 @@ export const SectionContainer = styled.div<SectionContainerProps>`
     `}
   width: 100%;
   ${Radio.RadioGroupVariants.join(", ")} {
-    border-bottom: 1px solid ${color("border")};
+    border-bottom: 1px solid var(--mb-color-border);
   }
   ${Radio.RadioContainerVariants.join(", ")} {
     padding-left: 0.5rem;
@@ -27,6 +28,7 @@ export const SectionContainer = styled.div<SectionContainerProps>`
     margin-right: 0;
     display: flex;
     justify-content: center;
+
     &:not(:last-child) {
       margin-right: 0;
     }
@@ -34,7 +36,7 @@ export const SectionContainer = styled.div<SectionContainerProps>`
 `;
 
 export const SectionWarnings = styled(Warnings)`
-  color: ${color("accent4")};
+  color: ${() => color("accent4")};
   position: absolute;
   top: 2rem;
   right: 2rem;
@@ -44,26 +46,26 @@ export const SectionWarnings = styled(Warnings)`
 export const ChartSettingsRoot = styled.div`
   display: flex;
   flex-grow: 1;
-  overflow-y: auto;
+  height: 100%;
 `;
 
 export const ChartSettingsMenu = styled.div`
   flex: 1 0 0;
   display: flex;
   flex-direction: column;
+  overflow-y: auto;
 `;
 
 export const ChartSettingsListContainer = styled.div`
   position: relative;
-  overflow-y: auto;
-  padding: 2rem 0;
+  padding: 1.5rem 0;
 `;
 
 export const ChartSettingsPreview = styled.div`
   flex: 2 0 0;
   display: flex;
   flex-direction: column;
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
   padding-top: 1.5rem;
 `;
 

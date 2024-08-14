@@ -1,6 +1,7 @@
-import React from "react";
-import Icon from "metabase/components/Icon";
-import { HoveredTimelineEvent } from "./types";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+import type { HoveredTimelineEvent } from "metabase/visualizations/types";
+
 import {
   TimelineEventDate,
   TimelineEventIconContainer,
@@ -24,7 +25,7 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
         <li key={event.id}>
           <TimelineEventRow>
             <TimelineEventIconContainer>
-              <Icon name={event.icon} />
+              <Icon name={event.icon as unknown as IconName} />
             </TimelineEventIconContainer>
             <TimelineEventInfoContainer>
               <TimelineEventName>{event.name}</TimelineEventName>
@@ -40,4 +41,5 @@ const TimelineEventTooltip = (props: TimelineEventTooltipProps) => {
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TimelineEventTooltip;

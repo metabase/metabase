@@ -1,10 +1,9 @@
-import * as Urls from "metabase/lib/urls";
-
 import { coerceCollectionId } from "metabase/collections/utils";
+import * as Urls from "metabase/lib/urls";
+import type Question from "metabase-lib/v1/Question";
+import type { Collection, Dashboard } from "metabase-types/api";
 
-import type { Card, Dashboard } from "metabase-types/api";
-
-import { SelectedItem } from "./types";
+import type { SelectedItem } from "./types";
 
 type Opts = {
   pathname: string;
@@ -12,12 +11,32 @@ type Opts = {
     slug?: string;
     pageId?: string;
   };
-  card?: Card;
+  question?: Question;
   dashboard?: Dashboard;
+  collection?: Collection;
 };
 
-function isCollectionPath(pathname: string): boolean {
+export function isCollectionPath(pathname: string): boolean {
   return pathname.startsWith("/collection");
+}
+
+function isTrashPath(pathname: string): boolean {
+  return pathname.startsWith("/trash");
+}
+
+function isInTrash({
+  pathname,
+  collection,
+  question,
+  dashboard,
+}: Pick<Opts, "pathname" | "collection" | "question" | "dashboard">): boolean {
+  return (
+    isTrashPath(pathname) ||
+    collection?.archived ||
+    question?.isArchived() ||
+    dashboard?.archived ||
+    false
+  );
 }
 
 function isUsersCollectionPath(pathname: string): boolean {
@@ -32,6 +51,10 @@ export function isModelPath(pathname: string): boolean {
   return pathname.startsWith("/model");
 }
 
+export function isMetricPath(pathname: string): boolean {
+  return pathname.startsWith("/metric");
+}
+
 function isDashboardPath(pathname: string): boolean {
   return pathname.startsWith("/dashboard");
 }
@@ -39,11 +62,20 @@ function isDashboardPath(pathname: string): boolean {
 function getSelectedItems({
   pathname,
   params,
-  card,
+  question,
   dashboard,
+  collection,
 }: Opts): SelectedItem[] {
   const { slug } = params;
 
+  if (isInTrash({ pathname, collection, question, dashboard })) {
+    return [
+      {
+        id: "trash",
+        type: "collection",
+      },
+    ];
+  }
   if (isCollectionPath(pathname)) {
     return [
       {
@@ -66,14 +98,14 @@ function getSelectedItems({
       },
     ];
   }
-  if ((isQuestionPath(pathname) || isModelPath(pathname)) && card) {
+  if ((isQuestionPath(pathname) || isModelPath(pathname)) && question) {
     return [
       {
-        id: card.id,
+        id: question.id(),
         type: "card",
       },
       {
-        id: coerceCollectionId(card.collection_id),
+        id: coerceCollectionId(question.collectionId()),
         type: "collection",
       },
     ];
@@ -81,4 +113,5 @@ function getSelectedItems({
   return [{ url: pathname, type: "non-entity" }];
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default getSelectedItems;

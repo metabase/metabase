@@ -1,11 +1,14 @@
-import React, { ReactNode } from "react";
+import type { ReactNode } from "react";
+
+import type { IconName } from "metabase/ui";
+
 import { AlertIcon, AlertRoot } from "./Alert.styled";
 
-export type AlertVariant = "info" | "error";
+export type AlertVariant = "info" | "warning" | "error";
 
 interface AlertProps {
   children: ReactNode;
-  icon?: string;
+  icon?: IconName;
   hasBorder?: boolean;
   className?: string;
   variant?: AlertVariant;
@@ -26,4 +29,5 @@ const Alert = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Alert;

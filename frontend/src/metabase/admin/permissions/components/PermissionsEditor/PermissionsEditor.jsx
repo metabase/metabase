@@ -1,13 +1,12 @@
-import React from "react";
 import PropTypes from "prop-types";
 
 import LoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
 
+import { PermissionsEditorRoot } from "./PermissionsEditor.styled";
 import {
   PermissionsEditorContent,
   permissionEditorContentPropTypes,
 } from "./PermissionsEditorContent";
-import { PermissionsEditorRoot } from "./PermissionsEditor.styled";
 
 export const permissionEditorPropTypes = {
   isLoading: PropTypes.bool,

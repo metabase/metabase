@@ -1,5 +1,6 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import { color, darken } from "metabase/lib/colors";
 
 const disabledStyle = css`
@@ -17,12 +18,9 @@ export const BaseSidebarItemRoot = styled.div<{
 }>`
   display: flex;
   align-items: center;
-
   overflow: hidden;
-
   border: 1px solid transparent;
   border-radius: 8px;
-
   cursor: pointer;
 
   ${({ disabled }) => disabled && disabledStyle}
@@ -30,7 +28,7 @@ export const BaseSidebarItemRoot = styled.div<{
   ${({ padded = true }) => padded && sidebarItemPaddingStyle}
 
   &:hover {
-    border-color: ${color("brand")};
+    border-color: var(--mb-color-brand);
   }
 `;
 
@@ -39,8 +37,7 @@ export const SelectableSidebarItemRoot = styled(BaseSidebarItemRoot)<{
 }>`
   background-color: ${props =>
     props.isSelected ? color("brand") : "transparent"};
-
-  color: ${props => (props.isSelected ? color("white") : "inherit")};
+  color: ${props => (props.isSelected ? color("text-white") : "inherit")};
 `;
 
 export const Content = styled.div`
@@ -56,17 +53,17 @@ export const IconContainer = styled.div`
   justify-content: center;
   align-items: center;
   flex-shrink: 0;
-
   width: 36px;
   height: 36px;
   margin-right: 10px;
-
   border: 1px solid #f2f2f2;
   border-radius: 8px;
 `;
 
 export const CloseIconContainer = styled.span`
+  display: flex;
+  align-items: center;
   margin-left: auto;
   padding: 1rem;
-  border-left: 1px solid ${darken("brand", 0.2)};
+  border-left: 1px solid ${() => darken("brand", 0.2)};
 `;

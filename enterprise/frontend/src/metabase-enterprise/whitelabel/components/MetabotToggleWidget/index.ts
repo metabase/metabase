@@ -1,1 +1,1 @@
-export { default } from "./MetabotToggleWidget";
+export { MetabotToggleWidget } from "./MetabotToggleWidget";

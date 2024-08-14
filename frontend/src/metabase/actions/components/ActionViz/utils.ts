@@ -1,18 +1,18 @@
 import _ from "underscore";
 
-import { isNotNull } from "metabase/core/utils/types";
+import { isImplicitDeleteAction } from "metabase/actions/utils";
+import { isNotNull } from "metabase/lib/types";
 import { isEmpty } from "metabase/lib/validate";
-
 import type {
   ActionDashboardCard,
   ActionParametersMapping,
   ActionParameterValue,
   ParameterId,
   ParametersForActionExecution,
+  ParameterValueOrArray,
   WritebackAction,
   WritebackParameter,
 } from "metabase-types/api";
-import type { ParameterValueOrArray } from "metabase-types/types/Parameter";
 
 type ActionParameterTuple = [ParameterId, ActionParameterValue];
 
@@ -84,12 +84,45 @@ export function getNotProvidedActionParameters(
   });
 }
 
+export function getMappedActionParameters(
+  action: WritebackAction,
+  dashboardParamValues: ParametersForActionExecution,
+) {
+  const parameters = action.parameters ?? [];
+  return parameters.filter(parameter => {
+    return isMappedParameter(parameter, dashboardParamValues);
+  });
+}
+
 export const shouldShowConfirmation = (action?: WritebackAction) => {
   if (!action) {
     return false;
   }
-  const hasConfirmationMessage = action.visualization_settings?.confirmMessage;
-  const isImplicitDelete =
-    action.type === "implicit" && action.kind === "row/delete";
-  return hasConfirmationMessage || isImplicitDelete;
+  const hasConfirmationMessage =
+    !!action.visualization_settings?.confirmMessage;
+  return hasConfirmationMessage || isImplicitDeleteAction(action);
+};
+
+export const isParameterHidden = (
+  action: WritebackAction,
+  parameter: WritebackParameter,
+) => {
+  return !!action.visualization_settings?.fields?.[parameter.id]?.hidden;
+};
+
+export const isParameterRequired = (
+  action: WritebackAction,
+  parameter: WritebackParameter,
+) => {
+  return !!(
+    parameter.required ||
+    action.visualization_settings?.fields?.[parameter.id]?.required
+  );
+};
+
+export const getParameterDefaultValue = (
+  action: WritebackAction,
+  parameter: WritebackParameter,
+) => {
+  return action.visualization_settings?.fields?.[parameter.id]?.defaultValue;
 };

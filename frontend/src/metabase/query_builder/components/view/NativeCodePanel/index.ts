@@ -1,1 +1,1 @@
-export { default } from "./NativeCodePanel";
+export { NativeCodePanel } from "./NativeCodePanel";

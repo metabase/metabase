@@ -1,98 +1,93 @@
 /* eslint-disable react/prop-types */
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
+import { useMount, usePrevious, useUnmount } from "react-use";
 import { t } from "ttag";
 import _ from "underscore";
 
-import { useMount, useUnmount, usePrevious } from "react-use";
-import { PLUGIN_SELECTORS } from "metabase/plugins";
+import { LeaveConfirmationModal } from "metabase/components/LeaveConfirmationModal";
 import Bookmark from "metabase/entities/bookmarks";
-import Collections from "metabase/entities/collections";
 import Timelines from "metabase/entities/timelines";
-import { getSetting } from "metabase/selectors/settings";
-
-import { closeNavbar, getIsNavbarOpen } from "metabase/redux/app";
-import { getMetadata } from "metabase/selectors/metadata";
-import {
-  getUser,
-  getUserIsAdmin,
-  canManageSubscriptions,
-} from "metabase/selectors/user";
-
-import { useForceUpdate } from "metabase/hooks/use-force-update";
-
-import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
-import { useWebNotification } from "metabase/hooks/use-web-notification";
-
+import favicon from "metabase/hoc/Favicon";
 import title from "metabase/hoc/Title";
 import titleWithLoadingTime from "metabase/hoc/TitleWithLoadingTime";
-import favicon from "metabase/hoc/Favicon";
-
-import View from "../components/view/View";
-
+import { useCallbackEffect } from "metabase/hooks/use-callback-effect";
+import { useForceUpdate } from "metabase/hooks/use-force-update";
+import { useLoadingTimer } from "metabase/hooks/use-loading-timer";
+import { useWebNotification } from "metabase/hooks/use-web-notification";
+import { useSelector } from "metabase/lib/redux";
+import { closeNavbar } from "metabase/redux/app";
+import { getIsNavbarOpen } from "metabase/selectors/app";
+import { getMetadata } from "metabase/selectors/metadata";
+import { getSetting } from "metabase/selectors/settings";
 import {
+  canManageSubscriptions,
+  getUser,
+  getUserIsAdmin,
+} from "metabase/selectors/user";
+
+import * as actions from "../actions";
+import View from "../components/view/View";
+import { VISUALIZATION_SLOW_TIMEOUT } from "../constants";
+import {
+  getAutocompleteResultsFn,
   getCard,
+  getCardAutocompleteResultsFn,
+  getDatabaseFields,
   getDatabasesList,
   getDataReferenceStack,
-  getOriginalCard,
-  getLastRunCard,
-  getFirstQueryResult,
-  getQueryResults,
-  getParameterValues,
-  getIsDirty,
-  getIsNew,
-  getIsObjectDetail,
-  getTables,
-  getTableMetadata,
-  getTableForeignKeys,
-  getTableForeignKeyReferences,
-  getUiControls,
-  getParameters,
-  getDatabaseFields,
-  getSampleDatabaseId,
-  getNativeDatabases,
-  getIsRunnable,
-  getIsResultDirty,
-  getMode,
-  getModalSnippet,
-  getSnippetCollectionId,
-  getQuery,
-  getQuestion,
-  getOriginalQuestion,
-  getQueryStartTime,
-  getRawSeries,
-  getQuestionAlerts,
-  getVisualizationSettings,
-  getIsNativeEditorOpen,
-  getIsVisualized,
-  getIsLiveResizable,
-  getNativeEditorCursorOffset,
-  getNativeEditorSelectedText,
-  getIsBookmarked,
-  getVisibleTimelineEvents,
-  getVisibleTimelineEventIds,
-  getSelectedTimelineEventIds,
-  getFilteredTimelines,
-  getTimeseriesXDomain,
-  getIsAnySidebarOpen,
   getDocumentTitle,
-  getPageFavicon,
-  getIsTimeseries,
-  getIsLoadingComplete,
-  getIsHeaderVisible,
+  getEmbeddedParameterVisibility,
+  getFilteredTimelines,
+  getFirstQueryResult,
   getIsActionListVisible,
   getIsAdditionalInfoVisible,
-  getAutocompleteResultsFn,
-  getCardAutocompleteResultsFn,
+  getIsAnySidebarOpen,
+  getIsBookmarked,
+  getIsDirty,
+  getIsHeaderVisible,
+  getIsLiveResizable,
+  getIsLoadingComplete,
+  getIsNativeEditorOpen,
+  getIsObjectDetail,
+  getIsResultDirty,
+  getIsRunnable,
+  getIsTimeseries,
+  getIsVisualized,
+  getLastRunCard,
+  getModalSnippet,
+  getMode,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
+  getOriginalCard,
+  getOriginalQuestion,
+  getPageFavicon,
+  getParameters,
+  getParameterValues,
+  getQueryResults,
+  getQueryStartTime,
+  getQuestion,
+  getQuestionAlerts,
+  getRawSeries,
+  getSampleDatabaseId,
+  getSelectedTimelineEventIds,
+  getShouldShowUnsavedChangesWarning,
+  getSnippetCollectionId,
+  getTableForeignKeyReferences,
+  getTableForeignKeys,
+  getTables,
+  getTimeseriesXDomain,
+  getUiControls,
+  getVisibleTimelineEventIds,
+  getVisibleTimelineEvents,
+  getVisualizationSettings,
+  isResultsMetadataDirty,
 } from "../selectors";
-import * as actions from "../actions";
+import { isNavigationAllowed } from "../utils";
+
+import { useCreateQuestion } from "./use-create-question";
+import { useSaveQuestion } from "./use-save-question";
 
 const timelineProps = {
   query: { include: "events" },
@@ -104,7 +99,6 @@ const mapStateToProps = (state, props) => {
     user: getUser(state, props),
     canManageSubscriptions: canManageSubscriptions(state, props),
     isAdmin: getUserIsAdmin(state, props),
-    fromUrl: props.location.query.from,
 
     mode: getMode(state),
 
@@ -120,11 +114,8 @@ const mapStateToProps = (state, props) => {
     card: getCard(state),
     originalCard: getOriginalCard(state),
     databases: getDatabasesList(state),
-    nativeDatabases: getNativeDatabases(state),
     tables: getTables(state),
-    tableMetadata: getTableMetadata(state),
 
-    query: getQuery(state),
     metadata: getMetadata(state),
 
     timelines: getFilteredTimelines(state),
@@ -144,7 +135,6 @@ const mapStateToProps = (state, props) => {
 
     isBookmarked: getIsBookmarked(state, props),
     isDirty: getIsDirty(state),
-    isNew: getIsNew(state),
     isObjectDetail: getIsObjectDetail(state),
     isNativeEditorOpen: getIsNativeEditorOpen(state),
     isNavBarOpen: getIsNavbarOpen(state),
@@ -161,6 +151,7 @@ const mapStateToProps = (state, props) => {
 
     isRunnable: getIsRunnable(state),
     isResultDirty: getIsResultDirty(state),
+    isMetadataDirty: isResultsMetadataDirty(state),
 
     questionAlerts: getQuestionAlerts(state),
     visualizationSettings: getVisualizationSettings(state),
@@ -168,10 +159,6 @@ const mapStateToProps = (state, props) => {
     autocompleteResultsFn: getAutocompleteResultsFn(state),
     cardAutocompleteResultsFn: getCardAutocompleteResultsFn(state),
 
-    initialCollectionId: Collections.selectors.getInitialCollectionId(
-      state,
-      props,
-    ),
     queryStartTime: getQueryStartTime(state),
     nativeEditorCursorOffset: getNativeEditorCursorOffset(state),
     nativeEditorSelectedText: getNativeEditorSelectedText(state),
@@ -180,9 +167,11 @@ const mapStateToProps = (state, props) => {
     documentTitle: getDocumentTitle(state),
     pageFavicon: getPageFavicon(state),
     isLoadingComplete: getIsLoadingComplete(state),
-    loadingMessage: PLUGIN_SELECTORS.getLoadingMessage(state),
 
     reportTimezone: getSetting(state, "report-timezone-long"),
+
+    getEmbeddedParameterVisibility: slug =>
+      getEmbeddedParameterVisibility(state, slug),
   };
 };
 
@@ -197,19 +186,15 @@ const mapDispatchToProps = {
 function QueryBuilder(props) {
   const {
     question,
+    originalQuestion,
     location,
     params,
-    fromUrl,
     uiControls,
     isNativeEditorOpen,
     isAnySidebarOpen,
     closeNavbar,
     initializeQB,
-    apiCreateQuestion,
-    apiUpdateQuestion,
-    updateUrl,
     locationChanged,
-    onChangeLocation,
     setUIControls,
     cancelQuery,
     isBookmarked,
@@ -219,6 +204,8 @@ function QueryBuilder(props) {
     showTimelinesForCollection,
     card,
     isLoadingComplete,
+    closeQB,
+    route,
   } = props;
 
   const forceUpdate = useForceUpdate();
@@ -245,17 +232,6 @@ function QueryBuilder(props) {
     [setUIControls],
   );
 
-  const setRecentlySaved = useCallback(
-    recentlySaved => {
-      setUIControls({ recentlySaved });
-      clearTimeout(timeout.current);
-      timeout.current = setTimeout(() => {
-        setUIControls({ recentlySaved: null });
-      }, 5000);
-    },
-    [setUIControls],
-  );
-
   const onClickBookmark = () => {
     const {
       card: { id },
@@ -266,56 +242,33 @@ function QueryBuilder(props) {
     toggleBookmark(id);
   };
 
-  const handleCreate = useCallback(
-    async card => {
-      const shouldBePinned = Boolean(card.dataset);
+  /**
+   * Navigation is scheduled so that LeaveConfirmationModal's isEnabled
+   * prop has a chance to re-compute on re-render
+   */
+  const [isCallbackScheduled, scheduleCallback] = useCallbackEffect();
 
-      const questionWithUpdatedCard = question
-        .setCard(card)
-        .setPinned(shouldBePinned);
+  const handleCreate = useCreateQuestion({ scheduleCallback });
 
-      await apiCreateQuestion(questionWithUpdatedCard);
-
-      setRecentlySaved("created");
-    },
-    [question, apiCreateQuestion, setRecentlySaved],
-  );
-
-  const handleSave = useCallback(
-    async (card, { rerunQuery = false } = {}) => {
-      const questionWithUpdatedCard = question.setCard(card);
-      await apiUpdateQuestion(questionWithUpdatedCard, { rerunQuery });
-      if (!rerunQuery) {
-        await updateUrl(questionWithUpdatedCard.card(), { dirty: false });
-      }
-      if (fromUrl) {
-        onChangeLocation(fromUrl);
-      } else {
-        setRecentlySaved("updated");
-      }
-    },
-    [
-      question,
-      fromUrl,
-      apiUpdateQuestion,
-      updateUrl,
-      onChangeLocation,
-      setRecentlySaved,
-    ],
-  );
+  const handleSave = useSaveQuestion({ scheduleCallback });
 
   useMount(() => {
     initializeQB(location, params);
-  }, []);
+  });
 
-  useMount(() => {
+  useEffect(() => {
     window.addEventListener("resize", forceUpdateDebounced);
     return () => window.removeEventListener("resize", forceUpdateDebounced);
-  }, []);
+  });
+
+  const shouldShowUnsavedChangesWarning = useSelector(
+    getShouldShowUnsavedChangesWarning,
+  );
 
   useUnmount(() => {
     cancelQuery();
     closeModal();
+    closeQB();
     clearTimeout(timeout.current);
   });
 
@@ -374,11 +327,11 @@ function QueryBuilder(props) {
   }, []);
 
   useLoadingTimer(isRunning, {
-    timer: 15000,
+    timer: VISUALIZATION_SLOW_TIMEOUT,
     onTimeout,
   });
 
-  const [requestPermission, showNotification] = useWebNotification();
+  const { requestPermission, showNotification } = useWebNotification();
 
   useEffect(() => {
     if (isLoadingComplete) {
@@ -406,22 +359,40 @@ function QueryBuilder(props) {
     setIsShowingToaster(false);
   }, []);
 
+  const isNewQuestion = !originalQuestion;
+  const isLocationAllowed = useCallback(
+    location =>
+      isNavigationAllowed({
+        destination: location,
+        question,
+        isNewQuestion,
+      }),
+    [question, isNewQuestion],
+  );
+
   return (
-    <View
-      {...props}
-      modal={uiControls.modal}
-      recentlySaved={uiControls.recentlySaved}
-      onOpenModal={openModal}
-      onCloseModal={closeModal}
-      onSetRecentlySaved={setRecentlySaved}
-      onSave={handleSave}
-      onCreate={handleCreate}
-      handleResize={forceUpdateDebounced}
-      toggleBookmark={onClickBookmark}
-      onDismissToast={onDismissToast}
-      onConfirmToast={onConfirmToast}
-      isShowingToaster={isShowingToaster}
-    />
+    <>
+      <View
+        {...props}
+        modal={uiControls.modal}
+        recentlySaved={uiControls.recentlySaved}
+        onOpenModal={openModal}
+        onCloseModal={closeModal}
+        onSave={handleSave}
+        onCreate={handleCreate}
+        handleResize={forceUpdateDebounced}
+        toggleBookmark={onClickBookmark}
+        onDismissToast={onDismissToast}
+        onConfirmToast={onConfirmToast}
+        isShowingToaster={isShowingToaster}
+      />
+
+      <LeaveConfirmationModal
+        isEnabled={shouldShowUnsavedChangesWarning && !isCallbackScheduled}
+        isLocationAllowed={isLocationAllowed}
+        route={route}
+      />
+    </>
   );
 }
 

@@ -1,8 +1,9 @@
-import React, { useCallback, useMemo } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import { isValidElement, useCallback, useMemo } from "react";
 import _ from "underscore";
 
 import { TreeNode } from "metabase/components/tree/TreeNode";
-import { IconProps } from "metabase/components/Icon";
+import type { IconName, IconProps } from "metabase/ui";
 
 import {
   FullWidthLink,
@@ -18,25 +19,23 @@ import {
 interface SidebarLinkProps {
   children: string;
   url?: string;
-  icon?: string | IconProps | React.ReactElement;
+  icon?: IconName | IconProps;
   isSelected?: boolean;
   hasDefaultIconStyle?: boolean;
-  left?: React.ReactNode;
-  right?: React.ReactNode;
-  onClick?: () => void;
+  left?: ReactNode;
+  right?: ReactNode;
+  onClick?: (event: MouseEvent) => void;
 }
 
 type ContentProps = {
-  children: React.ReactNode;
+  children: ReactNode;
 };
 
-function isIconPropsObject(
-  icon: string | IconProps | React.ReactNode,
-): icon is IconProps {
+function isIconPropsObject(icon: string | IconProps): icon is IconProps {
   return _.isObject(icon);
 }
 
-function disableImageDragging(e: React.MouseEvent) {
+function disableImageDragging(e: MouseEvent) {
   // https://www.redips.net/firefox/disable-image-dragging/
 
   // Also seems to prevent other hickups when dragging items
@@ -52,13 +51,14 @@ function SidebarLink({
   hasDefaultIconStyle,
   left = null,
   right = null,
+  onClick,
   ...props
 }: SidebarLinkProps) {
   const renderIcon = useCallback(() => {
     if (!icon) {
       return null;
     }
-    if (React.isValidElement(icon)) {
+    if (isValidElement(icon)) {
       return icon;
     }
     const iconProps = isIconPropsObject(icon) ? icon : { name: icon };
@@ -71,11 +71,17 @@ function SidebarLink({
 
   const Content = useMemo(() => {
     return url
-      ? (props: ContentProps) => <FullWidthLink {...props} to={url} />
+      ? (props: ContentProps) => (
+          <FullWidthLink {...props} to={url} onClick={onClick} />
+        )
       : (props: ContentProps) => (
-          <FullWidthButton {...props} isSelected={isSelected} />
+          <FullWidthButton
+            {...props}
+            isSelected={isSelected}
+            onClick={onClick}
+          />
         );
-  }, [url, isSelected]);
+  }, [url, isSelected, onClick]);
 
   return (
     <NodeRoot
@@ -87,14 +93,14 @@ function SidebarLink({
       onMouseDown={disableImageDragging}
       {...props}
     >
-      {React.isValidElement(left) && (
+      {isValidElement(left) && (
         <LeftElementContainer>{left}</LeftElementContainer>
       )}
       <Content>
         {icon && renderIcon()}
         <NameContainer>{children}</NameContainer>
       </Content>
-      {React.isValidElement(right) && (
+      {isValidElement(right) && (
         <RightElementContainer>{right}</RightElementContainer>
       )}
     </NodeRoot>
@@ -103,6 +109,7 @@ function SidebarLink({
 
 export type { SidebarLinkProps };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default Object.assign(SidebarLink, {
   NameContainers: [ItemName, TreeNode.NameContainer],
   Icon: SidebarIcon,

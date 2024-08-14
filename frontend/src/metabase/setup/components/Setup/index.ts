@@ -1,1 +1,1 @@
-export { default } from "./Setup";
+export * from "./Setup";

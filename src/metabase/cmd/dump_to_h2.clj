@@ -13,11 +13,14 @@
 
     clojure -M:run load-from-h2 '\"/path/to/metabase.db\"'"
   (:require
+   [clojure.java.jdbc :as jdbc]
    [metabase.cmd.copy :as copy]
    [metabase.cmd.copy.h2 :as copy.h2]
    [metabase.cmd.rotate-encryption-key :as rotate-encryption]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
    [metabase.util.log :as log]))
+
+(set! *warn-on-reflection* true)
 
 (defn dump-to-h2!
   "Transfer data from existing database specified by connection string to the H2 DB specified by env vars. Intended as a
@@ -36,7 +39,9 @@
      (log/infof "Dumping from configured Metabase db to H2 file %s" h2-filename)
      (when-not keep-existing?
        (copy.h2/delete-existing-h2-database-files! h2-filename))
-     (copy/copy! (mdb.connection/db-type) (mdb.connection/data-source) :h2 h2-data-source)
+     (copy/copy! (mdb/db-type) (mdb/data-source) :h2 h2-data-source)
      (when dump-plaintext?
-       (binding [mdb.connection/*application-db* (mdb.connection/application-db :h2 h2-data-source)]
-         (rotate-encryption/rotate-encryption-key! nil))))))
+       (mdb/with-application-db (mdb/application-db :h2 h2-data-source)
+         (rotate-encryption/rotate-encryption-key! nil)))
+     ;; Flush h2 to disk
+     (jdbc/execute! {:datasource h2-data-source} "CHECKPOINT SYNC"))))

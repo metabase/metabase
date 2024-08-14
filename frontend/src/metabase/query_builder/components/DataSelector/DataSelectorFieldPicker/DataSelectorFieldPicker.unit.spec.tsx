@@ -1,10 +1,15 @@
-import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
-import { ORDERS } from "__support__/sample_database_fixture";
 
-import type { Table } from "metabase-types/api/table";
+import { createMockMetadata } from "__support__/metadata";
+import { checkNotNull } from "metabase/lib/types";
+import type Table from "metabase-lib/v1/metadata/Table";
+import { createSampleDatabase, ORDERS } from "metabase-types/api/mocks/presets";
 
 import DataSelectorFieldPicker from "./DataSelectorFieldPicker";
+
+const metadata = createMockMetadata({
+  databases: [createSampleDatabase()],
+});
 
 const props = {
   hasFiltering: true,
@@ -61,12 +66,13 @@ describe("DataSelectorFieldPicker", () => {
         <DataSelectorFieldPicker
           {...props}
           selectedTable={selectedTable as Table}
-          fields={[ORDERS.PRODUCT_ID]}
+          fields={[checkNotNull(metadata.field(ORDERS.PRODUCT_ID))]}
         />,
       );
 
       expect(screen.getByText(tableDisplayName)).toBeInTheDocument();
       expect(screen.getByText("Product ID")).toBeInTheDocument();
+      expect(screen.getByLabelText("More info")).toBeInTheDocument();
     });
   });
 });

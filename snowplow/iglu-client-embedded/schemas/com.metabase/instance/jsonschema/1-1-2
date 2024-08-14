@@ -1,0 +1,166 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Metabase instance",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "instance",
+    "format": "jsonschema",
+    "version": "1-1-2"
+  },
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "Instance ID",
+      "type": "string",
+      "maxLength": 1024
+    },
+    "version": {
+      "description": "Instance version",
+      "type": "object",
+      "properties": {
+        "tag": {
+          "description": "Instance version tag",
+          "type": "string",
+          "maxLength": 1024
+        }
+      },
+      "required": [
+        "tag"
+      ]
+    },
+    "created_at": {
+      "description": "The date the instance was created",
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "date-time",
+      "maxLength": 1024
+    },
+    "token_features": {
+      "description": "Premium token features",
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "embedding": {
+          "description": "Should we hide the 'Powered by Metabase' attribution on the embedding pages?",
+          "type": "boolean"
+        },
+        "whitelabel": {
+          "description": "Should we allow full whitelabel embedding (reskinning the entire interface?)",
+          "type": "boolean"
+        },
+        "audit_app": {
+          "description": "Should we enable the Audit Logs interface in the Admin UI?",
+          "type": "boolean"
+        },
+        "sandboxes": {
+          "description": "Should we enable data sandboxes (row-level permissions)?",
+          "type": "boolean"
+        },
+        "email_allow_list": {
+          "description": "Should we enable restrict email domains for subscription recipients?",
+          "type": "boolean"
+        },
+        "email_restrict_recipients": {
+          "description": "Shoudl we enable restrict email subscription recipients?",
+          "type": "boolean"
+        },
+        "cache_granular_controls": {
+          "description": "Should we enable granular controls for cache TTL at the database, dashboard, and card level?",
+          "type": "boolean"
+        },
+        "dashboard_subscription_filters":  {
+          "description": "Should we enable filters for dashboard subscriptions?",
+          "type": "boolean"
+        },
+        "config_text_file":  {
+          "description": "Should we enable initialization on launch from a config file?",
+          "type": "boolean"
+        },
+        "sso": {
+          "description": "DEPRECATED: Should we enable advanced SSO features (SAML and JWT authentication; role and group mapping)?",
+          "type": "boolean"
+        },
+        "sso_jwt":  {
+          "description": "Should we enable JWT-based authentication?",
+          "type": "boolean"
+        },
+        "sso_saml":  {
+          "description": "Should we enable SAML-based authentication?",
+          "type": "boolean"
+        },
+        "sso_ldap":  {
+          "description": "Should we enable advanced configuration for LDAP authentication?",
+          "type": "boolean"
+        },
+        "sso_google":  {
+          "description": "Should we enable advanced configuration for Google Sign-In authentication?",
+          "type": "boolean"
+        },
+        "advanced_config": {
+          "description": "DEPRECATED: Should we enable knobs and levers for more complex orgs (granular caching controls, allow-lists email domains for notifications, more in the future)?",
+          "type": "boolean"
+        },
+        "content_management": {
+          "description": "DEPRECATED: Should we enable official Collections, Question verifications (and more in the future, like workflows, forking, etc.)?",
+          "type": "boolean"
+        },
+        "disable_password_login":  {
+          "description": "Can we disable login by password?",
+          "type": "boolean"
+        },
+        "session_timeout_config":  {
+          "description": "Should we enable configuring session timeouts?",
+          "type": "boolean"
+        },
+        "content_verification":  {
+          "description": "Should we enable verified content, like verified questions and models (and more in the future, like actions)?",
+          "type": "boolean"
+        },
+        "official_collections":  {
+          "description": "Should we enable Official Collections?",
+          "type": "boolean"
+        },
+        "snippet_collections":  {
+          "description": "Should we enable SQL snippet folders?",
+          "type": "boolean"
+        },
+        "advanced_permissions": {
+          "description": "Should we enable extra knobs around permissions (block access, and in the future, moderator roles, feature-level permissions, etc.)?",
+          "type": "boolean"
+        },
+        "hosting": {
+          "description": "Is the Metabase instance running in the cloud?",
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "application_database": {
+      "description": "Application database type",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "application_database_version": {
+      "description": "Application database version",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    }
+  },
+  "required": [
+    "id",
+    "version"
+  ],
+  "additionalProperties": true
+}

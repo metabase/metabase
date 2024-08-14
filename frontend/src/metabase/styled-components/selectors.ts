@@ -1,7 +1,8 @@
+import { createSelector } from "@reduxjs/toolkit";
 import _ from "underscore";
-import { createSelector } from "reselect";
-import { getSettings } from "metabase/selectors/settings";
+
 import { getEmbedOptions } from "metabase/selectors/embed";
+import { getSettings } from "metabase/selectors/settings";
 
 export const getFont = createSelector(
   [getSettings, getEmbedOptions],
@@ -16,13 +17,6 @@ export const getFont = createSelector(
   },
 );
 
-export const getFontFiles = createSelector(
-  [getSettings, getEmbedOptions],
-  (settings, embedOptions) => {
-    if (embedOptions.font) {
-      return [];
-    } else {
-      return settings["application-font-files"];
-    }
-  },
-);
+export const getFontFiles = createSelector([getSettings], settings => {
+  return settings["application-font-files"];
+});

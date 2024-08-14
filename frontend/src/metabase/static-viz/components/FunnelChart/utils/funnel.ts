@@ -1,8 +1,10 @@
-import { PolygonProps } from "@visx/shape/lib/shapes/Polygon";
-import { isNotNull } from "metabase/core/utils/types";
+import type { PolygonProps } from "@visx/shape/lib/shapes/Polygon";
+
+import { isNotNull } from "metabase/lib/types";
 import { formatNumber, formatPercent } from "metabase/static-viz/lib/numbers";
 import { truncateText } from "metabase/static-viz/lib/text";
-import { FunnelDatum, FunnelSettings, FunnelStep } from "../types";
+
+import type { FunnelDatum, FunnelSettings, FunnelStep, Step } from "../types";
 
 export const calculateFunnelSteps = (
   data: FunnelDatum[],
@@ -86,6 +88,23 @@ export const getFormattedStep = (
     measure,
     stepName,
   };
+};
+
+export const groupData = (data: FunnelDatum[]) => {
+  const groupedData = new Map<Step, FunnelDatum>();
+
+  for (const row of data) {
+    const existingValue = groupedData.get(row[0]);
+
+    if (existingValue == null) {
+      groupedData.set(row[0], [...row]);
+      continue;
+    } else {
+      existingValue[1] += row[1];
+    }
+  }
+
+  return Array.from(groupedData.values());
 };
 
 export const reorderData = (

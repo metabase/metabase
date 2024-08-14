@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import Button from "metabase/core/components/Button";
 
 export const NavBar = styled.div`
@@ -8,11 +8,11 @@ export const NavBar = styled.div`
   align-items: center;
   padding-left: 1.5rem;
   padding-right: 1.5rem;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
 `;
 
 export const ModelEducationButton = styled(Button)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 ModelEducationButton.defaultProps = {

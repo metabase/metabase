@@ -1,47 +1,15 @@
-import React, { ChangeEvent, useCallback, useEffect } from "react";
-import { connect } from "react-redux";
+import { useCallback } from "react";
 import { t } from "ttag";
-import _ from "underscore";
-import Button from "metabase/core/components/Button";
-import Input from "metabase/core/components/Input";
-import ModalContent from "metabase/components/ModalContent";
-import DataPicker, {
-  DataPickerDataType,
-  DataPickerValue,
-  useDataPicker,
-  useDataPickerValue,
-} from "metabase/containers/DataPicker";
-import Questions from "metabase/entities/questions";
-import Collections from "metabase/entities/collections";
-import Tables from "metabase/entities/tables";
-import { getMetadata } from "metabase/selectors/metadata";
-import {
-  Card,
-  CardId,
-  Collection,
-  Parameter,
-  ValuesSourceConfig,
-} from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import {
-  getCollectionVirtualSchemaId,
-  getQuestionIdFromVirtualTableId,
-  getQuestionVirtualTableId,
-} from "metabase-lib/metadata/utils/saved-questions";
-import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
-import {
-  DataPickerContainer,
-  ModalBodyWithSearch,
-  SearchInputContainer,
-} from "./ValuesSourceCardModal.styled";
 
-const DATA_PICKER_FILTERS = {
-  types: (type: DataPickerDataType) =>
-    type === "questions" || type === "models",
-};
+import type { QuestionPickerValueItem } from "metabase/common/components/QuestionPicker";
+import {
+  getQuestionPickerValue,
+  QuestionPickerModal,
+} from "metabase/common/components/QuestionPicker";
+import { useQuestionQuery } from "metabase/common/hooks";
+import type { Parameter, ValuesSourceConfig } from "metabase-types/api";
 
-interface ModalOwnProps {
+interface ValuesSourceCardModalProps {
   parameter: Parameter;
   sourceConfig: ValuesSourceConfig;
   onChangeSourceConfig: (sourceConfig: ValuesSourceConfig) => void;
@@ -49,160 +17,33 @@ interface ModalOwnProps {
   onClose: () => void;
 }
 
-interface ModalCardProps {
-  card: Card | undefined;
-}
-
-interface ModalCollectionProps {
-  collection: Collection | undefined;
-}
-
-interface ModalStateProps {
-  question: Question | undefined;
-}
-
-interface ModalDispatchProps {
-  onFetchCard: (cardId: CardId) => void;
-  onFetchMetadata: (cardId: CardId) => void;
-}
-
-type ModalProps = ModalOwnProps &
-  ModalCardProps &
-  ModalCollectionProps &
-  ModalStateProps &
-  ModalDispatchProps;
-
-const ValuesSourceCardModal = ({
+export const ValuesSourceCardModal = ({
   parameter,
-  question,
-  collection,
-  onFetchCard,
-  onFetchMetadata,
+  sourceConfig,
   onChangeSourceConfig,
   onSubmit,
   onClose,
-}: ModalProps): JSX.Element => {
-  const initialValue = getInitialValue(question, collection);
-  const [value, setValue] = useDataPickerValue(initialValue);
-  const cardId = getCardIdFromValue(value);
+}: ValuesSourceCardModalProps): JSX.Element => {
+  const { data: question } = useQuestionQuery({ id: sourceConfig.card_id });
 
-  const handleSubmit = useCallback(() => {
-    onChangeSourceConfig({ card_id: cardId });
-    onSubmit();
-  }, [cardId, onChangeSourceConfig, onSubmit]);
+  const initialValue =
+    question &&
+    getQuestionPickerValue({ id: question.id(), type: question.type() });
 
-  useEffect(() => {
-    if (cardId) {
-      onFetchCard(cardId);
-      onFetchMetadata(cardId);
-    }
-  }, [cardId, onFetchCard, onFetchMetadata]);
-
-  return (
-    <DataPicker.Provider>
-      <ModalContent
-        title={t`Selectable values for ${parameter.name}`}
-        footer={[
-          <Button key="cancel" onClick={onSubmit}>{t`Back`}</Button>,
-          <Button
-            key="submit"
-            primary
-            disabled={!cardId}
-            onClick={handleSubmit}
-          >
-            {t`Done`}
-          </Button>,
-        ]}
-        onClose={onClose}
-      >
-        <ModalBodyWithSearch>
-          <DataPickerSearchInput />
-          <DataPickerContainer>
-            <DataPicker
-              value={value}
-              filters={DATA_PICKER_FILTERS}
-              onChange={setValue}
-            />
-          </DataPickerContainer>
-        </ModalBodyWithSearch>
-      </ModalContent>
-    </DataPicker.Provider>
-  );
-};
-
-const DataPickerSearchInput = () => {
-  const { search } = useDataPicker();
-  const { query, setQuery } = search;
-
-  const handleChange = useCallback(
-    (event: ChangeEvent<HTMLInputElement>) => {
-      setQuery(event.target.value);
+  const handleSubmit = useCallback(
+    (newQuestion: QuestionPickerValueItem) => {
+      onChangeSourceConfig({ card_id: newQuestion.id });
+      onSubmit();
     },
-    [setQuery],
+    [onChangeSourceConfig, onSubmit],
   );
 
   return (
-    <SearchInputContainer>
-      <Input
-        value={query}
-        placeholder={t`Search for a question or model`}
-        leftIcon="search"
-        fullWidth
-        onChange={handleChange}
-      />
-    </SearchInputContainer>
+    <QuestionPickerModal
+      title={t`Selectable values for ${parameter.name}`}
+      value={initialValue}
+      onChange={handleSubmit}
+      onClose={onClose}
+    />
   );
 };
-
-const getInitialValue = (
-  question?: Question,
-  collection?: Collection,
-): Partial<DataPickerValue> | undefined => {
-  if (question) {
-    const id = question.id();
-    const isDatasets = question.isDataset();
-
-    return {
-      type: isDatasets ? "models" : "questions",
-      schemaId: getCollectionVirtualSchemaId(collection, { isDatasets }),
-      collectionId: collection?.id,
-      tableIds: [getQuestionVirtualTableId(id)],
-    };
-  }
-};
-
-const getCardIdFromValue = ({ tableIds }: DataPickerValue) => {
-  if (tableIds.length) {
-    const cardId = getQuestionIdFromVirtualTableId(tableIds[0]);
-    if (cardId != null) {
-      return cardId;
-    }
-  }
-};
-
-const mapStateToProps = (
-  state: State,
-  { card }: ModalCardProps,
-): ModalStateProps => ({
-  question: card ? new Question(card, getMetadata(state)) : undefined,
-});
-
-const mapDispatchToProps: ModalDispatchProps = {
-  onFetchCard: (cardId: CardId) => Questions.actions.fetch({ id: cardId }),
-  onFetchMetadata: (cardId: CardId) =>
-    Tables.actions.fetchMetadata({ id: getQuestionVirtualTableId(cardId) }),
-};
-
-export default _.compose(
-  Questions.load({
-    id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    entityAlias: "card",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
-  Collections.load({
-    id: (state: State, { card }: ModalCardProps) =>
-      card?.collection_id ?? "root",
-    LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
-  }),
-  connect(mapStateToProps, mapDispatchToProps),
-)(ValuesSourceCardModal);

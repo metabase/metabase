@@ -1,6 +1,7 @@
-import React, { ChangeEvent } from "react";
+import { useArgs } from "@storybook/addons";
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+import type { ChangeEvent } from "react";
+
 import CheckBox from "./CheckBox";
 
 export default {

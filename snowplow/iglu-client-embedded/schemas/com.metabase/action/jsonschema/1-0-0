@@ -1,0 +1,68 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Action events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "action",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "action_created",
+        "action_updated",
+        "action_deleted",
+        "action_executed"
+      ],
+      "maxLength": 128
+    },
+    "type": {
+      "description": "Action type",
+      "type": "string",
+      "enum": [
+        "http",
+        "implicit",
+        "query"
+      ],
+      "maxLength": 128
+    },
+    "action_id": {
+      "description": "Unique identifier for an action within the Metabase instance",
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "num_parameters": {
+      "description": "Number of a parameter if is a custom action",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "context": {
+      "description": "The context that an action was executed in.",
+      "type": [
+        "string",
+        "null"
+        ],
+      "enum": [
+        "model_detail",
+        "dashboard",
+        "public_form"
+      ],
+      "maxLength": 128
+    }
+  },
+  "required": [
+    "event",
+    "type",
+    "action_id"
+  ],
+  "additionalProperties": true
+}

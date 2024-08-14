@@ -1,17 +1,33 @@
-import React from "react";
-import SettingsPage from "../../containers/SettingsPage";
-import WelcomePage from "../../containers/WelcomePage";
+import { useEffect } from "react";
+import { useUpdate } from "react-use";
 
-export interface SetupProps {
-  isWelcome: boolean;
-}
+import { useSelector } from "metabase/lib/redux";
 
-const Setup = ({ isWelcome, ...props }: SetupProps): JSX.Element => {
-  if (isWelcome) {
-    return <WelcomePage {...props} />;
+import { trackStepSeen } from "../../analytics";
+import { getIsLocaleLoaded, getStep, getSteps } from "../../selectors";
+import { SettingsPage } from "../SettingsPage";
+import { WelcomePage } from "../WelcomePage";
+
+export const Setup = (): JSX.Element => {
+  const step = useSelector(getStep);
+  const stepIndex = useSelector(getSteps).findIndex(({ key }) => key === step);
+
+  const isLocaleLoaded = useSelector(getIsLocaleLoaded);
+  const update = useUpdate();
+
+  useEffect(() => {
+    trackStepSeen({ stepName: step, stepNumber: stepIndex });
+  }, [step, stepIndex]);
+
+  useEffect(() => {
+    if (isLocaleLoaded) {
+      update();
+    }
+  }, [update, isLocaleLoaded]);
+
+  if (step === "welcome") {
+    return <WelcomePage />;
   } else {
-    return <SettingsPage {...props} />;
+    return <SettingsPage />;
   }
 };
-
-export default Setup;

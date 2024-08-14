@@ -1,1 +1,1 @@
-export { default } from "./DateRelativeWidget";
+export { DateRelativeWidget } from "./DateRelativeWidget";

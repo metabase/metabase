@@ -1,0 +1,74 @@
+name: Auto assign pull requests
+
+on:
+  pull_request:
+    types:
+      - opened
+
+jobs:
+  update_pr:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: tibdex/github-app-token@v2.1.0
+        id: generate-token
+        with:
+          app_id: ${{ secrets.METABASE_BOT_APP_ID }}
+          private_key: ${{ secrets.METABASE_BOT_APP_PRIVATE_KEY }}
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Assign author and their team. Returns true if team exists.
+        id: auto-assign
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ steps.generate-token.outputs.token }}
+          script: |
+            const fs = require('fs');
+            const teamConfig = JSON.parse(fs.readFileSync('.github/team.json', 'utf-8'));
+            const prAuthor = context.payload.pull_request.user.login;
+            const prNumber = context.payload.pull_request.number;
+
+            if (prAuthor.endsWith('[bot]')) {
+              return null;
+            }
+
+            // Assign PR author
+            await github.rest.issues.addAssignees({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              assignees: [prAuthor]
+            });
+
+            const team = teamConfig.teams.find(t => t.members.includes(prAuthor));
+            if (!team) {
+              console.log('You are not assigned to any team. If you need one, update .github/team.json');
+              return null;
+            }
+
+            try {
+              const label = await github.rest.issues.getLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                name: team.label
+              });
+            } catch (e) {
+              console.log(`The label ${team.label} does not exist, create it first`);
+              return null;
+            }
+
+            // Add team label
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              labels: [team.label]
+            });
+
+            return team.projectUrl || null;
+      - uses: actions/add-to-project@v0.5.0
+        if: ${{ steps.auto-assign.outputs.result != 'null' }}
+        with:
+          project-url: ${{ steps.auto-assign.outputs.result }}
+          github-token: ${{ steps.generate-token.outputs.token }}

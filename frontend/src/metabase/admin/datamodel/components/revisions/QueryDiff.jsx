@@ -1,9 +1,10 @@
-import React from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 
-import QueryDefinition from "metabase/query_builder/components/QueryDefinition";
+import { QueryDefinition } from "metabase/admin/datamodel/components/QueryDefinition";
+import CS from "metabase/css/core/index.css";
 
-export default class QueryDiff extends React.Component {
+export default class QueryDiff extends Component {
   static propTypes = {
     diff: PropTypes.object.isRequired,
   };
@@ -13,6 +14,6 @@ export default class QueryDiff extends React.Component {
       diff: { before, after },
     } = this.props;
     const definition = after || before;
-    return <QueryDefinition className="my1" object={{ definition }} />;
+    return <QueryDefinition className={CS.my1} object={{ definition }} />;
   }
 }

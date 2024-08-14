@@ -1,13 +1,13 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
-import Form from "metabase/core/components/Form";
+
 import FormInput from "metabase/core/components/FormInput";
+import { Form } from "metabase/forms";
+import { Icon } from "metabase/ui";
 
 export const EmailFormRoot = styled.div`
   position: relative;
   padding: 2rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
 `;
 
@@ -24,8 +24,8 @@ export const EmailFormLabel = styled.div`
 export const EmailFormLabelCard = styled.div`
   display: flex;
   padding: 0 1.5rem;
-  color: ${color("text-medium")};
-  background-color: ${color("white")};
+  color: var(--mb-color-text-medium);
+  background-color: var(--mb-color-bg-white);
 `;
 
 export const EmailFormLabelIcon = styled(Icon)`
@@ -41,7 +41,7 @@ export const EmailFormLabelText = styled.div`
 `;
 
 export const EmailFormHeader = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 1rem;
   font-weight: 700;
   margin-bottom: 1.5rem;
@@ -65,14 +65,14 @@ export const EmailFormSuccessContainer = styled.div`
 `;
 
 export const EmailFormSuccessIcon = styled(Icon)`
-  color: ${color("success")};
+  color: var(--mb-color-success);
   width: 1rem;
   height: 1rem;
   margin-right: 1rem;
 `;
 
 export const EmailFormSuccessText = styled.div`
-  color: ${color("success")};
+  color: var(--mb-color-success);
   font-size: 1rem;
   font-weight: bold;
 `;

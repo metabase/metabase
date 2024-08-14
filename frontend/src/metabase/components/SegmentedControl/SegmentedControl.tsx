@@ -1,6 +1,9 @@
-import React, { useMemo } from "react";
-import PropTypes from "prop-types";
+import type * as React from "react";
+import { useMemo } from "react";
 import _ from "underscore";
+
+import type { IconName } from "metabase/ui";
+
 import {
   SegmentedList,
   SegmentedItem,
@@ -9,24 +12,12 @@ import {
   ItemIcon,
 } from "./SegmentedControl.styled";
 
-export const optionShape = PropTypes.shape({
-  name: PropTypes.node,
-  value: PropTypes.any,
-  icon: PropTypes.string,
-  iconSize: PropTypes.number,
-
-  // Expects a color alias, not a color code
-  // Example: brand, accent1, success
-  // Won't work: red, #000, rgb(0, 0, 0)
-  selectedColor: PropTypes.string,
-});
-
 type SegmentedControlValue = string | number;
 
 export type SegmentedControlOption<Value extends SegmentedControlValue> = {
   name?: React.ReactNode;
   value: Value;
-  icon?: string;
+  icon?: IconName;
   iconSize?: number;
 
   // Expects a color alias, not a color code
@@ -63,7 +54,7 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
     option => option.value === value,
   );
   return (
-    <SegmentedList {...props}>
+    <SegmentedList {...props} role="radiogroup">
       {options.map((option, index) => {
         const isSelected = index === selectedOptionIndex;
         const id = `${name}-${option.value}`;
@@ -81,6 +72,8 @@ export function SegmentedControl<Value extends SegmentedControlValue = number>({
             variant={variant}
             selectedColor={selectedColor}
             inactiveColor={inactiveColor}
+            role="radio"
+            aria-checked={isSelected}
           >
             <SegmentedItemLabel
               id={labelId}

@@ -1,0 +1,606 @@
+name: Question overview
+description: Views, performance, activity, and other data for a particular question.
+entity_id: jm7KgY6IuS6pQjkBZ7WUI
+created_at: '2023-06-15T19:16:35.989393Z'
+creator_id: internal@metabase.com
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+auto_apply_filters: true
+cache_ttl: null
+collection_position: 6
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- id: 81d22d7f
+  isMultiSelect: false
+  name: Question ID
+  sectionId: id
+  slug: question_id
+  type: id
+- id: 34ed3a3a
+  name: Question name
+  sectionId: string
+  slug: question_name
+  type: string/=
+  values_query_type: search
+- id: 602ee33c
+  name: Date Filter
+  sectionId: date
+  slug: date_filter
+  type: date/all-options
+serdes/meta:
+- id: jm7KgY6IuS6pQjkBZ7WUI
+  label: question_overview
+  model: Dashboard
+dashcards:
+- entity_id: ejJ8SwwOs7vpmHsgPqq0r
+  card_id: XLzhOnMmk3DkefFAMx_Vg
+  created_at: '2023-11-01T02:34:20.626451Z'
+  row: 0
+  col: 0
+  size_x: 12
+  size_y: 7
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: XLzhOnMmk3DkefFAMx_Vg
+    parameter_id: 81d22d7f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+  - card_id: XLzhOnMmk3DkefFAMx_Vg
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: jeaMN8dAMxu8cQrKT28nz
+  card_id: 613VT_7b325t9FBAJZcU8
+  created_at: '2023-11-01T02:35:42.541237Z'
+  row: 0
+  col: 12
+  size_x: 12
+  size_y: 7
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 613VT_7b325t9FBAJZcU8
+    parameter_id: 81d22d7f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Entity Qualified
+  - card_id: 613VT_7b325t9FBAJZcU8
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
+  - card_id: 613VT_7b325t9FBAJZcU8
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: ZW-Zh5fCsudRWuc_5-ebV
+  card_id: vrez-ciNppijhELOxLJOY
+  created_at: '2023-11-01T02:41:00.615638Z'
+  row: 13
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: vrez-ciNppijhELOxLJOY
+    parameter_id: 81d22d7f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Card Qualified
+  - card_id: vrez-ciNppijhELOxLJOY
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Card Qualified
+  series: []
+  visualization_settings:
+    column_settings:
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
+      : column_title: Card ID
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Dashboard Qualified"}]]'
+      : column_title: Dashboard ID
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
+      : column_title: Question name
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Dashboard Qualified"}]]'
+      : column_title: Dashboard name
+        link_text: ''
+        link_url: /dashboard/{{entity_id}}
+        view_as: link
+      '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35"}]]':
+        column_title: Question Name
+      '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"join-alias":"Question 35_2"}]]':
+        column_title: Dashboard Name
+      ? '["ref",["field",["Internal Metabase Database","public","v_dashboardcard","created_at"],{"base-type":"type/DateTimeWithLocalTZ"}]]'
+      : column_title: Added At
+    table.cell_column: name
+    table.columns:
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_dashboardcard
+        - created_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+      name: created_at
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Dashboard Qualified
+      name: name
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Card Qualified
+      name: entity_id
+    table.pivot_column: name_2
+- entity_id: t94BPUqDcK5f5_WEuTP-S
+  card_id: y-_5bBl0fXY9XlEbpJkrj
+  created_at: '2023-11-01T02:46:22.129198Z'
+  row: 7
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: y-_5bBl0fXY9XlEbpJkrj
+    parameter_id: 81d22d7f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Entity Qualified
+  - card_id: y-_5bBl0fXY9XlEbpJkrj
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
+  - card_id: y-_5bBl0fXY9XlEbpJkrj
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: d6fgUU6_hAqWj_ngoJea_
+  card_id: MOAq881VSlM2BhVUv5e_K
+  created_at: '2023-11-01T02:47:47.57613Z'
+  row: 13
+  col: 12
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: MOAq881VSlM2BhVUv5e_K
+    parameter_id: 81d22d7f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Entity Qualified
+  - card_id: MOAq881VSlM2BhVUv5e_K
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Entity Qualified
+  - card_id: MOAq881VSlM2BhVUv5e_K
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+  series: []
+  visualization_settings:
+    column_settings:
+      ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"Question 1"}]]'
+      : click_behavior:
+          linkType: dashboard
+          parameterMapping:
+            6b3da96f:
+              id: 6b3da96f
+              source:
+                id: user_id
+                name: Question 1 → User ID
+                type: column
+              target:
+                id: 6b3da96f
+                type: parameter
+          tabId: 1
+          targetId: DHMhMa1FYxiyIgM7_xdgR
+          type: link
+- entity_id: PljXyyyfScG10byiLANCg
+  card_id: YiHMsA2dv3iQob11DLTIz
+  created_at: '2023-11-01T02:51:46.409464Z'
+  row: 21
+  col: 0
+  size_x: 24
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: YiHMsA2dv3iQob11DLTIz
+    parameter_id: 81d22d7f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Card Qualified
+  - card_id: YiHMsA2dv3iQob11DLTIz
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Card Qualified
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: 8qi2lYbU4119zouFP9f6M
+  card_id: -_XgVaPuz7MY8jlG0wSEC
+  created_at: '2023-11-01T03:01:10.764008Z'
+  row: 7
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: -_XgVaPuz7MY8jlG0wSEC
+    parameter_id: 81d22d7f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - card_qualified_id
+  - card_id: -_XgVaPuz7MY8jlG0wSEC
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - card_qualified_id
+  - card_id: -_XgVaPuz7MY8jlG0wSEC
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - base-type: type/DateTimeWithLocalTZ
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: e_bl-8XvvXVu7iAA79eCb
+  card_id: 7FLoE9kUELG4Ess6DsSEY
+  created_at: '2023-11-13T21:40:46.417186Z'
+  row: 27
+  col: 0
+  size_x: 24
+  size_y: 8
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings:
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 81d22d7f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Card Qualified
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 34ed3a3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Card Qualified
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 602ee33c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - base-type: type/DateTimeWithLocalTZ
+  series: []
+  visualization_settings:
+    column_settings:
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
+      : column_title: Question ID
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Dashboard Qualified"}]]'
+      : column_title: Dashboard ID
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
+      : column_title: Question name
+        link_text: ''
+        link_url: /question/{{entity_id}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Dashboard Qualified"}]]'
+      : column_title: Dashboard name
+        link_url: /dashboard/{{entity_id_2}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_databases","entity_id"],{"base-type":"type/Integer","join-alias":"Databases - Database Qualified"}]]'
+      : column_title: Database ID
+      ? '["ref",["field",["Internal Metabase Database","public","v_databases","name"],{"base-type":"type/Text","join-alias":"Databases - Database Qualified"}]]'
+      : column_title: Database name
+        link_url: /browse/{{entity_id_3}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
+      : column_title: User name
+      ? '["ref",["field",["Internal Metabase Database","public","v_users","user_id"],{"base-type":"type/Integer","join-alias":"People - User"}]]'
+      : column_title: User ID
+    table.cell_column: running_time_seconds
+    table.columns:
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+      name: started_at
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - base-type: type/Text
+        join-alias: People - User
+      name: full_name
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - query_source
+      - base-type: type/Text
+      name: query_source
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Card Qualified
+      name: name
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Dashboard Qualified
+      name: name_2
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - base-type: type/Text
+        join-alias: Databases - Database Qualified
+      name: name_3
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - is_native
+      - base-type: type/Boolean
+      name: is_native
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - running_time_seconds
+      - base-type: type/Float
+      name: running_time_seconds
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - result_rows
+      - base-type: type/Integer
+      name: result_rows
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Card Qualified
+      name: entity_id
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Dashboard Qualified
+      name: entity_id_2
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Databases - Database Qualified
+      name: entity_id_3
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - error
+      - base-type: type/Text
+      name: error
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - user_id
+      - base-type: type/Integer
+        join-alias: People - User
+      name: user_id
+    table.pivot_column: error
+initially_published_at: null
+tabs: []
+width: full

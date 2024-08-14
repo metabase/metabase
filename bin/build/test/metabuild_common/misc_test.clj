@@ -5,9 +5,9 @@
 
 (deftest parse-as-keyword-test
   (are [input expected] (= expected (misc/parse-as-keyword input))
+    :abc   :abc
     "abc"  :abc
     ":abc" :abc
+    nil    nil
     ""     nil
-    "  "   nil
-    :abc   :abc
-    nil    nil))
+    "  "   nil))

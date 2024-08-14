@@ -2,18 +2,18 @@
   (:require
    [clojure.spec.alpha :as s]
    [clojure.test.check.generators :as gen]
-   [java-time :as t]
-   [metabase.mbql.util :as mbql.u]
-   [metabase.models :refer [Action Activity Card Collection Dashboard
+   [java-time.api :as t]
+   [metabase.legacy-mbql.util :as mbql.u]
+   [metabase.models :refer [Action Card Collection Dashboard
                             DashboardCard DashboardCardSeries Database Dimension Field
-                            HTTPAction ImplicitAction Metric NativeQuerySnippet PermissionsGroup
+                            HTTPAction ImplicitAction LegacyMetric NativeQuerySnippet PermissionsGroup
                             PermissionsGroupMembership Pulse PulseCard PulseChannel PulseChannelRecipient QueryAction
                             Segment Table Timeline TimelineEvent User]]
    [metabase.util.log :as log]
    [reifyhealth.specmonstah.core :as rs]
    [reifyhealth.specmonstah.spec-gen :as rsg]
    [talltale.core :as tt]
-   [toucan.db :as db]))
+   [toucan2.core :as t2]))
 
 (set! *warn-on-reflection* true)
 
@@ -44,7 +44,6 @@
 (s/def ::not-empty-string (s/and string? not-empty #(< (count %) 10)))
 
 (s/def ::database (s/keys :req-un [::id ::engine ::name ::details]))
-(s/def ::color #{"#A00000" "#FFFFFF"})
 (s/def ::password ::not-empty-string)
 (s/def ::str? (s/or :nil nil? :string string?))
 (s/def ::topic ::not-empty-string)
@@ -150,7 +149,7 @@
 (s/def ::http-action (s/keys :req-un [::template]))
 
 (s/def ::core-user (s/keys :req-un [::id ::first_name ::last_name ::email ::password]))
-(s/def ::collection (s/keys :req-un [::id ::name ::color]))
+(s/def ::collection (s/keys :req-un [::id ::name]))
 (s/def ::activity (s/keys :req-un [::id ::topic ::details ::timestamp]))
 (s/def ::pulse (s/keys :req-un [::id ::name]))
 (s/def ::permissions-group (s/keys :req-un [::id ::name]))
@@ -171,7 +170,8 @@
 (s/def ::pulse-card (s/keys :req-un [::id ::position]))
 
 (s/def ::channel_type ::not-empty-string)
-(s/def ::schedule_type ::not-empty-string)
+(s/def ::schedule_type (s/with-gen (s/and string? #(contains? #{"hourly" "weekly" "monthly"} %))
+                         #(gen/elements ["hourly" "weekly" "monthly"])))
 
 (s/def ::pulse-channel (s/keys :req-un [::id ::channel_type ::details ::schedule_type]))
 (s/def ::pulse-channel-recipient (s/keys :req-un [::id]))
@@ -201,7 +201,7 @@
                                   :spec      ::action
                                   :insert!   {:model Action}
                                   :relations {:creator_id [:core-user :id]
-                                              :model_id   [:card :id]}}
+                                              :model_id   [:simple-model :id]}}
    :query-action                 {:prefix    :query-action
                                   :spec      ::query-action
                                   :insert!   {:model QueryAction}
@@ -215,10 +215,6 @@
                                   :spec      ::http-action
                                   :insert!   {:model HTTPAction}
                                   :relations {:action_id   [:action :id]}}
-   :activity                     {:prefix    :ac
-                                  :spec      ::activity
-                                  :relations {:user_id [:core-user :id]}
-                                  :insert!   {:model Activity}}
    :database                     {:prefix  :db
                                   :spec    ::database
                                   :insert! {:model Database}}
@@ -238,6 +234,15 @@
                                               :database_id   [:database :id]
                                               :table_id      [:table :id]
                                               :collection_id [:collection :id]}}
+   ;; like card but is a model and the query is very simple
+   ;; it's used primarily as model for actions
+   :simple-model                  {:prefix    :sm
+                                   :spec      ::card
+                                   :insert!   {:model Card}
+                                   :relations {:creator_id    [:core-user :id]
+                                               :database_id   [:database :id]
+                                               :table_id      [:table :id]
+                                               :collection_id [:collection :id]}}
    :dashboard                    {:prefix    :d
                                   :spec      ::dashboard
                                   :insert!   {:model Dashboard}
@@ -262,7 +267,7 @@
                                   :relations   {:table_id [:table :id]}}
    :metric                       {:prefix    :metric
                                   :spec      ::metric
-                                  :insert!   {:model Metric}
+                                  :insert!   {:model LegacyMetric}
                                   :relations {:creator_id [:core-user :id]
                                               :table_id   [:table :id]}}
    :table                        {:prefix    :t
@@ -314,7 +319,7 @@
 
 (def ^:private unique-name (mbql.u/unique-name-generator))
 
-(defn- unique-email [email]
+(defn- unique-email [^String email]
   (let [at (.indexOf email "@")]
     (str (unique-name (subs email 0 at))
          (subs email at))))
@@ -378,10 +383,10 @@
       (rs/visit-ents-once
        :insert! (fn [sm-db {:keys [schema-opts attrs] :as visit-opts}]
                   (try
-                    (db/insert! (:model schema-opts)
-                                (rsg/spec-gen-assoc-relations
-                                 sm-db
-                                 (assoc visit-opts :visit-val (:spec-gen attrs))))
+                    (first (t2/insert-returning-instances! (:model schema-opts)
+                                                           (rsg/spec-gen-assoc-relations
+                                                             sm-db
+                                                             (assoc visit-opts :visit-val (:spec-gen attrs)))))
                     (catch Throwable e
                       (log/error e)))))
       (rs/attr-map :insert!)))

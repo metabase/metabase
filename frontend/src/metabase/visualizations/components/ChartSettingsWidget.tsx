@@ -1,5 +1,8 @@
-import React from "react";
 import cx from "classnames";
+import type * as React from "react";
+
+import PopoverS from "metabase/components/Popover/Popover.module.css";
+import FormS from "metabase/css/components/form.module.css";
 
 import {
   Root,
@@ -15,7 +18,7 @@ type Props = {
   hint?: string;
   hidden?: boolean;
   disabled?: boolean;
-  widget?: React.ComponentType;
+  widget?: React.ComponentType<{ id: string }>;
   inline?: boolean;
   marginBottom?: string;
   props?: Record<string, unknown>;
@@ -23,6 +26,7 @@ type Props = {
   variant?: "default" | "form-field";
   borderBottom?: boolean;
   dataTestId?: string;
+  id: string;
 };
 
 const ChartSettingsWidget = ({
@@ -51,14 +55,21 @@ const ChartSettingsWidget = ({
       hidden={hidden}
       noPadding={noPadding}
       disabled={disabled}
-      className={cx({ "Form-field": isFormField })}
+      className={cx({
+        [FormS.FormField]: isFormField,
+        [PopoverS.FormField]: isFormField,
+      })}
       inline={inline}
       marginBottom={marginBottom}
       data-testid={dataTestId}
       borderBottom={borderBottom}
     >
       {title && (
-        <Title variant={variant} className={cx({ "Form-label": isFormField })}>
+        <Title
+          variant={variant}
+          className={cx({ [FormS.FormLabel]: isFormField })}
+          htmlFor={extraWidgetProps.id}
+        >
           {title}
           {hint && (
             <InfoIconContainer>
@@ -78,4 +89,5 @@ const ChartSettingsWidget = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ChartSettingsWidget;

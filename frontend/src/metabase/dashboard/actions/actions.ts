@@ -1,16 +1,13 @@
-import { addUndo } from "metabase/redux/undo";
-import { ActionsApi, PublicApi } from "metabase/services";
-import { SIDEBAR_NAME } from "metabase/dashboard/constants";
 import {
   getActionErrorMessage,
   getActionExecutionMessage,
 } from "metabase/actions/utils";
-
+import { SIDEBAR_NAME } from "metabase/dashboard/constants";
+import { addUndo } from "metabase/redux/undo";
+import { ActionsApi, PublicApi } from "metabase/services";
 import type {
   ActionDashboardCard,
   ActionFormSubmitResult,
-  ActionParametersMapping,
-  CardId,
   Dashboard,
   ParametersForActionExecution,
   WritebackAction,
@@ -18,20 +15,18 @@ import type {
 import type { Dispatch } from "metabase-types/store";
 
 import { getDashboardType } from "../utils";
+
 import { setDashCardAttributes } from "./core";
-import { reloadDashboardCards } from "./data-fetching";
 import { closeSidebar, setSidebar } from "./ui";
 
-interface DashboardAttributes {
-  card_id?: CardId | null;
-  action?: WritebackAction | null;
-  parameter_mappings?: ActionParametersMapping[] | null;
-  visualization_settings?: ActionDashboardCard["visualization_settings"];
-}
+type EditableActionButtonAttrs = Pick<
+  ActionDashboardCard,
+  "card_id" | "action" | "parameter_mappings" | "visualization_settings"
+>;
 
 export function updateButtonActionMapping(
   dashCardId: number,
-  attributes: DashboardAttributes,
+  attributes: EditableActionButtonAttrs,
 ) {
   return (dispatch: Dispatch) => {
     dispatch(
@@ -71,7 +66,6 @@ export const executeRowAction = async ({
       parameters,
     });
 
-    dispatch(reloadDashboardCards());
     const message = getActionExecutionMessage(
       dashcard.action as WritebackAction,
       result,
@@ -100,7 +94,7 @@ export const executeRowAction = async ({
       );
     }
 
-    return { success: false, error: message, message };
+    return { success: false, error, message };
   }
 };
 

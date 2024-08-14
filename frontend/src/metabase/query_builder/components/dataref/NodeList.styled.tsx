@@ -1,8 +1,12 @@
+import { css } from "@emotion/react";
 import styled from "@emotion/styled";
 
-import Icon from "metabase/components/Icon";
-import { color } from "metabase/lib/colors";
+import {
+  HoverParent,
+  TableColumnInfoIcon,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 
 export const NodeListItemName = styled.span`
   font-weight: 700;
@@ -15,26 +19,43 @@ export const NodeListIcon = styled(Icon)`
 `;
 
 export const NodeListItemIcon = styled(Icon)`
-  color: ${color("focus")};
+  color: var(--mb-color-focus);
   margin-top: 1px;
   width: ${space(2)};
 `;
 
-export const NodeListItemLink = styled.a`
+interface NodeListItemLinkProps {
+  disabled?: boolean;
+}
+
+export const NodeListItemLink = styled.a<NodeListItemLinkProps>`
   border-radius: 8px;
-  display: flex;
   align-items: center;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: 700;
   overflow-wrap: anywhere;
   word-break: break-word;
   word-wrap: anywhere;
+  min-height: 2.2rem;
   display: flex;
   padding: ${space(1)};
   text-decoration: none;
+
   :hover {
-    background-color: ${color("bg-medium")};
+    background-color: var(--mb-color-bg-medium);
   }
+
+  ${props =>
+    props.disabled &&
+    css`
+      pointer-events: none;
+      opacity: 0.4;
+      color: inherit;
+
+      ${NodeListItemIcon} {
+        color: inherit;
+      }
+    `};
 `;
 
 export const NodeListContainer = styled.ul`
@@ -54,6 +75,18 @@ export const NodeListTitleText = styled.span`
 
 export const QuestionId = styled.span`
   font-size: 0.75rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   margin-left: ${space(0)};
+`;
+
+export const NodeListInfoIcon = styled(TableColumnInfoIcon)`
+  margin-left: auto;
+`;
+
+export const NodeListItem = styled(HoverParent)`
+  ${NodeListItemLink} {
+    padding-top: 0;
+    padding-bottom: 0;
+    padding-right: 0;
+  }
 `;

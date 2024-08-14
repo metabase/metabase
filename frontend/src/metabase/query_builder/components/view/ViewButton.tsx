@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import Button from "metabase/core/components/Button";
 import { color, alpha } from "metabase/lib/colors";
 
@@ -13,7 +14,7 @@ const ViewButton = styled(Button)<Props>`
     active ? color : alpha(color, 0.2)};
 
   color: ${({ active, color = getDefaultColor() }) =>
-    active ? "white" : color};
+    active ? "var(--mb-color-text-white)" : color};
 
   border: none;
   transition: background 300ms linear, border 300ms linear;
@@ -22,7 +23,7 @@ const ViewButton = styled(Button)<Props>`
     background-color: ${({ active, color = getDefaultColor() }) =>
       active ? alpha(color, 0.8) : alpha(color, 0.35)};
     color: ${({ active, color = getDefaultColor() }) =>
-      active ? "white" : color};
+      active ? "var(--mb-color-text-white)" : color};
   }
 
   > .Icon {
@@ -32,4 +33,5 @@ const ViewButton = styled(Button)<Props>`
 
 const getDefaultColor = () => color("brand");
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ViewButton;

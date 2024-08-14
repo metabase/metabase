@@ -1,16 +1,16 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import styled from "@emotion/styled";
+
 import ExternalLink from "metabase/core/components/ExternalLink";
+import { Icon } from "metabase/ui";
 
 const CardRootMixin = css`
   display: block;
   padding: 1.5rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.375rem;
-  background-color: ${color("white")};
-  box-shadow: 0 1px 6px ${color("shadow")};
+  background-color: var(--mb-color-bg-white);
+  box-shadow: 0 1px 6px var(--mb-color-shadow);
   box-sizing: border-box;
 `;
 
@@ -28,7 +28,7 @@ export const CardRootLink = styled(ExternalLink)`
   ${CardRootMixin};
 
   &:hover {
-    background-color: ${color("bg-light")};
+    background-color: var(--mb-color-bg-light);
   }
 `;
 
@@ -43,19 +43,19 @@ export const CardHeaderLink = styled(ExternalLink)`
 export const CardTitle = styled.span`
   display: block;
   flex: 1 1 auto;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
   font-weight: bold;
   margin: 0 0.5rem;
 `;
 
 export const CardIcon = styled(Icon)`
   flex: 0 0 auto;
-  color: ${color("brand")};
+  color: var(--mb-color-brand);
 `;
 
 export const CardMessage = styled.div`
   display: block;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   line-height: 1.25rem;
 
   p {
@@ -67,7 +67,7 @@ export const CardMessage = styled.div`
   }
 
   a {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
     cursor: pointer;
     font-weight: bold;
   }

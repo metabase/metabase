@@ -1,0 +1,54 @@
+name: Chromatic Storybook deployment
+
+on:
+  push:
+    branches:
+      - "master"
+  pull_request:
+    types: [synchronize, labeled, unlabeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref && github.ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  files-changed:
+    name: Check which files changed
+    runs-on: ubuntu-22.04
+    timeout-minutes: 3
+    outputs:
+      frontend_all: ${{ steps.changes.outputs.frontend_all }}
+      e2e_specs: ${{ steps.changes.outputs.e2e_specs }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test which files changed
+        uses: dorny/paths-filter@v3.0.0
+        id: changes
+        with:
+          token: ${{ github.token }}
+          filters: .github/file-paths.yaml
+
+  fe-chromatic:
+    needs: files-changed
+    if: contains(github.event.pull_request.labels.*.name, 'chromatic') || (github.ref_name == 'master' && needs.files-changed.outputs.frontend_all == 'true')
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          m2-cache-key: "cljs"
+      - name: Publish to Chromatic
+        uses: chromaui/action@v10.2.0
+        env:
+          PUBLISH_CHROMATIC: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          STORYBOOK_BUILD_TIMEOUT: 900000
+        if: env.PUBLISH_CHROMATIC != null
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          projectToken: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}

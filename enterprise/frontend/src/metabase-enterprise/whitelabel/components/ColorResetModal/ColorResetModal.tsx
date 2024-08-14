@@ -1,7 +1,8 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
-import Button from "metabase/core/components/Button/Button";
+
 import ModalContent from "metabase/components/ModalContent";
+import Button from "metabase/core/components/Button/Button";
 
 export interface ColorResetModalProps {
   onReset?: () => void;
@@ -35,4 +36,5 @@ const ColorResetModal = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ColorResetModal;

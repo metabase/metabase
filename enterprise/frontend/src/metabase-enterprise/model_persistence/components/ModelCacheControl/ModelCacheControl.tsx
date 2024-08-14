@@ -1,16 +1,13 @@
-import React, { useCallback, useState } from "react";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
-import Button from "metabase/core/components/Button";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-
+import Button from "metabase/core/components/Button";
+import Databases from "metabase/entities/databases";
 import { delay } from "metabase/lib/promise";
 import { CardApi } from "metabase/services";
-
-import Databases from "metabase/entities/databases";
-
-import Database from "metabase-lib/metadata/Database";
-import Question from "metabase-lib/Question";
+import type Question from "metabase-lib/v1/Question";
+import type Database from "metabase-lib/v1/metadata/Database";
 
 import { SpinnerContainer } from "./ModelCacheControl.styled";
 
@@ -84,4 +81,5 @@ function ModelCacheControl({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelCacheControl;

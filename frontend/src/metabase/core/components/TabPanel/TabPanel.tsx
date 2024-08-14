@@ -1,10 +1,6 @@
-import React, {
-  forwardRef,
-  HTMLAttributes,
-  ReactNode,
-  Ref,
-  useContext,
-} from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
+import { forwardRef, useContext } from "react";
+
 import { getTabId, getTabPanelId, TabContext } from "../Tab";
 
 export interface TabPanelProps<T> extends HTMLAttributes<HTMLDivElement> {
@@ -36,4 +32,5 @@ const TabPanel = forwardRef(function TabPanel<T>(
   );
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TabPanel;

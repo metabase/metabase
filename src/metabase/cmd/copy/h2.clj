@@ -3,9 +3,8 @@
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [metabase.db.data-source :as mdb.data-source]
+   [metabase.db :as mdb]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]))
 
 (set! *warn-on-reflection* true)
@@ -26,7 +25,7 @@
   "Create a [[javax.sql.DataSource]] for the H2 database with `h2-filename`."
   ^javax.sql.DataSource [h2-filename]
   (let [h2-filename (add-file-prefix-if-needed h2-filename)]
-    (mdb.data-source/broken-out-details->DataSource :h2 {:db h2-filename})))
+    (mdb/broken-out-details->DataSource :h2 {:db h2-filename})))
 
 (defn delete-existing-h2-database-files!
   "Delete existing h2 database files."
@@ -35,4 +34,4 @@
                     (str h2-filename ".mv.db")]]
     (when (.exists (io/file filename))
       (io/delete-file filename)
-      (log/warn (u/format-color 'red (trs "Output H2 database already exists: %s, removing.") filename)))))
+      (log/warn (u/format-color :red "Output H2 database already exists: %s, removing." filename)))))

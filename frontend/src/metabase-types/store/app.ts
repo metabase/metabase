@@ -1,4 +1,4 @@
-import { CollectionId } from "metabase-types/api/collection";
+import type { CollectionId } from "metabase-types/api/collection";
 
 export interface AppErrorDescriptor {
   status: number;
@@ -17,4 +17,5 @@ export interface AppBreadCrumbs {
 export interface AppState {
   errorPage: AppErrorDescriptor | null;
   isNavbarOpen: boolean;
+  isDndAvailable: boolean;
 }

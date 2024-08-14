@@ -1,4 +1,5 @@
 import type { CardId, WritebackActionId } from "metabase-types/api";
+
 import { modelDetail } from "./models";
 
 type ParentModelProps = {
@@ -7,8 +8,7 @@ type ParentModelProps = {
 };
 
 export function newAction(parentModel: ParentModelProps) {
-  const model = { ...parentModel, dataset: true };
-  const baseUrl = modelDetail(model, "actions");
+  const baseUrl = modelDetail(parentModel, "actions");
   return `${baseUrl}/new`;
 }
 
@@ -16,8 +16,7 @@ export function action(
   parentModel: ParentModelProps,
   actionId: WritebackActionId,
 ) {
-  const model = { ...parentModel, dataset: true };
-  const baseUrl = modelDetail(model, "actions");
+  const baseUrl = modelDetail(parentModel, "actions");
   return `${baseUrl}/${actionId}`;
 }
 

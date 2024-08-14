@@ -1,0 +1,88 @@
+name,height,mass,hair_color,skin_color,eye_color,birth_year,gender,homeworld,species
+Luke Skywalker,172,77,blond,fair,blue,19BBY,male,Tatooine,Human
+C-3PO,167,75,n/a,gold,yellow,112BBY,n/a,Tatooine,Droid
+R2-D2,96,32,n/a,"white, blue",red,33BBY,n/a,Naboo,Droid
+Darth Vader,202,136,none,white,yellow,41.9BBY,male,Tatooine,Human
+Leia Organa,150,49,brown,light,brown,19BBY,female,Alderaan,Human
+Owen Lars,178,120,"brown, grey",light,blue,52BBY,male,Tatooine,Human
+Beru Whitesun lars,165,75,brown,light,blue,47BBY,female,Tatooine,Human
+R5-D4,97,32,n/a,"white, red",red,unknown,n/a,Tatooine,Droid
+Biggs Darklighter,183,84,black,light,brown,24BBY,male,Tatooine,Human
+Obi-Wan Kenobi,182,77,"auburn, white",fair,blue-gray,57BBY,male,Stewjon,Human
+Anakin Skywalker,188,84,blond,fair,blue,41.9BBY,male,Tatooine,Human
+Wilhuff Tarkin,180,unknown,"auburn, grey",fair,blue,64BBY,male,Eriadu,Human
+Chewbacca,228,112,brown,unknown,blue,200BBY,male,Kashyyyk,Wookiee
+Han Solo,180,80,brown,fair,brown,29BBY,male,Corellia,Human
+Greedo,173,74,n/a,green,black,44BBY,male,Rodia,Rodian
+Jabba Desilijic Tiure,175,"1,358",n/a,"green-tan, brown",orange,600BBY,hermaphrodite,Nal Hutta,Hutt
+Wedge Antilles,170,77,brown,fair,hazel,21BBY,male,Corellia,Human
+Jek Tono Porkins,180,110,brown,fair,blue,unknown,male,Bestine IV,Human
+Yoda,66,17,white,green,brown,896BBY,male,unknown,Yoda's species
+Palpatine,170,75,grey,pale,yellow,82BBY,male,Naboo,Human
+Boba Fett,183,78.2,black,fair,brown,31.5BBY,male,Kamino,Human
+IG-88,200,140,none,metal,red,15BBY,none,unknown,Droid
+Bossk,190,113,none,green,red,53BBY,male,Trandosha,Trandoshan
+Lando Calrissian,177,79,black,dark,brown,31BBY,male,Socorro,Human
+Lobot,175,79,none,light,blue,37BBY,male,Bespin,Human
+Ackbar,180,83,none,brown mottle,orange,41BBY,male,Mon Cala,Mon Calamari
+Mon Mothma,150,unknown,auburn,fair,blue,48BBY,female,Chandrila,Human
+Arvel Crynyd,unknown,unknown,brown,fair,brown,unknown,male,unknown,Human
+Wicket Systri Warrick,88,20,brown,brown,brown,8BBY,male,Endor,Ewok
+Nien Nunb,160,68,none,grey,black,unknown,male,Sullust,Sullustan
+Qui-Gon Jinn,193,89,brown,fair,blue,92BBY,male,unknown,Human
+Nute Gunray,191,90,none,mottled green,red,unknown,male,Cato Neimoidia,Neimodian
+Finis Valorum,170,unknown,blond,fair,blue,91BBY,male,Coruscant,Human
+Jar Jar Binks,196,66,none,orange,orange,52BBY,male,Naboo,Gungan
+Roos Tarpals,224,82,none,grey,orange,unknown,male,Naboo,Gungan
+Rugor Nass,206,unknown,none,green,orange,unknown,male,Naboo,Gungan
+Ric Olié,183,unknown,brown,fair,blue,unknown,male,Naboo,NA
+Watto,137,unknown,black,"blue, grey",yellow,unknown,male,Toydaria,Toydarian
+Sebulba,112,40,none,"grey, red",orange,unknown,male,Malastare,Dug
+Quarsh Panaka,183,unknown,black,dark,brown,62BBY,male,Naboo,NA
+Shmi Skywalker,163,unknown,black,fair,brown,72BBY,female,Tatooine,Human
+Darth Maul,175,80,none,red,yellow,54BBY,male,Dathomir,Zabrak
+Bib Fortuna,180,unknown,none,pale,pink,unknown,male,Ryloth,Twi'lek
+Ayla Secura,178,55,none,blue,hazel,48BBY,female,Ryloth,Twi'lek
+Dud Bolt,94,45,none,"blue, grey",yellow,unknown,male,Vulpter,Vulptereen
+Gasgano,122,unknown,none,"white, blue",black,unknown,male,Troiken,Xexto
+Ben Quadinaros,163,65,none,"grey, green, yellow",orange,unknown,male,Tund,Toong
+Mace Windu,188,84,none,dark,brown,72BBY,male,Haruun Kal,Human
+Ki-Adi-Mundi,198,82,white,pale,yellow,92BBY,male,Cerea,Cerean
+Kit Fisto,196,87,none,green,black,unknown,male,Glee Anselm,Nautolan
+Eeth Koth,171,unknown,black,brown,brown,unknown,male,Iridonia,Zabrak
+Adi Gallia,184,50,none,dark,blue,unknown,female,Coruscant,Tholothian
+Saesee Tiin,188,unknown,none,pale,orange,unknown,male,Iktotch,Iktotchi
+Yarael Poof,264,unknown,none,white,yellow,unknown,male,Quermia,Quermian
+Plo Koon,188,80,none,orange,black,22BBY,male,Dorin,Kel Dor
+Mas Amedda,196,unknown,none,blue,blue,unknown,male,Champala,Chagrian
+Gregar Typho,185,85,black,dark,brown,unknown,male,Naboo,Human
+Cordé,157,unknown,brown,light,brown,unknown,female,Naboo,Human
+Cliegg Lars,183,unknown,brown,fair,blue,82BBY,male,Tatooine,Human
+Poggle the Lesser,183,80,none,green,yellow,unknown,male,Geonosis,Geonosian
+Luminara Unduli,170,56.2,black,yellow,blue,58BBY,female,Mirial,Mirialan
+Barriss Offee,166,50,black,yellow,blue,40BBY,female,Mirial,Mirialan
+Dormé,165,unknown,brown,light,brown,unknown,female,Naboo,Human
+Dooku,193,80,white,fair,brown,102BBY,male,Serenno,Human
+Bail Prestor Organa,191,unknown,black,tan,brown,67BBY,male,Alderaan,Human
+Jango Fett,183,79,black,tan,brown,66BBY,male,Concord Dawn,Human
+Zam Wesell,168,55,blonde,"fair, green, yellow",yellow,unknown,female,Zolan,Clawdite
+Dexter Jettster,198,102,none,brown,yellow,unknown,male,Ojom,Besalisk
+Lama Su,229,88,none,grey,black,unknown,male,Kamino,Kaminoan
+Taun We,213,unknown,none,grey,black,unknown,female,Kamino,Kaminoan
+Jocasta Nu,167,unknown,white,fair,blue,unknown,female,Coruscant,Human
+Ratts Tyerell,79,15,none,"grey, blue",unknown,unknown,male,Aleen Minor,Aleena
+R4-P17,96,unknown,none,"silver, red","red, blue",unknown,female,unknown,NA
+Wat Tambor,193,48,none,"green, grey",unknown,unknown,male,Skako,Skakoan
+San Hill,191,unknown,none,grey,gold,unknown,male,Muunilinst,Muun
+Shaak Ti,178,57,none,"red, blue, white",black,unknown,female,Shili,Togruta
+Grievous,216,159,none,"brown, white","green, yellow",unknown,male,Kalee,Kaleesh
+Tarfful,234,136,brown,brown,blue,unknown,male,Kashyyyk,Wookiee
+Raymus Antilles,188,79,brown,light,brown,unknown,male,Alderaan,Human
+Sly Moore,178,48,none,pale,white,unknown,female,Umbara,NA
+Tion Medon,206,80,none,grey,black,unknown,male,Utapau,Pau'an
+Finn,unknown,unknown,black,dark,dark,unknown,male,unknown,Human
+Rey,unknown,unknown,brown,light,hazel,unknown,female,unknown,Human
+Poe Dameron,unknown,unknown,brown,light,brown,unknown,male,unknown,Human
+BB8,unknown,unknown,none,none,black,unknown,none,unknown,Droid
+Captain Phasma,unknown,unknown,unknown,unknown,unknown,unknown,female,unknown,NA
+Padmé Amidala,165,45,brown,light,brown,46BBY,female,Naboo,Human

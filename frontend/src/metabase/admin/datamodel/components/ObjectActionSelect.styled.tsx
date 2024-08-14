@@ -1,6 +1,5 @@
 import styled from "@emotion/styled";
 import { Link } from "react-router";
-import { color } from "metabase/lib/colors";
 
 export const ActionLink = styled(Link)`
   display: block;
@@ -9,7 +8,15 @@ export const ActionLink = styled(Link)`
   text-decoration: none;
 
   &:hover {
-    color: ${color("white")};
-    background-color: ${color("brand")};
+    color: var(--mb-color-text-white);
+    background-color: var(--mb-color-brand);
+  }
+`;
+
+export const TriggerIconContainer = styled.span`
+  color: var(--mb-color-text-light);
+
+  &:hover {
+    color: var(--mb-color-brand);
   }
 `;

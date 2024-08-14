@@ -1,6 +1,7 @@
-import _ from "underscore";
 import querystring from "querystring";
-import { isCypressActive } from "metabase/env";
+import _ from "underscore";
+
+import { isCypressActive, isStorybookActive } from "metabase/env";
 import MetabaseSettings from "metabase/lib/settings";
 
 // IE doesn't support scrollX/scrollY:
@@ -10,10 +11,20 @@ export const getScrollY = () =>
   typeof window.scrollY === "undefined" ? window.pageYOffset : window.scrollY;
 
 // denotes whether the current page is loaded in an iframe or not
-// Cypress renders the whole app within an iframe, but we want to exlude it from this check to avoid certain components (like Nav bar) not rendering
+// Cypress renders the whole app within an iframe, but we want to exclude it from this check to avoid certain components (like Nav bar) not rendering
+// Storybook also uses an iframe to display story content, so we want to ignore it
 export const isWithinIframe = function () {
   try {
-    return !isCypressActive && window.self !== window.top;
+    if (isCypressActive || isStorybookActive) {
+      return false;
+    }
+
+    // Mock that we're embedding, so we could visual test embed components
+    if (window.overrideIsWithinIframe) {
+      return true;
+    }
+
+    return window.self !== window.top;
   } catch (e) {
     return true;
   }
@@ -26,7 +37,7 @@ window.METABASE = true;
 // used for detecting if we're previewing an embed
 export const IFRAMED_IN_SELF = (function () {
   try {
-    return window.self !== window.top && window.top.METABASE;
+    return window.self !== window.parent && window.parent.METABASE;
   } catch (e) {
     return false;
   }
@@ -194,33 +205,6 @@ function getTextNodeAtPosition(root, index) {
   };
 }
 
-// https://davidwalsh.name/add-rules-stylesheets
-const STYLE_SHEET = (function () {
-  // Create the <style> tag
-  const style = document.createElement("style");
-
-  // WebKit hack :(
-  style.appendChild(document.createTextNode("/* dynamic stylesheet */"));
-
-  // Add the <style> element to the page
-  document.head.appendChild(style);
-
-  return style.sheet;
-})();
-
-export function addCSSRule(selector, rules, index = 0) {
-  if ("insertRule" in STYLE_SHEET) {
-    const ruleIndex = STYLE_SHEET.insertRule(
-      selector + "{" + rules + "}",
-      index,
-    );
-    return STYLE_SHEET.cssRules[ruleIndex];
-  } else if ("addRule" in STYLE_SHEET) {
-    const ruleIndex = STYLE_SHEET.addRule(selector, rules, index);
-    return STYLE_SHEET.rules[ruleIndex];
-  }
-}
-
 export function constrainToScreen(element, direction, padding) {
   if (!element) {
     return false;
@@ -247,7 +231,36 @@ export function constrainToScreen(element, direction, padding) {
   return false;
 }
 
-const isAbsoluteUrl = url => url.startsWith("/");
+export function getSitePath() {
+  return new URL(MetabaseSettings.get("site-url")).pathname.toLowerCase();
+}
+
+function isMetabaseUrl(url) {
+  const urlPath = new URL(url, window.location.origin).pathname.toLowerCase();
+
+  if (!isAbsoluteUrl(url)) {
+    return true;
+  }
+
+  const pathNameWithoutSubPath = getPathnameWithoutSubPath(urlPath);
+  const isPublicLink = pathNameWithoutSubPath.startsWith("/public/");
+  const isEmbedding = pathNameWithoutSubPath.startsWith("/embed/");
+  /**
+   * (metabase#38640) We don't want to use client-side navigation for public links or embedding
+   * because public app, or embed app are built using separate routes.
+   **/
+  if (isPublicLink || isEmbedding) {
+    return false;
+  }
+
+  return isSameOrSiteUrlOrigin(url) && urlPath.startsWith(getSitePath());
+}
+
+function isAbsoluteUrl(url) {
+  return ["/", "http:", "https:", "mailto:"].some(prefix =>
+    url.startsWith(prefix),
+  );
+}
 
 function getWithSiteUrl(url) {
   const siteUrl = MetabaseSettings.get("site-url");
@@ -299,21 +312,20 @@ export function open(
     // custom function for opening in new window
     openInBlankWindow = url => clickLink(url, true),
     // custom function for opening in same app instance
-    openInSameOrigin = openInSameWindow,
+    openInSameOrigin,
     ignoreSiteUrl = false,
     ...options
   } = {},
 ) {
-  const isOriginalUrlAbsolute = isAbsoluteUrl(url);
   url = ignoreSiteUrl ? url : getWithSiteUrl(url);
 
   if (shouldOpenInBlankWindow(url, options)) {
     openInBlankWindow(url);
   } else if (isSameOrigin(url)) {
-    if (isOriginalUrlAbsolute) {
+    if (!isMetabaseUrl(url)) {
       clickLink(url, false);
     } else {
-      openInSameOrigin(url, getLocation(url));
+      openInSameOrigin(getLocation(url));
     }
   } else {
     openInSameWindow(url);
@@ -377,11 +389,38 @@ const getLocation = url => {
   try {
     const { pathname, search, hash } = new URL(url, window.location.origin);
     const query = querystring.parse(search.substring(1));
-    return { pathname, search, query, hash };
+    return {
+      pathname: getPathnameWithoutSubPath(pathname),
+      search,
+      query,
+      hash,
+    };
   } catch {
     return {};
   }
 };
+
+function getPathnameWithoutSubPath(pathname) {
+  const pathnameSections = pathname.split("/");
+  const sitePathSections = getSitePath().split("/");
+
+  return isPathnameContainSitePath(pathnameSections, sitePathSections)
+    ? "/" + pathnameSections.slice(sitePathSections.length).join("/")
+    : pathname;
+}
+
+function isPathnameContainSitePath(pathnameSections, sitePathSections) {
+  for (let index = 0; index < sitePathSections.length; index++) {
+    const sitePathSection = sitePathSections[index].toLowerCase();
+    const pathnameSection = pathnameSections[index].toLowerCase();
+
+    if (sitePathSection !== pathnameSection) {
+      return false;
+    }
+  }
+
+  return true;
+}
 
 export function isSameOrigin(url) {
   const origin = getOrigin(url);
@@ -439,7 +478,7 @@ export function clipPathReference(id) {
   return `url(${url})`;
 }
 
-export function initializeIframeResizer(readyCallback = () => {}) {
+export function initializeIframeResizer(onReady = () => {}) {
   if (!isWithinIframe()) {
     return;
   }
@@ -448,12 +487,12 @@ export function initializeIframeResizer(readyCallback = () => {}) {
   // have their embeds autosize to their content
   if (window.iFrameResizer) {
     console.error("iFrameResizer resizer already defined.");
-    readyCallback();
+    onReady();
   } else {
     window.iFrameResizer = {
       autoResize: true,
       heightCalculationMethod: "max",
-      readyCallback: readyCallback,
+      onReady,
     };
 
     // FIXME: Crimes
@@ -484,10 +523,13 @@ export function isEventOverElement(event, element) {
 }
 
 export function isReducedMotionPreferred() {
-  const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+  const mediaQuery = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   return mediaQuery && mediaQuery.matches;
 }
 
+/**
+ * @returns {HTMLElement | undefined}
+ */
 export function getMainElement() {
   const [main] = document.getElementsByTagName("main");
   return main;
@@ -513,3 +555,31 @@ export const getEventTarget = event => {
 
   return target;
 };
+
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function reload() {
+  window.location.reload();
+}
+
+/**
+ * Wrapper around window.location is used as we can't override window in jest with jsdom anymore
+ * https://github.com/jsdom/jsdom/issues/3492
+ */
+export function redirect(url) {
+  window.location.href = url;
+}
+
+export function openSaveDialog(fileName, fileContent) {
+  const url = URL.createObjectURL(fileContent);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", fileName);
+  document.body.appendChild(link);
+  link.click();
+
+  URL.revokeObjectURL(url);
+  link.remove();
+}

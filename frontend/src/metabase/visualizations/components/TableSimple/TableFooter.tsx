@@ -1,10 +1,13 @@
-import React, { MouseEvent, useCallback, useMemo } from "react";
-import { t } from "ttag";
 import cx from "classnames";
+import type { MouseEvent } from "react";
+import { forwardRef, useCallback, useMemo } from "react";
+import { t } from "ttag";
 
-import Icon from "metabase/components/Icon";
-
-import { HARD_ROW_LIMIT } from "metabase-lib/queries/utils";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { Icon } from "metabase/ui";
+import { HARD_ROW_LIMIT } from "metabase-lib/v1/queries/utils";
 
 import {
   TableFooterRoot,
@@ -14,6 +17,7 @@ import {
 
 interface TableFooterProps {
   className?: string;
+  "data-testid"?: string;
   start: number;
   end: number;
   total: number;
@@ -23,10 +27,11 @@ interface TableFooterProps {
   singleItem?: boolean;
 }
 
-const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
+const TableFooter = forwardRef<HTMLDivElement, TableFooterProps>(
   function TableFooter(
     {
       className,
+      "data-testid": dataTestId = "TableFooter",
       start,
       end,
       limit,
@@ -71,28 +76,36 @@ const TableFooter = React.forwardRef<HTMLDivElement, TableFooterProps>(
       <TableFooterRoot
         className={cx(
           className,
-          "fullscreen-normal-text fullscreen-night-text",
+          DashboardS.fullscreenNormalText,
+          DashboardS.fullscreenNightText,
+          EmbedFrameS.fullscreenNightText,
         )}
+        data-testid={dataTestId}
         ref={ref}
       >
         <PaginationMessage>{paginateMessage}</PaginationMessage>
         <PaginationButton
+          className={CS.textPrimary}
+          aria-label={t`Previous page`}
           direction="previous"
           onClick={handlePreviousPage}
           disabled={start === 0}
         >
-          <Icon name="triangle_left" size={10} />
+          <Icon name="chevronleft" />
         </PaginationButton>
         <PaginationButton
+          className={CS.textPrimary}
+          aria-label={t`Next page`}
           direction="next"
           onClick={handleNextPage}
           disabled={end + 1 >= total}
         >
-          <Icon name="triangle_right" size={10} />
+          <Icon name="chevronright" />
         </PaginationButton>
       </TableFooterRoot>
     );
   },
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default TableFooter;

@@ -4,16 +4,17 @@
    [clojure.spec.alpha :as s]
    [metabase.api.common :as api]
    [metabase.driver :as driver]
-   [metabase.mbql.normalize :as mbql.normalize]
-   [metabase.mbql.schema :as mbql.s]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.driver.util :as driver.u]
+   [metabase.legacy-mbql.normalize :as mbql.normalize]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema.actions :as lib.schema.actions]
    [metabase.models :refer [Database]]
    [metabase.models.setting :as setting]
    [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.store :as qp.store]
    [metabase.util :as u]
    [metabase.util.i18n :as i18n]
-   [schema.core :as schema]
-   [toucan.db :as db]
+   [metabase.util.malli :as mu]
    [toucan2.core :as t2]))
 
 (setting/defsetting database-enable-actions
@@ -118,7 +119,7 @@
 (defn check-actions-enabled-for-database!
   "Throws an appropriate error if actions are unsupported or disabled for a database, otherwise returns nil."
   [{db-settings :settings db-id :id driver :engine db-name :name :as db}]
-  (when-not (driver/database-supports? driver :actions db)
+  (when-not (driver.u/supports? driver :actions db)
     (throw (ex-info (i18n/tru "{0} Database {1} does not support actions."
                               (u/qualified-name driver)
                               (format "%d %s" db-id (pr-str db-name)))
@@ -142,21 +143,25 @@
   "Throws an appropriate error if actions are unsupported or disabled for the database of the action's model,
    otherwise returns nil."
   [action-or-id]
-  (check-actions-enabled-for-database! (database-for-action action-or-id)))
+  (check-actions-enabled-for-database! (api/check-404 (database-for-action action-or-id))))
 
-(defn perform-action!
+(mu/defn perform-action!
   "Perform an `action`. Invoke this function for performing actions, e.g. in API endpoints;
   implement [[perform-action!*]] to add support for a new driver/action combo. The shape of `arg-map` depends on the
   `action` being performed. [[action-arg-map-spec]] returns the specific spec used to validate `arg-map` for a given
   `action`."
-  [action arg-map]
+  [action
+   arg-map :- [:map
+               [:create-row {:optional true} [:maybe ::lib.schema.actions/row]]
+               [:update-row {:optional true} [:maybe ::lib.schema.actions/row]]]]
   (let [action  (keyword action)
         spec    (action-arg-map-spec action)
-        arg-map (normalize-action-arg-map action arg-map)]
+        arg-map (normalize-action-arg-map action arg-map)] ; is arg-map always just a regular query?
     (when (s/invalid? (s/conform spec arg-map))
       (throw (ex-info (format "Invalid Action arg map for %s: %s" action (s/explain-str spec arg-map))
                       (s/explain-data spec arg-map))))
-    (let [{driver :engine :as db} (api/check-404 (db/select-one Database :id (:database arg-map)))]
+    (let [{driver :engine :as db} (api/check-404 (qp.store/with-metadata-provider (:database arg-map)
+                                                   (lib.metadata/database (qp.store/metadata-provider))))]
       (check-actions-enabled-for-database! db)
       (binding [*misc-value-cache* (atom {})]
         (qp.perms/check-query-action-permissions* arg-map)
@@ -195,28 +200,6 @@
    :actions.args/common
    (s/keys :req-un [:actions.args.crud.row.common/query])))
 
-;;; the various `:row/*` Actions all treat their args map as an MBQL query.
-
-(defn- normalize-as-mbql-query
-  "Normalize `query` as an MBQL query. Optional arg `:exclude` is a set of *normalized* keys to exclude from recursive
-  normalization, e.g. `:create-row` for the `:row/create` Action (we don't want to normalize the row input since
-  preserving case and `snake_keys` in the request body is important)."
-  ([query]
-   (let [query (mbql.normalize/normalize (assoc query :type :query))]
-     (try
-       (schema/validate mbql.s/Query query)
-       (catch Exception e
-         (throw (ex-info
-                 (ex-message e)
-                 {:exception-data (ex-data e)
-                  :status-code    400}))))
-     query))
-
-  ([query & {:keys [exclude]}]
-   (let [query (update-keys query mbql.u/normalize-token)]
-     (merge (select-keys query exclude)
-            (normalize-as-mbql-query (apply dissoc query exclude))))))
-
 ;;;; `:row/create`
 
 ;;; row/create requires at least
@@ -227,10 +210,10 @@
 
 (defmethod normalize-action-arg-map :row/create
   [_action query]
-  (normalize-as-mbql-query query :exclude #{:create-row}))
+  (mbql.normalize/normalize-or-throw query))
 
 (s/def :actions.args.crud.row.create/create-row
-  (s/map-of keyword? any?))
+  (s/map-of string? any?))
 
 (s/def :actions.args.crud/row.create
   (s/merge
@@ -251,7 +234,7 @@
 
 (defmethod normalize-action-arg-map :row/update
   [_action query]
-  (normalize-as-mbql-query query :exclude #{:update-row}))
+  (mbql.normalize/normalize-or-throw query))
 
 (s/def :actions.args.crud.row.update.query/filter
   vector?) ; MBQL filter clause
@@ -262,7 +245,7 @@
    (s/keys :req-un [:actions.args.crud.row.update.query/filter])))
 
 (s/def :actions.args.crud.row.update/update-row
-  (s/map-of keyword? any?))
+  (s/map-of string? any?))
 
 (s/def :actions.args.crud/row.update
   (s/merge
@@ -283,7 +266,7 @@
 
 (defmethod normalize-action-arg-map :row/delete
   [_action query]
-  (normalize-as-mbql-query query))
+  (mbql.normalize/normalize-or-throw query))
 
 (s/def :actions.args.crud.row.delete.query/filter
   vector?) ; MBQL filter clause

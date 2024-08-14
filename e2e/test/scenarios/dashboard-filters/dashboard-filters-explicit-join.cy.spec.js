@@ -1,5 +1,5 @@
-import { restore, filterWidget, visitDashboard } from "e2e/support/helpers";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import { restore, filterWidget, visitDashboard } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
 
@@ -49,7 +49,7 @@ describe("scenarios > dashboard > filters", () => {
         const { card_id, dashboard_id } = dashboardCard;
 
         const updatedCardDetails = {
-          size_x: 16,
+          size_x: 21,
           size_y: 10,
           parameter_mappings: [
             {
@@ -88,12 +88,12 @@ describe("scenarios > dashboard > filters", () => {
 
     cy.location("search").should(
       "eq",
-      "?text=Awesome%20Concrete%20Shoes&text=Awesome%20Iron%20Hat",
+      "?text=Awesome+Concrete+Shoes&text=Awesome+Iron+Hat",
     );
 
     filterWidget().contains("2 selections");
 
-    cy.get(".Card").within(() => {
+    cy.findByTestId("dashcard").within(() => {
       cy.findAllByText("Awesome Concrete Shoes");
       cy.findAllByText("Awesome Iron Hat");
     });
@@ -102,6 +102,6 @@ describe("scenarios > dashboard > filters", () => {
 
 function selectFromDropdown(values) {
   values.forEach(value => {
-    cy.findByTestId(`${value}-filter-value`).should("be.visible").click();
+    cy.findByLabelText(value).should("be.visible").click();
   });
 }

@@ -1,15 +1,20 @@
 (ns metabase.driver.druid.sync-test
-  (:require [clojure.test :refer :all]
-            [metabase.driver :as driver]
-            [metabase.models.database :refer [Database]]
-            [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
-            [metabase.test :as mt]
-            [metabase.timeseries-query-processor-test.util :as tqpt]
-            [metabase.util :as u]
-            [schema.core :as s]
-            [toucan.db :as db]))
+  (:require
+   [clojure.test :refer :all]
+   [malli.core :as mc]
+   [malli.error :as me]
+   [metabase.driver :as driver]
+   [metabase.driver.druid.client :as druid.client]
+   [metabase.driver.druid.sync :as druid.sync]
+   [metabase.models.database :refer [Database]]
+   [metabase.models.secret :as secret]
+   [metabase.sync.sync-metadata.dbms-version :as sync-dbms-ver]
+   [metabase.test :as mt]
+   [metabase.timeseries-query-processor-test.util :as tqpt]
+   [metabase.util :as u]
+   [toucan2.core :as t2]))
 
-(deftest sync-test
+(deftest ^:parallel sync-test
   (mt/test-driver :druid
     (tqpt/with-flattened-dbdef
       (testing "describe-database"
@@ -35,10 +40,10 @@
                    (update :fields (partial sort-by :database-position)))))))))
 
 (defn- db-dbms-version [db-or-id]
-  (db/select-one-field :dbms_version Database :id (u/the-id db-or-id)))
+  (t2/select-one-fn :dbms_version Database :id (u/the-id db-or-id)))
 
 (defn- check-dbms-version [dbms-version]
-  (s/check sync-dbms-ver/DBMSVersion dbms-version))
+  (me/humanize (mc/validate sync-dbms-ver/DBMSVersion dbms-version)))
 
 (deftest dbms-version-test
   (mt/test-driver :druid
@@ -48,8 +53,8 @@
       (tqpt/with-flattened-dbdef
         (let [db                   (mt/db)
               version-on-load      (db-dbms-version db)
-              _                    (db/update! Database (u/the-id db) :dbms_version nil)
-              db                   (db/select-one Database :id (u/the-id db))
+              _                    (t2/update! Database (u/the-id db) {:dbms_version nil})
+              db                   (t2/select-one Database :id (u/the-id db))
               version-after-update (db-dbms-version db)
               _                    (sync-dbms-ver/sync-dbms-version! db)]
           (testing "On startup is the dbms-version specified?"
@@ -58,3 +63,22 @@
             (is (nil? version-after-update)))
           (testing "Check that the value was set again after sync"
             (is (nil? (check-dbms-version (db-dbms-version db))))))))))
+
+(deftest ^:synchronized auth-dbms-version-test
+  (mt/test-driver
+   :druid
+   (testing "`dbms-version` uses auth parameters (#41579)"
+     (tqpt/with-flattened-dbdef
+       (let [get-args (volatile! nil)
+             db-with-auth-details (update (mt/db) :details assoc
+                                          :auth-enabled     true
+                                          :auth-username    "admin"
+                                          :auth-token-value "password1")]
+         ;; Following ensures that auth parameters are passed to GET during version sync if present.
+         (with-redefs [secret/value->string (constantly "password1")
+                       druid.client/GET (fn [_url & params] (vreset! get-args (apply hash-map params)) nil)]
+           ;; Just fill in the params with internally modified `dbms-version`.
+           (druid.sync/dbms-version db-with-auth-details)
+           (is (= true        (:auth-enabled     @get-args)))
+           (is (= "admin"     (:auth-username    @get-args)))
+           (is (= "password1" (:auth-token-value @get-args)))))))))

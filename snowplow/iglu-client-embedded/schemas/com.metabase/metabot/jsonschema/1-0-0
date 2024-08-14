@@ -1,0 +1,63 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Metabot events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "metabot",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "metabot_feedback_received"
+      ],
+      "maxLength": 1024
+    },
+    "entity_type": {
+      "description": "Entity type",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "database",
+        "model"
+      ],
+      "maxLength": 1024
+    },
+    "feedback_type": {
+      "description": "Feedback type",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "great",
+        "wrong_data",
+        "incorrect_result",
+        "invalid_sql"
+      ],
+      "maxLength": 1024
+    },
+    "prompt_template_versions": {
+      "description": "The prompt template versions used in this call",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "description": "A prompt template version as prompt_type:version",
+        "type": "string",
+        "maxLength": 1024
+      }
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}

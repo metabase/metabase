@@ -1,19 +1,24 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { connect } from "react-redux";
 import { t } from "ttag";
 import _ from "underscore";
 
 import Button from "metabase/core/components/Button";
 import Link from "metabase/core/components/Link";
-
 import Actions from "metabase/entities/actions";
+import Databases from "metabase/entities/databases";
+import { useConfirmation } from "metabase/hooks/use-confirmation";
 import { parseTimestamp } from "metabase/lib/time";
 import * as Urls from "metabase/lib/urls";
-import { useConfirmation } from "metabase/hooks/use-confirmation";
-
+import type Question from "metabase-lib/v1/Question";
+import {
+  canArchiveAction,
+  canEditAction,
+  canRunAction,
+} from "metabase-lib/v1/actions/utils";
+import type Database from "metabase-lib/v1/metadata/Database";
 import type { Card, WritebackAction } from "metabase-types/api";
 import type { Dispatch, State } from "metabase-types/store";
-import type Question from "metabase-lib/Question";
 
 import {
   EmptyStateContainer,
@@ -21,7 +26,7 @@ import {
   EmptyStateMessage,
   EmptyStateActionContainer,
 } from "../EmptyState.styled";
-import ModelActionListItem from "./ModelActionListItem";
+
 import {
   Root,
   ActionsHeader,
@@ -29,10 +34,10 @@ import {
   ActionList,
   ActionAlert,
 } from "./ModelActionDetails.styled";
+import ModelActionListItem from "./ModelActionListItem";
 
 interface OwnProps {
   model: Question;
-  canRunActions: boolean;
 }
 
 interface DispatchProps {
@@ -45,7 +50,14 @@ interface ActionsLoaderProps {
   actions: WritebackAction[];
 }
 
-type Props = OwnProps & DispatchProps & ActionsLoaderProps;
+interface DatabaseLoaderProps {
+  databases: Database[];
+}
+
+type Props = OwnProps &
+  DispatchProps &
+  ActionsLoaderProps &
+  DatabaseLoaderProps;
 
 function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
   return {
@@ -61,7 +73,7 @@ function mapDispatchToProps(dispatch: Dispatch, { model }: OwnProps) {
 function ModelActionDetails({
   model,
   actions,
-  canRunActions,
+  databases,
   onEnableImplicitActions,
   onArchiveAction,
   onDeleteAction,
@@ -132,14 +144,15 @@ function ModelActionDetails({
           <ModelActionListItem
             action={action}
             actionUrl={actionUrl}
-            canWrite={canWrite}
-            canRun={canRunActions}
+            canRun={canRunAction(action, databases)}
+            canEdit={canEditAction(action, model)}
+            canArchive={canArchiveAction(action, model)}
             onArchive={onArchiveAction}
           />
         </li>
       );
     },
-    [model, canWrite, canRunActions, onArchiveAction],
+    [model, databases, onArchiveAction],
   );
 
   const newActionUrl = Urls.newAction(model.card() as Card);
@@ -147,7 +160,7 @@ function ModelActionDetails({
   return (
     <Root>
       {canWrite && (
-        <ActionsHeader>
+        <ActionsHeader data-testid="model-actions-header">
           <Button as={Link} to={newActionUrl}>{t`New action`}</Button>
           {menuItems.length > 0 && (
             <ActionMenu
@@ -203,14 +216,16 @@ function NoActionsState({
 
 function mostRecentFirst(action: WritebackAction) {
   const createdAt = parseTimestamp(action["created_at"]);
-  return -createdAt.unix();
+  return -createdAt.valueOf();
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Actions.loadList({
     query: (state: State, { model }: OwnProps) => ({
       "model-id": model.id(),
     }),
   }),
+  Databases.loadList(),
   connect(null, mapDispatchToProps),
 )(ModelActionDetails);

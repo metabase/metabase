@@ -1,5 +1,5 @@
-import { getInbox, restore, setupSMTP } from "e2e/support/helpers";
 import { USERS } from "e2e/support/cypress_data";
+import { getInbox, restore, setupSMTP } from "e2e/support/helpers";
 
 const { admin } = USERS;
 
@@ -16,7 +16,9 @@ describe("scenarios > auth > password", { tags: "@external" }, () => {
     cy.visit("/auth/forgot_password");
 
     cy.findByLabelText("Email address").type(admin.email);
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Send password reset email").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/Check your email/);
 
     getInbox().then(({ body: [{ html }] }) => {

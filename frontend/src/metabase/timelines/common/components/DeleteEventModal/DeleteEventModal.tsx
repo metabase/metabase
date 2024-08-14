@@ -1,9 +1,11 @@
-import React, { useCallback } from "react";
+import { useCallback } from "react";
 import { t } from "ttag";
+
 import Button from "metabase/core/components/Button";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import ModalHeader from "../ModalHeader";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
+
 import ModalFooter from "../ModalFooter";
+import ModalHeader from "../ModalHeader";
 
 export interface DeleteEventModalProps {
   event: TimelineEvent;
@@ -38,4 +40,5 @@ const DeleteEventModal = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DeleteEventModal;

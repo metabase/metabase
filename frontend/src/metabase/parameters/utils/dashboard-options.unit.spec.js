@@ -1,4 +1,5 @@
 import _ from "underscore";
+
 import { getDashboardParameterSections } from "./dashboard-options";
 
 describe("parameters/utils/dashboard-options", () => {

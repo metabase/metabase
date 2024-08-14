@@ -1,1 +1,1 @@
-export { default } from "./ColorSettings";
+export { ColorSettings } from "./ColorSettings";

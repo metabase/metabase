@@ -1,9 +1,13 @@
+import { assoc, merge } from "icepick";
 import { handleActions } from "redux-actions";
-import { assoc, dissoc, merge } from "icepick";
 import _ from "underscore";
-import Utils from "metabase/lib/utils";
 
+import {
+  EDIT_QUESTION,
+  NAVIGATE_TO_NEW_CARD,
+} from "metabase/dashboard/actions";
 import TimelineEvents from "metabase/entities/timeline-events";
+import { copy } from "metabase/lib/utils";
 
 import {
   RESET_QB,
@@ -41,7 +45,6 @@ import {
   SET_UI_CONTROLS,
   RESET_UI_CONTROLS,
   CANCEL_DATASET_CHANGES,
-  SET_RESULTS_METADATA,
   SET_METADATA_DIFF,
   ZOOM_IN_ROW,
   RESET_ROW_ZOOM,
@@ -63,10 +66,12 @@ import {
   SET_DOCUMENT_TITLE,
   SET_SHOW_LOADING_COMPLETE_FAVICON,
   SET_DOCUMENT_TITLE_TIMEOUT_ID,
+  CLOSE_QB,
 } from "./actions";
 
 const DEFAULT_UI_CONTROLS = {
   dataReferenceStack: null,
+  isModifiedFromNotebook: false,
   isShowingDataReference: false,
   isShowingTemplateTagsEditor: false,
   isShowingNewbModal: false,
@@ -77,6 +82,7 @@ const DEFAULT_UI_CONTROLS = {
   isShowingChartSettingsSidebar: false,
   isShowingQuestionInfoSidebar: false,
   isShowingTimelineSidebar: false,
+  isNativeEditorOpen: false,
   initialChartSetting: null,
   isShowingRawTable: false, // table/viz toggle
   queryBuilderMode: false, // "view" | "notebook" | "dataset"
@@ -89,6 +95,11 @@ const DEFAULT_LOADING_CONTROLS = {
   showLoadCompleteFavicon: false,
   documentTitle: "",
   timeoutId: "",
+};
+
+const DEFAULT_DASHBOARD_STATE = {
+  dashboardId: null,
+  isEditing: false,
 };
 
 const DEFAULT_QUERY_STATUS = "idle";
@@ -361,12 +372,10 @@ export const card = handleActions(
     [UPDATE_QUESTION]: (state, { payload: { card } }) => card,
 
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { card, modelMetadata } }) => ({
+      next: (state, { payload: { card } }) => ({
         ...state,
         display: card.display,
-        result_metadata: modelMetadata
-          ? modelMetadata.columns
-          : card.result_metadata,
+        result_metadata: card.result_metadata,
         visualization_settings: card.visualization_settings,
       }),
     },
@@ -387,6 +396,7 @@ export const card = handleActions(
       next: (state, { payload }) => ({
         ...state,
         embedding_params: payload.embedding_params,
+        initially_published_at: payload.initially_published_at,
       }),
     },
   },
@@ -401,20 +411,20 @@ export const originalCard = handleActions(
   {
     [INITIALIZE_QB]: {
       next: (state, { payload }) =>
-        payload.originalCard ? Utils.copy(payload.originalCard) : null,
+        payload.originalCard ? copy(payload.originalCard) : null,
     },
     [RELOAD_CARD]: {
-      next: (state, { payload }) => (payload.id ? Utils.copy(payload) : null),
+      next: (state, { payload }) => (payload.id ? copy(payload) : null),
     },
     [SET_CARD_AND_RUN]: {
       next: (state, { payload }) =>
-        payload.originalCard ? Utils.copy(payload.originalCard) : null,
+        payload.originalCard ? copy(payload.originalCard) : null,
     },
     [API_CREATE_QUESTION]: {
-      next: (state, { payload }) => Utils.copy(payload),
+      next: (state, { payload }) => copy(payload),
     },
     [API_UPDATE_QUESTION]: {
-      next: (state, { payload }) => Utils.copy(payload),
+      next: (state, { payload }) => copy(payload),
     },
   },
   null,
@@ -440,39 +450,15 @@ export const lastRunCard = handleActions(
   null,
 );
 
-function mergeMetadatWithQueryResults(queryResults, metadata) {
-  const [result] = queryResults;
-  const { columns } = metadata;
-  return [
-    {
-      ...result,
-      data: {
-        ...result.data,
-        cols: columns,
-        results_metadata: metadata,
-      },
-    },
-  ];
-}
-
 // The results of a query execution.  optionally an error if the query fails to complete successfully.
 export const queryResults = handleActions(
   {
     [RESET_QB]: { next: (state, { payload }) => null },
     [QUERY_COMPLETED]: {
-      next: (state, { payload: { queryResults, modelMetadata } }) => {
-        return modelMetadata
-          ? mergeMetadatWithQueryResults(queryResults, modelMetadata)
-          : queryResults;
-      },
+      next: (state, { payload: { queryResults } }) => queryResults,
     },
     [QUERY_ERRORED]: {
       next: (state, { payload }) => (payload ? [payload] : state),
-    },
-    [SET_RESULTS_METADATA]: {
-      next: (state, { payload: results_metadata }) => {
-        return mergeMetadatWithQueryResults(state, results_metadata);
-      },
     },
     [CLEAR_QUERY_RESULT]: { next: (state, { payload }) => null },
   },
@@ -482,15 +468,14 @@ export const queryResults = handleActions(
 export const metadataDiff = handleActions(
   {
     [RESET_QB]: { next: () => ({}) },
+    [API_CREATE_QUESTION]: { next: () => ({}) },
     [API_UPDATE_QUESTION]: { next: () => ({}) },
     [SET_METADATA_DIFF]: {
       next: (state, { payload }) => {
-        const { field_ref, changes } = payload;
+        const { name, changes } = payload;
         return {
           ...state,
-          [field_ref]: state[field_ref]
-            ? merge(state[field_ref], changes)
-            : changes,
+          [name]: state[name] ? merge(state[name], changes) : changes,
         };
       },
     },
@@ -529,8 +514,7 @@ export const parameterValues = handleActions(
       next: (state, { payload: { parameterValues } }) => parameterValues,
     },
     [SET_PARAMETER_VALUE]: {
-      next: (state, { payload: { id, value } }) =>
-        value == null ? dissoc(state, id) : assoc(state, id, value),
+      next: (state, { payload: { id, value } }) => assoc(state, id, value),
     },
   },
   {},
@@ -541,6 +525,25 @@ export const currentState = handleActions(
     [SET_CURRENT_STATE]: { next: (state, { payload }) => payload },
   },
   null,
+);
+
+export const parentDashboard = handleActions(
+  {
+    [NAVIGATE_TO_NEW_CARD]: {
+      next: (state, { payload: { dashboardId } }) => ({
+        dashboardId,
+        isEditing: false,
+      }),
+    },
+    [EDIT_QUESTION]: {
+      next: (state, { payload: { dashboardId } }) => ({
+        dashboardId,
+        isEditing: true,
+      }),
+    },
+    [CLOSE_QB]: { next: () => DEFAULT_DASHBOARD_STATE },
+  },
+  DEFAULT_DASHBOARD_STATE,
 );
 
 export const visibleTimelineEventIds = handleActions(

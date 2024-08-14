@@ -1,33 +1,35 @@
-import React, { useMemo } from "react";
-
 import type { NumberValue } from "d3-scale";
+import { useMemo } from "react";
 
-import { TextMeasurer } from "metabase/visualizations/shared/types/measure-text";
-import { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
-import { HoveredData } from "metabase/visualizations/shared/types/events";
-import RowChartView, { RowChartViewProps } from "../RowChartView/RowChartView";
-import { ChartGoal } from "../../types/settings";
-import { ContinuousScaleType, Range } from "../../types/scale";
+import type { HoveredData } from "metabase/visualizations/shared/types/events";
+import type { ChartTicksFormatters } from "metabase/visualizations/shared/types/format";
+import type { TextWidthMeasurer } from "metabase/visualizations/shared/types/measure-text";
+
+import type { SeriesInfo } from "../../types/data";
+import type { ContinuousScaleType, Range } from "../../types/scale";
+import type { ChartGoal } from "../../types/settings";
+import RowChartView from "../RowChartView/RowChartView";
+
+import type { BarData, RowChartTheme, Series, StackOffset } from "./types";
+import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
 import {
   getMaxYValuesCount,
   getChartMargin,
   getRowChartGoal,
 } from "./utils/layout";
-import { getXTicks } from "./utils/ticks";
-import { RowChartTheme, Series, StackOffset } from "./types";
-import { calculateNonStackedBars, calculateStackedBars } from "./utils/data";
 import { addSideSpacingForTicksAndLabels, getChartScales } from "./utils/scale";
+import { getXTicks } from "./utils/ticks";
 
 const MIN_BAR_HEIGHT = 24;
 
 const defaultFormatter = (value: any) => String(value);
 
 export interface RowChartProps<TDatum> {
-  width: number;
-  height: number;
+  width?: number | null;
+  height?: number | null;
 
   data: TDatum[];
-  series: Series<TDatum>[];
+  series: Series<TDatum, SeriesInfo>[];
   seriesColors: Record<string, string>;
 
   trimData?: (data: TDatum[], maxLength: number) => TDatum[];
@@ -47,15 +49,18 @@ export interface RowChartProps<TDatum> {
 
   tickFormatters?: ChartTicksFormatters;
   labelsFormatter?: (value: NumberValue) => string;
-  measureText: TextMeasurer;
+  measureTextWidth: TextWidthMeasurer;
 
   xScaleType?: ContinuousScaleType;
 
   style?: React.CSSProperties;
 
   hoveredData?: HoveredData | null;
-  onClick?: RowChartViewProps<TDatum>["onClick"];
-  onHover?: RowChartViewProps<TDatum>["onHover"];
+  onClick?: (event: React.MouseEvent, bar: BarData<TDatum, SeriesInfo>) => void;
+  onHover?: (
+    event: React.MouseEvent,
+    bar: BarData<TDatum, SeriesInfo> | null,
+  ) => void;
 }
 
 export const RowChart = <TDatum,>({
@@ -88,7 +93,7 @@ export const RowChart = <TDatum,>({
 
   xScaleType = "linear",
 
-  measureText,
+  measureTextWidth,
 
   style,
 
@@ -96,15 +101,19 @@ export const RowChart = <TDatum,>({
   onClick,
   onHover,
 }: RowChartProps<TDatum>) => {
+  const isMeasured = typeof width === "number" && typeof height === "number";
+
   const maxYValues = useMemo(
     () =>
-      getMaxYValuesCount(
-        height,
-        MIN_BAR_HEIGHT,
-        stackOffset != null,
-        multipleSeries.length,
-      ),
-    [height, multipleSeries.length, stackOffset],
+      isMeasured
+        ? getMaxYValuesCount(
+            height,
+            MIN_BAR_HEIGHT,
+            stackOffset != null,
+            multipleSeries.length,
+          )
+        : 0,
+    [height, multipleSeries.length, stackOffset, isMeasured],
   );
 
   const trimmedData = useMemo(
@@ -141,7 +150,7 @@ export const RowChart = <TDatum,>({
         theme.axis.ticks,
         theme.axis.label,
         goal != null,
-        measureText,
+        measureTextWidth,
         xLabel,
         yLabel,
         hasXAxis,
@@ -153,7 +162,7 @@ export const RowChart = <TDatum,>({
       theme.axis.ticks,
       theme.axis.label,
       goal,
-      measureText,
+      measureTextWidth,
       xLabel,
       yLabel,
       hasXAxis,
@@ -161,8 +170,8 @@ export const RowChart = <TDatum,>({
     ],
   );
 
-  const innerWidth = width - margin.left - margin.right;
-  const innerHeight = height - margin.top - margin.bottom;
+  const innerWidth = isMeasured ? width - margin.left - margin.right : 0;
+  const innerHeight = isMeasured ? height - margin.top - margin.bottom : 0;
 
   const additionalXValues = useMemo(
     () => (goal != null ? [goal.value ?? 0] : []),
@@ -197,7 +206,7 @@ export const RowChart = <TDatum,>({
         ? xScale
         : addSideSpacingForTicksAndLabels(
             xScale,
-            measureText,
+            measureTextWidth,
             theme.axis.ticks,
             xTickFormatter,
             theme.dataLabels,
@@ -206,7 +215,7 @@ export const RowChart = <TDatum,>({
           ),
     [
       labelsFormatter,
-      measureText,
+      measureTextWidth,
       labelledSeries,
       theme.axis.ticks,
       theme.dataLabels,
@@ -223,12 +232,12 @@ export const RowChart = <TDatum,>({
         innerWidth,
         paddedXScale,
         xTickFormatter,
-        measureText,
+        measureTextWidth,
         xScaleType,
       ),
     [
       innerWidth,
-      measureText,
+      measureTextWidth,
       theme.axis.ticks,
       paddedXScale,
       xScaleType,
@@ -237,8 +246,8 @@ export const RowChart = <TDatum,>({
   );
 
   const rowChartGoal = useMemo(
-    () => getRowChartGoal(goal, theme.goal, measureText, paddedXScale),
-    [goal, measureText, theme.goal, paddedXScale],
+    () => getRowChartGoal(goal, theme.goal, measureTextWidth, paddedXScale),
+    [goal, measureTextWidth, theme.goal, paddedXScale],
   );
 
   return (

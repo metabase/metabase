@@ -26,7 +26,7 @@ Configure Metabase on launch via environment variables.
 
 ## [Configuration file](./config-file.md)
 
-On self-hosted paid plans, you can configure Metabase via a configuration file.
+On self-hosted Pro and Enterprise plans, you can configure Metabase via a configuration file.
 
 ## [Metabase logs configuration](./log-configuration.md)
 
@@ -39,6 +39,10 @@ Guidance on timezone settings.
 ## [Languages and localization](./localization.md)
 
 Set language, datetime, and currency settings.
+
+## [Uploads](../databases/uploads.md)
+
+Allow people to upload data to collections.
 
 ## [Appearance](./appearance.md)
 

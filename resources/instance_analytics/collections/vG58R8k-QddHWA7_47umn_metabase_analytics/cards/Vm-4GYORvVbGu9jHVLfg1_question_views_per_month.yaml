@@ -1,0 +1,81 @@
+name: Question views per month
+description: null
+entity_id: Vm-4GYORvVbGu9jHVLfg1
+created_at: '2023-06-15T02:08:19.283932Z'
+creator_id: internal@metabase.com
+display: line
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_view_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: month
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_type
+      - base-type: type/Text
+    - card
+    joins:
+    - alias: People - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - User
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
+    source-table: P6Ityjj7igswKh4NgZZjz
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - timestamp
+  graph.metrics:
+  - count
+  graph.show_values: true
+serdes/meta:
+- id: Vm-4GYORvVbGu9jHVLfg1
+  label: question_views_per_month
+  model: Card
+initially_published_at: null
+metabase_version: null
+type: question

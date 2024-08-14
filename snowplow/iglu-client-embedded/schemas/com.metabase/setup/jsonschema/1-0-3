@@ -1,0 +1,104 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Setup flow",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "setup",
+    "format": "jsonschema",
+    "version": "1-0-3"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "step_seen",
+        "usage_reason_selected",
+        "license_token_step_submitted",
+        "database_selected",
+        "add_data_later_clicked"
+      ],
+      "maxLength": 1024
+    },
+    "version": {
+      "description": "String describing the version of onboarding we're on",
+      "type": "string",
+      "maxLength": 1024
+    },
+    "step": {
+      "description": "String describing the step that the set up step",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "welcome",
+        "language",
+        "user_info",
+        "db_connection",
+        "usage_question",
+        "license_token",
+        "db_scheduling",
+        "data_usage",
+        "completed"
+      ],
+      "maxLength": 1024
+    },
+    "step_number": {
+      "description": "Integer describing the order of the referenced step",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 1024
+    },
+    "usage_reason": {
+      "description": "Answer to the usage reason question",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "self-service-analytics",
+        "embedding",
+        "both",
+        "not-sure"
+      ],
+      "maxLength": 1024
+    },
+    "database": {
+      "description": "String with the database type that the user selected",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "valid_token_present": {
+      "description": "Boolean indicating if a valid token was submitted",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "source": {
+      "description": "String with the product location that the event took place",
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "pre_selection",
+        "post_selection"
+      ],
+      "maxLength": 1024
+    }
+  },
+  "required": [
+    "event",
+    "version"
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,24 @@
+name: v_tables
+display_name: V Tables
+description: null
+created_at: '2023-10-31T21:26:32.221044Z'
+db_id: Internal Metabase Database
+schema: public
+entity_type: entity/GenericTable
+active: true
+is_upload: false
+field_order: database
+visibility_type: null
+show_in_getting_started: false
+initial_sync_status: complete
+points_of_interest: null
+caveats: null
+serdes/meta:
+- id: Internal Metabase Database
+  model: Database
+- id: public
+  model: Schema
+- id: v_tables
+  model: Table
+database_require_filter: null
+estimated_row_count: null

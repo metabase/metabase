@@ -1,16 +1,19 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
 
 export const ToggleRoot = styled.div`
   display: flex;
   flex: 1 1 auto;
   max-width: 33rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 0.5rem;
 `;
 
 export const ImageContainer = styled.div`
-  border-right: 1px solid ${color("border")};
+  display: flex;
+  width: 7.5rem;
+  justify-content: center;
+  align-items: center;
+  border-right: 1px solid var(--mb-color-border);
 `;
 
 export const ToggleContainer = styled.div`

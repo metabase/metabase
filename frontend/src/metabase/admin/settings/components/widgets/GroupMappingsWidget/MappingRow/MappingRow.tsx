@@ -1,20 +1,23 @@
-import React, { useState } from "react";
+import cx from "classnames";
+import type * as React from "react";
+import { useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
-
-import { isAdminGroup } from "metabase/lib/groups";
-import { PermissionsApi } from "metabase/services";
-import Tooltip from "metabase/core/components/Tooltip";
-import Icon from "metabase/components/Icon";
-import Confirm from "metabase/components/Confirm";
 
 import type {
   DeleteMappingModalValueType,
   GroupIds,
   UserGroupsType,
 } from "metabase/admin/types";
-import Selectbox from "../GroupSelect";
+import Confirm from "metabase/components/Confirm";
+import Tooltip from "metabase/core/components/Tooltip";
+import AdminS from "metabase/css/admin.module.css";
+import CS from "metabase/css/core/index.css";
+import { isAdminGroup } from "metabase/lib/groups";
+import { Icon } from "metabase/ui";
+
 import DeleteGroupMappingModal from "../DeleteGroupMappingModal";
+import Selectbox from "../GroupSelect";
 
 import { DeleteMappingButton } from "./MappingRow.styled";
 
@@ -28,6 +31,8 @@ type MappingRowProps = {
   name: string;
   groups: UserGroupsType;
   selectedGroupIds: GroupIds;
+  clearGroupMember: ({ id }: { id: number }) => void;
+  deleteGroup: ({ id }: { id: number }) => void;
   onChange: () => void;
   onDeleteMapping: OnDeleteMappingType;
 };
@@ -36,6 +41,8 @@ const MappingRow = ({
   name,
   groups,
   selectedGroupIds,
+  clearGroupMember,
+  deleteGroup,
   onChange,
   onDeleteMapping,
 }: MappingRowProps) => {
@@ -82,7 +89,7 @@ const MappingRow = ({
             groupIds.map(async id => {
               try {
                 if (!isAdminGroup(groups.find(group => group.id === id))) {
-                  await PermissionsApi.clearGroupMembership({ id });
+                  await clearGroupMember({ id });
                 }
               } catch (error) {
                 console.error(error);
@@ -95,7 +102,7 @@ const MappingRow = ({
             groupIds.map(async id => {
               try {
                 if (!isAdminGroup(groups.find(group => group.id === id))) {
-                  await PermissionsApi.deleteGroup({ id });
+                  await deleteGroup({ id });
                 }
               } catch (error) {
                 console.error(error);
@@ -135,8 +142,8 @@ const MappingRow = ({
             onGroupChange={onChange}
           />
         </td>
-        <td className="Table-actions">
-          <div className="float-right mr1">
+        <td className={AdminS.TableActions}>
+          <div className={cx(CS.floatRight, CS.mr1)}>
             {shouldUseDeleteMappingModal ? (
               <DeleteButton onDelete={onDelete} />
             ) : (
@@ -171,4 +178,5 @@ const DeleteButton = ({
   </Tooltip>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default MappingRow;

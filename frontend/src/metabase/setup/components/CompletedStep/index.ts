@@ -1,1 +1,1 @@
-export { default } from "./CompletedStep";
+export * from "./CompletedStep";

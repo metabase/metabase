@@ -2,6 +2,8 @@
   (:require
    [clojure.string :as str]))
 
+(set! *warn-on-reflection* true)
+
 (defmacro varargs
   "Utility macro for passing varargs of a certain `klass` to a Java method.
 
@@ -21,5 +23,5 @@
   (cond
     (symbol? s)          (parse-as-keyword (name s))
     (keyword? s)         s
-    (not (str/blank? s)) (keyword (cond-> s
+    (not (str/blank? s)) (keyword (cond-> (str s)
                                     (str/starts-with? s ":") (.substring 1)))))

@@ -1,33 +1,28 @@
-import React from "react";
 import { t } from "ttag";
-import ImageToggle from "../ImageToggle";
-import { MetabotSetting } from "./types";
-import { MetabotImage } from "./MetabotToggleWidget.styled";
+
+import { ImageToggle } from "../ImageToggle";
+
+import { MetabotIcon } from "./MetabotToggleWidget.styled";
+import type { MetabotSetting } from "./types";
 
 interface MetabotToggleWidgetProps {
   setting: MetabotSetting;
   onChange: (value: boolean) => void;
 }
 
-const MetabotToggleWidget = ({
+export const MetabotToggleWidget = ({
   setting,
   onChange,
 }: MetabotToggleWidgetProps): JSX.Element => {
   const isEnabled = setting.value ?? setting.default;
-  const metabotImage = isEnabled ? "metabot-happy" : "metabot-sad";
 
   return (
     <ImageToggle
-      label={t`Display our little friend on the homepage`}
+      label={t`Display welcome message on the homepage`}
       value={isEnabled}
       onChange={onChange}
     >
-      <MetabotImage
-        src={`app/assets/img/${metabotImage}.gif`}
-        alt={t`Metabot`}
-      />
+      <MetabotIcon variant={isEnabled ? "happy" : "sad"} />
     </ImageToggle>
   );
 };
-
-export default MetabotToggleWidget;

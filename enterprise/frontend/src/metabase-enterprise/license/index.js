@@ -1,6 +1,8 @@
-import { t } from "ttag";
 import { updateIn } from "icepick";
+import { t } from "ttag";
+
 import { PLUGIN_ADMIN_SETTINGS_UPDATES } from "metabase/plugins";
+
 import LicenseAndBillingSettings from "./components/LicenseAndBillingSettings";
 
 PLUGIN_ADMIN_SETTINGS_UPDATES.push(sections =>

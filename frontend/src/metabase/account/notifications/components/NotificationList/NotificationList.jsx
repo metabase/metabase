@@ -1,7 +1,8 @@
-import React from "react";
 import PropTypes from "prop-types";
 import { t } from "ttag";
+
 import NotificationCard from "../NotificationCard";
+
 import {
   NotificationButton,
   NotificationHeader,

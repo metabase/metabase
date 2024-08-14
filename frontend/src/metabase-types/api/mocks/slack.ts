@@ -1,4 +1,4 @@
-import { SlackSettings } from "metabase-types/api";
+import type { SlackSettings } from "metabase-types/api";
 
 export const createMockSlackSettings = (
   opts?: Partial<SlackSettings>,

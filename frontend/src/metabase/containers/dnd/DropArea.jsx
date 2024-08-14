@@ -1,11 +1,11 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import cx from "classnames";
+import { Component } from "react";
+
+import CS from "metabase/css/core/index.css";
 
 const DropTargetBackgroundAndBorder = ({
   highlighted,
-  hovered,
-  noDrop = false,
   margin = 0,
   marginLeft = margin,
   marginRight = margin,
@@ -13,8 +13,8 @@ const DropTargetBackgroundAndBorder = ({
   marginBottom = margin,
 }) => (
   <div
-    className={cx("absolute rounded", {
-      "pointer-events-none": !highlighted,
+    className={cx(CS.absolute, CS.rounded, {
+      [CS.pointerEventsNone]: !highlighted,
     })}
     style={{
       top: -marginTop,
@@ -27,7 +27,7 @@ const DropTargetBackgroundAndBorder = ({
   />
 );
 
-export default class DropArea extends React.Component {
+export default class DropArea extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -59,7 +59,7 @@ export default class DropArea extends React.Component {
     } = this.props;
     return this.state.show
       ? connectDropTarget(
-          <div className={cx("relative", className)} style={style}>
+          <div className={cx(CS.relative, className)} style={style}>
             {typeof children === "function" ? children(props) : children}
             {enableDropTargetBackground && (
               <DropTargetBackgroundAndBorder {...props} />

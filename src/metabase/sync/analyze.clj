@@ -4,16 +4,14 @@
    like running MBQL queries and fetching values to do things like determine Table row counts
    and infer field semantic types."
   (:require
-   [metabase.models.field :refer [Field]]
    [metabase.sync.analyze.classify :as classify]
-   [metabase.sync.analyze.fingerprint :as fingerprint]
+   [metabase.sync.analyze.fingerprint :as sync.fingerprint]
    [metabase.sync.interface :as i]
    [metabase.sync.util :as sync-util]
    [metabase.util :as u]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log]
-   [schema.core :as s]
-   [toucan.db :as db]))
+   [metabase.util.malli :as mu]
+   [toucan2.core :as t2]))
 
 ;; How does analysis decide which Fields should get analyzed?
 ;;
@@ -53,31 +51,28 @@
 ;; newly re-fingerprinted Fields, because we'll know to skip the ones from last time since their value of
 ;; `last_analyzed` is not `nil`.
 
-(s/defn ^:private update-last-analyzed!
-  [tables :- [i/TableInstance]]
-  (when-let [ids (seq (map u/the-id tables))]
-    ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
-    (db/update-where! Field {:table_id            [:in ids]
-                             :fingerprint_version i/latest-fingerprint-version
-                             :last_analyzed       nil}
-      :last_analyzed :%now)))
-
-(s/defn ^:private update-fields-last-analyzed!
-  "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
+(mu/defn- update-fields-last-analyzed!
+  "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `table`."
   [table :- i/TableInstance]
-  (update-last-analyzed! [table]))
+  (t2/update! :model/Field
+              (merge (sync.fingerprint/incomplete-analysis-kvs)
+                     {:table_id (:id table)})
+              {:last_analyzed :%now}))
 
-(s/defn ^:private update-fields-last-analyzed-for-db!
-  "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in TABLE."
-  [_database :- i/DatabaseInstance
-   tables :- [i/TableInstance]]
-  ;; The WHERE portion of this query should match up with that of `classify/fields-to-classify`
-  (update-last-analyzed! tables))
+(mu/defn- update-fields-last-analyzed-for-db!
+  "Update the `last_analyzed` date for all the recently re-fingerprinted/re-classified Fields in `database`."
+  [database :- i/DatabaseInstance]
+  (t2/update! :model/Field
+              (merge (sync.fingerprint/incomplete-analysis-kvs)
+                     {:table_id [:in {:select [:id]
+                                      :from   [(t2/table-name :model/Table)]
+                                      :where  [:and sync-util/sync-tables-clause [:= :db_id (:id database)]]}]})
+              {:last_analyzed :%now}))
 
-(s/defn analyze-table!
+(mu/defn analyze-table!
   "Perform in-depth analysis for a `table`."
   [table :- i/TableInstance]
-  (fingerprint/fingerprint-fields! table)
+  (sync.fingerprint/fingerprint-fields! table)
   (classify/classify-fields! table)
   (classify/classify-table! table)
   (update-fields-last-analyzed! table))
@@ -89,49 +84,47 @@
         (log/info (u/format-color 'blue "%s Analyzed %s %s" step progress-bar-result (sync-util/name-for-logging table)))))))
 
 (defn- fingerprint-fields-summary [{:keys [fingerprints-attempted updated-fingerprints no-data-fingerprints failed-fingerprints]}]
-  (trs "Fingerprint updates attempted {0}, updated {1}, no data found {2}, failed {3}"
-       fingerprints-attempted updated-fingerprints no-data-fingerprints failed-fingerprints))
+  (format "Fingerprint updates attempted %d, updated %d, no data found %d, failed %d"
+          fingerprints-attempted updated-fingerprints no-data-fingerprints failed-fingerprints))
 
 (defn- classify-fields-summary [{:keys [fields-classified fields-failed]}]
-  (trs "Total number of fields classified {0}, {1} failed"
-       fields-classified fields-failed))
+  (format "Total number of fields classified %d, %d failed"
+          fields-classified fields-failed))
 
 (defn- classify-tables-summary [{:keys [total-tables tables-classified]}]
-  (trs "Total number of tables classified {0}, {1} updated"
-       total-tables tables-classified))
+  (format "Total number of tables classified %d, %d updated"
+          total-tables tables-classified))
 
-(defn- make-analyze-steps [tables log-fn]
+(defn- make-analyze-steps [log-fn]
   [(sync-util/create-sync-step "fingerprint-fields"
-                               #(fingerprint/fingerprint-fields-for-db! % tables log-fn)
+                               #(sync.fingerprint/fingerprint-fields-for-db! % log-fn)
                                fingerprint-fields-summary)
    (sync-util/create-sync-step "classify-fields"
-                               #(classify/classify-fields-for-db! % tables log-fn)
+                               #(classify/classify-fields-for-db! % log-fn)
                                classify-fields-summary)
    (sync-util/create-sync-step "classify-tables"
-                               #(classify/classify-tables-for-db! % tables log-fn)
+                               #(classify/classify-tables-for-db! % log-fn)
                                classify-tables-summary)])
 
-(s/defn analyze-db!
+(mu/defn analyze-db!
   "Perform in-depth analysis on the data for all Tables in a given `database`. This is dependent on what each database
   driver supports, but includes things like cardinality testing and table row counting. This also updates the
   `:last_analyzed` value for each affected Field."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :analyze database (format "Analyze data for %s" (sync-util/name-for-logging database))
-    (let [tables (sync-util/db->sync-tables database)]
-      (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (count tables)))]
-        (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps tables (maybe-log-progress emoji-progress-bar)))
-          (update-fields-last-analyzed-for-db! database tables))))))
+    (sync-util/with-emoji-progress-bar [emoji-progress-bar (inc (* 3 (sync-util/sync-tables-count database)))]
+      (u/prog1 (sync-util/run-sync-operation "analyze" database (make-analyze-steps (maybe-log-progress emoji-progress-bar)))
+        (update-fields-last-analyzed-for-db! database)))))
 
-(s/defn refingerprint-db!
+(mu/defn refingerprint-db!
   "Refingerprint a subset of tables in a given `database`. This will re-fingerprint tables up to a threshold amount of
   [[fingerprint/max-refingerprint-field-count]]."
   [database :- i/DatabaseInstance]
   (sync-util/sync-operation :refingerprint database (format "Refingerprinting tables for %s" (sync-util/name-for-logging database))
-    (let [tables (sync-util/db->sync-tables database)
-          log-fn (fn [step table]
+    (let [log-fn (fn [step table]
                    (log/info (u/format-color 'blue "%s Analyzed %s" step (sync-util/name-for-logging table))))]
       (sync-util/run-sync-operation "refingerprint database"
                                     database
                                     [(sync-util/create-sync-step "refingerprinting fields"
-                                                                 #(fingerprint/refingerprint-fields-for-db! % tables log-fn)
+                                                                 #(sync.fingerprint/refingerprint-fields-for-db! % log-fn)
                                                                  fingerprint-fields-summary)]))))

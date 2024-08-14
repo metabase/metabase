@@ -8,7 +8,7 @@ describe("schemas", () => {
     { model: "pulse", entityType: "pulses" },
     { model: "collection", entityType: "collections" },
     { model: "segment", entityType: "segments" },
-    { model: "metric", entityType: "metrics" },
+    { model: "metric", entityType: "questions" },
     { model: "snippet", entityType: "snippets" },
     { model: "snippetCollection", entityType: "snippetCollections" },
   ];

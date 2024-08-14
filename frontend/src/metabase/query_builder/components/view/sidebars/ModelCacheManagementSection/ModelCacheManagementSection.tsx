@@ -1,14 +1,12 @@
-import React from "react";
-import { t } from "ttag";
-import moment from "moment-timezone";
+import moment from "moment-timezone"; // eslint-disable-line no-restricted-imports -- deprecated usage
 import { connect } from "react-redux";
+import { t } from "ttag";
 
 import PersistedModels from "metabase/entities/persisted-models";
+import type Question from "metabase-lib/v1/Question";
+import { checkCanRefreshModelCache } from "metabase-lib/v1/metadata/utils/models";
+import type { ModelCacheRefreshStatus } from "metabase-types/api";
 
-import { ModelCacheRefreshStatus } from "metabase-types/api";
-import Question from "metabase-lib/Question";
-
-import { checkCanRefreshModelCache } from "metabase-lib/metadata/utils/models";
 import {
   Row,
   StatusContainer,
@@ -72,7 +70,7 @@ function ModelCacheManagementSection({ model, onRefresh }: Props) {
             <div>
               <StatusContainer>
                 <StatusLabel>{getStatusMessage(persistedModel)}</StatusLabel>
-                {isError && <ErrorIcon name="warning" size={14} />}
+                {isError && <ErrorIcon name="warning" />}
               </StatusContainer>
               {isError && (
                 <LastRefreshTimeLabel>
@@ -82,11 +80,7 @@ function ModelCacheManagementSection({ model, onRefresh }: Props) {
             </div>
             {checkCanRefreshModelCache(persistedModel) && (
               <IconButton onClick={() => onRefresh(persistedModel)}>
-                <RefreshIcon
-                  name="refresh"
-                  tooltip={t`Refresh now`}
-                  size={14}
-                />
+                <RefreshIcon name="refresh" tooltip={t`Refresh now`} />
               </IconButton>
             )}
           </Row>
@@ -96,4 +90,5 @@ function ModelCacheManagementSection({ model, onRefresh }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect(null, mapDispatchToProps)(ModelCacheManagementSection);

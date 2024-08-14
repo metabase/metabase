@@ -14,7 +14,6 @@
    [metabase.models.dimension :refer [Dimension]]
    [metabase.models.field :refer [Field]]
    [metabase.models.field-values :refer [FieldValues]]
-   [metabase.models.metric :refer [Metric]]
    [metabase.models.native-query-snippet :refer [NativeQuerySnippet]]
    [metabase.models.pulse :refer [Pulse]]
    [metabase.models.pulse-card :refer [PulseCard]]
@@ -27,14 +26,13 @@
    [metabase.util.i18n :as i18n :refer [trs]]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
-   [toucan.db :as db]
+   [toucan2.core :as t2]
    [toucan2.tools.after :as t2.after]))
 
 (def ^:private identity-condition
   {Database            [:name :engine]
    Table               [:schema :name :db_id]
    Field               [:name :table_id]
-   Metric              [:name :table_id]
    Segment             [:name :table_id]
    Collection          [:name :location :namespace]
    Dashboard           [:name :collection_id]
@@ -60,7 +58,7 @@
                      (if (coll? v)
                        (json/encode v)
                        v)))
-       (m/mapply db/select-one model)))
+       (m/mapply t2/select-one model)))
 
 (defn- has-post-insert?
   [model]
@@ -78,21 +76,21 @@
 (defn- insert-many-individually!
   [model on-error entities]
   (for [entity entities]
-    (when-let [entity (if (= :abort on-error)
-                        (db/insert! model entity)
-                        (with-error-handling
-                          (trs "Error inserting {0}" (name-for-logging model entity))
-                          (db/insert! model entity)))]
-      (u/the-id entity))))
+    (when-let [entity-id (if (= :abort on-error)
+                           (first (t2/insert-returning-pks! model entity))
+                           (with-error-handling
+                             (trs "Error inserting {0}" (name-for-logging model entity))
+                             (first (t2/insert-returning-pks! model entity))))]
+      entity-id)))
 
 (defn- maybe-insert-many!
   [model on-error entities]
   (if (has-post-insert? model)
     (insert-many-individually! model on-error entities)
     (if (= :abort on-error)
-      (db/insert-many! model entities)
+      (t2/insert-returning-pks! model entities)
       (try
-        (db/insert-many! model entities)
+        (t2/insert-returning-pks! model entities)
         ;; Retry each individually so we can do as much as we can
         (catch Throwable _
           (insert-many-individually! model on-error entities))))))
@@ -132,13 +130,13 @@
    entities]
   (let [{:keys [update insert skip]} (group-by-action context model entities)]
     (doseq [[_ entity _] insert]
-      (log/info (trs "Inserting {0}" (name-for-logging (name model) entity))))
+      (log/infof "Inserting %s" (name-for-logging (name model) entity)))
     (doseq [[_ _ existing] skip]
       (if (= mode :skip)
-        (log/info (trs "{0} already exists -- skipping"  (name-for-logging (name model) existing)))
-        (log/info (trs "Skipping {0} (nothing to update)" (name-for-logging (name model) existing)))))
+        (log/infof "%s already exists -- skipping" (name-for-logging (name model) existing))
+        (log/infof "Skipping %s (nothing to update)" (name-for-logging (name model) existing))))
     (doseq [[_ _ existing] update]
-      (log/info (trs "Updating {0}" (name-for-logging (name model) existing))))
+      (log/infof "Updating %s" (name-for-logging (name model) existing)))
     (->> (concat (for [[position _ existing] skip]
                    [(u/the-id existing) position])
                  (map vector (map post-insert-fn
@@ -147,10 +145,10 @@
                  (for [[position entity existing] update]
                    (let [id (u/the-id existing)]
                      (if (= on-error :abort)
-                       (db/update! model id entity)
+                       (t2/update! model id entity)
                        (with-error-handling
                          (trs "Error updating {0}" (name-for-logging (name model) entity))
-                         (db/update! model id entity)))
+                         (t2/update! model id entity)))
                      [id position])))
          (sort-by second)
          (map first))))

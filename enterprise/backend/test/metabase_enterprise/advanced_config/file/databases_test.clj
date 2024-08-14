@@ -2,23 +2,26 @@
   (:require
    [clojure.test :refer :all]
    [metabase-enterprise.advanced-config.file :as advanced-config.file]
-   [metabase.db.connection :as mdb.connection]
+   [metabase.db :as mdb]
+   [metabase.driver.h2 :as h2]
    [metabase.models :refer [Database Table]]
-   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]
    [metabase.util :as u]
-   [toucan.db :as db]))
+   [toucan2.core :as t2])
+  (:import
+    (clojure.lang ExceptionInfo)))
 
 (use-fixtures :each (fn [thunk]
-                      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}]
-                        (premium-features-test/with-premium-features #{:advanced-config}
+                      (binding [advanced-config.file/*supported-versions* {:min 1, :max 1}
+                                h2/*allow-testing-h2-connections*         true]
+                        (mt/with-premium-features #{:config-text-file}
                           (thunk)))))
 
 (def ^:private test-db-name (u/qualified-name ::test-db))
 
 (deftest init-from-config-file-test
   (mt/with-temporary-setting-values [config-from-file-sync-databases true]
-    (let [db-type     (mdb.connection/db-type)
+    (let [db-type     (mdb/db-type)
           original-db (mt/with-driver db-type (mt/db))]
       (try
         (binding [advanced-config.file/*config* {:version 1
@@ -28,23 +31,23 @@
           (testing "Create a Database if it does not already exist"
             (is (= :ok
                    (advanced-config.file/initialize!)))
-            (let [db (db/select-one Database :name test-db-name)]
+            (let [db (t2/select-one Database :name test-db-name)]
               (is (partial= {:engine db-type}
                             db))
               (is (= 1
-                     (db/count Database :name test-db-name)))
+                     (t2/count Database :name test-db-name)))
               (testing "do not duplicate if Database already exists"
                 (is (= :ok
                        (advanced-config.file/initialize!)))
                 (is (= 1
-                       (db/count Database :name test-db-name)))
+                       (t2/count Database :name test-db-name)))
                 (is (partial= {:engine db-type}
-                              (db/select-one Database :name test-db-name))))
+                              (t2/select-one Database :name test-db-name))))
               (testing "Database should have been synced"
-                (is (= (db/count Table :db_id (u/the-id original-db))
-                       (db/count Table :db_id (u/the-id db))))))))
+                (is (= (t2/count Table :db_id (u/the-id original-db))
+                       (t2/count Table :db_id (u/the-id db))))))))
         (finally
-          (db/delete! Database :name test-db-name))))))
+          (t2/delete! Database :name test-db-name))))))
 
 (deftest init-from-config-file-connection-validation-test
   (testing "Validate connection details when creating a Database from a config file, and error if they are invalid"
@@ -70,12 +73,46 @@
           (testing "Create a Database since it does not already exist"
             (is (= :ok
                    (advanced-config.file/initialize!)))
-            (let [db (db/select-one Database :name test-db-name)]
+            (let [db (t2/select-one Database :name test-db-name)]
               (is (partial= {:engine :h2}
                             db))
               (is (= 1
-                     (db/count Database :name test-db-name)))
+                     (t2/count Database :name test-db-name)))
               (testing "Database should NOT have been synced"
-                (is (zero? (db/count Table :db_id (u/the-id db))))))))
+                (is (zero? (t2/count Table :db_id (u/the-id db))))))))
         (finally
-          (db/delete! Database :name test-db-name))))))
+          (t2/delete! Database :name test-db-name))))))
+
+(deftest delete-test
+  (testing "We should be able to delete Databases from the config file if we pass the confirmation string"
+    (mt/with-temp [Database _ {:name   test-db-name
+                               :engine "h2"}]
+      (try
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:settings  {:config-from-file-sync-databases false}
+                                                           :databases [{:name    test-db-name
+                                                                        :engine  "h2"
+                                                                        :details {}
+                                                                        :delete  (format "DELETE_WITH_DEPENDENTS:%s" test-db-name)}]}}]
+          (is (= :ok
+                 (advanced-config.file/initialize!)))
+          (is (not (t2/exists? Database :name test-db-name))))
+        (finally
+          (t2/delete! Database :name test-db-name)))))
+  (testing "We should not delete Databases from the config file if the confirmation string mismatches"
+    (mt/with-temp [Database _ {:name   test-db-name
+                               :engine "h2"}]
+      (try
+        (binding [advanced-config.file/*config* {:version 1
+                                                 :config  {:settings  {:config-from-file-sync-databases false}
+                                                           :databases [{:name    test-db-name
+                                                                        :engine  "h2"
+                                                                        :details {}
+                                                                        :delete  "DELETE_WITH_DEPENDENTS:copy-paste-mistake"}]}}]
+          (is (thrown-with-msg?
+                ExceptionInfo
+                (re-pattern (format "To delete database \"%s\" set `delete` to \"DELETE_WITH_DEPENDENTS:%s\"" test-db-name test-db-name))
+                (advanced-config.file/initialize!)))
+          (is (t2/exists? Database :name test-db-name)))
+        (finally
+          (t2/delete! Database :name test-db-name))))))

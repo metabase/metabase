@@ -1,37 +1,29 @@
-import React from "react";
+/* eslint-disable react/prop-types */
 
-import Icon, { IconProps } from "metabase/components/Icon";
+import _ from "underscore";
+
 import { color } from "metabase/lib/colors";
-
-import type { Collection } from "metabase-types/api";
+import type { CollectionAuthorityLevelIcon as CollectionAuthorityLevelIconComponent } from "metabase/plugins/index";
+import { Icon } from "metabase/ui";
 
 import { AUTHORITY_LEVELS } from "../constants";
 import { isRegularCollection } from "../utils";
 
-interface Props extends Omit<IconProps, "name" | "tooltip"> {
-  collection: Collection;
-
-  // check OFFICIAL_COLLECTION authority level definition
-  // https://github.com/metabase/metabase/blob/d0ab6c0e2361dccfbfe961d61e1066ec2faf6c40/enterprise/frontend/src/metabase-enterprise/collections/constants.js#L14
-  tooltip?: "default" | "belonging";
-}
-
-export function CollectionAuthorityLevelIcon({
-  collection,
-  tooltip = "default",
-  ...iconProps
-}: Props) {
-  if (isRegularCollection(collection)) {
-    return null;
-  }
-  const level = AUTHORITY_LEVELS[String(collection.authority_level)];
-  return (
-    <Icon
-      {...iconProps}
-      name={level.icon}
-      tooltip={level.tooltips?.[tooltip] || tooltip}
-      style={{ color: level.color ? color(level.color) : undefined }}
-      data-testid={`${level.type}-collection-marker`}
-    />
-  );
-}
+export const CollectionAuthorityLevelIcon: CollectionAuthorityLevelIconComponent =
+  ({ collection, tooltip = "default", archived, ...iconProps }) => {
+    if (isRegularCollection(collection)) {
+      return null;
+    }
+    const level = AUTHORITY_LEVELS[String(collection.authority_level)];
+    const levelColor = level.color ? color(level.color) : undefined;
+    const iconColor = archived ? color("text-light") : levelColor;
+    return (
+      <Icon
+        {...iconProps}
+        name={level.icon}
+        tooltip={level.tooltips?.[tooltip] || tooltip}
+        style={{ color: iconColor }}
+        data-testid={`${level.type}-collection-marker`}
+      />
+    );
+  };

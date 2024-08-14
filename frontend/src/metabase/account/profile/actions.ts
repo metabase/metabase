@@ -1,8 +1,9 @@
-import { createThunkAction } from "metabase/lib/redux";
 import Users from "metabase/entities/users";
-import { User } from "metabase-types/api";
-import { Dispatch } from "metabase-types/store";
-import { UserProfileData } from "./types";
+import { createThunkAction } from "metabase/lib/redux";
+import type { User } from "metabase-types/api";
+import type { Dispatch } from "metabase-types/store";
+
+import type { UserProfileData } from "./types";
 
 export const UPDATE_USER = "metabase/account/profile/UPDATE_USER";
 export const updateUser = createThunkAction(

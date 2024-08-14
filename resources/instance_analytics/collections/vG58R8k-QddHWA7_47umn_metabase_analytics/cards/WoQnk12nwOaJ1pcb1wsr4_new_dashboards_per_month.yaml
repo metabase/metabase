@@ -1,0 +1,63 @@
+name: New dashboards per month
+description: null
+entity_id: WoQnk12nwOaJ1pcb1wsr4
+created_at: '2023-06-08T14:37:36.024095Z'
+creator_id: internal@metabase.com
+display: line
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_content
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - created_at
+      - temporal-unit: month
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_type
+      - null
+    - dashboard
+    source-table: AxSackBiyXVRUzM_TyyQY
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - created_at
+  graph.metrics:
+  - count
+  graph.show_values: true
+  table.cell_column: event_timestamp
+  table.pivot_column: action_type
+serdes/meta:
+- id: WoQnk12nwOaJ1pcb1wsr4
+  label: new_dashboards_per_month
+  model: Card
+initially_published_at: null
+metabase_version: null
+type: question

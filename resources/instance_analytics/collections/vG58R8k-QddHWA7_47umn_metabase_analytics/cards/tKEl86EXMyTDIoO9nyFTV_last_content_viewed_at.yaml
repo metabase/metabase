@@ -1,0 +1,55 @@
+name: Last content viewed at
+description: null
+entity_id: tKEl86EXMyTDIoO9nyFTV
+created_at: '2023-11-01T11:47:58.374394Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_view_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - max
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - timestamp
+        - base-type: type/DateTimeWithLocalTZ
+          temporal-unit: minute
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_qualified_id
+      - base-type: type/Text
+    source-table: P6Ityjj7igswKh4NgZZjz
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings: null
+  table.cell_column: max
+serdes/meta:
+- id: tKEl86EXMyTDIoO9nyFTV
+  label: last_content_viewed_at
+  model: Card
+initially_published_at: null
+metabase_version: vUNKNOWN (901f705)
+type: question

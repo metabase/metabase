@@ -1,3 +1,9 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_DASHBOARD_ID,
+  ORDERS_COUNT_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
 import {
   popover,
   restore,
@@ -7,14 +13,36 @@ import {
   sidebar,
   getDashboardCard,
   selectDashboardFilter,
+  disconnectDashboardFilter,
   saveDashboard,
+  updateDashboardCards,
+  setFilter,
+  spyRequestFinished,
+  multiAutocompleteInput,
 } from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { createMockParameter } from "metabase-types/api/mocks";
 
-const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID } = SAMPLE_DATABASE;
+const { ORDERS_ID, ORDERS, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > dashboard > parameters", () => {
+  const cards = [
+    {
+      card_id: ORDERS_COUNT_QUESTION_ID,
+      row: 0,
+      col: 0,
+      size_x: 5,
+      size_y: 4,
+    },
+    {
+      card_id: ORDERS_COUNT_QUESTION_ID,
+      row: 0,
+      col: 5,
+      size_x: 5,
+      size_y: 4,
+    },
+  ];
+
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
@@ -25,68 +53,62 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.createDashboard({ name: "my dash" }).then(({ body: { id } }) => {
       // add the same question twice
-      cy.request("POST", `/api/dashboard/${id}/cards`, {
-        cardId: 2, // Orders, count
-        row: 0,
-        col: 0,
-        size_x: 4,
-        size_y: 4,
-      });
-
-      cy.request("POST", `/api/dashboard/${id}/cards`, {
-        cardId: 2,
-        row: 0,
-        col: 4,
-        size_x: 4,
-        size_y: 4,
+      updateDashboardCards({
+        dashboard_id: id,
+        cards,
       });
 
       visitDashboard(id);
     });
 
-    cy.icon("pencil").click();
+    editDashboard();
 
     // add a category filter
-    cy.icon("filter").click();
-    cy.contains("Text or Category").click();
-    cy.findByText("Is").click();
+    setFilter("Text or Category", "Is");
+
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("A single value").click();
 
     // connect it to people.name and product.category
     // (this doesn't make sense to do, but it illustrates the feature)
     selectDashboardFilter(getDashboardCard(0), "Name");
+
     selectDashboardFilter(getDashboardCard(1), "Category");
 
-    // finish editing filter and save dashboard
-    cy.contains("Save").click();
-
-    // wait for saving to finish
-    cy.wait("@dashboard");
-    cy.contains("You're editing this dashboard.").should("not.exist");
+    saveDashboard();
 
     // confirm that typing searches both fields
     filterWidget().contains("Text").click();
 
-    // After typing "Ga", you should see this name
-    popover().find("input").type("Ga");
+    // After typing "Ga", you should see this name!
+    popover().within(() => multiAutocompleteInput().type("Ga"));
     cy.wait("@dashboard");
-    popover().contains("Gabrielle Considine");
+    popover().last().contains("Gabrielle Considine");
 
     // Continue typing a "d" and you see "Gadget"
-    popover().find("input").type("d");
+    popover()
+      .first()
+      .within(() => multiAutocompleteInput().type("d"));
     cy.wait("@dashboard");
 
-    popover().within(() => {
-      cy.findByText("Gadget").click();
-      cy.button("Add filter").click();
-    });
+    popover()
+      .last()
+      .within(() => {
+        cy.findByText("Gadget").click();
+      });
+
+    popover()
+      .first()
+      .within(() => {
+        cy.button("Add filter").click();
+      });
 
     cy.location("search").should("eq", "?text=Gadget");
-    cy.get(".DashCard").first().should("contain", "0");
-    cy.get(".DashCard").last().should("contain", "4,939");
+    cy.findAllByTestId("dashcard-container").first().should("contain", "0");
+    cy.findAllByTestId("dashcard-container").last().should("contain", "4,939");
   });
 
-  it("should remove parameter name or the whole parameter (metabase#10829, metabase#17933)", () => {
+  it("should be able to remove parameter (metabase#17933)", () => {
     // Mirrored issue in metabase-enterprise#275
 
     const questionDetails = {
@@ -118,14 +140,14 @@ describe("scenarios > dashboard > parameters", () => {
 
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
               row: 0,
               col: 0,
-              size_x: 12,
+              size_x: 16,
               size_y: 8,
               series: [],
               visualization_settings: {},
@@ -168,56 +190,62 @@ describe("scenarios > dashboard > parameters", () => {
       },
     );
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(startsWith.name).click();
     cy.findByPlaceholderText("Enter some text").type("G");
     // Make sure the dropdown list with values is not populated,
     // because it makes no sense for non-exact parameter string operators.
     // See: https://github.com/metabase/metabase/pull/15477
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Gizmo").should("not.exist");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Gadget").should("not.exist");
 
     cy.button("Add filter").click();
 
-    const startsWithSlug = `${startsWith.slug}=G`;
-    cy.location("search").should("eq", `?${startsWithSlug}`);
+    cy.location("search").should(
+      "eq",
+      `?${endsWith.slug}=&${startsWith.slug}=G`,
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("37.65").should("not.exist");
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(endsWith.name).click();
     cy.findByPlaceholderText("Enter some text").type("zmo");
     // Make sure the dropdown list with values is not populated,
     // because it makes no sense for non-exact parameter string operators.
     // See: https://github.com/metabase/metabase/pull/15477
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Gizmo").should("not.exist");
 
     cy.button("Add filter").click();
 
-    const endsWithSlug = `${endsWith.slug}=zmo`;
-    cy.location("search").should("eq", `?${startsWithSlug}&${endsWithSlug}`);
+    cy.location("search").should(
+      "eq",
+      `?${endsWith.slug}=zmo&${startsWith.slug}=G`,
+    );
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("52.72").should("not.exist");
 
     // Remove filter (metabase#17933)
     cy.icon("pencil").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(startsWith.name).find(".Icon-gear").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Remove").click();
-    cy.location("search").should("eq", `?${endsWithSlug}`);
+    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
 
-    // Remove filter name (metabase#10829)
-    cy.findByText(endsWith.name).find(".Icon-gear").click();
-    cy.findByDisplayValue(endsWith.name).clear().blur();
+    saveDashboard();
 
-    cy.location("search").should("eq", "?unnamed=zmo");
-    cy.findByDisplayValue("unnamed");
+    cy.log(
+      "There should only be one filter remaining and its value is preserved",
+    );
 
-    cy.button("Save").click();
+    filterWidget().contains(new RegExp(`${endsWith.name}`, "i"));
 
-    cy.log("Filter name should be 'unnamed' and the value cleared");
-    filterWidget().contains(/unnamed/i);
-
-    cy.log("URL should reset");
-    cy.location("search").should("eq", "");
-
-    cy.findByText("37.65");
+    cy.location("search").should("eq", `?${endsWith.slug}=zmo`);
   });
 
   it("should handle mismatch between filter types (metabase#9299, metabase#16181)", () => {
@@ -257,14 +285,14 @@ describe("scenarios > dashboard > parameters", () => {
       questionDetails,
       dashboardDetails,
     }).then(({ body: { id, card_id, dashboard_id } }) => {
-      cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-        cards: [
+      cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+        dashcards: [
           {
             id,
             card_id,
             row: 0,
             col: 0,
-            size_x: 8,
+            size_x: 11,
             size_y: 6,
             parameter_mappings: [
               {
@@ -278,17 +306,22 @@ describe("scenarios > dashboard > parameters", () => {
       });
 
       visitDashboard(dashboard_id);
-      cy.get(".ScalarValue").invoke("text").should("eq", "53");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "53");
 
       // Confirm you can't map wrong parameter type the native question's field filter (metabase#16181)
-      cy.icon("pencil").click();
-      cy.icon("filter").click();
-      cy.findByText("ID").click();
+      editDashboard();
+
+      setFilter("ID");
+
       cy.findByText(/Add a variable to this question/).should("be.visible");
 
       // Confirm that the correct parameter type is connected to the native question's field filter
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText("Column to filter on").parent().contains("Native Filter");
+
+      getDashboardCard().within(() => {
+        cy.findByText("Column to filter on");
+        cy.findByText("Native Filter");
+      });
 
       // Update the underlying question's query
       cy.request("PUT", `/api/card/${card_id}`, {
@@ -309,14 +342,14 @@ describe("scenarios > dashboard > parameters", () => {
       filterWidget().contains("Gadget");
 
       // But the question should display the new value and is not affected by the filter
-      cy.get(".ScalarValue").invoke("text").should("eq", "1");
+      cy.findByTestId("scalar-value").invoke("text").should("eq", "1");
 
       // Confirm that it is not possible to connect filter to the updated question anymore (metabase#9299)
       cy.icon("pencil").click();
       cy.findByText(matchingFilterType.name).find(".Icon-gear").click();
-      cy.findByText(/Add a string variable to this question/).should(
-        "be.visible",
-      );
+      cy.findByText(
+        /A text variable in this card can only be connected to a text filter with Is operator/,
+      ).should("be.visible");
     });
   });
 
@@ -369,14 +402,14 @@ describe("scenarios > dashboard > parameters", () => {
     cy.createQuestionAndDashboard({ questionDetails, dashboardDetails }).then(
       ({ body: { id, card_id, dashboard_id } }) => {
         cy.log("Connect all filters to the card");
-        cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-          cards: [
+        cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+          dashcards: [
             {
               id,
               card_id,
               row: 0,
               col: 0,
-              size_x: 14,
+              size_x: 19,
               size_y: 12,
               parameter_mappings: [
                 {
@@ -429,6 +462,7 @@ describe("scenarios > dashboard > parameters", () => {
     cy.get("@fetchAllCategories").should("have.been.calledOnce");
 
     cy.button("Update filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections").click();
 
     // Even after we reopen the dropdown, it shouldn't send additional requests for values (metabase#16103)
@@ -441,6 +475,7 @@ describe("scenarios > dashboard > parameters", () => {
     });
 
     cy.button("Update filter").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("2 selections").should("not.exist");
     filterWidget().contains("Widget");
 
@@ -448,42 +483,46 @@ describe("scenarios > dashboard > parameters", () => {
     // Do not limit number of results (metabase#15695)
     // Prior to the issue being fixed, the cap was 100 results
     cy.findByPlaceholderText("Search the list").type("Syner");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Synergistic Wool Coat");
 
     cy.location("search").should(
       "eq",
-      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
+      "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
     cy.findAllByTestId("table-row").should("have.length", 1);
 
     // It should not reset previously defined filters when exiting 'edit' mode without making any changes (metabase#5332, metabase#17139)
     editDashboard();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Cancel").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("You're editing this dashboard.").should("not.exist");
 
     cy.location("search").should(
       "eq",
-      "?title=Awesome%20Concrete%20Shoes&category=Widget&vendor=McClure-Lockman",
+      "?category=Widget&title=Awesome+Concrete+Shoes&vendor=McClure-Lockman",
     );
     cy.findAllByTestId("table-row").should("have.length", 1);
   });
 
   describe("when the user does not have self-service data permissions", () => {
     beforeEach(() => {
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
       cy.findByTextEnsureVisible("Created At");
 
-      cy.icon("pencil").click();
-      cy.icon("filter").click();
-      popover().findByText("ID").click();
+      editDashboard();
+      setFilter("ID");
 
       selectDashboardFilter(getDashboardCard(), "User ID");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Save").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("You're editing this dashboard.").should("not.exist");
 
       cy.signIn("nodata");
-      visitDashboard(1);
+      visitDashboard(ORDERS_DASHBOARD_ID);
     });
 
     it("should not see mapping options", () => {
@@ -530,38 +569,233 @@ describe("scenarios > dashboard > parameters", () => {
     );
 
     editDashboard();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter1Details.name).click();
     selectDashboardFilter(getDashboardCard(), "Category");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter2Details.name).click();
     selectDashboardFilter(getDashboardCard(), "Vendor");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Linked filters").click();
-    sidebar().findByRole("switch").click();
+    sidebar().findByRole("switch").parent().get("label").click();
     saveDashboard();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter2Details.name).click();
     popover().within(() => {
       cy.findByText("Barrows-Johns").should("exist");
       cy.findByText("Balistreri-Ankunding").should("exist");
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter1Details.name).click();
     popover().within(() => {
       cy.findByText("Gadget").click();
       cy.button("Add filter").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(parameter2Details.name).click();
     popover().within(() => {
       cy.findByText("Barrows-Johns").should("exist");
       cy.findByText("Balistreri-Ankunding").should("not.exist");
     });
   });
+
+  describe("when parameters are (dis)connected to dashcards", () => {
+    beforeEach(() => {
+      createDashboardWithCards({ cards }).then(dashboardId =>
+        visitDashboard(dashboardId),
+      );
+
+      // create a disconnected filter + a default value
+      editDashboard();
+      setFilter("Time", "Relative Date");
+
+      sidebar().findByText("Default value").next().click();
+      popover().contains("Previous 7 days").click({ force: true });
+      saveDashboard();
+
+      const { interceptor } = spyRequestFinished("dashcardRequestSpy");
+
+      cy.intercept(
+        "POST",
+        "/api/dashboard/*/dashcard/*/card/*/query",
+        interceptor,
+      );
+    });
+
+    it("should not fetch dashcard data when filter is disconnected", () => {
+      cy.get("@dashcardRequestSpy").should("not.have.been.called");
+    });
+
+    it("should fetch dashcard data after save when parameter is mapped", () => {
+      // Connect filter to 2 cards
+      editDashboard();
+
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Date Filter")
+        .click();
+
+      selectDashboardFilter(getDashboardCard(0), "Created At");
+      selectDashboardFilter(getDashboardCard(1), "Created At");
+
+      saveDashboard();
+
+      cy.get("@dashcardRequestSpy").should("have.callCount", 2);
+    });
+
+    it("should fetch dashcard data when parameter mapping is removed", () => {
+      cy.log("Connect filter to 1 card only");
+
+      editDashboard();
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Date Filter")
+        .click();
+      selectDashboardFilter(getDashboardCard(0), "Created At");
+
+      saveDashboard();
+
+      cy.get("@dashcardRequestSpy").should("have.callCount", 1);
+
+      cy.log("Disconnect filter from the 1st card");
+
+      editDashboard();
+
+      cy.findByTestId("edit-dashboard-parameters-widget-container")
+        .findByText("Date Filter")
+        .click();
+
+      disconnectDashboardFilter(getDashboardCard(0));
+      saveDashboard();
+
+      cy.get("@dashcardRequestSpy").should("have.callCount", 2);
+    });
+
+    it("should not fetch dashcard data when nothing changed on save", () => {
+      editDashboard();
+      saveDashboard({ awaitRequest: false });
+
+      cy.get("@dashcardRequestSpy").should("have.callCount", 0);
+    });
+  });
+
+  describe("preserve last used value", () => {
+    beforeEach(() => {
+      const textFilter = createMockParameter({
+        name: "Text",
+        slug: "string",
+        id: "5aefc726",
+        type: "string/=",
+        sectionId: "string",
+      });
+
+      const peopleQuestionDetails = {
+        query: { "source-table": PEOPLE_ID, limit: 5 },
+      };
+
+      cy.createDashboardWithQuestions({
+        dashboardDetails: {
+          parameters: [textFilter],
+        },
+        questions: [peopleQuestionDetails],
+      }).then(({ dashboard, questions: cards }) => {
+        const [peopleCard] = cards;
+
+        updateDashboardCards({
+          dashboard_id: dashboard.id,
+          cards: [
+            {
+              card_id: peopleCard.id,
+              parameter_mappings: [
+                {
+                  parameter_id: textFilter.id,
+                  card_id: peopleCard.id,
+                  target: ["dimension", ["field", PEOPLE.NAME, null]],
+                },
+              ],
+            },
+          ],
+        });
+
+        visitDashboard(dashboard.id);
+
+        cy.wrap(dashboard.id).as("dashboardId");
+      });
+    });
+
+    it("should retain the last used value for a dashboard filter", () => {
+      cy.intercept("GET", "/api/**/items?pinned_state*").as("getPinnedItems");
+
+      filterWidget().click();
+
+      popover().within(() => {
+        multiAutocompleteInput().type("Antwan Fisher");
+        cy.button("Add filter").click();
+      });
+
+      getDashboardCard().findByText("7750 Michalik Lane").should("be.visible");
+
+      cy.visit("/collection/root");
+      cy.wait("@getPinnedItems");
+
+      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+
+      filterWidget()
+        .findByRole("listitem")
+        .should("have.text", "Antwan Fisher");
+
+      cy.log("verify filter resetting works");
+
+      filterWidget().icon("close").click();
+      getDashboardCard().findByText("761 Fish Hill Road").should("be.visible");
+    });
+
+    it("should allow resetting last used value", () => {
+      filterWidget().click();
+
+      popover().within(() => {
+        multiAutocompleteInput().type("Antwan Fisher");
+        cy.button("Add filter").click();
+      });
+
+      getDashboardCard().findByText("7750 Michalik Lane").should("be.visible");
+
+      cy.log("reset filter values from url by visiting dashboard by id");
+
+      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+
+      filterWidget().icon("close").click();
+
+      getDashboardCard().findByText("761 Fish Hill Road").should("be.visible");
+
+      cy.log("verify filter value is not specified after reload");
+
+      cy.get("@dashboardId").then(dashboardId => visitDashboard(dashboardId));
+
+      getDashboardCard().findByText("761 Fish Hill Road").should("be.visible");
+    });
+  });
 });
 
 function isFilterSelected(filter, bool) {
-  cy.findByTestId(`${filter}-filter-value`).within(() =>
-    cy
-      .findByRole("checkbox")
-      .should(`${bool === false ? "not." : ""}be.checked`),
+  cy.findByLabelText(filter).should(
+    `${bool === false ? "not." : ""}be.checked`,
   );
+}
+
+function createDashboardWithCards({
+  dashboardName = "my dash",
+  cards = [],
+} = {}) {
+  return cy
+    .createDashboard({ name: dashboardName })
+    .then(({ body: { id } }) => {
+      updateDashboardCards({
+        dashboard_id: id,
+        cards,
+      });
+
+      cy.wrap(id).as("dashboardId");
+    });
 }

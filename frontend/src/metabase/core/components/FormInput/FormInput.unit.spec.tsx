@@ -1,8 +1,8 @@
-import React from "react";
-import { Form, Formik } from "formik";
-import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Form, Formik } from "formik";
+import * as Yup from "yup";
+
 import FormInput from "./FormInput";
 
 const TEST_SCHEMA = Yup.object({
@@ -12,12 +12,14 @@ const TEST_SCHEMA = Yup.object({
 interface TestFormInputProps {
   initialValue?: string;
   optional?: boolean;
+  infoTooltip?: string;
   onSubmit: () => void;
 }
 
 const TestFormInput = ({
   initialValue = "",
   optional,
+  infoTooltip,
   onSubmit,
 }: TestFormInputProps) => {
   return (
@@ -27,7 +29,12 @@ const TestFormInput = ({
       onSubmit={onSubmit}
     >
       <Form>
-        <FormInput name="value" title="Label" optional={optional} />
+        <FormInput
+          name="value"
+          title="Label"
+          optional={optional}
+          infoTooltip={infoTooltip}
+        />
         <button type="submit">Submit</button>
       </Form>
     </Formik>
@@ -47,8 +54,8 @@ describe("FormInput", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormInput onSubmit={onSubmit} />);
-    userEvent.type(screen.getByRole("textbox"), "Text");
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.type(screen.getByRole("textbox"), "Text");
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       const values = { value: "Text" };
@@ -68,8 +75,8 @@ describe("FormInput", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormInput initialValue="Text" onSubmit={onSubmit} />);
-    userEvent.clear(screen.getByRole("textbox"));
-    userEvent.tab();
+    await userEvent.clear(screen.getByRole("textbox"));
+    await userEvent.tab();
 
     expect(await screen.findByText(": error")).toBeInTheDocument();
   });
@@ -106,5 +113,22 @@ describe("FormInput", () => {
     render(<TestFormInput initialValue="" onSubmit={onSubmit} optional />);
 
     expect(screen.getByLabelText("Label")).toBeInTheDocument();
+  });
+
+  it("should have info tooltip", async () => {
+    const onSubmit = jest.fn();
+    const infoTooltipText = "info tooltip text";
+
+    render(
+      <TestFormInput
+        initialValue=""
+        onSubmit={onSubmit}
+        optional
+        infoTooltip={infoTooltipText}
+      />,
+    );
+
+    await userEvent.hover(screen.getByLabelText("info icon"));
+    expect(screen.getByText(infoTooltipText)).toBeInTheDocument();
   });
 });

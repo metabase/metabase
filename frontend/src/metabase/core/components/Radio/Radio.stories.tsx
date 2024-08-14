@@ -1,10 +1,10 @@
-import React from "react";
+import { useArgs } from "@storybook/addons";
 import type { ComponentStory } from "@storybook/react";
-import { useArgs } from "@storybook/client-api";
+
 import Radio from "./Radio";
 
 export default {
-  title: "Core/Radio",
+  title: "Deprecated/Radio",
   component: Radio,
 };
 

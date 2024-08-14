@@ -1,18 +1,25 @@
+import { createSelector } from "@reduxjs/toolkit";
 import { normalize } from "normalizr";
 import _ from "underscore";
 
-import { createSelector } from "reselect";
-import { createEntity } from "metabase/lib/entities";
-import * as Urls from "metabase/lib/urls";
+import { databaseApi } from "metabase/api";
 import { color } from "metabase/lib/colors";
-import { fetchData, createThunkAction } from "metabase/lib/redux";
-
-import { MetabaseApi } from "metabase/services";
+import { createEntity, entityCompatibleQuery } from "metabase/lib/entities";
+import {
+  fetchData,
+  createThunkAction,
+  compose,
+  withAction,
+  withCachedDataAndRequestState,
+  withNormalize,
+} from "metabase/lib/redux";
+import * as Urls from "metabase/lib/urls";
 import { DatabaseSchema } from "metabase/schema";
-import Fields from "metabase/entities/fields";
-import Schemas from "metabase/entities/schemas";
-
-import { getMetadata, getFields } from "metabase/selectors/metadata";
+import {
+  getMetadata,
+  getMetadataUnfiltered,
+} from "metabase/selectors/metadata";
+import { isVirtualCardId } from "metabase-lib/v1/metadata/utils/saved-questions";
 
 // OBJECT ACTIONS
 export const FETCH_DATABASE_METADATA =
@@ -23,6 +30,9 @@ export const FETCH_DATABASE_SCHEMAS =
 export const FETCH_DATABASE_IDFIELDS =
   "metabase/entities/database/FETCH_DATABASE_IDFIELDS";
 
+/**
+ * @deprecated use "metabase/api" instead
+ */
 const Databases = createEntity({
   name: "databases",
   path: "/api/database",
@@ -30,6 +40,35 @@ const Databases = createEntity({
 
   nameOne: "database",
   nameMany: "databases",
+
+  api: {
+    list: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.listDatabases,
+      ),
+    get: (entityQuery, options, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.getDatabase,
+      ),
+    create: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.createDatabase,
+      ),
+    update: (entityQuery, dispatch) =>
+      entityCompatibleQuery(
+        entityQuery,
+        dispatch,
+        databaseApi.endpoints.updateDatabase,
+      ),
+    delete: ({ id }, dispatch) =>
+      entityCompatibleQuery(id, dispatch, databaseApi.endpoints.deleteDatabase),
+  },
 
   // ACTION CREATORS
   objectActions: {
@@ -43,26 +82,32 @@ const Databases = createEntity({
             requestStatePath: ["metadata", "databases", id],
             existingStatePath: ["metadata", "databases", id],
             getData: async () => {
-              const databaseMetadata = await MetabaseApi.db_metadata({
-                dbId: id,
-                ...params,
-              });
+              const databaseMetadata = await entityCompatibleQuery(
+                { id, ...params },
+                dispatch,
+                databaseApi.endpoints.getDatabaseMetadata,
+              );
               return normalize(databaseMetadata, DatabaseSchema);
             },
             reload,
           }),
     ),
-
-    fetchIdfields: createThunkAction(
-      FETCH_DATABASE_IDFIELDS,
-      ({ id }, params = {}) =>
-        async () =>
-          normalize(await MetabaseApi.db_idfields({ dbId: id, ...params }), [
-            Fields.schema,
-          ]),
-    ),
-
-    fetchSchemas: ({ id }) => Schemas.actions.fetchList({ dbId: id }),
+    fetchIdFields: compose(
+      withAction(FETCH_DATABASE_IDFIELDS),
+      withCachedDataAndRequestState(
+        ({ id }) => [...Databases.getObjectStatePath(id)],
+        ({ id }) => [...Databases.getObjectStatePath(id), "idFields"],
+        entityQuery => Databases.getQueryKey(entityQuery),
+      ),
+      withNormalize(DatabaseSchema),
+    )(({ id, ...params }) => async dispatch => {
+      const idFields = await entityCompatibleQuery(
+        { id, ...params },
+        dispatch,
+        databaseApi.endpoints.listDatabaseIdFields,
+      );
+      return { id, idFields };
+    }),
   },
 
   objectSelectors: {
@@ -75,15 +120,31 @@ const Databases = createEntity({
   selectors: {
     getObject: (state, { entityId }) => getMetadata(state).database(entityId),
 
+    // these unfiltered selectors include hidden tables/fields for display in the admin panel
+    getObjectUnfiltered: (state, { entityId }) =>
+      getMetadataUnfiltered(state).database(entityId),
+
+    getListUnfiltered: (state, { entityQuery }) => {
+      const entityIds =
+        Databases.selectors.getEntityIds(state, { entityQuery }) ?? [];
+      return entityIds.map(entityId =>
+        Databases.selectors.getObjectUnfiltered(state, { entityId }),
+      );
+    },
+
     getHasSampleDatabase: (state, props) =>
       _.any(Databases.selectors.getList(state, props), db => db.is_sample),
-    getIdfields: createSelector(
-      // we wrap getFields to handle a circular dep issue
-      [state => getFields(state), (state, props) => props.databaseId],
+
+    getIdFields: createSelector(
+      [
+        state => getMetadata(state).fieldsList(),
+        (state, props) => props.databaseId,
+      ],
       (fields, databaseId) =>
-        Object.values(fields).filter(f => {
-          const { db_id } = f.table || {}; // a field's table can be null
-          return db_id === databaseId && f.isPK();
+        fields.filter(field => {
+          const dbId = field?.table?.db_id;
+          const isRealField = !isVirtualCardId(field.table_id);
+          return dbId === databaseId && isRealField && field.isPK();
         }),
     ),
   },

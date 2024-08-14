@@ -1,11 +1,12 @@
 (ns metabase.logger-test
   (:require
+   [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
    #_{:clj-kondo/ignore [:discouraged-namespace]}
    [clojure.tools.logging :as log]
    [clojure.tools.logging.impl :as log.impl]
-   [metabase.logger :as mb.logger]
+   [metabase.logger :as logger]
    [metabase.test :as mt])
   (:import
    (org.apache.logging.log4j.core Logger)))
@@ -28,7 +29,7 @@
       (is (some (fn [{message :msg, :as entry}]
                   (when (str/includes? (str message) "testing in-memory logger")
                     entry))
-                (mb.logger/messages))
+                (logger/messages))
           "In memory ring buffer did not receive log message")))
 
   (testing "set isAdditive = false if parent logger is root to prevent logging to console (#26468)"
@@ -56,4 +57,40 @@
     (is (not (some (fn [{message :msg, :as entry}]
                      (when (str/includes? (str message) "THIS SHOULD NOT SHOW UP")
                        entry))
-                   (mb.logger/messages))))))
+                   (logger/messages))))))
+
+(deftest fork-logs-test
+  (testing "logger/for-ns works properly"
+    (let [f (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))]
+      (try
+        (with-open [_ (logger/for-ns f 'metabase.logger-test {:additive false})]
+          (log/info "just a test"))
+        (is (=? [#".*just a test$"]
+                (line-seq (io/reader f))))
+        (finally
+          (when (.exists f)
+            (io/delete-file f)))))
+    (let [baos (java.io.ByteArrayOutputStream.)]
+      (with-open [_ (logger/for-ns baos 'metabase.logger-test {:additive false})]
+        (log/info "just a test"))
+      (log/info "this line is not going into our stream")
+      (testing "We catched the line we needed and did not catch the other one"
+        (is (=? [#".*just a test$"]
+                (line-seq (io/reader (.toByteArray baos))))))))
+
+  (testing "We can capture few separate namespaces"
+    (let [f (io/file (System/getProperty "java.io.tmpdir") (mt/random-name))]
+      (try
+        (with-open [_ (logger/for-ns f ['metabase.logger-test
+                                        'metabase.unknown]
+                                     {:additive false})]
+          (log/info "just a test")
+          (log/log 'metabase.unknown :info nil "separate test")
+          (testing "Check that `for-ns` will skip non-specified namespaces"
+            (log/log 'metabase.unknown2 :info nil "this one going into standard log")))
+        (is (=? [#".*just a test$"
+                 #".*separate test$"]
+                (line-seq (io/reader f))))
+        (finally
+          (when (.exists f)
+            (io/delete-file f)))))))

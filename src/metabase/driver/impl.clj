@@ -2,11 +2,12 @@
   "Internal implementation functions for [[metabase.driver]]. These functions live in a separate namespace to reduce the
   clutter in [[metabase.driver]] itself."
   (:require
+   [metabase.lib.util :as lib.util]
    [metabase.plugins.classloader :as classloader]
    [metabase.util :as u]
    [metabase.util.i18n :refer [trs tru]]
    [metabase.util.log :as log]
-   [schema.core :as s])
+   [metabase.util.malli :as mu])
   (:import
    (java.util.concurrent.locks ReentrantReadWriteLock)))
 
@@ -17,7 +18,6 @@
 (defonce ^{:doc "Driver hierarchy. Used by driver multimethods for dispatch. Add new drivers with `register!`."}
   hierarchy
   (make-hierarchy))
-
 
 (defonce ^{:doc "To find out whether a driver has been registered, we need to wait until any current driver-loading
   operations have finished. Otherwise we can get a \"false positive\" -- see #13114.
@@ -64,7 +64,7 @@
 
 ;;; -------------------------------------------- Loading Driver Namespace --------------------------------------------
 
-(s/defn ^:private driver->expected-namespace [driver :- s/Keyword]
+(mu/defn- driver->expected-namespace [driver :- :keyword]
   (symbol
    (or (namespace driver)
        (str "metabase.driver." (name driver)))))
@@ -73,12 +73,11 @@
   "`require` a driver's 'expected' namespace."
   [driver & require-options]
   (let [expected-ns (driver->expected-namespace driver)]
-    (log/debug
-     (trs "Loading driver {0} {1}" (u/format-color 'blue driver) (apply list 'require expected-ns require-options)))
+    (log/debugf "Loading driver %s %s" (u/format-color 'blue driver) (apply list 'require expected-ns require-options))
     (try
       (apply classloader/require expected-ns require-options)
       (catch Throwable e
-        (log/error e (tru "Error loading driver namespace"))
+        (log/error e "Error loading driver namespace")
         (throw (Exception. (tru "Could not load {0} driver." driver) e))))))
 
 (defn load-driver-namespace-if-needed!
@@ -153,7 +152,7 @@
         (doseq [parent parents
                 :when  (concrete? parent)]
           (throw (ex-info (trs "Abstract drivers cannot derive from concrete parent drivers.")
-                   {:driver driver, :parent parent}))))
+                          {:driver driver, :parent parent}))))
       ;; validate that the registration isn't stomping on things
       (check-abstractness-hasnt-changed driver abstract?)
       ;; ok, if that was successful we can derive the driver from `:metabase.driver/driver`/`::concrete` and parent(s)
@@ -166,11 +165,12 @@
       ;; ok, log our great success
       (log/info
        (u/format-color 'blue
-           (if (metabase.driver.impl/abstract? driver)
-             (trs "Registered abstract driver {0}" driver)
-             (trs "Registered driver {0}" driver)))
+                       (format (if (metabase.driver.impl/abstract? driver)
+                                 "Registered abstract driver %s"
+                                 "Registered driver %s")
+                               driver))
        (if (seq parents)
-         (trs "(parents: {0})" (vec parents))
+         (format "(parents: %s)" (vec parents))
          "")
        (u/emoji "🚚")))))
 
@@ -208,30 +208,13 @@
         ;; and once we acquire the lock, check one more time to make sure the driver didn't get initialized by
         ;; whatever thread(s) we were waiting on.
         (when-not (initialized? driver)
-          (log/info (u/format-color 'yellow (trs "Initializing driver {0}..." driver)))
-          (log/debug (trs "Reason:") (u/pprint-to-str 'blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
+          (log/info (u/format-color :yellow "Initializing driver %s..." driver))
+          (log/debug "Reason:" (u/pprint-to-str :blue (drop 5 (u/filtered-stacktrace (Thread/currentThread)))))
           (init-fn driver)
           (swap! initialized-drivers conj driver))))))
 
 
 ;;; ----------------------------------------------- [[truncate-alias]] -----------------------------------------------
-
-;; To truncate a string to a number of bytes we just iterate thru it character-by-character and keep a cumulative count
-;; of the total number of bytes up to the current character. Once we exceed `max-length-bytes` we return the substring
-;; from the character before we went past the limit.
-(defn- truncate-string-to-byte-count
-  "Truncate string `s` to `max-length-bytes` UTF-8 bytes (as opposed to truncating to some number of *characters*)."
-  ^String [^String s max-length-bytes]
-  {:pre [(not (neg? max-length-bytes))]}
-  (loop [i 0, cumulative-byte-count 0]
-    (cond
-      (= cumulative-byte-count max-length-bytes) (subs s 0 i)
-      (> cumulative-byte-count max-length-bytes) (subs s 0 (dec i))
-      (>= i (count s))                           s
-      :else                                      (recur (inc i)
-                                                        (+
-                                                         cumulative-byte-count
-                                                         (count (.getBytes (str (.charAt s i)) "UTF-8")))))))
 
 (def default-alias-max-length-bytes
   "Default length to truncate column and table identifiers to for the default implementation
@@ -240,11 +223,6 @@
   ;; https://www.postgresql.org/docs/current/sql-syntax-lexical.html#SQL-SYNTAX-IDENTIFIERS so we'll limit the
   ;; identifiers we generate to 60 bytes so we have room to add `_2` and stuff without drama
   60)
-
-(def ^:private truncated-alias-hash-suffix-length
-  "Length of the hash suffixed to truncated strings by [[truncate-alias]]."
-  ;; 8 bytes for the CRC32 plus one for the underscore
-  9)
 
 (defn truncate-alias
   "Truncate string `s` if it is longer than `max-length-bytes` (default [[default-alias-max-length-bytes]]) and append a
@@ -258,13 +236,4 @@
    (truncate-alias s default-alias-max-length-bytes))
 
   (^String [^String s max-length-bytes]
-   ;; we can't truncate to something SHORTER than the suffix length. This precondition is here mostly to make sure
-   ;; driver authors don't try to do something INSANE -- it shouldn't get hit during normal usage if a driver is
-   ;; implemented properly.
-   {:pre [(string? s) (integer? max-length-bytes) (> max-length-bytes truncated-alias-hash-suffix-length)]}
-   (if (<= (count (.getBytes s "UTF-8")) max-length-bytes)
-     s
-     (let [checksum  (Long/toHexString (.getValue (doto (java.util.zip.CRC32.)
-                                                   (.update (.getBytes s "UTF-8")))))
-           truncated (truncate-string-to-byte-count s (- max-length-bytes truncated-alias-hash-suffix-length))]
-       (str truncated \_ checksum)))))
+   (lib.util/truncate-alias s max-length-bytes)))

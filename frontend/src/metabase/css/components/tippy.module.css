@@ -1,0 +1,7 @@
+:global(.tippy-content) {
+  white-space: pre-wrap;
+}
+
+:global(.tippy-box) {
+  color: inherit;
+}

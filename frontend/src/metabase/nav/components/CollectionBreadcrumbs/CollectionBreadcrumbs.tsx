@@ -1,20 +1,30 @@
-import React from "react";
+import { Fragment } from "react";
+
 import { useToggle } from "metabase/hooks/use-toggle";
-import { isRootCollection } from "metabase/collections/utils";
-import CollectionBadge from "metabase/questions/components/CollectionBadge";
-import { Collection } from "metabase-types/api";
+import { CollectionBadge } from "metabase/questions/components/CollectionBadge";
+import type {
+  Collection,
+  CollectionEssentials,
+  CollectionId,
+} from "metabase-types/api";
+
 import {
   ExpandButton,
   PathContainer,
-  PathSeparator,
+  BreadcrumbsPathSeparator,
 } from "./CollectionBreadcrumbs.styled";
+import { getCollectionList } from "./utils";
 
 export interface CollectionBreadcrumbsProps {
   collection?: Collection;
+  onClick?: (collection: CollectionEssentials) => void;
+  baseCollectionId: CollectionId | null;
 }
 
 export const CollectionBreadcrumbs = ({
   collection,
+  onClick,
+  baseCollectionId = null,
 }: CollectionBreadcrumbsProps): JSX.Element | null => {
   const [isExpanded, { toggle }] = useToggle(false);
 
@@ -22,39 +32,41 @@ export const CollectionBreadcrumbs = ({
     return null;
   }
 
-  const ancestors = collection.effective_ancestors || [];
-  const hasRoot = ancestors[0] && isRootCollection(ancestors[0]);
-  const parts = hasRoot ? ancestors.splice(0, 1) : ancestors;
+  const parts = getCollectionList({
+    baseCollectionId,
+    collection,
+  });
+
+  const separator = <BreadcrumbsPathSeparator>/</BreadcrumbsPathSeparator>;
 
   const content =
     parts.length > 1 && !isExpanded ? (
       <>
         <CollectionBadge
           collectionId={parts[0].id}
-          inactiveColor="text-medium"
           isSingleLine
+          onClick={onClick ? () => onClick(collection) : undefined}
         />
-        <PathSeparator>/</PathSeparator>
+        {separator}
         <ExpandButton
           small
           borderless
-          iconSize={10}
           icon="ellipsis"
           onlyIcon
           onClick={toggle}
         />
-        <PathSeparator>/</PathSeparator>
+        {separator}
       </>
     ) : (
       parts.map(collection => (
-        <>
+        <Fragment key={collection.id}>
           <CollectionBadge
             collectionId={collection.id}
-            inactiveColor="text-medium"
             isSingleLine
+            onClick={onClick ? () => onClick(collection) : undefined}
           />
-          <PathSeparator>/</PathSeparator>
-        </>
+          {separator}
+        </Fragment>
       ))
     );
 
@@ -63,11 +75,12 @@ export const CollectionBreadcrumbs = ({
       {content}
       <CollectionBadge
         collectionId={collection.id}
-        inactiveColor="text-medium"
         isSingleLine
+        onClick={onClick ? () => onClick(collection) : undefined}
       />
     </PathContainer>
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default CollectionBreadcrumbs;

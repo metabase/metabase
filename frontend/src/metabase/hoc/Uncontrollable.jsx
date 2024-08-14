@@ -1,5 +1,5 @@
-import React from "react";
 import PropTypes from "prop-types";
+import { Component } from "react";
 
 import { getDisplayName } from "./utils";
 
@@ -7,7 +7,7 @@ import { getDisplayName } from "./utils";
 // i.e. https://reactjs.org/docs/uncontrolled-components.html
 
 const Uncontrollable = () => WrappedComponent =>
-  class extends React.Component {
+  class extends Component {
     static displayName = `Uncontrollable(${getDisplayName(WrappedComponent)})`;
 
     constructor(props) {

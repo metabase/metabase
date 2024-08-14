@@ -1,48 +1,67 @@
-import React from "react";
-import _ from "underscore";
-import fetchMock from "fetch-mock";
-import userEvent from "@testing-library/user-event";
 import { waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import _ from "underscore";
 
-import { render, screen } from "__support__/ui";
-
+import { getIcon, render, screen } from "__support__/ui";
 import {
   createMockActionParameter,
-  createMockQueryAction,
+  createMockFieldSettings,
   createMockImplicitQueryAction,
-  createMockDashboard,
+  createMockQueryAction,
 } from "metabase-types/api/mocks";
 
+import type { ActionParametersInputFormProps } from "./ActionParametersInputForm";
 import ActionParametersInputForm from "./ActionParametersInputForm";
+import type { ActionParametersInputModalProps } from "./ActionParametersInputModal";
 import ActionParametersInputModal from "./ActionParametersInputModal";
 
-const defaultProps = {
-  missingParameters: [
-    createMockActionParameter({
-      id: "parameter_1",
-      type: "type/Text",
-    }),
-    createMockActionParameter({
-      id: "parameter_2",
-      type: "type/Text",
-    }),
-  ],
-  dashcardParamValues: {},
-  action: createMockQueryAction(),
-  dashboard: createMockDashboard({ id: 123 }),
-  dashcard: createMockDashboard({ id: 456 }),
-  onSubmit: jest.fn(() => ({ success: true })),
+const parameter1 = createMockActionParameter({
+  id: "parameter_1",
+  name: "Parameter 1",
+  type: "type/Text",
+});
+
+const parameter2 = createMockActionParameter({
+  id: "parameter_2",
+  name: "Parameter 2",
+  type: "type/Text",
+});
+
+const mockAction = createMockQueryAction({
+  parameters: [parameter1, parameter2],
+  visualization_settings: {
+    fields: {
+      parameter_1: createMockFieldSettings({
+        id: "parameter_1",
+        placeholder: "Parameter 1 placeholder",
+      }),
+      parameter_2: createMockFieldSettings({
+        id: "parameter_1",
+        placeholder: "Parameter 2 placeholder",
+      }),
+    },
+  },
+});
+
+const defaultProps: ActionParametersInputFormProps = {
+  action: mockAction,
+  mappedParameters: [],
+  prefetchesInitialValues: false,
+  initialValues: {},
   onCancel: _.noop,
   onSubmitSuccess: _.noop,
+  onSubmit: jest.fn().mockResolvedValue({ success: true }),
 };
 
-async function setup(options?: any) {
+function setup(options?: Partial<ActionParametersInputModalProps>) {
   render(<ActionParametersInputForm {...defaultProps} {...options} />);
 }
 
-async function setupModal(options?: any) {
+async function setupModal(options?: Partial<ActionParametersInputModalProps>) {
   render(
     <ActionParametersInputModal
+      showEmptyState={false}
       title="Test Modal"
       onClose={_.noop}
       {...defaultProps}
@@ -69,27 +88,27 @@ describe("Actions > ActionParametersInputForm", () => {
   it("should call onCancel when clicking the cancel button", async () => {
     const cancelSpy = jest.fn();
     await setup({ onCancel: cancelSpy });
-    userEvent.click(screen.getByText("Cancel"));
+    await userEvent.click(screen.getByText("Cancel"));
     expect(cancelSpy).toHaveBeenCalled();
   });
 
   it("passes form values to submit handler", async () => {
-    const submitSpy = jest.fn(() => ({ success: true }));
+    const submitSpy = jest.fn().mockResolvedValue({ success: true });
     await setup({
       onSubmit: submitSpy,
     });
 
-    userEvent.type(screen.getByLabelText("Parameter 1"), "uno");
+    await userEvent.type(screen.getByLabelText("Parameter 1"), "uno");
     await waitFor(() =>
       expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno"),
     );
 
-    userEvent.type(screen.getByLabelText("Parameter 2"), "dos");
+    await userEvent.type(screen.getByLabelText("Parameter 2"), "dos");
     await waitFor(() =>
       expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos"),
     );
 
-    userEvent.click(screen.getByText("Run"));
+    await userEvent.click(screen.getByText(mockAction.name));
 
     await waitFor(() => {
       expect(submitSpy).toHaveBeenCalledWith({
@@ -100,17 +119,21 @@ describe("Actions > ActionParametersInputForm", () => {
   });
 
   it("should generate field types from parameter types", async () => {
-    const missingParameters = [
-      createMockActionParameter({
-        id: "parameter_1",
-        type: "type/Text",
-      }),
-      createMockActionParameter({
-        id: "parameter_2",
-        type: "type/Integer",
-      }),
-    ];
-    await setup({ missingParameters });
+    const action = createMockImplicitQueryAction({
+      parameters: [
+        createMockActionParameter({
+          id: "parameter_1",
+          "display-name": "Parameter 1",
+          type: "type/Text",
+        }),
+        createMockActionParameter({
+          id: "parameter_2",
+          "display-name": "Parameter 2",
+          type: "type/Integer",
+        }),
+      ],
+    });
+    await setup({ action });
 
     expect(screen.getByPlaceholderText("Parameter 1")).toHaveAttribute(
       "type",
@@ -122,47 +145,12 @@ describe("Actions > ActionParametersInputForm", () => {
     );
   });
 
-  it("should fetch and load existing values from API for implicit update actions", async () => {
-    setupPrefetch();
-
-    await setup({
-      action: createMockImplicitQueryAction({
-        type: "implicit",
-        kind: "row/update",
-      }),
-      dashcardParamValues: {
-        id: 888,
-      },
-    });
-
-    await waitFor(async () => {
-      expect(screen.getByLabelText("Parameter 1")).toHaveValue("uno");
-    });
-
-    await waitFor(async () => {
-      expect(screen.getByLabelText("Parameter 2")).toHaveValue("dos");
-    });
-  });
-
-  it("should show a warning if an implicit update action does not have a linked ID", async () => {
-    await setup({
-      action: createMockImplicitQueryAction({
-        type: "implicit",
-        kind: "row/update",
-      }),
-      dashcardParamValues: {},
-    });
-
-    expect(screen.getByText(/Choose a record to update/i)).toBeInTheDocument();
-  });
-
   it('should change the submit button label to "delete" for an implicit delete action', async () => {
     await setup({
       action: createMockImplicitQueryAction({
         type: "implicit",
         kind: "row/delete",
       }),
-      missingParameters: [],
       showConfirmMessage: true,
     });
 
@@ -177,9 +165,10 @@ describe("Actions > ActionParametersInputForm", () => {
         type: "implicit",
         kind: "row/update",
       }),
-      dashcardParamValues: {
+      initialValues: {
         id: 888,
       },
+      prefetchesInitialValues: true,
     });
 
     expect(
@@ -193,10 +182,9 @@ describe("Actions > ActionParametersInputForm", () => {
 
       expect(screen.getByText("My Test Modal")).toBeInTheDocument();
       expect(screen.getByTestId("action-form")).toBeInTheDocument();
-      expect(screen.getByPlaceholderText("Parameter 1")).toHaveAttribute(
-        "type",
-        "text",
-      );
+      expect(
+        screen.getByPlaceholderText("Parameter 1 placeholder"),
+      ).toHaveAttribute("type", "text");
     });
 
     it("should show a delete confirm message with the showConfirmMessage prop", async () => {
@@ -206,13 +194,29 @@ describe("Actions > ActionParametersInputForm", () => {
           type: "implicit",
           kind: "row/delete",
         }),
-        missingParameters: [],
         showConfirmMessage: true,
       });
 
       expect(
         screen.getByText(/this action cannot be undone/i),
       ).toBeInTheDocument();
+    });
+
+    it("should render action edit action icon if onEdit is passed", async () => {
+      const onEditMock = jest.fn();
+
+      await setupModal({ onEdit: onEditMock });
+
+      const editActionTrigger = getIcon("pencil");
+      expect(editActionTrigger).toBeInTheDocument();
+
+      await userEvent.hover(editActionTrigger);
+
+      expect(screen.getByText("Edit this action")).toBeInTheDocument();
+
+      await userEvent.click(editActionTrigger);
+
+      expect(onEditMock).toHaveBeenCalledTimes(1);
     });
   });
 });

@@ -1,0 +1,334 @@
+[
+  {
+    "card": {
+      "description": null,
+      "archived": false,
+      "collection_position": null,
+      "table_id": 154,
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1416, null],
+          "effective_type": "type/BigInteger",
+          "id": 1416,
+          "visibility_type": "normal",
+          "display_name": "Mb Row ID",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": "type/CreationDate",
+          "coercion_strategy": null,
+          "unit": "default",
+          "name": "date",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1417, { "temporal-unit": "default" }],
+          "effective_type": "type/Date",
+          "id": 1417,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": { "distinct-count": 1460, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/Date"
+        },
+        {
+          "description": null,
+          "semantic_type": "type/Quantity",
+          "coercion_strategy": null,
+          "name": "total_accident",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1418, null],
+          "effective_type": "type/BigInteger",
+          "id": 1418,
+          "visibility_type": "normal",
+          "display_name": "Total Accident",
+          "fingerprint": {
+            "global": { "distinct-count": 310, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 128,
+                "q1": 333.7211770961825,
+                "q3": 425.76625335908,
+                "max": 567,
+                "sd": 67.95279959530245,
+                "avg": 378.49486652977413
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "include_xls": false,
+      "database_id": 2,
+      "enable_embedding": false,
+      "collection_id": 10,
+      "query_type": "query",
+      "name": "Waterfall Timeseries Data Labels - UK Car Accidents",
+      "creator_id": 1,
+      "updated_at": "2023-12-21T20:40:36.089881Z",
+      "made_public_by_id": null,
+      "embedding_params": null,
+      "cache_ttl": null,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "source-table": "card__101",
+          "filter": [
+            "between",
+            ["field", 1417, { "base-type": "type/Date" }],
+            "2016-12-01",
+            "2016-12-31"
+          ]
+        }
+      },
+      "id": 196,
+      "parameter_mappings": [],
+      "include_csv": false,
+      "display": "waterfall",
+      "entity_id": "b11cdsakD_Fg--tYVSaOp",
+      "collection_preview": true,
+      "visualization_settings": {
+        "table.column_widths": [null, 226],
+        "graph.show_values": true,
+        "graph.series_order_dimension": null,
+        "graph.y_axis.scale": "linear",
+        "graph.metrics": ["total_accident"],
+        "graph.series_order": null,
+        "series_settings": { "total_accident": { "color": "#227FD2" } },
+        "graph.dimensions": ["date"],
+        "waterfall.show_total": true
+      },
+      "metabase_version": "v1.47.1-SNAPSHOT (b37c32d)",
+      "parameters": [],
+      "dataset": false,
+      "created_at": "2023-12-21T20:40:36.089881Z",
+      "public_uuid": null
+    },
+    "data": {
+      "results_timezone": "America/Los_Angeles",
+      "download_perms": "full",
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": "type/PK",
+            "coercion_strategy": null,
+            "name": "_mb_row_id",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1416, null],
+            "effective_type": "type/BigInteger",
+            "id": 1416,
+            "visibility_type": "normal",
+            "display_name": "Mb Row ID",
+            "fingerprint": null,
+            "base_type": "type/BigInteger"
+          },
+          {
+            "description": null,
+            "semantic_type": "type/CreationDate",
+            "coercion_strategy": null,
+            "unit": "default",
+            "name": "date",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1417, { "temporal-unit": "default" }],
+            "effective_type": "type/Date",
+            "id": 1417,
+            "visibility_type": "normal",
+            "display_name": "Date",
+            "fingerprint": {
+              "global": { "distinct-count": 1460, "nil%": 0 },
+              "type": {
+                "type/DateTime": {
+                  "earliest": "2014-01-01",
+                  "latest": "2017-12-31"
+                }
+              }
+            },
+            "base_type": "type/Date"
+          },
+          {
+            "description": null,
+            "semantic_type": "type/Quantity",
+            "coercion_strategy": null,
+            "name": "total_accident",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 1418, null],
+            "effective_type": "type/BigInteger",
+            "id": 1418,
+            "visibility_type": "normal",
+            "display_name": "Total Accident",
+            "fingerprint": {
+              "global": { "distinct-count": 310, "nil%": 0 },
+              "type": {
+                "type/Number": {
+                  "min": 128,
+                  "q1": 333.7211770961825,
+                  "q3": 425.76625335908,
+                  "max": 567,
+                  "sd": 67.95279959530245,
+                  "avg": 378.49486652977413
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          }
+        ]
+      },
+      "rows": [
+        [1066, "2016-12-01T00:00:00-08:00", 537],
+        [1067, "2016-12-02T00:00:00-08:00", 487],
+        [1068, "2016-12-03T00:00:00-08:00", 331],
+        [1069, "2016-12-04T00:00:00-08:00", 333],
+        [1070, "2016-12-05T00:00:00-08:00", 394],
+        [1071, "2016-12-06T00:00:00-08:00", 402],
+        [1072, "2016-12-07T00:00:00-08:00", 487],
+        [1073, "2016-12-08T00:00:00-08:00", 472],
+        [1074, "2016-12-09T00:00:00-08:00", 519],
+        [1075, "2016-12-10T00:00:00-08:00", 322],
+        [1076, "2016-12-11T00:00:00-08:00", 322],
+        [1077, "2016-12-12T00:00:00-08:00", 377],
+        [1078, "2016-12-13T00:00:00-08:00", 439],
+        [1079, "2016-12-14T00:00:00-08:00", 437],
+        [1080, "2016-12-15T00:00:00-08:00", 410],
+        [1081, "2016-12-16T00:00:00-08:00", 486],
+        [1082, "2016-12-17T00:00:00-08:00", 294],
+        [1083, "2016-12-18T00:00:00-08:00", 265],
+        [1084, "2016-12-19T00:00:00-08:00", 372],
+        [1085, "2016-12-20T00:00:00-08:00", 383],
+        [1086, "2016-12-21T00:00:00-08:00", 411],
+        [1087, "2016-12-22T00:00:00-08:00", 419],
+        [1088, "2016-12-23T00:00:00-08:00", 356],
+        [1089, "2016-12-24T00:00:00-08:00", 274],
+        [1090, "2016-12-25T00:00:00-08:00", 138],
+        [1091, "2016-12-26T00:00:00-08:00", 187],
+        [1092, "2016-12-27T00:00:00-08:00", 261],
+        [1093, "2016-12-28T00:00:00-08:00", 286],
+        [1094, "2016-12-29T00:00:00-08:00", 295],
+        [1095, "2016-12-30T00:00:00-08:00", 249],
+        [1096, "2016-12-31T00:00:00-08:00", 201]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": "type/PK",
+          "table_id": 154,
+          "coercion_strategy": null,
+          "name": "_mb_row_id",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1416, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1416,
+          "position": 0,
+          "visibility_type": "normal",
+          "display_name": "Mb Row ID",
+          "fingerprint": null,
+          "base_type": "type/BigInteger"
+        },
+        {
+          "description": null,
+          "semantic_type": "type/CreationDate",
+          "table_id": 154,
+          "coercion_strategy": null,
+          "unit": "default",
+          "name": "date",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1417, { "temporal-unit": "default" }],
+          "effective_type": "type/Date",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1417,
+          "position": 1,
+          "visibility_type": "normal",
+          "display_name": "Date",
+          "fingerprint": {
+            "global": { "distinct-count": 1460, "nil%": 0 },
+            "type": {
+              "type/DateTime": {
+                "earliest": "2014-01-01",
+                "latest": "2017-12-31"
+              }
+            }
+          },
+          "base_type": "type/Date"
+        },
+        {
+          "description": null,
+          "semantic_type": "type/Quantity",
+          "table_id": 154,
+          "coercion_strategy": null,
+          "name": "total_accident",
+          "settings": null,
+          "source": "fields",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 1418, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 1418,
+          "position": 2,
+          "visibility_type": "normal",
+          "display_name": "Total Accident",
+          "fingerprint": {
+            "global": { "distinct-count": 310, "nil%": 0 },
+            "type": {
+              "type/Number": {
+                "min": 128,
+                "q1": 333.7211770961825,
+                "q3": 425.76625335908,
+                "max": 567,
+                "sd": 67.95279959530245,
+                "avg": 378.49486652977413
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        }
+      ],
+      "viz-settings": {
+        "table.column_widths": [null, 226],
+        "graph.show_values": true,
+        "metabase.shared.models.visualization-settings/column-settings": {},
+        "graph.series_order_dimension": null,
+        "graph.y_axis.scale": "linear",
+        "graph.metrics": ["total_accident"],
+        "graph.series_order": null,
+        "metabase.shared.models.visualization-settings/global-column-settings": {},
+        "series_settings": { "total_accident": { "color": "#227FD2" } },
+        "graph.dimensions": ["date"],
+        "waterfall.show_total": true
+      },
+      "native_form": {
+        "query": "SELECT \"source\".\"_mb_row_id\" AS \"_mb_row_id\", \"source\".\"date\" AS \"date\", \"source\".\"total_accident\" AS \"total_accident\" FROM (SELECT \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"_mb_row_id\" AS \"_mb_row_id\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"date\" AS \"date\", \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\".\"total_accident\" AS \"total_accident\" FROM \"csv_upload_data\".\"csv_upload_uk_car_accidents_20231202102102\") AS \"source\" WHERE (\"source\".\"date\" >= timestamp with time zone '2016-12-01 00:00:00.000-08:00') AND (\"source\".\"date\" < timestamp with time zone '2017-01-01 00:00:00.000-08:00') LIMIT 2000",
+        "params": null
+      },
+      "is_sandboxed": false,
+      "dataset": true,
+      "insights": null
+    }
+  }
+]

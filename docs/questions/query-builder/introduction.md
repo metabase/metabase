@@ -20,36 +20,35 @@ From the **+ New** dropdown, select **Question**, then pick your starting data:
 You can start a question from:
 
 - **A model**. A [model](../../data-modeling/models.md) is a special kind of saved question meant to be used as a good starting point for questions. Sometimes these are called derived tables, as they usually pull together data from multiple raw tables.
-- **Raw data**. You'll need to specify the database and the table in that database as the starting point for your question.
+- **Tables**. You'll need to specify the database and the table in that database as the starting point for your question.
 - A **saved question**. You can use the results of any question as the starting point for a new question.
 
 Note that there are some kinds of saved questions that can't be used as source data:
 
 - Druid questions
-- Google Analytics questions
 - Mongo questions
 - Questions that use `Cumulative Sum` or `Cumulative Count` aggregations
 - Questions that have columns that are named the same or similar thing, like `Count` and `Count 2`
 
 ## The query builder
 
-Once you select your data, Metabase will take you the query builder. Say you selected **Raw data** > **Sample database** > **Orders**, then you'll see something like this:
+Once you select your data, Metabase will take you to the query builder. Say you selected **Tables** > **Sample database** > **Orders**, then you'll see something like this:
 
 ![Metabase query builder](../images/notebook-editor.png)
 
-This is the query builder's notebook editor. It has three default steps.
+This is the query builder's editor. It has three default steps.
 
 - [Picking data](#picking-data)
 - [Filtering](#filtering)
 - [Summarizing and grouping by](#summarizing-and-grouping-by)
 
-To the right of completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
+To the right of each completed step is a **Preview** button (looks like a Play button - a triangle pointing to the right) that shows you the first 10 rows of the results of your question up to that step.
 
 ![Previewing results](../images/preview-table.png)
 
 ## Picking data
 
-The data section is where you select the data you want to work with. Here you'll pick a [model][model], a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results.
+The data section is where you select the data you want to work with. Here you'll pick a [model](../../data-modeling/models.md), a table from a database, or a saved question. You can click on a table to select which columns you want to include in your results. See also [adding or removing columns in a table](#adding-or-removing-columns-in-a-table).
 
 ## Joining data
 
@@ -67,42 +66,45 @@ You can add subsequent filter steps after each summarize step. This lets you do 
 
 Once you're happy with your filter, click **Add filter**, and visualize your results. Your data will be updated with the filter applied.
 
-![An active filter](../images/filter-badge.png)
-
 If you want to edit your filter, just click the little purple filter at the top of the screen. If you click on the X, you'll remove your filter. You can add as many filters as you need.
 
 ## Filter types
 
-Broadly speaking, there are three types of columns, each with their own set of filtering options:
+Depending on the data type of the column, Metabase will present different filtering options.
 
 - **Numeric columns** let you add filters to only include rows in your table where this number is between two specific values, or is greater or less than a specific value, or is exactly equal to something.
-- **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, or you can exclude empty cells in that column.
-- **Date** columns give you a lot of options to filter by specific date ranges, relative date ranges, and more.
+- **Text or category columns** let you specify that you only want to include data where this column is or isn't a specific option, whether it contains, starts with, or ends with a substring, or whether the row is empty or not.
+- **Date columns** give you a lot of options to filter by specific date ranges, relative date ranges, and more.
+- **Structured data columns**, typically JSON or XML, can only be filtered by "Is empty" or "Not empty". Some databases, however, support [JSON unfolding](../../data-modeling/json-unfolding.md), which allows you to split up JSON data into separate columns, which you can then filter on.
 
-## Filter modal
+## Filter multiple columns
 
-When viewing a table or chart, clicking on the **Filter** will bring up the filter modal:
+When viewing a table or chart, clicking on the **Filter** will bring up the filter modal.
 
 ![Bulk filter modal](../images/bulk-filter-modal.png)
 
-Here you can add multiple filters to your question in one go. Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal. When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom right of the filter modal. Any filters you apply here will show up in the notebook editor, and vice versa.
+Here you can add multiple filters to your question in one go (which can save you a lot of loading time). Filter options will differ depending on the [field type](../../data-modeling/field-types.md). Any tables linked by foreign keys will be displayed in the left tab of the modal.
+
+When you're done adding filters, hit **Apply filters** to rerun the query and update its results. To remove all the filters you've applied, click on **Clear all filters** in the bottom left of the filter modal. Any filters you apply here will show up in the editor, and vice versa.
 
 ### Filtering by date
 
 One important thing to understand when filtering on a date column is the difference between specific and relative dates:
 
 - **Specific dates** are things like November 1, 2010, or June 3 – July 12, 2017; they always refer to the same date(s).
-- **Relative dates** are things like "the past 30 days," or "the current week;" as time passes, the dates these options refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you, for example, how many people visited your website in the last 7 days. You can also click on the **...** to specify a **Starting from** option, which lets you offset the relative date range. For example, you could set the range as the "Previous 7 days, starting from 2 days ago".
+- **Relative dates** are things like "the previous 30 days," or "the current week;" as time passes, the dates these options refer to _change_. Relative dates are a useful way to set up a filter on a question so that it stays up-to-date by showing you, for example, how many people visited your website in the last 7 days. You can also click on the **...** to specify a **Starting from** option, which lets you offset the relative date range. For example, you could set the range as the "Previous 7 days, starting from 2 days ago".
 
 ### Filtering by a segment
 
 If your Metabase administrators have created special named filters for the table you're viewing, they’ll appear at the top of the filter dropdown in purple text with a star next to them. These are called [**Segments**](../../data-modeling/segments-and-metrics.md), and they're shortcuts to a combination of filters that are commonly used in your organization. They might be called things like “Active Users,” or “Most Popular Products.”
 
-### Filters with `OR`
+### Filter with custom expressions
 
 ![Filter expression](../images/filter-expression.png)
 
-If you have a more complex filter you're trying to express, you can pick **Custom Expression** from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`. Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](./expressions-list.md).
+If you have a more complex filter you're trying to express, you can pick [Custom Expression](./expressions.md) from the add filter menu to create a filter expression. You can use comparison operators like greater than, `>`, or less than ,`<`, as well as spreadsheet-like functions. For example, `[Subtotal] > 100 OR median([Age]) < 40`.
+
+Learn more about writing [expressions](./expressions.md) or skip right to the [list of expressions](./expressions-list.md).
 
 ## Summarizing and grouping by
 
@@ -167,15 +169,27 @@ Once you're done setting your metrics and groupings, click **Visualize** to see 
 
 If you want to jump ahead and learn about [how to change the visualization](../sharing/visualizing-results.md) of your results, by all means, feel free.
 
-## Returning to the notebook editor
+## Drill-through menu
 
-To return to the notebook editor for a question, click on the show editor button in the upper right.
+When viewing a chart, you can also click through questions to explore the data in greater detail.
+
+![Drill-through menu](../images/drill-through-menu.png)
+
+The drill-through menu will present different options depending on what you click on. You can then optionally save any exploration as a new question. The drill-through menu is only available for questions built using the query builder. For more on how drill-through works, check out [Creating interactive charts](https://www.metabase.com/learn/questions/drill-through).
+
+## Column heading drill-through
+
+When viewing a [table](../sharing/visualizations/table.md), clicking on the heading of a column gives you different options, depending on the columns data type. See [table](../sharing/visualizations/table.md#column-heading-options-for-filtering-and-summarizing).
+
+## Returning to the editor
+
+To return to the editor for a question, click on the **Show editor** button in the upper right.
 
 ![Show editor](../images/show-editor.png)
 
 ## Viewing an individual record's details
 
-To see more info about a given record (a user, order, venue, etc.), click on a record's ID number (or primary key). You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. To page through the other records in the current table, press the right or left arrow keys, or click on the arrows to the right or left of the screen.
+To see more info about a given record (a user account, order, venue, etc.), click on a record's ID number (or primary key). You can see all fields related to that one record and all connected tables that are hidden in the table view for the sake of readability. To page through the other records in the current table, press the right or left arrow keys, or click on the arrows to the right or left of the screen.
 
 ![Record details](../images/record-details.png)
 
@@ -191,9 +205,15 @@ Custom expressions allow you to use spreadsheet-like functions and simple arithm
 
 ![Custom column](../images/custom-column.png)
 
-Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; they'll only be present in the given question.
+Custom columns are helpful when you need to create a new column based on a calculation, such as subtracting the value of one column from another, or extracting a portion of an existing text column. Custom columns that you add aren't permanently added to your table; the columns will only be present in the given question.
 
 You can use the following math operators in your formulas: `+`, `–`, `*` (multiplication), and `/` (division), along with a whole host of spreadsheet-like functions. You can also use parentheses to clarify the order of operations.
+
+## Adding or removing columns in a table
+
+When viewing tables, you can click on the **gear** icon in the bottom left to bring up the columns picker. Click **Add or remove columns** to search for and pick columns, including columns from related tables.
+
+![Adding or removing columns](../images/column-selection.png)
 
 ## Sorting results
 
@@ -203,11 +223,30 @@ The sorting step lets you pick one or more columns to sort your results by. For 
 
 ## Setting a row limit
 
-The row limit step lets you limit how many rows you want from the previous results. When used in conjunction with sorting, this can let you do things like create a top-10 list, by first sorting by one of the columns in your result, then adding a row limit of 10. Unlike other steps, the row limit step can only be added at the end of your question.
+The row limit step lets you cap how many rows you want from the previous results. When used in conjunction with sorting, limits can let you do things like create a top-10 list, by first sorting by one of the columns in your result, then adding a row limit of 10. Unlike other steps, the row limit step can only be added at the end of your question. If you do want to add more steps to limited results, you can always save the limited results as a question, then start a _new_ question based on those results.
 
 ## Viewing the SQL that powers your question
 
-Under the hood, all Metabase questions are SQL (gasp!). If you're curious to see the SQL that will get run when you ask your question, you can click the little console icon in the top-right of the notebook editor. In the modal that opens up, you'll also be given the option to start a new query in the SQL editor using this generated SQL as a starting point (assuming you have [SQL permissions](../../permissions/data.md#native-query-editing) to that database). It's a nice little shortcut to have Metabase write some boilerplate SQL for you, but then allows you to tweak and customize the query.
+![View the SQL](../images/view-the-sql.png)
+
+Under the hood, all Metabase questions are SQL (gasp!). To view the SQL that Metabase will run when you click **Visualize**, click the little **Console** icon in the top right of the query builder. Metabase will preview the SQL in a sidebar:
+
+![SQL sidebar](../images/sql-sidebar.png)
+
+To view the SQL, you must have [query builder and native permissions](../../permissions/data.md).
+
+### Convert query builder question to SQL
+
+You can also convert the question to a [native editor question](../native-editor/writing-sql.md). From the query builder screen:
+
+1. Click the **Console** icon in the upper right of the query builder.
+2. Click **Convert the question to SQL** option in the bottom right below the SQL code.
+
+Conversion is a one-way street: you can't convert a SQL question back into a query builder question.
+
+## Caching question results
+
+See [Caching question results](../../configuring-metabase/caching.md#question-caching-policy).
 
 ## Play around with saved questions
 
@@ -217,7 +256,7 @@ Each time you start modifying a saved question, Metabase will create a new quest
 
 Feel free to play around with any saved question, as you won't have any effect on the existing question. When you hit **Save** on the question, you can choose either to save as a new question (the default), or you can overwrite the existing question you started from.
 
-If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [Model][model] to let others know it's a good starting place.
+If you find yourself using the same saved question as a starting point for multiple questions, you may want to turn it into a [model](../../data-modeling/models.md) to let others know it's a good starting place.
 
 ## Question version history
 

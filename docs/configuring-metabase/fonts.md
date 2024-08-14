@@ -9,7 +9,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="Customizable font" %}
 
-On paid plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
+On Pro and Enterprise plans, you can customize the font Metabase uses (the default is [Lato](https://fonts.google.com/specimen/Lato)). You can choose from a curated set of Google Fonts that accommodate the regular, bold, and heavy font weights that Metabase relies on for its various UI elements.
 
 ## Included fonts
 
@@ -33,7 +33,7 @@ To change your Metabase font, click on the **gear** icon in the upper right of t
 - [Roboto Mono](https://fonts.google.com/specimen/Roboto+Mono)
 - [Roboto Slab](https://fonts.google.com/specimen/Roboto+Slab)
 - [Slabo 27px](https://fonts.google.com/specimen/Slabo+27px)
-- [Source Sans Pro](https://fonts.google.com/specimen/Source+Sans+Pro)
+- Source Sans Pro
 - [Ubuntu](https://fonts.google.com/specimen/Ubuntu)
 
 Comic Sans is currently not included.
@@ -93,7 +93,6 @@ For latin text, we'd copy the relevant src URLs for each style, in this case:
 - For 400: [https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2](https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2)
 - For 700: [https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2](https://fonts.gstatic.com/s/robotomono/v21/L0xTDF4xlVMF-BfR8bXMIhJHg45mwgGEFl0_3vrtSM1J-gEPT5Ese6hmHSh0me8iUI0.woff2)
 
-
 And paste those URLS in the relevant input fields in **Admin settings** > **Settings** > **Appearance** > **Font** section where it says "Tell us where to find the file for each font weight. You don’t need to include all of them, but it’ll look better if you do."
 
 ## Hosting fonts on GitHub
@@ -122,7 +121,7 @@ To support multiple character sets, for example both Latin and Cyrillic, you'll 
 
 ## Customizing the font for individual embedded items
 
-In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable from "Use instance font" in [signed embeds](../embedding/signed-embedding.md).
+In addition to the [included fonts](#included-fonts), if you set a custom font for your Metabase, that font will be selectable from "Use instance font" in [static embeds](../embedding/static-embedding.md).
 
 ## Further reading
 

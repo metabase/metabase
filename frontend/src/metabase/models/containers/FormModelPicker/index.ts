@@ -1,1 +1,1 @@
-export { default } from "./FormModelPicker";
+export * from "./FormModelPicker";

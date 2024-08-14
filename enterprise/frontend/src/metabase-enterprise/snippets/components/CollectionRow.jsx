@@ -1,15 +1,16 @@
 /* eslint-disable react/prop-types */
-import React from "react";
 import cx from "classnames";
+import { Component } from "react";
 
-import Icon from "metabase/components/Icon";
+import CS from "metabase/css/core/index.css";
 import SnippetCollections from "metabase/entities/snippet-collections";
+import { Icon } from "metabase/ui";
 
 import CollectionOptionsButton from "./CollectionOptionsButton";
 
 const ICON_SIZE = 16;
 
-class CollectionRow extends React.Component {
+class CollectionRow extends Component {
   render() {
     const { snippetCollection: collection, setSnippetCollectionId } =
       this.props;
@@ -18,13 +19,21 @@ class CollectionRow extends React.Component {
     return (
       <div
         className={cx(
-          { "bg-light-hover cursor-pointer": !collection.archived },
-          "hover-parent hover--visibility flex align-center py2 px3 text-brand",
+          { [cx(CS.bgLightHover, CS.cursorPointer)]: !collection.archived },
+          CS.hoverParent,
+          CS.hoverVisibility,
+          CS.flex,
+          CS.alignCenter,
+          CS.py2,
+          CS.px3,
+          CS.textBrand,
         )}
         {...(collection.archived ? undefined : { onClick: onSelectCollection })}
       >
         <Icon name="folder" size={ICON_SIZE} style={{ opacity: 0.25 }} />
-        <span className="flex-full ml1 text-bold">{collection.name}</span>
+        <span className={cx(CS.flexFull, CS.ml1, CS.textBold)}>
+          {collection.name}
+        </span>
         <CollectionOptionsButton {...this.props} collection={collection} />
       </div>
     );

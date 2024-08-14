@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { GridItem } from "metabase/components/Grid";
 
 export const ListRoot = styled.div`
@@ -11,6 +12,10 @@ export const ListHeader = styled.div`
 
 export const ListGridItem = styled(GridItem)`
   width: 33.33%;
+
+  &:hover {
+    color: var(--mb-color-brand);
+  }
 `;
 
 export const CardContent = styled.div`

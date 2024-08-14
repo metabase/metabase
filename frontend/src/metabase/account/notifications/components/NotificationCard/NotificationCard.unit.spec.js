@@ -1,5 +1,5 @@
-import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
+
 import NotificationCard from "./NotificationCard";
 
 const getAlert = ({ creator = getUser(), channels = [getChannel()] } = {}) => ({

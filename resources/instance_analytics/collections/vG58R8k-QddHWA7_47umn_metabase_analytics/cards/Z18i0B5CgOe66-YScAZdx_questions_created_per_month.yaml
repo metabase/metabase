@@ -1,0 +1,79 @@
+name: Questions created per month
+description: null
+entity_id: Z18i0B5CgOe66-YScAZdx
+created_at: '2023-06-15T02:12:55.658594Z'
+creator_id: internal@metabase.com
+display: line
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_audit_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - temporal-unit: month
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - null
+    - card-create
+    joins:
+    - alias: Question 1
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_audit_log
+          - user_id
+        - null
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - join-alias: Question 1
+      fields: all
+      source-table: 0wVIfjBJWclD0lKeABYYl
+    source-table: -lNDM3tJmuL5ltGbX0oyT
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - timestamp
+  graph.metrics:
+  - count
+  graph.show_values: true
+serdes/meta:
+- id: Z18i0B5CgOe66-YScAZdx
+  label: questions_created_per_month
+  model: Card
+initially_published_at: null
+metabase_version: null
+type: question

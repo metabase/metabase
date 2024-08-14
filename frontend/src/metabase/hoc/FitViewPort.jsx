@@ -1,6 +1,10 @@
-import React from "react";
+import cx from "classnames";
+import { Component } from "react";
 
-/* fitViewport allows you to modify the top level classes on the react root node
+import CS from "metabase/css/core/index.css";
+
+/**
+ * fitViewport allows you to modify the top level classes on the react root node
  * to set certain display properties that make it easier to create a view that will always
  * be the size of the viewport height.
  *
@@ -15,10 +19,10 @@ import React from "react";
  *
  * On an element that isn't the top level of a route.
  *
+ * @deprecated HOCs are deprecated
  */
-
 function fitViewport(ComposedComponent) {
-  return class extends React.Component {
+  return class extends Component {
     static displayName = "FitViewport";
 
     /*
@@ -38,14 +42,14 @@ function fitViewport(ComposedComponent) {
     componentDidMount() {
       const root = document.getElementById("root");
       if (root && root.firstChild) {
-        root.firstChild.classList.add("flex", "flex-column");
+        root.firstChild.classList.add(CS.flex, CS.flexColumn);
       }
     }
 
     componentWillUnmount() {
       const root = document.getElementById("root");
       if (root && root.firstChild) {
-        root.firstChild.classList.remove("flex", "flex-column");
+        root.firstChild.classList.remove(CS.flex, CS.flexColumn);
       }
     }
 
@@ -53,7 +57,7 @@ function fitViewport(ComposedComponent) {
       return (
         <ComposedComponent
           {...this.props}
-          fitClassNames="relative flex flex-full"
+          fitClassNames={cx(CS.relative, CS.flex, CS.flexFull)}
         />
       );
     }
@@ -63,7 +67,7 @@ function fitViewport(ComposedComponent) {
 export function isFitViewportMode() {
   const root = document.getElementById("root");
   if (root && root.firstChild) {
-    return root.firstChild.classList.contains("spread");
+    return root.firstChild.classList.contains(CS.spread);
   }
   return false;
 }

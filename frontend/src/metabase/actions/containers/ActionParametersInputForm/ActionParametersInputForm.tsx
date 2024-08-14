@@ -1,162 +1,75 @@
-import React, { useCallback, useMemo, useState, useEffect } from "react";
-import { t } from "ttag";
-import { ActionForm } from "metabase/actions/components/ActionForm";
+import type { FormikHelpers } from "formik";
+import { useCallback, useMemo } from "react";
 
-import {
-  getSubmitButtonColor,
-  getSubmitButtonLabel,
-} from "metabase/actions/containers/ActionCreator/FormCreator";
-import EmptyState from "metabase/components/EmptyState";
-
+import ActionForm from "metabase/actions/components/ActionForm";
 import type {
-  WritebackParameter,
   OnSubmitActionForm,
-  Dashboard,
-  ActionDashboardCard,
   ParametersForActionExecution,
-  ActionFormSettings,
   WritebackAction,
+  WritebackParameter,
 } from "metabase-types/api";
 
-import { ActionsApi, PublicApi } from "metabase/services";
-import {
-  shouldPrefetchValues,
-  generateFieldSettingsFromParameters,
-} from "metabase/actions/utils";
-import { getDashboardType } from "metabase/dashboard/utils";
-
-import type Field from "metabase-lib/metadata/Field";
-
-import { getChangedValues, getInitialValues } from "./utils";
-
-export interface ActionParamatersInputFormProps {
+export interface ActionParametersInputFormProps {
   action: WritebackAction;
-  missingParameters?: WritebackParameter[];
-  dashcardParamValues?: ParametersForActionExecution;
-  dashboard?: Dashboard;
-  dashcard?: ActionDashboardCard;
-  onCancel?: () => void;
-  submitButtonColor?: string;
+  mappedParameters?: WritebackParameter[];
+  initialValues?: ParametersForActionExecution;
+  prefetchesInitialValues?: boolean;
   onSubmit: OnSubmitActionForm;
-  onSubmitSuccess?: () => void;
+  onSubmitSuccess?: (
+    actions: FormikHelpers<ParametersForActionExecution>,
+  ) => void;
+  onCancel?: () => void;
 }
 
 function ActionParametersInputForm({
   action,
-  missingParameters = action.parameters,
-  dashcardParamValues = {},
-  dashboard,
-  dashcard,
+  mappedParameters = [],
+  initialValues = {},
+  prefetchesInitialValues,
   onCancel,
   onSubmit,
   onSubmitSuccess,
-}: ActionParamatersInputFormProps) {
-  const [prefetchValues, setPrefetchValues] =
-    useState<ParametersForActionExecution>({});
+}: ActionParametersInputFormProps) {
+  const hiddenFields = useMemo(() => {
+    const hiddenFieldIds = Object.values(
+      action.visualization_settings?.fields ?? {},
+    )
+      .filter(field => field.hidden)
+      .map(field => field.id);
 
-  const shouldPrefetch = useMemo(
-    () => shouldPrefetchValues(action) && dashboard && dashcard,
-    [action, dashboard, dashcard],
-  );
-
-  const prefetchEndpoint =
-    getDashboardType(dashboard?.id) === "public"
-      ? PublicApi.prefetchValues
-      : ActionsApi.prefetchValues;
-
-  const fetchInitialValues = useCallback(async () => {
-    const fetchedValues = await prefetchEndpoint({
-      dashboardId: dashboard?.id,
-      dashcardId: dashcard?.id,
-      parameters: JSON.stringify(dashcardParamValues),
-    }).catch(() => false);
-
-    if (fetchedValues) {
-      setPrefetchValues(fetchedValues);
-    }
-  }, [dashboard?.id, dashcard?.id, dashcardParamValues, prefetchEndpoint]);
-
-  useEffect(() => {
-    const hasValueFromDashboard = Object.keys(dashcardParamValues).length > 0;
-    const canPrefetch = hasValueFromDashboard && dashboard && dashcard;
-
-    if (shouldPrefetch) {
-      setPrefetchValues({});
-      canPrefetch && fetchInitialValues();
-    }
-  }, [
-    shouldPrefetch,
-    dashboard,
-    dashcard,
-    dashcardParamValues,
-    fetchInitialValues,
-  ]);
-
-  const fieldSettings = useMemo(
-    () =>
-      action.visualization_settings?.fields ??
-      // if there are no field settings, we generate them from the parameters and field metadata
-      generateFieldSettingsFromParameters(
-        missingParameters,
-        dashcard?.card?.result_metadata as unknown as Field[],
-      ),
-    [action, missingParameters, dashcard],
-  );
-
-  const initialValues = useMemo(
-    () => getInitialValues(fieldSettings, prefetchValues),
-    [fieldSettings, prefetchValues],
-  );
+    return mappedParameters
+      .map(parameter => parameter.id)
+      .concat(hiddenFieldIds);
+  }, [mappedParameters, action.visualization_settings?.fields]);
 
   const handleSubmit = useCallback(
-    async (params, actions) => {
+    async (
+      parameters: ParametersForActionExecution,
+      actions: FormikHelpers<ParametersForActionExecution>,
+    ) => {
       actions.setSubmitting(true);
-      const paramsWithChangedValues = getChangedValues(params, initialValues);
-
-      const { success, error } = await onSubmit(paramsWithChangedValues);
-
+      const { success, error } = await onSubmit(parameters);
       if (success) {
         actions.setErrors({});
-        onSubmitSuccess?.();
-
-        shouldPrefetch ? fetchInitialValues() : actions.resetForm();
+        onSubmitSuccess?.(actions);
       } else {
-        throw new Error(error);
+        throw error;
       }
     },
-    [
-      onSubmit,
-      onSubmitSuccess,
-      initialValues,
-      fetchInitialValues,
-      shouldPrefetch,
-    ],
+    [onSubmit, onSubmitSuccess],
   );
-
-  const hasPrefetchedValues = !!Object.keys(prefetchValues).length;
-
-  if (shouldPrefetch && !hasPrefetchedValues) {
-    return <EmptyState message={t`Choose a record to update`} />;
-  }
-
-  const submitButtonLabel = getSubmitButtonLabel(action);
-
-  const formSettings: ActionFormSettings = action.visualization_settings ?? {
-    type: "button",
-    fields: fieldSettings,
-  };
 
   return (
     <ActionForm
-      parameters={missingParameters}
-      formSettings={formSettings}
+      action={action}
       initialValues={initialValues}
-      onClose={onCancel}
+      prefetchesInitialValues={prefetchesInitialValues}
+      hiddenFields={hiddenFields}
       onSubmit={handleSubmit}
-      submitTitle={submitButtonLabel}
-      submitButtonColor={getSubmitButtonColor(action)}
+      onClose={onCancel}
     />
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ActionParametersInputForm;

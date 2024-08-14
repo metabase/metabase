@@ -1,6 +1,9 @@
-import React, { useState } from "react";
+import { useState } from "react";
+
 import { isSyncInProgress } from "metabase/lib/syncing";
-import { Database, User } from "metabase-types/api";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { User } from "metabase-types/api";
+
 import useStatusVisibility from "../../hooks/use-status-visibility";
 import DatabaseStatusLarge from "../DatabaseStatusLarge";
 import DatabaseStatusSmall from "../DatabaseStatusSmall";
@@ -47,4 +50,5 @@ const getDatabases = ({
   return databases.filter(d => !d.is_sample && d.creator_id === user?.id);
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DatabaseStatus;

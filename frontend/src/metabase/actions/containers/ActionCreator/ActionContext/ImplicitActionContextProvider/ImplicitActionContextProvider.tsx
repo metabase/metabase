@@ -1,17 +1,18 @@
-import React, { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
 import ImplicitActionIcon from "metabase/actions/components/ImplicitActionIcon";
-
 import type {
   ActionFormSettings,
   WritebackImplicitQueryAction,
 } from "metabase-types/api";
 
 import { getDefaultFormSettings } from "../../../../utils";
-import type { ActionContextProviderProps } from "../types";
+import type { ActionContextType } from "../ActionContext";
 import { ActionContext } from "../ActionContext";
+import type { ActionContextProviderProps } from "../types";
+
 import {
   EditorBodyRoot,
   EditorTitle,
@@ -33,14 +34,6 @@ function EditorBody() {
   );
 }
 
-function cleanFormSettings(formSettings?: ActionFormSettings) {
-  const formSettingsWithDefaults = getDefaultFormSettings(formSettings);
-
-  // For implicit actions fields are generated dynamically according to the current schema
-  // For now, we don't let to customize the form to avoid dealing with fields getting out of sync
-  return _.omit(formSettingsWithDefaults, "fields");
-}
-
 function ImplicitActionContextProvider({
   initialAction,
   children,
@@ -51,24 +44,25 @@ function ImplicitActionContextProvider({
 
   const handleFormSettingsChange = useCallback(
     (nextFormSettings: ActionFormSettings) => {
-      setFormSettings(cleanFormSettings(nextFormSettings));
+      setFormSettings(getDefaultFormSettings(nextFormSettings));
     },
     [],
   );
 
   const canSave = useMemo(() => {
     return !_.isEqual(
-      cleanFormSettings(formSettings),
-      cleanFormSettings(initialAction?.visualization_settings),
+      getDefaultFormSettings(formSettings),
+      getDefaultFormSettings(initialAction?.visualization_settings),
     );
   }, [formSettings, initialAction?.visualization_settings]);
 
-  const value = useMemo(
+  const value = useMemo<ActionContextType>(
     () => ({
       action: initialAction,
       formSettings,
       isNew: false,
       canSave,
+      isDirty: canSave,
       ui: {
         canRename: false,
         canChangeFieldSettings: false,
@@ -85,4 +79,5 @@ function ImplicitActionContextProvider({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ImplicitActionContextProvider;

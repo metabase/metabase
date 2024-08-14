@@ -1,0 +1,85 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Metabot events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "llm_usage",
+    "format": "jsonschema",
+    "version": "1-0-0"
+  },
+  "type": "object",
+  "properties": {
+    "id": {
+      "description": "id of the llm inference run",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "object": {
+      "description": "Inferencing task of the remote LLM",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "created": {
+      "description": "Creation time of the event",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "model": {
+      "description": "The LLM model being used",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    },
+    "prompt_tokens": {
+      "description": "Number of tokens in the LLM input prompt",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "completion_tokens": {
+      "description": "Number of tokens in the LLM response",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "total_tokens": {
+      "description": "total tokens used in the request (in and out)",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "system_fingerprint": {
+      "description": "System fingerprint provided by OpenAI",
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 1024
+    }
+  },
+  "required": [
+    "event"
+  ],
+  "additionalProperties": true
+}

@@ -1,7 +1,6 @@
 import styled from "@emotion/styled";
-import Radio from "metabase/core/components/Radio";
 
-import { color } from "metabase/lib/colors";
+import Radio from "metabase/core/components/Radio";
 
 interface PopoverRootProps {
   noTopPadding: boolean;
@@ -18,7 +17,7 @@ export const PopoverRoot = styled.div<PopoverRootProps>`
 
 export const PopoverTabs = styled(Radio)`
   padding: 0;
-  border-bottom: 1px solid ${color("border")};
+  border-bottom: 1px solid var(--mb-color-border);
   margin: 0 1rem 1rem 1rem;
 
   ${Radio.RadioLabelVariants.join(", ")} {
@@ -30,6 +29,10 @@ export const PopoverTabs = styled(Radio)`
   ${Radio.RadioContainerVariants.join(", ")} {
     justify-content: center;
     padding-bottom: 0.75rem;
+  }
+
+  ${Radio.RadioLabelText} {
+    flex: none;
   }
 `;
 

@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import { APP_BAR_HEIGHT } from "metabase/nav/constants";
 
 interface AppBarRootProps {
@@ -11,26 +11,19 @@ export const AppBarRoot = styled.div<AppBarRootProps>`
   align-items: center;
   gap: 1rem;
   height: ${APP_BAR_HEIGHT};
-  padding: 0 1rem;
+  padding-left: 1.325rem;
+  padding-right: 1rem;
   border-bottom: 1px solid
-    ${props => (props.isNavBarOpen ? color("border") : "transparent")};
-  background-color: ${color("bg-white")};
+    ${props => (props.isNavBarOpen ? "var(--mb-color-border)" : "transparent")};
+  background-color: var(--mb-color-bg-white);
   transition: border-bottom-color 200ms ease;
 `;
 
-export interface AppBarLeftContainerProps {
-  isNavBarEnabled?: boolean;
-  isLogoVisible?: boolean;
-}
-
-export const AppBarLeftContainer = styled.div<AppBarLeftContainerProps>`
+export const AppBarLeftContainer = styled.div`
   display: flex;
   flex: 1 1 auto;
   align-items: center;
   min-width: 5rem;
-
-  padding-left: ${({ isLogoVisible, isNavBarEnabled }) =>
-    !isLogoVisible && !isNavBarEnabled && "1rem"};
 `;
 
 export const AppBarRightContainer = styled.div`
@@ -56,5 +49,5 @@ export const AppBarInfoContainer = styled.div<AppBarInfoContainerProps>`
 `;
 
 export const AppBarProfileLinkContainer = styled.div`
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;

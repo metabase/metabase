@@ -1,42 +1,48 @@
-import React, {
-  ChangeEvent,
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useState,
-} from "react";
+import type { ChangeEvent } from "react";
+import { useCallback, useLayoutEffect, useMemo, useState } from "react";
 import { connect } from "react-redux";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import _ from "underscore";
-import Button from "metabase/core/components/Button";
-import Radio, { RadioOption } from "metabase/core/components/Radio";
-import Select, {
-  Option,
-  SelectChangeEvent,
-} from "metabase/core/components/Select";
-import SelectButton from "metabase/core/components/SelectButton";
+
 import ModalContent from "metabase/components/ModalContent";
-import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
-import Tables from "metabase/entities/tables";
+import Button from "metabase/core/components/Button";
+import ExternalLink from "metabase/core/components/ExternalLink";
+import type { RadioOption } from "metabase/core/components/Radio";
+import Radio from "metabase/core/components/Radio";
+import type { SelectChangeEvent } from "metabase/core/components/Select";
+import Select, { Option } from "metabase/core/components/Select";
+import SelectButton from "metabase/core/components/SelectButton";
 import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
+import Tables from "metabase/entities/tables";
+import { useSafeAsyncFunction } from "metabase/hooks/use-safe-async-function";
+import { useSelector } from "metabase/lib/redux";
+import { getLearnUrl } from "metabase/selectors/settings";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Box, Flex, Icon } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+import type Field from "metabase-lib/v1/metadata/Field";
+import { getQuestionVirtualTableId } from "metabase-lib/v1/metadata/utils/saved-questions";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import { hasFields } from "metabase-lib/v1/parameters/utils/parameter-fields";
+import { isValidSourceConfig } from "metabase-lib/v1/parameters/utils/parameter-source";
 import {
-  Card,
+  getParameterType,
+  isNumberParameter,
+} from "metabase-lib/v1/parameters/utils/parameter-type";
+import type {
   ValuesSourceConfig,
   ValuesSourceType,
   Parameter,
   ParameterValues,
   ParameterValue,
 } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import Field from "metabase-lib/metadata/Field";
-import { getQuestionVirtualTableId } from "metabase-lib/metadata/utils/saved-questions";
-import { getFields } from "metabase-lib/parameters/utils/parameter-fields";
-import { isValidSourceConfig } from "metabase-lib/parameters/utils/parameter-source";
-import { ParameterWithTemplateTagTarget } from "metabase-lib/parameters/types";
-import { fetchParameterValues, FetchParameterValuesOpts } from "../../actions";
+import type { State } from "metabase-types/store";
+
+import type { FetchParameterValuesOpts } from "../../actions";
+import { fetchParameterValues } from "../../actions";
+
 import { ModalLoadingAndErrorWrapper } from "./ValuesSourceModal.styled";
+import S from "./ValuesSourceTypeModal.module.css";
 import {
   ModalHelpMessage,
   ModalLabel,
@@ -48,11 +54,10 @@ import {
   ModalErrorMessage,
   ModalEmptyState,
 } from "./ValuesSourceTypeModal.styled";
-
-const NEW_LINE = "\n";
+import { getValuesText, getStaticValues } from "./utils";
 
 interface ModalOwnProps {
-  parameter: ParameterWithTemplateTagTarget;
+  parameter: UiParameter;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onChangeSourceType: (sourceType: ValuesSourceType) => void;
@@ -62,11 +67,7 @@ interface ModalOwnProps {
   onClose: () => void;
 }
 
-interface ModalCardProps {
-  card: Card | undefined;
-}
-
-interface ModalStateProps {
+interface ModalQuestionProps {
   question: Question | undefined;
 }
 
@@ -76,10 +77,7 @@ interface ModalDispatchProps {
   ) => Promise<ParameterValues>;
 }
 
-type ModalProps = ModalOwnProps &
-  ModalCardProps &
-  ModalStateProps &
-  ModalDispatchProps;
+type ModalProps = ModalOwnProps & ModalQuestionProps & ModalDispatchProps;
 
 const ValuesSourceTypeModal = ({
   parameter,
@@ -108,6 +106,7 @@ const ValuesSourceTypeModal = ({
     >
       {sourceType === null ? (
         <FieldSourceModal
+          // if sourceType === null the parameter must have fields
           parameter={parameter}
           sourceType={sourceType}
           sourceConfig={sourceConfig}
@@ -140,7 +139,7 @@ const ValuesSourceTypeModal = ({
 };
 
 interface SourceTypeOptionsProps {
-  parameter: Parameter;
+  parameter: UiParameter;
   parameterValues?: ParameterValue[];
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
@@ -183,7 +182,7 @@ const SourceTypeOptions = ({
 };
 
 interface FieldSourceModalProps {
-  parameter: Parameter;
+  parameter: UiParameter;
   sourceType: ValuesSourceType;
   sourceConfig: ValuesSourceConfig;
   onFetchParameterValues: (
@@ -213,7 +212,6 @@ const FieldSourceModal = ({
     [values],
   );
 
-  const hasFields = getFields(parameter).length > 0;
   const hasEmptyValues = !isLoading && values.length === 0;
 
   return (
@@ -232,11 +230,7 @@ const FieldSourceModal = ({
         </ModalSection>
       </ModalPane>
       <ModalMain>
-        {!hasFields ? (
-          <ModalEmptyState>
-            {t`You haven’t connected a field to this filter yet, so there aren’t any values.`}
-          </ModalEmptyState>
-        ) : hasEmptyValues ? (
+        {hasEmptyValues ? (
           <ModalEmptyState>
             {t`We don’t have any cached values for the connected fields. Try one of the other options, or change this widget to a search box.`}
           </ModalEmptyState>
@@ -272,8 +266,8 @@ const CardSourceModal = ({
   onChangeSourceConfig,
 }: CardSourceModalProps) => {
   const fields = useMemo(() => {
-    return question ? getSupportedFields(question) : [];
-  }, [question]);
+    return question ? getSupportedFields(question, parameter) : [];
+  }, [question, parameter]);
 
   const selectedField = useMemo(() => {
     return getFieldByReference(fields, sourceConfig.value_field);
@@ -340,9 +334,7 @@ const CardSourceModal = ({
               </Select>
             ) : (
               <ModalErrorMessage>
-                {question.isDataset()
-                  ? t`This model doesn’t have any text columns.`
-                  : t`This question doesn’t have any text columns.`}{" "}
+                {getErrorMessage(question, parameter)}{" "}
                 {t`Please pick a different model or question.`}
               </ModalErrorMessage>
             )}
@@ -363,6 +355,37 @@ const CardSourceModal = ({
     </ModalBodyWithPane>
   );
 };
+
+const getErrorMessage = (question: Question, parameter: Parameter) => {
+  const parameterType = getParameterType(parameter);
+  const type = question.type();
+
+  if (parameterType === "number") {
+    if (type === "question") {
+      return t`This question doesn’t have any number columns.`;
+    }
+
+    if (type === "model") {
+      return t`This model doesn’t have any number columns.`;
+    }
+  }
+
+  if (type === "question") {
+    return t`This question doesn’t have any text columns.`;
+  }
+
+  if (type === "model") {
+    return t`This model doesn’t have any text columns.`;
+  }
+
+  throw new Error(`Unsupported or unknown question.type(): ${type}`);
+};
+
+const getLabel = (value: string | ParameterValue): string | undefined =>
+  Array.isArray(value) ? value[1] : undefined;
+
+const valueHasLabel = (value: string | ParameterValue) =>
+  getLabel(value) !== undefined;
 
 interface ListSourceModalProps {
   parameter: Parameter;
@@ -386,6 +409,8 @@ const ListSourceModal = ({
     [onChangeSourceConfig],
   );
 
+  const hasCustomLabels = sourceConfig.values?.some(valueHasLabel);
+
   return (
     <ModalBodyWithPane>
       <ModalPane>
@@ -398,7 +423,9 @@ const ListSourceModal = ({
             onChangeSourceType={onChangeSourceType}
             onChangeSourceConfig={onChangeSourceConfig}
           />
-          <ModalHelpMessage>{t`Enter one value per line.`}</ModalHelpMessage>
+          <ModalHelpMessage>{t`Enter one value per line. You can optionally give each value a display label after a comma.`}</ModalHelpMessage>
+
+          {hasCustomLabels && <ModelHint />}
         </ModalSection>
       </ModalPane>
       <ModalMain>
@@ -412,38 +439,70 @@ const ListSourceModal = ({
   );
 };
 
-const getValuesText = (values: string[] = []) => {
-  return values.join(NEW_LINE);
-};
+function ModelHint() {
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+
+  const href = getLearnUrl("learn/data-modeling/models");
+  const text = t`do it once in a model`;
+  const link = showMetabaseLinks ? (
+    <strong>
+      <ExternalLink href={href}>{text}</ExternalLink>
+    </strong>
+  ) : (
+    <strong>{text}</strong>
+  );
+
+  return (
+    <Box mt="lg" p="md" className={S.info}>
+      <Flex gap="md" align="center">
+        <Icon name="info_filled" color="text-dark" className={S.icon} />
+        <div>
+          {jt`If you find yourself doing value-label mapping often, you might want to ${link}.`}
+        </div>
+      </Flex>
+    </Box>
+  );
+}
 
 const getSourceValues = (values: ParameterValue[] = []) => {
   return values.map(([value]) => String(value));
-};
-
-const getStaticValues = (value: string) => {
-  return value
-    .split(NEW_LINE)
-    .map(line => line.trim())
-    .filter(line => line.length > 0);
 };
 
 const getFieldByReference = (fields: Field[], fieldReference?: unknown[]) => {
   return fields.find(field => _.isEqual(field.reference(), fieldReference));
 };
 
-const getSupportedFields = (question: Question) => {
-  const fields = question.composeThisQuery()?.table()?.fields ?? [];
-  return fields.filter(field => field.isString());
+const getFieldFilter = (parameter: Parameter) => {
+  const type = getParameterType(parameter);
+  if (type === "number") {
+    return (field: Field) => field.isNumeric();
+  }
+  return (field: Field) => field.isString();
 };
 
+const getSupportedFields = (question: Question, parameter: Parameter) => {
+  const fieldFilter = getFieldFilter(parameter);
+  const fields =
+    question.composeQuestionAdhoc().legacyQueryTable()?.fields ?? [];
+  return fields.filter(fieldFilter);
+};
+
+/**
+ * if !hasFields(parameter) then exclude the option to set the source type to
+ * "From connected fields" i.e. values_source_type=null
+ */
 const getSourceTypeOptions = (
-  parameter: ParameterWithTemplateTagTarget,
+  parameter: UiParameter,
 ): RadioOption<ValuesSourceType>[] => {
   return [
-    ...(parameter.hasVariableTemplateTagTarget
+    ...(hasFields(parameter)
+      ? [{ name: t`From connected fields`, value: null }]
+      : []),
+    ...(isNumberParameter(parameter)
       ? []
-      : [{ name: t`From connected fields`, value: null }]),
-    { name: t`From another model or question`, value: "card" },
+      : ([
+          { name: t`From another model or question`, value: "card" },
+        ] as const)),
     { name: t`Custom list`, value: "static-list" },
   ];
 };
@@ -495,28 +554,22 @@ const useParameterValues = ({
   return state;
 };
 
-const mapStateToProps = (
-  state: State,
-  { card }: ModalOwnProps & ModalCardProps,
-): ModalStateProps => ({
-  question: card ? new Question(card, getMetadata(state)) : undefined,
-});
-
 const mapDispatchToProps = {
   onFetchParameterValues: fetchParameterValues,
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default _.compose(
   Tables.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) =>
       card_id ? getQuestionVirtualTableId(card_id) : undefined,
-    requestType: "fetchMetadata",
+    fetchType: "fetchMetadataDeprecated",
+    requestType: "fetchMetadataDeprecated",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
   Questions.load({
     id: (state: State, { sourceConfig: { card_id } }: ModalOwnProps) => card_id,
-    entityAlias: "card",
     LoadingAndErrorWrapper: ModalLoadingAndErrorWrapper,
   }),
-  connect(mapStateToProps, mapDispatchToProps),
+  connect(null, mapDispatchToProps),
 )(ValuesSourceTypeModal);

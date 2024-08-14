@@ -1,8 +1,8 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import FormSubmitButton from "metabase/core/components/FormSubmitButton";
+import styled from "@emotion/styled";
+
 import BaseLoadingAndErrorWrapper from "metabase/components/LoadingAndErrorWrapper";
-import { color } from "metabase/lib/colors";
+import FormSubmitButton from "metabase/core/components/FormSubmitButton";
 import { breakpointMaxSmall } from "metabase/styled-components/theme";
 
 export const LoadingAndErrorWrapper = styled(BaseLoadingAndErrorWrapper)`
@@ -37,7 +37,7 @@ const titleStyle = css`
   font-weight: 700;
   font-size: 1.125rem;
   line-height: 1.375rem;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
 `;
 
 export const FormTitle = styled.h1`

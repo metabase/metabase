@@ -1,6 +1,6 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+
+import { Icon } from "metabase/ui";
 
 export const SidebarRoot = styled.aside`
   display: flex;
@@ -8,7 +8,7 @@ export const SidebarRoot = styled.aside`
   flex-shrink: 0;
   overflow: hidden;
   width: 300px;
-  border-right: 1px solid ${color("border")};
+  border-right: 1px solid var(--mb-color-border);
 `;
 
 export const SidebarHeader = styled.div`
@@ -16,22 +16,16 @@ export const SidebarHeader = styled.div`
   flex-shrink: 0;
 `;
 
-export const SidebarContent = styled.div`
-  flex-grow: 1;
-  padding: 1rem 0;
-  overflow: auto;
-`;
-
 export const BackIcon = styled(Icon)`
   margin-right: 0.5rem;
-  color: ${color("text-light")};
+  color: var(--mb-color-text-light);
 `;
 
 export const BackButton = styled.button`
   display: flex;
   align-items: center;
-  color: ${color("text-dark")};
-  font-family: var(--default-font-family);
+  color: var(--mb-color-text-dark);
+  font-family: var(--mb-default-font-family);
   font-weight: 700;
   font-size: 14px;
   padding: 0.5rem 0;
@@ -40,6 +34,6 @@ export const BackButton = styled.button`
   text-align: left;
 
   &:hover {
-    color: ${color("filter")};
+    color: var(--mb-color-filter);
   }
 `;

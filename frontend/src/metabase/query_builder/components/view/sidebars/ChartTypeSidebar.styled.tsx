@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import { color, tint, isDark, lighten } from "metabase/lib/colors";
+
 import Button from "metabase/core/components/Button";
+import { alpha, color } from "metabase/lib/colors";
 
 export interface OptionRootProps {
   isSelected?: boolean;
@@ -8,9 +9,7 @@ export interface OptionRootProps {
 
 const getOptionIconColor = ({ isSelected }: OptionIconContainerProps) => {
   if (isSelected) {
-    return color("white");
-  } else if (isDark("brand")) {
-    return tint("brand", 0.5);
+    return color("text-white");
   } else {
     return color("brand");
   }
@@ -25,15 +24,15 @@ export const OptionRoot = styled.div<OptionRootProps>`
     props.isSelected &&
     `
     ${OptionIconContainer} {
-      &, &:hover { 
-      background-color: ${color("brand")};
+      &, &:hover {
+      background-color: var(--mb-color-brand);
       color: ${getOptionIconColor(props)};
       border: 1px solid transparent;
       }
     }
 
     ${OptionText} {
-      color: ${color("brand")};
+      color: var(--mb-color-brand);
     }
   `}
 `;
@@ -44,7 +43,7 @@ export interface OptionIconContainerProps {
 
 export const OptionText = styled.div`
   margin-top: 0.5rem;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   font-size: 0.75rem;
 `;
@@ -54,10 +53,9 @@ export const SettingsButton = styled(Button)`
   top: -0.5rem;
   right: -0.75rem;
   padding: 0.375rem;
-  border: 1px solid ${color("border")};
-
+  border: 1px solid var(--mb-color-border);
   border-radius: 50px;
-  background-color: ${color("white")};
+  background-color: var(--mb-color-bg-white);
   opacity: 0;
 `;
 
@@ -70,12 +68,13 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
   color: ${getOptionIconColor};
   background-color: ${props => props.isSelected && color("brand")};
   border-radius: 100%;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   cursor: pointer;
   padding: 0.875rem;
+
   &:hover {
-    color: ${color("brand")};
-    background-color: ${lighten("brand", 0.55)};
+    color: var(--mb-color-brand);
+    background-color: ${() => alpha("brand", 0.15)};
     border: 1px solid transparent;
 
     ${SettingsButton} {
@@ -85,7 +84,7 @@ export const OptionIconContainer = styled.div<OptionIconContainerProps>`
 `;
 
 export const OptionLabel = styled.h4`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-weight: bold;
   font-size: 0.75rem;
   text-transform: uppercase;

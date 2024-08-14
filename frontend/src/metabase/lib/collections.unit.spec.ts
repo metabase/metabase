@@ -1,4 +1,5 @@
 import { createMockCollection } from "metabase-types/api/mocks";
+
 import { getCrumbs } from "./collections";
 
 const collectionsById = {

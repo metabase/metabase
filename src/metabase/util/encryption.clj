@@ -41,12 +41,11 @@
 (when-not *compile-files*
   (log/info
    (if default-secret-key
-     (trs "Saved credentials encryption is ENABLED for this Metabase instance.")
-     (trs "Saved credentials encryption is DISABLED for this Metabase instance."))
+     "Saved credentials encryption is ENABLED for this Metabase instance."
+     "Saved credentials encryption is DISABLED for this Metabase instance.")
    (u/emoji (if default-secret-key "🔐" "🔓"))
    "\n"
-   (trs "For more information, see")
-   "https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html"))
+   "For more information, see https://metabase.com/docs/latest/operations-guide/encrypting-database-details-at-rest.html"))
 
 (defn encrypt-bytes
   "Encrypt bytes `b` using a `secret-key` (a 64-byte byte array), by default is the hashed value of
@@ -147,22 +146,18 @@
   "If `MB_ENCRYPTION_SECRET_KEY` is set and `v` is encrypted, decrypt `v`; otherwise return `s` as-is. Attempts to check
   whether `v` is an encrypted String, in which case the decrypted String is returned, or whether `v` is encrypted bytes,
   in which case the decrypted bytes are returned."
-  {:arglists '([secret-key? s & {:keys [log-errors?], :or {log-errors? true}}])}
+  {:arglists '([secret-key? s])}
   [& args]
-  (let [[secret-key & more]        (if (and (bytes? (first args)) (string? (second args))) ;TODO: fix hackiness
-                                     args
-                                     (cons default-secret-key args))
-        [v & options]              more
-        {:keys [log-errors?]
-         :or   {log-errors? true}} (apply hash-map options)
+  ;; secret-key as an argument so that tests can pass it directly without using `with-redefs` to run in parallel
+  (let [[secret-key v]     (if (and (bytes? (first args)) (string? (second args)))
+                             args
+                             (cons default-secret-key args))
         log-error-fn (fn [kind ^Throwable e]
-                       (when log-errors?
-                         (log/warn (trs "Cannot decrypt encrypted {0}. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?"
-                                        kind)
-                                   (.getMessage e)
-                                   (u/pprint-to-str (u/filtered-stacktrace e)))))]
+                       (log/warnf e
+                                  "Cannot decrypt encrypted %s. Have you changed or forgot to set MB_ENCRYPTION_SECRET_KEY?"
+                                  kind))]
 
-    (cond (not (some? secret-key))
+    (cond (nil? secret-key)
           v
 
           (possibly-encrypted-string? v)

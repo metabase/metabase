@@ -1,5 +1,5 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
+
 import Alert from "./Alert";
 
 export default {
@@ -15,6 +15,13 @@ export const Default = Template.bind({});
 Default.args = {
   children: "Info alert",
   icon: "info",
+};
+
+export const Warning = Template.bind({});
+Warning.args = {
+  children: "Warning alert",
+  variant: "warning",
+  icon: "warning",
 };
 
 export const Error = Template.bind({});

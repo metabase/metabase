@@ -8,7 +8,7 @@ redirect_from:
 
 {% include plans-blockquote.html feature="SAML authentication" %}
 
-The open source edition of Metabase includes the option to set up with [Google Sign-in or LDAP](./google-and-ldap.md), but the [some plans](https://www.metabase.com/pricing) let you connect your SAML- or [JWT](./authenticating-with-jwt.md)-based SSO. Integrating your SSO with Metabase allows you to:
+The open source edition of Metabase includes the option to set up with [Google Sign-in or LDAP](./google-and-ldap.md), but [some plans](https://www.metabase.com/pricing) let you connect your SAML- or [JWT](./authenticating-with-jwt.md)-based SSO. Integrating your SSO with Metabase allows you to:
 
 - automatically pass user attributes from your SSO to Metabase in order to power data sandboxes
 - let your users access Metabase without re-authenticating.
@@ -20,8 +20,6 @@ Before beginning your SAML set-up, make sure you know the password for your Meta
 To get started, head over to the Settings section of the Admin Panel, then click on the **Authentication** tab. Click the **Configure** button in the SAML section of the Authentication page, and you'll see this form:
 
 ![SAML form](images/saml-form.png)
-
-At the top, **make sure to click the toggle to enable SAML authentication**, otherwise things won't work even if all of your settings are right.
 
 The form itself is broken up into three parts:
 
@@ -75,7 +73,7 @@ Most IdPs already include these assertions by default, but some (such as [Okta](
 
 Generally you'll need to paste these user attributes (first name, last name, and email) into fields labelled "Name", "Attributes" or "Parameters".
 
-**End-users should not be able to edit the email address attribute**. Your IdP will pass the email address attribute to Metabase in order to log people into their Metabase accounts (or to create an account on the first login). If a person can change the email address attribute, they'll potentially be able to access Metabase accounts other than their own.
+> If you allow people to edit their email addresses: make sure to update the corresponding account emails in Metabase. Keeping email addresses in sync will protect people from losing access to their accounts.
 
 ### Settings for signing SSO requests (optional)
 
@@ -151,9 +149,19 @@ After that, type in the name of the user attribute you added in your SAML provid
 
 ![Group schema](images/saml-group-schema.png)
 
-## Disabling password log-in
+## Creating Metabase accounts with SSO
 
-Once you have configured SAML authentication, you can choose to disable the option for users to log in via email and password. To do this, return to the main Authentication settings page and scroll to the bottom. A toggle will now be visible allowing you to disable password authentication.
+> Paid plans [charge for each additional account](https://www.metabase.com/docs/latest/cloud/how-billing-works#what-counts-as-a-user-account).
+
+A new SSO login will automatically create a new Metabase account.
+
+Metabase accounts created with an external identity provider login don't have passwords. People who sign up for Metabase using an IdP must continue to use the IdP to log into Metabase.
+
+## Disabling password logins
+
+> **Avoid locking yourself out of your Metabase!** This setting will apply to all Metabase accounts, _including your Metabase admin account_. We recommend that you keep password authentication **enabled**. This will safeguard you from getting locked out of Metabase in case of any problems with SSO.
+
+To require people to log in with SSO, disable password authentication from **Admin settings** > **Authentication**.
 
 ![Password disable](images/password-disable.png)
 

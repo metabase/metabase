@@ -1,4 +1,4 @@
-import { DatasetColumn } from "metabase-types/api";
+import type { DatasetColumn } from "metabase-types/api";
 
 export type ValueFormatter = (value: any) => string;
 

@@ -1,34 +1,37 @@
-import React from "react";
-import { Route } from "react-router";
 import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
-import {
-  renderWithProviders,
-  screen,
-  waitForElementToBeRemoved,
-} from "__support__/ui";
 import {
   setupCardsEndpoints,
   setupCollectionsEndpoints,
+  setupCollectionByIdEndpoint,
   setupDatabasesEndpoints,
+  setupSearchEndpoints,
 } from "__support__/server-mocks";
-
-import * as Urls from "metabase/lib/urls";
+import { createMockEntitiesState } from "__support__/store";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+  within,
+} from "__support__/ui";
+import { createMockModelResult } from "metabase/browse/test-utils";
+import type { ModelResult } from "metabase/browse/types";
 import { ROOT_COLLECTION } from "metabase/entities/collections";
-
-import type { Card, Dashboard, User } from "metabase-types/api";
+import * as Urls from "metabase/lib/urls";
+import type { Card, Dashboard, DashboardId, User } from "metabase-types/api";
 import {
   createMockCard,
   createMockCollection,
-  createMockDatabase,
   createMockDashboard,
+  createMockDatabase,
   createMockUser,
 } from "metabase-types/api/mocks";
+import type { DashboardState } from "metabase-types/store";
 import {
-  createMockState,
   createMockDashboardState,
-  createMockEntitiesState,
   createMockQueryBuilderState,
+  createMockState,
 } from "metabase-types/store/mocks";
 
 import MainNavbar from "./MainNavbar";
@@ -41,6 +44,7 @@ type SetupOpts = {
   hasOwnDatabase?: boolean;
   openQuestionCard?: Card;
   openDashboard?: Dashboard;
+  models?: ModelResult[];
 };
 
 const PERSONAL_COLLECTION_BASE = createMockCollection({
@@ -74,6 +78,7 @@ async function setup({
   hasOwnDatabase = true,
   openDashboard,
   openQuestionCard,
+  models = [],
 }: SetupOpts = {}) {
   const databases = [];
   const collections = [TEST_COLLECTION];
@@ -98,21 +103,38 @@ async function setup({
     collections.push(personalCollection);
   }
 
-  setupCollectionsEndpoints(collections);
+  setupCollectionsEndpoints({ collections });
+  setupCollectionByIdEndpoint({
+    collections: [PERSONAL_COLLECTION_BASE, TEST_COLLECTION],
+  });
   setupDatabasesEndpoints(databases);
+  setupSearchEndpoints(models);
   fetchMock.get("path:/api/bookmark", []);
 
   if (openQuestionCard) {
     setupCardsEndpoints([openQuestionCard]);
   }
 
-  const dashboards = openDashboard ? { [openDashboard.id]: openDashboard } : {};
-  const dashboardId = openDashboard ? openDashboard.id : null;
+  let dashboardId: DashboardId | null = null;
+  const dashboardsForState: DashboardState["dashboards"] = {};
+  const dashboardsForEntities: Dashboard[] = [];
+  if (openDashboard) {
+    dashboardId = openDashboard.id;
+    dashboardsForState[openDashboard.id] = {
+      ...openDashboard,
+      dashcards: openDashboard.dashcards.map(c => c.id),
+    };
+    dashboardsForEntities.push(openDashboard);
+  }
+
   const storeInitialState = createMockState({
     currentUser: user,
-    dashboard: createMockDashboardState({ dashboardId, dashboards }),
+    dashboard: createMockDashboardState({
+      dashboardId,
+      dashboards: dashboardsForState,
+    }),
     qb: createMockQueryBuilderState({ card: openQuestionCard }),
-    entities: createMockEntitiesState({ dashboards }),
+    entities: createMockEntitiesState({ dashboards: dashboardsForEntities }),
   });
 
   renderWithProviders(
@@ -128,9 +150,8 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryAllByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
+  await waitForLoaderToBeRemoved(); // tests will fail without the 2nd call
 }
 
 async function setupCollectionPage({
@@ -179,31 +200,68 @@ describe("nav > containers > MainNavbar", () => {
     });
   });
 
-  describe("browse data link", () => {
+  describe("browse databases link", () => {
     it("should render", async () => {
       await setup();
-      const link = screen.getByRole("link", { name: /Browse data/i });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases/i,
+      });
+      const link = within(listItem).getByRole("link");
       expect(link).toBeInTheDocument();
-      expect(link).toHaveAttribute("href", "/browse");
+      expect(link).toHaveAttribute("href", "/browse/databases");
     });
 
     it("should not render when a user has no data access", async () => {
       await setup({ hasDataAccess: false });
       expect(
-        screen.queryByRole("link", { name: /Browse data/i }),
+        screen.queryByRole("listitem", { name: /Browse databases/i }),
       ).not.toBeInTheDocument();
     });
 
     it("should be highlighted if selected", async () => {
-      await setup({ pathname: "/browse" });
-      const link = screen.getByRole("listitem", { name: /Browse data/i });
-      expect(link).toHaveAttribute("aria-selected", "true");
+      await setup({ pathname: "/browse/databases" });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
     });
 
     it("should be highlighted if child route selected", async () => {
-      await setup({ pathname: "/browse/1" });
-      const link = screen.getByRole("listitem", { name: /Browse data/i });
-      expect(link).toHaveAttribute("aria-selected", "true");
+      await setup({ pathname: "/browse/databases/1" });
+      const listItem = screen.getByRole("listitem", {
+        name: /Browse databases/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
+    });
+  });
+
+  describe("browse models link", () => {
+    it("should render when there are models", async () => {
+      await setup({ models: [createMockModelResult()] });
+      const listItem = await screen.findByRole("listitem", {
+        name: /Browse models/i,
+      });
+      const link = await within(listItem).findByRole("link");
+      expect(link).toBeInTheDocument();
+      expect(link).toHaveAttribute("href", "/browse/models");
+    });
+
+    it("should not render when there are no models", async () => {
+      await setup({ models: [] });
+      expect(
+        screen.queryByRole("listitem", { name: /Browse models/i }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should be highlighted if selected", async () => {
+      await setup({
+        models: [createMockModelResult()],
+        pathname: "/browse/models",
+      });
+      const listItem = await screen.findByRole("listitem", {
+        name: /Browse models/i,
+      });
+      expect(listItem).toHaveAttribute("aria-selected", "true");
     });
   });
 
@@ -393,7 +451,7 @@ describe("nav > containers > MainNavbar", () => {
     it("should highlight model's collection when on model detail page", async () => {
       const model = createMockCard({
         collection_id: TEST_COLLECTION.id as number,
-        dataset: true,
+        type: "model",
       });
       await setup({
         route: "/model/:slug/detail",

@@ -3,6 +3,7 @@ export * from "./models";
 export * from "./native";
 export * from "./navigation";
 export * from "./object-detail";
+export * from "./query-updates";
 export * from "./querying";
 export * from "./sharing";
 export * from "./timelines";

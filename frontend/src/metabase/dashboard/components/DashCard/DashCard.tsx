@@ -1,131 +1,98 @@
-import React, { useCallback, useMemo, useRef, useState } from "react";
-import { getIn } from "icepick";
+import cx from "classnames";
 import type { LocationDescriptor } from "history";
-
+import { getIn } from "icepick";
+import { memo, useCallback, useMemo, useRef, useState } from "react";
 import { useMount } from "react-use";
-import { IconProps } from "metabase/components/Icon";
-
-import { IS_EMBED_PREVIEW } from "metabase/lib/embed";
-import { SERVER_ERROR_TYPES } from "metabase/lib/errors";
-import Utils from "metabase/lib/utils";
-
-import {
-  getGenericErrorMessage,
-  getPermissionErrorMessage,
-} from "metabase/visualizations/lib/errors";
-import { mergeSettings } from "metabase/visualizations/lib/settings";
-
-import { isVirtualDashCard } from "metabase/dashboard/utils";
-
-import { isActionCard } from "metabase/actions/utils";
 
 import ErrorBoundary from "metabase/ErrorBoundary";
-
+import { isActionCard } from "metabase/actions/utils";
+import CS from "metabase/css/core/index.css";
+import DashboardS from "metabase/css/dashboard.module.css";
+import { DASHBOARD_SLOW_TIMEOUT } from "metabase/dashboard/constants";
+import { getDashcardData, getDashcardHref } from "metabase/dashboard/selectors";
+import {
+  getDashcardResultsError,
+  isDashcardLoading,
+  isQuestionDashCard,
+} from "metabase/dashboard/utils";
+import { color } from "metabase/lib/colors";
+import { useSelector, useStore } from "metabase/lib/redux";
+import { isJWT } from "metabase/lib/utils";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
+import EmbedFrameS from "metabase/public/components/EmbedFrame/EmbedFrame.module.css";
+import { getIsEmbeddingSdk } from "metabase/selectors/embed";
+import type { Mode } from "metabase/visualizations/click-actions/Mode";
+import { mergeSettings } from "metabase/visualizations/lib/settings";
+import type { QueryClickActionsMode } from "metabase/visualizations/types";
 import type {
   Card,
   CardId,
-  Dashboard,
-  DashboardOrderedCard,
   DashCardId,
+  Dashboard,
+  DashboardCard,
+  VirtualCard,
   VisualizationSettings,
 } from "metabase-types/api";
-import type { DatasetData } from "metabase-types/types/Dataset";
+import type { StoreDashcard } from "metabase-types/store";
+
+import { DashCardRoot } from "./DashCard.styled";
+import { DashCardActionsPanel } from "./DashCardActionsPanel/DashCardActionsPanel";
+import { DashCardVisualization } from "./DashCardVisualization";
 import type {
-  ParameterId,
-  ParameterValueOrArray,
-} from "metabase-types/types/Parameter";
-import type { Series } from "metabase-types/types/Visualization";
-
-import { getParameterValuesBySlug } from "metabase-lib/parameters/utils/parameter-values";
-
-import type Mode from "metabase-lib/Mode";
-import type Metadata from "metabase-lib/metadata/Metadata";
-
-import {
   CardSlownessStatus,
-  NavigateToNewCardFromDashboardOpts,
   DashCardOnChangeCardAndRunHandler,
+  NavigateToNewCardFromDashboardOpts,
 } from "./types";
-import DashCardActionButtons from "./DashCardActionButtons";
-import DashCardVisualization from "./DashCardVisualization";
-import { DashCardRoot, DashboardCardActionsPanel } from "./DashCard.styled";
-
-const DATASET_USUALLY_FAST_THRESHOLD = 15 * 1000;
 
 function preventDragging(event: React.SyntheticEvent) {
   event.stopPropagation();
 }
 
-function getSeriesError(series: Series) {
-  const isAccessRestricted = series.some(
-    s =>
-      s.error_type === SERVER_ERROR_TYPES.missingPermissions ||
-      s.error?.status === 403,
-  );
-
-  if (isAccessRestricted) {
-    return {
-      message: getPermissionErrorMessage(),
-      icon: "key",
-    };
-  }
-
-  const errors = series.map(s => s.error).filter(Boolean);
-  if (errors.length > 0) {
-    if (IS_EMBED_PREVIEW) {
-      const message = errors[0]?.data || getGenericErrorMessage();
-      return { message, icon: "warning" };
-    }
-    return {
-      message: getGenericErrorMessage(),
-      icon: "warning",
-    };
-  }
-
-  return;
-}
-
-interface DashCardProps {
+export interface DashCardProps {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard & { justAdded?: boolean };
+  dashcard: StoreDashcard;
   gridItemWidth: number;
   totalNumGridCols: number;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
   slowCards: Record<CardId, boolean>;
-  parameterValues: Record<ParameterId, ParameterValueOrArray>;
-  metadata: Metadata;
-  mode?: Mode;
+  mode?: QueryClickActionsMode | Mode;
 
-  clickBehaviorSidebarDashcard?: DashboardOrderedCard | null;
+  clickBehaviorSidebarDashcard?: DashboardCard | null;
 
   isEditing?: boolean;
   isEditingParameter?: boolean;
   isFullscreen?: boolean;
   isMobile?: boolean;
   isNightMode?: boolean;
-  isPublic?: boolean;
+  /** If public sharing or static/public embed */
+  isPublicOrEmbedded?: boolean;
+  isXray?: boolean;
+  withTitle?: boolean;
 
-  headerIcon?: IconProps;
-
-  onAddSeries: () => void;
-  onRemove: () => void;
+  onAddSeries: (dashcard: StoreDashcard) => void;
+  onReplaceCard: (dashcard: StoreDashcard) => void;
+  onRemove: (dashcard: StoreDashcard) => void;
   markNewCardSeen: (dashcardId: DashCardId) => void;
   navigateToNewCardFromDashboard?: (
     opts: NavigateToNewCardFromDashboardOpts,
   ) => void;
-  onReplaceAllVisualizationSettings: (settings: VisualizationSettings) => void;
-  onUpdateVisualizationSettings: (settings: VisualizationSettings) => void;
-  showClickBehaviorSidebar: (dashCardId: DashCardId | null) => void;
+  onReplaceAllVisualizationSettings: (
+    dashcardId: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
+  onUpdateVisualizationSettings: (
+    dashcardId: DashCardId,
+    settings: VisualizationSettings,
+  ) => void;
+  showClickBehaviorSidebar: (dashcardId: DashCardId | null) => void;
   onChangeLocation: (location: LocationDescriptor) => void;
+
+  downloadsEnabled: boolean;
 }
 
-function DashCard({
+function DashCardInner({
   dashcard,
-  dashcardData,
   dashboard,
   slowCards,
-  metadata,
-  parameterValues,
   gridItemWidth,
   totalNumGridCols,
   mode,
@@ -133,11 +100,13 @@ function DashCard({
   isNightMode = false,
   isFullscreen = false,
   isMobile = false,
-  isPublic = false,
+  isPublicOrEmbedded = false,
+  isXray = false,
   isEditingParameter,
   clickBehaviorSidebarDashcard,
-  headerIcon,
+  withTitle = true,
   onAddSeries,
+  onReplaceCard,
   onRemove,
   navigateToNewCardFromDashboard,
   markNewCardSeen,
@@ -145,7 +114,17 @@ function DashCard({
   onChangeLocation,
   onUpdateVisualizationSettings,
   onReplaceAllVisualizationSettings,
+  downloadsEnabled,
 }: DashCardProps) {
+  const dashcardData = useSelector(state =>
+    getDashcardData(state, dashcard.id),
+  );
+  const isEmbeddingSdk = useSelector(getIsEmbeddingSdk);
+  const store = useStore();
+  const getHref = useCallback(
+    () => getDashcardHref(store.getState(), dashcard.id),
+    [store, dashcard.id],
+  );
   const [isPreviewingCard, setIsPreviewingCard] = useState(false);
   const cardRootRef = useRef<HTMLDivElement>(null);
 
@@ -162,11 +141,11 @@ function DashCard({
     }
   });
 
-  const mainCard: Card = useMemo(
+  const mainCard: Card | VirtualCard = useMemo(
     () => ({
       ...dashcard.card,
       visualization_settings: mergeSettings(
-        dashcard.card.visualization_settings,
+        dashcard?.card?.visualization_settings,
         dashcard.visualization_settings,
       ),
     }),
@@ -174,33 +153,39 @@ function DashCard({
   );
 
   const cards = useMemo(() => {
-    if (Array.isArray(dashcard.series)) {
+    if (isQuestionDashCard(dashcard) && Array.isArray(dashcard.series)) {
       return [mainCard, ...dashcard.series];
     }
     return [mainCard];
   }, [mainCard, dashcard]);
 
   const series = useMemo(() => {
-    return cards.map(card => ({
-      ...getIn(dashcardData, [dashcard.id, card.id]),
-      card: card,
-      isSlow: slowCards[card.id],
-      isUsuallyFast:
+    return cards.map(card => {
+      const isSlow = card.id ? slowCards[card.id] : false;
+      const isUsuallyFast =
         card.query_average_duration &&
-        card.query_average_duration < DATASET_USUALLY_FAST_THRESHOLD,
-    }));
-  }, [cards, dashcard.id, dashcardData, slowCards]);
+        card.query_average_duration < DASHBOARD_SLOW_TIMEOUT;
 
-  const isLoading = useMemo(() => {
-    if (isVirtualDashCard(dashcard)) {
-      return false;
-    }
-    const hasSeries = series.length > 0 && series.every(s => s.data);
-    return !hasSeries;
-  }, [dashcard, series]);
+      if (!card.id) {
+        return { card, isSlow, isUsuallyFast };
+      }
+
+      return {
+        ...getIn(dashcardData, [card.id]),
+        card,
+        isSlow,
+        isUsuallyFast,
+      };
+    });
+  }, [cards, dashcardData, slowCards]);
+
+  const isLoading = useMemo(
+    () => isDashcardLoading(dashcard, dashcardData),
+    [dashcard, dashcardData],
+  );
 
   const isAction = isActionCard(mainCard);
-  const isEmbed = Utils.isJWT(dashcard.dashboard_id);
+  const isEmbed = isEmbeddingSdk || isJWT(dashcard.dashboard_id);
 
   const { expectedDuration, isSlow } = useMemo(() => {
     const expectedDuration = Math.max(
@@ -214,18 +199,27 @@ function DashCard({
     return { expectedDuration, isSlow };
   }, [series, isLoading]);
 
-  const error = useMemo(() => getSeriesError(series), [series]);
+  const error = useMemo(() => getDashcardResultsError(series), [series]);
   const hasError = !!error;
-
-  const parameterValuesBySlug = useMemo(
-    () => getParameterValuesBySlug(dashboard.parameters, parameterValues),
-    [dashboard.parameters, parameterValues],
-  );
 
   const gridSize = useMemo(
     () => ({ width: dashcard.size_x, height: dashcard.size_y }),
     [dashcard],
   );
+
+  const shouldForceHiddenBackground = useMemo(() => {
+    if (!isEditing) {
+      return false;
+    }
+
+    const isHeadingCard = mainCard.display === "heading";
+    const isTextCard = mainCard.display === "text";
+
+    return (
+      (isHeadingCard || isTextCard) &&
+      mainCard.visualization_settings["dashcard.background"] === false
+    );
+  }, [isEditing, mainCard]);
 
   const hasHiddenBackground = useMemo(() => {
     if (isEditing) {
@@ -238,6 +232,30 @@ function DashCard({
     );
   }, [isEditing, isAction, mainCard]);
 
+  const headerIcon = useMemo(() => {
+    const { isRegularCollection } = PLUGIN_COLLECTIONS;
+    const isRegularQuestion = isRegularCollection({
+      authority_level: dashcard.collection_authority_level,
+    });
+    const isRegularDashboard = isRegularCollection({
+      authority_level: dashboard.collection_authority_level,
+    });
+    const authorityLevel = dashcard.collection_authority_level;
+    if (isRegularDashboard && !isRegularQuestion && authorityLevel) {
+      const opts = PLUGIN_COLLECTIONS.AUTHORITY_LEVEL[authorityLevel];
+      const iconSize = 14;
+      return {
+        name: opts.icon,
+        color: opts.color ? color(opts.color) : undefined,
+        tooltip: opts.tooltips?.belonging,
+        size: iconSize,
+
+        // Workaround: headerIcon on cards in a first column have incorrect offset out of the box
+        targetOffsetX: dashcard.col === 0 ? iconSize : 0,
+      };
+    }
+  }, [dashcard, dashboard.collection_authority_level]);
+
   const isEditingDashboardLayout =
     isEditing && !clickBehaviorSidebarDashcard && !isEditingParameter;
 
@@ -249,44 +267,53 @@ function DashCard({
     showClickBehaviorSidebar(dashcard.id);
   }, [dashcard.id, showClickBehaviorSidebar]);
 
-  const changeCardAndRunHandler = useMemo(() => {
-    if (!navigateToNewCardFromDashboard) {
-      return null;
-    }
+  const changeCardAndRunHandler =
+    useCallback<DashCardOnChangeCardAndRunHandler>(
+      ({ nextCard, previousCard, objectId }) => {
+        return navigateToNewCardFromDashboard?.({
+          nextCard,
+          previousCard,
+          dashcard,
+          objectId,
+        });
+      },
+      [dashcard, navigateToNewCardFromDashboard],
+    );
 
-    const handler: DashCardOnChangeCardAndRunHandler = ({
-      nextCard,
-      previousCard,
-      objectId,
-    }) => {
-      navigateToNewCardFromDashboard({
-        nextCard,
-        previousCard,
-        dashcard,
-        objectId,
-      });
-    };
-
-    return handler;
-  }, [dashcard, navigateToNewCardFromDashboard]);
-
-  const renderDashCardActions = useCallback(() => {
-    if (isEditingDashboardLayout) {
-      return (
-        <DashboardCardActionsPanel
-          onMouseDown={preventDragging}
-          data-testid="dashboardcard-actions-panel"
-        >
-          <DashCardActionButtons
+  return (
+    <ErrorBoundary>
+      <DashCardRoot
+        data-testid="dashcard"
+        data-dashcard-key={dashcard.id}
+        className={cx(
+          DashboardS.Card,
+          EmbedFrameS.Card,
+          CS.relative,
+          CS.rounded,
+          CS.flex,
+          CS.flexColumn,
+          CS.hoverParent,
+          CS.hoverVisibility,
+        )}
+        hasHiddenBackground={hasHiddenBackground}
+        shouldForceHiddenBackground={shouldForceHiddenBackground}
+        isNightMode={isNightMode}
+        isUsuallySlow={isSlow === "usually-slow"}
+        ref={cardRootRef}
+      >
+        {isEditingDashboardLayout && (
+          <DashCardActionsPanel
+            onMouseDown={preventDragging}
+            onLeftEdge={dashcard.col === 0}
             series={series}
             dashboard={dashboard}
             dashcard={dashcard}
             isLoading={isLoading}
             isPreviewing={isPreviewingCard}
-            isVirtualDashCard={isVirtualDashCard(dashcard)}
             hasError={hasError}
             onAddSeries={onAddSeries}
             onRemove={onRemove}
+            onReplaceCard={onReplaceCard}
             onUpdateVisualizationSettings={onUpdateVisualizationSettings}
             onReplaceAllVisualizationSettings={
               onReplaceAllVisualizationSettings
@@ -294,45 +321,11 @@ function DashCard({
             showClickBehaviorSidebar={handleShowClickBehaviorSidebar}
             onPreviewToggle={handlePreviewToggle}
           />
-        </DashboardCardActionsPanel>
-      );
-    }
-
-    return null;
-  }, [
-    dashcard,
-    dashboard,
-    series,
-    hasError,
-    isLoading,
-    isPreviewingCard,
-    isEditingDashboardLayout,
-    onAddSeries,
-    onRemove,
-    onReplaceAllVisualizationSettings,
-    onUpdateVisualizationSettings,
-    handlePreviewToggle,
-    handleShowClickBehaviorSidebar,
-  ]);
-
-  return (
-    <ErrorBoundary>
-      <DashCardRoot
-        data-testid="dashcard"
-        className="Card rounded flex flex-column hover-parent hover--visibility"
-        hasHiddenBackground={hasHiddenBackground}
-        isNightMode={isNightMode}
-        isUsuallySlow={isSlow === "usually-slow"}
-        ref={cardRootRef}
-      >
-        {renderDashCardActions()}
+        )}
         <DashCardVisualization
           dashboard={dashboard}
           dashcard={dashcard}
           series={series}
-          parameterValues={parameterValues}
-          parameterValuesBySlug={parameterValuesBySlug}
-          metadata={metadata}
           mode={mode}
           gridSize={gridSize}
           gridItemWidth={gridItemWidth}
@@ -340,8 +333,10 @@ function DashCard({
           headerIcon={headerIcon}
           expectedDuration={expectedDuration}
           error={error}
+          getHref={navigateToNewCardFromDashboard ? getHref : undefined}
           isAction={isAction}
           isEmbed={isEmbed}
+          isXray={isXray}
           isEditing={isEditing}
           isEditingDashCardClickBehavior={isEditingDashCardClickBehavior}
           isEditingDashboardLayout={isEditingDashboardLayout}
@@ -352,15 +347,21 @@ function DashCard({
           isFullscreen={isFullscreen}
           isNightMode={isNightMode}
           isMobile={isMobile}
-          isPublic={isPublic}
+          isPublicOrEmbedded={isPublicOrEmbedded}
+          withTitle={withTitle}
           showClickBehaviorSidebar={showClickBehaviorSidebar}
           onUpdateVisualizationSettings={onUpdateVisualizationSettings}
-          onChangeCardAndRun={changeCardAndRunHandler}
+          onChangeCardAndRun={
+            navigateToNewCardFromDashboard ? changeCardAndRunHandler : null
+          }
           onChangeLocation={onChangeLocation}
+          downloadsEnabled={downloadsEnabled}
         />
       </DashCardRoot>
     </ErrorBoundary>
   );
 }
 
-export default DashCard;
+export const DashCard = Object.assign(memo(DashCardInner), {
+  root: DashCardRoot,
+});

@@ -1,19 +1,16 @@
-import React, { useCallback } from "react";
-import { t } from "ttag";
+import type { LocationDescriptor } from "history";
+import { useCallback } from "react";
 import { connect } from "react-redux";
 import { push } from "react-router-redux";
-import type { LocationDescriptor } from "history";
+import { t } from "ttag";
 
 import ModalContent from "metabase/components/ModalContent";
-
 import * as Urls from "metabase/lib/urls";
-
 import type { Dashboard } from "metabase-types/api";
 import type { State } from "metabase-types/store";
 
-import CreateDashboardForm, {
-  CreateDashboardFormOwnProps,
-} from "./CreateDashboardForm";
+import type { CreateDashboardFormOwnProps } from "./CreateDashboardForm";
+import { CreateDashboardFormConnected } from "./CreateDashboardForm";
 
 interface CreateDashboardModalOwnProps
   extends Omit<CreateDashboardFormOwnProps, "onCancel"> {
@@ -49,8 +46,12 @@ function CreateDashboardModal({
   );
 
   return (
-    <ModalContent title={t`New dashboard`} onClose={onClose}>
-      <CreateDashboardForm
+    <ModalContent
+      title={t`New dashboard`}
+      onClose={onClose}
+      data-testid="new-dashboard-modal"
+    >
+      <CreateDashboardFormConnected
         {...props}
         onCreate={handleCreate}
         onCancel={onClose}
@@ -59,7 +60,7 @@ function CreateDashboardModal({
   );
 }
 
-export default connect<
+export const CreateDashboardModalConnected = connect<
   unknown,
   CreateDashboardModalDispatchProps,
   CreateDashboardModalOwnProps,

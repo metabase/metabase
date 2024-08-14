@@ -1,9 +1,6 @@
 import styled from "@emotion/styled";
 
 import { space } from "metabase/styled-components/theme";
-import { color } from "metabase/lib/colors";
-
-import Link from "metabase/core/components/Link";
 
 export const ActionSettingsWrapper = styled.div`
   display: flex;
@@ -59,7 +56,7 @@ export const ActionSettingsRight = styled.div`
   flex: 1;
   flex-direction: column;
   padding-top: ${space(3)};
-  border-left: 1px solid ${color("border")};
+  border-left: 1px solid var(--mb-color-border);
 `;
 
 export const ParameterMapperContainer = styled.div`
@@ -79,17 +76,5 @@ export const ModalActions = styled.div`
   justify-content: flex-end;
   gap: 1rem;
   padding: 1rem;
-  border-top: 1px solid ${color("border")};
-`;
-
-export const ExplainerText = styled.p`
-  margin-left: ${space(3)};
-  margin-right: ${space(3)};
-
-  color: ${color("text-medium")};
-`;
-
-export const BrandLinkWithLeftMargin = styled(Link)`
-  margin-left: ${space(1)};
-  color: ${color("brand")};
+  border-top: 1px solid var(--mb-color-border);
 `;

@@ -11,7 +11,7 @@
   (for [token tokens]
     (or (:token token) token)))
 
-(deftest tokenize-test
+(deftest ^:parallel tokenize-test
   (doseq [[query expected]
           {"{{num_toucans}}"
            [:param-begin "num_toucans" :param-end]
@@ -36,7 +36,7 @@
            (normalize-tokens (#'params.parse/tokenize query true)))
         (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
 
-(deftest tokenize-no-sql-comments-test
+(deftest ^:parallel tokenize-no-sql-comments-test
   (doseq [[query expected]
           {"-- {{num_toucans}}"
            ["-- " :param-begin "num_toucans" :param-end]
@@ -47,7 +47,7 @@
            (normalize-tokens (#'params.parse/tokenize query false)))
         (format "%s should get tokenized to %s" (pr-str query) (pr-str expected)))))
 
-(deftest parse-test
+(deftest ^:parallel parse-test
   (doseq [[group s->expected]
           {"queries with one param"
            {"select * from foo where bar=1"              ["select * from foo where bar=1"]
@@ -124,7 +124,7 @@
                    (params.parse/parse invalid))
           (format "Parsing %s should throw an exception" (pr-str invalid))))))
 
-(deftest disable-comment-handling-test
+(deftest ^:parallel disable-comment-handling-test
   (testing "SQL comments are ignored when handle-sql-comments = false, e.g. in Mongo driver queries"
     (doseq [[query result] [["{{{foo}}: -- {{bar}}}"
                              ["{" (param "foo") ": -- " (param "bar") "}"]]
@@ -132,3 +132,21 @@
                             ["{{{foo}}: \"/* {{bar}} */\"}"
                              ["{" (param "foo") ": \"/* " (param "bar") " */\"}"]]]]
       (is (= result (normalize-tokens (params.parse/parse query false)))))))
+
+(deftest ^:parallel tokens-in-strings-test
+  (testing "skip malformed parameter tokens in strings"
+    (is (= ["'{{'"] (params.parse/parse "'{{'")))
+    (is (= ["'{{"] (params.parse/parse "'{{")))
+    (is (= ["'{{}}'"] (params.parse/parse "'{{}}'")))
+    (is (= ["'[['"] (params.parse/parse "'[['")))
+    (is (= ["'[[]]'"] (params.parse/parse "'[[]]'")))
+    (is (= ["'[[{{]]'"] (params.parse/parse "'[[{{]]'"))))
+  (testing "Parse well-formed tokens in strings"
+    (is (= ["'" (param "x") "'"] (params.parse/parse "'{{x}}'")))
+    (is (= ["'" (param "snippet: 'test'") "'"] (params.parse/parse "'{{snippet: 'test'}}'")))
+    (is (= ["'{{" (param "x") "'"] (params.parse/parse "'{{{{x}}'")))
+    (is (= ["'[[" (param "x") "'"] (params.parse/parse "'[[{{x}}'")))
+    (is (= ["'" (optional (param "x")) "'"] (params.parse/parse "'[[{{x}}]]'"))))
+  (testing "skip comment start in strings"
+    (is (= ["concat('--'," (param "x") ")"] (params.parse/parse "concat('--',{{x}})")))
+    (is (= ["concat('/*'," (param "x") ")"] (params.parse/parse "concat('/*',{{x}})")))))

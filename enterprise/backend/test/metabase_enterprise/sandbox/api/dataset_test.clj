@@ -7,13 +7,12 @@
 
 (deftest dataset-parameter-test
   (testing "POST /api/dataset/parameter/values should follow sandbox rules"
-    (met/with-gtaps {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
+    (met/with-gtaps! {:gtaps {:categories {:query (mt/mbql-query categories {:filter [:<= $id 3]})}}}
       (testing "with values_source_type=card"
-        (mt/with-temp*
-          [Card [{source-card-id :id}
-                 {:database_id   (mt/id)
-                  :table_id      (mt/id :categories)
-                  :dataset_query (mt/mbql-query categories)}]]
+        (mt/with-temp
+          [Card {source-card-id :id} {:database_id   (mt/id)
+                                      :table_id      (mt/id :categories)
+                                      :dataset_query (mt/mbql-query categories)}]
 
           (testing "when getting values"
             (let [get-values (fn [user]
@@ -27,7 +26,7 @@
 
               ;; returns much more if not sandboxed
               (is (> (-> (get-values :crowberto) :values count) 3))
-              (is (=? {:values          ["African" "American" "Artisan"]
+              (is (=? {:values          [["African"] ["American"] ["Artisan"]]
                        :has_more_values false}
                       (get-values :rasta)))))
 
@@ -42,7 +41,7 @@
                                                                                      :value_field (mt/$ids $categories.name)}}}))]
 
               ;; returns `BBQ` if not sandboxed
-              (is (=? {:values          ["BBQ"]
+              (is (=? {:values          [["BBQ"]]
                        :has_more_values false}
                       (search :crowberto)))
 

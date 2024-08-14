@@ -1,15 +1,19 @@
 import { capitalize } from "inflection";
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-export function enableActionsForDB(dbId = SAMPLE_DB_ID) {
+
+export function setActionsEnabledForDB(dbId, enabled = true) {
   return cy.request("PUT", `/api/database/${dbId}`, {
     settings: {
-      "database-enable-actions": true,
+      "database-enable-actions": enabled,
     },
   });
 }
 
 export function fillActionQuery(query) {
-  cy.get(".ace_content").type(query, { parseSpecialCharSequences: false });
+  // Without this wait, content tends to drop from the beginning of the string. TODO: Fix
+  cy.get(".ace_content:visible").wait(500).type(query, {
+    parseSpecialCharSequences: false,
+    delay: 50,
+  });
 }
 /**
  *
@@ -42,7 +46,7 @@ export function createImplicitAction({ model_id, kind }) {
  * @param {number} actionParams.model_id
  */
 export function createImplicitActions({ modelId }) {
-  createImplicitAction({ modelId, kind: "create" });
-  createImplicitAction({ modelId, kind: "update" });
-  createImplicitAction({ modelId, kind: "delete" });
+  createImplicitAction({ model_id: modelId, kind: "create" });
+  createImplicitAction({ model_id: modelId, kind: "update" });
+  createImplicitAction({ model_id: modelId, kind: "delete" });
 }

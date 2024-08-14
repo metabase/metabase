@@ -1,0 +1,14 @@
+# Before changing this file, make sure you have read how we use it:
+# https://www.notion.so/metabase/Pull-Request-Code-Review-Guide-374f05df889748b69d67af753f9bc9b8?pvs=4#36550c04ceab40b5a8b8bee6264b090c
+# TL;DR: if @camsaul hasn't been involved you're probably doing it wrong
+
+src/metabase @camsaul
+modules @camsaul
+enterprise/backend @camsaul
+enterprise/backend/src/metabase_enterprise/advanced_permissions @noahmoss
+enterprise/backend/src/metabase_enterprise/audit_app @noahmoss
+enterprise/backend/src/metabase_enterprise/sso @noahmoss
+enterprise/backend/src/metabase_enterprise/task/truncate_audit_table.clj @noahmoss
+enterprise/backend/src/metabase_enterprise/internal_user.clj @noahmoss
+src/metabase/**/*permissions* @noahmoss
+src/metabase/integrations @noahmoss

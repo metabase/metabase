@@ -1,12 +1,16 @@
-import React, { memo, ChangeEvent, SyntheticEvent, useCallback } from "react";
+import type { ChangeEvent, SyntheticEvent } from "react";
+import { memo, useCallback } from "react";
 import { t } from "ttag";
-import { Timeline, TimelineEvent } from "metabase-types/api";
-import Settings from "metabase/lib/settings";
-import { parseTimestamp } from "metabase/lib/time";
-import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+
 import EntityMenu from "metabase/components/EntityMenu";
 import Checkbox from "metabase/core/components/CheckBox/CheckBox";
 import { useScrollOnMount } from "metabase/hooks/use-scroll-on-mount";
+import { formatDateTimeWithUnit } from "metabase/lib/formatting";
+import Settings from "metabase/lib/settings";
+import { parseTimestamp } from "metabase/lib/time";
+import type { IconName } from "metabase/ui";
+import type { Timeline, TimelineEvent } from "metabase-types/api";
+
 import {
   CardAside,
   CardBody,
@@ -87,7 +91,7 @@ const EventCard = ({
       </CardCheckboxContainer>
       <CardBody>
         <CardIconAndDateContainer>
-          <CardIcon name={event.icon} />
+          <CardIcon name={event.icon as unknown as IconName} />
           <CardDateInfo>{dateMessage}</CardDateInfo>
         </CardIconAndDateContainer>
         <CardTitle>{event.name}</CardTitle>
@@ -154,4 +158,5 @@ const getCreatorMessage = (event: TimelineEvent) => {
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default memo(EventCard);

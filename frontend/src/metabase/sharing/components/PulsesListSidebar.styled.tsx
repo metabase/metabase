@@ -1,7 +1,7 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
+
 import Card from "metabase/components/Card";
-import { color } from "metabase/lib/colors";
 
 export interface PulesCardProps {
   canEdit: boolean;
@@ -16,7 +16,7 @@ export const PulseCard = styled(Card)<PulesCardProps>`
       cursor: pointer;
 
       &:hover {
-        background-color: ${color("brand")};
+        background-color: var(--mb-color-brand);
       }
     `}
 `;

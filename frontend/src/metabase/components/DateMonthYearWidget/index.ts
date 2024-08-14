@@ -1,1 +1,1 @@
-export { default } from "./DateMonthYearWidget";
+export { DateMonthYearWidget } from "./DateMonthYearWidget";

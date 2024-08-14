@@ -1,0 +1,43 @@
+:root {
+  --title-color: var(--mb-color-text-medium);
+  --muted-color: var(--mb-color-text-light);
+}
+
+.detail {
+  position: relative;
+  align-items: center;
+  display: flex;
+}
+
+.detailBody {
+  composes: pb4 from "style";
+  max-width: 900px;
+}
+
+.detailTitle {
+  composes: textBold from "style";
+  display: inline-block;
+  color: var(--title-color);
+}
+
+.detailSubtitle {
+  composes: textDark textParagraph from "style";
+  white-space: pre-wrap;
+  font-size: 16px;
+  line-height: 24px;
+  padding-top: 6px;
+}
+
+.detailSubtitleLight {
+  composes: textLight from "style";
+  padding-top: 6px;
+}
+
+.detailTextarea {
+  composes: textDark input p2 from "style";
+  resize: none;
+  font-size: 16px;
+  width: 100%;
+  min-height: 100px;
+  border-color: var(--mb-color-text-light);
+}

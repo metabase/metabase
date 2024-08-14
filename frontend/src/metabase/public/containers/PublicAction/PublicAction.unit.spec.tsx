@@ -1,15 +1,13 @@
-import React from "react";
-import { Route } from "react-router";
-import fetchMock from "fetch-mock";
 import userEvent from "@testing-library/user-event";
+import fetchMock from "fetch-mock";
+import { Route } from "react-router";
 
 import {
   renderWithProviders,
   screen,
   waitFor,
-  waitForElementToBeRemoved,
+  waitForLoaderToBeRemoved,
 } from "__support__/ui";
-
 import type {
   ParametersForActionExecution,
   PublicWritebackAction,
@@ -20,6 +18,7 @@ import {
 } from "metabase-types/api/mocks";
 
 import PublicApp from "../PublicApp";
+
 import PublicAction from "./PublicActionLoader";
 
 const TEST_PUBLIC_ID = "test-public-id";
@@ -27,6 +26,7 @@ const TEST_PUBLIC_ID = "test-public-id";
 const SIZE_PARAMETER = createMockActionParameter({
   id: "size",
   name: "Size",
+  "display-name": "Size",
   type: "number/=",
   slug: "size",
   target: ["variable", ["template-tag", "size"]],
@@ -35,6 +35,7 @@ const SIZE_PARAMETER = createMockActionParameter({
 const COLOR_PARAMETER = createMockActionParameter({
   id: "color",
   name: "Color",
+  "display-name": "Color",
   type: "string/=",
   slug: "color",
   target: ["variable", ["template-tag", "color"]],
@@ -89,24 +90,28 @@ async function setup({
     },
   );
 
-  await waitForElementToBeRemoved(() =>
-    screen.queryByTestId("loading-spinner"),
-  );
+  await waitForLoaderToBeRemoved();
 }
 
 describe("PublicAction", () => {
   it("shows acton form", async () => {
     await setup();
 
-    expect(screen.getByText(TEST_ACTION.name)).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: TEST_ACTION.name }),
+    ).toBeInTheDocument();
     expect(screen.getByLabelText(SIZE_PARAMETER.name)).toBeInTheDocument();
     expect(screen.getByLabelText(COLOR_PARAMETER.name)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Submit" })).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    ).toBeInTheDocument();
   });
 
-  it("doesn't let to submit a clean form", async () => {
+  it("should allow to submit a clean form if all parameters are optional", async () => {
     await setup();
-    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    ).toBeEnabled();
   });
 
   it("doesn't let to submit until required parameters are filled", async () => {
@@ -116,12 +121,16 @@ describe("PublicAction", () => {
     };
     await setup({ action });
 
-    userEvent.type(screen.getByLabelText("Size"), "42");
-    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+    await userEvent.type(screen.getByLabelText("Size"), "42");
+    expect(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    ).toBeDisabled();
 
-    userEvent.type(screen.getByLabelText("Color"), "metablue");
+    await userEvent.type(screen.getByLabelText("Color"), "metablue");
     await waitFor(() =>
-      expect(screen.getByRole("button", { name: "Submit" })).toBeEnabled(),
+      expect(
+        screen.getByRole("button", { name: TEST_ACTION.name }),
+      ).toBeEnabled(),
     );
   });
 
@@ -135,9 +144,11 @@ describe("PublicAction", () => {
       },
     });
 
-    userEvent.type(screen.getByLabelText("Size"), "42");
-    userEvent.type(screen.getByLabelText("Color"), "metablue");
-    userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    await userEvent.type(screen.getByLabelText("Size"), "42");
+    await userEvent.type(screen.getByLabelText("Color"), "metablue");
+    await userEvent.click(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    );
 
     await waitFor(() => {
       expect(
@@ -149,9 +160,11 @@ describe("PublicAction", () => {
   it("shows a message on successful submit", async () => {
     await setup();
 
-    userEvent.type(screen.getByLabelText("Size"), "42");
-    userEvent.type(screen.getByLabelText("Color"), "metablue");
-    userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    await userEvent.type(screen.getByLabelText("Size"), "42");
+    await userEvent.type(screen.getByLabelText("Color"), "metablue");
+    await userEvent.click(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    );
 
     expect(
       await screen.findByText(`${TEST_ACTION.name} ran successfully`),
@@ -163,9 +176,11 @@ describe("PublicAction", () => {
   it("shows error if can't fetch action", async () => {
     await setup({ shouldExecutionFail: true });
 
-    userEvent.type(screen.getByLabelText("Size"), "42");
-    userEvent.type(screen.getByLabelText("Color"), "metablue");
-    userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    await userEvent.type(screen.getByLabelText("Size"), "42");
+    await userEvent.type(screen.getByLabelText("Color"), "metablue");
+    await userEvent.click(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    );
 
     expect(await screen.findByText("Something's off")).toBeInTheDocument();
   });
@@ -182,8 +197,12 @@ describe("PublicAction", () => {
       expectedRequestBody: { parameters: {} },
     });
 
-    expect(screen.getByText(TEST_ACTION.name)).toBeInTheDocument();
-    userEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect(
+      screen.getByRole("heading", { name: TEST_ACTION.name }),
+    ).toBeInTheDocument();
+    await userEvent.click(
+      screen.getByRole("button", { name: TEST_ACTION.name }),
+    );
     await waitFor(() =>
       expect(
         fetchMock.done(`path:/api/public/action/${TEST_PUBLIC_ID}/execute`),

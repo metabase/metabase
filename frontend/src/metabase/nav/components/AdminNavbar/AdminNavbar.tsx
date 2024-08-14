@@ -1,11 +1,21 @@
-import React, { useState, useEffect } from "react";
+import { useClickOutside } from "@mantine/hooks";
+import cx from "classnames";
+import { useState } from "react";
 import { t } from "ttag";
-import MetabaseSettings from "metabase/lib/settings";
+
 import LogoIcon from "metabase/components/LogoIcon";
-import Icon from "metabase/components/Icon";
-import { User } from "metabase-types/api";
-import { AdminPath } from "metabase-types/store";
+import CS from "metabase/css/core/index.css";
+import { useSelector } from "metabase/lib/redux";
+import { getIsPaidPlan } from "metabase/selectors/settings";
+import { Button, Icon } from "metabase/ui";
+import type { User } from "metabase-types/api";
+import type { AdminPath } from "metabase-types/store";
+
 import StoreLink from "../StoreLink";
+
+import { AdminNavItem } from "./AdminNavItem";
+import { AdminNavLink } from "./AdminNavItem.styled";
+import AdminNavCS from "./AdminNavbar.module.css";
 import {
   AdminExitLink,
   AdminLogoContainer,
@@ -17,7 +27,6 @@ import {
   AdminMobileNavBarItems,
   MobileHide,
 } from "./AdminNavbar.styled";
-import { AdminNavItem } from "./AdminNavItem";
 
 interface AdminNavbarProps {
   path: string;
@@ -29,11 +38,17 @@ export const AdminNavbar = ({
   path: currentPath,
   adminPaths,
 }: AdminNavbarProps) => {
+  const isPaidPlan = useSelector(getIsPaidPlan);
+
   return (
-    <AdminNavbarRoot className="Nav">
-      <AdminLogoLink to="/admin" data-metabase-event="Navbar;Logo">
+    <AdminNavbarRoot
+      data-element-id="navbar-root"
+      aria-label={t`Navigation bar`}
+    >
+      <AdminLogoLink to="/admin">
         <AdminLogoContainer>
-          <LogoIcon className="text-brand my2" dark />
+          <LogoIcon className={cx(CS.textBrand, CS.my2)} dark />
+          {/* eslint-disable-next-line no-literal-metabase-strings -- Metabase settings */}
           <AdminLogoText>{t`Metabase Admin`}</AdminLogoText>
         </AdminLogoContainer>
       </AdminLogoLink>
@@ -41,7 +56,7 @@ export const AdminNavbar = ({
       <MobileNavbar adminPaths={adminPaths} currentPath={currentPath} />
 
       <MobileHide>
-        <AdminNavbarItems>
+        <AdminNavbarItems data-testid="admin-navbar-items">
           {adminPaths.map(({ name, key, path }) => (
             <AdminNavItem
               name={name}
@@ -52,10 +67,10 @@ export const AdminNavbar = ({
           ))}
         </AdminNavbarItems>
 
-        {!MetabaseSettings.isPaidPlan() && <StoreLink />}
+        {!isPaidPlan && <StoreLink />}
         <AdminExitLink
           to="/"
-          data-metabase-event="Navbar;Exit Admin"
+          data-testid="exit-admin"
         >{t`Exit admin`}</AdminExitLink>
       </MobileHide>
     </AdminNavbarRoot>
@@ -70,34 +85,34 @@ interface AdminMobileNavbarProps {
 const MobileNavbar = ({ adminPaths, currentPath }: AdminMobileNavbarProps) => {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  useEffect(() => {
-    if (mobileNavOpen) {
-      const listener = () => setMobileNavOpen(false);
-      document.addEventListener("click", listener, { once: true });
-      return () => document.removeEventListener("click", listener);
-    }
-  }, [mobileNavOpen]);
+  const ref = useClickOutside(() => setMobileNavOpen(false));
 
   return (
-    <AdminMobileNavbar>
-      <Icon
-        name="burger"
-        size={20}
+    <AdminMobileNavbar ref={ref}>
+      <Button
         onClick={() => setMobileNavOpen(prev => !prev)}
-      />
+        variant="subtle"
+        p="0.25rem"
+      >
+        <Icon
+          name="burger"
+          size={32}
+          className={AdminNavCS.MobileHamburgerIcon}
+        />
+      </Button>
       {mobileNavOpen && (
-        <AdminMobileNavBarItems>
+        <AdminMobileNavBarItems aria-label={t`Navigation links`}>
           {adminPaths.map(({ name, key, path }) => (
-            <AdminNavItem
-              name={name}
-              path={path}
+            <AdminNavLink
+              to={path}
               key={key}
-              currentPath={currentPath}
-            />
+              isSelected={currentPath.startsWith(path)}
+              isInMobileNav
+            >
+              {name}
+            </AdminNavLink>
           ))}
-          <AdminExitLink to="/" data-metabase-event="Navbar;Exit Admin">
-            {t`Exit admin`}
-          </AdminExitLink>
+          <AdminExitLink to="/">{t`Exit admin`}</AdminExitLink>
         </AdminMobileNavBarItems>
       )}
     </AdminMobileNavbar>

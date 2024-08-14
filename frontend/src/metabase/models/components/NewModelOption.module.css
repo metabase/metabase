@@ -1,0 +1,17 @@
+.linkWrapper {
+  text-decoration: none;
+  display: block;
+  background-color: var(--mb-color-bg-white);
+  padding: var(--padding-4);
+  align-items: center;
+  border: var(--border-size) var(--border-style) var(--mb-color-border);
+  border-radius: var(--default-border-radius);
+  cursor: pointer;
+  height: 100%;
+  text-align: center;
+  transition: all 0.2s linear;
+}
+
+.modelTitle {
+  transition: all 0.2s linear;
+}

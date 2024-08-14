@@ -1,23 +1,27 @@
-import React from "react";
-import _ from "underscore";
+import { combineReducers } from "@reduxjs/toolkit";
+import cx from "classnames";
 import { handleActions } from "redux-actions";
-import { combineReducers } from "redux";
 import { t } from "ttag";
-import { addUndo } from "metabase/redux/undo";
-import { AlertApi } from "metabase/services";
+import _ from "underscore";
+
+import { alertApi } from "metabase/api";
+import CS from "metabase/css/core/index.css";
+import { entityCompatibleQuery } from "metabase/lib/entities";
 import { RestfulRequest } from "metabase/lib/request";
-import Icon from "metabase/components/Icon";
+import { addUndo } from "metabase/redux/undo";
+import { Icon } from "metabase/ui";
 
 export const FETCH_ALL_ALERTS = "metabase/alerts/FETCH_ALL_ALERTS";
 const fetchAllAlertsRequest = new RestfulRequest({
-  endpoint: AlertApi.list,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.listAlerts),
   actionPrefix: FETCH_ALL_ALERTS,
   storeAsDictionary: true,
 });
 export const fetchAllAlerts = () => {
   return async (dispatch, getState) => {
     await dispatch(fetchAllAlertsRequest.trigger());
-    dispatch.action(FETCH_ALL_ALERTS);
+    dispatch({ type: FETCH_ALL_ALERTS });
   };
 };
 
@@ -26,21 +30,26 @@ export const FETCH_ALERTS_FOR_QUESTION_CLEAR_OLD_ALERTS =
 export const FETCH_ALERTS_FOR_QUESTION =
   "metabase/alerts/FETCH_ALERTS_FOR_QUESTION";
 const fetchAlertsForQuestionRequest = new RestfulRequest({
-  endpoint: AlertApi.list_for_question,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.listCardAlerts),
   actionPrefix: FETCH_ALERTS_FOR_QUESTION,
   storeAsDictionary: true,
 });
 export const fetchAlertsForQuestion = questionId => {
   return async (dispatch, getState) => {
-    dispatch.action(FETCH_ALERTS_FOR_QUESTION_CLEAR_OLD_ALERTS, questionId);
-    await dispatch(fetchAlertsForQuestionRequest.trigger({ questionId }));
-    dispatch.action(FETCH_ALERTS_FOR_QUESTION);
+    dispatch({
+      payload: questionId,
+      type: FETCH_ALERTS_FOR_QUESTION_CLEAR_OLD_ALERTS,
+    });
+    await dispatch(fetchAlertsForQuestionRequest.trigger({ id: questionId }));
+    dispatch({ type: FETCH_ALERTS_FOR_QUESTION });
   };
 };
 
 export const CREATE_ALERT = "metabase/alerts/CREATE_ALERT";
 const createAlertRequest = new RestfulRequest({
-  endpoint: AlertApi.create,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.createAlert),
   actionPrefix: CREATE_ALERT,
   storeAsDictionary: true,
 });
@@ -53,17 +62,20 @@ export const createAlert = alert => {
 
     dispatch(
       addUndo({
-        // eslint-disable-next-line react/display-name
         message: () => (
-          <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
             {t`Your alert is all set up.`}
           </div>
         ),
       }),
     );
 
-    dispatch.action(CREATE_ALERT);
+    dispatch({ type: CREATE_ALERT });
   };
 };
 
@@ -84,7 +96,8 @@ function cleanAlert(alert) {
 
 export const UPDATE_ALERT = "metabase/alerts/UPDATE_ALERT";
 const updateAlertRequest = new RestfulRequest({
-  endpoint: AlertApi.update,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.updateAlert),
   actionPrefix: UPDATE_ALERT,
   storeAsDictionary: true,
 });
@@ -94,17 +107,20 @@ export const updateAlert = alert => {
 
     dispatch(
       addUndo({
-        // eslint-disable-next-line react/display-name
         message: () => (
-          <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
             {t`Your alert was updated.`}
           </div>
         ),
       }),
     );
 
-    dispatch.action(UPDATE_ALERT);
+    dispatch({ type: UPDATE_ALERT });
   };
 };
 
@@ -112,19 +128,25 @@ export const UNSUBSCRIBE_FROM_ALERT = "metabase/alerts/UNSUBSCRIBE_FROM_ALERT";
 export const UNSUBSCRIBE_FROM_ALERT_CLEANUP =
   "metabase/alerts/UNSUBSCRIBE_FROM_ALERT_CLEANUP";
 const unsubscribeFromAlertRequest = new RestfulRequest({
-  endpoint: AlertApi.unsubscribe,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(
+      params,
+      dispatch,
+      alertApi.endpoints.deleteAlertSubscription,
+    ),
   actionPrefix: UNSUBSCRIBE_FROM_ALERT,
   storeAsDictionary: true,
 });
 export const unsubscribeFromAlert = alert => {
   return async (dispatch, getState) => {
-    await dispatch(unsubscribeFromAlertRequest.trigger(alert));
-    dispatch.action(UNSUBSCRIBE_FROM_ALERT);
+    await dispatch(unsubscribeFromAlertRequest.trigger(alert.id));
+    dispatch({ type: UNSUBSCRIBE_FROM_ALERT });
 
     // This delay lets us to show "You're unsubscribed" text in place of an
     // alert list item for a while before removing the list item completely
     setTimeout(
-      () => dispatch.action(UNSUBSCRIBE_FROM_ALERT_CLEANUP, alert.id),
+      () =>
+        dispatch({ type: UNSUBSCRIBE_FROM_ALERT_CLEANUP, payload: alert.id }),
       5000,
     );
   };
@@ -132,7 +154,8 @@ export const unsubscribeFromAlert = alert => {
 
 export const DELETE_ALERT = "metabase/alerts/DELETE_ALERT";
 const deleteAlertRequest = new RestfulRequest({
-  endpoint: AlertApi.update,
+  endpoint: (params, dispatch) =>
+    entityCompatibleQuery(params, dispatch, alertApi.endpoints.updateAlert),
   actionPrefix: DELETE_ALERT,
   storeAsDictionary: true,
 });
@@ -142,16 +165,19 @@ export const deleteAlert = alertId => {
 
     dispatch(
       addUndo({
-        // eslint-disable-next-line react/display-name
         message: () => (
-          <div className="flex align-center text-bold">
-            <Icon name="alert_confirm" size="19" className="mr2 text-success" />
+          <div className={cx(CS.flex, CS.alignCenter, CS.textBold)}>
+            <Icon
+              name="alert_confirm"
+              size="19"
+              className={cx(CS.mr2, CS.textSuccess)}
+            />
             {t`The alert was successfully deleted.`}
           </div>
         ),
       }),
     );
-    dispatch.action(DELETE_ALERT, alertId);
+    dispatch({ type: DELETE_ALERT, payload: alertId });
   };
 };
 

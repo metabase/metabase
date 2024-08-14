@@ -18,7 +18,8 @@
   "xalan"                            {:resource "apache2_0.txt"}}
 
  "amalloy"                     {"ring-gzip-middleware" {:resource "MIT.txt"}}
- "buddy"                       {"buddy-core" {:resource "apache2_0.txt"}}
+ "buddy"                       {"buddy-core" {:resource "apache2_0.txt"}
+                                "buddy-sign" {:resource "apache2_0.txt"}}
  "colorize"                    {"colorize" {:resource "EPL.txt"}}
  "com.github.jnr"              {"jffi$native" {:resource "apache2_0.txt"}}
  "com.google.api-client"       {"google-api-client" {:resource "apache2_0.txt"}}
@@ -41,6 +42,7 @@
  "io.dropwizard.metrics"       {"metrics-core" {:resource "apache2_0.txt"}}
  "jakarta.activation"          {"jakarta.activation-api" {:resource "EDL.txt"}}
  "jakarta.xml.bind"            {"jakarta.xml.bind-api" {:resource "EDL.txt"}}
+ "javax.servlet"               {"servlet-api" {:resource "CDDL_1.txt"}}
  "javax.servlet.jsp"           {"jsp-api" {:resource "GPL2_0.txt"}}
  "metabase"                    {"saml20-clj" {:resource "EPL_2.txt"}}
  "methodical"                  {"methodical" {:resource "EPL_2.txt"}}

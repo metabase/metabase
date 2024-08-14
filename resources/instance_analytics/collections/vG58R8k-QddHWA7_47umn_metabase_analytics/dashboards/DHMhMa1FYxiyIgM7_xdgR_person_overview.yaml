@@ -1,0 +1,1316 @@
+name: Person overview
+description: See what someone's been up to in your Metabase.
+entity_id: DHMhMa1FYxiyIgM7_xdgR
+created_at: '2023-06-15T01:31:06.523478Z'
+creator_id: internal@metabase.com
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+auto_apply_filters: true
+cache_ttl: null
+collection_position: 4
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters:
+- filteringParameters:
+  - 50670f9e
+  id: 6b3da96f
+  isMultiSelect: false
+  name: User ID
+  sectionId: id
+  slug: user_id
+  type: id
+- filteringParameters:
+  - 50670f9e
+  id: 4a221c3a
+  isMultiSelect: false
+  name: User Name
+  sectionId: string
+  slug: user_name
+  type: string/=
+- filteringParameters:
+  - 50670f9e
+  id: d53443e8
+  isMultiSelect: false
+  name: User Email
+  sectionId: string
+  slug: user_email
+  type: string/=
+- default:
+  - true
+  id: 50670f9e
+  isMultiSelect: false
+  name: Is User Active?
+  sectionId: string
+  slug: is_user_active%3F
+  type: string/=
+- default: past52weeks~
+  id: ba4cf986
+  name: Date Filter
+  sectionId: date
+  slug: date_filter
+  type: date/all-options
+- id: dad0245c
+  name: Activity Type
+  sectionId: string
+  slug: activity_type
+  type: string/=
+- id: a4b3b4ff
+  name: Query Source
+  sectionId: string
+  slug: query_source
+  type: string/=
+serdes/meta:
+- id: DHMhMa1FYxiyIgM7_xdgR
+  label: person_overview
+  model: Dashboard
+dashcards:
+- entity_id: GciAp1qdJrTUEX1rv9wVy
+  card_id: JPERH6xYVcj3m2Zw0YVY1
+  created_at: '2023-06-15T01:56:53.613044Z'
+  row: 0
+  col: 18
+  size_x: 6
+  size_y: 8
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - VLzpbzPlShrECFp-dG4pH
+  parameter_mappings:
+  - card_id: JPERH6xYVcj3m2Zw0YVY1
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_alerts
+        - creator_id
+      - null
+  - card_id: JPERH6xYVcj3m2Zw0YVY1
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - card_id: JPERH6xYVcj3m2Zw0YVY1
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - Creator
+  - card_id: JPERH6xYVcj3m2Zw0YVY1
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: wOrRB7IdN-LE7vDvBziuE
+  card_id: zn_VtBXm5-teZmXpwGcNu
+  created_at: '2023-06-15T02:00:30.798995Z'
+  row: 0
+  col: 12
+  size_x: 6
+  size_y: 8
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - VLzpbzPlShrECFp-dG4pH
+  parameter_mappings:
+  - card_id: zn_VtBXm5-teZmXpwGcNu
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_group_members
+        - user_id
+      - null
+  - card_id: zn_VtBXm5-teZmXpwGcNu
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - User
+  - card_id: zn_VtBXm5-teZmXpwGcNu
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - User
+  - card_id: zn_VtBXm5-teZmXpwGcNu
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - User
+  series: []
+  visualization_settings:
+    column_settings:
+      '["ref",["field",["Internal Metabase Database","public","v_group_members","group_id"],null]]': {}
+- entity_id: Ttn9QEiWRHlNEOga_EHEq
+  card_id: Vm-4GYORvVbGu9jHVLfg1
+  created_at: '2023-06-15T02:08:35.62614Z'
+  row: 8
+  col: 12
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - VLzpbzPlShrECFp-dG4pH
+  parameter_mappings:
+  - card_id: Vm-4GYORvVbGu9jHVLfg1
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - user_id
+      - join-alias: People - User
+  - card_id: Vm-4GYORvVbGu9jHVLfg1
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - User
+  - card_id: Vm-4GYORvVbGu9jHVLfg1
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - User
+  - card_id: Vm-4GYORvVbGu9jHVLfg1
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - User
+  - card_id: Vm-4GYORvVbGu9jHVLfg1
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: Hl9iWmzW05hbW9efp0-Ya
+  card_id: Z18i0B5CgOe66-YScAZdx
+  created_at: '2023-06-15T02:13:22.483217Z'
+  row: 8
+  col: 0
+  size_x: 12
+  size_y: 6
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - VLzpbzPlShrECFp-dG4pH
+  parameter_mappings:
+  - card_id: Z18i0B5CgOe66-YScAZdx
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - user_id
+      - join-alias: Question 1
+  - card_id: Z18i0B5CgOe66-YScAZdx
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: Question 1
+  - card_id: Z18i0B5CgOe66-YScAZdx
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: Question 1
+  - card_id: Z18i0B5CgOe66-YScAZdx
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: Question 1
+  - card_id: Z18i0B5CgOe66-YScAZdx
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: 44ekjEv02wPsWKcE9BYl0
+  card_id: uEf4gbDzXkj9q1uvkaTny
+  created_at: '2023-11-01T01:28:23.514406Z'
+  row: 0
+  col: 0
+  size_x: 12
+  size_y: 8
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - VLzpbzPlShrECFp-dG4pH
+  parameter_mappings:
+  - card_id: uEf4gbDzXkj9q1uvkaTny
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - user_id
+      - null
+  - card_id: uEf4gbDzXkj9q1uvkaTny
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - null
+  - card_id: uEf4gbDzXkj9q1uvkaTny
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - null
+  - card_id: uEf4gbDzXkj9q1uvkaTny
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: o3Trjmdzp8iKpQDhuYUtG
+  card_id: ezcT88-OmH-5HFOFNqmX7
+  created_at: '2023-11-13T20:15:30.366828Z'
+  row: 8
+  col: 0
+  size_x: 24
+  size_y: 8
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - O0vWXzcQX97NAp_KlupRD
+  parameter_mappings:
+  - card_id: ezcT88-OmH-5HFOFNqmX7
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+  - card_id: ezcT88-OmH-5HFOFNqmX7
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - card_id: ezcT88-OmH-5HFOFNqmX7
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - Creator
+  - card_id: ezcT88-OmH-5HFOFNqmX7
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  - card_id: ezcT88-OmH-5HFOFNqmX7
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: hsKfpF3yEcMhoD-o_Zdn0
+  card_id: 5HQS2xXAPF4hOFudut_Tg
+  created_at: '2023-11-13T20:15:30.366828Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 8
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - O0vWXzcQX97NAp_KlupRD
+  parameter_mappings:
+  - card_id: 5HQS2xXAPF4hOFudut_Tg
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+  - card_id: 5HQS2xXAPF4hOFudut_Tg
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - card_id: 5HQS2xXAPF4hOFudut_Tg
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - Creator
+  - card_id: 5HQS2xXAPF4hOFudut_Tg
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  - card_id: 5HQS2xXAPF4hOFudut_Tg
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings:
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Entity Qualified"}]]'
+      : click_behavior:
+          linkTemplate: /dashboard/{{entity_id}}
+          linkType: url
+          targetId: null
+          type: link
+- entity_id: W-Dah8wiwi3_DRg_VDSP6
+  card_id: 95Om4AllyfyB5wtl6TeGi
+  created_at: '2023-11-13T20:15:30.366828Z'
+  row: 16
+  col: 0
+  size_x: 24
+  size_y: 8
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - O0vWXzcQX97NAp_KlupRD
+  parameter_mappings:
+  - card_id: 95Om4AllyfyB5wtl6TeGi
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+  - card_id: 95Om4AllyfyB5wtl6TeGi
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - User
+  - card_id: 95Om4AllyfyB5wtl6TeGi
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - User
+  - card_id: 95Om4AllyfyB5wtl6TeGi
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - User
+  - card_id: 95Om4AllyfyB5wtl6TeGi
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: 2qDp6z4ZWNaWAtXbk-0i8
+  card_id: 5EsTAgs6Uu_xz69TsrUJ4
+  created_at: '2023-11-13T20:23:23.603367Z'
+  row: 24
+  col: 0
+  size_x: 24
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - O0vWXzcQX97NAp_KlupRD
+  parameter_mappings:
+  - card_id: 5EsTAgs6Uu_xz69TsrUJ4
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+  - card_id: 5EsTAgs6Uu_xz69TsrUJ4
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - card_id: 5EsTAgs6Uu_xz69TsrUJ4
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - Creator
+  - card_id: 5EsTAgs6Uu_xz69TsrUJ4
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  - card_id: 5EsTAgs6Uu_xz69TsrUJ4
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: IdUPTWiWUbCGmQOpKxGOI
+  card_id: _lfXwss_MckZBidbcJsgk
+  created_at: '2023-11-13T20:26:15.603024Z'
+  row: 0
+  col: 0
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - 1PNg7EqqaSdPhPyQYpDxp
+  parameter_mappings:
+  - card_id: _lfXwss_MckZBidbcJsgk
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+  - card_id: _lfXwss_MckZBidbcJsgk
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - card_id: _lfXwss_MckZBidbcJsgk
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - Creator
+  - card_id: _lfXwss_MckZBidbcJsgk
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  - card_id: _lfXwss_MckZBidbcJsgk
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: FwTaMeuSVnrwEuD6CMpp6
+  card_id: MUXrck2HHcd2TIRuPfK0v
+  created_at: '2023-11-13T20:26:15.603024Z'
+  row: 0
+  col: 12
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - 1PNg7EqqaSdPhPyQYpDxp
+  parameter_mappings:
+  - card_id: MUXrck2HHcd2TIRuPfK0v
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+  - card_id: MUXrck2HHcd2TIRuPfK0v
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - card_id: MUXrck2HHcd2TIRuPfK0v
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - Creator
+  - card_id: MUXrck2HHcd2TIRuPfK0v
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  - card_id: MUXrck2HHcd2TIRuPfK0v
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: ZqFAsLNhQJc5RJnLC8mGv
+  card_id: 57V11my5MYVnSlaJYM8cX
+  created_at: '2023-11-13T20:26:15.603024Z'
+  row: 9
+  col: 12
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - 1PNg7EqqaSdPhPyQYpDxp
+  parameter_mappings:
+  - card_id: 57V11my5MYVnSlaJYM8cX
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+  - card_id: 57V11my5MYVnSlaJYM8cX
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - Creator
+  - card_id: 57V11my5MYVnSlaJYM8cX
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - Creator
+  - card_id: 57V11my5MYVnSlaJYM8cX
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - Creator
+  - card_id: 57V11my5MYVnSlaJYM8cX
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: 4CWPmm-zMHuFVXoWEwRIk
+  card_id: ItdtatOMd0uUEpvx7tDAC
+  created_at: '2023-11-13T20:26:15.603024Z'
+  row: 9
+  col: 0
+  size_x: 12
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - 1PNg7EqqaSdPhPyQYpDxp
+  parameter_mappings:
+  - card_id: ItdtatOMd0uUEpvx7tDAC
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+  - card_id: ItdtatOMd0uUEpvx7tDAC
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - User
+  - card_id: ItdtatOMd0uUEpvx7tDAC
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - User
+  - card_id: ItdtatOMd0uUEpvx7tDAC
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - User
+  - card_id: ItdtatOMd0uUEpvx7tDAC
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: lgRO8HWcyVqRky2JaL92G
+  card_id: gTeYI2eJtQUh63sZurc3z
+  created_at: '2023-11-13T20:29:14.682883Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - sOD2E2oTJE-j-YB5ltBts
+  parameter_mappings:
+  - card_id: gTeYI2eJtQUh63sZurc3z
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - user_id
+      - null
+  - card_id: gTeYI2eJtQUh63sZurc3z
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - user_id
+  - card_id: gTeYI2eJtQUh63sZurc3z
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - user_id
+  - card_id: gTeYI2eJtQUh63sZurc3z
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - source-field:
+        - Internal Metabase Database
+        - public
+        - v_query_log
+        - user_id
+  - card_id: gTeYI2eJtQUh63sZurc3z
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - temporal-unit: default
+  - card_id: gTeYI2eJtQUh63sZurc3z
+    parameter_id: a4b3b4ff
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - query_source
+      - null
+  series: []
+  visualization_settings:
+    column_settings: null
+- entity_id: _jzOzy43czLDogU6ILzaF
+  card_id: 7FLoE9kUELG4Ess6DsSEY
+  created_at: '2023-11-13T20:34:07.43949Z'
+  row: 9
+  col: 0
+  size_x: 24
+  size_y: 9
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - sOD2E2oTJE-j-YB5ltBts
+  parameter_mappings:
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - user_id
+      - null
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - temporal-unit: default
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - User
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - User
+  - card_id: 7FLoE9kUELG4Ess6DsSEY
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - User
+  series: []
+  visualization_settings:
+    column_settings:
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Card Qualified"}]]'
+      : column_title: Question ID
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","entity_id"],{"base-type":"type/Integer","join-alias":"Content - Dashboard Qualified"}]]'
+      : column_title: Dashboard ID
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Card Qualified"}]]'
+      : column_title: Question name
+        link_text: ''
+        link_url: /question/{{entity_id}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Dashboard Qualified"}]]'
+      : column_title: Dashboard name
+        link_url: /dashboard/{{entity_id_2}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_databases","entity_id"],{"base-type":"type/Integer","join-alias":"Databases - Database Qualified"}]]'
+      : column_title: Database ID
+      ? '["ref",["field",["Internal Metabase Database","public","v_databases","name"],{"base-type":"type/Text","join-alias":"Databases - Database Qualified"}]]'
+      : column_title: Database name
+        link_url: /browse/{{entity_id_3}}
+        view_as: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - User"}]]'
+      : column_title: User name
+      ? '["ref",["field",["Internal Metabase Database","public","v_users","user_id"],{"base-type":"type/Integer","join-alias":"People - User"}]]'
+      : column_title: User ID
+    table.cell_column: running_time_seconds
+    table.columns:
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+      name: started_at
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - base-type: type/Text
+        join-alias: People - User
+      name: full_name
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - query_source
+      - base-type: type/Text
+      name: query_source
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Card Qualified
+      name: name
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+        join-alias: Content - Dashboard Qualified
+      name: name_2
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - name
+      - base-type: type/Text
+        join-alias: Databases - Database Qualified
+      name: name_3
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - is_native
+      - base-type: type/Boolean
+      name: is_native
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - running_time_seconds
+      - base-type: type/Float
+      name: running_time_seconds
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - result_rows
+      - base-type: type/Integer
+      name: result_rows
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Card Qualified
+      name: entity_id
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Content - Dashboard Qualified
+      name: entity_id_2
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_databases
+        - entity_id
+      - base-type: type/Integer
+        join-alias: Databases - Database Qualified
+      name: entity_id_3
+    - enabled: true
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - error
+      - base-type: type/Text
+      name: error
+    - enabled: false
+      fieldRef:
+      - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - user_id
+      - base-type: type/Integer
+        join-alias: People - User
+      name: user_id
+    table.pivot_column: error
+- entity_id: JAd9PU848J24nq7stgYc1
+  card_id: WlQ-en2l-iRRCvO2-v5j1
+  created_at: '2023-11-13T20:35:02.81769Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 11
+  action_id: null
+  dashboard_tab_id:
+  - DHMhMa1FYxiyIgM7_xdgR
+  - pN3kDqlZ16MCaKLxv4hH2
+  parameter_mappings:
+  - card_id: WlQ-en2l-iRRCvO2-v5j1
+    parameter_id: 6b3da96f
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - user_id
+      - join-alias: People - User
+  - card_id: WlQ-en2l-iRRCvO2-v5j1
+    parameter_id: 4a221c3a
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - join-alias: People - User
+  - card_id: WlQ-en2l-iRRCvO2-v5j1
+    parameter_id: d53443e8
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - email
+      - join-alias: People - User
+  - card_id: WlQ-en2l-iRRCvO2-v5j1
+    parameter_id: 50670f9e
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - is_active
+      - join-alias: People - User
+  - card_id: WlQ-en2l-iRRCvO2-v5j1
+    parameter_id: ba4cf986
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - timestamp
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: default
+  - card_id: WlQ-en2l-iRRCvO2-v5j1
+    parameter_id: dad0245c
+    target:
+    - dimension
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_audit_log
+        - topic
+      - base-type: type/Text
+  series: []
+  visualization_settings:
+    column_settings: null
+initially_published_at: null
+tabs:
+- created_at: '2023-11-13T20:15:30.366828Z'
+  entity_id: VLzpbzPlShrECFp-dG4pH
+  name: Overview
+  position: 0
+- created_at: '2023-11-13T20:15:30.366828Z'
+  entity_id: O0vWXzcQX97NAp_KlupRD
+  name: Recently viewed
+  position: 1
+- created_at: '2023-11-13T20:24:02.939513Z'
+  entity_id: 1PNg7EqqaSdPhPyQYpDxp
+  name: Most viewed
+  position: 2
+- created_at: '2023-11-13T20:29:14.682883Z'
+  entity_id: sOD2E2oTJE-j-YB5ltBts
+  name: Queries and downloads
+  position: 3
+- created_at: '2023-11-13T20:35:02.81769Z'
+  entity_id: pN3kDqlZ16MCaKLxv4hH2
+  name: Activity
+  position: 4
+width: full

@@ -1,0 +1,130 @@
+name: Most active people on this dashboard
+description: null
+entity_id: _p6UGMWOQn5-yf03uGsaN
+created_at: '2023-08-17T22:03:07.64817Z'
+creator_id: internal@metabase.com
+display: row
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_view_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - count
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - user_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_users
+        - full_name
+      - base-type: type/Text
+        join-alias: People - Creator
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_view_log
+        - entity_type
+      - null
+    - dashboard
+    joins:
+    - alias: Content - Entity Qualified
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - entity_qualified_id
+        - base-type: type/Text
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_content
+          - entity_qualified_id
+        - base-type: type/Text
+          join-alias: Content - Entity Qualified
+      source-table: AxSackBiyXVRUzM_TyyQY
+      strategy: left-join
+    - alias: Group Members - User
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_group_members
+          - user_id
+        - base-type: type/Integer
+          join-alias: Group Members - User
+      source-table: lTp-ATFsCUFEr9I0fMEaO
+      strategy: left-join
+    - alias: People - Creator
+      condition:
+      - =
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_view_log
+          - user_id
+        - base-type: type/Integer
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_users
+          - user_id
+        - base-type: type/Integer
+          join-alias: People - Creator
+      source-table: 0wVIfjBJWclD0lKeABYYl
+      strategy: left-join
+    order-by:
+    - - desc
+      - - aggregation
+        - 0
+    source-table: P6Ityjj7igswKh4NgZZjz
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - full_name
+  graph.metrics:
+  - count
+  graph.series_order: null
+  graph.series_order_dimension: null
+  graph.show_values: true
+  table.pivot: false
+serdes/meta:
+- id: _p6UGMWOQn5-yf03uGsaN
+  label: most_active_people_on_this_dashboard
+  model: Card
+initially_published_at: null
+metabase_version: null
+type: question

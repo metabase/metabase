@@ -1,10 +1,9 @@
 /* eslint-disable react/prop-types */
-import React from "react";
-
 import { t } from "ttag";
-import { duration } from "metabase/lib/formatting";
 
 import Tooltip from "metabase/core/components/Tooltip";
+import { duration } from "metabase/lib/formatting";
+
 import RunButton from "./RunButton";
 
 const REFRESH_TOOLTIP_THRESHOLD = 30 * 1000; // 30 seconds
@@ -25,7 +24,7 @@ export default function RunButtonWithTooltip({
   ...props
 }) {
   return (
-    <Tooltip tooltip={getTooltip(props)}>
+    <Tooltip tooltip={getTooltip(props)} placement="top">
       <RunButton {...props} />
     </Tooltip>
   );

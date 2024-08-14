@@ -1,8 +1,12 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
-import { measureText } from "metabase/lib/measure-text";
-import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/theme";
+
+import { SdkVisualizationWrapper } from "__support__/storybook";
 import { color } from "metabase/lib/colors";
+import { measureTextWidth } from "metabase/lib/measure-text";
+import { getStaticChartTheme } from "metabase/static-viz/components/RowChart/theme";
+import { Box } from "metabase/ui";
+import { useRowChartTheme } from "metabase/visualizations/visualizations/RowChart/utils/theme";
+
 import { RowChart } from "./RowChart";
 
 export default {
@@ -12,14 +16,13 @@ export default {
 
 const Template: ComponentStory<typeof RowChart> = args => {
   return (
-    <div style={{ padding: 8, height: 600, backgroundColor: "white" }}>
+    <Box h={600} bg="white" p="8px">
       <RowChart {...args} />
-    </div>
+    </Box>
   );
 };
 
-export const Default = Template.bind({});
-Default.args = {
+const DEFAULT_ROW_CHART_ARGS = {
   width: 800,
   height: 400,
   data: [
@@ -73,7 +76,26 @@ Default.args = {
 
   theme: getStaticChartTheme(color),
 
-  measureText: measureText,
+  measureTextWidth,
 
   style: { fontFamily: "Lato" },
 };
+
+export const Default = Template.bind({});
+Default.args = DEFAULT_ROW_CHART_ARGS;
+
+const ThemedRowChart = () => {
+  const theme = useRowChartTheme("Lato", false, false);
+
+  return (
+    <Box h={600} bg="white" p="8px">
+      <RowChart {...DEFAULT_ROW_CHART_ARGS} theme={theme} stackOffset={null} />
+    </Box>
+  );
+};
+
+export const HugeFont = () => (
+  <SdkVisualizationWrapper theme={{ fontSize: "20px" }}>
+    <ThemedRowChart />
+  </SdkVisualizationWrapper>
+);

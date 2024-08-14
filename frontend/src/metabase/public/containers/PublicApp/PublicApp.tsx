@@ -1,11 +1,9 @@
-import React from "react";
 import { connect } from "react-redux";
 
+import { PublicError } from "metabase/public/components/PublicError";
+import { PublicNotFound } from "metabase/public/components/PublicNotFound";
 import { getErrorPage } from "metabase/selectors/app";
-
-import PublicNotFound from "metabase/public/components/PublicNotFound";
-import PublicError from "metabase/public/components/PublicError";
-
+import { PublicStatusListing } from "metabase/status/components/PublicStatusListing";
 import type { AppErrorDescriptor, State } from "metabase-types/store";
 
 interface OwnProps {
@@ -28,9 +26,15 @@ function PublicApp({ errorPage, children }: Props) {
   if (errorPage) {
     return errorPage.status === 404 ? <PublicNotFound /> : <PublicError />;
   }
-  return children;
+  return (
+    <>
+      {children}
+      <PublicStatusListing />
+    </>
+  );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<StateProps, unknown, OwnProps, State>(mapStateToProps)(
   PublicApp,
 );

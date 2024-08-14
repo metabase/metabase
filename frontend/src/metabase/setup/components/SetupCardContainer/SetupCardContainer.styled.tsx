@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { breakpointMinLarge } from "metabase/styled-components/theme";
 
 interface SetupCardContainerProps {

@@ -13,7 +13,7 @@
   "Return a map of the counts of each class of character for `password`.
 
     (count-occurrences \"GoodPw!!\")
-      -> {:total  8, :lower 4, :upper 2, :letter 6, :digit 0, :special 2}"
+      -> {:total 8, :lower 4, :upper 2, :letter 6, :digit 0, :special 2}"
   [password]
   (loop [[^Character c & more] password, counts {:total 0, :lower 0, :upper 0, :letter 0, :digit 0, :special 0}]
     (if-not c
@@ -46,10 +46,10 @@
   [char-type->min password]
   {:pre [(map? char-type->min)
          (string? password)]}
-  (let [occurances (count-occurrences password)]
+  (let [occurences (count-occurrences password)]
     (boolean (loop [[[char-type min-count] & more] (seq char-type->min)]
                (if-not char-type true
-                 (when (>= (occurances char-type) min-count)
+                 (when (>= (occurences char-type) min-count)
                    (recur more)))))))
 
 (defn active-password-complexity
@@ -88,6 +88,13 @@
        (or (= (config/config-kw :mb-password-complexity) :weak)
            (is-uncommon? password))))
 
+(def ^:private default-bcrypt-work-factor
+  "Default work factor used for hashing passwords with BCrypt. Intentionally minimal for tests to reduce testing time."
+  (if config/is-test?
+    ;; 4 is the minimum supported value by jbcrypt library.
+    4
+    10))
+
 ;; copied from cemerick.friend.credentials EPL v1.0 license
 (defn hash-bcrypt
   "Hashes a given plaintext password using bcrypt and an optional
@@ -97,7 +104,7 @@
   [password & {:keys [work-factor]}]
   (BCrypt/hashpw password (if work-factor
                             (BCrypt/gensalt work-factor)
-                            (BCrypt/gensalt))))
+                            (BCrypt/gensalt default-bcrypt-work-factor))))
 
 (defn bcrypt-verify
   "Returns true if the plaintext [password] corresponds to [hash],

@@ -1,4 +1,5 @@
 import styled from "@emotion/styled";
+
 import { color } from "metabase/lib/colors";
 
 export const AppContainer = styled.div`
@@ -15,7 +16,7 @@ export const AppContentContainer = styled.div<{
   position: relative;
   overflow: hidden;
   background-color: ${props =>
-    color(props.isAdminApp ? "bg-white" : "content")};
+    props.isAdminApp ? "var(--mb-color-bg-white)" : color("content")};
 
   @media print {
     height: 100%;

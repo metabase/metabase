@@ -1,6 +1,8 @@
-import { ComponentType } from "react";
+import type { ComponentType } from "react";
 import { connect } from "react-redux";
-import { State } from "metabase-types/store";
+
+import type { State } from "metabase-types/store";
+
 import SlackSetup from "../../components/SlackSetup";
 import SlackSetupForm from "../../containers/SlackSetupForm";
 import { hasSlackBotToken, isSlackTokenValid } from "../../selectors";
@@ -21,6 +23,7 @@ const mapStateToProps = (state: State): SlackSetupStateProps => ({
   isValid: isSlackTokenValid(state),
 });
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default connect<SlackSetupStateProps, unknown, SlackSetupProps, State>(
   mapStateToProps,
 )(SlackSetup);

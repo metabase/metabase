@@ -1,23 +1,32 @@
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  addOrUpdateDashboardCard,
+  createNativeQuestion,
+  main,
+  mapColumnTo,
+  modal,
+  openColumnOptions,
+  openNotebook,
+  openQuestionActions,
+  popover,
+  queryBuilderHeader,
+  questionInfoButton,
+  renameColumn,
   restore,
   rightSidebar,
-  visualize,
-  visitDashboard,
-  popover,
-  openQuestionActions,
-  questionInfoButton,
-} from "e2e/support/helpers";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
-import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
-import {
-  openColumnOptions,
-  renameColumn,
+  saveMetadataChanges,
   setColumnType,
-  mapColumnTo,
   setModelMetadata,
-} from "./helpers/e2e-models-metadata-helpers";
+  sidebar,
+  visitDashboard,
+  visitModel,
+  visualize,
+} from "e2e/support/helpers";
 
-const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS } = SAMPLE_DATABASE;
+import { startQuestionFromModel } from "./helpers/e2e-models-helpers";
+
+const { PEOPLE, PRODUCTS, PRODUCTS_ID, REVIEWS, ORDERS_ID, ORDERS } =
+  SAMPLE_DATABASE;
 
 describe("scenarios > models metadata", () => {
   beforeEach(() => {
@@ -29,90 +38,106 @@ describe("scenarios > models metadata", () => {
 
   describe("GUI model", () => {
     beforeEach(() => {
-      // Convert saved question "Orders" into a model
-      cy.request("PUT", "/api/card/1", {
+      const modelDetails = {
         name: "GUI Model",
-        dataset: true,
-      });
+        query: {
+          "source-table": ORDERS_ID,
+          limit: 5,
+        },
+        type: "model",
+      };
 
-      cy.visit("/model/1");
+      cy.createQuestion(modelDetails).then(({ body: { id } }) => {
+        cy.visit(`/model/${id}`);
+        cy.wait("@dataset");
+      });
     });
 
     it("should edit GUI model metadata", () => {
       openQuestionActions();
 
-      popover().within(() => {
-        cy.findByTextEnsureVisible("89%").trigger("mouseenter");
+      popover().findByTextEnsureVisible("89%").realHover();
+
+      cy.findByTestId("tooltip-content").within(() => {
+        cy.findByText(
+          "Some columns are missing a column type, description, or friendly name.",
+        );
+        cy.findByText(
+          "Adding metadata makes it easier for your team to explore this data.",
+        );
       });
 
-      cy.findByText(
-        "Some columns are missing a column type, description, or friendly name.",
-      );
-      cy.findByText(
-        "Adding metadata makes it easier for your team to explore this data.",
-      );
-
-      cy.findByText("Edit metadata").click();
-
+      popover().findByTextEnsureVisible("Edit metadata").click();
       cy.url().should("include", "/metadata");
-      cy.findByTextEnsureVisible("Product ID");
 
       openColumnOptions("Subtotal");
-
       renameColumn("Subtotal", "Pre-tax");
       setColumnType("No special type", "Cost");
-      cy.button("Save changes").click();
+      saveMetadataChanges();
 
+      cy.log(
+        "Ensure that a question created from this model inherits its metadata.",
+      );
       startQuestionFromModel("GUI Model");
-
       visualize();
-      cy.findByText("Pre-tax ($)");
+
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Pre-tax ($)")
+        .and("not.contain", "Subtotal");
     });
 
     it("allows for canceling changes", () => {
       openQuestionActions();
-
-      cy.findByText("Edit metadata").click();
+      popover().findByTextEnsureVisible("Edit metadata").click();
 
       openColumnOptions("Subtotal");
-
       renameColumn("Subtotal", "Pre-tax");
       setColumnType("No special type", "Cost");
 
-      cy.button("Cancel").click();
+      cy.findByTestId("dataset-edit-bar").button("Cancel").click();
+      modal().button("Discard changes").click();
 
-      cy.findByText("Subtotal");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal")
+        .and("not.contain", "Pre-tax");
     });
 
-    it("clears custom metadata when a model is turned back into a question", () => {
-      openQuestionActions();
+    it(
+      "clears custom metadata when a model is turned back into a question",
+      { tags: "@flaky" },
+      () => {
+        openQuestionActions();
+        popover().findByTextEnsureVisible("Edit metadata").click();
 
-      cy.findByText("Edit metadata").click();
+        openColumnOptions("Subtotal");
+        renameColumn("Subtotal", "Pre-tax");
+        setColumnType("No special type", "Cost");
+        saveMetadataChanges();
 
-      openColumnOptions("Subtotal");
+        cy.findAllByTestId("header-cell")
+          .should("contain", "Pre-tax ($)")
+          .and("not.contain", "Subtotal");
 
-      renameColumn("Subtotal", "Pre-tax");
-      setColumnType("No special type", "Cost");
-      cy.button("Save changes").click();
+        openQuestionActions();
+        popover()
+          .findByTextEnsureVisible("Turn back to saved question")
+          .click();
+        cy.wait("@cardQuery");
 
-      openQuestionActions();
-      popover().within(() => {
-        cy.findByText("Turn back to saved question").click();
-      });
-
-      cy.wait("@dataset");
-
-      cy.findByText("Subtotal");
-    });
+        cy.findAllByTestId("header-cell")
+          .should("contain", "Subtotal")
+          .and("not.contain", "Pre-tax ($)");
+      },
+    );
   });
 
   it("should edit native model metadata", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
-          query: "SELECT * FROM ORDERS",
+          query: "SELECT * FROM ORDERS LIMIT 5",
         },
       },
       { visitQuestion: true },
@@ -120,130 +145,162 @@ describe("scenarios > models metadata", () => {
 
     openQuestionActions();
 
-    popover().within(() => {
-      cy.findByTextEnsureVisible("37%").trigger("mouseenter");
+    popover().findByTextEnsureVisible("37%").realHover();
+
+    cy.findByTestId("tooltip-content").within(() => {
+      cy.findByText(
+        "Most columns are missing a column type, description, or friendly name.",
+      );
+      cy.findByText(
+        "Adding metadata makes it easier for your team to explore this data.",
+      );
     });
 
-    cy.findByText(
-      "Most columns are missing a column type, description, or friendly name.",
-    );
-    cy.findByText(
-      "Adding metadata makes it easier for your team to explore this data.",
-    );
-
-    cy.findByText("Edit metadata").click();
-
+    popover().findByTextEnsureVisible("Edit metadata").click();
     cy.url().should("include", "/metadata");
-    cy.findByTextEnsureVisible("PRODUCT_ID");
 
     openColumnOptions("SUBTOTAL");
 
     mapColumnTo({ table: "Orders", column: "Subtotal" });
-
     renameColumn("Subtotal", "Pre-tax");
-
     setColumnType("No special type", "Cost");
+    saveMetadataChanges();
 
-    cy.button("Save changes").click();
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Pre-tax ($)")
+      .and("not.contain", "Subtotal");
 
+    cy.log(
+      "Ensure that a question created from this model inherits its metadata.",
+    );
     startQuestionFromModel("Native Model");
-
     visualize();
-    cy.findByText("Pre-tax ($)");
+
+    cy.findAllByTestId("header-cell")
+      .should("contain", "Pre-tax ($)")
+      .and("not.contain", "Subtotal");
+  });
+
+  it("should allow setting column relations (metabase#29318)", () => {
+    cy.createNativeQuestion(
+      {
+        name: "Native Model",
+        type: "model",
+        native: {
+          query: "SELECT * FROM ORDERS LIMIT 5",
+        },
+      },
+      { visitQuestion: true },
+    );
+    openQuestionActions();
+    popover().findByTextEnsureVisible("Edit metadata").click();
+    openColumnOptions("USER_ID");
+    setColumnType("No special type", "Foreign Key");
+    sidebar().findByText("Select a target").click();
+    popover().findByText("People → ID").click();
+    saveMetadataChanges();
+    // TODO: Not much to do with it at the moment beyond saving it.
+    // Check that the relation is automatically suggested in the notebook once it is implemented.
   });
 
   it("should keep metadata in sync with the query", () => {
     cy.createNativeQuestion(
       {
         name: "Native Model",
-        dataset: true,
+        type: "model",
         native: {
-          query: "SELECT * FROM ORDERS",
+          query: "SELECT * FROM ORDERS LIMIT 5",
         },
       },
       { visitQuestion: true },
     );
 
     openQuestionActions();
-    popover().within(() => {
-      cy.findByText("Edit query definition").click();
-    });
+    popover().findByTextEnsureVisible("Edit query definition").click();
 
-    cy.get(".ace_content").type(
-      "{selectAll}{backspace}SELECT TOTAL FROM ORDERS",
-    );
+    main().within(() => {
+      cy.get("textarea")
+        .focus()
+        .invoke("val", "")
+        .type("SELECT TOTAL FROM ORDERS LIMIT 5");
+    });
 
     cy.findByTestId("editor-tabs-metadata-name").click();
     cy.wait("@dataset");
 
-    cy.findByTestId("header-cell").should("have.length", 1);
+    cy.findAllByTestId("header-cell")
+      .should("have.length", 1)
+      .and("have.text", "TOTAL");
     cy.findByLabelText("Display name").should("have.value", "TOTAL");
   });
 
-  it("should allow reverting to a specific metadata revision", () => {
-    cy.intercept("POST", "/api/revision/revert").as("revert");
+  it.skip(
+    // disabled for cypress 13 compatibility
+    "should allow reverting to a specific metadata revision",
+    { tags: "@flaky" },
+    () => {
+      cy.intercept("POST", "/api/revision/revert").as("revert");
 
-    cy.createNativeQuestion({
-      name: "Native Model",
-      dataset: true,
-      native: {
-        query: "SELECT * FROM ORDERS",
-      },
-    }).then(({ body: { id: nativeModelId } }) => {
-      cy.visit(`/model/${nativeModelId}/metadata`);
-      cy.wait("@cardQuery");
-      cy.findByTextEnsureVisible("PRODUCT_ID");
-    });
+      cy.createNativeQuestion({
+        name: "Native Model",
+        type: "model",
+        native: {
+          query: "SELECT * FROM ORDERS LIMIT 5",
+        },
+      }).then(({ body: { id: nativeModelId } }) => {
+        cy.visit(`/model/${nativeModelId}/metadata`);
+        cy.wait("@cardQuery");
+      });
 
-    openColumnOptions("SUBTOTAL");
-    mapColumnTo({ table: "Orders", column: "Subtotal" });
-    setColumnType("No special type", "Cost");
-    cy.button("Save changes").click();
+      openColumnOptions("SUBTOTAL");
+      mapColumnTo({ table: "Orders", column: "Subtotal" });
+      setColumnType("No special type", "Cost");
+      saveMetadataChanges();
 
-    // Revision 1
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Subtotal ($)")
-      .and("not.contain", "SUBTOTAL");
+      cy.log("Revision 1");
+      cy.findByTestId("TableInteractive-root").within(() => {
+        cy.findByText("Subtotal ($)").should("be.visible");
+        cy.findByText("SUBTOTAL").should("not.exist");
+      });
 
-    openQuestionActions();
-    cy.findByText("Edit metadata").click();
+      openQuestionActions();
+      popover().findByTextEnsureVisible("Edit metadata").click();
 
-    cy.findByTextEnsureVisible("TAX");
+      cy.log("Revision 2");
+      openColumnOptions("TAX");
+      mapColumnTo({ table: "Orders", column: "Tax" });
+      setColumnType("No special type", "Cost");
+      saveMetadataChanges();
 
-    // Revision 2
-    openColumnOptions("TAX");
-    mapColumnTo({ table: "Orders", column: "Tax" });
-    setColumnType("No special type", "Cost");
-    cy.button("Save changes").click();
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal ($)")
+        .and("contain", "Tax ($)")
+        .and("not.contain", "TAX");
 
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Subtotal ($)")
-      .and("contain", "Tax ($)")
-      .and("not.contain", "TAX");
+      cy.reload();
+      questionInfoButton().click();
 
-    cy.reload();
-    questionInfoButton().click();
+      rightSidebar().within(() => {
+        cy.findByText("History");
+        cy.findAllByTestId("question-revert-button").first().click();
+      });
 
-    rightSidebar().within(() => {
-      cy.findByText("History");
-      cy.findAllByTestId("question-revert-button").first().click();
-    });
+      cy.wait("@revert");
+      cy.findAllByTestId("header-cell")
+        .should("contain", "Subtotal ($)")
+        .and("not.contain", "Tax ($)")
+        .and("contain", "TAX");
+    },
+  );
 
-    cy.wait("@revert");
-    cy.findAllByTestId("header-cell")
-      .should("contain", "Subtotal ($)")
-      .and("not.contain", "Tax ($)")
-      .and("contain", "TAX");
-  });
-
-  describe("native models metadata overwrites", () => {
+  describe("native models metadata overwrites", { viewportWidth: 1400 }, () => {
     beforeEach(() => {
       cy.createNativeQuestion(
         {
           name: "Native Model",
-          dataset: true,
+          type: "model",
           native: {
-            query: "select * from orders",
+            query: "select * from orders limit 100",
           },
         },
         { wrapId: true, idAlias: "modelId" },
@@ -254,7 +311,7 @@ describe("scenarios > models metadata", () => {
           if (field.display_name === "USER_ID") {
             return {
               ...field,
-              id: 11,
+              id: ORDERS.USER_ID,
               display_name: "User ID",
               semantic_type: "type/FK",
               fk_target_field_id: PEOPLE.ID,
@@ -271,8 +328,6 @@ describe("scenarios > models metadata", () => {
           };
         });
       });
-
-      cy.intercept("POST", "/api/dataset").as("dataset");
     });
 
     it("should allow drills on FK columns", () => {
@@ -287,12 +342,13 @@ describe("scenarios > models metadata", () => {
         cy.findByTestId("object-detail").within(() => {
           cy.findByText("68883"); // zip
           cy.findAllByText("Hudson Borer");
+          cy.icon("close").click();
         });
 
-        cy.go("back"); // close modal
-        cy.wait("@dataset");
         cy.go("back"); // navigate away from drilled table
         cy.wait("@dataset");
+
+        cy.findByText("Native Model"); // we are back on the original model
 
         // Drill to Reviews table
         // FK column has a FK semantic type, no mapping to real DB columns
@@ -305,16 +361,48 @@ describe("scenarios > models metadata", () => {
       });
     });
 
-    it("should allow drills on FK columns from dashboards", () => {
+    it("should show implicit joins on FK columns with real DB columns (#37067)", () => {
+      cy.get("@modelId").then(modelId => {
+        cy.visit(`/model/${modelId}`);
+        cy.wait("@dataset");
+
+        // Drill to People table
+        // FK column is mapped to real DB column
+        queryBuilderHeader().button("Filter").click();
+
+        modal().within(() => {
+          cy.findByRole("tablist").within(() => {
+            cy.get("button").should("have.length", 2); // Just the two we're expecting and not the other fake FK.
+            cy.findByText("Native Model").should("exist");
+
+            const userTab = cy.findByText("User");
+            userTab.should("exist");
+            userTab.click();
+          });
+
+          cy.findByTestId("filter-column-Source").findByText("Twitter").click();
+          cy.findByTestId("apply-filters").click();
+        });
+
+        cy.wait("@dataset");
+        cy.findByTestId("question-row-count")
+          .invoke("text")
+          .should("match", /Showing \d+ rows/);
+        cy.findByTestId("question-row-count").should(
+          "not.contain",
+          "Showing 100 rows",
+        );
+      });
+    });
+
+    it("should allow drills on FK columns from dashboards (metabase#42130)", () => {
       cy.get("@modelId").then(modelId => {
         cy.createDashboard().then(response => {
           const dashboardId = response.body.id;
-          cy.request("POST", `/api/dashboard/${dashboardId}/cards`, {
-            cardId: modelId,
-            row: 0,
-            col: 0,
-            size_x: 18,
-            size_y: 9,
+          addOrUpdateDashboardCard({
+            dashboard_id: dashboardId,
+            card_id: modelId,
+            card: { size_x: 24, size_y: 9 },
           });
 
           visitDashboard(dashboardId);
@@ -349,26 +437,62 @@ describe("scenarios > models metadata", () => {
 
       const questionDetails = {
         name: "22521",
-        dataset: true,
+        type: "model",
         query: {
           "source-table": PRODUCTS_ID,
+          limit: 5,
         },
       };
 
       cy.createQuestion(questionDetails, { visitQuestion: true });
+      cy.findAllByTestId("header-cell").should("not.contain", "Vendor");
+
       openQuestionActions();
-      cy.findByText("Vendor").should("not.exist");
-      cy.findByText("Edit metadata").click();
-      cy.findByText("Vendor").should("be.visible");
+      popover().findByTextEnsureVisible("Edit metadata").click();
+
+      cy.findAllByTestId("header-cell")
+        .contains(/^Vendor$/)
+        .should("be.visible");
+    });
+  });
+
+  it("does not confuse the names of various native model columns mapped to the same database field", () => {
+    createNativeQuestion(
+      {
+        type: "model",
+        native: {
+          query: "select 1 as A, 2 as B, 3 as C",
+        },
+      },
+      { idAlias: "modelId", wrapId: true },
+    );
+
+    cy.get("@modelId").then(modelId => {
+      setModelMetadata(modelId, (field, index) => ({
+        ...field,
+        id: ORDERS.ID,
+        display_name: `ID${index + 1}`,
+        semantic_type: "type/PK",
+      }));
+
+      visitModel(modelId);
+    });
+
+    openNotebook();
+    cy.findByTestId("fields-picker").click();
+    popover().within(() => {
+      cy.findByText("ID1").should("be.visible");
+      cy.findByText("ID2").should("be.visible");
+      cy.findByText("ID3").should("be.visible");
     });
   });
 });
 
 function drillFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
-  popover().findByText("View details").click();
+  cy.get(".test-Table-FK").contains(id).first().click();
+  popover().findByTextEnsureVisible("View details").click();
 }
 
 function drillDashboardFK({ id }) {
-  cy.get(".Table-FK").contains(id).first().click();
+  cy.get(".test-Table-FK").contains(id).first().click();
 }

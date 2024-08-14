@@ -1,4 +1,5 @@
 const fs = require("fs");
+
 const { printBold, printCyan } = require("./cypress-runner-utils.js");
 
 const getVersion = async () => {

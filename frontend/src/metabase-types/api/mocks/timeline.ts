@@ -1,9 +1,10 @@
-import {
+import type {
   TimelineEvent,
   Timeline,
   TimelineData,
   TimelineEventData,
 } from "../timeline";
+
 import { createMockUserInfo } from "./user";
 
 export const createMockTimeline = (opts?: Partial<Timeline>): Timeline => ({

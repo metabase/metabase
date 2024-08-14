@@ -1,7 +1,9 @@
 {:keep-require-at-start?        true
  :show-docs-arity-on-same-line? true
  :project-specs                 [{:project-path "deps.edn"
-                                  :classpath-cmd ["clojure" "-A:dev:ee:ee-dev:drivers:drivers-dev" "-Spath"]}]
+                                  :classpath-cmd ["clojure"
+                                                  "-A:dev:ee:ee-dev:drivers:drivers-dev:build:build/all"
+                                                  "-Spath"]}]
  :clean {:ns-inner-blocks-indentation :keep}
  :linters {:clojure-lsp/unused-public-var {:level :warning
                                            :exclude-when-defined-by

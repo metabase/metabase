@@ -1,0 +1,60 @@
+name: Median load time in seconds for questions in this dashboard
+description: null
+entity_id: 4DlO-I7ry2OaVQy7-RGPU
+created_at: '2023-11-01T02:58:31.067637Z'
+creator_id: internal@metabase.com
+display: line
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_query_log
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    aggregation:
+    - - median
+      - - field
+        - - Internal Metabase Database
+          - public
+          - v_query_log
+          - running_time_seconds
+        - base-type: type/Float
+    breakout:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_query_log
+        - started_at
+      - base-type: type/DateTimeWithLocalTZ
+        temporal-unit: week
+    source-table: QOtZaiTLf2FDD4AT6Oinb
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings: null
+  graph.dimensions:
+  - started_at
+  graph.metrics:
+  - median
+  table.cell_column: running_time_seconds
+  table.pivot_column: error
+serdes/meta:
+- id: 4DlO-I7ry2OaVQy7-RGPU
+  label: median_load_time_in_seconds_for_questions_in_this_dashboard
+  model: Card
+initially_published_at: null
+metabase_version: vUNKNOWN (13e6090)
+type: question

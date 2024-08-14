@@ -1,10 +1,7 @@
 import styled from "@emotion/styled";
 
-import { color } from "metabase/lib/colors";
-import { space } from "metabase/styled-components/theme";
 import Button from "metabase/core/components/Button";
-
-import SettingToggle from "../SettingToggle";
+import { space } from "metabase/styled-components/theme";
 
 export const GroupMappingsWidgetAndErrorRoot = styled.div`
   display: flex;
@@ -13,7 +10,7 @@ export const GroupMappingsWidgetAndErrorRoot = styled.div`
 `;
 
 export const GroupMappingsWidgetRoot = styled.div`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -22,7 +19,7 @@ export const GroupMappingsWidgetRoot = styled.div`
 `;
 
 export const GroupMappingsWidgetHeader = styled.div`
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
   border-top-left-radius: 8px;
   border-top-right-radius: 8px;
   display: flex;
@@ -40,20 +37,15 @@ export const GroupMappingsWidgetToggleRoot = styled.div`
   display: flex;
 
   > * {
-    color: ${color("text-dark")};
+    color: var(--mb-color-text-dark);
     padding-right: ${space(1)};
     padding-top: 0;
   }
 `;
 
-export const GroupMappingsToggle = styled(SettingToggle)`
-  padding-top: 0;
-  opacity: 0.5;
-`;
-
 export const GroupMappingsWidgetAbout = styled.div`
   align-items: center;
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   display: flex;
   flex-direction: row;
 

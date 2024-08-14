@@ -70,7 +70,7 @@ If you want to treat "unknown" values as zeroes (or some other value that means 
 Use the same data types within a single `coalesce` function. If you want to coalesce values that have different data types:
 
 - Use the SQL `CAST` operator.
-- [Change the data type from the Data Model page][cast-data-type].
+- [Change the data type from the Table Metadata page][cast-data-type].
 
 If you want to use `coalesce` with JSON or JSONB data types, you'll need to flatten the JSON objects first. For more information, look up the JSON functions that are available in your SQL dialect. You can find some [common SQL reference guides here][sql-reference-guide].
 
@@ -175,10 +175,9 @@ coalesce([Notes], [Comments] "No notes or comments.")
 [cast-data-type]: ../../../data-modeling/metadata-editing.md#casting-to-a-specific-data-type
 [custom-expressions-doc]: ../expressions.md
 [custom-expressions-learn]: https://www.metabase.com/learn/questions/custom-expressions
-[data-types]: https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types
-[missing-dates]: https://www.metabase.com/learn/debugging-sql/sql-logic-missing-data#how-to-fill-in-data-for-missing-report-dates
+[data-types]: https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types
+[missing-dates]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-logic-missing-data#how-to-fill-in-data-for-missing-report-dates
 [notebook-editor-def]: https://www.metabase.com/glossary/notebook_editor
 [numpy]: https://numpy.org/doc/
 [pandas]: https://pandas.pydata.org/pandas-docs/stable/
-[spreadsheets-to-bi]: /blog/spreadsheets-to-bi
-[sql-reference-guide]: https://www.metabase.com/learn/debugging-sql/sql-syntax.html#common-sql-reference-guides
+[sql-reference-guide]: https://www.metabase.com/learn/grow-your-data-skills/learn-sql/debugging-sql/sql-syntax#common-sql-reference-guides

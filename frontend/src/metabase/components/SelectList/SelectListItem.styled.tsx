@@ -1,9 +1,9 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
+import styled from "@emotion/styled";
 
 import Label from "metabase/components/type/Label";
 import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/ui";
 
 export const ItemTitle = styled(Label)`
   margin: 0;
@@ -16,11 +16,11 @@ export const ItemIcon = styled(Icon)<{ color?: string | null }>`
 `;
 
 const activeItemCss = css`
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 
   ${ItemIcon},
   ${ItemTitle} {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
 `;
 

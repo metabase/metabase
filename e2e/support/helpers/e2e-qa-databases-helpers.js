@@ -12,7 +12,7 @@ import {
  **            QA DATABASES             **
  ******************************************/
 
-export function addMongoDatabase(name = "QA Mongo4") {
+export function addMongoDatabase(name = "QA Mongo") {
   // https://hub.docker.com/layers/metabase/qa-databases/mongo-sample-4.4/images/sha256-8cdeaacf28c6f0a6f9fde42ce004fcc90200d706ac6afa996bdd40db78ec0305
   addQADatabase("mongo", name, QA_MONGO_PORT);
 }
@@ -82,7 +82,7 @@ function addQADatabase(engine, db_display_name, port, enable_actions = false) {
 
       // it's important that we don't enable actions until sync is complete
       if (dbId && enable_actions) {
-        cy.log(`**-- Enabling actions --**`);
+        cy.log("**-- Enabling actions --**");
         cy.request("PUT", `/api/database/${dbId}`, {
           settings: { "database-enable-actions": true },
         }).then(({ status }) => {
@@ -103,16 +103,58 @@ function assertOnDatabaseMetadata(engine) {
 }
 
 function recursiveCheck(id, i = 0) {
-  // Let's not wait more than 5s for the sync to finish
+  // Let's not wait more than 20s for the sync to finish
   if (i === 20) {
-    throw new Error("The sync is taking too long. Something is wrong.");
+    cy.task(
+      "log",
+      "The DB sync isn't complete yet, but let's be optimistic about it",
+    );
+    return;
   }
 
-  cy.wait(250);
+  cy.wait(1000);
 
   cy.request("GET", `/api/database/${id}`).then(({ body: database }) => {
+    cy.task("log", {
+      dbId: database.id,
+      syncStatus: database.initial_sync_status,
+    });
     if (database.initial_sync_status !== "complete") {
       recursiveCheck(id, ++i);
+    } else {
+      recursiveCheckFields(id);
+    }
+  });
+}
+
+function recursiveCheckFields(id, i = 0) {
+  // Let's not wait more than 10s for the sync to finish
+  if (i === 10) {
+    cy.task("log", "The field sync isn't complete");
+    return;
+  }
+
+  cy.wait(1000);
+
+  cy.request("GET", `/api/database/${id}/schemas`).then(({ body: schemas }) => {
+    const [schema] = schemas;
+    if (schema) {
+      cy.request("GET", `/api/database/${id}/schema/${schema}`)
+        .then(({ body: schema }) => {
+          return schema[0].id;
+        })
+        .then(tableId => {
+          cy.request("GET", `/api/table/${tableId}/query_metadata`).then(
+            ({ body: table }) => {
+              const field = table.fields.find(
+                field => field.semantic_type !== "type/PK",
+              );
+              if (!field.last_analyzed) {
+                recursiveCheckFields(id, ++i);
+              }
+            },
+          );
+        });
     }
   });
 }
@@ -176,34 +218,104 @@ export function resetTestTable({ type, table }) {
   cy.task("resetTable", { type, table });
 }
 
+export function createTestRoles({ type, isWritable }) {
+  cy.task("createTestRoles", { type, isWritable });
+}
+
 // will this work for multiple schemas?
 export function getTableId({ databaseId = WRITABLE_DB_ID, name }) {
   return cy
     .request("GET", `/api/database/${databaseId}/metadata`)
     .then(({ body }) => {
-      return body?.tables?.find(table => table.name === name)?.id;
+      const table = body?.tables?.find(table => table.name === name);
+      return table ? table.id : null;
     });
 }
 
-export function waitForSyncToFinish(iteration = 0, databaseId = 2) {
-  // 100 x 100ms should be plenty of time for the sync to finish.
-  if (iteration === 100) {
-    return;
+export function getTable({ databaseId = WRITABLE_DB_ID, name }) {
+  return cy
+    .request("GET", `/api/database/${databaseId}/metadata`)
+    .then(({ body }) => {
+      const table = body?.tables?.find(table => table.name === name);
+      return table || null;
+    });
+}
+
+export const createModelFromTableName = ({
+  tableName,
+  modelName = "Test Action Model",
+  idAlias = "modelId",
+}) => {
+  getTableId({ name: tableName }).then(tableId => {
+    cy.createQuestion(
+      {
+        database: WRITABLE_DB_ID,
+        name: modelName,
+        query: {
+          "source-table": tableId,
+        },
+        type: "model",
+      },
+      {
+        wrapId: true,
+        idAlias,
+      },
+    );
+  });
+};
+
+export function waitForSyncToFinish({
+  iteration = 0,
+  dbId = 2,
+  tableName = "",
+  tableAlias,
+}) {
+  // 40 x 500ms (20s) should be plenty of time for the sync to finish.
+  if (iteration === 40) {
+    throw new Error("The sync is taking too long. Something is wrong.");
   }
 
-  cy.request("GET", `/api/database/${databaseId}/metadata`).then(({ body }) => {
-    if (!body.tables.length) {
-      cy.wait(100);
-      waitForSyncToFinish(++iteration, databaseId);
-    }
+  cy.wait(500);
 
-    return;
+  cy.request("GET", `/api/database/${dbId}/metadata`).then(({ body }) => {
+    if (!body.tables.length) {
+      return waitForSyncToFinish({
+        iteration: ++iteration,
+        dbId,
+        tableName,
+        tableAlias,
+      });
+    } else if (tableName) {
+      const table = body.tables.find(
+        table =>
+          table.name === tableName && table.initial_sync_status === "complete",
+      );
+
+      if (!table) {
+        return waitForSyncToFinish({
+          iteration: ++iteration,
+          dbId,
+          tableName,
+          tableAlias,
+        });
+      }
+
+      if (tableAlias) {
+        cy.wrap(table).as(tableAlias);
+      }
+
+      return null;
+    }
   });
 }
 
-export function resyncDatabase(DB_ID = 2) {
+export function resyncDatabase({
+  dbId = 2,
+  tableName = "",
+  tableAlias = undefined, // TS was complaining that this was a required param
+}) {
   // must be signed in as admin to sync
-  cy.request("POST", `/api/database/${DB_ID}/sync_schema`);
-  cy.request("POST", `/api/database/${DB_ID}/rescan_values`);
-  waitForSyncToFinish(0, DB_ID);
+  cy.request("POST", `/api/database/${dbId}/sync_schema`);
+  cy.request("POST", `/api/database/${dbId}/rescan_values`);
+  waitForSyncToFinish({ iteration: 0, dbId, tableName, tableAlias });
 }

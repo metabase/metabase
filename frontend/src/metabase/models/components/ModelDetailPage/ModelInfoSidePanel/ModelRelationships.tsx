@@ -1,11 +1,11 @@
-import React, { useMemo } from "react";
+import { useMemo } from "react";
 import { t } from "ttag";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
-
-import type Question from "metabase-lib/Question";
-import type Table from "metabase-lib/metadata/Table";
+import { Icon } from "metabase/ui";
+import type Question from "metabase-lib/v1/Question";
+import type Table from "metabase-lib/v1/metadata/Table";
+import * as ML_Urls from "metabase-lib/v1/urls";
 
 import { ModelInfoTitle, ModelInfoSection } from "./ModelInfoSidePanel.styled";
 import { List, ListItemLink, ListItemName } from "./ModelRelationships.styled";
@@ -17,7 +17,8 @@ interface Props {
 
 function ModelRelationships({ model, mainTable }: Props) {
   const relatedTables = useMemo(() => {
-    const tablesMainTablePointsTo = model.table()?.foreignTables() || [];
+    const tablesMainTablePointsTo =
+      model.legacyQueryTable()?.foreignTables() || [];
     const tablesPointingToMainTable = mainTable?.connectedTables() || [];
     return _.uniq(
       [...tablesMainTablePointsTo, ...tablesPointingToMainTable],
@@ -36,7 +37,7 @@ function ModelRelationships({ model, mainTable }: Props) {
         {relatedTables.map(table => (
           <li key={table.id}>
             <ListItemLink
-              to={table.newQuestion().getUrl()}
+              to={ML_Urls.getUrl(table.newQuestion())}
               aria-label={table.displayName()}
             >
               <Icon name="table" />
@@ -49,4 +50,5 @@ function ModelRelationships({ model, mainTable }: Props) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelRelationships;

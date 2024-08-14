@@ -5,7 +5,7 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [honey.sql :as sql]
-   [java-time :as t]
+   [java-time.api :as t]
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.athena.schema-parser :as athena.schema-parser]
@@ -14,40 +14,32 @@
    [metabase.driver.sql-jdbc.execute :as sql-jdbc.execute]
    [metabase.driver.sql-jdbc.sync :as sql-jdbc.sync]
    [metabase.driver.sql.query-processor :as sql.qp]
-   [metabase.driver.sql.util.unprepare :as unprepare]
    [metabase.public-settings.premium-features :as premium-features]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
    [metabase.util.honey-sql-2 :as h2x]
-   [metabase.util.i18n :refer [trs]]
    [metabase.util.log :as log])
   (:import
-   (java.sql DatabaseMetaData)
-   (java.time OffsetDateTime ZonedDateTime)))
+   (java.sql Connection DatabaseMetaData)
+   (java.time OffsetDateTime ZonedDateTime)
+   [java.util UUID]))
 
 (set! *warn-on-reflection* true)
 
 (driver/register! :athena, :parent #{:sql-jdbc})
 
-(defmethod sql.qp/honey-sql-version :athena
-  [_driver]
-  2)
-
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                          metabase.driver method impls                                          |
 ;;; +----------------------------------------------------------------------------------------------------------------+
 
-
-(defmethod driver/supports? [:athena :foreign-keys] [_ _] true)
-
-(defmethod driver/database-supports? [:athena :datetime-diff] [_driver _feature _database] true)
-
-(defmethod driver/supports? [:athena :nested-fields] [_ _] false #_true) ; huh? Not sure why this was `true`. Disabled
-                                                                         ; for now.
-
-(defmethod driver/database-supports? [:athena :test/jvm-timezone-setting]
-  [_driver _feature _database]
-  false)
+(doseq [[feature supported?] {:datetime-diff                 true
+                              :nested-fields                 false
+                              :uuid-type                     true
+                              :connection/multiple-databases true
+                              :identifiers-with-spaces       false
+                              :metadata/key-constraints      false
+                              :test/jvm-timezone-setting     false}]
+  (defmethod driver/database-supports? [:athena feature] [_driver _feature _db] supported?))
 
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                     metabase.driver.sql-jdbc method impls                                      |
@@ -109,6 +101,7 @@
     :float                               :type/Float
     :integer                             :type/Integer
     :int                                 :type/Integer
+    :uuid                                :type/UUID
     :map                                 :type/*
     :smallint                            :type/Integer
     :string                              :type/Text
@@ -135,6 +128,14 @@
     "time"
     (fn read-column-as-LocalTime [] (.getObject rs i java.time.LocalTime))
 
+    "uuid"
+    (fn read-column-as-UUID []
+      (when-let [s (.getObject rs i)]
+        (try
+          (UUID/fromString s)
+          (catch IllegalArgumentException _
+            s))))
+
     "timestamp with time zone"
     (fn read-column-as-ZonedDateTime []
       (when-let [s (.getString rs i)]
@@ -142,7 +143,7 @@
           (u.date/parse s)
           ;; better to catch and log the error here than to barf completely, right?
           (catch Throwable e
-            (log/error e (trs "Error parsing timestamp with time zone string {0}: {1}" (pr-str s) (ex-message e)))
+            (log/errorf e "Error parsing timestamp with time zone string %s: %s" (pr-str s) (ex-message e))
             nil))))
 
     ((get-method sql-jdbc.execute/read-column-thunk [:sql-jdbc java.sql.Types/VARCHAR]) driver rs rsmeta i)))
@@ -155,7 +156,7 @@
   column, and you can only have `timestamp` columns when actually creating them."
   false)
 
-(defmethod unprepare/unprepare-value [:athena OffsetDateTime]
+(defmethod sql.qp/inline-value [:athena OffsetDateTime]
   [_driver t]
   ;; Timestamp literals do not support offsets, or at least they don't in `INSERT INTO ...` statements. I'm not 100%
   ;; sure what the correct thing to do here is then. The options are either:
@@ -172,7 +173,7 @@
     ;; when not loading data we can actually use timestamp with offset info.
     (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-offset t))))
 
-(defmethod unprepare/unprepare-value [:athena ZonedDateTime]
+(defmethod sql.qp/inline-value [:athena ZonedDateTime]
   [driver t]
   ;; This format works completely fine for literals e.g.
   ;;
@@ -185,8 +186,13 @@
   ;; Athena (despite Athena only partially supporting TIMESTAMP WITH TIME ZONE) then you can use the commented out impl
   ;; to do it. That should work ok because it converts it to a UTC then to a LocalDateTime. -- Cam
   (if *loading-data*
-    (unprepare/unprepare-value driver (t/offset-date-time t))
+    (sql.qp/inline-value driver (t/offset-date-time t))
     (format "timestamp '%s %s %s'" (t/local-date t) (t/local-time t) (t/zone-id t))))
+
+(defmethod sql.qp/inline-value [:athena UUID]
+  [_driver uuid]
+  ;; since we inline, we need to cast to string to uuid
+  (format "cast('%s' as uuid)" uuid))
 
 ;;; for some evil reason Athena expects `OFFSET` *before* `LIMIT`, unlike every other database in the known universe; so
 ;;; we'll have to have a custom implementation of `:page` here and do our own version of `:offset` that comes before
@@ -198,8 +204,8 @@
   [_driver _top-level-clause honeysql-form {{:keys [items page]} :page}]
   ;; this is identical to the normal version except for the `::offset` instead of `:offset`
   (assoc honeysql-form
-         :limit items
-         ::offset (* items (dec page))))
+         :limit (sql.qp/inline-num items)
+         ::offset (sql.qp/inline-num (* items (dec page)))))
 
 (defn- date-trunc [unit expr] [:date_trunc (h2x/literal unit) expr])
 
@@ -300,8 +306,8 @@
   "Given a `database-type` (e.g. `VARCHAR`) return the mapped Metabase type (e.g. `:type/Text`)."
   [driver database-type]
   (or (sql-jdbc.sync/database-type->base-type driver (keyword database-type))
-      (do (log/warn (format "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
-                            database-type))
+      (do (log/warnf "Don't know how to map column type '%s' to a Field base_type, falling back to :type/*."
+                     database-type)
           :type/*)))
 
 (defn- run-query
@@ -359,27 +365,35 @@
 
 (defn describe-table-fields
   "Returns a set of column metadata for `schema` and `table-name` using `metadata`. "
-  [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name}, & [^String db-name-or-nil]]
+  [^DatabaseMetaData metadata database driver {^String schema :schema, ^String table-name :name} catalog]
   (try
-    (with-open [rs (.getColumns metadata db-name-or-nil schema table-name nil)]
+    (with-open [rs (.getColumns metadata catalog schema table-name nil)]
       (let [columns (jdbc/metadata-result rs)]
-        (if (table-has-nested-fields? columns)
+        (if (or (table-has-nested-fields? columns)
+                ; If `.getColumns` returns an empty result, try to use DESCRIBE, which is slower
+                ; but doesn't suffer from the bug in the JDBC driver as metabase#43980
+                (empty? columns))
           (describe-table-fields-with-nested-fields database schema table-name)
           (describe-table-fields-without-nested-fields driver columns))))
     (catch Throwable e
-      (log/error e (trs "Error retreiving fields for DB {0}.{1}" schema table-name))
+      (log/errorf e "Error retreiving fields for DB %s.%s" schema table-name)
       (throw e))))
 
 ;; Becuse describe-table-fields might fail, we catch the error here and return an empty set of columns
 
 (defmethod driver/describe-table :athena
   [driver {{:keys [catalog]} :details, :as database} table]
-  (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-    (assoc (select-keys table [:name :schema])
-           :fields (try
-                     (describe-table-fields metadata database driver table catalog)
-                     (catch Throwable _
-                       (set nil))))))
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [metadata (.getMetaData conn)]
+       (assoc (select-keys table [:name :schema])
+              :fields (try
+                        (describe-table-fields metadata database driver table catalog)
+                        (catch Throwable _
+                          (set nil))))))))
 
 (defn- get-tables
   "Athena can query EXTERNAL and MANAGED tables."
@@ -430,16 +444,21 @@
 ; If we want to limit the initial connection to a specific database/schema, I think we'd have to do that here...
 (defmethod driver/describe-database :athena
   [driver {details :details, :as database}]
-  {:tables (jdbc/with-db-metadata [metadata (sql-jdbc.conn/db->pooled-connection-spec database)]
-             (fast-active-tables driver metadata details))})
+  (sql-jdbc.execute/do-with-connection-with-options
+   driver
+   database
+   nil
+   (fn [^Connection conn]
+     (let [metadata (.getMetaData conn)]
+       {:tables (fast-active-tables driver metadata details)}))))
 
-; Unsure if this is the right way to approach building the parameterized query...but it works
-(defn- prepare-query [driver {query :native, :as outer-query}]
-  (cond-> outer-query
-    (seq (:params query))
-    (merge {:native {:params nil
-                     :query (unprepare/unprepare driver (cons (:query query) (:params query)))}})))
+(defmethod sql.qp/format-honeysql :athena
+  [driver honeysql-form]
+  (binding [driver/*compile-with-inline-parameters* true]
+    ((get-method sql.qp/format-honeysql :sql) driver honeysql-form)))
 
 (defmethod driver/execute-reducible-query :athena
   [driver query context respond]
-  ((get-method driver/execute-reducible-query :sql-jdbc) driver (prepare-query driver, query) context respond))
+  (assert (empty? (get-in query [:native :params]))
+          "Athena queries should not be parameterized; they should have been compiled with metabase.driver/*compile-with-inline-parameters*")
+  ((get-method driver/execute-reducible-query :sql-jdbc) driver query context respond))

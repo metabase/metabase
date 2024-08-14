@@ -5,18 +5,19 @@
    [clojure.set :as set]
    [clojure.string :as str]
    [clojure.test :refer :all]
-   [java-time :as t]
+   [java-time.api :as t]
    [metabase.driver.common.parameters :as params]
    [metabase.driver.mongo.parameters :as mongo.params]
    [metabase.models :refer [NativeQuerySnippet]]
    [metabase.query-processor :as qp]
-   [metabase.test :as mt])
+   [metabase.test :as mt]
+   [toucan2.tools.with-temp :as t2.with-temp])
   (:import
    (com.fasterxml.jackson.core JsonGenerator)))
 
 (set! *warn-on-reflection* true)
 
-(deftest ->utc-instant-test
+(deftest ^:parallel ->utc-instant-test
   (doseq [t [#t "2020-03-14"
              #t "2020-03-14T00:00:00"
              #t "2020-03-13T17:00:00-07:00"
@@ -38,18 +39,15 @@
   ([field-name value-type value]
    (field-filter field-name nil value-type value))
   ([field-name base-type value-type value]
-   (params/->FieldFilter (cond-> {:name (name field-name)}
-                           base-type
-                           (assoc :base_type base-type))
-                         {:type value-type, :value value})))
+   (field-filter field-name base-type value-type value nil))
+  ([field-name base-type value-type value options]
+   (params/->FieldFilter (merge {:lib/type  :metadata/column
+                                 :name      (name field-name)
+                                 :base-type (or base-type :type/*)})
+                         (cond-> {:type value-type, :value value}
+                           (map? options) (assoc :options options)))))
 
-(defn- comma-separated-numbers [nums]
-  (params/->CommaSeparatedNumbers nums))
-
-(defn- multiple-values [& values]
-  (params/->MultipleValues values))
-
-(deftest substitute-test
+(deftest ^:parallel substitute-test
   (testing "non-parameterized strings should not be substituted"
     (is (= "wow"
            (substitute nil ["wow"]))))
@@ -99,15 +97,15 @@
                                 (substitute nil params)))))))
   (testing "comma-separated numbers"
     (is (= "{$in: [1, 2, 3]}"
-           (substitute {:id (comma-separated-numbers [1 2 3])}
+           (substitute {:id [1 2 3]}
                        [(param :id)]))))
-  (testing "multiple-values single (#22486)"
-    (is (= "{$in: [\"33 Taps\"]}"
-           (substitute {:id (multiple-values "33 Taps")}
+  (testing "multiple-values single (#30136)"
+    (is (= "\"33 Taps\""
+           (substitute {:id ["33 Taps"]}
                        [(param :id)]))))
   (testing "multiple-values multi (#22486)"
     (is (= "{$in: [\"33 Taps\", \"Cha Cha Chicken\"]}"
-           (substitute {:id (multiple-values "33 Taps" "Cha Cha Chicken")}
+           (substitute {:id ["33 Taps" "Cha Cha Chicken"]}
                        [(param :id)])))))
 
 (defprotocol ^:private ToBSON
@@ -148,7 +146,7 @@
 (defn- strip [s]
   (str/replace s #"\s" ""))
 
-(deftest field-filter-test
+(deftest ^:parallel field-filter-test
   (testing "Date ranges"
     (mt/with-clock #t "2019-12-13T12:00:00.000Z[UTC]"
       (letfn [(substitute-date-range [s]
@@ -164,13 +162,10 @@
           (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-11-01T00:00:00Z")}}
                                             {"date" {:$lt  (ISODate "2019-12-01T00:00:00Z")}}]}}])
                  (substitute-date-range "lastmonth")))))))
-  (testing "multiple values"
-    (doseq [[message v] {"values are a vector of numbers" [1 2 3]
-                         "comma-separated numbers"        (comma-separated-numbers [1 2 3])}]
-      (testing message
-        (is (= (to-bson [{:$match {"id" {:$in [1 2 3]}}}])
-               (substitute {:id (field-filter "id" :number v)}
-                           ["[{$match: " (param :id) "}]"]))))))
+  (testing "multiple values (numbers)"
+    (is (= (to-bson [{:$match {"id" {:$in [1 2 3]}}}])
+           (substitute {:id (field-filter "id" :number [1 2 3])}
+                       ["[{$match: " (param :id) "}]"]))))
   (testing "single date"
     (is (= (to-bson [{:$match {:$and [{"date" {:$gte (ISODate "2019-12-08")}}
                                       {"date" {:$lt  (ISODate "2019-12-09")}}]}}])
@@ -181,15 +176,34 @@
            (substitute {:date (params/->FieldFilter {:name "date"} params/no-value)} ["[{$match: " (param :date) "}]"]))))
   (testing "operators"
     (testing "string"
-      (doseq [[operator form input] [[:string/starts-with {"$regex" "^foo"} ["foo"]]
-                                     [:string/ends-with {"$regex" "foo$"} ["foo"]]
-                                     [:string/contains {"$regex" "foo"} ["foo"]]
-                                     [:string/does-not-contain {"$not" {"$regex" "foo"}} ["foo"]]
-                                     [:string/= "foo" ["foo"]]]]
+      (doseq [[operator form input options]
+              [[:string/starts-with
+                {"$expr" {"$regexMatch" {"input" "$description" "regex" "^foo" "options" ""}}}
+                ["foo"]]
+               [:string/ends-with
+                {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" ""}}}
+                ["foo"]]
+               [:string/ends-with
+                {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo$" "options" "i"}}}
+                ["foo"]
+                {:case-sensitive false}]
+               [:string/contains
+                {"$expr" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}
+                ["foo"]]
+               [:string/does-not-contain
+                {"$expr"
+                 {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" ""}}}}
+                ["foo"]]
+               [:string/does-not-contain
+                {"$expr"
+                 {"$not" {"$regexMatch" {"input" "$description" "regex" "foo" "options" "i"}}}}
+                ["foo"]
+                {:case-sensitive false}]
+               [:string/= {"description" "foo"} ["foo"]]]]
         (testing operator
-          (is (= (strip (to-bson [{:$match {"description" form}}]))
+          (is (= (strip (to-bson [{:$match form}]))
                  (strip
-                  (substitute {:desc (field-filter "description" :type/Text operator input)}
+                  (substitute {:desc (field-filter "description" :type/Text operator input options)}
                               ["[{$match: " (param :desc) "}]"])))))))
     (testing "numeric"
       (doseq [[operator form input] [[:number/<= {"price" {"$lte" 42}} [42]]
@@ -235,7 +249,7 @@
                 (substitute {:price (field-filter "price" :type/Integer :number/!= [1 2])}
                             ["[{$match: " (param :price) "}]"]))))))))
 
-(deftest ^:parallel substitute-native-query-snippets-test
+(deftest ^:parallel ^:parallel substitute-native-query-snippets-test
   (testing "Native query snippet substitution"
     (is (= (strip (to-bson [{:$match {"price" {:$gt 2}}}]))
            (strip (substitute {"snippet: high price" (params/->ReferencedQuerySnippet 123 (to-bson {"price" {:$gt 2}}))}
@@ -247,7 +261,7 @@
     (to-json [_ generator]
       (.writeRawValue ^JsonGenerator generator s))))
 
-(deftest e2e-field-filter-test
+(deftest ^:parallel e2e-field-filter-test
   (mt/test-driver :mongo
     (testing "date ranges"
       (is (= [[295 "2014-03-01T00:00:00Z" 7 97]
@@ -379,7 +393,7 @@
                                              :target [:dimension [:template-tag "price"]]
                                              :value  input}]})))))))
         (testing "variadic operators"
-          (let [run-query! (fn [operator]
+          (let [run-query (fn [operator]
                              (mt/dataset geographical-tips
                                (mt/rows
                                  (qp/process-query
@@ -401,31 +415,31 @@
                                                     :value  ["bob" "tupac"]}]})))))]
             (is (= #{"bob" "tupac"}
                    (into #{} (map second)
-                         (run-query! :string/=))))
+                         (run-query :string/=))))
             (is (= #{}
                     (set/intersection
                      #{"bob" "tupac"}
                      ;; most of these are nil as most records don't have a username. not equal is a bit ambiguous in
                      ;; mongo. maybe they might want present but not equal semantics
                      (into #{} (map second)
-                           (run-query! :string/!=)))))))))))
+                           (run-query :string/!=)))))))))))
 
 (deftest e2e-snippet-test
   (mt/test-driver :mongo
-    (is (= [[1 "African"]
-            [2 "American"]
-            [3 "Artisan"]]
-           (mt/with-temp NativeQuerySnippet [snippet {:name    "first 3 checkins"
-                                                      :content (to-bson {:_id {:$in [1 2 3]}})}]
+    (t2.with-temp/with-temp [NativeQuerySnippet snippet {:name    "first 3 checkins"
+                                                         :content (to-bson {:_id {:$in [1 2 3]}})}]
+      (is (= [[1 "African"]
+              [2 "American"]
+              [3 "Artisan"]]
              (mt/rows
-               (qp/process-query
-                 (mt/query categories
-                           {:type       :native
-                            :native     {:query         (json/generate-string [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
-                                         :collection    "categories"
-                                         :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
-                                                                                      :display-name "Snippet: First 3 checkins"
-                                                                                      :type         :snippet
-                                                                                      :snippet-name "first 3 checkins"
-                                                                                      :snippet-id   (:id snippet)}}}
-                            :parameters []}))))))))
+              (qp/process-query
+               (mt/query categories
+                 {:type       :native
+                  :native     {:query         (json/generate-string [{:$match (json-raw "{{snippet: first 3 checkins}}")}])
+                               :collection    "categories"
+                               :template-tags {"snippet: first 3 checkins" {:name         "snippet: first 3 checkins"
+                                                                            :display-name "Snippet: First 3 checkins"
+                                                                            :type         :snippet
+                                                                            :snippet-name "first 3 checkins"
+                                                                            :snippet-id   (:id snippet)}}}
+                  :parameters []}))))))))

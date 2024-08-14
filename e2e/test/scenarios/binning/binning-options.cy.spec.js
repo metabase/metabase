@@ -1,3 +1,5 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   restore,
   popover,
@@ -6,9 +8,6 @@ import {
   getBinningButtonForDimension,
   summarize,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS_ID, ORDERS, PEOPLE_ID, PEOPLE, PRODUCTS_ID, PRODUCTS } =
   SAMPLE_DATABASE;
@@ -71,14 +70,15 @@ const TIME_BUCKETS = [
   "Month",
   "Quarter",
   "Year",
-  "Minute of Hour",
-  "Hour of Day",
-  "Day of Week",
-  "Day of Month",
-  "Day of Year",
-  "Week of Year",
-  "Month of Year",
-  "Quarter of Year",
+  "Minute of hour",
+  "Hour of day",
+  "Day of week",
+  "Day of month",
+  "Day of year",
+  "Week of year",
+  "Month of year",
+  "Quarter of year",
+  "Don't bin",
 ];
 
 const LONGITUDE_BUCKETS = [
@@ -120,7 +120,11 @@ describe("scenarios > binning > binning options", () => {
       getTitle("Count by Created At: Month");
 
       openBinningListForDimension("Created At", "by month");
-      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+      getAllOptions({
+        options: TIME_BUCKETS,
+        isSelected: "Month",
+        shouldExpandList: true,
+      });
     });
 
     it("should render longitude/latitude binning options correctly", () => {
@@ -142,6 +146,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Total: Auto binned");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Total: Auto binned").click();
       openBinningListForDimension("Total", "Auto binned");
 
@@ -157,10 +162,15 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Created At: Month");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At: Month").click();
       openBinningListForDimension("Created At", "by month");
 
-      getAllOptions({ options: TIME_BUCKETS, isSelected: "Month" });
+      getAllOptions({
+        options: TIME_BUCKETS,
+        isSelected: "Month",
+        shouldExpandList: true,
+      });
     });
 
     it("should render longitude/latitude binning options correctly", () => {
@@ -172,6 +182,7 @@ describe("scenarios > binning > binning options", () => {
 
       getTitle("Count by Longitude: Auto binned");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Longitude: Auto binned").click();
       openBinningListForDimension("Longitude", "Auto binned");
 
@@ -180,10 +191,13 @@ describe("scenarios > binning > binning options", () => {
   });
 
   context("via time series footer (metabase#11183)", () => {
-    it("should render time series binning options correctly", () => {
+    // TODO: enable again when metabase#35546 is completed
+    it.skip("should render time series binning options correctly", () => {
       openTable({ table: ORDERS_ID });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Created At").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Distribution").click();
 
       getTitle("Count by Created At: Month");
@@ -300,7 +314,7 @@ function getTitle(title) {
   cy.findByText(title);
 }
 
-function getAllOptions({ options, isSelected } = {}) {
+function getAllOptions({ options, isSelected, shouldExpandList } = {}) {
   const selectedOption = options.find(option => option === isSelected);
   const regularOptions = options.filter(option => option !== isSelected);
 
@@ -310,6 +324,10 @@ function getAllOptions({ options, isSelected } = {}) {
   popover()
     .last()
     .within(() => {
+      if (shouldExpandList) {
+        cy.findByText("More…").click();
+      }
+
       regularOptions.forEach(option => {
         // Implicit assertion - will fail if string is rendered multiple times
         cy.findByText(option);

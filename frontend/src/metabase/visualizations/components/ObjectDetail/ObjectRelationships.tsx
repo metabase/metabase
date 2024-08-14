@@ -1,26 +1,24 @@
-import React from "react";
-import { jt, t } from "ttag";
+import cx from "classnames";
 import { inflect } from "inflection";
-
-import { ForeignKey } from "metabase-types/api";
+import { jt, t } from "ttag";
 
 import IconBorder from "metabase/components/IconBorder";
 import LoadingSpinner from "metabase/components/LoadingSpinner";
-import Icon from "metabase/components/Icon";
-
+import CS from "metabase/css/core/index.css";
 import { foreignKeyCountsByOriginTable } from "metabase/lib/schema_metadata";
+import { Icon } from "metabase/ui";
+import type ForeignKey from "metabase-lib/v1/metadata/ForeignKey";
 
 import {
   ObjectRelationContent,
   ObjectRelationships,
-} from "./ObjectDetail.styled";
+} from "./ObjectRelationships.styled";
+import type { ForeignKeyReferences } from "./types";
 
 export interface RelationshipsProps {
   objectName: string;
   tableForeignKeys: ForeignKey[];
-  tableForeignKeyReferences: {
-    [key: number]: { status: number; value: number };
-  };
+  tableForeignKeyReferences: ForeignKeyReferences;
   foreignKeyClicked: (fk: ForeignKey) => void;
 }
 
@@ -37,14 +35,16 @@ export function Relationships({
   const fkCountsByTable = foreignKeyCountsByOriginTable(tableForeignKeys);
 
   const sortedForeignTables = tableForeignKeys.sort((a, b) =>
-    a.origin.table.display_name.localeCompare(b.origin.table.display_name),
+    (a.origin?.table?.displayName() ?? "").localeCompare(
+      b.origin?.table?.displayName() ?? "",
+    ),
   );
 
   return (
     <ObjectRelationships>
-      <div className="text-bold text-medium">
+      <div className={cx(CS.textBold, CS.textMedium)}>
         {jt`${(
-          <span className="text-dark" key={objectName}>
+          <span className={CS.textDark} key={objectName}>
             {objectName}
           </span>
         )} is connected to:`}
@@ -55,8 +55,16 @@ export function Relationships({
           <Relationship
             key={`${fk.origin_id}-${fk.destination_id}`}
             fk={fk}
-            fkCountInfo={tableForeignKeyReferences?.[fk.origin.id]}
-            fkCount={fkCountsByTable?.[fk.origin.table.id] || 0}
+            fkCountInfo={
+              fk.origin?.id != null
+                ? tableForeignKeyReferences?.[Number(fk.origin.id)]
+                : null
+            }
+            fkCount={
+              (fk.origin?.table != null &&
+                fkCountsByTable?.[fk.origin.table?.id]) ||
+              0
+            }
             foreignKeyClicked={foreignKeyClicked}
           />
         ))}
@@ -67,7 +75,10 @@ export function Relationships({
 
 interface RelationshipProps {
   fk: ForeignKey;
-  fkCountInfo: { status: number; value: number } | null;
+  fkCountInfo: {
+    status: number;
+    value: number;
+  } | null;
   fkCount: number;
   foreignKeyClicked: (fk: ForeignKey) => void;
 }
@@ -81,15 +92,15 @@ function Relationship({
   const fkCountValue = fkCountInfo?.value || 0;
   const isLoaded = fkCountInfo?.status === 1;
   const fkClickable = isLoaded && Boolean(fkCountInfo.value);
-  const originTableName = fk.origin.table.display_name;
+  const originTableName = fk.origin?.table?.displayName() ?? "";
 
   const relationName = inflect(originTableName, fkCountValue);
 
   const via =
     fkCount > 1 ? (
-      <span className="text-medium text-normal">
+      <span className={cx(CS.textMedium, CS.textNormal)}>
         {" "}
-        {t`via ${fk.origin.display_name}`}
+        {t`via ${fk.origin?.displayName()}`}
       </span>
     ) : null;
 
@@ -101,13 +112,13 @@ function Relationship({
       >
         <div>
           <h2>{isLoaded ? fkCountValue : <LoadingSpinner size={25} />}</h2>
-          <h5 className="block">
+          <h5 className={CS.block}>
             {relationName}
             {via}
           </h5>
         </div>
         {fkClickable && (
-          <IconBorder className="flex-align-right">
+          <IconBorder className={CS.flexAlignRight}>
             <Icon name="chevronright" size={10} />
           </IconBorder>
         )}

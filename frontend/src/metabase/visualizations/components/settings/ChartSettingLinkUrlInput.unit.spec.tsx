@@ -1,4 +1,3 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -35,7 +34,7 @@ describe("ChartSettingLinkUrlInput", () => {
   it("Shows all options when {{ is typed", async () => {
     const { input, getOptions } = setup();
 
-    userEvent.type(input, "USE - {{");
+    await userEvent.type(input, "USE - {{{{");
 
     const options = await getOptions();
 
@@ -47,7 +46,7 @@ describe("ChartSettingLinkUrlInput", () => {
   it("shows filter options while typing", async () => {
     const { input, getOptions } = setup();
 
-    userEvent.type(input, "USE - {{p");
+    await userEvent.type(input, "USE - {{{{p");
 
     const options = await getOptions();
 
@@ -58,10 +57,10 @@ describe("ChartSettingLinkUrlInput", () => {
 
   it("shows filter options when clicked", async () => {
     const { input, getOptions } = setup({
-      value: "USE - {{p",
+      value: "USE - {{{{p",
     });
 
-    userEvent.click(input);
+    await userEvent.click(input);
 
     const options = await getOptions();
 
@@ -76,11 +75,11 @@ describe("ChartSettingLinkUrlInput", () => {
       onChange,
     });
 
-    userEvent.type(input, "Address - {{p");
+    await userEvent.type(input, "Address - {{{{p");
 
     const options = await getOptions();
 
-    userEvent.click(options[1]);
+    await userEvent.click(options[1]);
     input.blur();
 
     expect(onChange).toHaveBeenCalledWith("Address - {{ZIP}}");
@@ -92,12 +91,12 @@ describe("ChartSettingLinkUrlInput", () => {
       onChange,
     });
 
-    userEvent.type(input, "Address - {{p");
+    await userEvent.type(input, "Address - {{{{p");
 
     const options = await getOptions();
     expect(options).toHaveLength(2);
 
-    userEvent.type(input, "{arrowdown}{arrowdown}{enter}");
+    await userEvent.type(input, "{arrowdown}{arrowdown}{enter}");
     input.blur();
 
     expect(onChange).toHaveBeenCalledWith("Address - {{ZIP}}");
@@ -111,7 +110,7 @@ describe("ChartSettingLinkUrlInput", () => {
       onChange,
     });
 
-    userEvent.type(input, "{{c");
+    await userEvent.type(input, "{{{{c");
 
     const options = await getOptions();
 
@@ -119,7 +118,7 @@ describe("ChartSettingLinkUrlInput", () => {
     expect(options[0]).toHaveTextContent("CITY");
     expect(options[1]).toHaveTextContent("SOURCE");
 
-    userEvent.click(options[0]);
+    await userEvent.click(options[0]);
     input.blur();
 
     expect(onChange).toHaveBeenCalledWith("{{STATE}} - {{CITY}}");

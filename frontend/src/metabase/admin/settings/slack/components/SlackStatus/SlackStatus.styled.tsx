@@ -1,5 +1,4 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
 
 export const StatusRoot = styled.div`
   max-width: 42rem;
@@ -21,7 +20,7 @@ export const StatusSecondary = styled.div`
 `;
 
 export const StatusTitle = styled.h2`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1.5rem;
   font-weight: bold;
   line-height: 1.875rem;
@@ -33,7 +32,7 @@ export const StatusMessage = styled.div`
 `;
 
 export const StatusMessageText = styled.span`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
 `;
 
 export const StatusFooter = styled.footer`

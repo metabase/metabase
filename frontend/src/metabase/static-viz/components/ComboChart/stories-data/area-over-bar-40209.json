@@ -1,0 +1,418 @@
+[
+  {
+    "card": {
+      "original_card_id": 2,
+      "public_uuid": null,
+      "parameter_usage_count": 0,
+      "created_at": "2024-03-20T19:02:15.591721Z",
+      "dataset": false,
+      "parameters": [],
+      "metabase_version": "v0.48.1-SNAPSHOT (53e659c)",
+      "collection": {
+        "metabase.models.collection.root/is-root?": true,
+        "authority_level": null,
+        "name": "Our analytics",
+        "is_personal": false,
+        "id": "root",
+        "can_write": true
+      },
+      "visualization_settings": {
+        "series_settings": {
+          "count": {
+            "display": "bar"
+          },
+          "median": {
+            "display": "area"
+          },
+          "avg": {
+            "display": "line"
+          }
+        },
+        "graph.dimensions": ["generation"],
+        "graph.metrics": ["count", "median", "avg"]
+      },
+      "last-edit-info": {
+        "id": 1,
+        "email": "anton@metabase.test",
+        "first_name": "Anton",
+        "last_name": "Kulyk",
+        "timestamp": "2024-03-20T19:02:32.932571Z"
+      },
+      "collection_preview": true,
+      "entity_id": "j_rZAeKpGhvv8iaeB06Ai",
+      "display": "combo",
+      "parameter_mappings": [],
+      "id": 2,
+      "dataset_query": {
+        "database": 2,
+        "type": "query",
+        "query": {
+          "aggregation": [
+            ["count"],
+            [
+              "median",
+              [
+                "field",
+                "speed",
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ],
+            [
+              "avg",
+              [
+                "field",
+                "total_points",
+                {
+                  "base-type": "type/Float"
+                }
+              ]
+            ]
+          ],
+          "breakout": [
+            [
+              "field",
+              "generation",
+              {
+                "base-type": "type/BigInteger"
+              }
+            ]
+          ],
+          "source-table": "card__1"
+        }
+      },
+      "cache_ttl": null,
+      "embedding_params": null,
+      "made_public_by_id": null,
+      "updated_at": "2024-03-20T19:02:32.928783Z",
+      "moderation_reviews": [],
+      "creator_id": 1,
+      "average_query_time": null,
+      "dashboard_count": 0,
+      "last_query_start": null,
+      "name": "Area over bar 40209",
+      "query_type": "query",
+      "collection_id": null,
+      "enable_embedding": false,
+      "database_id": 2,
+      "can_write": true,
+      "creator": {
+        "email": "anton@metabase.test",
+        "first_name": "Anton",
+        "last_login": "2024-03-20T18:34:14.17445Z",
+        "is_qbnewb": false,
+        "is_superuser": true,
+        "id": 1,
+        "last_name": "Kulyk",
+        "date_joined": "2024-03-20T18:34:14.063651Z",
+        "common_name": "Anton Kulyk"
+      },
+      "result_metadata": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "coercion_strategy": null,
+          "name": "generation",
+          "settings": null,
+          "fk_target_field_id": null,
+          "field_ref": ["field", 225, null],
+          "effective_type": "type/BigInteger",
+          "id": 225,
+          "visibility_type": "normal",
+          "display_name": "Generation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 2.1045160333142734,
+                "q3": 5.716989271844637,
+                "max": 8,
+                "sd": 2.234937326790694,
+                "avg": 4.034046692607004
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "field_ref": ["aggregation", 0],
+          "name": "count",
+          "base_type": "type/BigInteger",
+          "effective_type": "type/BigInteger",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 85,
+                "q1": 93.5,
+                "q3": 168,
+                "max": 192,
+                "sd": 41.56234559584638,
+                "avg": 128.5
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Median of Speed",
+          "settings": null,
+          "field_ref": ["aggregation", 1],
+          "name": "median",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 7,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 60,
+                "q1": 62.5,
+                "q3": 68.25,
+                "max": 77,
+                "sd": 5.348147209214474,
+                "avg": 66.0625
+              }
+            }
+          }
+        },
+        {
+          "display_name": "Average of Total Points",
+          "settings": null,
+          "field_ref": ["aggregation", 2],
+          "name": "avg",
+          "base_type": "type/Float",
+          "effective_type": "type/Float",
+          "semantic_type": null,
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 419.14018691588785,
+                "q1": 429.6310307017544,
+                "q3": 450.78473505104523,
+                "max": 459.2323232323232,
+                "sd": 14.455885563133503,
+                "avg": 439.19245596430204
+              }
+            }
+          }
+        }
+      ],
+      "table_id": 18,
+      "collection_position": null,
+      "archived": false,
+      "description": null,
+      "displayIsLocked": true
+    },
+    "data": {
+      "rows": [
+        [1, 192, 70, 424.1041666666667],
+        [2, 107, 60, 419.14018691588785],
+        [3, 165, 65, 436.0060606060606],
+        [4, 121, 77, 459.0165289256198],
+        [5, 171, 65, 435.1578947368421],
+        [6, 85, 62, 442.5529411764706],
+        [7, 99, 63, 459.2323232323232],
+        [8, 88, 66.5, 438.32954545454544]
+      ],
+      "cols": [
+        {
+          "description": null,
+          "semantic_type": null,
+          "table_id": 18,
+          "coercion_strategy": null,
+          "name": "generation",
+          "settings": null,
+          "source": "breakout",
+          "fk_target_field_id": null,
+          "field_ref": ["field", 225, null],
+          "effective_type": "type/BigInteger",
+          "nfc_path": null,
+          "parent_id": null,
+          "id": 225,
+          "position": 6,
+          "visibility_type": "normal",
+          "display_name": "Generation",
+          "fingerprint": {
+            "global": {
+              "distinct-count": 8,
+              "nil%": 0
+            },
+            "type": {
+              "type/Number": {
+                "min": 1,
+                "q1": 2.1045160333142734,
+                "q3": 5.716989271844637,
+                "max": 8,
+                "sd": 2.234937326790694,
+                "avg": 4.034046692607004
+              }
+            }
+          },
+          "base_type": "type/BigInteger"
+        },
+        {
+          "base_type": "type/BigInteger",
+          "name": "count",
+          "display_name": "Count",
+          "semantic_type": "type/Quantity",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 0],
+          "aggregation_index": 0,
+          "effective_type": "type/BigInteger"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "median",
+          "display_name": "Median of Speed",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 1],
+          "aggregation_index": 1,
+          "effective_type": "type/Float"
+        },
+        {
+          "settings": null,
+          "base_type": "type/Float",
+          "name": "avg",
+          "display_name": "Average of Total Points",
+          "source": "aggregation",
+          "field_ref": ["aggregation", 2],
+          "aggregation_index": 2,
+          "effective_type": "type/Float"
+        }
+      ],
+      "native_form": {
+        "query": "SELECT \"source\".\"generation\" AS \"generation\", COUNT(*) AS \"count\", PERCENTILE_CONT(0.5) within group (order by \"source\".\"speed\") AS \"median\", AVG(\"source\".\"total_points\") AS \"avg\" FROM (SELECT \"public\".\"upload_pokedex__1__20240320185412\".\"_mb_row_id\" AS \"_mb_row_id\", \"public\".\"upload_pokedex__1__20240320185412\".\"unnamed_column\" AS \"unnamed_column\", \"public\".\"upload_pokedex__1__20240320185412\".\"pokedex_number\" AS \"pokedex_number\", \"public\".\"upload_pokedex__1__20240320185412\".\"name\" AS \"name\", \"public\".\"upload_pokedex__1__20240320185412\".\"german_name\" AS \"german_name\", \"public\".\"upload_pokedex__1__20240320185412\".\"japanese_name\" AS \"japanese_name\", \"public\".\"upload_pokedex__1__20240320185412\".\"generation\" AS \"generation\", \"public\".\"upload_pokedex__1__20240320185412\".\"status\" AS \"status\", \"public\".\"upload_pokedex__1__20240320185412\".\"species\" AS \"species\", \"public\".\"upload_pokedex__1__20240320185412\".\"type_number\" AS \"type_number\", \"public\".\"upload_pokedex__1__20240320185412\".\"type_1\" AS \"type_1\", \"public\".\"upload_pokedex__1__20240320185412\".\"type_2\" AS \"type_2\", \"public\".\"upload_pokedex__1__20240320185412\".\"height_m\" AS \"height_m\", \"public\".\"upload_pokedex__1__20240320185412\".\"weight_kg\" AS \"weight_kg\", \"public\".\"upload_pokedex__1__20240320185412\".\"abilities_number\" AS \"abilities_number\", \"public\".\"upload_pokedex__1__20240320185412\".\"ability_1\" AS \"ability_1\", \"public\".\"upload_pokedex__1__20240320185412\".\"ability_2\" AS \"ability_2\", \"public\".\"upload_pokedex__1__20240320185412\".\"ability_hidden\" AS \"ability_hidden\", \"public\".\"upload_pokedex__1__20240320185412\".\"total_points\" AS \"total_points\", \"public\".\"upload_pokedex__1__20240320185412\".\"hp\" AS \"hp\", \"public\".\"upload_pokedex__1__20240320185412\".\"attack\" AS \"attack\", \"public\".\"upload_pokedex__1__20240320185412\".\"defense\" AS \"defense\", \"public\".\"upload_pokedex__1__20240320185412\".\"sp_attack\" AS \"sp_attack\", \"public\".\"upload_pokedex__1__20240320185412\".\"sp_defense\" AS \"sp_defense\", \"public\".\"upload_pokedex__1__20240320185412\".\"speed\" AS \"speed\", \"public\".\"upload_pokedex__1__20240320185412\".\"catch_rate\" AS \"catch_rate\", \"public\".\"upload_pokedex__1__20240320185412\".\"base_friendship\" AS \"base_friendship\", \"public\".\"upload_pokedex__1__20240320185412\".\"base_experience\" AS \"base_experience\", \"public\".\"upload_pokedex__1__20240320185412\".\"growth_rate\" AS \"growth_rate\", \"public\".\"upload_pokedex__1__20240320185412\".\"egg_type_number\" AS \"egg_type_number\", \"public\".\"upload_pokedex__1__20240320185412\".\"egg_type_1\" AS \"egg_type_1\", \"public\".\"upload_pokedex__1__20240320185412\".\"egg_type_2\" AS \"egg_type_2\", \"public\".\"upload_pokedex__1__20240320185412\".\"percentage_male\" AS \"percentage_male\", \"public\".\"upload_pokedex__1__20240320185412\".\"egg_cycles\" AS \"egg_cycles\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_normal\" AS \"against_normal\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_fire\" AS \"against_fire\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_water\" AS \"against_water\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_electric\" AS \"against_electric\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_grass\" AS \"against_grass\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_ice\" AS \"against_ice\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_fight\" AS \"against_fight\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_poison\" AS \"against_poison\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_ground\" AS \"against_ground\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_flying\" AS \"against_flying\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_psychic\" AS \"against_psychic\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_bug\" AS \"against_bug\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_rock\" AS \"against_rock\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_ghost\" AS \"against_ghost\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_dragon\" AS \"against_dragon\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_dark\" AS \"against_dark\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_steel\" AS \"against_steel\", \"public\".\"upload_pokedex__1__20240320185412\".\"against_fairy\" AS \"against_fairy\" FROM \"public\".\"upload_pokedex__1__20240320185412\") AS \"source\" GROUP BY \"source\".\"generation\" ORDER BY \"source\".\"generation\" ASC",
+        "params": null
+      },
+      "results_timezone": "Europe/Lisbon",
+      "dataset": true,
+      "results_metadata": {
+        "columns": [
+          {
+            "description": null,
+            "semantic_type": null,
+            "coercion_strategy": null,
+            "name": "generation",
+            "settings": null,
+            "fk_target_field_id": null,
+            "field_ref": ["field", 225, null],
+            "effective_type": "type/BigInteger",
+            "id": 225,
+            "visibility_type": "normal",
+            "display_name": "Generation",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 8,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 1,
+                  "q1": 2.1045160333142734,
+                  "q3": 5.716989271844637,
+                  "max": 8,
+                  "sd": 2.234937326790694,
+                  "avg": 4.034046692607004
+                }
+              }
+            },
+            "base_type": "type/BigInteger"
+          },
+          {
+            "display_name": "Count",
+            "semantic_type": "type/Quantity",
+            "field_ref": ["aggregation", 0],
+            "name": "count",
+            "base_type": "type/BigInteger",
+            "effective_type": "type/BigInteger",
+            "fingerprint": {
+              "global": {
+                "distinct-count": 8,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 85,
+                  "q1": 93.5,
+                  "q3": 168,
+                  "max": 192,
+                  "sd": 41.56234559584638,
+                  "avg": 128.5
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Median of Speed",
+            "settings": null,
+            "field_ref": ["aggregation", 1],
+            "name": "median",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 7,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 60,
+                  "q1": 62.5,
+                  "q3": 68.25,
+                  "max": 77,
+                  "sd": 5.348147209214474,
+                  "avg": 66.0625
+                }
+              }
+            }
+          },
+          {
+            "display_name": "Average of Total Points",
+            "settings": null,
+            "field_ref": ["aggregation", 2],
+            "name": "avg",
+            "base_type": "type/Float",
+            "effective_type": "type/Float",
+            "semantic_type": null,
+            "fingerprint": {
+              "global": {
+                "distinct-count": 8,
+                "nil%": 0
+              },
+              "type": {
+                "type/Number": {
+                  "min": 419.14018691588785,
+                  "q1": 429.6310307017544,
+                  "q3": 450.78473505104523,
+                  "max": 459.2323232323232,
+                  "sd": 14.455885563133503,
+                  "avg": 439.19245596430204
+                }
+              }
+            }
+          }
+        ]
+      },
+      "insights": null
+    }
+  }
+]

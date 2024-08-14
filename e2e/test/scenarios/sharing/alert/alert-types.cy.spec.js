@@ -1,11 +1,9 @@
-import {
-  restore,
-  setupSMTP,
-  visitQuestion,
-  sidebar,
-} from "e2e/support/helpers";
-
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
+import {
+  ORDERS_BY_YEAR_QUESTION_ID,
+  ORDERS_QUESTION_ID,
+} from "e2e/support/cypress_sample_instance_data";
+import { restore, setupSMTP, visitQuestion } from "e2e/support/helpers";
 
 const { PEOPLE, PEOPLE_ID } = SAMPLE_DATABASE;
 
@@ -28,12 +26,12 @@ const multiSeriesQuestionWithGoal = {
   display: "line",
 };
 
-const timeSeriesQuestionId = 3;
+const timeSeriesQuestionId = ORDERS_BY_YEAR_QUESTION_ID;
 
 const rawTestCases = [
   {
     questionType: "raw data question",
-    questionId: 1,
+    questionId: ORDERS_QUESTION_ID,
   },
   {
     questionType: "timeseries question without a goal",
@@ -58,6 +56,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
         openAlertModal();
 
+        // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
         cy.findByText("Done").click();
 
         cy.wait("@savedAlert").then(({ response: { body } }) => {
@@ -69,32 +68,27 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
   describe("goal based alerts", () => {
     it("should work for timeseries questions with a set goal", () => {
-      // Set goal on timeseries question
-      visitQuestion(timeSeriesQuestionId);
-
-      cy.findByText("Visualization").click();
-      sidebar().within(() => {
-        cy.icon("line").realHover();
-        cy.icon("gear").click();
+      cy.request("PUT", `/api/card/${timeSeriesQuestionId}`, {
+        visualization_settings: {
+          "graph.show_goal": true,
+          "graph.goal_value": 7000,
+          "graph.dimensions": ["CREATED_AT"],
+          "graph.metrics": ["count"],
+        },
       });
-      cy.findByText("Line options");
-      cy.findByText("Display").click();
 
-      setGoal("7000");
-
-      // Save question
-      cy.findByText("Save").click();
-      cy.get(".Modal").button("Save").click();
-      cy.findByText("Save question").should("not.exist");
+      cy.log("Set the goal on timeseries question");
+      visitQuestion(timeSeriesQuestionId);
+      cy.findByTestId("chart-container").should("contain", "Goal");
 
       openAlertModal();
+      cy.findByTestId("alert-create").within(() => {
+        cy.findByText("Reaches the goal line").click();
+        cy.findByText("The first time").click();
+        cy.button("Done").click();
+      });
 
-      cy.findByText("Reaches the goal line").click();
-      cy.findByText("The first time").click();
-
-      cy.button("Done").click();
-
-      // Check the API response
+      cy.log("Check the API response");
       cy.wait("@savedAlert").then(({ response: { body } }) => {
         expect(body.alert_condition).to.equal("goal");
         expect(body.alert_above_goal).to.equal(true);
@@ -112,6 +106,7 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
       //   "Goal-based alerts aren't yet supported for charts with more than one line",
       // );
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Done").click();
 
       // The alert condition should fall back to rows
@@ -125,14 +120,5 @@ describe("scenarios > alert > types", { tags: "@external" }, () => {
 
 function openAlertModal() {
   cy.icon("bell").click();
-  cy.findByText("Set up an alert").click();
-}
-
-function setGoal(goal) {
-  // Enable the toggle
-  cy.findByText("Goal line").next().click();
-
-  cy.findByDisplayValue("0").clear().type(goal);
-
-  cy.button("Done").click();
+  cy.findByText("Set up an alert").should("be.visible").click();
 }

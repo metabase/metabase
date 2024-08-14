@@ -1,8 +1,10 @@
+import type { RowValue } from "metabase-types/api";
+
 export type Option = any[];
 
 export interface SingleSelectListFieldProps {
-  onChange: (value: string[]) => void;
-  value: string[];
+  onChange: (value: RowValue[]) => void;
+  value: RowValue[];
   options: Option;
   optionRenderer: (option: any) => JSX.Element;
   placeholder: string;

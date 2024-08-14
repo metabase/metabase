@@ -1,8 +1,7 @@
-/* eslint-disable react/prop-types */
-import React from "react";
+import * as React from "react";
 import _ from "underscore";
 
-import Icon from "metabase/components/Icon";
+import { Icon } from "metabase/ui";
 
 import {
   TreeNodeRoot,
@@ -11,11 +10,10 @@ import {
   NameContainer,
   IconContainer,
 } from "./TreeNode.styled";
-import { TreeNodeProps } from "./types";
+import type { TreeNodeProps } from "./types";
 
-// eslint-disable-next-line react/display-name
-const BaseTreeNode = React.memo(
-  React.forwardRef<HTMLLIElement, TreeNodeProps>(function TreeNode(
+const BaseTreeNode = React.forwardRef<HTMLLIElement, TreeNodeProps>(
+  function TreeNode(
     {
       item,
       depth,
@@ -25,7 +23,7 @@ const BaseTreeNode = React.memo(
       onSelect,
       onToggleExpand,
       ...props
-    },
+    }: TreeNodeProps,
     ref,
   ) {
     const { name, icon } = item;
@@ -81,10 +79,10 @@ const BaseTreeNode = React.memo(
         <NameContainer data-testid="tree-item-name">{name}</NameContainer>
       </TreeNodeRoot>
     );
-  }),
+  },
 );
 
-export const TreeNode = Object.assign(BaseTreeNode, {
+export const TreeNode = Object.assign(React.memo(BaseTreeNode), {
   Root: TreeNodeRoot,
   ExpandToggleButton,
   ExpandToggleIcon,

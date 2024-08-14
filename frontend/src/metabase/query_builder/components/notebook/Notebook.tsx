@@ -1,59 +1,46 @@
-import React from "react";
-import { connect } from "react-redux";
 import { t } from "ttag";
-import _ from "underscore";
-import Button from "metabase/core/components/Button";
-import Questions from "metabase/entities/questions";
-import { getMetadata } from "metabase/selectors/metadata";
-import { Card } from "metabase-types/api";
-import { State } from "metabase-types/store";
-import Question from "metabase-lib/Question";
-import StructuredQuery from "metabase-lib/queries/StructuredQuery";
-import {
-  getQuestionIdFromVirtualTableId,
-  isVirtualCardId,
-} from "metabase-lib/metadata/utils/saved-questions";
-import NotebookSteps from "./NotebookSteps";
-import { NotebookRoot } from "./Notebook.styled";
 
-interface NotebookOwnProps {
-  className?: string;
+import { useDispatch } from "metabase/lib/redux";
+import { setUIControls } from "metabase/query_builder/actions";
+import { Box, Button } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+
+import { NotebookSteps } from "./NotebookSteps";
+
+export type NotebookProps = {
   question: Question;
   isDirty: boolean;
   isRunnable: boolean;
   isResultDirty: boolean;
+  reportTimezone: string;
   hasVisualizeButton?: boolean;
-  updateQuestion: (question: Question) => void;
+  updateQuestion: (question: Question) => Promise<void>;
   runQuestionQuery: () => void;
   setQueryBuilderMode: (mode: string) => void;
-}
+  readOnly?: boolean;
+};
 
-interface NotebookCardProps {
-  sourceCard?: Card;
-}
+const Notebook = ({
+  updateQuestion,
+  reportTimezone,
+  readOnly,
+  question,
+  isDirty,
+  isRunnable,
+  isResultDirty,
+  hasVisualizeButton = true,
+  runQuestionQuery,
+  setQueryBuilderMode,
+}: NotebookProps) => {
+  const dispatch = useDispatch();
 
-interface NotebookStateProps {
-  sourceQuestion?: Question;
-}
-
-type NotebookProps = NotebookOwnProps & NotebookCardProps & NotebookStateProps;
-
-const Notebook = ({ className, ...props }: NotebookProps) => {
-  const {
-    question,
-    isDirty,
-    isRunnable,
-    isResultDirty,
-    hasVisualizeButton = true,
-    updateQuestion,
-    runQuestionQuery,
-    setQueryBuilderMode,
-  } = props;
-
-  // When switching out of the notebook editor, cleanupQuestion accounts for
-  // post aggregation filters and otherwise nested queries with duplicate column names.
   async function cleanupQuestion() {
-    let cleanQuestion = question.setQuery(question.query().clean());
+    // Converting a query to MLv2 and back performs a clean-up
+    let cleanQuestion = question.setQuery(
+      Lib.dropEmptyStages(question.query()),
+    );
+
     if (cleanQuestion.display() === "table") {
       cleanQuestion = cleanQuestion.setDefaultDisplay();
     }
@@ -61,7 +48,7 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
     await updateQuestion(cleanQuestion);
   }
 
-  // vizualize switches the view to the question's visualization.
+  // visualize switches the view to the question's visualization.
   async function visualize() {
     // Only cleanup the question if it's dirty, otherwise Metabase
     // will incorrectly display the Save button, even though there are no changes to save.
@@ -75,43 +62,27 @@ const Notebook = ({ className, ...props }: NotebookProps) => {
     }
   }
 
+  const handleUpdateQuestion = (question: Question): Promise<void> => {
+    dispatch(setUIControls({ isModifiedFromNotebook: true }));
+    return updateQuestion(question);
+  };
+
   return (
-    <NotebookRoot className={className}>
-      <NotebookSteps {...props} />
+    <Box pos="relative" p={{ base: "1rem", sm: "2rem" }}>
+      <NotebookSteps
+        updateQuestion={handleUpdateQuestion}
+        question={question}
+        reportTimezone={reportTimezone}
+        readOnly={readOnly}
+      />
       {hasVisualizeButton && isRunnable && (
-        <Button medium primary style={{ minWidth: 220 }} onClick={visualize}>
+        <Button variant="filled" style={{ minWidth: 220 }} onClick={visualize}>
           {t`Visualize`}
         </Button>
       )}
-    </NotebookRoot>
+    </Box>
   );
 };
 
-function getSourceCardId(question: Question) {
-  const query = question.query();
-  if (query instanceof StructuredQuery) {
-    const sourceTableId = query.sourceTableId();
-    if (isVirtualCardId(sourceTableId)) {
-      return getQuestionIdFromVirtualTableId(sourceTableId);
-    }
-  }
-}
-
-function mapStateToProps(
-  state: State,
-  { sourceCard }: NotebookCardProps,
-): NotebookStateProps {
-  return {
-    sourceQuestion: sourceCard && new Question(sourceCard, getMetadata(state)),
-  };
-}
-
-export default _.compose(
-  Questions.load({
-    id: (state: State, { question }: NotebookOwnProps) =>
-      getSourceCardId(question),
-    entityAlias: "sourceCard",
-    loadingAndErrorWrapper: false,
-  }),
-  connect(mapStateToProps),
-)(Notebook);
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default Notebook;

@@ -1,5 +1,5 @@
-import React, { useCallback, useState } from "react";
 import PropTypes from "prop-types";
+import { useCallback, useState } from "react";
 import { t } from "ttag";
 
 import CronExpressionInput from "./CronExpressionInput";
@@ -32,11 +32,7 @@ function formatCronExpression(cronExpression) {
   return partsWithoutSecondsAndYear.join(" ");
 }
 
-const PersistedModelRefreshIntervalWidget = ({
-  setting,
-  disabled,
-  onChange,
-}) => {
+export const ModelCachingScheduleWidget = ({ setting, disabled, onChange }) => {
   const [isCustom, setCustom] = useState(isCustomSchedule(setting));
   const [customCronSchedule, setCustomCronSchedule] = useState(
     // We don't allow to specify the "year" component, but it's present in the value
@@ -65,7 +61,6 @@ const PersistedModelRefreshIntervalWidget = ({
         <WidgetContainer>
           <SelectLabel>{t`Refresh models every…`}</SelectLabel>
           <StyledSettingSelect
-            className="SettingsInput--short"
             setting={{
               ...setting,
               value: isCustom ? "custom" : setting.value,
@@ -94,6 +89,4 @@ const PersistedModelRefreshIntervalWidget = ({
   );
 };
 
-PersistedModelRefreshIntervalWidget.propTypes = propTypes;
-
-export default PersistedModelRefreshIntervalWidget;
+ModelCachingScheduleWidget.propTypes = propTypes;

@@ -1,0 +1,67 @@
+name: List of dashboards
+description: null
+entity_id: PkIueKBME3DfRFwBsYjuE
+created_at: '2023-11-01T01:37:47.173914Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: null
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_content
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    fields:
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_id
+      - base-type: type/Integer
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_qualified_id
+      - base-type: type/Text
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - name
+      - base-type: type/Text
+    filter:
+    - =
+    - - field
+      - - Internal Metabase Database
+        - public
+        - v_content
+        - entity_type
+      - base-type: type/Text
+    - dashboard
+    source-table: AxSackBiyXVRUzM_TyyQY
+  type: query
+result_metadata: null
+visualization_settings:
+  column_settings: null
+  table.cell_column: entity_id
+serdes/meta:
+- id: PkIueKBME3DfRFwBsYjuE
+  label: list_of_dashboards
+  model: Card
+initially_published_at: null
+metabase_version: vUNKNOWN (ad99d37)
+type: question

@@ -2,7 +2,8 @@
   (:require
    [clojure.test :refer :all]
    [metabase.pulse.render.color :as color]
-   [metabase.pulse.render.js-engine :as js]))
+   [metabase.pulse.render.js-engine :as js]
+   [metabase.test :as mt]))
 
 (def ^:private red "#ff0000")
 (def ^:private green "#00ff00")
@@ -50,3 +51,18 @@
         (is (= [red green red green]
                (for [row-index (range 0 4)]
                  (color/get-background-color color-selector "any value" "any column" row-index))))))))
+
+(deftest render-color-is-thread-safe-test
+  (is (every? some?
+              (mt/repeat-concurrently
+               3
+               (fn []
+                 (color/get-background-color (color/make-color-selector {:cols [{:name "test"}]
+                                                                         :rows [[5] [5]]}
+                                                                        {:table.column_formatting[{:columns ["test"],
+                                                                                                   :type :single,
+                                                                                                   :operator "=",
+                                                                                                   :value 5,
+                                                                                                   :color "#ff0000",
+                                                                                                   :highlight_row true}]})
+                                             "any value" "test" 1))))))

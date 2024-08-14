@@ -10,8 +10,8 @@ Cypress.Commands.add(
     const updatedCard = Object.assign({}, cleanCard, updatedProperties);
 
     cy.log(`Edit dashboard card ${id}`);
-    cy.request("PUT", `/api/dashboard/${dashboard_id}/cards`, {
-      cards: [updatedCard],
+    cy.request("PUT", `/api/dashboard/${dashboard_id}`, {
+      dashcards: [updatedCard],
     });
   },
 );

@@ -1,5 +1,5 @@
-import React from "react";
 import type { ComponentStory } from "@storybook/react";
+
 import SlackSetup from "./SlackSetup";
 
 export default {
@@ -16,7 +16,6 @@ export const Default: ComponentStory<typeof SlackSetup> = args => {
 };
 
 Default.args = {
-  // eslint-disable-next-line react/display-name
   Form: () => <div />,
   manifest: "app: token",
   isBot: false,

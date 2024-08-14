@@ -1,9 +1,13 @@
-import React from "react";
-import { t } from "ttag";
 import cx from "classnames";
+import { Component } from "react";
+import { t } from "ttag";
 import _ from "underscore";
 
-import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/parameters/constants";
+import ButtonsS from "metabase/css/components/buttons.module.css";
+import CS from "metabase/css/core/index.css";
+import { DATE_MBQL_FILTER_MAPPING } from "metabase-lib/v1/parameters/constants";
+
+import DateRelativeWidgetStyle from "./DateRelativeWidget.module.css";
 
 type Shortcut = {
   name: string;
@@ -26,8 +30,12 @@ const SHORTCUTS: Shortcut[] = [
     operator: ["=", "<", ">"],
     values: [["relative-datetime", -1, "day"]],
   },
-  { name: t`Past 7 days`, operator: "time-interval", values: [-7, "day"] },
-  { name: t`Past 30 days`, operator: "time-interval", values: [-30, "day"] },
+  { name: t`Previous 7 days`, operator: "time-interval", values: [-7, "day"] },
+  {
+    name: t`Previous 30 days`,
+    operator: "time-interval",
+    values: [-30, "day"],
+  },
 ];
 
 const RELATIVE_SHORTCUTS: ShortcutMap = {
@@ -48,7 +56,7 @@ type PredefinedRelativeDatePickerProps = {
   onFilterChange: (filter: any[]) => void;
 };
 
-export class PredefinedRelativeDatePicker extends React.Component<PredefinedRelativeDatePickerProps> {
+export class PredefinedRelativeDatePicker extends Component<PredefinedRelativeDatePickerProps> {
   constructor(props: PredefinedRelativeDatePickerProps) {
     super(props);
 
@@ -82,19 +90,28 @@ export class PredefinedRelativeDatePicker extends React.Component<PredefinedRela
 
   render() {
     return (
-      <div className="p1 pt2">
+      <div className={cx(CS.p1, CS.pt2)}>
         <section>
           {SHORTCUTS.map((s, index) => (
             <span
               key={index}
-              className={cx("inline-block half pb1", { pr1: index % 2 === 0 })}
+              className={cx(CS.inlineBlock, CS.half, CS.pb1, {
+                [CS.pr1]: index % 2 === 0,
+              })}
             >
               <button
                 key={index}
                 aria-selected={this.isSelectedShortcut(s)}
                 className={cx(
-                  "Button Button-normal Button--medium text-normal text-centered full",
-                  { "Button--purple": this.isSelectedShortcut(s) },
+                  ButtonsS.Button,
+                  ButtonsS.ButtonNormal,
+                  ButtonsS.ButtonMedium,
+                  CS.full,
+                  DateRelativeWidgetStyle.shortcut,
+                  {
+                    [DateRelativeWidgetStyle.shortcutSelected]:
+                      this.isSelectedShortcut(s),
+                  },
                 )}
                 onClick={() => this.onSetShortcut(s)}
               >
@@ -105,42 +122,46 @@ export class PredefinedRelativeDatePicker extends React.Component<PredefinedRela
         </section>
         {Object.keys(RELATIVE_SHORTCUTS).map(sectionName => (
           <section key={sectionName}>
-            <div
-              style={{}}
-              className="border-bottom text-uppercase flex layout-centered mb2"
+            <fieldset
+              className={cx(
+                CS.textUppercase,
+                CS.flex,
+                CS.layoutCentered,
+                DateRelativeWidgetStyle.sectionLine,
+              )}
             >
-              <h6
-                style={{
-                  position: "relative",
-                  backgroundColor: "white",
-                  top: "6px",
-                }}
-                className="px2"
-              >
+              <legend className={DateRelativeWidgetStyle.sectionLabel}>
                 {sectionName}
-              </h6>
-            </div>
-            <div className="flex">
-              {RELATIVE_SHORTCUTS[sectionName].map((s, index) => (
+              </legend>
+            </fieldset>
+            <div className={CS.flex}>
+              {RELATIVE_SHORTCUTS[sectionName].map((shortcut, index) => (
                 <button
                   key={index}
-                  aria-selected={this.isSelectedShortcut(s)}
+                  aria-selected={this.isSelectedShortcut(shortcut)}
                   data-ui-tag={
                     "relative-date-shortcut-" +
                     sectionName.toLowerCase() +
                     "-" +
-                    s.name.toLowerCase()
+                    shortcut.name.toLowerCase()
                   }
                   className={cx(
-                    "Button Button-normal Button--medium flex-full mb1",
+                    ButtonsS.Button,
+                    ButtonsS.ButtonNormal,
+                    ButtonsS.ButtonMedium,
+                    CS.full,
+                    CS.mb1,
+                    DateRelativeWidgetStyle.shortcut,
                     {
-                      "Button--purple": this.isSelectedShortcut(s),
-                      mr1: index !== RELATIVE_SHORTCUTS[sectionName].length - 1,
+                      [CS.mr1]:
+                        index !== RELATIVE_SHORTCUTS[sectionName].length - 1,
+                      [DateRelativeWidgetStyle.shortcutSelected]:
+                        this.isSelectedShortcut(shortcut),
                     },
                   )}
-                  onClick={() => this.onSetShortcut(s)}
+                  onClick={() => this.onSetShortcut(shortcut)}
                 >
-                  {s.name}
+                  {shortcut.name}
                 </button>
               ))}
             </div>
@@ -157,15 +178,11 @@ type DateRelativeWidgetProps = {
   onClose: () => void;
 };
 
-class DateRelativeWidget extends React.Component<DateRelativeWidgetProps> {
-  constructor(props: DateRelativeWidgetProps) {
-    super(props);
-  }
-
+export class DateRelativeWidget extends Component<DateRelativeWidgetProps> {
   render() {
     const { value, setValue, onClose } = this.props;
     return (
-      <div className="px1" style={{ maxWidth: 300 }}>
+      <div className={CS.px1} style={{ maxWidth: 300 }}>
         <PredefinedRelativeDatePicker
           filter={
             DATE_MBQL_FILTER_MAPPING[value]
@@ -185,5 +202,3 @@ class DateRelativeWidget extends React.Component<DateRelativeWidgetProps> {
     );
   }
 }
-
-export default DateRelativeWidget;

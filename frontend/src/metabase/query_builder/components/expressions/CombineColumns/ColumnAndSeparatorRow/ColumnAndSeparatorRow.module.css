@@ -1,0 +1,19 @@
+.separator {
+  flex: 0 0 auto;
+}
+
+.column {
+  flex: 1;
+}
+
+.dropdown {
+  display: none;
+}
+
+.placeholder {
+  position: absolute;
+  bottom: 0.5rem;
+  left: 0.75rem;
+  pointer-events: none;
+  user-select: none;
+}

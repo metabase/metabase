@@ -1,10 +1,17 @@
-import React from "react";
+import type { ReactNode } from "react";
 import { t } from "ttag";
 
+import {
+  HoverParent,
+  TableColumnInfoIcon,
+} from "metabase/components/MetadataInfo/ColumnInfoIcon";
 import AccordionList from "metabase/core/components/AccordionList";
-import Icon from "metabase/components/Icon";
-import type { Table } from "metabase-types/api/table";
-import type Field from "metabase-lib/metadata/Field";
+import CS from "metabase/css/core/index.css";
+import type { IconName } from "metabase/ui";
+import { Icon, DelayGroup } from "metabase/ui";
+import type Field from "metabase-lib/v1/metadata/Field";
+import type Table from "metabase-lib/v1/metadata/Table";
+
 import DataSelectorLoading from "../DataSelectorLoading";
 
 import {
@@ -64,27 +71,41 @@ const DataSelectorFieldPicker = ({
     item.field && selectedField && item.field.id === selectedField.id;
 
   const renderItemIcon = (item: FieldWithName) =>
-    item.field && <Icon name={item.field.dimension().icon()} size={18} />;
+    item.field && (
+      <TableColumnInfoIcon
+        field={item.field}
+        position="top-end"
+        size={18}
+        icon={item.field.dimension().icon() as unknown as IconName}
+      />
+    );
 
   return (
     <Container>
-      <AccordionList
-        id="FieldPicker"
-        key="fieldPicker"
-        className="text-brand"
-        hasInitialFocus={hasInitialFocus}
-        sections={sections}
-        maxHeight={Infinity}
-        width="100%"
-        searchable={hasFiltering}
-        onChange={(item: { field: Field }) => onChangeField(item.field)}
-        itemIsSelected={checkIfItemIsSelected}
-        itemIsClickable={(item: FieldWithName) => item.field}
-        renderItemIcon={renderItemIcon}
-      />
+      <DelayGroup>
+        <AccordionList
+          id="FieldPicker"
+          key="fieldPicker"
+          className={CS.textBrand}
+          hasInitialFocus={hasInitialFocus}
+          sections={sections}
+          maxHeight={Infinity}
+          width="100%"
+          searchable={hasFiltering}
+          onChange={(item: { field: Field }) => onChangeField(item.field)}
+          itemIsSelected={checkIfItemIsSelected}
+          itemIsClickable={(item: FieldWithName) => item.field}
+          renderItemWrapper={renderItemWrapper}
+          renderItemIcon={renderItemIcon}
+        />
+      </DelayGroup>
     </Container>
   );
 };
+
+function renderItemWrapper(content: ReactNode) {
+  return <HoverParent>{content}</HoverParent>;
+}
 
 const Header = ({ onBack, selectedTable }: HeaderProps) => (
   <HeaderContainer onClick={onBack}>
@@ -93,4 +114,5 @@ const Header = ({ onBack, selectedTable }: HeaderProps) => (
   </HeaderContainer>
 );
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorFieldPicker;

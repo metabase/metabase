@@ -1,5 +1,5 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
+
 import Button from "metabase/core/components/Button";
 import {
   breakpointMinMedium,
@@ -37,7 +37,7 @@ export const FormBodyContent = styled.div`
 export const FormFooter = styled.div`
   padding-top: 2rem;
   padding-bottom: 2rem;
-  border-top: 1px solid ${color("border")};
+  border-top: 1px solid var(--mb-color-border);
 `;
 
 export const FormFooterContent = styled.div`

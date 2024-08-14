@@ -1,1 +1,1 @@
-export { default } from "./PasswordPanel";
+export * from "./PasswordPanel";

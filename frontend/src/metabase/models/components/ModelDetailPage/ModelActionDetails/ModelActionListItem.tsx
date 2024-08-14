@@ -1,11 +1,14 @@
-import React, { useCallback, useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import { t } from "ttag";
-import Link from "metabase/core/components/Link";
+
+import { ActionExecuteModal } from "metabase/actions/containers/ActionExecuteModal";
 import EntityMenu from "metabase/components/EntityMenu";
 import ModalWithTrigger from "metabase/components/ModalWithTrigger";
+import Link from "metabase/core/components/Link";
 import { useConfirmation } from "metabase/hooks/use-confirmation";
-import ActionExecuteModal from "metabase/actions/containers/ActionExecuteModal";
-import { WritebackAction, WritebackQueryAction } from "metabase-types/api";
+import { Icon } from "metabase/ui";
+import type { WritebackAction, WritebackQueryAction } from "metabase-types/api";
+
 import {
   ActionCardContainer,
   ActionHeader,
@@ -22,8 +25,9 @@ import {
 interface Props {
   action: WritebackAction;
   actionUrl: string;
-  canWrite: boolean;
   canRun: boolean;
+  canEdit: boolean;
+  canArchive: boolean;
   onArchive: (action: WritebackAction) => void;
 }
 
@@ -32,6 +36,14 @@ interface ModalProps {
 }
 
 function QueryActionCardContent({ action }: { action: WritebackQueryAction }) {
+  if (!action.dataset_query?.native?.query) {
+    return (
+      <CodeBlock>
+        <Icon name="warning" size={16} tooltip={t`No query found`} />
+      </CodeBlock>
+    );
+  }
+
   return <CodeBlock>{action.dataset_query.native.query}</CodeBlock>;
 }
 
@@ -46,11 +58,11 @@ function ImplicitActionCardContent() {
 function ModelActionListItem({
   action,
   actionUrl,
-  canWrite,
   canRun,
+  canEdit,
+  canArchive,
   onArchive,
 }: Props) {
-  const canArchive = canWrite && action.type !== "implicit";
   const { show: askConfirmation, modalContent: confirmationModal } =
     useConfirmation();
 
@@ -65,8 +77,8 @@ function ModelActionListItem({
   const menuItems = useMemo(
     () => [
       {
-        title: canWrite ? t`Edit` : t`View`,
-        icon: canWrite ? "pencil" : "eye",
+        title: canEdit ? t`Edit` : t`View`,
+        icon: canEdit ? "pencil" : "eye",
         link: actionUrl,
       },
       canArchive && {
@@ -75,7 +87,7 @@ function ModelActionListItem({
         action: handleArchive,
       },
     ],
-    [actionUrl, canWrite, canArchive, handleArchive],
+    [actionUrl, canEdit, canArchive, handleArchive],
   );
 
   return (
@@ -84,6 +96,9 @@ function ModelActionListItem({
         <div>
           <ActionTitle to={actionUrl}>{action.name}</ActionTitle>
           <ActionSubtitle>
+            {action.type === "implicit" && (
+              <ActionSubtitlePart>{t`Basic action`}</ActionSubtitlePart>
+            )}
             {action.public_uuid && (
               <ActionSubtitlePart>{t`Public action form`}</ActionSubtitlePart>
             )}
@@ -94,10 +109,7 @@ function ModelActionListItem({
             )}
           </ActionSubtitle>
         </div>
-        <EntityMenu
-          items={menuItems}
-          trigger={<MenuIcon name="ellipsis" size={14} />}
-        />
+        <EntityMenu items={menuItems} trigger={<MenuIcon name="ellipsis" />} />
       </ActionHeader>
       <ActionCardContainer>
         {action.type === "query" ? (
@@ -130,4 +142,5 @@ function ModelActionListItem({
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModelActionListItem;

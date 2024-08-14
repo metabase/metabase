@@ -1,4 +1,5 @@
-import { Segment } from "metabase-types/api";
+import type { Segment } from "metabase-types/api";
+
 import { createMockStructuredQuery } from "./query";
 
 export const createMockSegment = (opts?: Partial<Segment>): Segment => ({
@@ -8,5 +9,6 @@ export const createMockSegment = (opts?: Partial<Segment>): Segment => ({
   table_id: 1,
   archived: false,
   definition: createMockStructuredQuery(),
+  definition_description: "",
   ...opts,
 });

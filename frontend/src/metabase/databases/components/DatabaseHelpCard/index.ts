@@ -1,1 +1,1 @@
-export { default } from "./DatabaseHelpCard";
+export * from "./DatabaseHelpCard";

@@ -1,0 +1,108 @@
+import { Fragment } from "react";
+import { Canvas, Story, Meta } from "@storybook/addon-docs";
+import { Icon } from "metabase/ui";
+import { Group, Tabs } from "metabase/ui";
+
+export const args = {
+  orientation: "horizontal",
+};
+
+export const argTypes = {
+  orientation: {
+    options: ["horizontal", "vertical"],
+    control: { type: "inline-radio" },
+  },
+};
+
+export const tabs = [
+  { value: "overview", label: "Overview", icon: "home" },
+  { value: "metrics", label: "Metrics", icon: "metric" },
+  { value: "segments", label: "Segments", icon: "segment" },
+  { value: "actions", label: "Actions", icon: "bolt", disabled: true },
+  { value: "filters", label: "Filters", icon: "filter" },
+];
+
+<Meta
+  title="Navigation/Tabs"
+  component={Tabs}
+  args={args}
+  argTypes={argTypes}
+/>
+
+# Tabs
+
+Our themed wrapper around [Mantine Tabs](https://v6.mantine.dev/core/tabs/).
+
+## Docs
+
+- [Figma File](https://www.figma.com/file/uPYsD4ncNpQPFzxsLnTnGd/Navigation-%2F-Tabs?type=design&node-id=1-96&mode=design&t=dtMJ59HbOKZ8TOgJ-0)
+- [Mantine Tabs Docs](https://v6.mantine.dev/core/tabs/)
+
+## Examples
+
+export const DefaultTemplate = args => (
+  <Tabs {...args}>
+    <Tabs.List>
+      {tabs.map(tab => (
+        <Tabs.Tab key={tab.value} value={tab.value} disabled={tab.disabled}>
+          {tab.label}
+        </Tabs.Tab>
+      ))}
+    </Tabs.List>
+    {tabs.map(tab => (
+      <Tabs.Panel key={tab.value} value={tab.value} />
+    ))}
+  </Tabs>
+);
+
+export const IconsTemplate = args => (
+  <Tabs {...args}>
+    <Tabs.List>
+      {tabs.map(tab => (
+        <Tabs.Tab
+          key={tab.value}
+          value={tab.value}
+          disabled={tab.disabled}
+          icon={<Icon name={tab.icon} />}
+        >
+          {tab.label}
+        </Tabs.Tab>
+      ))}
+    </Tabs.List>
+    {tabs.map(tab => (
+      <Tabs.Panel key={tab.value} value={tab.value} />
+    ))}
+  </Tabs>
+);
+
+export const Default = DefaultTemplate.bind({});
+
+<Canvas>
+  <Story name="Default">{Default}</Story>
+</Canvas>
+
+export const Icons = IconsTemplate.bind({});
+
+<Canvas>
+  <Story name="Icons">{Icons}</Story>
+</Canvas>
+
+### Vertical orientation
+
+export const Vertical = DefaultTemplate.bind({});
+Vertical.args = {
+  orientation: "vertical",
+};
+
+<Canvas>
+  <Story name="Vertical orientation">{Vertical}</Story>
+</Canvas>
+
+export const VerticalIcons = IconsTemplate.bind({});
+VerticalIcons.args = {
+  orientation: "vertical",
+};
+
+<Canvas>
+  <Story name="Vertical orientation, icons">{VerticalIcons}</Story>
+</Canvas>

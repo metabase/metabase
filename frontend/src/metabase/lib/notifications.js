@@ -1,11 +1,12 @@
 import { msgid, ngettext, t } from "ttag";
-import Settings from "metabase/lib/settings";
-import * as Urls from "metabase/lib/urls";
+
 import {
   formatDateTimeWithUnit,
   formatTimeWithUnit,
 } from "metabase/lib/formatting";
+import Settings from "metabase/lib/settings";
 import { formatFrame } from "metabase/lib/time";
+import * as Urls from "metabase/lib/urls";
 
 export const formatTitle = (item, type) => {
   switch (type) {
@@ -117,9 +118,13 @@ export const getRecipientsCount = (item, channelType) => {
 };
 
 export const canArchive = (item, user) => {
-  const recipients = item.channels.flatMap(channel =>
-    channel.recipients.map(recipient => recipient.id),
-  );
+  const recipients = item.channels.flatMap(channel => {
+    if (channel.recipients) {
+      return channel.recipients.map(recipient => recipient.id);
+    } else {
+      return [];
+    }
+  });
 
   const isCreator = item.creator?.id === user.id;
   const isSubscribed = recipients.includes(user.id);

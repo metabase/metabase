@@ -1,8 +1,14 @@
-export type Database = {
-  name: string;
-  schemas: Schema[];
-  id: number;
-  is_saved_questions?: boolean;
-};
+import type { IconName } from "metabase/ui";
 
-export type Schema = { displayName: () => string; database: Database };
+export type DataPickerDataType =
+  | "models"
+  | "raw-data"
+  | "questions"
+  | "metrics";
+
+export type DataTypeInfoItem = {
+  id: DataPickerDataType;
+  icon: IconName;
+  name: string;
+  description: string;
+};

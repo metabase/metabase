@@ -112,12 +112,12 @@
                            :email-from-address)]
           (tu/discard-setting-changes [email-smtp-host email-smtp-port email-smtp-security email-smtp-username
                                        email-smtp-password email-from-address email-from-name email-reply-to]
-            (mt/with-temp-env-var-value [mb-email-smtp-port     (:email-smtp-port default-email-settings)
-                                         mb-email-smtp-host     (:email-smtp-host default-email-settings)
-                                         mb-email-smtp-security (name (:email-smtp-security default-email-settings))
-                                         mb-email-smtp-username (:email-smtp-username default-email-settings)
-                                         mb-email-smtp-password (:email-smtp-password default-email-settings)
-                                         mb-email-from-address  (:email-from-address default-email-settings)]
+            (mt/with-temp-env-var-value! [mb-email-smtp-port     (:email-smtp-port default-email-settings)
+                                          mb-email-smtp-host     (:email-smtp-host default-email-settings)
+                                          mb-email-smtp-security (name (:email-smtp-security default-email-settings))
+                                          mb-email-smtp-username (:email-smtp-username default-email-settings)
+                                          mb-email-smtp-password (:email-smtp-password default-email-settings)
+                                          mb-email-from-address  (:email-from-address default-email-settings)]
               (with-redefs [email/test-smtp-settings (constantly {::email/error nil})]
                 (testing "API request"
                   (is (= (-> default-email-settings

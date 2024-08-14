@@ -1,4 +1,3 @@
-import React from "react";
 import { t, jt } from "ttag";
 
 import { duration } from "metabase/lib/formatting";
@@ -24,13 +23,11 @@ function SlowQueryView({ expectedDuration, isSlow }: LoadingViewProps) {
         <div>
           {jt`This usually takes an average of ${(
             <Duration>{duration(expectedDuration)}</Duration>
-          )}.`}
-          <br />
-          {t`(This is a bit long for a dashboard)`}
+          )}, but is currently taking longer.`}
         </div>
       ) : (
         <div>
-          {t`This is usually pretty fast but seems to be taking a while right now.`}
+          {t`This usually loads immediately, but is currently taking longer.`}
         </div>
       )}
     </SlowQueryMessageContainer>
@@ -49,4 +46,5 @@ function LoadingView({ expectedDuration, isSlow }: LoadingViewProps) {
   );
 }
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default LoadingView;

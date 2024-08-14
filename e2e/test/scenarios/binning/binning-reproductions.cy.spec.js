@@ -1,4 +1,7 @@
+import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
+import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  entityPickerModal,
   restore,
   popover,
   visualize,
@@ -8,10 +11,12 @@ import {
   startNewQuestion,
   summarize,
   openOrdersTable,
+  getNotebookStep,
+  rightSidebar,
+  chartPathWithFillColor,
+  cartesianChartCircle,
+  entityPickerModalTab,
 } from "e2e/support/helpers";
-
-import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
-import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
 
@@ -28,18 +33,26 @@ describe("binning related reproductions", () => {
     });
 
     startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("16327").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("16327").click();
+    });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick the metric you want to see").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count of rows").click();
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Pick a column to group by").click();
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/CREATED_AT/i).realHover();
-    cy.findByText("by minute").click({ force: true });
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("by day").click({ force: true });
 
     // Implicit assertion - it fails if there is more than one instance of the string, which is exactly what we need for this repro
-    cy.findByText("Month");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("Day");
   });
 
   it("should be able to update the bucket size / granularity on a field that has sorting applied to it (metabase#16770)", () => {
@@ -74,8 +87,10 @@ describe("binning related reproductions", () => {
       expect(xhr.response.body.error).not.to.exist;
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Count by Created At: Year");
-    cy.findByText("2018");
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+    cy.findByText("2024");
   });
 
   it("should not remove order-by (sort) when changing the breakout field on an SQL saved question (metabase#17975)", () => {
@@ -90,23 +105,31 @@ describe("binning related reproductions", () => {
     );
 
     startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("17975").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("17975").click();
+    });
 
-    cy.findByText("Pick the metric you want to see").click();
-    cy.findByText("Count of rows").click();
-    cy.findByText("Pick a column to group by").click();
-    cy.findByText("CREATED_AT").click();
+    getNotebookStep("summarize")
+      .findByText("Pick the metric you want to see")
+      .click();
+    popover().findByText("Count of rows").click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    popover().findByText("CREATED_AT").click();
 
-    cy.findByText("Sort").click();
-    cy.findByText("CREATED_AT").click();
+    cy.findByRole("button", { name: "Sort" }).click();
+    popover().findByText("CREATED_AT: Month").click();
 
-    // Change the binning of the breakout field
-    cy.findByText("CREATED_AT: Month").click();
-    cy.findByText("by month").click();
-    cy.findByText("Quarter").click();
+    getNotebookStep("summarize").findByText("CREATED_AT: Month").click();
+    popover()
+      .findByRole("option", { name: "CREATED_AT" })
+      .findByLabelText("Temporal bucket")
+      .click();
+    popover().last().findByText("Quarter").click();
 
-    cy.findByText("CREATED_AT");
+    getNotebookStep("sort").findByText("CREATED_AT: Quarter");
   });
 
   it("should render binning options when joining on the saved native question (metabase#18646)", () => {
@@ -122,9 +145,8 @@ describe("binning related reproductions", () => {
 
     cy.icon("join_left_outer").click();
 
-    popover().within(() => {
-      cy.findByTextEnsureVisible("Sample Database").click();
-      cy.findByTextEnsureVisible("Saved Questions").click();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
       cy.findByText("18646").click();
     });
 
@@ -134,26 +156,33 @@ describe("binning related reproductions", () => {
       cy.findByText("ID").click();
     });
 
+    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Summarize").click();
-    cy.findByText("Count of rows").click();
+    popover().findByText("Count of rows").click();
 
-    cy.findByText("Pick a column to group by").click();
-    cy.findByText(/Question \d/).click();
+    getNotebookStep("summarize")
+      .findByText("Pick a column to group by")
+      .click();
+    popover().findByText("18646").click();
 
     popover().within(() => {
-      cy.findByText("CREATED_AT").closest(".List-item").findByText("by month");
-
-      cy.findByText("CREATED_AT").click();
+      cy.findByRole("option", { name: /CREATED_AT/ })
+        .findByText("by month")
+        .should("exist");
+      cy.findByRole("option", { name: /CREATED_AT/ }).click({
+        position: "left",
+      });
     });
 
-    cy.findByText("Question 4 → Created At: Month");
+    getNotebookStep("summarize").findByText(
+      "18646 - Product → Created At: Month",
+    );
 
     visualize();
-    cy.get("circle");
+    cartesianChartCircle();
   });
 
-  it("should display date granularity on Summarize when opened from saved question (metabase#11439)", () => {
-    // save "Orders" as question
+  it("should display date granularity on Summarize when opened from saved question (metabase#10441, metabase#11439)", () => {
     cy.createQuestion({
       name: "11439",
       query: { "source-table": ORDERS_ID },
@@ -162,30 +191,25 @@ describe("binning related reproductions", () => {
     // it is essential for this repro to find question following these exact steps
     // (for example, visiting `/collection/root` would yield different result)
     startNewQuestion();
-    cy.findByText("Saved Questions").click();
-    cy.findByText("11439").click();
-    visualize();
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Saved questions").click();
+      cy.findByText("11439").click();
+    });
 
+    visualize();
     summarize();
 
-    cy.findByText("Group by")
-      .parent()
-      .within(() => {
-        cy.log("Reported failing since v0.33.5.1");
-        cy.log(
-          "**Marked as regression of [#10441](https://github.com/metabase/metabase/issues/10441)**",
-        );
+    rightSidebar().within(() => {
+      cy.findAllByRole("listitem", { name: "Created At" })
+        .eq(0)
+        .findByLabelText("Temporal bucket")
+        .click();
+    });
 
-        cy.findAllByText("Created At")
-          .eq(0)
-          .closest("li")
-          .contains("by month")
-          // realHover() or mousemove don't work for whatever reason
-          // have to use this ugly hack for now
-          .click({ force: true });
-      });
-    // // this step is maybe redundant since it fails to even find "by month"
-    cy.findByText("Hour of Day");
+    popover().within(() => {
+      cy.button("More…").click();
+      cy.findByText("Hour of day").should("exist");
+    });
   });
 
   it("shouldn't duplicate the breakout field (metabase#22382)", () => {
@@ -207,7 +231,9 @@ describe("binning related reproductions", () => {
     cy.findByTestId("sidebar-left").within(() => {
       cy.findByTestId("Table-button").click();
       cy.findByTextEnsureVisible("Table options");
-      cy.findByText("Created At").siblings(".Icon-eye_outline").click();
+      cy.findByText("Created At: Month")
+        .siblings("[data-testid$=hide-button]")
+        .click();
       cy.button("Done").click();
     });
 
@@ -219,7 +245,7 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").findByText("Count");
+    cy.findByTestId("query-visualization-root").findByText("Count");
 
     cy.findByTestId("sidebar-right")
       .findAllByText("Created At")
@@ -227,11 +253,11 @@ describe("binning related reproductions", () => {
       .click();
     cy.wait("@dataset");
 
-    cy.get(".Visualization").within(() => {
-      // ALl of these are implicit assertions and will fail if there's more than one string
+    cy.findByTestId("query-visualization-root").within(() => {
+      // All of these are implicit assertions and will fail if there's more than one string
       cy.findByText("Count");
       cy.findByText("Created At: Month");
-      cy.findByText("June, 2016");
+      cy.findByText("June 2022");
     });
   });
 
@@ -259,14 +285,17 @@ describe("binning related reproductions", () => {
         toBinning: "10 bins",
       });
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
 
     it("should work for notebook mode", () => {
       openSummarizeOptions("Notebook mode");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick the metric you want to see").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count of rows").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Pick a column to group by").click();
 
       changeBinningForDimension({
@@ -277,7 +306,7 @@ describe("binning related reproductions", () => {
 
       visualize();
 
-      cy.get(".bar");
+      chartPathWithFillColor("#509EE3");
     });
   });
 
@@ -301,7 +330,9 @@ describe("binning related reproductions", () => {
       });
 
       startNewQuestion();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Saved Questions").click();
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("SQL Binning").click();
 
       visualize();
@@ -315,9 +346,11 @@ describe("binning related reproductions", () => {
 
       cy.wait("@dataset");
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by TOTAL: Auto binned");
       cy.get(".bar").should("have.length.of.at.most", 10);
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("-60");
     });
 
@@ -337,7 +370,9 @@ describe("binning related reproductions", () => {
         expect(xhr.response.body.error).not.to.exist;
       });
 
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Count by LONGITUDE: Auto binned");
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("170° W");
     });
   });
@@ -345,8 +380,10 @@ describe("binning related reproductions", () => {
 
 function openSummarizeOptions(questionType) {
   startNewQuestion();
-  cy.findByText("Saved Questions").click();
-  cy.findByText("16379").click();
+  entityPickerModal().within(() => {
+    entityPickerModalTab("Saved questions").click();
+    cy.findByText("16379").click();
+  });
 
   if (questionType === "Simple mode") {
     visualize();

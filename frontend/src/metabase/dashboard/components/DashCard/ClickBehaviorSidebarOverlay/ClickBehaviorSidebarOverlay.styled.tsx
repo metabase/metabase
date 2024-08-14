@@ -1,8 +1,7 @@
 import styled from "@emotion/styled";
 
-import Icon from "metabase/components/Icon";
-
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const Root = styled.div`
   display: flex;
@@ -19,7 +18,7 @@ export const Button = styled.button<{ isActive: boolean }>`
   font-weight: bold;
   cursor: pointer;
   background-color: ${({ isActive }) =>
-    isActive ? color("brand") : color("bg-light")};
+    isActive ? color("brand") : "var(--mb-color-bg-light)"};
   color: ${({ isActive }) =>
     isActive ? color("text-white") : color("text-medium")};
 `;

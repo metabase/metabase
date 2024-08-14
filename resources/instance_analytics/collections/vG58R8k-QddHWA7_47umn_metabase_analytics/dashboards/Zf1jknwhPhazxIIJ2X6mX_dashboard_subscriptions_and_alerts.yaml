@@ -1,0 +1,91 @@
+name: Dashboard subscriptions and alerts
+description: All active notifications
+entity_id: Zf1jknwhPhazxIIJ2X6mX
+created_at: '2024-03-06T13:56:49.927786Z'
+creator_id: internal@metabase.com
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+auto_apply_filters: true
+cache_ttl: null
+collection_position: 9
+position: null
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+show_in_getting_started: false
+caveats: null
+points_of_interest: null
+parameters: []
+serdes/meta:
+- id: Zf1jknwhPhazxIIJ2X6mX
+  label: dashboard_subscriptions_and_alerts
+  model: Dashboard
+dashcards:
+- entity_id: Gqo7FTMaVg63eHACcYK7C
+  card_id: g-99yx3A8bwFtrfuWdIgb
+  created_at: '2024-03-06T13:59:10.541709Z'
+  row: 0
+  col: 0
+  size_x: 24
+  size_y: 13
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings:
+      ? '["ref",["field",["Internal Metabase Database","public","v_content","name"],{"base-type":"type/Text","join-alias":"Content - Entity Qualified"}]]'
+      : click_behavior:
+          linkTemplate: /dashboard/{{entity_id}}
+          linkType: url
+          targetId: null
+          type: link
+      ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
+      : click_behavior:
+          linkType: dashboard
+          parameterMapping:
+            6b3da96f:
+              id: 6b3da96f
+              source:
+                id: creator_id
+                name: Creator ID
+                type: column
+              target:
+                id: 6b3da96f
+                type: parameter
+          tabId: 1
+          targetId: DHMhMa1FYxiyIgM7_xdgR
+          type: link
+- entity_id: 51ogDBhNtVwqBt0AFyJSr
+  card_id: fwkC3nWB_uouifA5kkaBp
+  created_at: '2024-03-06T14:13:39.193112Z'
+  row: 13
+  col: 0
+  size_x: 24
+  size_y: 13
+  action_id: null
+  dashboard_tab_id: null
+  parameter_mappings: []
+  series: []
+  visualization_settings:
+    column_settings:
+      ? '["ref",["field",["Internal Metabase Database","public","v_users","full_name"],{"base-type":"type/Text","join-alias":"People - Creator"}]]'
+      : click_behavior:
+          linkType: dashboard
+          parameterMapping:
+            6b3da96f:
+              id: 6b3da96f
+              source:
+                id: creator_id
+                name: Creator ID
+                type: column
+              target:
+                id: 6b3da96f
+                type: parameter
+          tabId: 1
+          targetId: DHMhMa1FYxiyIgM7_xdgR
+          type: link
+initially_published_at: null
+tabs: []
+width: fixed

@@ -1,12 +1,16 @@
-import React, { useMemo, useState } from "react";
-import _ from "underscore";
+import type * as React from "react";
+import { useMemo, useState, useContext } from "react";
 import { t } from "ttag";
-import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
-import { SEARCH_DEBOUNCE_DURATION } from "metabase/lib/constants";
-import Checkbox from "metabase/core/components/CheckBox";
-import EmptyState from "metabase/components/EmptyState";
+import _ from "underscore";
 
-import Input, { InputProps } from "metabase/core/components/Input";
+import EmptyState from "metabase/components/EmptyState";
+import { waitTimeContext } from "metabase/context/wait-time";
+import type { InputProps } from "metabase/core/components/Input";
+import Input from "metabase/core/components/Input";
+import { useDebouncedValue } from "metabase/hooks/use-debounced-value";
+import { Checkbox } from "metabase/ui";
+import type { RowValue } from "metabase-types/api";
+
 import {
   OptionContainer,
   LabelWrapper,
@@ -14,25 +18,24 @@ import {
   EmptyStateContainer,
   FilterInputContainer,
 } from "./ListField.styled";
-import { ListFieldProps, Option } from "./types";
+import type { ListFieldProps, Option } from "./types";
 import { isValidOptionItem } from "./utils";
 
 function createOptionsFromValuesWithoutOptions(
-  values: string[],
+  values: RowValue[],
   options: Option[],
 ): Option {
-  const optionsMap = _.indexBy(options, "0");
-  return values.filter(value => !optionsMap[value]).map(value => [value]);
+  const optionsMap = new Map(options.map(option => [option[0], option]));
+  return values.filter(value => !optionsMap.has(value)).map(value => [value]);
 }
 
-const ListField = ({
+export const ListField = ({
   onChange,
   value,
   options,
   optionRenderer,
   placeholder,
   isDashboardFilter,
-  checkedColor,
 }: ListFieldProps) => {
   const [selectedValues, setSelectedValues] = useState(new Set(value));
   const [addedOptions, setAddedOptions] = useState<Option>(() =>
@@ -57,7 +60,8 @@ const ListField = ({
   }, [augmentedOptions.length]);
 
   const [filter, setFilter] = useState("");
-  const debouncedFilter = useDebouncedValue(filter, SEARCH_DEBOUNCE_DURATION);
+  const waitTime = useContext(waitTimeContext);
+  const debouncedFilter = useDebouncedValue(filter, waitTime);
 
   const filteredOptions = useMemo(() => {
     const formattedFilter = debouncedFilter.trim().toLowerCase();
@@ -133,9 +137,6 @@ const ListField = ({
           <OptionContainer key={index}>
             <Checkbox
               data-testid={`${option[0]}-filter-value`}
-              checkedColor={
-                checkedColor ?? isDashboardFilter ? "brand" : "filter"
-              }
               checked={selectedValues.has(option[0])}
               label={<LabelWrapper>{optionRenderer(option)}</LabelWrapper>}
               onChange={() => handleToggleOption(option[0])}
@@ -146,5 +147,3 @@ const ListField = ({
     </>
   );
 };
-
-export default ListField;

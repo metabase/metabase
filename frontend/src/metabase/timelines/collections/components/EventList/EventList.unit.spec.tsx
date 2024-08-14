@@ -1,10 +1,12 @@
-import React from "react";
 import { render, screen } from "@testing-library/react";
+
 import {
   createMockTimeline,
   createMockTimelineEvent,
 } from "metabase-types/api/mocks";
-import EventList, { EventListProps } from "./EventList";
+
+import type { EventListProps } from "./EventList";
+import EventList from "./EventList";
 
 describe("EventList", () => {
   it("should render a list of events", () => {

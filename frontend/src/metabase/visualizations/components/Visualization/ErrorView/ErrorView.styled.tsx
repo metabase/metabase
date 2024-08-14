@@ -1,6 +1,7 @@
 import styled from "@emotion/styled";
-import Icon from "metabase/components/Icon";
+
 import { color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
 
 export const Root = styled.div<{ isDashboard: boolean }>`
   display: flex;
@@ -9,11 +10,9 @@ export const Root = styled.div<{ isDashboard: boolean }>`
   align-items: center;
   justify-content: center;
   text-align: center;
-
   padding-left: 0.5rem;
   padding-right: 0.5rem;
   padding-bottom: 0.5rem;
-
   color: ${({ isDashboard }) =>
     isDashboard ? color("text-medium") : color("text-light")};
 `;

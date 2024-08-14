@@ -1,0 +1,63 @@
+{
+  "$schema": "http://iglucentral.com/schemas/com.snowplowanalytics.self-desc/schema/jsonschema/1-0-0#",
+  "description": "Dashboard events",
+  "self": {
+    "vendor": "com.metabase",
+    "name": "dashboard",
+    "format": "jsonschema",
+    "version": "1-1-0"
+  },
+  "type": "object",
+  "properties": {
+    "event": {
+      "description": "Event name",
+      "type": "string",
+      "enum": [
+        "dashboard_created",
+        "question_added_to_dashboard",
+        "auto_apply_filters_disabled",
+        "dashboard_tab_created",
+        "dashboard_tab_deleted"
+      ],
+      "maxLength": 1024
+    },
+    "dashboard_id": {
+      "description": "Unique identifier for a dashboard within the Metabase instance",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "question_id": {
+      "description": "Unique identifier for a question added to a dashboard",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "num_tabs": {
+      "description": "Number of tabs affected after the event",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    },
+    "total_num_tabs": {
+      "description": "Total number of active tabs after the events",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 2147483647
+    }
+  },
+  "required": [
+    "event",
+    "dashboard_id"
+  ],
+  "additionalProperties": true
+}

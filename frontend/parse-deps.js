@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
+/* eslint-disable import/no-commonjs, no-undef, no-console */
 const fs = require("fs");
-const path = require("path");
+const readline = require("readline");
 
+const babel = require("@babel/core");
 const glob = require("glob");
 const minimatch = require("minimatch");
-const babel = require("@babel/core");
-const readline = require("readline");
+const path = require("path");
 
 const PATTERN = "{enterprise/,}frontend/src/**/*.{js,jsx,ts,tsx}";
 
@@ -77,7 +78,7 @@ function getFilePathFromImportPath(name) {
   const scriptsExtensions = ["js", "ts"];
   const scriptsExtensionsWithJsx = [...scriptsExtensions, "jsx", "tsx"];
 
-  for (let extension of scriptsExtensionsWithJsx) {
+  for (const extension of scriptsExtensionsWithJsx) {
     const path = `${name}.${extension}`;
 
     if (fs.existsSync(path)) {
@@ -87,7 +88,7 @@ function getFilePathFromImportPath(name) {
 
   const isDirectory = fs.existsSync(name) && fs.lstatSync(name).isDirectory();
 
-  for (let extension of scriptsExtensions) {
+  for (const extension of scriptsExtensions) {
     const indexScriptPath = `${name}/index.${extension}`;
 
     if (isDirectory && fs.existsSync(indexScriptPath)) {
@@ -99,7 +100,7 @@ function getFilePathFromImportPath(name) {
 }
 
 function dependents() {
-  let dependents = {};
+  const dependents = {};
   dependencies().forEach(dep => {
     const { source, dependencies } = dep;
     dependencies.forEach(d => {
@@ -114,7 +115,7 @@ function dependents() {
 
 function getDependents(sources) {
   const allDependents = dependents();
-  let filteredDependents = [];
+  const filteredDependents = [];
 
   sources.forEach(name => {
     const list = allDependents[name];
@@ -130,7 +131,7 @@ function filterDependents() {
   const rl = readline.createInterface({ input: process.stdin });
 
   const start = async () => {
-    let sources = [];
+    const sources = [];
     for await (const line of rl) {
       const name = line.trim();
       if (name.length > 0) {
@@ -147,14 +148,14 @@ function filterAllDependents() {
   const rl = readline.createInterface({ input: process.stdin });
 
   const start = async () => {
-    let sources = [];
+    const sources = [];
     for await (const line of rl) {
       const name = line.trim();
       if (name.length > 0) {
         sources.push(name);
       }
     }
-    let filteredDependents = getDependents(sources);
+    const filteredDependents = getDependents(sources);
 
     const allDependents = dependents();
     for (let i = 0; i < filteredDependents.length; ++i) {
@@ -260,7 +261,7 @@ function main(args) {
   }
 }
 
-let args = process.argv;
+const args = process.argv;
 args.shift();
 args.shift();
 main(args);

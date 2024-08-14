@@ -1,14 +1,15 @@
 import { useEffect } from "react";
 
-interface LogoutProps {
-  onLogout: () => void;
-}
+import { useDispatch } from "metabase/lib/redux";
 
-const Logout = ({ onLogout }: LogoutProps): JSX.Element | null => {
+import { logout } from "../../actions";
+
+export const Logout = (): JSX.Element | null => {
+  const dispatch = useDispatch();
+
   useEffect(() => {
-    onLogout();
-  }, [onLogout]);
+    dispatch(logout());
+  }, [dispatch]);
+
   return null;
 };
-
-export default Logout;

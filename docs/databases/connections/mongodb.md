@@ -103,9 +103,11 @@ To make sure you are using the correct connection configuration:
 
 ## I added fields to my database but don't see them in Metabase
 
-Metabase may not sync all of your fields, as it only scans the first ten thousand documents in a collection to get a sample of the fields the collection contains. Since any document in a MongoDB collection can contain any number of fields, the only way to get 100% coverage of all fields would be to scan every single document in every single collection, which would put too much strain on your database (so we don't do that).
+Metabase may not sync all of your fields. Since any document in a MongoDB collection can contain any number of fields, the only way to get 100% coverage of all fields would be to scan every single document in every single collection. The reason Metabase doesn't do a full scan is because it would put too much strain on your database.
 
-One workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection.
+Instead, Metabase gets a sample of the fields in a collection by scanning a sample of 1000 documents in each collection (the first 500 documents and the last 500 documents in each collection).
+
+If you're not seeing all of the fields show up for a collection in Metabase, one workaround is to include all possible keys in the first document of the collection, and give those keys null values. That way, Metabase will be able to recognize the correct schema for the entire collection.
 
 ## Further reading
 

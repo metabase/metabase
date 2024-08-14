@@ -1,4 +1,5 @@
-import { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+import type { Collection, Timeline, TimelineEvent } from "metabase-types/api";
+
 import { collection as getCollectionUrl } from "./collections";
 
 export function timelinesInCollection(collection?: Collection) {

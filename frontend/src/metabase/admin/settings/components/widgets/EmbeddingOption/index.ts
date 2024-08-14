@@ -1,1 +1,4 @@
-export { default } from "./EmbeddingOption";
+export {
+  InteractiveEmbeddingOptionCard,
+  StaticEmbeddingOptionCard,
+} from "./EmbeddingOption";

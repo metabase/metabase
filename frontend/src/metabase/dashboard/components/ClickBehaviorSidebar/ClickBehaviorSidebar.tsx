@@ -1,59 +1,56 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { getIn } from "icepick";
-
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMount, usePrevious } from "react-use";
 
-import Sidebar from "metabase/dashboard/components/Sidebar";
-
+import { useDashboardQuery } from "metabase/common/hooks";
+import { Sidebar } from "metabase/dashboard/components/Sidebar";
+import { isTableDisplay } from "metabase/lib/click-behavior";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import {
+  canSaveClickBehavior,
+  clickBehaviorIsValid,
+} from "metabase-lib/v1/parameters/utils/click-behavior";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
 import type {
   Dashboard,
-  DashboardOrderedCard,
   DashCardId,
-  CardId,
   ClickBehavior,
-  DatasetData,
   DatasetColumn,
+  DashCardVisualizationSettings,
+  DashboardCard,
 } from "metabase-types/api";
-import { isTableDisplay } from "metabase/lib/click-behavior";
-import type { UiParameter } from "metabase-lib/parameters/types";
-import { clickBehaviorIsValid } from "metabase-lib/parameters/utils/click-behavior";
 
-import { getColumnKey } from "metabase-lib/queries/utils/get-column-key";
+import { ClickBehaviorSidebarContent } from "./ClickBehaviorSidebarContent";
+import { ClickBehaviorSidebarHeader } from "./ClickBehaviorSidebarHeader/ClickBehaviorSidebarHeader";
 import { getClickBehaviorForColumn } from "./utils";
-import ClickBehaviorSidebarContent from "./ClickBehaviorSidebarContent";
-import ClickBehaviorSidebarHeader from "./ClickBehaviorSidebarHeader";
 
 function shouldShowTypeSelector(clickBehavior?: ClickBehavior) {
   return !clickBehavior || clickBehavior.type == null;
 }
 
-type VizSettings = Record<string, unknown>;
-
 interface Props {
   dashboard: Dashboard;
-  dashcard: DashboardOrderedCard;
-  dashcardData: Record<DashCardId, Record<CardId, DatasetData>>;
+  dashcard: DashboardCard;
   parameters: UiParameter[];
   hideClickBehaviorSidebar: () => void;
   onUpdateDashCardColumnSettings: (
     id: DashCardId,
     columnKey: string,
-    settings?: VizSettings | null,
+    settings?: Record<string, unknown> | null,
   ) => void;
   onUpdateDashCardVisualizationSettings: (
     id: DashCardId,
-    settings?: VizSettings | null,
+    settings: DashCardVisualizationSettings | null | undefined,
   ) => void;
   onReplaceAllDashCardVisualizationSettings: (
     id: DashCardId,
-    settings?: VizSettings | null,
+    settings: DashCardVisualizationSettings | null | undefined,
   ) => void;
 }
 
-function ClickBehaviorSidebar({
+export function ClickBehaviorSidebar({
   dashboard,
   dashcard,
-  dashcardData,
   parameters,
   hideClickBehaviorSidebar,
   onUpdateDashCardColumnSettings,
@@ -69,11 +66,11 @@ function ClickBehaviorSidebar({
   );
 
   const [originalVizSettings, setOriginalVizSettings] = useState<
-    VizSettings | undefined | null
+    DashCardVisualizationSettings | null | undefined
   >(null);
 
   const [originalColumnVizSettings, setOriginalColumnVizSettings] = useState<
-    VizSettings | undefined | null
+    Partial<ClickBehavior> | undefined | null
   >(null);
 
   const previousDashcard = usePrevious(dashcard);
@@ -90,13 +87,25 @@ function ClickBehaviorSidebar({
     }
   }, [dashcard, selectedColumn, hasSelectedColumn]);
 
+  const isDashboardLink =
+    clickBehavior?.type === "link" && clickBehavior.linkType === "dashboard";
+  const { data: targetDashboard } = useDashboardQuery({
+    enabled: isDashboardLink,
+    id: isDashboardLink ? clickBehavior.targetId : undefined,
+  });
+
   const isValidClickBehavior = useMemo(
     () => clickBehaviorIsValid(clickBehavior),
     [clickBehavior],
   );
 
+  const isCloseDisabled = useMemo(
+    () => !canSaveClickBehavior(clickBehavior, targetDashboard),
+    [clickBehavior, targetDashboard],
+  );
+
   const handleChangeSettings = useCallback(
-    nextClickBehavior => {
+    (nextClickBehavior: Partial<ClickBehavior> | undefined | null) => {
       const { id } = dashcard;
 
       if (selectedColumn == null) {
@@ -109,7 +118,10 @@ function ClickBehaviorSidebar({
         });
       }
 
-      const changedType = nextClickBehavior.type !== clickBehavior?.type;
+      // nextClickBehavior is `undefined` for drill-through menu
+      const changedType =
+        !!nextClickBehavior && nextClickBehavior.type !== clickBehavior?.type;
+
       if (changedType) {
         // move to next screen
         setTypeSelectorVisible(false);
@@ -125,7 +137,7 @@ function ClickBehaviorSidebar({
   );
 
   const handleColumnSelected = useCallback(
-    column => {
+    (column: DatasetColumn) => {
       const originalColumnVizSettings = getClickBehaviorForColumn(
         dashcard,
         column,
@@ -185,7 +197,7 @@ function ClickBehaviorSidebar({
     <Sidebar
       onClose={hideClickBehaviorSidebar}
       onCancel={handleCancel}
-      closeIsDisabled={!isValidClickBehavior}
+      isCloseDisabled={isCloseDisabled}
     >
       <ClickBehaviorSidebarHeader
         dashcard={dashcard}
@@ -196,7 +208,6 @@ function ClickBehaviorSidebar({
         <ClickBehaviorSidebarContent
           dashboard={dashboard}
           dashcard={dashcard}
-          dashcardData={dashcardData}
           parameters={parameters}
           clickBehavior={clickBehavior}
           isTypeSelectorVisible={isTypeSelectorVisible}
@@ -209,5 +220,3 @@ function ClickBehaviorSidebar({
     </Sidebar>
   );
 }
-
-export default ClickBehaviorSidebar;

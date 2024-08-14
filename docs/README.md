@@ -5,17 +5,24 @@ redirect_from:
   - /docs/latest/users-guide
   - /docs/latest/administration-guide
   - /docs/latest/operations-guide
+  - /docs/latest/faq
 ---
 
 # Metabase documentation
+
+![Metabase dashboard](./images/metabase-product-screenshot.png)
 
 Metabase is an open-source business intelligence platform. You can use Metabase to ask questions about your data, or embed Metabase in your app to let your customers explore their data on their own.
 
 ## First steps
 
+### Metabase Cloud
+
+The easiest way to get started with Metabase is to sign up for a free trial of [Metabase Cloud](https://store.metabase.com/checkout). You get support, backups, upgrades, an SMTP server, SSL certificate, SoC2 Type 2 security auditing, and more (plus your money goes toward improving Metabase). Check out our quick overview of [cloud vs self-hosting](https://www.metabase.com/docs/latest/cloud/cloud-vs-self-hosting). If you need to, you can always switch to [self-hosting](./installation-and-operation/installing-metabase.md) Metabase at any time (or vice versa).
+
 ### [Installing Metabase](./installation-and-operation/installing-metabase.md)
 
-Run as a JAR, using Docker, or on Metabase Cloud.
+Run as a JAR, using Docker, or on [Metabase Cloud](https://store.metabase.com/checkout).
 
 ### [Setting up Metabase](./configuring-metabase/setting-up-metabase.md)
 
@@ -41,19 +48,23 @@ Metabase's reference documentation.
 - [Configuring the Metabase application database](./installation-and-operation/configuring-application-database.md)
 - [Backing up Metabase](./installation-and-operation/backing-up-metabase-application-data.md)
 - [Migrating to a production application database](./installation-and-operation/migrating-from-h2.md)
-- [Java versions](./installation-and-operation/java-versions.md)
 - [Monitoring your Metabase](./installation-and-operation/monitoring-metabase.md)
 - [Serialization](./installation-and-operation/serialization.md)
+- [Commands](./installation-and-operation/commands.md)
 - [Supported browsers](./installation-and-operation/supported-browsers.md)
 - [Privacy](./installation-and-operation/privacy.md)
+- [About the anonymous usage data we collect](./installation-and-operation/information-collection.md)
 
 ### Databases
 
 - [Databases overview](./databases/start.md)
 - [Adding and managing databases](./databases/connecting.md)
+- [Database users, roles, and privileges](./databases/users-roles-privileges.md)
+- [Syncing and scanning databases](./databases/sync-scan.md)
 - [Encrypting your database connection](./databases/encrypting-details-at-rest.md)
 - [SSH tunneling](./databases/ssh-tunnel.md)
 - [SSL certificate](./databases/ssl-certificates.md)
+- [Uploading data](./databases/uploads.md)
 
 ### Questions
 
@@ -80,6 +91,7 @@ Metabase's reference documentation.
 - [Sharing answers](./questions/sharing/answers.md)
 - [Alerts](./questions/sharing/alerts.md)
 - [Public sharing](./questions/sharing/public-links.md)
+- [Exporting data](./questions/sharing/exporting-results.md)
 
 ### Dashboards
 
@@ -95,9 +107,11 @@ Metabase's reference documentation.
 
 - [Data modeling overview](./data-modeling/start.md)
 - [Models](./data-modeling/models.md)
-- [Data model admin settings](./data-modeling/metadata-editing.md)
+- [Model persistence](./data-modeling/model-persistence.md)
+- [Table metadata admin settings](./data-modeling/metadata-editing.md)
 - [Field types](./data-modeling/field-types.md)
 - [Formatting defaults](./data-modeling/formatting.md)
+- [Working with JSON](./data-modeling/json-unfolding.md)
 - [Segments and metrics](./data-modeling/segments-and-metrics.md)
 
 ### Actions
@@ -125,6 +139,7 @@ Metabase's reference documentation.
 - [Password complexity](./people-and-groups/changing-password-complexity.md)
 - [Session expiration](./people-and-groups/changing-session-expiration.md)
 - [Google Sign-In or LDAP](./people-and-groups/google-and-ldap.md)
+- [API keys](./people-and-groups/api-keys.md)
 
 #### Paid SSO options
 
@@ -144,15 +159,18 @@ Metabase's reference documentation.
 - [Collection permissions](./permissions/collections.md)
 - [Application permissions](./permissions/application.md)
 - [Data sandboxes](./permissions/data-sandboxes.md)
+- [Data sandbox examples](./permissions/data-sandbox-examples.md)
 - [SQL snippets folder permissions](./permissions/snippets.md)
+- [Notification permissions](./permissions/notifications.md)
 
 ### Embedding
 
 - [Embedding overview](./embedding/start.md)
 - [Embedding introduction](./embedding/introduction.md)
-- [Full-app embedding](./embedding/full-app-embedding.md)
-- [Signed embedding](./embedding/signed-embedding.md)
-- [Parameters for signed embeds](./embedding/signed-embedding-parameters.md)
+- [Interactive embedding](./embedding/interactive-embedding.md)
+- [Interactive embedding quick start](./embedding/interactive-embedding-quick-start-guide.md)
+- [Static embedding](./embedding/static-embedding.md)
+- [Parameters for static embeds](./embedding/static-embedding-parameters.md)
 
 ### Configuration
 
@@ -174,8 +192,12 @@ Metabase's reference documentation.
 ### Tools
 
 - [Tools overview](./usage-and-performance-tools/start.md)
-- [Auditing tools](./usage-and-performance-tools/audit.md)
+- [Usage analytics](./usage-and-performance-tools/usage-analytics.md)
 - [Admin tools](./usage-and-performance-tools/tools.md)
+
+### Cloud
+
+- [Documentation for Metabase Cloud and Store](https://www.metabase.com/docs/latest/cloud/start)
 
 ### Metabase API
 
@@ -190,6 +212,10 @@ Metabase's reference documentation.
 
 - [Developer guide](./developers-guide/start.md)
 
+### Paid features
+
+Some Metabase plans offer [additional features](./paid-features/start.md).
+
 ## Getting help
 
 ### Troubleshooting
@@ -198,7 +224,7 @@ Metabase's reference documentation.
 - [Metabase forum](https://discourse.metabase.com/)
 - [Configuring logging](./configuring-metabase/log-configuration.md)
 
-### [Tutorials and guides](https://www.metabase.com/learn)
+### Tutorials and guides
 
 [Learn Metabase](https://www.metabase.com/learn) has a ton of articles on how to use Metabase, data best practices, and more.
 
@@ -207,10 +233,6 @@ Metabase's reference documentation.
 ### [Discussion](https://discourse.metabase.com)
 
 Share and connect with other Metabasers.
-
-### [Paid features](./paid-features/start.md)
-
-Some [Metabase plans](https://www.metabase.com/pricing) offer additional features.
 
 ### [Metabase Cloud](https://www.metabase.com/cloud/docs)
 
@@ -235,6 +257,10 @@ We tweet stuff.
 ### [Source code repository on GitHub](https://github.com/metabase/metabase)
 
 Follow us on GitHub.
+
+### [List of releases](./releases.md)
+
+A list of all Metabase releases, including both the Enterprise Edition and the Open Source Edition.
 
 ### [Developers guide](./developers-guide/start.md)
 

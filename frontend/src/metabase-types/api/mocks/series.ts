@@ -1,7 +1,9 @@
-import { SingleSeries, Series } from "../dataset";
-import { Card } from "../card";
+import type { Card } from "../card";
+import type { SingleSeries, Series } from "../dataset";
+
 import { createMockCard } from "./card";
-import { createMockDataset, MockDatasetOpts } from "./dataset";
+import type { MockDatasetOpts } from "./dataset";
+import { createMockDataset } from "./dataset";
 
 export const createMockSingleSeries = (
   cardOpts: Partial<Card>,
@@ -9,7 +11,7 @@ export const createMockSingleSeries = (
 ): SingleSeries => {
   return {
     card: createMockCard(cardOpts),
-    data: createMockDataset(dataOpts).data,
+    ...createMockDataset(dataOpts),
   };
 };
 

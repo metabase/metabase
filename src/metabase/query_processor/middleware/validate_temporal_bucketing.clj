@@ -1,7 +1,8 @@
 (ns metabase.query-processor.middleware.validate-temporal-bucketing
   (:require
    [clojure.set :as set]
-   [metabase.mbql.util :as mbql.u]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.util.match :as lib.util.match]
    [metabase.query-processor.error-type :as qp.error-type]
    [metabase.query-processor.store :as qp.store]
    [metabase.util.i18n :refer [tru]]))
@@ -31,9 +32,9 @@
   "Make sure temporal bucketing of Fields (i.e., `:datetime-field` clauses) in this query is valid given the combination
   of Field base-type and unit. For example, you should not be allowed to bucket a `:type/Date` Field by `:minute`."
   [query]
-  (doseq [[_ id-or-name {:keys [temporal-unit base-type]} :as clause] (mbql.u/match query [:field _ (_ :guard :temporal-unit)])]
+  (doseq [[_ id-or-name {:keys [temporal-unit base-type]} :as clause] (lib.util.match/match (:query query) [:field _ (_ :guard :temporal-unit)])]
     (let [base-type (if (integer? id-or-name)
-                      (:base_type (qp.store/field id-or-name))
+                      (:base-type (lib.metadata/field (qp.store/metadata-provider) id-or-name))
                       base-type)
           valid-units (valid-units-for-base-type base-type)]
       (when-not (valid-units temporal-unit)

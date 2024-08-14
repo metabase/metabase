@@ -1,9 +1,10 @@
 import { USERS } from "e2e/support/cypress_data";
 
 Cypress.Commands.add("createUserFromRawData", user => {
-  return cy.request("POST", "/api/user", user).then(({ body }) => {
+  return cy.request("POST", "/api/user", user).then(({ body: user }) => {
     // Dismiss `it's ok to play around` modal for the created user
-    cy.request("PUT", `/api/user/${body.id}/modal/qbnewb`, {});
+    cy.request("PUT", `/api/user/${user.id}/modal/qbnewb`, {});
+    return Promise.resolve(user);
   });
 });
 

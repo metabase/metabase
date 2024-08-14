@@ -1,5 +1,5 @@
 title: "[[this]] per state"
-transient_title: Here''s a closer look at your [[this]] per state
+transient_title: Here''s a closer look at [[this]] per state
 description: Which US states are bringing you the most business.
 applies_to: TransactionTable
 metrics:
@@ -72,10 +72,13 @@ filters:
 groups:
 - Top10:
     title: States that are performing best
+    score: 90
 - Transactions:
     title: Transactions per state
+    score: 80
 - Users:
     title: Where you''ve acquired your users
+    score: 70
 dashboard_filters:
   - Timestamp
   - Source

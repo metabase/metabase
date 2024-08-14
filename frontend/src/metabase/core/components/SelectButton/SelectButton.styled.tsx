@@ -1,8 +1,10 @@
 import styled from "@emotion/styled";
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
-import { space } from "metabase/styled-components/theme";
+import type { ComponentPropsWithRef } from "react";
+
 import { inputPadding } from "metabase/core/style/input";
+import { color } from "metabase/lib/colors";
+import { space } from "metabase/styled-components/theme";
+import { Icon } from "metabase/ui";
 interface SelectButtonRootProps {
   hasValue: boolean;
   fullWidth: boolean;
@@ -27,7 +29,7 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
     ${({ hasValue, highlighted }) =>
       hasValue && highlighted ? color("brand") : color("border")};
   background-color: ${({ hasValue, highlighted }) =>
-    hasValue && highlighted ? color("brand") : color("white")};
+    hasValue && highlighted ? color("brand") : color("bg-white")};
   border-radius: ${space(1)};
   font-weight: 700;
   min-width: 104px;
@@ -35,8 +37,8 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   color: ${getColor};
 
   &:focus {
-    border-color: ${color("brand")};
-    outline: 2px solid ${color("focus")};
+    border-color: var(--mb-color-brand);
+    outline: 2px solid var(--mb-color-focus);
   }
 
   &:not(:focus-visible) {
@@ -44,8 +46,8 @@ export const SelectButtonRoot = styled.button<SelectButtonRootProps>`
   }
 
   &:disabled {
-    background-color: ${color("bg-light")};
-    color: ${color("text-medium")};
+    background-color: var(--mb-color-bg-light);
+    color: var(--mb-color-text-medium);
     pointer-events: none;
   }
 `;
@@ -55,7 +57,15 @@ interface SelectButtonIconProps {
   highlighted: boolean;
 }
 
-export const SelectButtonIcon = styled(Icon)<SelectButtonIconProps>`
+export const SelectButtonIcon = styled(
+  ({
+    hasValue,
+    highlighted,
+    ...rest
+  }: SelectButtonIconProps & ComponentPropsWithRef<typeof Icon>) => (
+    <Icon {...rest} />
+  ),
+)`
   display: flex;
   margin-left: auto;
   color: ${({ hasValue, highlighted }) =>

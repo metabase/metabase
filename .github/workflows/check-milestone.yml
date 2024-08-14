@@ -1,0 +1,41 @@
+name: Automatically set milestone
+run-name: Set milestone for ${{ github.event.head_commit.message }}
+
+on:
+  push:
+    branches:
+      - release-x.**
+
+jobs:
+  set-milestone:
+    name: Automatically set milestone
+    runs-on: ubuntu-22.04
+    timeout-minutes: 5
+    permissions:
+      pull-requests: write
+      issues: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: release
+          ref: master # we want the logic from master, even though we're triggering on a release branch
+      - name: Prepare build scripts
+        run: cd ${{ github.workspace }}/release && yarn && yarn build
+      - uses: actions/github-script@v7
+        with:
+          script: | # js
+            const { setMilestoneForCommits } = require('${{ github.workspace }}/release/dist/index.cjs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            const branchName = `${{ github.ref }}`;
+            const commitMessage = context?.payload?.head_commit?.message ?? '';
+
+            await setMilestoneForCommits({
+              github,
+              owner,
+              repo,
+              branchName,
+              commitMessages: [commitMessage],
+            });

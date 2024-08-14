@@ -2,9 +2,10 @@
   (:require
    [clojure.test :refer :all]
    [metabase.public-settings.premium-features :as premium-features]
-   [metabase.public-settings.premium-features-test
-    :as premium-features-test]
+   [metabase.public-settings.premium-features-test :as premium-features-test]
    [metabase.test :as mt]))
+
+(set! *warn-on-reflection* true)
 
 (deftest get-token-status-test
   (testing "GET /api/premium-features/token/status"

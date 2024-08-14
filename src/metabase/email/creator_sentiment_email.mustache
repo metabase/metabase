@@ -1,0 +1,38 @@
+{{> metabase/email/_header }}
+  <div class="card-container" style="color: {{colorTextMedium}};">
+    {{#self-hosted}}
+    <p style="font-weight: 500; font-size: 0.875em; line-height: 1.375em; color: {{colorTextMedium}};">
+      <i>(This email is sent directly from {{self-hosted}}, it doesn't go through any external services)</i>
+    </p>
+    {{/self-hosted}}
+
+    <p style="font-weight: 500; line-height: 1.375em; color: {{colorTextMedium}};">
+      Hi {{first-name}},
+    </p>
+
+    <p style="font-weight: 500; line-height: 1.375em; color: {{colorTextMedium}};">
+      We at Metabase are working hard to make the experience of people like you, who create lots of content (questions, dashboards, etc).
+    </p>
+
+    <p style="font-weight: 600; line-height: 1.375em; color: {{colorTextMedium}};">
+      We’d like to know how we’re doing.<br>Can you spare 30 seconds to fill out this NPS survey?
+    </p>
+
+    <div style="text-align: center;">
+      <a
+        href="{{link}}"
+        style="display: inline-block; padding: 0.75rem 1.125em; background-color: {{applicationColor}}; color: #FFF; border-radius: 6px; font-size: 0.875em; font-weight: 700; text-decoration: none;"
+      >
+        Answer Now
+      </a>
+    </div>
+
+    <p style="font-weight: 500; line-height: 1.375em; color: {{colorTextMedium}};">
+      Thank you,
+    </p>
+
+    <p style="font-weight: 500; line-height: 1.375em; color: {{colorTextMedium}};">
+      - The Metabase Product Team
+    </p>
+  </div>
+{{> metabase/email/_footer }}

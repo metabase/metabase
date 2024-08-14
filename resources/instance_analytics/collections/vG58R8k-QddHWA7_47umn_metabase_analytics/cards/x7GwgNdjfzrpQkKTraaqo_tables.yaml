@@ -1,0 +1,287 @@
+name: Tables
+description: List of all tables across all connected data sources.
+entity_id: x7GwgNdjfzrpQkKTraaqo
+created_at: '2023-10-31T21:46:14.039531Z'
+creator_id: internal@metabase.com
+display: table
+archived: false
+collection_id: vG58R8k-QddHWA7_47umn
+collection_preview: true
+collection_position: 18
+query_type: query
+cache_ttl: null
+database_id: Internal Metabase Database
+table_id:
+- Internal Metabase Database
+- public
+- v_tables
+enable_embedding: false
+embedding_params: null
+made_public_by_id: null
+public_uuid: null
+parameters: []
+parameter_mappings: []
+dataset_query:
+  database: Internal Metabase Database
+  query:
+    source-table:
+    - Internal Metabase Database
+    - public
+    - v_tables
+  type: query
+result_metadata:
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Entity ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - entity_id
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - entity_id
+  name: entity_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Entity Qualified ID
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - entity_qualified_id
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - entity_qualified_id
+  name: entity_qualified_id
+  semantic_type: type/PK
+  settings: null
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Created At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - created_at
+  - temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - created_at
+  name: created_at
+  semantic_type: type/CreationTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/DateTimeWithLocalTZ
+  coercion_strategy: null
+  description: null
+  display_name: Updated At
+  effective_type: type/DateTimeWithLocalTZ
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - updated_at
+  - temporal-unit: default
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - updated_at
+  name: updated_at
+  semantic_type: type/UpdatedTimestamp
+  settings: null
+  unit: default
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - name
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - name
+  name: name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Display Name
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - display_name
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - display_name
+  name: display_name
+  semantic_type: type/Name
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Description
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - description
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - description
+  name: description
+  semantic_type: type/Description
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: True if table is available in the data source. False if it not found in sync anymore.
+  display_name: Active
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - active
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - active
+  name: active
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+- base_type: type/Integer
+  coercion_strategy: null
+  description: null
+  display_name: Database ID
+  effective_type: type/Integer
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - database_id
+  - null
+  fk_target_field_id: 1559
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - database_id
+  name: database_id
+  semantic_type: type/FK
+  settings: null
+  visibility_type: normal
+- base_type: type/Text
+  coercion_strategy: null
+  description: null
+  display_name: Schema
+  effective_type: type/Text
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - schema
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - schema
+  name: schema
+  semantic_type: null
+  settings: null
+  visibility_type: normal
+- base_type: type/Boolean
+  coercion_strategy: null
+  description: null
+  display_name: Is Upload
+  effective_type: type/Boolean
+  field_ref:
+  - field
+  - - Internal Metabase Database
+    - public
+    - v_tables
+    - is_upload
+  - null
+  fk_target_field_id: null
+  id:
+  - Internal Metabase Database
+  - public
+  - v_tables
+  - is_upload
+  name: is_upload
+  semantic_type: type/Category
+  settings: null
+  visibility_type: normal
+visualization_settings:
+  column_settings: null
+  table.cell_column: schema
+  table.pivot_column: is_upload
+serdes/meta:
+- id: x7GwgNdjfzrpQkKTraaqo
+  label: tables
+  model: Card
+initially_published_at: null
+metabase_version: vUNKNOWN (0e09ac7)
+type: model

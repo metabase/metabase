@@ -1,5 +1,7 @@
-import React, { ReactNode } from "react";
-import Icon from "metabase/components/Icon";
+import type { ReactNode } from "react";
+
+import { Icon } from "metabase/ui";
+
 import {
   HeaderBackIcon,
   HeaderCloseButton,
@@ -26,7 +28,7 @@ const ModalHeader = ({
     <HeaderRoot>
       <HeaderLink onClick={onGoBack}>
         {onGoBack && <HeaderBackIcon name="chevronleft" />}
-        <HeaderTitle tooltipMaxWidth="100%">{title}</HeaderTitle>
+        <HeaderTitle tooltipMaxWidth="auto">{title}</HeaderTitle>
       </HeaderLink>
       {children && <HeaderMenu>{children}</HeaderMenu>}
       {onClose && (
@@ -38,4 +40,5 @@ const ModalHeader = ({
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default ModalHeader;

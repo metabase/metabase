@@ -1,7 +1,7 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
-import Icon from "metabase/components/Icon";
+import styled from "@emotion/styled";
+
+import { Icon } from "metabase/ui";
 
 export const ListRoot = styled.div`
   display: block;
@@ -14,7 +14,7 @@ export const CardBody = styled.div`
 `;
 
 export const CardTitle = styled.div`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 1rem;
   font-weight: bold;
   margin-bottom: 0.125rem;
@@ -22,13 +22,13 @@ export const CardTitle = styled.div`
 `;
 
 export const CardDescription = styled.div`
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.75rem;
   word-wrap: break-word;
 `;
 
 export const CardIcon = styled(Icon)`
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   width: 1rem;
   height: 1rem;
 `;
@@ -40,13 +40,13 @@ export const CardIconContainer = styled.div`
   align-items: center;
   width: 2rem;
   height: 2rem;
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-radius: 1rem;
 `;
 
 export const CardAside = styled.div`
   flex: 0 0 auto;
-  color: ${color("text-dark")};
+  color: var(--mb-color-text-dark);
   font-size: 0.75rem;
 `;
 
@@ -55,19 +55,19 @@ export interface CardProps {
 }
 
 const selectedStyles = css`
-  background-color: ${color("brand")};
+  background-color: var(--mb-color-brand);
 
   ${CardTitle}, ${CardDescription}, ${CardAside} {
-    color: ${color("white")};
+    color: var(--mb-color-text-white);
   }
 
   ${CardIcon} {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   ${CardIconContainer} {
-    border-color: ${color("white")};
-    background-color: ${color("white")};
+    border-color: var(--mb-color-bg-white);
+    background-color: var(--mb-color-bg-white);
   }
 `;
 

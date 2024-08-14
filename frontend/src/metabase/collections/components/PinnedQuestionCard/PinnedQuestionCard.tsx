@@ -1,35 +1,45 @@
-import React from "react";
+import cx from "classnames";
 import { t } from "ttag";
+
+import ActionMenu from "metabase/collections/components/ActionMenu";
+import type {
+  CreateBookmark,
+  DeleteBookmark,
+} from "metabase/collections/types";
 import {
-  isFullyParametrized,
+  isFullyParameterized,
   isPreviewShown,
 } from "metabase/collections/utils";
+import EventSandbox from "metabase/components/EventSandbox";
+import CS from "metabase/css/core/index.css";
+import type { IconName } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
-import { Bookmark, Collection, CollectionItem } from "metabase-types/api";
-import Metadata from "metabase-lib/metadata/Metadata";
-import PinnedQuestionLoader from "./PinnedQuestionLoader";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type { Bookmark, Collection, CollectionItem } from "metabase-types/api";
+
 import {
-  CardActionMenu,
+  CardActionMenuContainer,
   CardPreviewSkeleton,
   CardRoot,
   CardStaticSkeleton,
 } from "./PinnedQuestionCard.styled";
+import PinnedQuestionLoader from "./PinnedQuestionLoader";
 
 export interface PinnedQuestionCardProps {
   item: CollectionItem;
   collection: Collection;
-  metadata: Metadata;
+  databases?: Database[];
   bookmarks?: Bookmark[];
   onCopy: (items: CollectionItem[]) => void;
   onMove: (items: CollectionItem[]) => void;
-  onCreateBookmark?: (id: string, model: string) => void;
-  onDeleteBookmark?: (id: string, model: string) => void;
+  onCreateBookmark?: CreateBookmark;
+  onDeleteBookmark?: DeleteBookmark;
 }
 
 const PinnedQuestionCard = ({
   item,
   collection,
-  metadata,
+  databases,
   bookmarks,
   onCopy,
   onMove,
@@ -38,28 +48,52 @@ const PinnedQuestionCard = ({
 }: PinnedQuestionCardProps): JSX.Element => {
   const isPreview = isPreviewShown(item);
 
-  return (
-    <CardRoot to={item.getUrl()} isPreview={isPreview}>
-      <CardActionMenu
+  const actionMenu = (
+    // This component is used within a `<Link>` component,
+    // so we must prevent events from triggering the activation of the link
+    <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
+      <ActionMenu
         item={item}
         collection={collection}
+        databases={databases}
         bookmarks={bookmarks}
         onCopy={onCopy}
         onMove={onMove}
         createBookmark={onCreateBookmark}
         deleteBookmark={onDeleteBookmark}
       />
+    </EventSandbox>
+  );
+
+  const positionedActionMenu = (
+    <CardActionMenuContainer>{actionMenu}</CardActionMenuContainer>
+  );
+
+  const DEFAULT_DESCRIPTION: Record<string, string> = {
+    card: t`A question`,
+    metric: t`A metric`,
+  };
+
+  return (
+    <CardRoot
+      to={item.getUrl()}
+      isPreview={isPreview}
+      className={cx(CS.hoverParent, CS.hoverVisibility)}
+    >
+      {!isPreview && positionedActionMenu}
       {isPreview ? (
-        <PinnedQuestionLoader id={item.id} metadata={metadata}>
+        <PinnedQuestionLoader id={item.id}>
           {({ question, rawSeries, loading, error, errorIcon }) =>
             loading ? (
               <CardPreviewSkeleton
                 name={question?.displayName()}
                 display={question?.display()}
                 description={question?.description()}
+                actionMenu={actionMenu}
               />
             ) : (
               <Visualization
+                actionButtons={actionMenu}
                 rawSeries={rawSeries}
                 error={error}
                 errorIcon={errorIcon}
@@ -72,8 +106,10 @@ const PinnedQuestionCard = ({
       ) : (
         <CardStaticSkeleton
           name={item.name}
-          description={item.description ?? t`A question`}
-          icon={item.getIcon()}
+          description={
+            item.description || DEFAULT_DESCRIPTION[item.model] || ""
+          }
+          icon={item.getIcon() as unknown as { name: IconName }}
           tooltip={getSkeletonTooltip(item)}
         />
       )}
@@ -82,11 +118,12 @@ const PinnedQuestionCard = ({
 };
 
 const getSkeletonTooltip = (item: CollectionItem) => {
-  if (!isFullyParametrized(item)) {
+  if (!isFullyParameterized(item)) {
     return t`Open this question and fill in its variables to see it.`;
   } else {
     return undefined;
   }
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default PinnedQuestionCard;

@@ -1,0 +1,50 @@
+/*
+  display
+  hide and show a child element using display
+*/
+.hoverParent.hoverDisplay .hoverChild,
+.hoverParent:hover.hoverDisplay .hoverChildHidden {
+  display: none;
+}
+
+.hoverParent:hover.hoverDisplay .hoverChild {
+  display: block;
+}
+
+/*
+  visibility
+  hide and show a child element using visibility
+*/
+.hoverParent.hoverVisibility .hoverChild,
+.hoverParent:hover.hoverVisibility .hoverChildHidden {
+  visibility: hidden;
+}
+
+.hoverParent:hover.hoverVisibility .hoverChild {
+  visibility: visible;
+}
+
+.hoverParent:hover.hoverInherit > *,
+.hoverParent:hover.hoverInherit .hoverChild {
+  color: inherit !important;
+}
+
+.hoverChildSmooth {
+  transition: opacity 0.2s ease-in-out;
+}
+
+@media (prefers-reduced-motion) {
+  .hoverChildSmooth {
+    transition: none;
+  }
+}
+
+.hoverParent.hoverDisplay .hoverChildSmooth,
+.hoverParent.hoverVisibility .hoverChildSmooth {
+  opacity: 0;
+}
+
+.hoverParent:hover.hoverDisplay .hoverChildSmooth,
+.hoverParent:hover.hoverVisibility .hoverChildSmooth {
+  opacity: 1;
+}

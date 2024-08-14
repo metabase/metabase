@@ -1,8 +1,8 @@
-import React from "react";
-import { Form, Formik } from "formik";
-import * as Yup from "yup";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Form, Formik } from "formik";
+import * as Yup from "yup";
+
 import FormRadio from "./FormRadio";
 
 const TEST_SCHEMA = Yup.object({
@@ -48,8 +48,8 @@ describe("FormRadio", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormRadio onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("radio", { name: "Line" }));
-    userEvent.click(screen.getByText("Submit"));
+    await userEvent.click(screen.getByRole("radio", { name: "Line" }));
+    await userEvent.click(screen.getByText("Submit"));
 
     await waitFor(() => {
       const values = { value: "line" };
@@ -61,8 +61,8 @@ describe("FormRadio", () => {
     const onSubmit = jest.fn();
 
     render(<TestFormRadio initialValue="line" onSubmit={onSubmit} />);
-    userEvent.click(screen.getByRole("radio", { name: "Bar" }));
-    userEvent.tab();
+    await userEvent.click(screen.getByRole("radio", { name: "Bar" }));
+    await userEvent.tab();
 
     expect(await screen.findByText(": error")).toBeInTheDocument();
   });

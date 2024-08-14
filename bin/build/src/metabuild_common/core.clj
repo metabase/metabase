@@ -1,6 +1,5 @@
 (ns metabuild-common.core
   (:require
-   [metabuild-common.aws :as aws]
    [metabuild-common.entrypoint :as entrypoint]
    [metabuild-common.env :as build.env]
    [metabuild-common.files :as files]
@@ -14,8 +13,7 @@
 ;; since this file is used pretty much everywhere, this seemed like a good place to put this.
 (set! *warn-on-reflection* true)
 
-(comment aws/keep-me
-         entrypoint/keep-me
+(comment entrypoint/keep-me
          build.env/env
          files/keep-me
          input/keep-me
@@ -25,10 +23,6 @@
          steps/keep-me)
 
 (p/import-vars
- [aws
-  create-cloudfront-invalidation!
-  s3-copy!]
-
  [entrypoint
   exit-when-finished-nonzero-on-exception]
 
@@ -40,7 +34,6 @@
   assert-file-exists
   copy-file!
   create-directory-unless-exists!
-  delete-file!
   delete-file-if-exists!
   download-file!
   file-exists?
@@ -49,7 +42,8 @@
   find-files
   nio-path
   project-root-directory
-  temporary-file]
+  temporary-file
+  zip-directory->file]
 
  [input
   interactive?

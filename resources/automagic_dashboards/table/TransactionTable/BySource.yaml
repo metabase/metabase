@@ -1,6 +1,6 @@
 title: "[[this]] per source"
-transient_title: Here''s a closer look at your [[this]] per source
-description: Where most of your traffic is coming from.
+transient_title: Here''s a closer look at [[this]] per source
+description: Where most traffic is coming from.
 applies_to: TransactionTable
 metrics:
 - TotalIncome:
@@ -72,10 +72,13 @@ filters:
 groups:
 - Overview:
     title: Transactions per source over time
+    score: 90
 - Financial:
     title: Orders and income per source
+    score: 80
 - UserAcquisition:
     title: Where users are coming from
+    score: 70
 dashboard_filters:
 - SourceMedium
 - SourceLarge

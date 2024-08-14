@@ -1,6 +1,5 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-import { color } from "metabase/lib/colors";
+import styled from "@emotion/styled";
 
 const cellStyles = css`
   padding-left: 1.5rem;
@@ -13,10 +12,10 @@ const cellStyles = css`
 `;
 
 export const TableHeader = styled.div`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-bottom: none;
   border-radius: 0.5rem 0.5rem 0 0;
-  background-color: ${color("bg-light")};
+  background-color: var(--mb-color-bg-light);
 `;
 
 export const TableHeaderRow = styled.div`
@@ -26,7 +25,7 @@ export const TableHeaderRow = styled.div`
 
 export const TableHeaderCell = styled.div`
   ${cellStyles};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   font-size: 0.6rem;
   letter-spacing: 1px;
   line-height: 0.625rem;
@@ -37,7 +36,7 @@ export const TableHeaderCell = styled.div`
 `;
 
 export const TableBody = styled.div`
-  border: 1px solid ${color("border")};
+  border: 1px solid var(--mb-color-border);
   border-top: none;
   border-radius: 0 0 0.5rem 0.5rem;
 `;
@@ -47,13 +46,13 @@ export const TableBodyRow = styled.div`
   align-items: center;
 
   &:not(:first-of-type) {
-    border-top: 1px solid ${color("border")};
+    border-top: 1px solid var(--mb-color-border);
   }
 `;
 
 export const TableBodyCell = styled.div`
   ${cellStyles};
-  color: ${color("text-medium")};
+  color: var(--mb-color-text-medium);
   padding-top: 1rem;
   padding-bottom: 1rem;
 `;

@@ -22,28 +22,34 @@ Example: in the table below, `SumIf([Payment], [Plan] = "Basic")` would return 2
 
 ## Parameters
 
-- `column` can be the name of a numeric column, or an expression that returns a numeric column.
-- `condition` is an expression that returns a boolean value (`true` or `false`), like the expression `[Payment] > 100`.
+- `column` can be the name of a numeric column, or a [function](../expressions-list.md#functions) that returns a numeric column.
+- `condition` is a [function](../expressions-list.md#functions) or [conditional statement](../expressions.md#conditional-operators) that returns a boolean value (`true` or `false`), like the conditional statement `[Payment] > 100`.
 
 ## Multiple conditions
+
+We'll use the following sample data to show you `SumIf` with [required](#required-conditions), [optional](#optional-conditions), and [mixed](#some-required-and-some-optional-conditions) conditions.
 
 | Payment  | Plan        | Date Received     |
 |----------|-------------| ------------------|
 | 100      | Basic       | October 1, 2020   |
-| 100      | Basic       | October 1, 2020   | 
+| 100      | Basic       | October 1, 2020   |
 | 200      | Business    | October 1, 2020   |
 | 200      | Business    | November 1, 2020  |
 | 400      | Premium     | November 1, 2020  |
 
-To sum a column based on multiple _mandatory_ conditions, combine the conditions using the `AND` operator:
+### Required conditions
+
+To sum a column based on multiple required conditions, combine the conditions using the `AND` operator:
 
 ```
 SumIf([Payment], ([Plan] = "Basic" AND month([Date Received]) = 10))
 ```
 
-This expression would return 200 on the sample data above, as it sums all of the payments received for Basic Plans in October.
+This expression would return 200 on the sample data above: the sum of all of the payments received for Basic Plans in October.
 
-To sum a column with multiple _optional_ conditions, combine the conditions using the `OR` operator:
+### Optional conditions
+
+To sum a column with multiple optional conditions, combine the conditions using the `OR` operator:
 
 ```
 SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business"))
@@ -51,7 +57,9 @@ SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business"))
 
 Returns 600 on the sample data.
 
-To combine mandatory and optional conditions, group the conditions using parentheses:
+### Some required and some optional conditions
+
+To combine required and optional conditions, group the conditions using parentheses:
 
 ```
 SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business") AND month([Date Received]) = 10)
@@ -59,7 +67,7 @@ SumIf([Payment], ([Plan] = "Basic" OR [Plan] = "Business") AND month([Date Recei
 
 Returns 400 on the sample data.
 
-> Tip: make it a habit to put parentheses around your `AND` and `OR` groups to avoid making mandatory conditions optional (or vice versa).
+> Tip: make it a habit to put parentheses around your `AND` and `OR` groups to avoid making required conditions optional (or vice versa).
 
 ## Conditional subtotals by group
 
@@ -71,7 +79,7 @@ To get a conditional subtotal for a category or group, such as the total payment
 | Payment  | Plan        | Date Received     |
 |----------|-------------| ------------------|
 | 100      | Basic       | October 1, 2020   |
-| 100      | Basic       | October 1, 2020   | 
+| 100      | Basic       | October 1, 2020   |
 | 200      | Business    | October 1, 2020   |
 | 200      | Business    | November 1, 2020  |
 | 400      | Premium     | November 1, 2020  |
@@ -82,34 +90,38 @@ To sum payments for the Business and Premium plans:
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-Or, sum payments for all plans that aren't "Basic": 
+Or, sum payments for all plans that aren't "Basic":
 
 ```
-{% raw %}SumIf([Payment], [Plan] != "Basic"){% endraw %} 
+SumIf([Payment], [Plan] != "Basic")
 ```
 
-> The "not equal" operator `!=` should be written as "!=".
+> The "not equal" operator `!=` should be written as !=.
 
 To view those payments by month, set the **Group by** column to "Date Received: Month".
 
 | Date Received: Month | Total Payments for Business and Premium Plans |
 |----------------------|-----------------------------------------------|
-| October              | 200                                           | 
+| October              | 200                                           |
 | November             | 600                                           |
 
 > Tip: when sharing your work with other people, it's helpful to use the `OR` filter, even though the `!=` filter is shorter. The inclusive `OR` filter makes it easier to understand which categories (e.g., plans) are included in the sum.
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/databases/data-types-overview#examples-of-data-types) | Works with `SumIf`        |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `SumIf`        |
 | ------------------------------------------------------------------------------------------------ | ------------------------- |
 | String                                                                                           | ❌                        |
 | Number                                                                                           | ✅                        |
 | Timestamp                                                                                        | ❌                        |
-| Boolean                                                                                          | ❌                        |
+| Boolean                                                                                          | ✅                        |
 | JSON                                                                                             | ❌                        |
 
+See [parameters](#parameters).
+
 ## Related functions
+
+Different ways to do the same thing, because CSV files still make up 40% of the world's data.
 
 **Metabase**
 - [case](#case)
@@ -122,13 +134,13 @@ To view those payments by month, set the **Group by** column to "Date Received: 
 
 ### case
 
-You can combine the `Sum` and [`case`](./case.md) formulas
+You can combine [`Sum`](../expressions-list.md#sum) and [`case`](./case.md):
 
 ```
 Sum(case([Plan] = "Basic", [Payment]))
 ```
 
-to do the same thing as the `SumIf` formula:
+to do the same thing as `SumIf`:
 
 ```
 SumIf([Payment], [Plan] = "Basic")
@@ -151,7 +163,7 @@ For example, to get the running total of payments for the Business and Premium p
 
 | Date Received: Month | Total Payments for Business and Premium Plans |
 |----------------------|-----------------------------------------------|
-| October              | 200                                           | 
+| October              | 200                                           |
 | November             | 800                                           |
 
 Create an aggregation from **Summarize** > **Custom expression**:
@@ -164,50 +176,50 @@ Don't forget to set the **Group by** column to "Date Received: Month".
 
 ### SQL
 
-When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your graphical query settings (filters, summaries, etc.) into a query, and run that query against your database to get your results.
+When you run a question using the [query builder](https://www.metabase.com/glossary/query_builder), Metabase will convert your query builder settings (filters, summaries, etc.) into a SQL query, and run that query against your database to get your results.
 
-If our [payment sample data](#sumif) is stored in a PostgreSQL database:
+If our [payment sample data](#sumif) is stored in a PostgreSQL database, the SQL query:
 
 ```sql
-SELECT 
+SELECT
     SUM(CASE WHEN plan = "Basic" THEN payment ELSE 0 END) AS total_payments_basic
 FROM invoices
 ```
 
-is equivalent to the Metabase `SumIf` expression:
+is equivalent to the Metabase expression:
 
 ```
 SumIf([Payment], [Plan] = "Basic")
 ```
 
-To add [multiple conditions with a grouping column](#conditional-subtotals-by-group):
+To add [multiple conditions with a grouping column](#conditional-subtotals-by-group), use the SQL query:
 
 ```sql
-SELECT 
+SELECT
     DATE_TRUNC("month", date_received)                       AS date_received_month,
     SUM(CASE WHEN plan = "Business" THEN payment ELSE 0 END) AS total_payments_business_or_premium
 FROM invoices
-GROUP BY 
+GROUP BY
     DATE_TRUNC("month", date_received)
 ```
 
-The SQL `SELECT` statement matches the Metabase `SumIf` expression:
+The `SELECT` part of the SQl query matches the Metabase `SumIf` expression:
 
 ```
 SumIf([Payment], [Plan] = "Business" OR [Plan] = "Premium")
 ```
 
-The SQL `GROUP BY` statement maps to a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Date Received: Month".
+The `GROUP BY` part of the SQL query maps to a Metabase [**Group by**](../../query-builder/introduction.md#summarizing-and-grouping-by) column set to "Date Received: Month".
 
 ### Spreadsheets
 
-If our [payment sample data](#sumif) is in a spreadsheet where "Payment" is in column A and "Date Received" is in column B:
+If our [payment sample data](#sumif) is in a spreadsheet where "Payment" is in column A and "Date Received" is in column B, the spreadsheet formula:
 
 ```
 =SUMIF(B:B, "Basic", A:A)
 ```
 
-produces the same result as:
+produces the same result as the Metabase expression:
 
 ```
 SumIf([Payment], [Plan] = "Basic")
@@ -217,13 +229,13 @@ To add additional conditions, you'll need to switch to a spreadsheet **array for
 
 ### Python
 
-If our [payment sample data](#sumif) is in a `pandas` dataframe column called `df`:
+If our [payment sample data](#sumif) is in a `pandas` dataframe column called `df`, the Python code:
 
 ```python
 df.loc[df['Plan'] == "Basic", 'Payment'].sum()
 ```
 
-is equivalent to
+is equivalent to the Metabase expression:
 
 ```
 SumIf([Payment], [Plan] = "Basic")

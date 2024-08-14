@@ -1,11 +1,11 @@
-import styled from "@emotion/styled";
 import { css } from "@emotion/react";
-
-import Icon from "metabase/components/Icon";
+import styled from "@emotion/styled";
 
 import { alpha, color } from "metabase/lib/colors";
+import { Icon } from "metabase/ui";
+import { TableRoot } from "metabase/visualizations/components/TableRoot";
 
-export const Root = styled.div`
+export const Root = styled(TableRoot)`
   display: flex;
   flex-direction: column;
   position: relative;
@@ -22,7 +22,6 @@ export const TableContainer = styled.div`
   bottom: 0;
   right: 0;
   left: 0;
-
   overflow-x: auto;
   overflow-y: hidden;
 `;
@@ -30,9 +29,7 @@ export const TableContainer = styled.div`
 const standardTableStyleReset = css`
   border-collapse: collapse;
   border-spacing: 0;
-
   width: 100%;
-
   font-size: 12px;
   line-height: 12px;
   text-align: left;
@@ -42,14 +39,14 @@ export const Table = styled.table`
   ${standardTableStyleReset}
 
   tr {
-    border-bottom: 1px solid ${alpha(color("border"), 0.3)};
+    border-bottom: 1px solid ${() => alpha(color("border"), 0.3)};
   }
 
   th,
   td {
     height: 2.1875rem;
     padding: 0 0.75rem;
-    border-bottom: 1px solid ${alpha(color("border"), 0.3)};
+    border-bottom: 1px solid ${() => alpha(color("border"), 0.3)};
   }
 
   th:first-of-type,
@@ -59,7 +56,7 @@ export const Table = styled.table`
 `;
 
 export const SortIcon = styled(Icon)`
-  margin-right: 3px;
+  margin: 4px;
 `;
 
 SortIcon.defaultProps = {
@@ -71,30 +68,29 @@ export const TableHeaderCellContent = styled.button<{
   isRightAligned: boolean;
 }>`
   display: flex;
-  justify-content: ${props =>
-    props.isRightAligned ? "space-between" : "flex-start"};
+  align-items: center;
+  justify-content: flex-start;
   width: 100%;
-
-  margin-left: ${props => (props.isRightAligned ? "auto" : "unset")};
-
-  color: ${props => (props.isSorted ? color("brand") : color("text-medium"))};
+  flex-direction: ${props => (props.isRightAligned ? "row-reverse" : "row")};
+  color: ${props =>
+    props.isSorted
+      ? "var(--mb-color-brand)"
+      : "var(--mb-color-text-secondary)"};
   font-weight: 700;
-
   cursor: pointer;
 
   ${SortIcon} {
-    opacity: ${props => (props.isSorted ? 1 : 0.2)};
+    opacity: ${props => (props.isSorted ? 1 : 0.5)};
   }
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 `;
 
 export const TableFooterRoot = styled.div`
   display: flex;
   flex-shrink: 0;
-
   padding: 0.5rem;
   margin-left: auto;
 `;
@@ -109,11 +105,10 @@ export const PaginationButton = styled.button<{
   padding-left: ${props =>
     props.direction === "previous" ? "0.5rem" : "unset"};
   padding-right: 0.5rem;
-
   cursor: pointer;
 
   &:hover {
-    color: ${color("brand")};
+    color: var(--mb-color-brand);
   }
 
   ${props =>

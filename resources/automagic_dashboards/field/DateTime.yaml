@@ -1,5 +1,5 @@
-title: A look at your [[this]]
-transient_title: Here''s a closer look at your [[this]]
+title: A look at [[this]]
+transient_title: Here''s a closer look at [[this]]
 description: How [[GenericTable]] are distributed across this time field, and if it has any seasonal patterns.
 applies_to: GenericTable.DateTime
 metrics:
@@ -31,12 +31,15 @@ dashboard_filters:
 groups:
   - Overview:
       title: Overview
+      score: 90
   - Breakdowns:
       title: How the [[this]] is distributed
       comparison_title: How they compare by distribution
+      score: 80
   - Seasonality:
       title: Seasonal patterns in the [[this]]
       comparison_title: How they compare by seasonality
+      score: 70
 cards:
   - Count:
       title: Count

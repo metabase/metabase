@@ -13,35 +13,39 @@ describe("qa databases snapshots", { tags: "@external" }, () => {
   });
 
   it("creates snapshots for supported qa databases", () => {
-    addPostgresDatabase();
-    snapshot("postgres-12");
-    deleteDatabase("postgresID");
+    if (Cypress.env("QA_DB_MONGO") === true) {
+      addMongoDatabase();
+      snapshot("mongo-5");
+      deleteDatabase("mongoID");
 
-    restoreAndAuthenticate();
+      restoreAndAuthenticate();
+    } else {
+      addPostgresDatabase();
+      snapshot("postgres-12");
+      deleteDatabase("postgresID");
 
-    addMySQLDatabase();
-    snapshot("mysql-8");
-    deleteDatabase("mysqlID");
+      restoreAndAuthenticate();
 
-    restoreAndAuthenticate();
+      setupWritableDB("postgres");
+      addPostgresDatabase("Writable Postgres12", true);
+      snapshot("postgres-writable");
+      deleteDatabase("postgresID");
 
-    addMongoDatabase();
-    snapshot("mongo-4");
-    deleteDatabase("mongoID");
+      restoreAndAuthenticate();
 
-    restoreAndAuthenticate();
+      addMySQLDatabase();
+      snapshot("mysql-8");
+      deleteDatabase("mysqlID");
 
-    setupWritableDB("mysql");
-    addMySQLDatabase("Writable MySQL8", true);
-    snapshot("mysql-writable");
-    deleteDatabase("mysqlID");
+      restoreAndAuthenticate();
 
-    restoreAndAuthenticate();
+      setupWritableDB("mysql");
+      addMySQLDatabase("Writable MySQL8", true);
+      snapshot("mysql-writable");
+      deleteDatabase("mysqlID");
 
-    setupWritableDB("postgres");
-    addPostgresDatabase("Writable Postgres12", true);
-    snapshot("postgres-writable");
-    deleteDatabase("postgresID");
+      restoreAndAuthenticate();
+    }
 
     restore("blank");
   });

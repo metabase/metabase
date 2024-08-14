@@ -1,12 +1,12 @@
 import slugg from "slugg";
 
-import { Bookmark } from "metabase-types/api";
+import type { Bookmark } from "metabase-types/api";
 
 import { appendSlug } from "./utils";
 
 function getBookmarkBasePath(bookmark: Bookmark) {
   if (bookmark.type === "card") {
-    return bookmark.dataset ? "model" : "question";
+    return bookmark.card_type;
   }
   return bookmark.type;
 }

@@ -10,8 +10,10 @@
    [metabase.test.fixtures :as fixtures]
    [metabase.util :as u]
    [metabase.util.date-2 :as u.date]
-   [toucan.db :as db])
+   [toucan2.core :as t2])
   (:import
+   (com.snowplowanalytics.snowplow.tracker.events SelfDescribing)
+   (com.snowplowanalytics.snowplow.tracker.payload SelfDescribingJson)
    (java.util LinkedHashMap)))
 
 (set! *warn-on-reflection* true)
@@ -30,15 +32,17 @@
 (defn- fake-track-event-impl!
   "A function that can be used in place of track-event-impl! which pulls and decodes the payload, context and subject ID
   from an event and adds it to the in-memory [[*snowplow-collector*]] queue."
-  [collector _ event]
-  (let [payload (-> event .getPayload .getMap normalize-map)
-        ;; Don't normalize keys in [[properties]] so that we can assert that they are snake-case strings in the test cases
-        properties (-> (or (:ue_pr payload)
-                           (u/decode-base64 (:ue_px payload)))
-                       json/parse-string)
-        subject (when-let [subject (.getSubject event)]
-                  (-> subject .getSubject normalize-map))
-        context (->> event .getContext first .getMap normalize-map)]
+  [collector _tracker ^SelfDescribing event]
+  (let [payload                            (-> event .getPayload .getMap normalize-map)
+        ;; Don't normalize keys in [[properties]] so that we can assert that they are snake-case strings in the test
+        ;; cases
+        properties                         (-> (or (:ue_pr payload)
+                                                   (u/decode-base64 (:ue_px payload)))
+                                               json/parse-string)
+        subject                            (when-let [subject (.getSubject event)]
+                                             (-> subject .getSubject normalize-map))
+        [^SelfDescribingJson context-json] (.getContext event)
+        context                            (normalize-map (.getMap context-json))]
     (swap! collector conj {:properties properties, :subject subject, :context context})))
 
 (defn do-with-fake-snowplow-collector
@@ -51,6 +55,7 @@
         (with-redefs [snowplow/track-event-impl! (partial fake-track-event-impl! collector)]
           (f))))))
 
+;;; TODO -- rename to `with-fake-snowplow-collector!` because this is not thread-safe.
 (defmacro with-fake-snowplow-collector
   "Creates a new fake snowplow collector in a dynamic scope, and redefines the track-event! function so that analytics
   events are parsed and added to the fake collector.
@@ -76,13 +81,13 @@
 
 (defn valid-datetime-for-snowplow?
   "Check if a datetime string has the format that snowplow accepts.
-  The string should have the format yyyy-mm-dd'T'hh:mm:ss.SSXXX which is a RFC3339 format.
+  The string should have the format yyyy-mm-dd'T'HH:mm:ss.SSXXX which is a RFC3339 format.
   Reference: https://json-schema.org/understanding-json-schema/reference/string.html#dates-and-times"
   [t]
   (try
     (java.time.LocalDate/parse
       t
-      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'hh:mm:ss.SSXXX"))
+      (java.time.format.DateTimeFormatter/ofPattern "yyyy-MM-dd'T'HH:mm:ss.SSXXX"))
     true
     (catch Exception _e
       false)))
@@ -92,7 +97,7 @@
            and creation timestamp"
     (with-fake-snowplow-collector
       (snowplow/track-event! ::snowplow/new-instance-created)
-      (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-0",
+      (is (= {:schema "iglu:com.metabase/instance/jsonschema/1-1-2",
               :data {:id                           (snowplow/analytics-uuid)
                      :version                      {:tag (:tag (public-settings/version))},
                      :token_features               (public-settings/token-features)
@@ -101,7 +106,7 @@
                      :application_database_version (#'snowplow/app-db-version)}}
              (:context (first @*snowplow-collector*))))
 
-      (testing "the created_at should have the format yyyy-MM-dd'T'hh:mm:ss.SSXXX"
+      (testing "the created_at should have the format be formatted as RFC3339"
         (is (valid-datetime-for-snowplow?
               (get-in (first @*snowplow-collector*) [:context :data :created_at])))))))
 
@@ -117,7 +122,7 @@
     (testing "Data sent into [[snowplow/track-event!]] for each event type is propagated to the Snowplow collector,
              with keys converted into snake-case strings, and the subject's user ID being converted to a string."
       ;; Trigger instance-creation event by calling the `instance-creation` setting function for the first time
-      (db/delete! Setting :key "instance-creation")
+      (t2/delete! Setting :key "instance-creation")
       (snowplow/instance-creation)
       (is (= [{:data    {"event" "new_instance_created"}
                :user-id nil}]
@@ -145,10 +150,11 @@
 
       (snowplow/track-event! ::snowplow/database-connection-successful
                              1
-                             {:database :postgres, :database-id 1, :source :admin})
+                             {:database :postgres, :database-id 1, :source :admin, :dbms_version "14.1"})
       (is (= [{:data    {"database" "postgres"
                          "database_id" 1
                          "event" "database_connection_successful"
+                         "dbms_version" "14.1"
                          "source" "admin"}
                :user-id "1"}]
              (pop-event-data-and-user-id!)))
@@ -169,10 +175,10 @@
           (is (= [] (pop-event-data-and-user-id!))))))))
 
 (deftest instance-creation-test
-  (let [original-value (db/select-one-field :value Setting :key "instance-creation")]
+  (let [original-value (t2/select-one-fn :value Setting :key "instance-creation")]
     (try
       (testing "Instance creation timestamp is set only once when setting is first fetched"
-        (db/delete! Setting :key "instance-creation")
+        (t2/delete! Setting :key "instance-creation")
         (with-redefs [snowplow/first-user-creation (constantly nil)]
           (let [first-value (snowplow/instance-creation)]
             (Thread/sleep 10) ;; short sleep since java.time.Instant is not necessarily monotonic
@@ -181,11 +187,11 @@
 
       (testing "If a user already exists, we should use the first user's creation timestamp"
         (mt/with-test-user :crowberto
-          (db/delete! Setting :key "instance-creation")
-          (let [first-user-creation (:min (db/select-one ['User [:%min.date_joined :min]]))
+          (t2/delete! Setting :key "instance-creation")
+          (let [first-user-creation (:min (t2/select-one ['User [:%min.date_joined :min]]))
                 instance-creation   (snowplow/instance-creation)]
             (is (= (u.date/format-rfc3339 first-user-creation)
                    instance-creation)))))
       (finally
         (when original-value
-          (db/update-where! Setting {:key "instance-creation"} :value original-value))))))
+          (t2/update! Setting {:key "instance-creation"} {:value original-value}))))))

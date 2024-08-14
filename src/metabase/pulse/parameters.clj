@@ -11,23 +11,30 @@
 
 (defenterprise the-parameters
   "OSS way of getting filter parameters for a dashboard subscription"
-  metabase-enterprise.pulse
+  metabase-enterprise.dashboard-subscription-filters.pulse
   [_pulse dashboard]
   (:parameters dashboard))
+
+(defn- param-val-or-default
+  "Returns the parameter value, such that:
+    * nil value => nil
+    * missing value key => default"
+  [parameter]
+  (get parameter :value (:default parameter)))
 
 (defn parameters
   "Returns the list of parameters applied to a dashboard subscription, filtering out ones
   without a value"
   [subscription dashboard]
   (filter
-   #(or (:value %) (:default %))
+   param-val-or-default
    (the-parameters subscription dashboard)))
 
 (defn value-string
   "Returns the value(s) of a dashboard filter, formatted appropriately."
   [parameter]
   (let [tyype  (:type parameter)
-        values (or (:value parameter) (:default parameter))]
+        values (param-val-or-default parameter)]
     (try (shared.params/formatted-value tyype values (public-settings/site-locale))
          (catch Throwable _
            (shared.params/formatted-list (u/one-or-many values))))))
@@ -38,12 +45,17 @@
   (let [base-url   (urls/dashboard-url dashboard-id)
         url-params (flatten
                     (for [param parameters]
-                      (for [value (u/one-or-many (or (:value param) (:default param)))]
+                      (for [value (u/one-or-many (param-val-or-default param))]
                         (str (codec/url-encode (:slug param))
                              "="
                              (codec/url-encode value)))))]
     (str base-url (when (seq url-params)
                     (str "?" (str/join "&" url-params))))))
+
+(defn- escape-markdown-chars?
+  "Heading cards should not escape characters."
+  [dashcard]
+  (not= "heading" (get-in dashcard [:visualization_settings :virtual_card :display])))
 
 (defn process-virtual-dashcard
   "Given a dashcard and the parameters on a dashboard, returns the dashcard with any parameter values appropriately
@@ -59,4 +71,4 @@
                                        (assoc m tag-name (get param-id->param param-id))))
                                    {}
                                    tag-names)]
-    (update-in dashcard [:visualization_settings :text] shared.params/substitute_tags tag->param (public-settings/site-locale))))
+    (update-in dashcard [:visualization_settings :text] shared.params/substitute-tags tag->param (public-settings/site-locale) (escape-markdown-chars? dashcard))))

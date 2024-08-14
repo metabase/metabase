@@ -1,15 +1,17 @@
-import React from "react";
+import cx from "classnames";
+import type * as React from "react";
 import { t } from "ttag";
 
-import { isSyncCompleted } from "metabase/lib/syncing";
-
-import Icon from "metabase/components/Icon";
 import AccordionList from "metabase/core/components/AccordionList";
-import DataSelectorLoading from "../DataSelectorLoading";
+import CS from "metabase/css/core/index.css";
+import { isSyncCompleted } from "metabase/lib/syncing";
+import type { IconName } from "metabase/ui";
+import { Icon } from "metabase/ui";
+import type Database from "metabase-lib/v1/metadata/Database";
+import type Schema from "metabase-lib/v1/metadata/Schema";
 
 import { RawDataBackButton } from "../DataSelector.styled";
-import type { Database, Schema } from "../types";
-import { PickerSpinner } from "./DataSelectorDatabaseSchemaPicker.styled";
+import DataSelectorLoading from "../DataSelectorLoading";
 
 type DataSelectorDatabaseSchemaPicker = {
   databases: Database[];
@@ -32,9 +34,10 @@ type Section = {
     name: string;
   }[];
   className?: string | null;
-  icon?: string;
+  icon?: IconName;
   loading?: boolean;
   active: boolean;
+  type?: string;
 };
 
 type Sections = Section[];
@@ -58,17 +61,17 @@ const DataSelectorDatabaseSchemaPicker = ({
   const sections: Sections = databases.map(database => ({
     name: database.is_saved_questions ? t`Saved Questions` : database.name,
     items:
-      !database.is_saved_questions && database.schemas.length > 1
-        ? database.schemas.map(schema => ({
+      !database.is_saved_questions && database.getSchemas().length > 1
+        ? database.getSchemas().map(schema => ({
             schema,
-            name: schema.displayName(),
+            name: schema.displayName() ?? "",
           }))
         : [],
-    className: database.is_saved_questions ? "bg-light" : null,
+    className: database.is_saved_questions ? CS.bgLight : null,
     icon: database.is_saved_questions ? "collection" : "database",
     loading:
       selectedDatabase?.id === database.id &&
-      database.schemas.length === 0 &&
+      database.getSchemas().length === 0 &&
       isLoading,
     active: database.is_saved_questions || isSyncCompleted(database),
   }));
@@ -92,26 +95,28 @@ const DataSelectorDatabaseSchemaPicker = ({
     return true;
   };
 
-  const renderSectionExtra = ({ active }: { active?: boolean }) =>
-    !active && <PickerSpinner size={16} borderWidth={2} />;
+  const showSpinner = ({ active }: { active?: boolean }) => active === false;
 
-  const renderSectionIcon = ({ icon }: { icon?: string }) =>
-    icon && <Icon className="Icon text-default" name={icon} size={18} />;
+  const renderSectionIcon = ({ icon }: { icon?: IconName }) =>
+    icon && (
+      <Icon className={cx("Icon", CS.textDefault)} name={icon} size={18} />
+    );
 
   if (hasBackButton) {
     sections.unshift({
       name: <RawDataBackButton />,
       active: true,
+      type: "back",
     });
   }
 
   let openSection = selectedSchema
-    ? databases.findIndex(db => db.id === selectedSchema.database.id)
+    ? databases.findIndex(db => db.id === selectedSchema.database?.id)
     : selectedDatabase
     ? databases.findIndex(db => db.id === selectedDatabase.id)
     : -1;
 
-  if (openSection >= 0 && databases[openSection]?.schemas.length === 1) {
+  if (openSection >= 0 && databases[openSection]?.getSchemas().length === 1) {
     openSection = -1;
   }
 
@@ -119,20 +124,21 @@ const DataSelectorDatabaseSchemaPicker = ({
     <AccordionList
       id="DatabaseSchemaPicker"
       key="databaseSchemaPicker"
-      className="text-brand"
+      className={CS.textBrand}
       hasInitialFocus={hasInitialFocus}
       sections={sections}
       onChange={({ schema }: any) => onChangeSchema(schema)}
       onChangeSection={handleChangeSection}
       itemIsSelected={(schema: Schema) => schema === selectedSchema}
-      renderSectionExtra={renderSectionExtra}
       renderSectionIcon={renderSectionIcon}
       renderItemIcon={() => <Icon name="folder" size={16} />}
       initiallyOpenSection={openSection}
       alwaysTogglable={true}
+      showSpinner={showSpinner}
       showItemArrows={hasNextStep}
     />
   );
 };
 
+// eslint-disable-next-line import/no-default-export -- deprecated usage
 export default DataSelectorDatabaseSchemaPicker;
