@@ -55,8 +55,8 @@
   (let [last-model (:model (last path))]
     {:path       path
      :deps-chain expanding
-     :model      (some-> last-model name)
-     :table      (some-> last-model t2/table-name)
+     :model      last-model
+     :table      (some->> last-model (keyword "model") t2/table-name)
      :error      error-type}))
 
 (defn- load-one!
