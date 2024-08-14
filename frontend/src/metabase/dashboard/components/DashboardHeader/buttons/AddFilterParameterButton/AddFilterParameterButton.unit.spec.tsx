@@ -90,6 +90,6 @@ describe("AddFilterParameterButton", () => {
 
     const button = screen.getByLabelText("Add a filter");
     await userEvent.click(button);
-    expect(screen.getByText("What do you want to filter?")).toBeInTheDocument();
+    expect(screen.getByText("Add a filter or parameter")).toBeInTheDocument();
   });
 });

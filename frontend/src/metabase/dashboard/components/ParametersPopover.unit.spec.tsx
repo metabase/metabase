@@ -4,28 +4,33 @@ import { ParametersPopover } from "./ParametersPopover";
 
 const options = [
   {
-    title: "Time",
-    subtitle: "Date range, relative date, time of day, etc.",
+    title: "Date picker",
+    subtitle: "Date range, specific date…",
     icon: "calendar",
   },
   {
+    title: "Time grouping",
+    subtitle: "Day, week, month, year…",
+    icon: "clock",
+  },
+  {
     title: "Location",
-    subtitle: "City, State, Country, ZIP code.",
+    subtitle: "Country, State, Postal Code…",
     icon: "location",
   },
   {
-    title: "ID",
-    subtitle: "User ID, Product ID, Event ID, etc.",
+    title: "Text or Category",
+    subtitle: "Contains, is, starts with…",
     icon: "label",
   },
   {
     title: "Number",
-    subtitle: "Subtotal, Age, Price, Quantity, etc.",
+    subtitle: "Between, greater than…",
     icon: "number",
   },
   {
-    title: "Text or Category",
-    subtitle: "Name, Rating, Description, etc.",
+    title: "ID",
+    subtitle: "Primary key, User ID…",
     icon: "label",
   },
 ];
