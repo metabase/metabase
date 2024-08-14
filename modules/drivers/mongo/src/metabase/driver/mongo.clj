@@ -169,12 +169,12 @@
              {(depth-k depth)    (str "$" (depth-kvs depth) ".k")
               (depth-idx depth)  (str "$" (depth-idx depth))
               (depth-type depth) {"$type" (str "$" (depth-kvs depth) ".v")}})}]
-    ;; if depth is not the max-depth, add kvs from any objects
+    ;; if depth is not the max-depth, add explode kvs from any objects
     (not= depth max-depth)
     (into [{"$addFields"
             {(depth-kvs (inc depth))
              {"$cond" {"if"   {"$eq" [{"$type" (str "$" (depth-kvs depth) ".v")}, "object"]}
-                       "then" {"$concatArrays" [[{"k" nil "v" nil}] ; this is so that the object is selected as well
+                       "then" {"$concatArrays" [[{"k" nil "v" nil}] ; so the object is selected as well
                                                 {"$objectToArray" (str "$" (depth-kvs depth) ".v")}]}
                        "else" [{"k" nil "v" nil}]}}}}
            {"$unwind"
@@ -182,11 +182,11 @@
              "includeArrayIndex"          (depth-idx (inc depth))
              "preserveNullAndEmptyArrays" true}}])))
 
-(defn- facet-stage [root-path depth]
+(defn- facet-stage [path depth]
   (let [depths (range (inc depth))]
     [{"$match" {(depth-k depth) {"$ne" nil}}}
      {"$group" {"_id" (into {"type" (str "$" (depth-type depth))
-                             "path" {"$concat" (concat (when (not= root-path "$ROOT") [root-path "."])
+                             "path" {"$concat" (concat (when (not= path "$ROOT") [path "."])
                                                        (interpose "."
                                                                   (map #(str "$" (depth-k %)) depths)))}
                              "k"    (str "$" (depth-k depth))})
@@ -214,21 +214,26 @@
                                              "then" {"$ifNull" [{"$arrayElemAt" ["$types.type", 1]}, "null"]}
                                              "else" {"$arrayElemAt" ["$types.type", 0]}}}}}]))
 
-(defn- project-from-root [root-path]
-  [{"$project" {"path" root-path, (depth-kvs 0) {"$objectToArray" (str "$" root-path)}}}
+(defn- project-from-root [path]
+  [{"$project" {"path" path, (depth-kvs 0) {"$objectToArray" (str "$" path)}}}
    {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}])
 
-(defn- describe-table-query [collection-name sample-size max-depth root-path]
-  (let [all-depths (range (inc max-depth))
-        facets     (into {} (map (juxt #(str "depth" %) #(facet-stage root-path %)) all-depths))]
+(defn- describe-table-query [& {:keys [collection-name sample-size max-depth path-or-root]}]
+  (let [path       (if (= path-or-root :root)
+                     "$ROOT"
+                     path-or-root)
+        all-depths (range (inc max-depth))
+        facets     (into {} (map (juxt #(str "depth" %) #(facet-stage path %)) all-depths))]
     (concat (sample-stages collection-name sample-size)
-            (project-from-root root-path)
+            (project-from-root path)
             (mapcat #(project-nested-fields max-depth %) all-depths)
             [{"$facet" facets}
              {"$project" {"allFields" {"$concatArrays" (mapv #(str "$" %) (keys facets))}}}
              {"$unwind" "$allFields"}])))
 
-(defn- path->depth [path]
+(defn- path->depth
+  "e.g. 'a' has depth 0, 'a.b' has depth 1"
+  [path]
   (dec (count (str/split path #"\."))))
 
 (def describe-table-query-depth
@@ -249,32 +254,34 @@
    root first, which gets all the fields until a depth of [[describe-table-query-depth]]. Then for any objects at that
    depth, we recursively query the database for fields nested inside those objects."
   [db table]
-  (let [collection-name (:name table)
-        ;; Cal 2024-08-14: sample-size is twice [[metadata-queries/nested-field-sample-limit]] for backwards
-        ;; compatibility, because this is how the sample was created before. I'm not sure why.
-        sample-size (* metadata-queries/nested-field-sample-limit 2)
-        q! (fn [q]
-             (:rows (:data (qp/process-query {:database (:id db)
-                                              :type     "native"
-                                              :native   {:collection collection-name
-                                                         :query      (json/generate-string q)}}))))
-        nested-fields (fn nested-fields [path]
-                        (let [fields (flatten (q! (describe-table-query collection-name sample-size describe-table-query-depth path)))
-                              nested (->> fields
-                                          (filter (fn [x]
-                                                    (and (= (:mostCommonType x) "object")
-                                                         (= (path->depth (:path x))
-                                                            (inc (+ (path->depth path) describe-table-query-depth))))))
-                                          (map :path)
-                                          (mapcat nested-fields))]
-                          (concat fields nested)))
-        fields        (flatten (q! (describe-table-query collection-name sample-size describe-table-query-depth "$ROOT")))
-        nested        (->> fields
-                           (filter (fn [x]
-                                     (and (= (:mostCommonType x) "object")
-                                          (= (path->depth (:path x)) describe-table-query-depth))))
-                           (map :path)
-                           (mapcat nested-fields))]
+  (let [query! (fn [path-or-root]
+                 ;; Cal 2024-08-14: sample-size is twice [[metadata-queries/nested-field-sample-limit]] for backwards
+                 ;; compatibility to match how the sample was created before. I'm not sure why it was this way.
+                 (let [query (describe-table-query {:collection-name (:name table)
+                                                    :sample-size     (* metadata-queries/nested-field-sample-limit 2)
+                                                    :max-depth       describe-table-query-depth
+                                                    :path-or-root    path-or-root})]
+                   (flatten (:rows (:data (qp/process-query {:database (:id db)
+                                                             :type     "native"
+                                                             :native   {:collection (:name table)
+                                                                        :query      (json/generate-string query)}}))))))
+        paths-to-explore   (fn [fields max-possible-depth]
+                             (->> fields
+                                  (filter (fn [x]
+                                            (and (= (:mostCommonType x) "object")
+                                                 (= (path->depth (:path x)) max-possible-depth))))
+                                  (map :path)))
+        nested-fields      (fn nested-fields [path]
+                             (let [fields             (query! path)
+                                   ;; + 1 because with a describe-table-query-depth of 0 we explore one level
+                                   max-possible-depth (+ (path->depth path) describe-table-query-depth 1)
+                                   next-paths         (paths-to-explore fields max-possible-depth)
+                                   nested             (mapcat nested-fields next-paths)]
+                               (concat fields nested)))
+        fields             (query! :root)
+        max-possible-depth describe-table-query-depth
+        next-paths         (paths-to-explore fields max-possible-depth)
+        nested             (mapcat nested-fields next-paths)]
     (concat fields nested)))
 
 (defn- type-alias->base-type [type-alias]
