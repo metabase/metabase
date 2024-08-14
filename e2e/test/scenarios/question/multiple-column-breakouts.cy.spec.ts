@@ -1,5 +1,6 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
+  type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
   createQuestion,
   entityPickerModal,
@@ -9,7 +10,6 @@ import {
   popover,
   restore,
   startNewQuestion,
-  type StructuredQuestionDetails,
   tableInteractive,
   tableInteractiveBody,
   visualize,
@@ -46,47 +46,49 @@ describe("scenarios > question > multiple column breakouts", () => {
     cy.signInAsNormalUser();
   });
 
-  describe("notebook", () => {
-    it("should allow to create a query with multiple breakouts", () => {
-      startNewQuestion();
-      entityPickerModal().within(() => {
-        entityPickerModalTab("Tables").click();
-        cy.findByText("Orders").click();
+  describe("current stage", () => {
+    describe("notebook", () => {
+      it("should allow to create a query with multiple breakouts", () => {
+        startNewQuestion();
+        entityPickerModal().within(() => {
+          entityPickerModalTab("Tables").click();
+          cy.findByText("Orders").click();
+        });
+        getNotebookStep("summarize")
+          .findByText("Pick the metric you want to see")
+          .click();
+        popover().findByText("Count of rows").click();
+        getNotebookStep("summarize")
+          .findByText("Pick a column to group by")
+          .click();
+        popover().findByText("by month").click();
+        popover().last().findByText("Year").click();
+        getNotebookStep("summarize")
+          .findByTestId("breakout-step")
+          .icon("add")
+          .click();
+        popover().findByText("by month").click();
+        popover().last().findByText("Month").click();
+        visualize();
+        assertQueryBuilderRowCount(49);
       });
-      getNotebookStep("summarize")
-        .findByText("Pick the metric you want to see")
-        .click();
-      popover().findByText("Count of rows").click();
-      getNotebookStep("summarize")
-        .findByText("Pick a column to group by")
-        .click();
-      popover().findByText("by month").click();
-      popover().last().findByText("Year").click();
-      getNotebookStep("summarize")
-        .findByTestId("breakout-step")
-        .icon("add")
-        .click();
-      popover().findByText("by month").click();
-      popover().last().findByText("Month").click();
-      visualize();
-      assertQueryBuilderRowCount(49);
-    });
 
-    it("should allow to sort by breakout columns", () => {
-      createQuestion(breakoutQuestionDetails, { visitQuestion: true });
-      openNotebook();
-      getNotebookStep("summarize").findByText("Sort").click();
-      popover().findByText("Created At: Year").click();
-      getNotebookStep("sort").button("Change direction").click();
-      getNotebookStep("sort").icon("add").click();
-      popover().findByText("Created At: Month").click();
-      visualize();
-      assertTableData({
-        columns: ["Created At: Year", "Created At: Month", "Count"],
-        rows: [
-          ["2026", "January 2026", "580"],
-          ["2026", "February 2026", "543"],
-        ],
+      it("should allow to sort by breakout columns", () => {
+        createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+        openNotebook();
+        getNotebookStep("summarize").findByText("Sort").click();
+        popover().findByText("Created At: Year").click();
+        getNotebookStep("sort").button("Change direction").click();
+        getNotebookStep("sort").icon("add").click();
+        popover().findByText("Created At: Month").click();
+        visualize();
+        assertTableData({
+          columns: ["Created At: Year", "Created At: Month", "Count"],
+          rows: [
+            ["2026", "January 2026", "580"],
+            ["2026", "February 2026", "543"],
+          ],
+        });
       });
     });
   });
