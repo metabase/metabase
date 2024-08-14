@@ -1,6 +1,12 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { t } from "ttag";
 
+import {
+  HoverParent,
+  PopoverHoverTarget,
+  PopoverDefaultIcon,
+} from "metabase/components/MetadataInfo/InfoIcon";
+import { Popover } from "metabase/components/MetadataInfo/Popover";
 import AccordionList from "metabase/core/components/AccordionList";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
@@ -23,6 +29,7 @@ import {
   ColumnPickerHeaderContainer,
   ColumnPickerHeaderTitle,
   ColumnPickerHeaderTitleContainer,
+  PopoverWrapper,
 } from "./AggregationPicker.styled";
 
 interface AggregationPickerProps {
@@ -337,6 +344,8 @@ export function AggregationPicker({
         itemIsSelected={checkIsItemSelected}
         renderItemName={renderItemName}
         renderItemDescription={omitItemDescription}
+        renderItemExtra={renderItemIcon}
+        renderItemWrapper={renderItemWrapper}
         // disable scrollbars inside the list
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
@@ -366,6 +375,31 @@ function ColumnPickerHeader({
 
 function renderItemName(item: ListItem) {
   return item.displayName;
+}
+
+function renderItemWrapper(content: ReactNode) {
+  return <HoverParent>{content}</HoverParent>;
+}
+
+function renderItemIcon(item: ListItem) {
+  if (item.type !== "metric") {
+    return null;
+  }
+
+  if (!item.description) {
+    return null;
+  }
+
+  return (
+    <PopoverWrapper>
+      <Popover position="right" content={<Box p="md">{item.description}</Box>}>
+        <span aria-label={t`More info`}>
+          <PopoverDefaultIcon name="empty" size={18} />
+          <PopoverHoverTarget name="info_filled" hasDescription size={18} />
+        </span>
+      </Popover>
+    </PopoverWrapper>
+  );
 }
 
 function omitItemDescription() {
