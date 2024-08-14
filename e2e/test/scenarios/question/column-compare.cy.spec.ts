@@ -8,6 +8,7 @@ import {
   getNotebookStep,
   openNotebook,
   popover,
+  queryBuilderMain,
   resetSnowplow,
   restore,
   rightSidebar,
@@ -433,7 +434,8 @@ describeWithSnowplow("scenarios > question > column compare", () => {
       verifyNoColumnCompareShortcut();
       cy.realPress("Escape");
 
-      openVisualization();
+      cy.button("Show Visualization").click();
+      queryBuilderMain().findByText("42").should("be.visible");
 
       verifyNotebookText({
         itemName: "Compare to the past",
@@ -877,9 +879,4 @@ function verifyBreakoutRequiredError() {
       "Window function requires either breakouts or order by in the query",
     )
     .should("be.visible");
-}
-
-function openVisualization() {
-  cy.button("Show Visualization").click();
-  cy.findByTestId("visualization-root").should("be.visible");
 }
