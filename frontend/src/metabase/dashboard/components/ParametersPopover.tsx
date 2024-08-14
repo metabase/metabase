@@ -1,25 +1,15 @@
-import styled from "@emotion/styled";
-import cx from "classnames";
 import { t } from "ttag";
 import _ from "underscore";
 
-import CS from "metabase/css/core/index.css";
-import {
-  OptionItemDescription,
-  OptionItemRoot,
-  OptionItemTitle,
-} from "metabase/dashboard/components/ParametersPopover.styled";
 import {
   getDashboardParameterSections,
   getDefaultOptionForParameterSectionMap,
 } from "metabase/parameters/utils/dashboard-options";
 import { getParameterIconName } from "metabase/parameters/utils/ui";
-import { Icon } from "metabase/ui";
+import { Box, Icon, Text } from "metabase/ui";
 import type { ParameterMappingOptions } from "metabase-types/api";
 
-const PopoverBody = styled.div`
-  max-width: 300px;
-`;
+import S from "./ParametersPopover.module.css";
 
 interface ParametersPopoverProps {
   onClose: () => void;
@@ -65,20 +55,21 @@ const ParameterOptionsSection = ({
   section: ParameterSection;
   onClick: () => void;
 }) => (
-  <OptionItemRoot onClick={onClick}>
-    <OptionItemTitle
-      className={cx(CS.textBold, CS.flex, CS.alignCenter)}
-      style={{ marginBottom: 4 }}
-    >
+  <Box className={S.row} display="table-row" onClick={onClick}>
+    <Box className={S.iconCell} display="table-cell" pl="lg" pr="sm" py="sm">
       <Icon
+        className={S.icon}
         size="16"
         name={getParameterIconName(section.id)}
-        className={CS.mr1}
       />
+    </Box>
+    <Box display="table-cell" py="sm" fw="bold">
       {section.name}
-    </OptionItemTitle>
-    <OptionItemDescription>{section.description}</OptionItemDescription>
-  </OptionItemRoot>
+    </Box>
+    <Box className={S.descriptionCell} display="table-cell" px="lg" py="sm">
+      {section.description}
+    </Box>
+  </Box>
 );
 
 const ParameterOptionsSectionsPane = ({
@@ -88,11 +79,14 @@ const ParameterOptionsSectionsPane = ({
   sections: ParameterSection[];
   onSelectSection: (section: ParameterSection) => void;
 }) => (
-  <PopoverBody className={CS.pb2}>
-    <h3
-      className={cx(CS.pb2, CS.pt3, CS.px3)}
-    >{t`What do you want to filter?`}</h3>
-    <ul>
+  <Box py="md">
+    <Text
+      px="lg"
+      pb="md"
+      c="text-light"
+      fw="bold"
+    >{t`Add a filter or parameter`}</Text>
+    <Box display="table">
       {sections.map(section => (
         <ParameterOptionsSection
           key={section.id}
@@ -100,6 +94,6 @@ const ParameterOptionsSectionsPane = ({
           onClick={() => onSelectSection(section)}
         />
       ))}
-    </ul>
-  </PopoverBody>
+    </Box>
+  </Box>
 );
