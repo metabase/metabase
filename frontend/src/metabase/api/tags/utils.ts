@@ -36,6 +36,7 @@ import type {
   CardQueryMetadata,
   CardId,
   ModelIndex,
+  CubeDataItem
 } from "metabase-types/api";
 import {
   ACTIVITY_MODELS,
@@ -189,6 +190,15 @@ export function provideCollectionTags(
   collection: Collection,
 ): TagDescription<TagType>[] {
   return [idTag("collection", collection.id)];
+}
+
+export function provideCubeDataTags(
+  cubeData: CubeDataItem[]
+): TagDescription<TagType>[] {
+  return [
+    listTag("cubedata"),
+    ...cubeData.map(item => idTag("cubedata", item.fileName)),
+  ];
 }
 
 export function provideModelIndexTags(
