@@ -1,9 +1,6 @@
 import _ from "underscore";
 
-import type {
-  DatabaseEntityId,
-  EntityId,
-} from "metabase/admin/permissions/types";
+import type { EntityId } from "metabase/admin/permissions/types";
 import {
   DataPermission,
   DataPermissionValue,
@@ -13,9 +10,10 @@ import {
   isSchemaEntityId,
 } from "metabase/admin/permissions/utils/data-entity-id";
 import {
+  getEntityPermission,
   getSchemasPermission,
   hasPermissionValueInSubgraph,
-  updateSchemasPermission,
+  updateEntityPermission,
 } from "metabase/admin/permissions/utils/graph";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type { GroupsPermissions, NativePermissions } from "metabase-types/api";
@@ -56,24 +54,31 @@ export function shouldRestrictNativeQueryPermissions(
 export function upgradeViewPermissionsIfNeeded(
   permissions: GroupsPermissions,
   groupId: number,
-  entityId: DatabaseEntityId,
+  entityId: EntityId,
   value: NativePermissions,
   database: Database,
 ) {
-  const dbPermission = getSchemasPermission(
+  // get permission for item up one level or db if we're already at the top most entity:
+  // table -> schema, schema -> database, database -> database
+  const parentOrDbEntityId = isTableEntityId(entityId)
+    ? _.pick(entityId, ["databaseId", "schemaName"])
+    : _.pick(entityId, ["databaseId"]);
+
+  const parentOrDbPermission = getEntityPermission(
     permissions,
     groupId,
-    { databaseId: entityId.databaseId },
+    parentOrDbEntityId,
     DataPermission.VIEW_DATA,
   );
 
-  const requiresUnrestrictedAccess =
+  const isGrantingNativeQueryAccessWithoutProperViewAccess =
     value === DataPermissionValue.QUERY_BUILDER_AND_NATIVE &&
-    dbPermission !== DataPermissionValue.UNRESTRICTED &&
-    dbPermission !== DataPermissionValue.IMPERSONATED;
+    parentOrDbPermission !== DataPermissionValue.UNRESTRICTED &&
+    parentOrDbPermission !== DataPermissionValue.IMPERSONATED;
 
   const isGrantingQueryAccessWithBlockedChild =
     value !== DataPermissionValue.NO &&
+    !isTableEntityId(entityId) &&
     hasPermissionValueInSubgraph(
       permissions,
       groupId,
@@ -83,11 +88,14 @@ export function upgradeViewPermissionsIfNeeded(
       DataPermissionValue.BLOCKED,
     );
 
-  if (requiresUnrestrictedAccess || isGrantingQueryAccessWithBlockedChild) {
-    permissions = updateSchemasPermission(
+  if (
+    isGrantingNativeQueryAccessWithoutProperViewAccess ||
+    isGrantingQueryAccessWithBlockedChild
+  ) {
+    permissions = updateEntityPermission(
       permissions,
       groupId,
-      entityId,
+      parentOrDbEntityId,
       DataPermissionValue.UNRESTRICTED,
       database,
       DataPermission.VIEW_DATA,

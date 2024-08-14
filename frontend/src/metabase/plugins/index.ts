@@ -135,7 +135,7 @@ export const PLUGIN_DATA_PERMISSIONS: {
     | ((
         permissions: GroupsPermissions,
         groupId: number,
-        { databaseId }: DatabaseEntityId,
+        entityId: EntityId,
         value: any,
         database: Database,
         permission: DataPermission,
