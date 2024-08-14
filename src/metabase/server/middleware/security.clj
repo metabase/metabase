@@ -68,6 +68,9 @@
                                    (when (public-settings/anon-tracking-enabled)
                                      "https://www.google-analytics.com")
                                    ;; for webpack hot reloading
+                                   (when-not config/is-dev?
+                                   "*:8090 ws://*:8090 wss://*"
+                                   )
                                    (when config/is-dev?
                                      "http://localhost:8080")
                                             (when config/is-dev?
@@ -89,6 +92,9 @@
                                  (when nonce
                                    (format "'nonce-%s'" nonce))
                                  ;; for webpack hot reloading
+                                 (when-not config/is-dev?
+                                   "*:8090 ws://*:8090 wss://*"
+                                   )
                                  (when config/is-dev?
                                    "http://localhost:8080")
                                       (when config/is-dev?
@@ -112,6 +118,9 @@
                                  (when (public-settings/anon-tracking-enabled)
                                    (snowplow/snowplow-url))
                                  ;; Webpack dev server
+                                 (when-not config/is-dev?
+                                   "*:8090 ws://*:8090 wss://*"
+                                   )
                                  (when config/is-dev?
                                    "*:8080 ws://*:8080")
                                    (when config/is-dev?
