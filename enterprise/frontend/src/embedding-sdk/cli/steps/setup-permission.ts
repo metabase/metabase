@@ -71,5 +71,28 @@ export const setupPermissions: CliStepMethod = async state => {
 
   await propagateErrorResponse(res);
 
+  // Create new collections
+  const collectionNames = ["Customer A", "Customer B", "Customer C"];
+
+  try {
+    await Promise.all(
+      collectionNames.map(async collectionName => {
+        res = await fetch(`${instanceUrl}/api/collection`, {
+          method: "POST",
+          headers: { "content-type": "application/json", cookie },
+          body: JSON.stringify({
+            parent_id: null,
+            authority_level: null,
+            color: "#509EE3",
+            description: null,
+            name: collectionName,
+          }),
+        });
+
+        await propagateErrorResponse(res);
+      }),
+    );
+  } catch (error) {}
+
   return [{ type: "success" }, state];
 };
