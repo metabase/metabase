@@ -33,6 +33,7 @@ export const EChartsTooltip = ({
   footer,
   showMarkers = true,
 }: EChartsTooltipProps) => {
+  const hasFocusedRow = rows.some(row => row.isFocused);
   return (
     <div>
       {header != null && <div className={TooltipStyles.Header}>{header}</div>}
@@ -47,6 +48,7 @@ export const EChartsTooltip = ({
               <TooltipRow
                 key={index}
                 {...(showMarkers ? row : _.omit(row, "markerColorClass"))}
+                isFocused={!hasFocusedRow || row.isFocused}
               />
             );
           })}
@@ -72,7 +74,7 @@ const TooltipRow = ({
   isFocused,
 }: TooltipRowProps) => (
   <BaseRow
-    className={cx({ [TooltipStyles.RowFocused]: isFocused })}
+    className={cx({ [TooltipStyles.RowFaded]: !isFocused })}
     name={name}
     values={values}
     markerContent={

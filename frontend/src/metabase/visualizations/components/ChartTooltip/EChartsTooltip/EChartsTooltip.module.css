@@ -25,8 +25,8 @@
   color: var(--mb-color-text-light);
 }
 
-.RowFocused {
-  background-color: color-mix(in srgb, var(--mb-color-bg-black) 87%, #fff);
+.RowFaded {
+  opacity: 0.5;
 }
 
 .Cell {
