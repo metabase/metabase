@@ -38,31 +38,40 @@ export const setupLicense: CliStepMethod = async state => {
     }
   }
 
-  const token = await input({
-    message: "Enter your Metabase Pro license key:",
-    required: true,
-  });
-
   // Activate the license
-  try {
-    const res = await fetch(
-      `${state.instanceUrl}/api/setting/premium-embedding-token`,
-      {
+  // eslint-disable-next-line no-constant-condition -- ask until user provides a valid license key
+  while (true) {
+    try {
+      const token = await input({
+        message: "Enter your Metabase Pro license key:",
+        required: true,
+        validate: value => {
+          if (value.length !== 64 || !/^[0-9A-Fa-f]+$/.test(value)) {
+            return "License key must be a 64-character hexadecimal string.";
+          }
+
+          return true;
+        },
+      });
+
+      const endpoint = `${state.instanceUrl}/api/setting/premium-embedding-token`;
+
+      const res = await fetch(endpoint, {
         method: "PUT",
-        body: JSON.stringify({
-          value: token.trim(),
-        }),
-        headers: { "content-type": "json", cookie: state.cookie ?? "" },
-      },
-    );
+        body: JSON.stringify({ value: token.trim() }),
+        headers: {
+          "content-type": "application/json",
+          cookie: state.cookie ?? "",
+        },
+      });
 
-    await propagateErrorResponse(res);
+      await propagateErrorResponse(res);
 
-    return [{ type: "success" }, { ...state, token }];
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    const message = `Failed to activate license. Reason: ${reason}`;
-
-    return [{ type: "error", message }, state];
+      return [{ type: "success" }, { ...state, token }];
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : String(error);
+      console.error(`Failed to activate license. Reason: ${reason}`);
+      printEmptyLines(1);
+    }
   }
 };
