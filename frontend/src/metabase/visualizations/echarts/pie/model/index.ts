@@ -2,7 +2,6 @@ import { pie } from "d3";
 import _ from "underscore";
 
 import { findWithIndex } from "metabase/lib/arrays";
-import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { checkNotNull } from "metabase/lib/types";
 import { getNumberOr } from "metabase/visualizations/lib/settings/row-values";
 import { pieNegativesWarning } from "metabase/visualizations/lib/warnings";
@@ -103,7 +102,6 @@ export function getPieChartModel(
 
     return {
       ...pieRow,
-      dimensionValue: values[0],
       metricValue: values[1],
     };
   });
@@ -123,18 +121,9 @@ export function getPieChartModel(
   }, 0);
 
   const [slices, others] = _.chain(pieRowsWithValues)
-    .map(({ dimensionValue, metricValue, color }, index): PieSliceData => {
-      let key: string | number;
-      if (dimensionValue == null) {
-        key = NULL_DISPLAY_VALUE;
-      } else if (typeof dimensionValue === "boolean") {
-        key = String(dimensionValue);
-      } else {
-        key = dimensionValue;
-      }
-
+    .map(({ metricValue, color, name }, index): PieSliceData => {
       return {
-        key,
+        key: name, // TODO rename this to name to avoid confusion with viz settings value and to be more explicit
         value: isNonPositive ? -1 * metricValue : metricValue,
         displayValue: metricValue,
         normalizedPercentage: metricValue / total, // slice percentage values are normalized to 0-1 scale

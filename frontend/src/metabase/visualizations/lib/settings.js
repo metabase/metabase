@@ -158,7 +158,13 @@ function getSettingWidget(
     props: {
       ...(settingDef.props ? settingDef.props : {}),
       ...(settingDef.getProps
-        ? settingDef.getProps(object, computedSettings, onChange, extra)
+        ? settingDef.getProps(
+            object,
+            computedSettings,
+            onChange,
+            extra,
+            onChangeSettings,
+          )
         : {}),
     },
     set: settingId in storedSettings,

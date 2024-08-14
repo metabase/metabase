@@ -2,6 +2,7 @@ import Color from "color";
 import { t } from "ttag";
 import _ from "underscore";
 
+import { NULL_DISPLAY_VALUE } from "metabase/lib/constants";
 import { formatValue } from "metabase/lib/formatting";
 import { ChartSettingOrderedSimple } from "metabase/visualizations/components/settings/ChartSettingOrderedSimple";
 import {
@@ -9,6 +10,7 @@ import {
   MinRowsError,
 } from "metabase/visualizations/lib/errors";
 import { columnSettings } from "metabase/visualizations/lib/settings/column";
+import { seriesSetting } from "metabase/visualizations/lib/settings/series";
 import {
   dimensionSetting,
   metricSetting,
@@ -26,10 +28,13 @@ import {
   getMinSize,
 } from "metabase/visualizations/shared/utils/sizes";
 import type {
+  ComputedVisualizationSettings,
   VisualizationDefinition,
   VisualizationSettingsDefinitions,
 } from "metabase/visualizations/types";
 import type { RawSeries } from "metabase-types/api";
+
+import { SliceNameWidget } from "./SliceNameWidget";
 
 export const PIE_CHART_DEFINITION: VisualizationDefinition = {
   uiName: t`Pie`,
@@ -116,17 +121,31 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
         );
 
         return sortedRows.map(row => {
-          const dimensionValue = String(row[dimensionIndex]);
+          const dimensionValue = row[dimensionIndex];
+          let key: string | number;
+          if (dimensionValue == null) {
+            key = NULL_DISPLAY_VALUE;
+          } else if (typeof dimensionValue === "boolean") {
+            key = String(dimensionValue);
+          } else {
+            key = dimensionValue;
+          }
           if (!settings["pie.colors"]) {
             throw Error("missing `pie.colors` setting");
           }
-          // older viz settings can have hsl values that need to be converted since
-          // batik does not support hsl
-          const color = Color(settings["pie.colors"][dimensionValue]).hex();
+          // Older viz settings can have hsl values that need to be converted
+          // since Batik does not support hsl.
+          const color = Color(
+            // Historically we have used the dimension value in the `pie.colors`
+            // setting instead of the above defined key, e.g. `null` instead of
+            // `(empty)`. For compatibility with existing questions we will
+            // continue to use the dimension value.
+            settings["pie.colors"][String(dimensionValue)],
+          ).hex();
 
           return {
-            key: dimensionValue,
-            name: dimensionValue, // TODO implement renaming
+            key,
+            name: key,
             color,
             defaultColor: true,
           };
@@ -151,6 +170,40 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
       }),
       readDependencies: ["pie.dimension", "pie.metric", "pie.colors"],
     },
+    ...seriesSetting({
+      def: {
+        widget: SliceNameWidget,
+        getProps: (
+          _series: any,
+          vizSettings: ComputedVisualizationSettings,
+          _onChange: any,
+          _extra: any,
+          onChangeSettings: (
+            newSettings: ComputedVisualizationSettings,
+          ) => void,
+        ) => {
+          const pieRows = vizSettings["pie.rows"];
+          if (pieRows == null) {
+            throw Error("Missing `pie.rows` setting");
+          }
+
+          return {
+            pieRows,
+            updateRowName: (newName: string, key: string) => {
+              onChangeSettings({
+                "pie.rows": pieRows.map(row => {
+                  if (row.key !== key) {
+                    return row;
+                  }
+                  return { ...row, name: newName };
+                }),
+              });
+            },
+          };
+        },
+      },
+      readDependencies: ["pie.rows"],
+    }),
     ...metricSetting("pie.metric", {
       section: t`Data`,
       title: t`Measure`,
