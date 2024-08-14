@@ -1,8 +1,8 @@
 name: Perf test command
 
 on:
-  pull_request:
-    types: [ labeled ]
+  issue_comment:
+    types: [created]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
