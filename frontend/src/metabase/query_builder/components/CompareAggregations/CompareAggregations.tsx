@@ -58,6 +58,7 @@ export const CompareAggregations = ({
     DEFAULT_COMPARISON_TYPE,
   );
   const [includeCurrentPeriod, setIncludeCurrentPeriod] = useState(false);
+  const [bucket, setBucket] = useState<Lib.Bucket>(columnAndBucket?.bucket);
   const width = aggregation ? STEP_2_WIDTH : STEP_1_WIDTH;
 
   const title = useMemo(
@@ -136,6 +137,9 @@ export const CompareAggregations = ({
                 comparisonType={comparisonType}
                 value={offset}
                 onChange={setOffset}
+                column={columnAndBucket?.column}
+                bucket={bucket}
+                onBucketChange={setBucket}
               />
 
               {comparisonType === "moving-average" && (
