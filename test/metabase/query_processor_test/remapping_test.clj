@@ -289,13 +289,10 @@
                      (mt/rows results))))))))))
 
 (deftest ^:parallel remapped-columns-in-joined-source-queries-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :nested-queries :left-join)
-                         ;; mongodb doesn't support foreign keys required by this test
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :nested-queries :left-join)
     (testing "Remapped columns in joined source queries should work (#15578)"
       (mt/dataset test-data
         (qp.store/with-metadata-provider (-> (lib.metadata.jvm/application-database-metadata-provider (mt/id))
-                                             qp.test-util/mock-fks-application-database-metadata-provider
                                              (lib.tu/remap-metadata-provider (mt/id :orders :product_id) (mt/id :products :title)))
           (let [query (mt/mbql-query products
                                      {:joins    [{:source-query {:source-table $$orders

@@ -270,9 +270,7 @@
                rows))))))
 
 (deftest ^:parallel select-*-source-query-test
-  (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join)
-                         ;; mongodb doesn't support foreign keys required by this test
-                         :mongo)
+  (mt/test-drivers (mt/normal-drivers-with-feature :left-join)
     (testing "We should be able to run a query that for whatever reason ends up with a `SELECT *` for the source query"
       (let [{:keys [rows columns]} (mt/format-rows-by [int int]
                                      (mt/rows+column-names
@@ -938,9 +936,7 @@
 
 (deftest ^:parallel join-against-implicit-join-test
   (testing "Should be able to explicitly join against an implicit join (#20519)"
-    (mt/test-drivers (disj (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
-                           ;; mongodb doesn't support foreign keys required by this test
-                           :mongo)
+    (mt/test-drivers (mt/normal-drivers-with-feature :left-join :expressions :basic-aggregations)
       (mt/dataset
        test-data
        (let [query (mt/mbql-query
