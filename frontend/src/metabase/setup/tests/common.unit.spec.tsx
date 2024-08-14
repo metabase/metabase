@@ -197,62 +197,62 @@ describe("setup (OSS)", () => {
         "setup-license-active-at-setup": false,
       });
     });
+  });
 
-    describe("newsletter step", () => {
-      let originalSendBeacon: typeof window.navigator.sendBeacon;
+  describe("newsletter step", () => {
+    let originalSendBeacon: typeof window.navigator.sendBeacon;
 
-      beforeEach(() => {
-        originalSendBeacon = window.navigator.sendBeacon;
-        window.navigator.sendBeacon = jest.fn();
-      });
+    beforeEach(() => {
+      originalSendBeacon = window.navigator.sendBeacon;
+      window.navigator.sendBeacon = jest.fn();
+    });
 
-      afterEach(() => {
-        window.navigator.sendBeacon = originalSendBeacon;
-        jest.clearAllMocks();
-      });
+    afterEach(() => {
+      window.navigator.sendBeacon = originalSendBeacon;
+      jest.clearAllMocks();
+    });
 
-      it("should call navigator.sendBeacon if the user checked the box", async () => {
-        await setup();
-        await skipWelcomeScreen();
-        await skipLanguageStep();
-        await submitUserInfoStep();
-        await selectUsageReason("self-service-analytics");
-        await clickNextStep();
-        await screen.getByText("I'll add my data later").click();
-        await screen.getByText("Finish").click();
+    it("should call navigator.sendBeacon if the user checked the box", async () => {
+      await setup();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
+      await submitUserInfoStep();
+      await selectUsageReason("self-service-analytics");
+      await clickNextStep();
+      await screen.getByText("I'll add my data later").click();
+      await screen.getByText("Finish").click();
 
-        screen
-          .getByText(
-            "Get infrequent emails about new releases and feature updates.",
-          )
-          .click();
+      screen
+        .getByText(
+          "Get infrequent emails about new releases and feature updates.",
+        )
+        .click();
 
-        screen.getByText("Take me to Metabase").click();
+      screen.getByText("Take me to Metabase").click();
 
-        const formData = new FormData();
-        formData.append("EMAIL", "john@example.org"); // email from user step
-        formData.append(SUBSCRIBE_TOKEN, "");
+      const formData = new FormData();
+      formData.append("EMAIL", "john@example.org"); // email from user step
+      formData.append(SUBSCRIBE_TOKEN, "");
 
-        expect(window.navigator.sendBeacon).toHaveBeenCalledWith(
-          SUBSCRIBE_URL,
-          formData,
-        );
-      });
+      expect(window.navigator.sendBeacon).toHaveBeenCalledWith(
+        SUBSCRIBE_URL,
+        formData,
+      );
+    });
 
-      it("should *NOT* call navigator.sendBeacon if the user has not checked the box", async () => {
-        await setup();
-        await skipWelcomeScreen();
-        await skipLanguageStep();
-        await submitUserInfoStep();
-        await selectUsageReason("self-service-analytics");
-        await clickNextStep();
-        await screen.getByText("I'll add my data later").click();
-        await screen.getByText("Finish").click();
+    it("should *NOT* call navigator.sendBeacon if the user has not checked the box", async () => {
+      await setup();
+      await skipWelcomeScreen();
+      await skipLanguageStep();
+      await submitUserInfoStep();
+      await selectUsageReason("self-service-analytics");
+      await clickNextStep();
+      await screen.getByText("I'll add my data later").click();
+      await screen.getByText("Finish").click();
 
-        screen.getByText("Take me to Metabase").click();
+      screen.getByText("Take me to Metabase").click();
 
-        expect(window.navigator.sendBeacon).not.toHaveBeenCalled();
-      });
+      expect(window.navigator.sendBeacon).not.toHaveBeenCalled();
     });
   });
 });
