@@ -1,21 +1,21 @@
-import { useMemo } from "react";
 import { t } from "ttag";
 
 import { Flex, Stack, Button, Input } from "metabase/ui";
 import * as Lib from "metabase-lib";
+import type { TemporalUnit } from "metabase-types/api";
 
 type Preset = {
   bucket: Lib.Bucket;
   displayName: string;
-  shortName: string;
+  shortName: TemporalUnit;
 };
 
 type Props = {
   query: Lib.Query;
   stageIndex: number;
-  bucket: Lib.Bucket;
+  bucket: TemporalUnit | null;
   column: Lib.ColumnMetadata;
-  onBucketChange: (bucket: Lib.Bucket) => void;
+  onBucketChange: (bucket: TemporalUnit | null) => void;
   onShowOffsetInput: () => void;
 };
 
@@ -34,10 +34,6 @@ export function OffsetPresets({
   // - render this in CompareAggregations
 
   const presets = getPreferredPresets(query, stageIndex, column);
-  const bucketInfo = useMemo(
-    () => Lib.displayInfo(query, stageIndex, bucket),
-    [query, stageIndex, bucket],
-  );
 
   return (
     <Stack spacing="sm">
@@ -46,12 +42,10 @@ export function OffsetPresets({
         {presets.map(preset => (
           <Button
             key={preset.shortName}
-            variant={
-              preset.shortName === bucketInfo.shortName ? "filled" : "default"
-            }
+            variant={preset.shortName === bucket ? "filled" : "default"}
             radius="xl"
             p="sm"
-            onClick={() => onBucketChange(preset.bucket)}
+            onClick={() => onBucketChange(preset.shortName)}
           >
             {preset.displayName}
           </Button>

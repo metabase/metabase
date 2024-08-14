@@ -2,8 +2,9 @@ import type { FormEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Stack } from "metabase/ui";
+import { Box, Button, Flex, Stack, Text } from "metabase/ui";
 import type * as Lib from "metabase-lib";
+import type { TemporalUnit } from "metabase-types/api";
 
 import { ExpressionWidgetHeader } from "../expressions/ExpressionWidgetHeader";
 
@@ -14,6 +15,7 @@ import {
   ComparisonTypePicker,
   CurrentPerionInput,
   OffsetPresets,
+  BucketInput,
 } from "./components";
 import type { ColumnType, ComparisonType } from "./types";
 import {
@@ -48,7 +50,7 @@ export const CompareAggregations = ({
   const [aggregation, setAggregation] = useState<
     Lib.AggregationClause | Lib.ExpressionClause | undefined
   >(hasManyAggregations ? undefined : aggregations[0]);
-  const columnAndBucket = useMemo(
+  const matchedBreakout = useMemo(
     () => getBreakout(query, stageIndex),
     [query, stageIndex],
   );
@@ -59,7 +61,9 @@ export const CompareAggregations = ({
     DEFAULT_COMPARISON_TYPE,
   );
   const [includeCurrentPeriod, setIncludeCurrentPeriod] = useState(false);
-  const [bucket, setBucket] = useState<Lib.Bucket>(columnAndBucket?.bucket);
+  const [bucket, setBucket] = useState<TemporalUnit | null>(
+    matchedBreakout.bucket,
+  );
   const [showPresets, setShowPresets] = useState(true);
   const width = aggregation ? STEP_2_WIDTH : STEP_1_WIDTH;
 
@@ -103,7 +107,7 @@ export const CompareAggregations = ({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
 
-    if (!aggregation || !columnAndBucket) {
+    if (!aggregation) {
       return;
     }
 
@@ -113,7 +117,8 @@ export const CompareAggregations = ({
       aggregation,
       offset,
       columns,
-      columnAndBucket,
+      matchedBreakout,
+      bucket,
       includeCurrentPeriod,
     );
 
@@ -124,11 +129,6 @@ export const CompareAggregations = ({
     onSubmit(next.query, next.addedAggregations);
     onClose();
   };
-
-  if (!columnAndBucket) {
-    // TODO: how to hanlde this?
-    return null;
-  }
 
   const shouldShowPresets =
     showPresets && comparisonType === "offset" && offset === 1;
@@ -161,17 +161,26 @@ export const CompareAggregations = ({
                   bucket={bucket}
                   onBucketChange={setBucket}
                   onShowOffsetInput={handleHidePresets}
-                  column={columnAndBucket.column}
+                  column={matchedBreakout.column}
                 />
               )}
               {!shouldShowPresets && (
-                <OffsetInput
-                  query={query}
-                  stageIndex={stageIndex}
-                  comparisonType={comparisonType}
-                  value={offset}
-                  onChange={handleOffsetChange}
-                />
+                <Flex align="flex-end" gap="md">
+                  <OffsetInput
+                    comparisonType={comparisonType}
+                    value={offset}
+                    onChange={handleOffsetChange}
+                  />
+                  <BucketInput
+                    query={query}
+                    stageIndex={stageIndex}
+                    offset={offset || 0}
+                    column={matchedBreakout.column}
+                    value={bucket}
+                    onChange={setBucket}
+                  />
+                  <Text align="center" c="text-light">{t`ago`}</Text>
+                </Flex>
               )}
 
               {comparisonType === "moving-average" && (
