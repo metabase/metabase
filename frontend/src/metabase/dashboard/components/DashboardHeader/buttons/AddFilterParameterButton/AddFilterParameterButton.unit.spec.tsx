@@ -73,7 +73,7 @@ describe("AddFilterParameterButton", () => {
       ).not.toBeInTheDocument();
     });
 
-    it("should close the popover when the user clicks outside the popover", async () => {
+    it("should close the popover when the user clicks outside the popover (metabase#46765)", async () => {
       setup({ isAddParameterPopoverOpen: true });
       expect(
         screen.getByTestId("add-filter-parameter-dropdown"),
