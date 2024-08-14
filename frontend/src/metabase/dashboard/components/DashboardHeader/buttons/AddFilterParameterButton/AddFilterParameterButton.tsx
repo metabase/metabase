@@ -16,7 +16,11 @@ export const AddFilterParameterButton = () => {
   const isAddParameterPopoverOpen = useSelector(getIsAddParameterPopoverOpen);
 
   return (
-    <Popover opened={isAddParameterPopoverOpen} position="bottom-end">
+    <Popover
+      opened={isAddParameterPopoverOpen}
+      onClose={() => dispatch(hideAddParameterPopover())}
+      position="bottom-end"
+    >
       <Popover.Target>
         <ToolbarButton
           icon="filter"
@@ -29,7 +33,7 @@ export const AddFilterParameterButton = () => {
           tooltipLabel={t`Add a filter`}
         />
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown data-testid="add-filter-parameter-dropdown">
         <ParametersPopover
           onAddParameter={parameter => dispatch(addParameter(parameter))}
           onClose={() => dispatch(hideAddParameterPopover())}
