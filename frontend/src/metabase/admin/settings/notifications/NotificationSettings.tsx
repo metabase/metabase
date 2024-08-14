@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { t } from "ttag";
+import { t, c } from "ttag";
 
 import { useListChannelsQuery } from "metabase/api/channel";
 import {
@@ -27,6 +27,8 @@ export const NotificationSettings = () => {
 
   const { data: channels } = useListChannelsQuery();
 
+  const hasChannels = channels && channels.length > 0;
+
   return (
     <>
       <Box w="47rem">
@@ -35,34 +37,27 @@ export const NotificationSettings = () => {
           <Paper shadow="0" withBorder p="lg" w="47rem" mb="2.5rem">
             <Flex gap="0.5rem" align="center" mb="0.5rem">
               <Icon name="slack_colorized" />
-              <Title order={2}>{t`Connect to slack`}</Title>
+              <Title order={2}>{t`Connect to Slack`}</Title>
             </Flex>
             <Text>
-              {t`If your team uses slack, you can send dashboard subscriptions and
+              {t`If your team uses Slack, you can send dashboard subscriptions and
             alerts there`}
             </Text>
           </Paper>
         </Link>
 
         <Flex justify="space-between" align="center" mb="1.5rem">
-          <Title>{t`Alerts webhook`}</Title>{" "}
-          {channels?.length !== 0 && (
+          <Title>{t`Webhooks for Alerts`}</Title>{" "}
+          {hasChannels && (
             <Button
               variant="subtle"
               compact
               leftIcon={<Icon name="add" />}
               onClick={() => setWebhookModal("create")}
-            >{t`Add another`}</Button>
+            >{c("Short for 'Add another Webhook'").t`Add another`}</Button>
           )}
         </Flex>
-        {channels?.length === 0 ? (
-          <ChannelBox
-            title={t`Add a webhook`}
-            description={t`Specify a webhook URL where you can send the content of Alerts`}
-            onClick={() => setWebhookModal("create")}
-            icon="webhook"
-          />
-        ) : (
+        {hasChannels ? (
           <Stack>
             {channels?.map(c => (
               <ChannelBox
@@ -77,6 +72,13 @@ export const NotificationSettings = () => {
               />
             ))}
           </Stack>
+        ) : (
+          <ChannelBox
+            title={t`Add a webhook`}
+            description={t`Specify a webhook URL where you can send the content of Alerts`}
+            onClick={() => setWebhookModal("create")}
+            icon="webhook"
+          />
         )}
       </Box>
       <NotificationSettingsModals
@@ -123,12 +125,11 @@ const NotificationSettingsModals = ({
   channel?: NotificationChannel;
   onClose: () => void;
 }) => {
-  return (
-    <>
-      {modal === "create" && <CreateWebhookModal isOpen onClose={onClose} />}
-      {modal === "edit" && channel && (
-        <EditWebhookModal isOpen onClose={onClose} channel={channel} />
-      )}
-    </>
-  );
+  if (modal === "create") {
+    return <CreateWebhookModal isOpen onClose={onClose} />;
+  }
+  if (modal === "edit" && channel) {
+    return <EditWebhookModal isOpen onClose={onClose} channel={channel} />;
+  }
+  return null;
 };

@@ -280,7 +280,7 @@ export const ADMIN_SETTINGS_SECTIONS = {
     settings: [],
   },
   notifications: {
-    name: t`Notification Settings`,
+    name: t`Notification channels`,
     order: 51,
     component: NotificationSettings,
     settings: [],

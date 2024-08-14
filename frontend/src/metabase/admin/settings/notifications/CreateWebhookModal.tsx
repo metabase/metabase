@@ -8,6 +8,7 @@ import {
   WebhookForm,
   type WebhookFormProps,
 } from "./WebhookForm";
+import { buildAuthInfo } from "./utils";
 
 interface CreateWebhookModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ const initialValues = {
   name: "",
   description: "",
   "auth-method": "none" as const,
+  "fe-auth-type": "none" as const,
   "auth-info": { "": "" },
 };
 
@@ -34,8 +36,9 @@ export const CreateWebhookModal = ({
       description: vals.description,
       details: {
         url: vals.url,
+        "fe-form-type": vals["fe-form-type"],
         "auth-method": vals["auth-method"],
-        "auth-info": vals["auth-info"],
+        "auth-info": buildAuthInfo(vals),
       },
     })
       .unwrap()
@@ -51,12 +54,12 @@ export const CreateWebhookModal = ({
   return (
     <Modal.Root opened={isOpen} onClose={onClose} size="36rem">
       <Modal.Overlay />
-      <Modal.Content p="1rem">
-        <Modal.Header mb="1.5rem">
-          <Modal.Title>{t`New alert webhook`}</Modal.Title>
+      <Modal.Content>
+        <Modal.Header p="2.5rem" mb="1.5rem">
+          <Modal.Title>{t`New webhook destination`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body p="2.5rem">
           <WebhookForm
             onSubmit={handleSubmit}
             onCancel={onClose}

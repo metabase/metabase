@@ -50,6 +50,7 @@ export type ChannelDetails = {
   url: string;
   "auth-method": NotificationAuthMethods;
   "auth-info"?: Record<string, string>;
+  "fe-form-type": NotificationAuthType;
 };
 
 export type NotificationAuthMethods =
@@ -57,6 +58,8 @@ export type NotificationAuthMethods =
   | "header"
   | "query-param"
   | "request-body";
+
+export type NotificationAuthType = "none" | "basic" | "bearer" | "api-key";
 
 export type NotificationChannel<Details = ChannelDetails> = {
   active: boolean;

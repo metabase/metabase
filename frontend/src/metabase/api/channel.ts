@@ -9,7 +9,10 @@ const channelApi = Api.injectEndpoints({
       query: () => `api/channel`,
       providesTags: (channels = []) => provideChannelListTags(channels),
     }),
-    testChannel: builder.mutation<void, Pick<NotificationChannel, "details">>({
+    testChannel: builder.mutation<
+      void,
+      Omit<Pick<NotificationChannel, "details">, "fe-form-type">
+    >({
       query: body => ({
         method: "POST",
         url: "api/channel/test",

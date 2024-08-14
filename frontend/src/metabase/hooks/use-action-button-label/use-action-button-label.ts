@@ -5,6 +5,11 @@ interface UseActionButtonLabelProps {
   timeout?: number;
 }
 
+/**
+ * Small hook to temporarly update a string, and return it to it's
+ * initial value after the timeout expires.
+ */
+
 export const useActionButtonLabel = ({
   defaultLabel,
   timeout = 3000,

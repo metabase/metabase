@@ -13,6 +13,7 @@ import {
   WebhookForm,
   type WebhookFormProps,
 } from "./WebhookForm";
+import { buildAuthInfo, channelToForm } from "./utils";
 
 interface CreateWebhookModalProps {
   isOpen: boolean;
@@ -35,8 +36,9 @@ export const EditWebhookModal = ({
       description: vals.description,
       details: {
         url: vals.url,
+        "fe-form-type": vals["fe-form-type"],
         "auth-method": vals["auth-method"],
-        "auth-info": vals["auth-info"],
+        "auth-info": buildAuthInfo(vals),
       },
     })
       .unwrap()
@@ -61,6 +63,8 @@ export const EditWebhookModal = ({
       description: channel.description,
       "auth-method": channel.details["auth-method"],
       "auth-info": channel.details["auth-info"] || { "": "" },
+      "fe-form-type": channel.details["fe-form-type"],
+      ...channelToForm(channel),
     }),
     [channel],
   );
@@ -68,12 +72,12 @@ export const EditWebhookModal = ({
   return (
     <Modal.Root opened={isOpen} onClose={onClose} size="36rem">
       <Modal.Overlay />
-      <Modal.Content p="1rem">
-        <Modal.Header mb="1.5rem">
+      <Modal.Content>
+        <Modal.Header p="2.5rem" mb="1.5rem">
           <Modal.Title>{t`Edit this webhook`}</Modal.Title>
           <Modal.CloseButton />
         </Modal.Header>
-        <Modal.Body>
+        <Modal.Body p="2.5rem">
           <WebhookForm
             onSubmit={handleSumbit}
             onCancel={onClose}

@@ -23,9 +23,11 @@ export const getChipOverrides = (): MantineThemeOverride["components"] => ({
             "&[data-checked=true]": {
               backgroundColor: "var(--mb-color-brand)",
               color: "white",
-              paddingLeft: "1rem",
-              paddingRight: "1rem",
+              paddingInline: "1rem",
             },
+          },
+          input: {
+            display: "none",
           },
         };
       },

@@ -29,6 +29,7 @@ import {
   visitQuestion,
   visitQuestionAdhoc,
   tableHeaderClick,
+  WEBHOOK_TEST_URL,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -1149,17 +1150,13 @@ describe("notifications", { tags: "@external" }, () => {
     modal().within(() => {
       cy.findByRole("heading", { name: "New alert webhook" }).should("exist");
 
-      cy.findByLabelText("Webhook URL").type(
-        "http://127.0.0.1:9080/00000000-0000-0000-0000-000000000000/404",
-      );
+      cy.findByLabelText("Webhook URL").type(`${WEBHOOK_TEST_URL}/404`);
       cy.findByLabelText("Give it a name").type("Awesome Hook");
       cy.findByLabelText("Description").type("The best hook ever");
       cy.button("Create destination").click();
 
       cy.findByText("Unable to connect channel").should("exist");
-      cy.findByLabelText("Webhook URL")
-        .clear()
-        .type("http://127.0.0.1:9080/00000000-0000-0000-0000-000000000000/");
+      cy.findByLabelText("Webhook URL").clear().type(WEBHOOK_TEST_URL);
       cy.button("Create destination").click();
     });
 
@@ -1178,6 +1175,7 @@ describe("notifications", { tags: "@external" }, () => {
     modal()
       .button(/Delete this destination/)
       .click();
+
     cy.findByRole("heading", { name: "Add a webhook" }).should("exist");
   });
 });

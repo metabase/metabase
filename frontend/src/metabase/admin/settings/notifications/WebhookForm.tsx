@@ -1,8 +1,9 @@
 import type { FormikHelpers } from "formik";
-import { t } from "ttag";
+import { t, jt } from "ttag";
 import * as Yup from "yup";
 
 import { useTestChannelMutation } from "metabase/api/channel";
+import ExternalLink from "metabase/core/components/ExternalLink";
 import {
   Form,
   FormChipGroup,
@@ -10,30 +11,40 @@ import {
   FormSubmitButton,
   FormTextInput,
 } from "metabase/forms";
-import { FormKeyValueMapping } from "metabase/forms/components/FormKeyValueMapping";
 import { useActionButtonLabel } from "metabase/hooks/use-action-button-label";
+import { getResponseErrorMessage } from "metabase/lib/errors";
+import { useSelector } from "metabase/lib/redux";
+import { getDocsUrl } from "metabase/selectors/settings";
 import { Button, Chip, Flex, Alert, Text, Group, Icon } from "metabase/ui";
-import type { NotificationAuthMethods } from "metabase-types/api";
+import type {
+  NotificationAuthMethods,
+  NotificationAuthType,
+} from "metabase-types/api";
+
+import { buildAuthInfo } from "./utils";
 
 const validationSchema = Yup.object({
   url: Yup.string()
     .url(t`Please enter a correctly formatted URL`)
-    .required(),
+    .required(t`Please enter a correctly formatted URL`),
   name: Yup.string().required(t`Please add a name`),
-  description: Yup.string().required(t`Please add a description`),
+  description: Yup.string(),
   "auth-method": Yup.string()
     .required()
     .equals(["none", "header", "query-param", "request-body"]),
+  "fe-form-type": Yup.string()
+    .required()
+    .equals(["none", "basic", "bearer", "api-key"]),
   "auth-info": Yup.object(),
 });
 
 const styles = {
-  input: {
-    fontWeight: 400,
+  wrapperProps: {
+    fw: 400,
   },
-  label: {
-    fontSize: "14px",
-    marginBottom: "0.75rem",
+  labelProps: {
+    fz: "0.875rem",
+    mb: "0.75rem",
   },
 };
 
@@ -42,11 +53,19 @@ export type WebhookFormProps = {
   name: string;
   description: string;
   "auth-method": NotificationAuthMethods;
-  "auth-info": Record<string, string>;
+  "auth-info-key": string;
+  "auth-info-value": string;
+  "auth-username": string;
+  "auth-password": string;
+  "fe-form-type": NotificationAuthType;
 };
 
 type WebhookFormikHelpers = FormikHelpers<WebhookFormProps>;
 
+// Helper function to attempt to ensure that any error that comes back
+// is in the shape that our FormSubmit logic expects. This controls
+// highlighting the correct fields, etc. The shape can be hard to
+// determine because we forward responses from alert targets
 export const handleFieldError = (e: any) => {
   if (!e.data) {
     return;
@@ -56,6 +75,73 @@ export const handleFieldError = (e: any) => {
     throw { data: { errors: { url: e.data.message } } };
   } else if (typeof e.data.errors === "object") {
     throw e;
+  }
+};
+
+const renderAuthSection = (type: string) => {
+  switch (type) {
+    case "basic":
+      return (
+        <>
+          <FormTextInput
+            name="auth-username"
+            label={t`Username`}
+            placeholder="user@email.com"
+            {...styles}
+            mb="1.5rem"
+          />
+          <FormTextInput
+            name="auth-password"
+            label={t`Password`}
+            placeholder="********"
+            {...styles}
+          />
+        </>
+      );
+    case "bearer":
+      return (
+        <FormTextInput
+          name="auth-info-value"
+          label={t`Bearer token`}
+          placeholder={t`Secret Token`}
+          {...styles}
+          mb="1.5rem"
+        />
+      );
+    case "api-key":
+      return (
+        <Flex direction="column">
+          <FormChipGroup
+            name="auth-method"
+            label={t`Add to`}
+            groupProps={{ mb: "1.5rem", mt: "0.5rem" }}
+          >
+            <Chip value="header" variant="brand">
+              {t`Header`}
+            </Chip>
+            <Chip value="query-param" variant="brand">
+              {t`Query param`}
+            </Chip>
+          </FormChipGroup>
+          <Flex gap="0.5rem">
+            <FormTextInput
+              name="auth-info-key"
+              label={t`Key`}
+              placeholder={t`API Key`}
+              {...styles}
+              mb="1.5rem"
+            />
+            <FormTextInput
+              name="auth-info-value"
+              label={t`Value`}
+              placeholder={t`API Key Value`}
+              {...styles}
+            />
+          </Flex>
+        </Flex>
+      );
+    default:
+      return null;
   }
 };
 
@@ -76,6 +162,10 @@ export const WebhookForm = ({
     useActionButtonLabel({ defaultLabel: t`Send a test` });
   const [testChannel] = useTestChannelMutation();
 
+  const docsUrl = useSelector(state =>
+    getDocsUrl(state, { page: "questions/sharing/alerts" }),
+  );
+
   const handleTest = async (
     values: WebhookFormProps,
     setFieldError: WebhookFormikHelpers["setFieldError"],
@@ -84,7 +174,7 @@ export const WebhookForm = ({
       details: {
         url: values.url,
         "auth-method": values["auth-method"],
-        "auth-info": values["auth-info"],
+        "auth-info": buildAuthInfo(values),
       },
     })
       .unwrap()
@@ -95,13 +185,10 @@ export const WebhookForm = ({
         },
         e => {
           setTestButtonLabel(t`Test failed`);
-          if (typeof e === "string") {
-            setFieldError("url", e);
-          } else if (typeof e.data === "string") {
-            setFieldError("url", e.data);
-          } else if (e.data?.message) {
-            setFieldError("url", e.data.message);
-          }
+          const message =
+            typeof e === "string" ? e : getResponseErrorMessage(e);
+
+          setFieldError("url", message);
         },
       );
   };
@@ -112,7 +199,7 @@ export const WebhookForm = ({
       onSubmit={onSubmit}
       validationSchema={validationSchema}
     >
-      {({ dirty, values, setFieldError }) => (
+      {({ dirty, values, setFieldError, setFieldValue }) => (
         <Form>
           <Alert
             variant="light"
@@ -122,15 +209,19 @@ export const WebhookForm = ({
             py="1rem"
             radius="0.5rem"
           >
-            <Text>{t`You can send the payload of any Alert to this destination whenever the Alert is triggered. Learn about Alerts`}</Text>
+            <Text>{jt`You can send the payload of any Alert to this destination whenever the Alert is triggered. ${(
+              <ExternalLink href={docsUrl}>
+                {t`Learn about Alerts`}
+              </ExternalLink>
+            )}`}</Text>
           </Alert>
           <Flex align="end" mb="1.5rem" gap="1rem">
             <FormTextInput
               name="url"
-              label="Webhook URL"
+              label={t`Webhook URL`}
               placeholder="http://hooks.example.com/hooks/catch/"
-              styles={styles}
               style={{ flexGrow: 1 }}
+              {...styles}
               maw="21rem"
             />
             <Button
@@ -142,45 +233,48 @@ export const WebhookForm = ({
           </Flex>
           <FormTextInput
             name="name"
-            label="Give it a name"
-            placeholder="Hooky McHookerson"
-            styles={styles}
+            label={t`Give it a name`}
+            placeholder={t`Something descriptive`}
+            {...styles}
             mb="1.5rem"
             maw="14.5rem"
           />
           <FormTextInput
             name="description"
-            label="Description"
-            placeholder="Where is this going and what does it send?"
-            styles={styles}
+            label={t`Description`}
+            placeholder={t`Where is this going and what does it send?`}
+            {...styles}
             mb="1.5rem"
             maw="21rem"
           />
           <FormChipGroup
-            name="auth-method"
-            label="Authentication method"
-            groupProps={{ mb: "1.5rem" }}
+            name="fe-form-type"
+            label={t`Authentication method`}
+            groupProps={{ mb: "1.5rem", mt: "0.5rem" }}
+            onChange={val => {
+              if (val === "none") {
+                setFieldValue("auth-method", "none");
+              } else {
+                setFieldValue("auth-method", "header");
+              }
+            }}
           >
             <Chip value="none" variant="brand">
-              None
+              {t`None`}
             </Chip>
-            <Chip value="query-param" variant="brand">
-              Url params
+            <Chip value="basic" variant="brand">
+              {t`Basic`}
             </Chip>
-            <Chip value="header" variant="brand">
-              HTTP headers
+            <Chip value="bearer" variant="brand">
+              {t`Bearer`}
             </Chip>
-            <Chip value="request-body" variant="brand">
-              Request body
+            <Chip value="api-key" variant="brand">
+              {t`API Key`}
             </Chip>
           </FormChipGroup>
-          {values["auth-method"] !== "none" && (
-            <FormKeyValueMapping
-              name="auth-info"
-              label="Auth info"
-              mappingEditorProps={{ addButtonProps: { pl: 0 } }}
-            />
-          )}
+
+          {renderAuthSection(values["fe-form-type"])}
+
           <Flex
             mt="1.5rem"
             justify={onDelete ? "space-between" : "end"}
