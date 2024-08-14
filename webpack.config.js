@@ -32,7 +32,6 @@ const devMode = WEBPACK_BUNDLE !== "production";
 const useFilesystemCache = process.env.FS_CACHE === "true";
 const edition = process.env.MB_EDITION || "oss";
 const shouldEnableHotRefresh = WEBPACK_BUNDLE === "hot";
-
 // Babel:
 const BABEL_CONFIG = {
   cacheDirectory: process.env.BABEL_DISABLE_CACHE ? false : ".babel_cache",
@@ -310,6 +309,7 @@ const config = {
     new webpack.EnvironmentPlugin({
       WEBPACK_BUNDLE: "development",
       MB_LOG_ANALYTICS: "false",
+      REACT_APP_WEBSOCKET_SERVER: process.env.REACT_APP_WEBSOCKET_SERVER || "ws://localhost:8090"
     }),
     // https://github.com/remarkjs/remark/discussions/903
     new webpack.ProvidePlugin({ process: "process/browser.js" }),
