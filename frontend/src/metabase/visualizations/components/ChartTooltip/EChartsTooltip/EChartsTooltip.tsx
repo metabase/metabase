@@ -1,5 +1,6 @@
 import cx from "classnames";
 import type React from "react";
+import _ from "underscore";
 
 import TooltipStyles from "./EChartsTooltip.module.css";
 
@@ -12,7 +13,7 @@ export interface EChartsTooltipRow {
 }
 
 export interface EChartsTooltipFooter {
-  markerSymbol: string;
+  markerSymbol?: string;
   name: string;
   values: React.ReactNode[];
 }
@@ -21,6 +22,7 @@ export interface EChartsTooltipModel {
   header?: string;
   rows: EChartsTooltipRow[];
   footer?: EChartsTooltipFooter;
+  showMarkers?: boolean;
 }
 
 export type EChartsTooltipProps = EChartsTooltipModel;
@@ -29,6 +31,7 @@ export const EChartsTooltip = ({
   header,
   rows,
   footer,
+  showMarkers = true,
 }: EChartsTooltipProps) => {
   return (
     <div>
@@ -39,13 +42,20 @@ export const EChartsTooltip = ({
         })}
       >
         <tbody>
-          {rows.map((row, index) => (
-            <TooltipRow key={index} {...row} />
-          ))}
+          {rows.map((row, index) => {
+            return (
+              <TooltipRow
+                key={index}
+                {...(showMarkers ? row : _.omit(row, "markerColorClass"))}
+              />
+            );
+          })}
         </tbody>
         {footer != null && (
           <tfoot>
-            <FooterRow {...footer} />
+            <FooterRow
+              {...(showMarkers ? footer : _.omit(footer, "markerSymbol"))}
+            />
           </tfoot>
         )}
       </table>

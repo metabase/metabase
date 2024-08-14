@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { isNotNull } from "metabase/lib/types";
 
 import type { BaseCartesianChartModel } from "../cartesian/model/types";
+import type { PieChartModel } from "../pie/model/types";
 
 export const getMarkerColorClass = (hexColor: string) => {
   return `marker-${hexColor.slice(1, 7)}`;
@@ -46,6 +47,14 @@ export const useCartesianChartSeriesColorsClasses = (
         .filter(isNotNull),
     [chartModel],
   );
+
+  return useInjectSeriesColorsClasses(hexColors);
+};
+
+export const usePieChartValuesColorsClasses = (chartModel: PieChartModel) => {
+  const hexColors = useMemo(() => {
+    return chartModel.slices.map(slice => slice.data.color);
+  }, [chartModel.slices]);
 
   return useInjectSeriesColorsClasses(hexColors);
 };
