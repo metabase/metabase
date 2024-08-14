@@ -38,7 +38,7 @@ export async function askForDatabaseConnectionInfo(options: Options) {
     const shouldShowField =
       !visibleIf ||
       Object.entries(visibleIf).every(
-        ([key, expected]) => connection[key] === expected,
+        ([key, expected]) => !!connection[key] === !!expected,
       );
 
     // Skip fields that should be hidden
