@@ -23,6 +23,7 @@ export const saveChartImage = async (selector: string, fileName: string) => {
 
   const { default: html2canvas } = await import("html2canvas");
   const canvas = await html2canvas(node, {
+    scale: 2,
     useCORS: true,
   });
 
