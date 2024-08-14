@@ -103,6 +103,7 @@ function CreateDashboardForm({
   return (
     <FormProvider
       initialValues={computedInitialValues}
+      enableReinitialize
       validationSchema={DASHBOARD_SCHEMA}
       onSubmit={handleCreate}
     >

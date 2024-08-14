@@ -1,6 +1,8 @@
 import Modal from "metabase/components/Modal";
 import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
+import Collections from "metabase/entities/collections";
 import type { CollectionId, Dashboard } from "metabase-types/api";
+import type { State } from "metabase-types/store";
 
 export interface DashboardCreateModalProps {
   collectionId?: CollectionId | null;
@@ -8,7 +10,7 @@ export interface DashboardCreateModalProps {
   onClose?: () => void;
 }
 
-export const DashboardCreateModal = (props: DashboardCreateModalProps) => {
+export const DashboardCreateModalInner = (props: DashboardCreateModalProps) => {
   const { collectionId, onCreate, onClose } = props;
 
   return (
@@ -21,3 +23,8 @@ export const DashboardCreateModal = (props: DashboardCreateModalProps) => {
     </Modal>
   );
 };
+
+export const DashboardCreateModal = Collections.load({
+  id: (_state: State, props: DashboardCreateModalProps) => props.collectionId,
+  loadingAndErrorWrapper: false,
+})(DashboardCreateModalInner);

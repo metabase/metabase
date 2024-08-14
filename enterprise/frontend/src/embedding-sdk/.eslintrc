@@ -1,0 +1,15 @@
+{
+  "rules": {
+    "no-restricted-imports": [
+      "error",
+      {
+        "paths": [
+          {
+            "name": "metabase/lib/redux",
+            "message": "Please use \"useSdkStore\", \"useSdkDispatch\""
+          }
+        ]
+      }
+    ]
+  }
+}

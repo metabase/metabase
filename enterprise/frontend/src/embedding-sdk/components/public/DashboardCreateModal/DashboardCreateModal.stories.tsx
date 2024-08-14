@@ -44,13 +44,11 @@ const HookTemplate: ComponentStory<
   const props: DashboardCreateParameters = {
     name: "Test",
     description: null,
-    collection_id: null,
+    collectionId: null,
   };
 
   const handleDashboardCreate = async () => {
     const dashboard = await createDashboard(props);
-    // eslint-disable-next-line no-console
-    console.log("Created empty dashboard", dashboard.id, { dashboard });
 
     setDashboard(dashboard);
   };
@@ -67,7 +65,6 @@ const HookTemplate: ComponentStory<
 };
 
 export const Hook = HookTemplate.bind({});
-HookTemplate.args = {};
 
 const FullWorkflowExampleTemplate: ComponentStory<
   JSXElementConstructor<Record<string, never>>
@@ -84,4 +81,3 @@ const FullWorkflowExampleTemplate: ComponentStory<
 };
 
 export const FullWorkflowExample = FullWorkflowExampleTemplate.bind({});
-FullWorkflowExampleTemplate.args = {};
