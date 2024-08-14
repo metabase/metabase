@@ -55,14 +55,17 @@ export const InteractiveQuestionProvider = ({
 }: InteractiveQuestionProviderProps) => {
   const {
     question,
+    originalQuestion,
+
     queryResults,
 
     isQuestionLoading,
     isQueryRunning,
 
+    runQuestion,
     loadQuestion,
-    onQuestionChange,
-    onNavigateToNewCard,
+    updateQuestion,
+    navigateToNewCard,
   } = useLoadQuestion({
     cardId,
     options,
@@ -85,14 +88,18 @@ export const InteractiveQuestionProvider = ({
     resetQuestion: loadQuestion,
     onReset: onReset || loadQuestion,
     onNavigateBack,
-    onQuestionChange,
-    onNavigateToNewCard,
+    runQuestion,
+    updateQuestion,
+    navigateToNewCard,
     plugins: combinedPlugins,
     question,
+    originalQuestion,
     queryResults,
     mode,
   };
 
+  // When the `cardId` changes, the reference to the loadQuestion method changes,
+  // and the question will be reloaded. We should improve this to be more obvious.
   useEffect(() => {
     loadQuestion();
   }, [loadQuestion]);

@@ -93,24 +93,33 @@
 
 (defn- aggregation-stage-index
   [stages]
-  (count (take-while :qp/stage-is-from-source-card stages)))
+  (count (take-while (complement (comp find-metric-ids :aggregation)) stages)))
+
+(defn- add-join-aliases
+  [x source-field->join-alias]
+  (lib.util.match/replace x
+    [:field (opts :guard (every-pred (comp source-field->join-alias :source-field) (complement :join-alias))) _]
+    (assoc-in &match [1 :join-alias] (-> opts :source-field source-field->join-alias))))
 
 (defn- include-implicit-joins
   [query agg-stage-index metric-query]
   (let [metric-joins (lib/joins metric-query -1)
         existing-joins (into #{}
                              (map (juxt :fk-field-id :alias))
-                             (lib/joins query agg-stage-index))]
-    (reduce #(lib/join %1 agg-stage-index %2)
-            query
-            (remove (comp existing-joins (juxt :fk-field-id :alias)) metric-joins))))
+                             (lib/joins query agg-stage-index))
+        new-joins (remove (comp existing-joins (juxt :fk-field-id :alias)) metric-joins)
+        source-field->join-alias (dissoc (into {} (map (juxt :fk-field-id :alias)) new-joins) nil)
+        query-with-joins (reduce #(lib/join %1 agg-stage-index %2)
+                                 query
+                                 new-joins)]
+    (lib.util/update-query-stage query-with-joins agg-stage-index add-join-aliases source-field->join-alias)))
 
 (defn splice-compatible-metrics
   "Splices in metric definitions that are compatible with the query."
   [query path expanded-stages]
-  (let [agg-stage-index (aggregation-stage-index (:stages query))]
+  (let [agg-stage-index (aggregation-stage-index expanded-stages)]
     (if-let [lookup (->> expanded-stages
-                         (drop-while :qp/stage-is-from-source-card)
+                         (drop agg-stage-index)
                          first
                          :aggregation
                          (fetch-referenced-metrics query))]
@@ -237,10 +246,10 @@
       A query built from a `:source-card` of `:type :metric` can reference itself."
   [query]
   (let [query (lib.walk/walk
-                query
-                (fn [_query path-type path stage-or-join]
-                  (when (= path-type :lib.walk/join)
-                    (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
+               query
+               (fn [_query path-type path stage-or-join]
+                 (when (= path-type :lib.walk/join)
+                   (update stage-or-join :stages #(adjust-metric-stages query path %)))))]
     (u/prog1
       (update query :stages #(adjust-metric-stages query nil %))
       (when-let [metric (lib.util.match/match-one <>
