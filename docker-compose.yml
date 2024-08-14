@@ -6,6 +6,12 @@ services:
       dockerfile: Dockerfile
     expose:
       - '3000'
+    environment:
+      - MB_EMAIL_SMTP_PASSWORD=${MB_EMAIL_SMTP_PASSWORD}
+      - MB_EMAIL_SMTP_USERNAME=${MB_EMAIL_SMTP_USERNAME}
+      - MB_EMAIL_SMTP_SECURITY=${MB_EMAIL_SMTP_SECURITY}
+      - MB_EMAIL_SMTP_HOST=${MB_EMAIL_SMTP_HOST}
+      - MB_EMAIL_SMTP_PORT=${MB_EMAIL_SMTP_PORT}
     restart: always
     networks:
       - dokploy-network
