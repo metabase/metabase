@@ -74,8 +74,8 @@ export const pickDatabaseTables: CliStepMethod = async state => {
   spinner.succeed();
 
   const chosenTables = await checkbox({
-    validate: choices => choices.length > 0,
-    message: "Select the tables to embed:",
+    validate: choices => choices.length > 0 && choices.length <= 3,
+    message: "Pick 1 - 3 tables to embed:",
     choices: tables.map(table => ({
       name: table.name,
       value: table,
