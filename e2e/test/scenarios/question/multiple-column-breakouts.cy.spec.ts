@@ -14,6 +14,7 @@ import {
   tableInteractiveBody,
   visualize,
   summarize,
+  tableHeaderClick,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
@@ -172,15 +173,30 @@ describe("scenarios > question > multiple column breakouts", () => {
         });
       });
     });
+
+    describe("viz settings", () => {
+      it("should be able to change formatting settings for breakouts of the same column", () => {
+        createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+        tableHeaderClick("Created At: Year");
+        popover().icon("gear").click();
+        popover().findByDisplayValue("Created At: Year").clear().type("Year");
+        cy.get("body").click();
+        tableHeaderClick("Created At: Month");
+        popover().icon("gear").click();
+        popover().findByDisplayValue("Created At: Month").clear().type("Month");
+        cy.get("body").click();
+        assertTableData({ columns: ["Year", "Month", "Count"] });
+      });
+    });
   });
 });
 
 interface TableOpts {
-  columns: string[];
-  rows: string[][];
+  columns?: string[];
+  rows?: string[][];
 }
 
-function assertTableData({ columns, rows }: TableOpts) {
+function assertTableData({ columns = [], rows = [] }: TableOpts) {
   tableInteractive()
     .findAllByTestId("header-cell")
     .should("have.length", columns.length);
