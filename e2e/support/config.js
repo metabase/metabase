@@ -50,7 +50,9 @@ const defaultConfig = {
     // `config` is the resolved Cypress config
 
     // cypress-terminal-report
-    installLogsPrinter(on);
+    if (process.env.CYPRESS_CI) {
+      installLogsPrinter(on);
+    }
 
     /********************************************************************
      **                        PREPROCESSOR                            **

@@ -93,24 +93,30 @@ Cypress.on("window:load", window => {
 });
 
 // cypress-terminal-report
-afterEach(() => {
-  cy.wait(50, { log: false }).then(() =>
-    cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
-  );
-});
+if (Cypress.env("CI")) {
+  afterEach(() => {
+    cy.wait(50, { log: false }).then(() =>
+      cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
+    );
+  });
 
-const options = {
-  collectTypes: [
-    "cons:log",
-    "cons:info",
-    // 'cons:warn', - intentionally disabled because of noise from mbql
-    "cons:error",
-    "cy:log",
-    "cy:xhr",
-    "cy:request",
-    "cy:intercept",
-    "cy:command",
-  ],
-};
-// Ensure that after plugin installation is after the afterEach handling the integration.
-require("cypress-terminal-report/src/installLogsCollector")(options);
+  const options = {
+    collectTypes: [
+      "cons:log",
+      "cons:info",
+      // 'cons:warn', - intentionally disabled because of noise from mbql
+      "cons:error",
+      "cy:log",
+      "cy:xhr",
+      "cy:request",
+      "cy:intercept",
+      "cy:command",
+    ],
+    xhr: {
+      printBody: false,
+    },
+  };
+
+  // Ensure that after plugin installation is after the afterEach handling the integration.
+  require("cypress-terminal-report/src/installLogsCollector")(options);
+}
