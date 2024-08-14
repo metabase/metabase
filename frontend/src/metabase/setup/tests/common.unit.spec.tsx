@@ -219,16 +219,16 @@ describe("setup (OSS)", () => {
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
-      await screen.getByText("I'll add my data later").click();
-      await screen.getByText("Finish").click();
+      await userEvent.click(screen.getByText("I'll add my data later"));
+      await userEvent.click(screen.getByText("Finish"));
 
-      screen
-        .getByText(
+      await userEvent.click(
+        screen.getByText(
           "Get infrequent emails about new releases and feature updates.",
-        )
-        .click();
+        ),
+      );
 
-      screen.getByText("Take me to Metabase").click();
+      await userEvent.click(screen.getByText("Take me to Metabase"));
 
       const formData = new FormData();
       formData.append("EMAIL", "john@example.org"); // email from user step
@@ -247,10 +247,11 @@ describe("setup (OSS)", () => {
       await submitUserInfoStep();
       await selectUsageReason("self-service-analytics");
       await clickNextStep();
-      await screen.getByText("I'll add my data later").click();
-      await screen.getByText("Finish").click();
+      await userEvent.click(screen.getByText("I'll add my data later"));
 
-      screen.getByText("Take me to Metabase").click();
+      await userEvent.click(screen.getByText("Finish"));
+
+      userEvent.click(screen.getByText("Take me to Metabase"));
 
       expect(window.navigator.sendBeacon).not.toHaveBeenCalled();
     });
