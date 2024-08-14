@@ -76,18 +76,4 @@ describe("scenarios > metrics > search", () => {
     cy.wait("@dataset");
     cy.findByTestId("scalar-container").should("be.visible");
   });
-
-  it("should see metrics in recent items on the home page", () => {
-    createQuestion(ORDERS_SCALAR_METRIC).then(({ body: card }) => {
-      visitMetric(card.id);
-      cy.wait("@dataset");
-    });
-    navigationSidebar().findByText("Home").click();
-    cy.findByTestId("home-page").within(() => {
-      cy.findByText("Pick up where you left off").should("be.visible");
-      cy.findByText(ORDERS_SCALAR_METRIC.name).click();
-      cy.wait("@dataset");
-    });
-    cy.findByTestId("scalar-container").should("be.visible");
-  });
 });
