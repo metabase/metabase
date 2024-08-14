@@ -338,6 +338,30 @@ describe("parameters/utils/targets", () => {
             ]),
           );
         });
+
+        it("complex 1-stage query", () => {
+          const question = createModel(createComplex1StageQuery(), [
+            createMockField({ display_name: "Created At" }),
+            createMockField({ display_name: "User's 18th birthday" }),
+            createMockField({ display_name: "Reviews - Product → Created At" }),
+            createMockField({ display_name: "Product → Created At" }),
+            createMockField({ display_name: "Count" }),
+            createMockField({ display_name: "Sum of Total" }),
+          ]);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
+
+          expect(columnsInfos).toEqual([
+            ...withColumnsStage(-1, [
+              ["Question", "Created At"],
+              ["Question", "User's 18th birthday"],
+              ["Question", "Reviews - Product → Created At"],
+              ["Question", "Product → Created At"],
+              ["Question", "Count"],
+              ["Question", "Sum of Total"],
+            ]),
+          ]);
+        });
       });
     });
 
@@ -407,7 +431,7 @@ describe("parameters/utils/targets", () => {
         it("non-date breakout - returns no columns", () => {
           const question = createModel(queryNonDateBreakout, [
             createOrdersQuantityField(),
-            createCountField(),
+            createMockField({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -417,7 +441,7 @@ describe("parameters/utils/targets", () => {
         it("1 date breakout - returns 1 date column", () => {
           const question = createModel(query1DateBreakout, [
             createOrdersCreatedAtField(),
-            createCountField(),
+            createMockField({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -428,7 +452,7 @@ describe("parameters/utils/targets", () => {
           const question = createModel(query2DateBreakouts, [
             createOrdersCreatedAtField(),
             createProductsCreatedAtField(),
-            createCountField(),
+            createMockField({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -438,7 +462,7 @@ describe("parameters/utils/targets", () => {
         it("date breakouts in multiple stages - returns date column from the last stage only", () => {
           const question = createModel(queryDateBreakoutsMultiStage, [
             createOrdersCreatedAtField(),
-            createCountField(),
+            createMockField({ display_name: "Count" }),
           ]);
           const { columns } = getParameterColumns(question, parameter);
 
@@ -578,17 +602,6 @@ function createDateParameter() {
 
 function createQuestion(query: Lib.Query) {
   return new Question(createMockCard(), metadata).setQuery(query);
-}
-
-function createCountField() {
-  return createMockField({
-    display_name: "Count",
-    semantic_type: "type/Quantity",
-    field_ref: ["aggregation", 0],
-    base_type: "type/BigInteger",
-    effective_type: "type/BigInteger",
-    name: "count",
-  });
 }
 
 function createModel(
