@@ -107,7 +107,7 @@ const CUSTOM_EXPRESSIONS_USED = [
   "count",
 ];
 
-describeWithSnowplow("scenarios > question > column compare TODO", () => {
+describeWithSnowplow("scenarios > question > column compare", () => {
   beforeEach(() => {
     restore();
     resetSnowplow();
@@ -881,4 +881,5 @@ function verifyBreakoutRequiredError() {
 
 function openVisualization() {
   cy.button("Show Visualization").click();
+  cy.findByTestId("visualization-root").should("be.visible");
 }
