@@ -68,7 +68,6 @@ export const getTooltipModel = (
       ? {
           name: t`Total`,
           values: [formatters.formatMetric(rowsTotal), "100%"],
-          markerSymbol: "=",
         }
       : undefined,
   };

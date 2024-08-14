@@ -538,7 +538,6 @@ export const getStackedTooltipModel = (
       ? {
           name: t`Total`,
           values: [formatter(rowsTotal), "100%"],
-          markerSymbol: "=",
         }
       : undefined,
   };

@@ -13,7 +13,6 @@ export interface EChartsTooltipRow {
 }
 
 export interface EChartsTooltipFooter {
-  markerSymbol?: string;
   name: string;
   values: React.ReactNode[];
 }
@@ -33,7 +32,6 @@ export const EChartsTooltip = ({
   footer,
   showMarkers = true,
 }: EChartsTooltipProps) => {
-  const hasFocusedRow = rows.some(row => row.isFocused);
   return (
     <div>
       {header != null && <div className={TooltipStyles.Header}>{header}</div>}
@@ -48,7 +46,6 @@ export const EChartsTooltip = ({
               <TooltipRow
                 key={index}
                 {...(showMarkers ? row : _.omit(row, "markerColorClass"))}
-                isFocused={!hasFocusedRow || row.isFocused}
               />
             );
           })}
@@ -56,7 +53,8 @@ export const EChartsTooltip = ({
         {footer != null && (
           <tfoot>
             <FooterRow
-              {...(showMarkers ? footer : _.omit(footer, "markerSymbol"))}
+              {...footer}
+              markerContent={showMarkers ? <span /> : null}
             />
           </tfoot>
         )}
@@ -74,7 +72,7 @@ const TooltipRow = ({
   isFocused,
 }: TooltipRowProps) => (
   <BaseRow
-    className={cx({ [TooltipStyles.RowFaded]: !isFocused })}
+    className={cx({ [TooltipStyles.RowFocused]: isFocused })}
     name={name}
     values={values}
     markerContent={
@@ -85,14 +83,17 @@ const TooltipRow = ({
   />
 );
 
-type FooterRowProps = EChartsTooltipFooter;
-
-const FooterRow = ({ name, values, markerSymbol }: FooterRowProps) => (
+const FooterRow = ({
+  name,
+  values,
+  className,
+  markerContent,
+}: BaseRowProps) => (
   <BaseRow
-    className={TooltipStyles.FooterRow}
+    className={cx(TooltipStyles.FooterRow, className)}
     name={name}
     values={values}
-    markerContent={markerSymbol}
+    markerContent={markerContent}
   />
 );
 
