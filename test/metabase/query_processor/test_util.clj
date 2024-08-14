@@ -73,11 +73,6 @@
 
 (alter-meta! #'normal-drivers-without-feature assoc :arglists (list (into ['&] (sort driver/features))))
 
-(defn ^:deprecated normal-drivers-except
-  "Return the set of all drivers except Druid and those in `excluded-drivers`."
-  [excluded-drivers]
-  (set/difference (normal-drivers) (set excluded-drivers)))
-
 ;; Predefinied Column Fns: These are meant for inclusion in the expected output of the QP tests, to save us from
 ;; writing the same results several times
 

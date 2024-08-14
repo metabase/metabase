@@ -191,7 +191,6 @@
   formatted-rows
   nest-query
   normal-drivers
-  normal-drivers-except
   normal-drivers-with-feature
   normal-drivers-without-feature
   rows
