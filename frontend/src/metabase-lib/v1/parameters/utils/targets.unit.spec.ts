@@ -292,15 +292,6 @@ describe("parameters/utils/targets", () => {
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          const summaryColumns = [
-            ["Orders", "Created At: Month"],
-            ["Products", "Created At: Year"],
-            ["Reviews", "Created At: Quarter"],
-            [undefined, "User's 18th birthday"],
-            [undefined, "Count"],
-            [undefined, "Sum of Total"],
-          ];
-
           expect(columnsInfos).toEqual([
             ...withColumnsStage(-2, ordersColumns),
             withColumnStage(-2, [undefined, "User's 18th birthday"]),
@@ -308,7 +299,14 @@ describe("parameters/utils/targets", () => {
             ...withColumnsStage(-2, productsColumns),
             ...withColumnsStage(-2, peopleColumns),
             ...withColumnsStage(-2, productsColumns),
-            ...withColumnsStage(-1, summaryColumns),
+            ...withColumnsStage(-1, [
+              ["Orders", "Created At: Month"],
+              ["Products", "Created At: Year"],
+              ["Reviews", "Created At: Quarter"],
+              [undefined, "User's 18th birthday"],
+              [undefined, "Count"],
+              [undefined, "Sum of Total"],
+            ]),
           ]);
         });
 
@@ -317,23 +315,26 @@ describe("parameters/utils/targets", () => {
           const { query, columns } = getParameterColumns(question, parameter);
           const columnsInfos = getColumnsInfos(query, columns);
 
-          const summaryColumns = [
-            ["Orders", "Created At: Month"],
-            ["Products", "Created At: Year"],
-            ["Reviews", "Created At: Quarter"],
-            [undefined, "User's 18th birthday"],
-            [undefined, "Count"],
-            [undefined, "Sum of Total"],
-          ];
-
           expect(columnsInfos).toEqual([
-            ...withColumnsStage(-2, ordersColumns),
-            withColumnStage(-2, [undefined, "User's 18th birthday"]),
-            ...withColumnsStage(-2, reviewsJoinProductsColumns),
-            ...withColumnsStage(-2, productsColumns),
-            ...withColumnsStage(-2, peopleColumns),
-            ...withColumnsStage(-2, productsColumns),
-            ...withColumnsStage(-1, summaryColumns),
+            ...withColumnsStage(-2, [
+              ["Orders", "Created At: Month"],
+              ["Products", "Created At: Year"],
+              ["Reviews", "Created At: Quarter"],
+              [undefined, "User's 18th birthday"],
+              [undefined, "Count"],
+              [undefined, "Sum of Total"],
+            ]),
+            withColumnStage(-2, [undefined, "Count + 1"]),
+            ...withColumnsStage(-2, [
+              ["Reviews", "Reviews - Created At: Quarter → Body"],
+              ["Reviews", "Reviews - Created At: Quarter → Created At"],
+              ["Reviews", "Reviews - Created At: Quarter → ID"],
+              ["Reviews", "Reviews - Created At: Quarter → Product ID"],
+              ["Reviews", "Reviews - Created At: Quarter → Rating"],
+              ["Reviews", "Reviews - Created At: Quarter → Reviewer"],
+            ]),
+            withColumnStage(-1, [undefined, "User's 18th birthday"]),
+            withColumnStage(-1, [undefined, "Count"]),
           ]);
         });
       });
@@ -585,8 +586,29 @@ function createComplex2StageQuery() {
   const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, -1));
   const countColumn = findColumn(null, "count");
 
+  const stageIndex = -1;
+  const {
+    table,
+    defaultStrategy,
+    defaultOperator,
+    findLHSColumn,
+    findRHSColumn,
+  } = getJoinQueryHelpers(baseQuery, stageIndex, REVIEWS_ID);
+
+  const createdAt = findLHSColumn("ORDERS", "CREATED_AT");
+  const reviewsCreatedAt = findRHSColumn("REVIEWS", "CREATED_AT");
+  const condition = Lib.joinConditionClause(
+    baseQuery,
+    stageIndex,
+    defaultOperator,
+    reviewsCreatedAt,
+    createdAt,
+  );
+  const join = Lib.joinClause(table, [condition], defaultStrategy);
+  const queryWithJoin = Lib.join(baseQuery, stageIndex, join);
+
   return createQueryWithClauses({
-    query: createComplex1StageQuery(),
+    query: queryWithJoin,
     expressions: [
       {
         name: "Count + 1",
@@ -595,7 +617,7 @@ function createComplex2StageQuery() {
       },
     ],
     aggregations: [{ operatorName: "count" }],
-    // breakouts: [],
+    breakouts: [{ columnName: "User's 18th birthday" }],
   });
 }
 
