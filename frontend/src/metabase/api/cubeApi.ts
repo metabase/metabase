@@ -3,9 +3,12 @@ export { skipToken };
 
 import { TAG_TYPES } from "./tags";
 
+
+const semantic = process.env.REACT_APP_SEMANTIC
+
 export const CubeApi = createApi({
   reducerPath: "cube-api",
   tagTypes: TAG_TYPES,
-  baseQuery: fetchBaseQuery({baseUrl: "http://localhost:3001"}),
+  baseQuery: fetchBaseQuery({baseUrl: semantic}),
   endpoints: () => ({}),
 });

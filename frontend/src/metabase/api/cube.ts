@@ -4,15 +4,14 @@ import { CubeApi } from "./cubeApi";
 import { provideCubeDataTags } from "./tags";
 import { invalidateTags, tag, idTag } from "./tags";
 
+const {CUBE_JS_TOKEN} = process.env
+
 export const cubeDataApi = CubeApi.injectEndpoints({
     endpoints: builder => ({
         getCubeData: builder.query<CubeDataResponse, GetCubeDataRequest | void>({
             query: () => ({
                 method: 'GET',
                 url: `/company/company-cube-files/omni_test`,
-                headers: {
-                    'Authorization': 'CUBEJS-TOKEN eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpYXQiOjE3MjA2MDE4MDQsImV4cCI6MTcyMDY4ODIwNH0.BgbsrxCm_zJ6BWGhaL5i5vuz-bLVtICBoirUDJzVwUQ', 
-                }
             }),
             transformResponse: (response: Record<string, unknown>) => {
                 return Object.entries(response).map(([fileName, content]) => ({
