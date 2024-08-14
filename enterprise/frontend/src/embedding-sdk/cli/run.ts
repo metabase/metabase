@@ -5,7 +5,6 @@ import {
   getMetabaseInstanceSetupCompleteMessage,
 } from "./constants/messages";
 import {
-  addEmbeddingToken,
   checkIsDockerRunning,
   createApiKey,
   generateCredentials,
@@ -19,6 +18,7 @@ import {
   pickDatabaseTables,
   createModelsAndXrays,
   generateReactComponentFiles,
+  setupLicense,
 } from "./steps";
 import type { CliState } from "./types/cli";
 import { printEmptyLines, printInfo } from "./utils/print";
@@ -27,7 +27,6 @@ export const CLI_STEPS = [
   { id: "showMetabaseCliTitle", executeStep: showMetabaseCliTitle },
   { id: "checkIfReactProject", executeStep: checkIfReactProject },
   { id: "checkSdkAvailable", executeStep: checkSdkAvailable },
-  { id: "addEmbeddingToken", executeStep: addEmbeddingToken },
   { id: "checkIsDockerRunning", executeStep: checkIsDockerRunning },
   { id: "generateCredentials", executeStep: generateCredentials },
   {
@@ -44,6 +43,7 @@ export const CLI_STEPS = [
     id: "generateReactComponentFiles",
     executeStep: generateReactComponentFiles,
   },
+  { id: "setupLicense", executeStep: setupLicense },
 ] as const;
 
 export async function runCli() {
