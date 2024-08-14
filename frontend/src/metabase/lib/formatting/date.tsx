@@ -66,6 +66,10 @@ const DATE_STYLE_TO_FORMAT: DATE_STYLE_TO_FORMAT_TYPE = {
     week: "MMMM D, YYYY",
     month: "MMMM YYYY",
   },
+  "dddd, D MMMM YYYY": {
+    week: "D MMMM YYYY",
+    month: "MMMM YYYY",
+  },
 };
 
 const DATE_RANGE_MONTH_PLACEHOLDER = "<MONTH>";
