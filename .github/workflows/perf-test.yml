@@ -75,7 +75,7 @@ jobs:
   launch_perf_test:
     needs: [ build ]
     runs-on: ubuntu-latest
-    name: PR Review ENV
+    name: Launch Perf Test
     permissions:
       id-token: write
       contents: read
