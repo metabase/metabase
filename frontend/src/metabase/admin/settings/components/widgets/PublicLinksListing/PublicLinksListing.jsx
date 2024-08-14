@@ -48,7 +48,7 @@ class PublicLinksListing extends Component {
       await this.props.revoke(link);
       this.load();
     } catch (error) {
-      alert(error);
+      window.alert(error);
     }
   }
 

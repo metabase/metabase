@@ -30,7 +30,7 @@ export const LogoBadge = ({ dark }: { dark: boolean }) => {
 function getHostAppUrlDomain() {
   // based on https://stackoverflow.com/questions/3420004/access-parent-url-from-iframe
   let referrerUrl =
-    parent !== window ? document.referrer : document.location.href;
+    window.parent !== window ? document.referrer : document.location.href;
 
   // remove trailing slash
   referrerUrl = referrerUrl.replace(/\/+$/, "");

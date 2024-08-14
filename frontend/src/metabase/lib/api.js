@@ -277,7 +277,7 @@ export class Api extends EventEmitter {
     const signal = options.signal ?? controller.signal;
     options.cancelled?.then(() => controller.abort());
 
-    const requestUrl = new URL(this.basename + url, location.origin);
+    const requestUrl = new URL(this.basename + url, window.location.origin);
     const request = new Request(requestUrl.href, {
       method,
       headers,

@@ -44,7 +44,7 @@ const useCopyButton = (value: string) => {
   const [isCopied, setIsCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(value);
+    window.navigator.clipboard.writeText(value);
     setIsCopied(true);
   }, [value]);
 

@@ -49,7 +49,10 @@ export const createSessionMiddleware = (
               store.dispatch(replace(redirectUrl));
             }
           } else {
-            const url = location.pathname + location.search + location.hash;
+            const url =
+              window.location.pathname +
+              window.location.search +
+              window.location.hash;
             store.dispatch(logout(url));
           }
         }

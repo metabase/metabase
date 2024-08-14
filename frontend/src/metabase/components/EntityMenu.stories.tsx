@@ -26,7 +26,7 @@ const items = [
   {
     icon: "bolt",
     title: "Option 3 - Action",
-    action: () => alert("Yo"),
+    action: () => window.alert("Yo"),
   },
 ];
 

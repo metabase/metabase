@@ -4,7 +4,7 @@ import * as downloads from "./downloads";
 
 describe("getDatasetResponse", () => {
   describe("normal deployment", () => {
-    const origin = location.origin; // http://localhost
+    const origin = window.location.origin; // http://localhost
 
     it("should handle absolute URLs", () => {
       const url = `${origin}/embed/question/123.xlsx`;

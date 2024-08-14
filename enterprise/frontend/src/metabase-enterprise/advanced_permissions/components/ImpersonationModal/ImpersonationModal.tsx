@@ -88,7 +88,7 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
   const dispatch = useDispatch();
 
   const close = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
+    dispatch(push(getParentPath(route, window.location)));
   }, [dispatch, route]);
 
   const handleSave = useCallback(
@@ -121,7 +121,7 @@ const _ImpersonationModal = ({ route, params }: ImpersonationModalProps) => {
   );
 
   const handleCancel = useCallback(() => {
-    dispatch(push(getParentPath(route, location)));
+    dispatch(push(getParentPath(route, window.location)));
   }, [dispatch, route]);
 
   useMount(() => {

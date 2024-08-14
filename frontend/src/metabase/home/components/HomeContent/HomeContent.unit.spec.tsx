@@ -71,7 +71,7 @@ describe("HomeContent", () => {
       now: new Date(2020, 0, 10),
       doNotFake: ["setTimeout"],
     });
-    localStorage.clear();
+    window.localStorage.clear();
   });
 
   afterEach(() => {

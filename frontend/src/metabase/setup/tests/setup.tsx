@@ -38,7 +38,7 @@ export async function setup({
   hasEnterprisePlugins = false,
   settingOverrides = [],
 }: SetupOpts = {}) {
-  localStorage.clear();
+  window.localStorage.clear();
   jest.clearAllMocks();
 
   const state = createMockState({

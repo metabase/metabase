@@ -21,7 +21,7 @@ describe("recipient picker", () => {
           recipients={[]}
           users={TEST_USERS}
           isNewPulse={true}
-          onRecipientsChange={() => alert("why?")}
+          onRecipientsChange={() => window.alert("why?")}
           invalidRecipientText={() => {}}
         />,
       );
@@ -35,7 +35,7 @@ describe("recipient picker", () => {
           recipients={[TEST_USERS[0]]}
           users={TEST_USERS}
           isNewPulse={true}
-          onRecipientsChange={() => alert("why?")}
+          onRecipientsChange={() => window.alert("why?")}
           invalidRecipientText={() => {}}
         />,
       );

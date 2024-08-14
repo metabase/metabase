@@ -70,10 +70,10 @@ describe.skip("scenarios > metabot", () => {
     sidebar().findByText("Metabot").should("not.exist");
 
     cy.visit("/metabot/database/1");
-    cy.url().should("eq", `${location.origin}/`);
+    cy.url().should("eq", `${window.location.origin}/`);
 
     cy.visit("/metabot/model/1");
-    cy.url().should("eq", `${location.origin}/`);
+    cy.url().should("eq", `${window.location.origin}/`);
   });
 
   it("should allow to submit prompts based on the database", () => {

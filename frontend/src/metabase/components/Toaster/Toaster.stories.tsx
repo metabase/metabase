@@ -16,9 +16,9 @@ Default.args = {
   message: "Would you like to be notified when this dashboard is done loading?",
   isShown: true,
   onConfirm: () => {
-    alert("Confirmed");
+    window.alert("Confirmed");
   },
   onDismiss: () => {
-    alert("Dismissed");
+    window.alert("Dismissed");
   },
 };

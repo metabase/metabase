@@ -61,7 +61,7 @@ const EditSandboxingModalContainer = ({
   }
 
   const close = () => {
-    return push(getParentPath(route, location));
+    return push(getParentPath(route, window.location));
   };
 
   const handleSave = async (policy: GroupTableAccessPolicy) => {

@@ -10,8 +10,8 @@ export const getRelativeLandingPageUrl = (
 
   // if user input is an absolute url to an external origin,
   // URL construction will override the default origin provided as second arg
-  const url = new URL(trimmedValue, location.origin);
-  const isSameOrigin = location.origin === url.origin;
+  const url = new URL(trimmedValue, window.location.origin);
+  const isSameOrigin = window.location.origin === url.origin;
 
   const relativeUrl =
     isSameOrigin && trimmedValue !== ""

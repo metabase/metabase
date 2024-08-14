@@ -1,3 +1,4 @@
+/* eslint-disable no-restricted-globals */
 // This runs in the Nashorn JavaScript engine and there are some limitations
 //
 // 1. This is not currently automatically built with the rest of the application, please run `yarn build-shared` after modifying

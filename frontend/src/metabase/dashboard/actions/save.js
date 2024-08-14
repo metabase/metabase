@@ -25,7 +25,7 @@ export const updateDashboardAndCards = createThunkAction(
   UPDATE_DASHBOARD_AND_CARDS,
   function () {
     return async function (dispatch, getState) {
-      const startTime = performance.now();
+      const startTime = window.performance.now();
       const state = getState();
       const { dashboards, dashcards, dashboardId } = state.dashboard;
       const dashboard = {
@@ -125,7 +125,7 @@ export const updateDashboardAndCards = createThunkAction(
         }),
       );
 
-      const endTime = performance.now();
+      const endTime = window.performance.now();
       const duration_milliseconds = parseInt(endTime - startTime);
       trackDashboardSaved({
         dashboard_id: dashboard.id,

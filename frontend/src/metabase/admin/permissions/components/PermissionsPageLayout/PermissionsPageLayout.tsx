@@ -170,7 +170,7 @@ function PermissionsPageLayout({
           refresh the page.
         </Text>
         <Group position="right">
-          <NewButton onClick={() => location.reload()} variant="filled">
+          <NewButton onClick={() => window.location.reload()} variant="filled">
             Refresh the page
           </NewButton>
         </Group>

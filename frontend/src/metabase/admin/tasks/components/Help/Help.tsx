@@ -23,7 +23,13 @@ import {
 } from "./Help.styled";
 
 function navigatorInfo() {
-  return _.pick(navigator, "language", "platform", "userAgent", "vendor");
+  return _.pick(
+    window.navigator,
+    "language",
+    "platform",
+    "userAgent",
+    "vendor",
+  );
 }
 
 const template = `**Describe the bug**

@@ -118,7 +118,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.findByText(expectedDashboardName).should("be.visible");
     cy.get("@dashboardUuid").then(dashboardUuid => {
       cy.findByText(
-        `${location.origin}/public/dashboard/${dashboardUuid}`,
+        `${window.location.origin}/public/dashboard/${dashboardUuid}`,
       ).click();
       cy.findByRole("heading", { name: expectedDashboardName }).should(
         "be.visible",
@@ -135,7 +135,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.url().should(
         "match",
         new RegExp(
-          `${location.origin}/dashboard/${dashboardId}-${expectedDashboardSlug}*`,
+          `${window.location.origin}/dashboard/${dashboardId}-${expectedDashboardSlug}*`,
         ),
       );
       cy.visit("/admin/settings/public-sharing");
@@ -178,7 +178,7 @@ describe("scenarios > admin > settings > public sharing", () => {
     cy.findByText(expectedQuestionName).should("be.visible");
     cy.get("@questionUuid").then(questionUuid => {
       cy.findByText(
-        `${location.origin}/public/question/${questionUuid}`,
+        `${window.location.origin}/public/question/${questionUuid}`,
       ).click();
       cy.findByRole("heading", { name: expectedQuestionName }).should(
         "be.visible",
@@ -190,7 +190,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText(expectedQuestionName).click();
       cy.url().should(
         "eq",
-        `${location.origin}/question/${questionId}-${expectedQuestionSlug}`,
+        `${window.location.origin}/question/${questionId}-${expectedQuestionSlug}`,
       );
       cy.visit("/admin/settings/public-sharing");
     });
@@ -247,7 +247,9 @@ describe("scenarios > admin > settings > public sharing", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(expectedActionName).should("be.visible");
     cy.get("@actionUuid").then(actionUuid => {
-      cy.findByText(`${location.origin}/public/action/${actionUuid}`).click();
+      cy.findByText(
+        `${window.location.origin}/public/action/${actionUuid}`,
+      ).click();
       cy.findByRole("heading", { name: expectedActionName }).should(
         "be.visible",
       );
@@ -258,7 +260,7 @@ describe("scenarios > admin > settings > public sharing", () => {
       cy.findByText(expectedActionName).click();
       cy.url().should(
         "eq",
-        `${location.origin}/model/${this.modelId}/detail/actions/${this.actionId}`,
+        `${window.location.origin}/model/${this.modelId}/detail/actions/${this.actionId}`,
       );
       cy.findByRole("dialog").within(() => {
         cy.findByText(expectedActionName).should("be.visible");

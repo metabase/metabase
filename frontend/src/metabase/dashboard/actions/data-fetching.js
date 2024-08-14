@@ -295,7 +295,7 @@ export const fetchCardData = createThunkAction(
         dashcard_id: dashcard.id,
         card_id: card.id,
         result: cancelled ? null : result,
-        currentTime: performance.now(),
+        currentTime: window.performance.now(),
       };
     };
   },
@@ -328,7 +328,7 @@ export const fetchDashboardCardData =
       dispatch({
         type: FETCH_DASHBOARD_CARD_DATA,
         payload: {
-          currentTime: performance.now(),
+          currentTime: window.performance.now(),
           loadingIds: loadingIds.concat(newLoadingIds),
         },
       });
@@ -346,7 +346,7 @@ export const fetchDashboardCardData =
       dispatch({
         type: FETCH_DASHBOARD_CARD_DATA,
         payload: {
-          currentTime: performance.now(),
+          currentTime: window.performance.now(),
           loadingIds: newLoadingIds,
         },
       });

@@ -76,7 +76,7 @@ export const getRoutes = store => {
           if (MetabaseSettings.hasUserSetup()) {
             replace("/");
           }
-          trackPageView(location.pathname);
+          trackPageView(window.location.pathname);
         }}
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);

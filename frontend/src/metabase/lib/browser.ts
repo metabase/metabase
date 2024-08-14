@@ -37,7 +37,7 @@ export function stringifyHashOptions(options: querystring.ParsedUrlQueryInput) {
 }
 
 export function isMac() {
-  const { platform = "" } = navigator;
+  const { platform = "" } = window.navigator;
   return Boolean(platform.match(/^Mac/));
 }
 

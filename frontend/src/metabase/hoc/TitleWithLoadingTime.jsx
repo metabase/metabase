@@ -11,7 +11,7 @@ export default startTimePropName => ComposedComponent =>
     if (startTime == null || !isRunning) {
       return "";
     }
-    const totalSeconds = (performance.now() - startTime) / 1000;
+    const totalSeconds = (window.performance.now() - startTime) / 1000;
     const title =
       totalSeconds < SECONDS_UNTIL_DISPLAY
         ? "" // don't display the title until SECONDS_UNTIL_DISPLAY have elapsed
