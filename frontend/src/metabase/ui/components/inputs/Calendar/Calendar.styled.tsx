@@ -23,7 +23,7 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
         borderRadius: theme.radius.xs,
 
         "&:hover": {
-          backgroundColor: theme.fn.themeColor("bg-light"),
+          backgroundColor: "var(--mb-color-bg-light)",
         },
         "&[data-disabled]": {
           color: theme.fn.themeColor("bg-dark"),
@@ -35,11 +35,11 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
           color: theme.fn.themeColor("bg-dark"),
         },
         "&[data-in-range]": {
-          color: theme.fn.themeColor("text-medium"),
+          color: "var(--mb-color-text-hover)",
           borderRadius: 0,
-          backgroundColor: theme.fn.themeColor("brand-lighter"),
+          backgroundColor: "var(--mb-color-background-hover)",
           "&:hover": {
-            backgroundColor: theme.fn.themeColor("brand-lighter"),
+            backgroundColor: "var(--mb-color-background-hover)",
           },
         },
         "&[data-first-in-range]": {
@@ -52,9 +52,9 @@ export const getCalendarOverrides = (): MantineThemeOverride["components"] => ({
         },
         "&[data-selected]": {
           color: theme.white,
-          backgroundColor: theme.fn.themeColor("brand"),
+          backgroundColor: "var(--mb-color-background-brand)",
           "&:hover": {
-            backgroundColor: theme.fn.themeColor("brand"),
+            backgroundColor: "var(--mb-color-background-brand)",
           },
         },
       },
