@@ -12,7 +12,7 @@ title: Concat
 concat(value1, value2, ...)
 ```
 
-`value1`, `value2` ... can be columns values.
+`value1`, `value2` ... can be columns or values. Metabase will convert non-string columns into strings before concatenating their values.
 
 ### Example
 
@@ -22,19 +22,19 @@ concat(value1, value2, ...)
 | `concat("Vienna", " is in " ,"Austria")` | `"Vienna is in Austria"` |
 | `concat([City], " is in " ,[Country])`   | `"Vienna is in Austria"` |
 
-## Combining text from different columns
+### Metabase will use unformatted values for non-string columns
 
-| City     | Country | Location         |
-| -------- | ------- | ---------------- |
-| Vienna   | Austria | Vienna, Austria  |
-| Paris    | France  | Paris, France    |
-| Kalamata | Greece  | Kalamata, Greece |
+When you use non-string columns in `concat`, Metabase will not apply any of the [formatting](../../../data-modeling/formatting.md) you applied to the columns when converting them to text.
 
-where **Location** is a custom column with the expression:
+For example, if you formatted a floating point number to display only the first two decimal digits in the table results, the results of `concat` would still include additional decimal digits (if any) found in the raw results
 
-```
-concat([City], ", ", [Country])
-```
+| Formatted display | Value                     | `concat("Result:", " ", [Value])` |
+| ----------------- | ------------------------- | --------------------------------- |
+| `Kitten`          | `Kitten`                  | `Result: Kitten`                  |
+| `17`              | `17`                      | `Result: 17`                      |
+| `31.25`           | `31.24823945`             | `Result: 31.24823945`             |
+| `42%`             | `0.42`                    | `Result: 0.42`                    |
+| `January 1, 2024` | `2025-02-11 21:40:27.892` | `Result: 31.24823945`             |
 
 ## Accepted data types
 
@@ -46,7 +46,7 @@ concat([City], ", ", [Country])
 | Boolean                                                                                                                        | ✅                  |
 | JSON                                                                                                                           | ✅                  |
 
-Regardless of the type of the value passed to `concat`, the result will be a string.
+Non-string types will be converted to strings. Regardless of the type of the value passed to `concat`, the result will be a string.
 
 ## Related functions
 
