@@ -314,9 +314,7 @@
   has-test-extensions?
   metabase-instance
   native-query-with-card-template-tag
-  sorts-nil-first?
-  supports-time-type?
-  supports-timestamptz-type?]
+  sorts-nil-first?]
 
  [tx.env
   set-test-drivers!

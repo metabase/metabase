@@ -22,6 +22,12 @@
 
 (sql-jdbc.tx/add-test-extensions! :athena)
 
+(doseq [feature [:test/time-type
+                 :test/timestamptz-type]]
+  (defmethod driver/database-supports? [:athena feature]
+    [_driver _feature _database]
+    false))
+
 ;;; ----------------------------------------------- Connection Details -----------------------------------------------
 
 ;; Athena doesn't support dashes in Table names... we'll just go ahead and convert them all to underscores, even for DB
@@ -255,14 +261,6 @@
 
 (defmethod tx/sorts-nil-first? :athena
   [_driver _base-type]
-  false)
-
-(defmethod tx/supports-time-type? :athena
-  [_driver]
-  false)
-
-(defmethod tx/supports-timestamptz-type? :athena
-  [_driver]
   false)
 
 (mu/defmethod tx/dataset-already-loaded? :athena

@@ -18,8 +18,11 @@
 
 (sql-jdbc.tx/add-test-extensions! :sparksql)
 
-(defmethod tx/supports-time-type? :sparksql [_driver] false)
-(defmethod tx/supports-timestamptz-type? :sparksql [_driver] false)
+(doseq [feature [:test/time-type
+                 :test/timestamptz-type]]
+  (defmethod driver/database-supports? [:sparksql feature]
+    [_driver _feature _database]
+    false))
 
 (doseq [[base-type database-type] {:type/BigInteger "BIGINT"
                                    :type/Boolean    "BOOLEAN"

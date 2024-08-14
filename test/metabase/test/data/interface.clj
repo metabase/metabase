@@ -429,23 +429,13 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
-(defmethod sorts-nil-first? ::test-extensions [_ _] true)
+(defmethod driver/database-supports? [::driver/driver :test/time-type]
+  [_driver _feature _database]
+  true)
 
-(defmulti supports-time-type?
-  "Whether this database supports a `TIME` data type or equivalent."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod supports-time-type? ::test-extensions [_driver] true)
-
-(defmulti supports-timestamptz-type?
-  "Whether this database supports a `timestamp with time zone` data type or equivalent."
-  {:arglists '([driver])}
-  dispatch-on-driver-with-test-extensions
-  :hierarchy #'driver/hierarchy)
-
-(defmethod supports-timestamptz-type? ::test-extensions [_driver] true)
+(defmethod driver/database-supports? [::driver/driver :test/timestamptz-type]
+  [_driver _feature _database]
+  true)
 
 (defmulti aggregate-column-info
   "Return the expected type information that should come back for QP results as part of `:cols` for an aggregation of a

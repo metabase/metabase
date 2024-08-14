@@ -600,7 +600,34 @@
                   (describe-table-indexes (t2/select-one :model/Table (mt/id :composite_index)))))))
        (finally
         ;; clean the db so this test is repeatable
-        (t2/delete! :model/Database (mt/id)))))))
+         (t2/delete! :model/Database (mt/id)))))))
+
+(defmethod driver/database-supports? [::driver/driver ::hashed-index]
+  [_driver _feature _database]
+  true)
+
+(doseq [driver [:h2 :sqlite :sqlserver]]
+  (defmethod driver/database-supports? [driver ::hashed-index]
+    [_driver _feature _database]
+    false))
+
+(defmethod driver/database-supports? [::driver/driver ::clustered-index]
+  [_driver _feature _database]
+  false)
+
+(defmethod driver/database-supports? [:postgres ::clustered-index]
+  [_driver _feature _database]
+  true)
+
+;; FIXME: sqlsever supports conditional index too, but the sqlserver jdbc does not return filter_condition
+;; for those indexes so we can't filter those out.
+(defmethod driver/database-supports? [::driver/driver ::conditional-index]
+  [_driver _feature _database]
+  false)
+
+(defmethod driver/database-supports? [:postgres ::conditional-index]
+  [_driver _feature _database]
+  true)
 
 (deftest describe-table-indexes-advanced-index-type-test
   ;; a set of tests for advanced index types
@@ -631,22 +658,22 @@
                                                                           (map u/lower-case-en %)))))
                                            set))]
          (testing "hashed index"
-           (when-not (#{:h2 :sqlite :sqlserver} driver/*driver*)
+           (when (driver/database-supports? driver/*driver* ::hashed-index (mt/db))
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                            (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:method "hash"}))
+                            (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:method "hash"}))
              (is (= #{{:type :normal-column-index :value "id"}
                       {:type :normal-column-index :value "column"}}
                     (describe-table-indexes (t2/select-one :model/Table (mt/id :unique_index)))))))
 
          (testing "unique index"
            (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
-                          (sql.tx/create-index-sql driver/*driver* "hashed_index" ["column"] {:unique? true}))
+                          (sql.tx/create-index-sql driver/*driver* "unique_index" ["column"] {:unique? true}))
            (is (= #{{:type :normal-column-index :value "id"}
                     {:type :normal-column-index :value "column"}}
                   (describe-table-indexes (t2/select-one :model/Table (mt/id :hashed_index))))))
 
          (testing "clustered index"
-           (when (= :postgres driver/*driver*)
+           (when (driver/database-supports? driver/*driver* ::clustered-index (mt/db))
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                             (sql.tx/create-index-sql driver/*driver* "clustered_index" ["column"]))
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
@@ -656,9 +683,7 @@
                     (describe-table-indexes (t2/select-one :model/Table (mt/id :clustered_index)))))))
 
          (testing "conditional index are ignored"
-           ;; FIXME: sqlsever supports conditional index too, but the sqlserver jdbc does not return filter_condition
-           ;; for those indexes so we can't filter those out.
-           (when (= :postgres driver/*driver*)
+           (when (driver/database-supports? driver/*driver* ::conditional-index (mt/db))
              (jdbc/execute! (sql-jdbc.conn/db->pooled-connection-spec (mt/db))
                             (sql.tx/create-index-sql driver/*driver* "conditional_index" ["column"] {:condition "id > 2"}))
              (is (= #{{:type :normal-column-index :value "id"}}

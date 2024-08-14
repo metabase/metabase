@@ -27,7 +27,9 @@
 
 (set! *warn-on-reflection* true)
 
-(defmethod tx/supports-time-type? :redshift [_driver] false)
+(defmethod driver/database-supports? [:redshift :test/time-type]
+  [_driver _feature _database]
+  false)
 
 ;; we don't need to add test extensions here because redshift derives from Postgres and thus already has test
 ;; extensions

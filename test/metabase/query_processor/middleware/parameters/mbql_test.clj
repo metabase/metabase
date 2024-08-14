@@ -10,7 +10,8 @@
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.middleware.parameters.mbql :as qp.mbql]
    [metabase.query-processor.store :as qp.store]
-   [metabase.test :as mt]))
+   [metabase.test :as mt]
+   [metabase.test.data.interface :as tx]))
 
 (defn- expand-parameters [query]
   (let [query (mbql.normalize/normalize query)]
@@ -100,6 +101,7 @@
       ;; Prevent an issue with Snowflake were a previous connection's report-timezone setting can affect this test's
       ;; results
       ;; TODO: Verify we still need the following expression in place. PR #36858 may have addressed that.
+      #_{:clj-kondo/ignore [:metabase/disallow-hardcoded-driver-names-in-tests]}
       (when (= :snowflake driver/*driver*)
         (driver/notify-database-updated driver/*driver* (mt/id)))
       (is (= [[29]]
@@ -157,16 +159,28 @@
                                      :target $price
                                      :value [2 5]}]})))))))))
 
+(defmulti operations-e2e-test-2-expected-rows
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
+
+(defmethod operations-e2e-test-2-expected-rows :default
+  [_driver]
+  [[11]])
+
+;;; TODO no idea why this count is off...
+(doseq [driver [:mysql :sqlite :sqlserver]]
+  (defmethod operations-e2e-test-2-expected-rows driver
+    [_driver]
+    [[12]]))
+
 (deftest ^:parallel operations-e2e-test-2
   (mt/test-drivers (params-test-drivers)
     (testing "check that operations works correctly"
       (let [f #(mt/formatted-rows [int]
                  (qp/process-query %))]
         (testing "unary string"
-          (is (= [(case driver/*driver*
-                    ;; no idea why this count is off...
-                    (:mysql :sqlite :sqlserver) [12]
-                    [11])]
+          (is (= (operations-e2e-test-2-expected-rows driver/*driver*)
                  (f (mt/query venues
                       {:query      {:aggregation [[:count]]}
                        :parameters [{:name   "name"

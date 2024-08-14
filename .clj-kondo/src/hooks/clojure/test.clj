@@ -182,12 +182,15 @@
 ;;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
 ;;; middleware or compilation behavior with just H2 since it's the default.
 (def driver-keywords
-  #{#_:h2
+  #{;; core drivers
+    #_:h2
     :postgres
     :mysql
+    ;; module drivers
     :athena
     :bigquery-cloud-sdk
     :druid
+    :druid-jdbc
     :googleanalytics
     :mongo
     :oracle
@@ -198,6 +201,13 @@
     :sqlite
     :sqlserver
     :vertica})
+
+(defn- ignore? [node error-type]
+  (when-let [ignores (some-> node meta :clj-kondo/ignore hooks/sexpr)]
+    (when-let [ignores (cond
+                         (coll? ignores)    (set ignores)
+                         (keyword? ignores) #{ignores})]
+      (contains? ignores error-type))))
 
 (defn deftest-check-no-driver-keywords [node]
   ;; fail fast after we see the first error, where we see one hardcoded driver name there are likely several more and we
@@ -211,8 +221,14 @@
                                          :type    :metabase/disallow-hardcoded-driver-names-in-tests))
               ::error))
           (walk [node]
-            (if (= (f node) ::error)
+            (cond
+              (ignore? node :metabase/disallow-hardcoded-driver-names-in-tests)
+              nil
+
+              (= (f node) ::error)
               ::error
+
+              :else
               (reduce
                (fn [_acc child]
                  (when (= (walk child) ::error)

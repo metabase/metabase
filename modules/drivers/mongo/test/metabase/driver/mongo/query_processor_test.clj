@@ -608,3 +608,15 @@
     ;; ie. parse result does not look as follows: `#object[org.bson.BsonString 0x5f26b3a1 "BsonString{value='1000'}"]`
     (let [parsed (mongo.qp/parse-query-string "[{\"limit\": \"1000\"}]")]
       (is (not (instance? org.bson.BsonValue (get-in parsed [0 "limit"])))))))
+        (mt/test-drivers #{:mongo}
+          (mt/dataset string-times
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
+                 (qp/process-query
+                  (mt/mbql-query times {:fields [$d]}))))
+            (is (thrown-with-msg?
+                 clojure.lang.ExceptionInfo
+                 #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
+                 (qp/process-query
+                  (mt/mbql-query times {:fields [$t]}))))))

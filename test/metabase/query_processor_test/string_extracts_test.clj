@@ -1,8 +1,6 @@
 (ns metabase.query-processor-test.string-extracts-test
   (:require
    [clojure.test :refer :all]
-   [metabase.driver :as driver]
-   [metabase.driver.util :as driver.u]
    [metabase.query-processor :as qp]
    [metabase.test :as mt]
    [metabase.test.data :as data]))
@@ -55,19 +53,15 @@
     (is (= "ne" (test-string-extract [:substring [:field (data/id :venues :name) nil]
                                       [:- [:length [:field (data/id :venues :name) nil]] 1]])))))
 
+
 (deftest ^:parallel test-replace
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
-    (when (or (not= driver/*driver* :mongo)
-              ;; mongo supports $replaceAll since version 4.4
-              (driver.u/semantic-version-gte
-               (-> (mt/db) :dbms_version :semantic-version)
-               [4 4]))
-      (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))
-      (is (= "Rod Modicino" (test-string-extract [:replace [:field (data/id :venues :name) nil] "e" "o"])))
-      (is (= "Red" (test-string-extract [:replace [:field (data/id :venues :name) nil] " Medicine" ""])))
-      (is (= "Larry's The Prime Rib" (test-string-extract
-                                      [:replace [:field (data/id :venues :name) nil] "Lawry's" "Larry's"]
-                                      [:= [:field (data/id :venues :name) nil] "Lawry's The Prime Rib"]))))))
+    (is (= "Red Baloon" (test-string-extract [:replace [:field (data/id :venues :name) nil] "Medicine" "Baloon"])))
+    (is (= "Rod Modicino" (test-string-extract [:replace [:field (data/id :venues :name) nil] "e" "o"])))
+    (is (= "Red" (test-string-extract [:replace [:field (data/id :venues :name) nil] " Medicine" ""])))
+    (is (= "Larry's The Prime Rib" (test-string-extract
+                                    [:replace [:field (data/id :venues :name) nil] "Lawry's" "Larry's"]
+                                    [:= [:field (data/id :venues :name) nil] "Lawry's The Prime Rib"])))))
 
 (deftest ^:parallel test-coalesce
   (mt/test-drivers (mt/normal-drivers-with-feature :expressions)
