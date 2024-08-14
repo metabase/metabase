@@ -685,7 +685,7 @@
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
       (is (= (repeat 2 [:error nil
                         "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"])
-             (mt/with-log-messages-for-level ['metabase.models.params :error]
+             (mt/with-log-messages-for-level [metabase.models.params :error]
                (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))))))))
 
 (deftest param-values-not-fetched-on-load-test

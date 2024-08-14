@@ -3,8 +3,7 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [environ.core :as env]
-   [net.cgrand.macrovich :as macros])
+   [environ.core :as env])
   (:import
    (clojure.lang Keyword)))
 
