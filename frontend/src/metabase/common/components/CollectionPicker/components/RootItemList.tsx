@@ -70,6 +70,7 @@ export const RootItemList = ({
     const collectionsData: CollectionPickerItem[] = [];
 
     if (options.showRootCollection || options.namespace === "snippets") {
+      /*
       if (rootCollection && !rootCollectionError) {
         collectionsData.push({
           ...rootCollection,
@@ -81,7 +82,7 @@ export const RootItemList = ({
               ? t`Top folder`
               : rootCollection.name,
         });
-      } else if (rootCollectionError) {
+      } else if (rootCollectionError) { */
         collectionsData.push({
           name: t`Collections`,
           id: "root",
@@ -91,7 +92,7 @@ export const RootItemList = ({
           model: "collection",
           location: "/",
         });
-      }
+     // }
     }
 
     if (

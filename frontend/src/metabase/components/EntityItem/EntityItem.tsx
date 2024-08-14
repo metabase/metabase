@@ -201,7 +201,7 @@ function EntityItemMenu({
       });
     }
 
-    if (onCopy) {
+    /*if (onCopy) {
       result.push({
         title: c("Verb").t`Duplicate`,
         icon: "clone",
@@ -216,7 +216,7 @@ function EntityItemMenu({
         action: onMove,
       });
     }
-
+*/
     if (onArchive) {
       result.push({
         title: t`Move to trash`,

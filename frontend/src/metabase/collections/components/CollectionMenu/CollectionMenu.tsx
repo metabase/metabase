@@ -66,6 +66,7 @@ export const CollectionMenu = ({
     });
   }
 
+  /*
   if (canMove) {
     items.push({
       title: t`Move`,
@@ -73,6 +74,7 @@ export const CollectionMenu = ({
       link: `${url}/move`,
     });
   }
+    */
 
   items.push(
     ...PLUGIN_COLLECTIONS.getCleanUpMenuItems(

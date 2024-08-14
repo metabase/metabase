@@ -83,7 +83,7 @@ export function isInstanceAnalyticsCustomCollection(
 function preparePersonalCollection(c: Collection): Collection {
   return {
     ...c,
-    name: t`Your personal collection`,
+    name: c.name,
     originalName: c.name,
   };
 }

@@ -46,7 +46,10 @@ export function collection(
 
   if (isSystemCollection) {
     const id = collection && collection.id ? collection.id : "root";
+    if (id !== "root") {
     return `/collection/${id}`;
+    }
+    return
   }
 
   if (isRootTrashCollection(collection)) {

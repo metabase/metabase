@@ -74,6 +74,8 @@ export const getExtraButtons = ({
     },
   });
 
+  
+  /*
   if (canEdit) {
     extraButtons.push({
       title: t`Move`,
@@ -82,14 +84,15 @@ export const getExtraButtons = ({
       event: "Dashboard;Move",
     });
   }
-
+  */
+  /*
   extraButtons.push({
     title: t`Duplicate`,
     icon: "clone",
     link: `${pathname}/copy`,
     event: "Dashboard;Copy",
   });
-
+  */  
   if (canEdit) {
     extraButtons.push(...PLUGIN_DASHBOARD_HEADER.extraButtons(dashboard));
 
