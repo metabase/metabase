@@ -7,26 +7,47 @@ import {
   isQuestionDirty,
   isQuestionRunnable,
 } from "metabase/query_builder/utils/question";
+import { getMetadata } from "metabase/selectors/metadata";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
+import { sourceTableOrCardId } from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
 
 type NotebookProps = { onApply?: () => void };
 
 export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
   const { question, originalQuestion, updateQuestion, runQuestion } =
     useInteractiveQuestionContext();
+  const metadata = useSelector(getMetadata);
 
-  const isDirty = useMemo(() => {
-    return isQuestionDirty(question, originalQuestion);
-  }, [question, originalQuestion]);
+  const isDirty = useMemo(
+    () => isQuestionDirty(question, originalQuestion),
+    [question, originalQuestion],
+  );
 
-  const isRunnable = useMemo(() => {
-    return isQuestionRunnable(question, isDirty);
-  }, [question, isDirty]);
+  const isRunnable = useMemo(
+    () => isQuestionRunnable(question, isDirty),
+    [question, isDirty],
+  );
 
   const reportTimezone = useSelector(state =>
     getSetting(state, "report-timezone-long"),
   );
+
+  const handleUpdateQuestion = async (question: Question) => {
+    const query = question.query();
+    const sourceTableId = sourceTableOrCardId(query);
+    const table = metadata.table(sourceTableId);
+    const databaseId = table?.db_id;
+
+    await updateQuestion(
+      question.setDatasetQuery({
+        ...question.datasetQuery(),
+        database: databaseId ?? null,
+      }),
+      { run: false },
+    );
+  };
 
   return (
     question && (
@@ -38,11 +59,9 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           isResultDirty={isDirty}
           reportTimezone={reportTimezone}
           readOnly={false}
-          updateQuestion={nextQuestion =>
-            updateQuestion(nextQuestion, { run: false })
-          }
-          runQuestionQuery={() => {
-            runQuestion();
+          updateQuestion={handleUpdateQuestion}
+          runQuestionQuery={async () => {
+            await runQuestion();
             onApply();
           }}
           setQueryBuilderMode={() => {}}

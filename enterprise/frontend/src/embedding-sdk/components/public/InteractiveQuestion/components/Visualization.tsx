@@ -1,3 +1,4 @@
+import { useElementSize } from "@mantine/hooks";
 import cx from "classnames";
 import { t } from "ttag";
 
@@ -7,6 +8,7 @@ import {
 } from "embedding-sdk/components/private/PublicComponentWrapper";
 import CS from "metabase/css/core/index.css";
 import QueryVisualization from "metabase/query_builder/components/QueryVisualization";
+import { Box } from "metabase/ui";
 
 import { useInteractiveQuestionContext } from "../context";
 
@@ -21,6 +23,8 @@ export const QuestionVisualization = () => {
     onNavigateBack,
   } = useInteractiveQuestionContext();
 
+  const { height, ref, width } = useElementSize();
+
   if (isQuestionLoading) {
     return <SdkLoader />;
   }
@@ -33,19 +37,23 @@ export const QuestionVisualization = () => {
   const card = question.card();
 
   return (
-    <QueryVisualization
-      className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
-      question={question}
-      rawSeries={[{ card, data: result && result.data }]}
-      isRunning={isQueryRunning}
-      isObjectDetail={false}
-      isResultDirty={false}
-      isNativeEditorOpen={false}
-      result={result}
-      noHeader
-      mode={mode}
-      navigateToNewCardInsideQB={navigateToNewCard}
-      onNavigateBack={onNavigateBack}
-    />
+    <Box w="100%" h="100%" ref={ref}>
+      <Box w={width} h={height || (width ? width / 9 : 500)}>
+        <QueryVisualization
+          className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
+          question={question}
+          rawSeries={[{ card, data: result && result.data }]}
+          isRunning={isQueryRunning}
+          isObjectDetail={false}
+          isResultDirty={false}
+          isNativeEditorOpen={false}
+          result={result}
+          noHeader
+          mode={mode}
+          navigateToNewCardInsideQB={navigateToNewCard}
+          onNavigateBack={onNavigateBack}
+        />
+      </Box>
+    </Box>
   );
 };
