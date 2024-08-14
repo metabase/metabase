@@ -339,6 +339,7 @@ export function AggregationPicker({
         style={{ overflow: "visible" }}
         maxHeight={Infinity}
         withBorders
+        globalSearch
       />
     </Box>
   );
