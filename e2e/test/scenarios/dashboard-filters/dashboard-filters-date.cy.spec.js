@@ -180,7 +180,7 @@ describe("scenarios > dashboard > filters > date", () => {
     cy.icon("pencil").click();
     cy.icon("filter").click();
 
-    popover().findByText("Heure").click(); // "Time" -> "All Options"
+    popover().icon("calendar").click(); // "Time" -> "All Options"
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Sélectionner...").click(); // "Select…"
