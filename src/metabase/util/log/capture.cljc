@@ -1,5 +1,7 @@
 (ns metabase.util.log.capture
-  "Basic idea is we have a dynamic variable called [[*capture-logs-fn*]] with the signature
+  "Only used in tests and dev runs.
+
+  Basic idea is we have a dynamic variable called [[*capture-logs-fn*]] with the signature
 
     (f namespace-str level-int)
 
@@ -16,7 +18,9 @@
   (:require
    [clojure.set :as set]
    [clojure.spec.alpha :as s]
-   [clojure.string :as str]))
+   [clojure.string :as str]
+   #?@(:cljs
+       [[goog.string :as gstring]])))
 
 (def ^:dynamic *capture-logs-fn*
   "Function with the signature that given a namespace string and log level (as an int), returns a function that should
@@ -33,10 +37,11 @@
   {:explode 0
    :fatal   1
    :error   2
-   :info    3
-   :debug   4
-   :trace   5
-   :whisper 6})
+   :warn    3
+   :info    4
+   :debug   5
+   :trace   6
+   :whisper 7})
 
 (def ^:private int->level
   (set/map-invert level->int))
@@ -78,7 +83,7 @@
 (s/def ::namespace
   (some-fn symbol? string?))
 (s/def ::level
-  #{:explode :fatal :error :info :debug :trace :whisper})
+  #{:explode :fatal :error :warn :info :debug :trace :whisper})
 
 (s/def ::with-log-messages-for-level-args
   (s/cat :bindings (s/spec (s/+ (s/cat :messages-fn-binding symbol?
@@ -183,7 +188,7 @@
   (let [{e :e, [format-string & args] :args} (parse-args args)]
     #_{:clj-kondo/ignore [:unresolved-namespace]}
     (f e (apply #?(:clj format
-                   :cljs metabase.util.log/format-msg)
+                   :cljs gstring/format)
                 format-string args))))
 
 (defmacro capture-logp
@@ -197,3 +202,16 @@
   [namespace-str level & args]
   `(when-let [f# (*capture-logs-fn* ~namespace-str ~(level->int level))]
      (capture-logf! f# ~@args)))
+
+(defn messages->legacy-format
+  "Impl for legacy [[metabase.test.util.log/with-log-messages-for-level]]. Convert captured messages from the improved
+  format introduced in #28827 e.g.
+
+    [{:namespace metabase.util.log-test, :level :warn, :e nil, :message \"a message\"}]
+
+  to the legacy format used previously e.g.
+
+    [[:warn nil \"a message\"]]"
+  [messages]
+  (mapv (juxt :level :e :message)
+        messages))

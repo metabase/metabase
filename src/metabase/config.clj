@@ -4,7 +4,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [environ.core :as env]
-   [metabase.plugins.classloader :as classloader])
+   [net.cgrand.macrovich :as macros])
   (:import
    (clojure.lang Keyword)))
 
@@ -13,7 +13,7 @@
 ;; this existed long before 0.39.0, but that's when it was made public
 (def ^{:doc "Indicates whether Enterprise Edition extensions are available" :added "0.39.0"} ee-available?
   (try
-    (classloader/require 'metabase-enterprise.core)
+    (require 'metabase-enterprise.core)
     true
     (catch Throwable _
       false)))
@@ -22,7 +22,7 @@
   "Whether code from `./test` is available. This is mainly to facilitate certain things like test QP middleware that we
   want to load only when test code is present."
   (try
-    (classloader/require 'metabase.test.core)
+    (require 'metabase.test.core)
     true
     (catch Throwable _
       false)))
@@ -165,5 +165,6 @@
   (not (false? (config-bool :mb-load-sample-content))))
 
 (def ^:dynamic *request-id*
-  "A unique identifier for the current request. This is bound by `metabase.server.middleware.request-id/wrap-request-id`."
+  "A unique identifier for the current request. This is bound by
+  `metabase.server.middleware.request-id/wrap-request-id`."
   nil)
