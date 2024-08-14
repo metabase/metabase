@@ -56,7 +56,7 @@
    active      [:maybe {:default true} :boolean]}
   (validation/check-has-application-permission :setting)
   (when (t2/exists? :model/Channel :name name)
-    (throw (ex-info "Channel with that name already exists" {:status-code 400
+    (throw (ex-info "Channel with that name already exists" {:status-code 409
                                                              :errors      {:name "Channel with that name already exists"}})))
   (test-channel-connection! type details)
   (u/prog1 (t2/insert-returning-instance! :model/Channel body)

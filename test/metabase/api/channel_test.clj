@@ -76,7 +76,7 @@
   (let [channel-details default-test-channel]
     (mt/with-temp [:model/Channel _chn channel-details]
       (is (= {:errors {:name "Channel with that name already exists"}}
-             (mt/user-http-request :crowberto :post 400 "channel" default-test-channel))))))
+             (mt/user-http-request :crowberto :post 409 "channel" default-test-channel))))))
 
 (def ns-keyword->str #(str (.-sym %)))
 
