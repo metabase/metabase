@@ -4,17 +4,28 @@ title: Concat
 
 # Concat
 
-`concat` joins text data (strings) from two or more columns.
+`concat` concatenates data from two or more columns or values, and returns a string.
 
-| Syntax                        | Example                                  |
-|-------------------------------|------------------------------------------|
-| `concat(value1, value2, ...)` | `concat("Vienna, ", "Austria")`|
-| Combines two or more strings. | "Vienna, Austria"              |
+## Syntax
+
+```
+concat(value1, value2, ...)
+```
+
+`value1`, value2` ... can be columns of any data type, or strings.
+
+### Example
+
+| Expression                               | Result                   |
+| ---------------------------------------- | ------------------------ |
+| `concat("Vienna", "Austria")`            | `"ViennaAustria"`        |
+| `concat("Vienna", " is in " ,"Austria")` | `"Vienna is in Austria"` |
+| `concat([City], " is in " ,[Country])`   | `"Vienna is in Austria"` |
 
 ## Combining text from different columns
 
 | City     | Country | Location         |
-|----------|---------|------------------|
+| -------- | ------- | ---------------- |
 | Vienna   | Austria | Vienna, Austria  |
 | Paris    | France  | Paris, France    |
 | Kalamata | Greece  | Kalamata, Greece |
@@ -22,18 +33,38 @@ title: Concat
 where **Location** is a custom column with the expression:
 
 ```
-CONCAT([City], ", ", [Country])
+concat([City], ", ", [Country])
 ```
 
 ## Accepted data types
 
-| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `concat`  |
-| ----------------------- | -------------------- |
-| String                  | ✅                   |
-| Number                  | ❌                   |
-| Timestamp               | ❌                   |
-| Boolean                 | ❌                   |
-| JSON                    | ❌                   |
+| [Data type](https://www.metabase.com/learn/grow-your-data-skills/data-fundamentals/data-types-overview#examples-of-data-types) | Works with `concat` |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------- |
+| String                                                                                                                         | ✅                  |
+| Number                                                                                                                         | ✅                  |
+| Timestamp                                                                                                                      | ✅                  |
+| Boolean                                                                                                                        | ✅                  |
+| JSON                                                                                                                           | ✅                  |
+
+`concat` accepts columns of any type, or string values. It does not accept individual non-string values.
+
+The following are valid uses of `concat`:
+
+```
+concat([Total], " dollars")
+```
+
+```
+concat([Total], "5")
+```
+
+But this will produce an error:
+
+```
+concat([Total], 5)
+```
+
+Regardless of the type of the value passed to `concat`, the result will be a string.
 
 ## Related functions
 
