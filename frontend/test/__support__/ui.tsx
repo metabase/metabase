@@ -305,7 +305,7 @@ export function getBrokenUpTextMatcher(textToFind: string): MatcherFunction {
 export const waitForLoaderToBeRemoved = async () => {
   await waitFor(
     () => {
-      expect(screen.queryByTestId("loading-spinner")).not.toBeInTheDocument();
+      expect(screen.queryByTestId("loading-indicator")).not.toBeInTheDocument();
       // default timeout is 1s, but sometimes it's not enough and leads to flakiness,
       // 3s should be enough
     },
