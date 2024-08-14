@@ -1,8 +1,8 @@
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
-  type StructuredQuestionDetails,
   assertQueryBuilderRowCount,
   createQuestion,
+  dragField,
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
@@ -10,12 +10,12 @@ import {
   popover,
   restore,
   startNewQuestion,
+  type StructuredQuestionDetails,
+  summarize,
+  tableHeaderClick,
   tableInteractive,
   tableInteractiveBody,
   visualize,
-  summarize,
-  tableHeaderClick,
-  dragField,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
