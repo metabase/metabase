@@ -17,8 +17,8 @@ describe("NewModelOptions (OSS)", () => {
 
   describe("has data access", () => {
     it("should render loading indicator when fetching databases (metabase#44813)", async () => {
-      setup({ databases: [createMockDatabase()] });
-
+      // Mocking the response needs to happen before the setup
+      // because setup already instantiates the component - it contains `renderWithProviders`.
       fetchMock.get(
         "path:/api/database",
         delay(2000).then(() => {
@@ -27,7 +27,9 @@ describe("NewModelOptions (OSS)", () => {
         { overwriteRoutes: true },
       );
 
-      expect(screen.getByTestId("loading-indicator")).toBeInTheDocument();
+      setup({ databases: [createMockDatabase()] });
+
+      expect(await screen.findByTestId("loading-spinner")).toBeInTheDocument();
       expect(
         screen.queryByText("Metabase is no fun without any data"),
       ).not.toBeInTheDocument();
