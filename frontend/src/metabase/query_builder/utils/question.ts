@@ -1,6 +1,6 @@
 import * as Lib from "metabase-lib";
 import type Question from "metabase-lib/v1/Question";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 
 export function isQuestionDirty(
   question: Question | undefined,
@@ -14,7 +14,7 @@ export function isQuestionDirty(
   if (
     !question ||
     !originalQuestion ||
-    isAdHocModelQuestion(question, originalQuestion)
+    isAdHocModelOrMetricQuestion(question, originalQuestion)
   ) {
     return false;
   }
