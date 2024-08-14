@@ -97,7 +97,7 @@
                           (lib/aggregate (lib/min (meta/field-metadata :orders :total))))
           [a1 a2 _a3] (lib/aggregations query)]
       (is (=? [[:warn nil #"No matching clause in swap-clauses \[:count .*"]]
-              (tu.log/with-log-messages-for-level ['metabase.lib.swap :warn]
+              (tu.log/with-log-messages-for-level [metabase.lib.swap :warn]
                 (lib/swap-clauses query -1 a2 (lib.options/update-options a1 assoc :lib/uuid (str (random-uuid))))))))))
 
 (deftest ^:synchronized swap-clauses-ambiguous-test
@@ -110,5 +110,5 @@
           [a1 a2 _a3] (lib/aggregations query)
           query       (update-in query [:stages 0 :aggregation] conj a2)]
       (is (=? [[:warn nil #"Ambiguous match for clause in swap-clauses \[:sum .*"]]
-              (tu.log/with-log-messages-for-level ['metabase.lib.swap :warn]
+              (tu.log/with-log-messages-for-level [metabase.lib.swap :warn]
                 (lib/swap-clauses query -1 a1 a2)))))))
