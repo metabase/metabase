@@ -112,8 +112,8 @@ export function useLoadQuestion({
           previousQuestion: question,
           originalQuestion,
           cancelDeferred: deferred(),
-          onQuestionChange: question => setQuestionState({ question }),
-          run,
+          optimisticUpdateQuestion: question => setQuestionState({ question }),
+          shouldRunQueryOnQuestionChange: run,
         }),
       );
 

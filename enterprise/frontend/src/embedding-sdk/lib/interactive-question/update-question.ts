@@ -22,10 +22,10 @@ interface UpdateQuestionParams {
   cancelDeferred?: Deferred;
 
   /** Optimistic update the question in the query builder UI */
-  onQuestionChange: (question: Question) => void;
+  optimisticUpdateQuestion: (question: Question) => void;
 
   /** Whether to run the query by default? */
-  run?: boolean;
+  shouldRunQueryOnQuestionChange?: boolean;
 }
 
 export const updateQuestionSdk =
@@ -38,8 +38,8 @@ export const updateQuestionSdk =
       shouldStartAdHocQuestion = true,
       cancelDeferred,
       queryResults,
-      onQuestionChange,
-      run = false,
+      optimisticUpdateQuestion: onQuestionChange,
+      shouldRunQueryOnQuestionChange = false,
     } = params;
 
     nextQuestion = getAdHocQuestionWithVizSettings({
@@ -49,7 +49,7 @@ export const updateQuestionSdk =
     });
 
     if (!nextQuestion.canAutoRun()) {
-      run = false;
+      shouldRunQueryOnQuestionChange = false;
     }
 
     const rawSeries = createRawSeries({
@@ -67,7 +67,7 @@ export const updateQuestionSdk =
     nextQuestion = computedPivotQuestion.question;
 
     if (computedPivotQuestion.shouldRun !== null) {
-      run = computedPivotQuestion.shouldRun;
+      shouldRunQueryOnQuestionChange = computedPivotQuestion.shouldRun;
     }
 
     // Optimistic update the UI before we re-fetch the query metadata.
@@ -96,7 +96,7 @@ export const updateQuestionSdk =
 
     // In most cases, we only update the question when the query change.
     // We don't usually run the query right away unless specified.
-    if (run) {
+    if (shouldRunQueryOnQuestionChange) {
       return runQuestionQuerySdk({
         question: nextQuestion,
         originalQuestion,
