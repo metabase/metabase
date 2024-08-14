@@ -78,12 +78,9 @@ const ParameterOptionsSectionsPane = ({
   onSelectSection: (section: ParameterSection) => void;
 }) => (
   <Box py="md">
-    <Text
-      px="lg"
-      pb="md"
-      c="text-light"
-      fw="bold"
-    >{t`Add a filter or parameter`}</Text>
+    <Text px="lg" pb="md" c="text-light" fw="bold">
+      {t`Add a filter or parameter`}
+    </Text>
     <Box display="table">
       {sections.map(section => (
         <ParameterOptionsSection
