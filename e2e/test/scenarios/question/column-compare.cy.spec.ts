@@ -438,7 +438,7 @@ describeWithSnowplow("scenarios > question > column compare", () => {
       ]);
     });
 
-    it("breakout on non-datetime column", { tags: "@flaky" }, () => {
+    it("breakout on non-datetime column", () => {
       createQuestion(
         { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
