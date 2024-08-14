@@ -6,13 +6,13 @@ import {
   runQuestionOnQueryChangeSdk,
   runQuestionOnNavigateSdk,
 } from "embedding-sdk/lib/interactive-question";
+import { useSdkDispatch } from "embedding-sdk/store";
 import type {
   LoadSdkQuestionParams,
   NavigateToNewCardParams,
   SdkQuestionResult,
 } from "embedding-sdk/types/question";
 import { defer, type Deferred } from "metabase/lib/promise";
-import { useDispatch } from "metabase/lib/redux";
 import type Question from "metabase-lib/v1/Question";
 
 export interface LoadQuestionHookResult {
@@ -32,7 +32,7 @@ export function useLoadQuestion({
   options,
   deserializedCard,
 }: LoadSdkQuestionParams): LoadQuestionHookResult {
-  const dispatch = useDispatch();
+  const dispatch = useSdkDispatch();
 
   // Keep track of the latest question and query results.
   // They can be updated from the below actions.

@@ -6,6 +6,7 @@
         "paths": [
           {
             "name": "metabase/lib/redux",
+            "importNames": ["useStore", "useDispatch"],
             "message": "Please use \"useSdkStore\", \"useSdkDispatch\""
           }
         ]

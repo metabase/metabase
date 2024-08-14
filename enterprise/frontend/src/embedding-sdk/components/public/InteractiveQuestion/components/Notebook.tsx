@@ -1,5 +1,6 @@
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useSdkDispatch } from "embedding-sdk/store";
+import { useSelector } from "metabase/lib/redux";
 import {
   runQuestionQuery,
   updateQuestion,
@@ -26,7 +27,7 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
     getSetting(state, "report-timezone-long"),
   );
 
-  const dispatch = useDispatch();
+  const dispatch = useSdkDispatch();
 
   return (
     question && (
