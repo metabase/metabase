@@ -44,6 +44,7 @@ describe("scenarios > question > multiple column breakouts", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
+    cy.intercept("POST", "/api/dataset").as("dataset");
   });
 
   describe("current stage", () => {
@@ -70,6 +71,7 @@ describe("scenarios > question > multiple column breakouts", () => {
         popover().findByText("by month").click();
         popover().last().findByText("Month").click();
         visualize();
+        cy.wait("@dataset");
         assertQueryBuilderRowCount(49);
       });
 
@@ -82,12 +84,63 @@ describe("scenarios > question > multiple column breakouts", () => {
         getNotebookStep("sort").icon("add").click();
         popover().findByText("Created At: Month").click();
         visualize();
+        cy.wait("@dataset");
         assertTableData({
           columns: ["Created At: Year", "Created At: Month", "Count"],
           rows: [
             ["2026", "January 2026", "580"],
             ["2026", "February 2026", "543"],
           ],
+        });
+      });
+    });
+
+    describe("timeseries chrome", () => {
+      it("should use the first breakout for the chrome in case there are multiple for this column", () => {
+        createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+
+        cy.log("change the breakout");
+        cy.findByTestId("timeseries-bucket-button")
+          .should("contain.text", "Year")
+          .click();
+        popover().findByText("Quarter").click();
+        cy.wait("@dataset");
+        assertQueryBuilderRowCount(49);
+        assertTableData({
+          columns: ["Created At: Quarter", "Created At: Month", "Count"],
+          rows: [["Q2 2022", "April 2022", "1"]],
+        });
+
+        cy.log("add a filter");
+        cy.findByTestId("timeseries-filter-button")
+          .should("contain.text", "All time")
+          .click();
+        popover().findByDisplayValue("All time").click();
+        popover().last().findByText("On").click();
+        popover().within(() => {
+          cy.findByLabelText("Date").clear().type("August 14, 2023");
+          cy.button("Apply").click();
+        });
+        cy.wait("@dataset");
+        assertQueryBuilderRowCount(1);
+        assertTableData({
+          columns: ["Created At: Quarter", "Created At: Month", "Count"],
+          rows: [["Q3 2023", "August 2023", "9"]],
+        });
+
+        cy.log("change the filter");
+        cy.findByTestId("timeseries-filter-button")
+          .should("contain.text", "Aug 14")
+          .click();
+        popover().within(() => {
+          cy.findByLabelText("Date").clear().type("August 14, 2022");
+          cy.button("Apply").click();
+        });
+        cy.wait("@dataset");
+        assertQueryBuilderRowCount(1);
+        assertTableData({
+          columns: ["Created At: Quarter", "Created At: Month", "Count"],
+          rows: [["Q3 2022", "August 2022", "1"]],
         });
       });
     });
