@@ -74,7 +74,7 @@
                   {:aggregation [[:share [:< $price 4]]]
                    :filter      [:> $price Long/MAX_VALUE]}))]
         (cond
-          (driver/database-supports? driver/*driver* ::divide-null-by-zero (mt/db))
+          (not (driver/database-supports? driver/*driver* ::divide-null-by-zero (mt/db)))
           (is (thrown-with-msg?
                clojure.lang.ExceptionInfo
                (divide-null-by-zero-expected-error-message-regex driver/*driver*)

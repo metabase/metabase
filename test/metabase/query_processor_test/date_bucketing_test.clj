@@ -831,7 +831,7 @@
 (deftest group-by-week-pacific-test
   (mt/test-drivers (mt/normal-drivers)
     (testing "\nPacific timezone"
-      (is (= (group-by-day-pacific-test-expected-rows driver/*driver*)
+      (is (= (group-by-week-pacific-test-expected-rows driver/*driver*)
              (sad-toucan-incidents-with-bucketing! :week :pacific))))))
 
 (defmulti group-by-week-eastern-test-expected-rows

@@ -429,6 +429,8 @@
   dispatch-on-driver-with-test-extensions
   :hierarchy #'driver/hierarchy)
 
+(defmethod sorts-nil-first? ::test-extensions [_ _] true)
+
 (defmethod driver/database-supports? [::driver/driver :test/time-type]
   [_driver _feature _database]
   true)
