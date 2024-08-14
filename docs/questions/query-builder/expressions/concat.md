@@ -12,7 +12,7 @@ title: Concat
 concat(value1, value2, ...)
 ```
 
-`value1`, value2` ... can be columns of any data type, or strings.
+`value1`, `value2` ... can be columns values.
 
 ### Example
 
@@ -45,24 +45,6 @@ concat([City], ", ", [Country])
 | Timestamp                                                                                                                      | ✅                  |
 | Boolean                                                                                                                        | ✅                  |
 | JSON                                                                                                                           | ✅                  |
-
-`concat` accepts columns of any type, or string values. It does not accept individual non-string values.
-
-The following are valid uses of `concat`:
-
-```
-concat([Total], " dollars")
-```
-
-```
-concat([Total], "5")
-```
-
-But this will produce an error:
-
-```
-concat([Total], 5)
-```
 
 Regardless of the type of the value passed to `concat`, the result will be a string.
 
