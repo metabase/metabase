@@ -1,8 +1,8 @@
 name: Perf test command
 
 on:
-  issue_comment:
-    types: [created]
+  pull_request:
+    types: [ labeled ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -10,7 +10,7 @@ concurrency:
 
 jobs:
   run-perf-test:
-    if: ${{ github.event.issue.pull_request && startsWith(github.event.comment.body, '/perf') }}
+    if: ${{ github.event.label.name == 'PR-Env' }}
     uses: ./.github/workflows/perf-test.yml
     with:
       wait_for_uberjar: true
