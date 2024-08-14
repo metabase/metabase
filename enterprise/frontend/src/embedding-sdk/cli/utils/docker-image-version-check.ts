@@ -6,21 +6,14 @@ import { IMAGE_NAME } from "../constants/config";
 
 const execAsync = promisify(exec);
 
-async function extractDigest(input: string): Promise<string> {
-  const match = input.match(/@sha256:([a-f0-9]{64})/);
-
-  return match ? match[1] : "";
-}
-
 async function getLocalDigest(): Promise<string | null> {
   try {
-    const { stdout } = await execAsync(
-      `docker images --digests --format "{{.Digest}}" ${IMAGE_NAME}`,
-    );
+    const command = `docker images --digests --format "{{.Digest}}" ${IMAGE_NAME}`;
+    let { stdout } = await execAsync(command);
 
-    console.log(`local-digest-stdout: ${stdout}`);
+    stdout = stdout.trim();
 
-    return stdout.trim() ? await extractDigest(stdout.trim()) : null;
+    return stdout ?? null;
   } catch (error) {
     return null;
   }
@@ -28,14 +21,19 @@ async function getLocalDigest(): Promise<string | null> {
 
 async function getRemoteDigest(): Promise<string | null> {
   try {
-    const { stdout } = await execAsync(`docker manifest inspect ${IMAGE_NAME}`);
-    console.log(`remote-digest-stdout: ${stdout}`);
+    const command = `docker manifest inspect ${IMAGE_NAME}`;
+    let { stdout } = await execAsync(command);
 
-    const digestLine = stdout
-      .split("\n")
-      .find(line => line.includes('"digest":'));
+    stdout = stdout.trim();
 
-    return digestLine ? await extractDigest(digestLine) : null;
+    if (stdout) {
+      const content = JSON.parse(stdout) as { config: { digest: string } };
+      const { digest } = content.config;
+
+      return digest;
+    }
+
+    return null;
   } catch (error) {
     return null;
   }
@@ -44,9 +42,6 @@ async function getRemoteDigest(): Promise<string | null> {
 export async function checkIfNewerDockerImageAvailable(): Promise<boolean> {
   const localDigest = await getLocalDigest();
   const remoteDigest = await getRemoteDigest();
-
-  console.log(`localDigest: ${localDigest}`);
-  console.log(`remoteDigest: ${remoteDigest}`);
 
   return localDigest === null || localDigest !== remoteDigest;
 }

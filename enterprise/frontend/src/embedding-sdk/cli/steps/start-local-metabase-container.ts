@@ -84,7 +84,6 @@ export const startLocalMetabaseContainer: CliStepMethod = async state => {
 
   try {
     const isNewerImageAvailable = await checkIfNewerDockerImageAvailable();
-    console.log("isNewerImageAvailable:", isNewerImageAvailable);
 
     if (isNewerImageAvailable) {
       await pullLatestDockerImage();
