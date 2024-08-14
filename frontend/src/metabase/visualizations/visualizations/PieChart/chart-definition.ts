@@ -173,6 +173,7 @@ export const PIE_CHART_DEFINITION: VisualizationDefinition = {
     ...seriesSetting({
       def: {
         widget: SliceNameWidget,
+        marginBottom: "0",
         getProps: (
           _series: any,
           vizSettings: ComputedVisualizationSettings,
