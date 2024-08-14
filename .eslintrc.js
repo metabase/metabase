@@ -1,6 +1,8 @@
 /* eslint-disable import/no-commonjs */
 /* eslint-disable no-undef */
 
+const confusingGlobals = require("./frontend/lint/confusing-globals");
+
 // `postcss-modules` lints css modules class names, but it currently crashes
 // eslint on vscode. If you use webstorm or want to run the lint for the cli, you
 // can use this flag to enable it. This is set to true in CI
@@ -81,7 +83,19 @@ module.exports = {
       { additionalHooks: "(useSafeAsyncFunction)" },
     ],
     "prefer-const": [1, { destructuring: "all" }],
-    "no-restricted-globals": ["error", "close"],
+    "no-restricted-globals": ["error", "close"].concat(
+      confusingGlobals([
+        "atob",
+        "btoa",
+        "document",
+        "fetch",
+        "history",
+        "setTimeout",
+        "clearTimeout",
+        "setInterval",
+        "clearInterval",
+      ]),
+    ),
     "no-useless-escape": 0,
     "no-only-tests/no-only-tests": [
       "error",
