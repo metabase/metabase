@@ -3,7 +3,6 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   assertPermissionTable,
-  main,
   modal,
   restore,
   popover,
@@ -78,40 +77,14 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
     cy.visit(
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
     ); // table level
-    modifyPermission("People", DATA_ACCESS_PERM_IDX, "Blocked");
+    modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Blocked");
 
     selectSidebarItem("All Users");
-    modifyPermission(
-      "Sample Database",
-      CREATE_QUERIES_PERM_IDX,
-      "Query builder only",
-    );
     assertPermissionForItem(
       "Sample Database",
       DATA_ACCESS_PERM_IDX,
       "Granular",
     );
-
-    modal()
-      .should("exist")
-      .within(() => {
-        cy.findByText(
-          "Change “View data” access for this database to “Can view” as well?",
-        ).should("exist");
-        cy.findByText(
-          /Updating access will remove your sandboxing settings for this database/,
-        ).should("not.exist");
-        cy.findByText("Cancel").click();
-      });
-
-    main().within(() => {
-      cy.findByText("Sample Database").click();
-    });
-
-    makeOrdersSandboxed();
-
-    selectSidebarItem("All Users");
-
     modifyPermission(
       "Sample Database",
       CREATE_QUERIES_PERM_IDX,
@@ -122,18 +95,20 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
       .should("exist")
       .within(() => {
         cy.findByText(
-          "Change “View data” access for this database to “Can view” as well?",
+          "This will also set the View Data permission to “Can View” to allow this group to create queries. Okay?",
         ).should("exist");
-        cy.findByText(
-          /Updating access will remove your sandboxing settings for this database/,
-        ).should("exist");
-        cy.findByText("Update access").click();
+        cy.findByText("Okay").click();
       });
 
     assertPermissionForItem(
       "Sample Database",
       DATA_ACCESS_PERM_IDX,
       "Can view",
+    );
+    assertPermissionForItem(
+      "Sample Database",
+      CREATE_QUERIES_PERM_IDX,
+      "Query builder only",
     );
   });
 });

@@ -10,7 +10,9 @@ import {
   getSchemasPermission,
   hasPermissionValueInSubgraph,
 } from "metabase/admin/permissions/utils/graph";
+import Alert from "metabase/core/components/Alert";
 import { PLUGIN_ADVANCED_PERMISSIONS } from "metabase/plugins";
+import { Flex, Text } from "metabase/ui";
 import type Database from "metabase-lib/v1/metadata/Database";
 import type {
   Group,
@@ -227,29 +229,19 @@ export function getViewDataPermissionsTooRestrictiveWarningModal(
       ? t`This schema contains one or more tables with “Blocked” permissions, which prevents access to the query builder. To grant Create query permissions for this schema, Metabase will also change the View data permissions on this schema to “Can view”.`
       : t`This database contains one or more schemas and tables with “Blocked” permissions, which prevents access to the query builder. To grant Create query permissions for this database, Metabase will also change the View data permissions on this database to “Can view”.`;
 
-    const hasChildWithSandboxedPermission = hasPermissionValueInSubgraph(
-      permissions,
-      groupId,
-      entityId,
-      database,
-      DataPermission.VIEW_DATA,
-      DataPermissionValue.SANDBOXED,
-    );
-    const sandboxWarningMessage = hasChildWithSandboxedPermission
-      ? t`WARNING: Updating access will remove your sandboxing settings for this ${entityType}. To keep those settings, you’ll need to manually change the View data permissions for the schemas or tables that are set to “Blocked”.`
-      : "";
+    const resetGranularSettingsWarnging = t`Updating access will reset your granular settings for this ${entityType}. To keep those settings, you’ll need to manually change the View data permissions for the schemas or tables that are set to “Blocked”.`;
 
     return {
-      title: t`Change “View data” access for this ${entityType} to “Can view” as well?`,
+      title: t`This will also set the View Data permission to “Can View” to allow this group to create queries. Okay?`,
       message: (
-        <>
-          {coreMessage}
-          <br />
-          <br />
-          {sandboxWarningMessage}
-        </>
+        <Flex direction="column" gap="lg">
+          <Text>{coreMessage}</Text>
+          <Alert variant="warning" icon="warning">
+            {resetGranularSettingsWarnging}
+          </Alert>
+        </Flex>
       ),
-      confirmButtonText: t`Update access`,
+      confirmButtonText: t`Okay`,
       cancelButtonText: t`Cancel`,
     };
   }
