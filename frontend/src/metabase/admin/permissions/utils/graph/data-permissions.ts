@@ -222,7 +222,7 @@ export const getFieldsPermission = (
   }
 };
 
-const getEntityPermission = (
+export const getEntityPermission = (
   permissions: GroupsPermissions,
   groupId: number,
   entityId: EntityId,

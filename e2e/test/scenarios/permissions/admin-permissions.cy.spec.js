@@ -54,7 +54,7 @@ describe("scenarios > admin > permissions", { tags: "@OSS" }, () => {
     ]);
   });
 
-  it("should now show view data column on OSS", () => {
+  it("should not show view data column on OSS", () => {
     cy.visit(`/admin/permissions/data/group/${ALL_USERS_GROUP}`);
 
     cy.findByTestId("permission-table").within(() => {

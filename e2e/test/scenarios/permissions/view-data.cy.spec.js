@@ -77,7 +77,13 @@ describeEE("scenarios > admin > permissions > view data > blocked", () => {
     cy.visit(
       `/admin/permissions/data/group/${ALL_USERS_GROUP}/database/${SAMPLE_DB_ID}`,
     ); // table level
-    modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Blocked");
+
+    cy.log("ensure that modify tables do not affect other rows");
+    // this is the test is admittedly a little opaque, we're trying to test that
+    // the calculation that upgrades view data permissions does not apply to tables
+    modifyPermission("Orders", DATA_ACCESS_PERM_IDX, "Blocked"); // add blocked to one table
+    modifyPermission("Products", CREATE_QUERIES_PERM_IDX, "Query builder only"); // increase permissions of another table to trigger upgrade flow
+    assertPermissionForItem("Orders", DATA_ACCESS_PERM_IDX, "Blocked"); // orders table should stay the same
 
     selectSidebarItem("All Users");
     assertPermissionForItem(
