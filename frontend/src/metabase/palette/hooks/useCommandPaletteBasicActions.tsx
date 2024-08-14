@@ -162,6 +162,15 @@ export const useCommandPaletteBasicActions = ({
           dispatch(push("/browse/databases"));
         },
       },
+      {
+        id: "navigate_chat",
+        name: t`Chat`,
+        section: "basic",
+        icon: "model",
+        perform: () => {
+          dispatch(push("/browse/chat"));
+        },
+      },
     ];
 
     return [...actions, ...browseActions];

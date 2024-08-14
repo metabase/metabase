@@ -65,6 +65,8 @@ import burger_component from "./burger.svg?component";
 import burger_source from "./burger.svg?source";
 import calendar_component from "./calendar.svg?component";
 import calendar_source from "./calendar.svg?source";
+import chatAI_source from "./chatAI.svg?source";
+import chatAI_component from "./chatAI.svg?component";
 import check_component from "./check.svg?component";
 import check_source from "./check.svg?source";
 import chevrondown_component from "./chevrondown.svg?component";
@@ -303,6 +305,8 @@ import section_component from "./section.svg?component";
 import section_source from "./section.svg?source";
 import segment_component from "./segment.svg?component";
 import segment_source from "./segment.svg?source";
+import sendChat_component from "./sendChat.svg?component";
+import sendChat_source from "./sendChat.svg?source";
 import share_component from "./share.svg?component";
 import share_source from "./share.svg?source";
 import shield_component from "./shield.svg?component";
@@ -514,6 +518,10 @@ export const Icons = {
   calendar: {
     component: calendar_component,
     source: calendar_source,
+  },
+  chat: {
+    component: chatAI_component,
+    source: chatAI_source,
   },
   check: {
     component: check_component,
@@ -950,6 +958,10 @@ export const Icons = {
   revert: {
     component: revert_component,
     source: revert_source,
+  },
+  sendChat: {
+    component: sendChat_component,
+    source: sendChat_source,
   },
   share: {
     component: share_component,
