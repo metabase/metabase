@@ -52,7 +52,7 @@
     (cond-> instance
       deactivated?
       ;; Channel.name has an unique constraint and it's an useful property for serialization
-      ;; So we rename deactivated channels so new channel can reuse the name
+      ;; We rename deactivated channels so that new channels can reuse the name
       ;; Limit to 254 characters to avoid hitting character limit
       (assoc :name (subs (format "DEACTIVATED_%d %s" (:id instance) (:name instance)) 0 254)))))
 
