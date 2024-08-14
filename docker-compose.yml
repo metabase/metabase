@@ -12,6 +12,10 @@ services:
       - MB_EMAIL_SMTP_SECURITY=${MB_EMAIL_SMTP_SECURITY}
       - MB_EMAIL_SMTP_HOST=${MB_EMAIL_SMTP_HOST}
       - MB_EMAIL_SMTP_PORT=${MB_EMAIL_SMTP_PORT}
+      - MB_DB_CONNECTION_URI=${MB_DB_CONNECTION_URI}
+      - MB_DB_USER=${MB_DB_USER}
+      - MB_DB_PASS=${MB_DB_PASS}
+      - VERSION=${VERSION}
     restart: always
     networks:
       - dokploy-network
