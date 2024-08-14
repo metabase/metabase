@@ -7,6 +7,8 @@
    [methodical.core :as methodical]
    [toucan2.core :as t2]))
 
+(set! *warn-on-reflection* true)
+
 (methodical/defmethod t2/table-name :model/Channel [_model] :channel)
 
 (defmethod mi/can-write? :model/Channel
@@ -43,10 +45,15 @@
 
 (t2/define-before-update :model/Channel
   [instance]
-  (assert-channel-type instance)
-  (when (false? (:active (t2/changes instance)))
-    (t2/delete! :model/PulseChannel :channel_id (:id instance)))
-  instance)
+  (let [deactivated? (false? (:active (t2/changes instance)))]
+    (assert-channel-type instance)
+    (when deactivated?
+      (t2/delete! :model/PulseChannel :channel_id (:id instance)))
+    (cond-> instance
+      deactivated?
+      ;; Channel.name has an unique constraint and it's an useful property for serialization
+      ;; So we rename deactivated channels so new channel can reuse the name
+      (assoc :name (format "DEACTIVATED %s %d" (:name instance) (quot (System/currentTimeMillis) 1000))))))
 
 (defmethod audit-log/model-details :model/Channel
   [channel _event-type]

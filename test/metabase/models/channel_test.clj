@@ -21,8 +21,7 @@
                                                                    :active  true})]
         (is (encryption/possibly-encrypted-string? (t2/select-one-fn :details :channel (:id channel))))))))
 
-
-(deftest toggle-channel-active-will-update-pulse-channel-test
+(deftest deactivate-channel-test
   (mt/with-temp
     [:model/Channel      {id :id}       {:name    "Test channel"
                                          :type    "channel/metabase-test"
@@ -39,6 +38,9 @@
       (is (pos? (t2/update! :model/Channel id {:active true})))
       (is (t2/exists? :model/PulseChannel pc-id)))
 
-   (testing "deactivate channel will delete pulse channels"
-     (t2/update! :model/Channel id {:active false})
-     (is (not (t2/exists? :model/PulseChannel pc-id))))))
+    (testing "deactivate channel"
+      (t2/update! :model/Channel id {:active false})
+      (testing "will delete pulse channels"
+        (is (not (t2/exists? :model/PulseChannel pc-id))))
+      (testing "will change the name"
+        (is (some? (re-find #"DEACTIVATED New name \d+" (t2/select-one-fn :name :model/Channel id))))))))
