@@ -13,6 +13,7 @@ import {
 
 export const Root = styled.div<{
   hasScroll: boolean;
+  hasVisibleOverflowWhenPriting?: boolean;
   isBordered?: boolean;
 }>`
   display: flex;
@@ -35,6 +36,14 @@ export const Root = styled.div<{
       border: 1px solid var(--mb-color-border);
       border-radius: 8px;
       box-shadow: 0 2px 2px var(--mb-color-shadow);
+    `}
+
+  ${props =>
+    props.hasVisibleOverflowWhenPriting &&
+    css`
+      @media print {
+        overflow: visible;
+      }
     `}
 `;
 

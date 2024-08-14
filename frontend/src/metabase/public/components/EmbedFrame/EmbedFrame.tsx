@@ -12,6 +12,7 @@ import {
 } from "metabase/dashboard/components/Dashboard/Dashboard.styled";
 import { ExportAsPdfButton } from "metabase/dashboard/components/DashboardHeader/buttons/ExportAsPdfButton";
 import { DASHBOARD_PDF_EXPORT_ROOT_ID } from "metabase/dashboard/constants";
+import { getDashboardType } from "metabase/dashboard/utils";
 import { initializeIframeResizer, isSmallScreen } from "metabase/lib/dom";
 import { useSelector } from "metabase/lib/redux";
 import { FilterApplyButton } from "metabase/parameters/components/FilterApplyButton";
@@ -105,6 +106,10 @@ export const EmbedFrame = ({
     state => !getSetting(state, "hide-embed-branding?"),
   );
 
+  const isPublicDashboard = Boolean(
+    dashboard && getDashboardType(dashboard.id) === "public",
+  );
+
   const ParametersListComponent = getParametersListComponent({
     isEmbeddingSdk,
     isDashboard: !!dashboard,
@@ -140,6 +145,7 @@ export const EmbedFrame = ({
     <Root
       hasScroll={hasFrameScroll}
       isBordered={bordered}
+      hasVisibleOverflowWhenPriting={isPublicDashboard}
       className={cx(EmbedFrameS.EmbedFrame, className, {
         [EmbedFrameS.NoBackground]: !background,
       })}
