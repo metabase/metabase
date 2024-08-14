@@ -1008,7 +1008,7 @@
 (defmethod group-by-month-pacific-test-expected-rows :default
   [driver]
   [[(if (qp.test-util/supports-report-timezone? driver)
-      "2015-06-01T00:00:00-04:00"
+      "2015-06-01T00:00:00-07:00"
       "2015-06-01T00:00:00Z")
     200]])
 
