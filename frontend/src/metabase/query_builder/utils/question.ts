@@ -11,15 +11,11 @@ export function isQuestionDirty(
   // We need to escape the isDirty check as it will always be true in this case,
   // and the page will always be covered with a 'rerun' overlay.
   // Once the dataset_query changes, the question will loose the "dataset" flag and it'll work normally
-  if (
-    !question ||
-    !originalQuestion ||
-    isAdHocModelOrMetricQuestion(question, originalQuestion)
-  ) {
+  if (!question || isAdHocModelOrMetricQuestion(question, originalQuestion)) {
     return false;
   }
 
-  return question.isDirtyComparedToWithoutParameters(originalQuestion);
+  return question.isDirtyComparedToWithoutParameters(originalQuestion!);
 }
 
 export function isQuestionRunnable(
