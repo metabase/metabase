@@ -21,16 +21,14 @@ export const NewModelOption = ({
     <Paper
       className={NewModelOptionS.NewModelOptionContainer}
       withBorder
-      p="2rem"
-      h={340}
     >
-      <Stack justify="center" align="center" h="100%" px="2rem">
+      <Stack>
         <img
           src={`${image}.png`}
           style={{ width: "180px" }}
           srcSet={`${image}@2x.png 2x`}
         />
-        <Title className={NewModelOptionS.Title}>{title}</Title>
+        <Title align="center" className={NewModelOptionS.Title}>{title}</Title>
         <Text inline align="center" color="text-medium">
           {description}
         </Text>

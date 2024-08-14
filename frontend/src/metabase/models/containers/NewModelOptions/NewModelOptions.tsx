@@ -6,6 +6,7 @@ import _ from "underscore";
 import { useListDatabasesQuery } from "metabase/api";
 import { Grid } from "metabase/components/Grid";
 import CS from "metabase/css/core/index.css";
+import { Button } from "metabase/ui";
 import Databases from "metabase/entities/databases";
 import { useSelector } from "metabase/lib/redux";
 import MetabaseSettings from "metabase/lib/settings";
@@ -13,7 +14,7 @@ import * as Urls from "metabase/lib/urls";
 import { NewModelOption } from "metabase/models/components/NewModelOption";
 import { NoDatabasesEmptyState } from "metabase/reference/databases/NoDatabasesEmptyState";
 import { getHasDataAccess, getHasNativeWrite } from "metabase/selectors/data";
-import { getSetting } from "metabase/selectors/settings";
+import { getLearnUrl, getSetting } from "metabase/selectors/settings";
 import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
 
 import {
@@ -22,7 +23,7 @@ import {
   OptionsRoot,
 } from "./NewModelOptions.styled";
 
-const EDUCATIONAL_LINK = MetabaseSettings.learnUrl("data-modeling/models");
+const EDUCATIONAL_LINK = getLearnUrl("data-modeling/models");
 
 interface NewModelOptionsProps {
   location: Location;
@@ -103,12 +104,13 @@ const NewModelOptions = ({ location }: NewModelOptionsProps) => {
           {t`What's a model?`}
         </EducationalButton>
       )}
+      {showMetabaseLinks && (
+        <Button variant="subtle" bg="brand" component="a" href={EDUCATIONAL_LINK}>
+          {t`What's a model?`}
+        </Button>
+      )}
     </OptionsRoot>
   );
 };
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default _.compose(
-  Databases.loadList({
-    loadingAndErrorWrapper: false,
-  }),
-)(NewModelOptions);
+
+export default NewModelOptions;
