@@ -21,6 +21,7 @@ export const BrowseNavSection = ({
 }) => {
   const BROWSE_MODELS_URL = "/browse/models";
   const BROWSE_DATA_URL = "/browse/databases";
+  const BROWSE_SEMANTIC_LAYER = "/browse/semantic-layer";
   const BROWSE_CHAT = "/browse/chat";
   const BROWSE_SEMANTIC_LAYER = "/browse/semantic-layer";
 
@@ -83,6 +84,17 @@ export const BrowseNavSection = ({
           aria-label={t`Browse databases`}
         >
           {t`Databases`}
+        </PaddedSidebarLink>
+      )}
+      {hasDataAccess && (
+        <PaddedSidebarLink
+          icon="database"
+          url={BROWSE_SEMANTIC_LAYER}
+          isSelected={nonEntityItem?.url?.startsWith(BROWSE_SEMANTIC_LAYER)}
+          onClick={onItemSelect}
+          aria-label={t`Browse semantic layer`}
+        >
+          {t`Semantic Layer`}
         </PaddedSidebarLink>
       )}
       <PaddedSidebarLink
