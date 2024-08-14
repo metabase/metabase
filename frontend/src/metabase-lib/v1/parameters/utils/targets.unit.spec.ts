@@ -388,6 +388,20 @@ describe("parameters/utils/targets", () => {
             ]),
           ]);
         });
+
+        it("complex 2-stage query", () => {
+          const question = createModel(createComplex2StageQuery(), [
+            createMockField({ display_name: "User's 18th birthday" }),
+            createMockField({ display_name: "Count" }),
+          ]);
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
+
+          expect(columnsInfos).toEqual([
+            withColumnStage(-1, ["Question", "User's 18th birthday"]),
+            withColumnStage(-1, ["Question", "Count"]),
+          ]);
+        });
       });
     });
 
