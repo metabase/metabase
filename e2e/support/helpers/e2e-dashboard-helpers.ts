@@ -94,6 +94,9 @@ export function saveDashboard({
   } else {
     cy.findByText(editBarText).should("not.exist");
   }
+
+  // Wait until 'Edited a few seconds ago...' disappears
+  cy.findByTestId("revision-history-button").should("not.be.visible");
   cy.wait(waitMs); // this is stupid but necessary to due to the dashboard resizing and detaching elements
 }
 
