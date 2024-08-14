@@ -28,6 +28,8 @@ export const TAG_TYPES = [
   "timeline",
   "timeline-event",
   "user",
+  "cubedata",
+  "company-name",
 ] as const;
 
 export const TAG_TYPE_MAPPING = {
@@ -43,4 +45,6 @@ export const TAG_TYPE_MAPPING = {
   metric: "card",
   snippet: "snippet",
   pulse: "subscription",
+  cubedata: "cubedata",
+  "company-name": "company-name"
 } as const;

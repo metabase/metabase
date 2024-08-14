@@ -111,6 +111,8 @@
                                  "https://accounts.google.com"
                                  ;; MailChimp. So people can sign up for the Metabase mailing list in the sign up process
                                  "metabase.us10.list-manage.com"
+                                 ;; Semantic Layer
+                                 "https://dev.semantic.omniloy.com/company/company-cube-files/omni_test"
                                  ;; Google analytics
                                  (when (public-settings/anon-tracking-enabled)
                                    "www.google-analytics.com")

@@ -5,7 +5,12 @@ export type SortColumn =
   | "last_used_at"
   | "model"
   | "collection"
-  | "description";
+  | "description"
+  | "folder"
+  | "creation date"
+  | "last update"
+  | "type"
+  | "category";
 
 export enum SortDirection {
   Asc = "asc",
