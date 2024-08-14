@@ -30,6 +30,7 @@ export const getTooltipOption = (
   return {
     trigger: "item",
     appendToBody: true,
+    confine: true,
     className: TooltipStyles.ChartTooltipRoot,
     formatter: params => {
       if (Array.isArray(params) || typeof params.dataIndex !== "number") {

@@ -2,6 +2,8 @@ import cx from "classnames";
 import type React from "react";
 import _ from "underscore";
 
+import { isNotNull } from "metabase/lib/types";
+
 import TooltipStyles from "./EChartsTooltip.module.css";
 
 export interface EChartsTooltipRow {
@@ -21,7 +23,6 @@ export interface EChartsTooltipModel {
   header?: string;
   rows: EChartsTooltipRow[];
   footer?: EChartsTooltipFooter;
-  showMarkers?: boolean;
 }
 
 export type EChartsTooltipProps = EChartsTooltipModel;
@@ -30,8 +31,22 @@ export const EChartsTooltip = ({
   header,
   rows,
   footer,
-  showMarkers = true,
 }: EChartsTooltipProps) => {
+  const hasMarkers = rows.some(row => row.markerColorClass != null);
+  const maxValuesColumns = rows.reduce((currentMax, row) => {
+    return Math.max(currentMax, row.values.filter(isNotNull).length);
+  }, 0);
+
+  const paddedRows = rows.map(row => {
+    const paddedValues = [...row.values];
+    paddedValues.length = maxValuesColumns;
+
+    return {
+      ...row,
+      values: paddedValues,
+    };
+  });
+
   return (
     <div>
       {header != null && <div className={TooltipStyles.Header}>{header}</div>}
@@ -41,20 +56,15 @@ export const EChartsTooltip = ({
         })}
       >
         <tbody>
-          {rows.map((row, index) => {
-            return (
-              <TooltipRow
-                key={index}
-                {...(showMarkers ? row : _.omit(row, "markerColorClass"))}
-              />
-            );
+          {paddedRows.map((row, index) => {
+            return <TooltipRow key={index} {...row} />;
           })}
         </tbody>
         {footer != null && (
           <tfoot>
             <FooterRow
               {...footer}
-              markerContent={showMarkers ? <span /> : null}
+              markerContent={hasMarkers ? <span /> : null}
             />
           </tfoot>
         )}
@@ -118,10 +128,6 @@ const BaseRow = ({ className, name, values, markerContent }: BaseRowProps) => (
     )}
     {values.map((value, i) => {
       const isMainValue = i === 0;
-
-      if (!isMainValue && value == null) {
-        return null;
-      }
 
       return (
         <td

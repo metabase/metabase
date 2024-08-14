@@ -29,18 +29,13 @@ export const getTooltipModel = (
   formatters: PieChartFormatters,
 ): EChartsTooltipModel => {
   const hoveredIndex = dataIndexToHoveredIndex(dataIndex);
-  const hoveredOther =
-    chartModel.slices[hoveredIndex].data.isOther &&
-    chartModel.otherSlices.length > 1;
 
-  const rows = (hoveredOther ? chartModel.otherSlices : chartModel.slices).map(
-    slice => ({
-      name: formatters.formatDimension(slice.data.key),
-      value: slice.data.displayValue,
-      color: hoveredOther ? undefined : slice.data.color,
-      formatter: formatters.formatMetric,
-    }),
-  );
+  const rows = chartModel.slices.map(slice => ({
+    name: formatters.formatDimension(slice.data.key),
+    value: slice.data.displayValue,
+    color: slice.data.color,
+    formatter: formatters.formatMetric,
+  }));
 
   const rowsTotal = getTotalValue(rows);
   const isShowingTotalSensible = rows.length > 1;
@@ -50,7 +45,7 @@ export const getTooltipModel = (
       ? getMarkerColorClass(row.color)
       : "none";
     return {
-      isFocused: !hoveredOther && index === hoveredIndex,
+      isFocused: index === hoveredIndex,
       markerColorClass,
       name: row.name,
       values: [
@@ -61,7 +56,6 @@ export const getTooltipModel = (
   });
 
   return {
-    showMarkers: !hoveredOther,
     header: getFriendlyName(chartModel.colDescs.dimensionDesc.column),
     rows: formattedRows,
     footer: isShowingTotalSensible

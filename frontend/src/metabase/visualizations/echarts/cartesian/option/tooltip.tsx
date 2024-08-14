@@ -50,6 +50,7 @@ export const getTooltipOption = (
   return {
     trigger: "item",
     appendToBody: true,
+    confine: true,
     className: TooltipStyles.ChartTooltipRoot,
     formatter: params => {
       const isAxisTooltip = Array.isArray(params);

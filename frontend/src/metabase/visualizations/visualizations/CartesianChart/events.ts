@@ -17,7 +17,6 @@ import type {
 import { getRowFromDataPoint } from "metabase/visualizations/components/ChartTooltip/KeyValuePairChartTooltip/KeyValuePairChartTooltip";
 import {
   getPercent,
-  getSortedRows,
   getTotalValue,
 } from "metabase/visualizations/components/ChartTooltip/StackedDataTooltip/utils";
 import { formatValueForTooltip } from "metabase/visualizations/components/ChartTooltip/utils";
@@ -461,10 +460,6 @@ export const getSeriesOnlyTooltipModel = (
     },
   );
 
-  if (settings["legend.is_reversed"]) {
-    rows.reverse();
-  }
-
   return {
     header,
     rows,
@@ -479,21 +474,22 @@ export const getStackedTooltipModel = (
   dataIndex: number,
   datum: Datum,
 ): EChartsTooltipModel | null => {
-  const stackSeriesRows = getSortedRows(
-    chartModel.seriesModels
-      .filter(seriesModel =>
-        seriesStack?.seriesKeys.includes(seriesModel.dataKey),
-      )
-      .map(seriesModel => {
-        return {
-          isFocused: seriesModel.dataKey === seriesDataKey,
-          name: seriesModel.name,
-          color: seriesModel.color,
-          value: chartModel.dataset[dataIndex][seriesModel.dataKey],
-          dataKey: seriesModel.dataKey,
-        };
-      }),
-  );
+  const stackSeriesRows = chartModel.seriesModels
+    .filter(seriesModel =>
+      seriesStack?.seriesKeys.includes(seriesModel.dataKey),
+    )
+    .map(seriesModel => {
+      return {
+        isFocused: seriesModel.dataKey === seriesDataKey,
+        name: seriesModel.name,
+        color: seriesModel.color,
+        value: chartModel.dataset[dataIndex][seriesModel.dataKey],
+        dataKey: seriesModel.dataKey,
+      };
+    });
+
+  // Reverse rows as they appear reversed on the stacked chart to match the order
+  stackSeriesRows.reverse();
 
   const formatter = (value: unknown) =>
     String(
