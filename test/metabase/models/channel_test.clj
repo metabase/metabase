@@ -43,4 +43,4 @@
       (testing "will delete pulse channels"
         (is (not (t2/exists? :model/PulseChannel pc-id))))
       (testing "will change the name"
-        (is (some? (re-find #"DEACTIVATED New name \d+" (t2/select-one-fn :name :model/Channel id))))))))
+        (is (some? (re-find #"New name DEACTIVATED_\d+" (t2/select-one-fn :name :model/Channel id))))))))
