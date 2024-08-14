@@ -4,6 +4,9 @@ import toggle from "inquirer-toggle";
 import type { CliStepMethod } from "../types/cli";
 import { propagateErrorResponse } from "../utils/propagate-error-response";
 
+// Name of the permission groups and collections to create.
+const GROUP_NAMES = ["Customer A", "Customer B", "Customer C"];
+
 export const setupPermissions: CliStepMethod = async state => {
   const { cookie = "", instanceUrl, tables } = state;
 
@@ -53,11 +56,11 @@ export const setupPermissions: CliStepMethod = async state => {
 
   await propagateErrorResponse(res);
 
-  // Get the current revision number. Should be 1 by default.
+  // Get the current permission revision number. Should be 1 by default.
   const { revision } = (await res.json()) as { revision: number };
 
   // Decline access for the "All Users" group by default.
-  // The "Admin" group will always have access to everything.
+  // The admin group will always have access to everything.
   res = await fetch(`${instanceUrl}/api/permissions/graph`, {
     method: "PUT",
     headers: { "content-type": "application/json", cookie },
@@ -72,11 +75,9 @@ export const setupPermissions: CliStepMethod = async state => {
   await propagateErrorResponse(res);
 
   // Create new collections
-  const collectionNames = ["Customer A", "Customer B", "Customer C"];
-
   try {
     await Promise.all(
-      collectionNames.map(async collectionName => {
+      GROUP_NAMES.map(async groupName => {
         res = await fetch(`${instanceUrl}/api/collection`, {
           method: "POST",
           headers: { "content-type": "application/json", cookie },
@@ -85,7 +86,7 @@ export const setupPermissions: CliStepMethod = async state => {
             authority_level: null,
             color: "#509EE3",
             description: null,
-            name: collectionName,
+            name: groupName,
           }),
         });
 
@@ -93,6 +94,33 @@ export const setupPermissions: CliStepMethod = async state => {
       }),
     );
   } catch (error) {}
+
+  // Example: { "Customer A": [3], "Customer B": [4], "Customer C": [5] }
+  const jwtGroupMappings: Record<string, number[]> = {};
+
+  // Create new permission groups and add them to the JWT group mappings.
+  try {
+    for (const groupName of GROUP_NAMES) {
+      res = await fetch(`${instanceUrl}/api/permissions/group`, {
+        method: "POST",
+        headers: { "content-type": "application/json", cookie },
+        body: JSON.stringify({ name: groupName }),
+      });
+
+      await propagateErrorResponse(res);
+
+      const { id: groupId } = (await res.json()) as { id: number };
+
+      jwtGroupMappings[groupName] = [groupId];
+    }
+  } catch (error) {}
+
+  // Update the JWT group mappings.
+  res = await fetch(`${instanceUrl}/api/setting/jwt-group-mappings`, {
+    method: "PUT",
+    headers: { "content-type": "application/json", cookie },
+    body: JSON.stringify({ value: jwtGroupMappings }),
+  });
 
   return [{ type: "success" }, state];
 };
