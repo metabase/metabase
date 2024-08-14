@@ -15,11 +15,12 @@ import {
   visualize,
   summarize,
   tableHeaderClick,
+  dragField,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID, ORDERS } = SAMPLE_DATABASE;
 
-const breakoutQuestionDetails: StructuredQuestionDetails = {
+const questionWith2BreakoutsDetails: StructuredQuestionDetails = {
   query: {
     "source-table": ORDERS_ID,
     aggregation: [["count"]],
@@ -42,11 +43,51 @@ const breakoutQuestionDetails: StructuredQuestionDetails = {
   },
 };
 
+const questionWith5BreakoutsAndLimitDetails: StructuredQuestionDetails = {
+  query: {
+    "source-table": ORDERS_ID,
+    aggregation: [["count"]],
+    breakout: [
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "year" },
+      ],
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "quarter" },
+      ],
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "month" },
+      ],
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "week" },
+      ],
+      [
+        "field",
+        ORDERS.CREATED_AT,
+        { "base-type": "type/DateTime", "temporal-unit": "day" },
+      ],
+    ],
+    limit: 10,
+  },
+  display: "table",
+  visualization_settings: {
+    "table.pivot": false,
+  },
+};
+
 describe("scenarios > question > multiple column breakouts", () => {
   beforeEach(() => {
     restore();
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
+    cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
   });
 
   describe("current stage", () => {
@@ -78,7 +119,7 @@ describe("scenarios > question > multiple column breakouts", () => {
       });
 
       it("should allow to sort by breakout columns", () => {
-        createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+        createQuestion(questionWith2BreakoutsDetails, { visitQuestion: true });
         openNotebook();
         getNotebookStep("summarize").findByText("Sort").click();
         popover().findByText("Created At: Year").click();
@@ -99,7 +140,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
     describe("summarize sidebar", () => {
       it("should allow to change temporal units for multiple breakouts of the same column", () => {
-        createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+        createQuestion(questionWith2BreakoutsDetails, { visitQuestion: true });
         summarize();
         cy.findByTestId("pinned-dimensions")
           .findAllByLabelText("Created At")
@@ -126,7 +167,7 @@ describe("scenarios > question > multiple column breakouts", () => {
 
     describe("timeseries chrome", () => {
       it("should use the first breakout for the chrome in case there are multiple for this column", () => {
-        createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+        createQuestion(questionWith2BreakoutsDetails, { visitQuestion: true });
 
         cy.log("change the breakout");
         cy.findByTestId("timeseries-bucket-button")
@@ -176,16 +217,55 @@ describe("scenarios > question > multiple column breakouts", () => {
 
     describe("viz settings", () => {
       it("should be able to change formatting settings for breakouts of the same column", () => {
-        createQuestion(breakoutQuestionDetails, { visitQuestion: true });
+        createQuestion(questionWith2BreakoutsDetails, { visitQuestion: true });
+
+        cy.log("first breakout");
         tableHeaderClick("Created At: Year");
         popover().icon("gear").click();
         popover().findByDisplayValue("Created At: Year").clear().type("Year");
         cy.get("body").click();
+
+        cy.log("second breakout");
         tableHeaderClick("Created At: Month");
         popover().icon("gear").click();
         popover().findByDisplayValue("Created At: Month").clear().type("Month");
         cy.get("body").click();
+
         assertTableData({ columns: ["Year", "Month", "Count"] });
+      });
+
+      it("should be able to change pivot split settings when there are more than 2 breakouts", () => {
+        createQuestion(questionWith5BreakoutsAndLimitDetails, {
+          visitQuestion: true,
+        });
+
+        cy.log("change display and assert the default settings");
+        cy.findByTestId("viz-type-button").click();
+        cy.findByTestId("chart-type-sidebar")
+          .findByTestId("Pivot Table-button")
+          .click();
+        cy.wait("@pivotDataset");
+        cy.findByTestId("pivot-table")
+          .should("contain.text", "Created At: Month")
+          .and("contain.text", "Created At: Week")
+          .and("contain.text", "Created At: Day");
+
+        cy.log("move a column from rows to columns");
+        cy.findByTestId("viz-settings-button").click();
+        dragField(2, 3);
+        cy.wait("@pivotDataset");
+        cy.findByTestId("pivot-table")
+          .should("contain.text", "Created At: Month")
+          .and("contain.text", "Created At: Week")
+          .and("not.contain.text", "Created At: Day");
+
+        cy.log("move a column from columns to rows");
+        dragField(4, 1);
+        cy.wait("@pivotDataset");
+        cy.findByTestId("pivot-table")
+          .should("contain.text", "Created At: Month")
+          .and("contain.text", "Created At: Quarter")
+          .and("contain.text", "Created At: Week");
       });
     });
   });

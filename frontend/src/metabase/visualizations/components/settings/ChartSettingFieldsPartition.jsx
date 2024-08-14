@@ -128,8 +128,8 @@ class ChartSettingFieldsPartition extends Component {
                     ) : (
                       columns.map((col, index) => (
                         <Draggable
-                          key={`draggable-${col.display_name}`}
-                          draggableId={`draggable-${col.display_name}`}
+                          key={`draggable-${col.name}`}
+                          draggableId={`draggable-${col.name}`}
                           index={index}
                         >
                           {provided => (
@@ -140,7 +140,7 @@ class ChartSettingFieldsPartition extends Component {
                               className={CS.mb1}
                             >
                               <Column
-                                key={`${partitionName}-${col.display_name}`}
+                                key={`${partitionName}-${col.name}`}
                                 column={col}
                                 index={index}
                                 onEditFormatting={this.handleEditFormatting}
