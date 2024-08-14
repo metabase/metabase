@@ -127,7 +127,7 @@ const OptionsContent = ({
   };
 
   return (
-    <OptionsContainer>
+    <OptionsContainer data-testid="relative-date-picker-options">
       {supportsExpressions && (
         <OptionButton
           icon="arrow_left_to_line"
