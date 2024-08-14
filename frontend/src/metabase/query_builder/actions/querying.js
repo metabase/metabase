@@ -10,7 +10,7 @@ import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitela
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
 import * as Lib from "metabase-lib";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 
 import {
   getCard,
@@ -114,9 +114,10 @@ export const runQuestionQuery = ({
       : true;
 
     if (shouldUpdateUrl) {
-      const isAdHocModelOrMetric =
-        (question.type() === "model" || question.type() === "metric") &&
-        isAdHocModelQuestion(question, originalQuestion);
+      const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
+        question,
+        originalQuestion,
+      );
 
       dispatch(
         updateUrl(question, { dirty: !isAdHocModelOrMetric && isCardDirty }),

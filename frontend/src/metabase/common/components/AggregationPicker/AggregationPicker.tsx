@@ -33,9 +33,8 @@ interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  onAdd: (aggregations: Lib.Aggregable[]) => void;
-  onSelect: (aggregation: Lib.Aggregable) => void;
   onClose?: () => void;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -67,9 +66,8 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   hasExpressionInput = true,
-  onAdd,
-  onSelect,
   onClose,
+  onQueryChange,
 }: AggregationPickerProps) {
   const question = useSelector(getQuestion);
   const metadata = useSelector(getMetadata);
@@ -101,6 +99,25 @@ export function AggregationPicker({
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
 
+  const onSelect = useCallback(
+    function (aggregation: Lib.Aggregable) {
+      const isUpdate = clause != null && clauseIndex != null;
+      if (isUpdate) {
+        const nextQuery = Lib.replaceClause(
+          query,
+          stageIndex,
+          clause,
+          aggregation,
+        );
+        onQueryChange(nextQuery);
+      } else {
+        const nextQuery = Lib.aggregate(query, stageIndex, aggregation);
+        onQueryChange(nextQuery);
+      }
+    },
+    [query, stageIndex, clause, clauseIndex, onQueryChange],
+  );
+
   const sections = useMemo(() => {
     const sections: Section[] = [];
 
@@ -108,9 +125,8 @@ export function AggregationPicker({
     const databaseId = Lib.databaseID(query);
     const database = metadata.database(databaseId);
     const canUseExpressions = database?.hasFeature("expression-aggregations");
-    const isMetricBased = Lib.isMetricBased(query, stageIndex);
 
-    if (operators.length > 0 && !isMetricBased) {
+    if (operators.length > 0) {
       const operatorItems = operators.map(operator =>
         getOperatorListItem(query, stageIndex, operator),
       );
@@ -126,7 +142,7 @@ export function AggregationPicker({
     if (metrics.length > 0) {
       sections.push({
         key: "metrics",
-        name: isMetricBased ? t`Metrics` : t`Common Metrics`,
+        name: t`Common Metrics`,
         items: metrics.map(metric =>
           getMetricListItem(query, stageIndex, metric, clauseIndex),
         ),
@@ -240,8 +256,8 @@ export function AggregationPicker({
   );
 
   const handleCompareSubmit = useCallback(
-    (aggregations: Lib.ExpressionClause[]) => {
-      onAdd(aggregations);
+    (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => {
+      onQueryChange(query);
 
       if (question) {
         trackColumnCompareViaShortcut(
@@ -254,7 +270,7 @@ export function AggregationPicker({
 
       onClose?.();
     },
-    [query, stageIndex, question, onAdd, onClose],
+    [stageIndex, question, onClose, onQueryChange],
   );
 
   if (isComparing) {
@@ -371,12 +387,7 @@ function isExpressionEditorInitiallyOpen(
   operators: Lib.AggregationOperator[],
 ): boolean {
   if (!clause) {
-    return (
-      Lib.isMetricBased(query, stageIndex) &&
-      Lib.availableMetrics(query, stageIndex)
-        .map(metric => Lib.displayInfo(query, stageIndex, metric))
-        .every(metricInfo => metricInfo.aggregationPosition != null)
-    );
+    return false;
   }
 
   const initialOperator = getInitialOperator(query, stageIndex, operators);

@@ -6,7 +6,7 @@
 
     ;; run a query with debugging enabled
     (binding [metabase.query-processor.debug/*debug* true]
-      (metabase.query-processor/process-query query)"
+      (metabase.query-processor/process-query query))"
   (:require
    [clojure.java.io :as io]
    [clojure.string :as str]
