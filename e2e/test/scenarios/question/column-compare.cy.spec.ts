@@ -8,6 +8,7 @@ import {
   getNotebookStep,
   openNotebook,
   popover,
+  queryBuilderMain,
   resetSnowplow,
   restore,
   rightSidebar,
@@ -139,7 +140,7 @@ const CUSTOM_EXPRESSIONS_USED = [
   "count",
 ];
 
-describeWithSnowplow("scenarios > question > column compare TODO", () => {
+describeWithSnowplow("scenarios > question > column compare", () => {
   beforeEach(() => {
     restore();
     resetSnowplow();
@@ -470,7 +471,8 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       verifyNoColumnCompareShortcut();
       cy.realPress("Escape");
 
-      openVisualization();
+      cy.button("Show Visualization").click();
+      queryBuilderMain().findByText("42").should("be.visible");
 
       verifyNotebookText({
         itemName: "Compare to the past",
@@ -1119,8 +1121,4 @@ function verifyBreakoutExistsAndIsFirst(options: {
     .parent()
     .parent()
     .should("match", ":first-child");
-}
-
-function openVisualization() {
-  cy.button("Show Visualization").click();
 }
