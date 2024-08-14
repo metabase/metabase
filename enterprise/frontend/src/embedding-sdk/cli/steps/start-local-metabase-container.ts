@@ -4,16 +4,16 @@ import chalk from "chalk";
 import ora from "ora";
 import { promisify } from "util";
 
+import { CONTAINER_NAME, DEFAULT_PORT, IMAGE_NAME } from "../constants/config";
+import { METABASE_INSTANCE_DEFAULT_ENVS } from "../constants/env";
+import type { CliStepMethod } from "../types/cli";
 import {
-  CONTAINER_NAME,
-  DEFAULT_PORT,
-  IMAGE_NAME,
-} from "embedding-sdk/cli/constants/config";
-import { METABASE_INSTANCE_DEFAULT_ENVS } from "embedding-sdk/cli/constants/env";
-import type { CliStepMethod } from "embedding-sdk/cli/types/cli";
-import { getLocalMetabaseContainer } from "embedding-sdk/cli/utils/get-local-metabase-container";
-import { checkIsPortTaken } from "embedding-sdk/cli/utils/is-port-taken";
-import { printInfo, printSuccess } from "embedding-sdk/cli/utils/print";
+  checkIfNewerDockerImageAvailable,
+  pullLatestDockerImage,
+} from "../utils/docker-image-version-check";
+import { getLocalMetabaseContainer } from "../utils/get-local-metabase-container";
+import { checkIsPortTaken } from "../utils/is-port-taken";
+import { printInfo, printSuccess } from "../utils/print";
 
 const messageContainerRunning = (port: number) => `
   Your local Metabase instance is already running on port ${port}.
@@ -79,7 +79,27 @@ export const startLocalMetabaseContainer: CliStepMethod = async state => {
     }
   }
 
-  const spinner = ora("Starting Metabase in a Docker container.").start();
+  const spinner = ora();
+  spinner.start("Pulling the latest Metabase image...");
+
+  try {
+    const isNewerImageAvailable = await checkIfNewerDockerImageAvailable();
+    console.log("isNewerImageAvailable:", isNewerImageAvailable);
+
+    if (isNewerImageAvailable) {
+      await pullLatestDockerImage();
+    }
+  } catch (error) {
+    spinner.fail();
+
+    const reason = error instanceof Error ? error.message : String(error);
+    const message = `Failed to pull the latest image. Reason: ${reason}`;
+
+    return [{ type: "error", message }, state];
+  }
+
+  spinner.succeed();
+  spinner.start("Starting Metabase in a Docker container...");
 
   // if the container has never been run before, we should run it.
   try {
@@ -106,7 +126,7 @@ export const startLocalMetabaseContainer: CliStepMethod = async state => {
       .join(" ");
 
     const { stderr, stdout } = await exec(
-      `docker run --pull always --detach -p ${port}:3000 ${envFlags} --name ${CONTAINER_NAME} ${IMAGE_NAME}`,
+      `docker run --detach -p ${port}:3000 ${envFlags} --name ${CONTAINER_NAME} ${IMAGE_NAME}`,
     );
 
     if (stdout) {
