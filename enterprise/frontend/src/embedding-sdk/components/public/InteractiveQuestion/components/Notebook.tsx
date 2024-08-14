@@ -6,7 +6,7 @@ import { default as QBNotebook } from "metabase/query_builder/components/noteboo
 import {
   isQuestionDirty,
   isQuestionRunnable,
-} from "metabase/query_builder/selectors";
+} from "metabase/query_builder/utils/question";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
 
