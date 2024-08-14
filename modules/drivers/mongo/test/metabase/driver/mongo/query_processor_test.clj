@@ -470,15 +470,21 @@
                                              [:-
                                               [:absolute-datetime (t/local-date "2008-05-31")]
                                               [:interval -1 :week]
-                                              86400000]]))))))
+                                              86400000]])))))))))
+
+(deftest ^:synchronized temporal-arithmetic-mongo-4-test
+  (mt/test-driver :mongo
+    (mt/with-metadata-provider (mt/id)
       (testing "Date arithmetic fails with Mongo 4-"
         (with-redefs [mongo.qp/get-mongo-version (constantly {:version "4", :semantic-version [4]})]
-          (is (thrown-with-msg? clojure.lang.ExceptionInfo  #"Date arithmetic not supported in versions before 5"
-                                (mongo.qp/compile-filter [:<
-                                                          [:+
-                                                           [:interval 1 :year]
-                                                           [:field "date-field"]]
-                                                          [:absolute-datetime (t/local-date "2008-05-31")]]))))))))
+          (is (thrown-with-msg?
+               clojure.lang.ExceptionInfo
+               #"Date arithmetic not supported in versions before 5"
+               (mongo.qp/compile-filter [:<
+                                         [:+
+                                          [:interval 1 :year]
+                                          [:field "date-field"]]
+                                         [:absolute-datetime (t/local-date "2008-05-31")]]))))))))
 
 (deftest ^:parallel datetime-math-tests
   (mt/test-driver :mongo
@@ -568,7 +574,7 @@
         {"$expr" {"$eq" ["$price" {"$add" [{"$subtract" ["$price" 5]} 100]}]}}
         [:= $price [:+ [:- $price 5] 100]]))))
 
-(deftest uniqe-alias-index-test
+(deftest ^:parallel uniqe-alias-index-test
   (mt/test-driver
    :mongo
    (testing "Field aliases have deterministic unique indices"
@@ -608,15 +614,17 @@
     ;; ie. parse result does not look as follows: `#object[org.bson.BsonString 0x5f26b3a1 "BsonString{value='1000'}"]`
     (let [parsed (mongo.qp/parse-query-string "[{\"limit\": \"1000\"}]")]
       (is (not (instance? org.bson.BsonValue (get-in parsed [0 "limit"])))))))
-        (mt/test-drivers #{:mongo}
-          (mt/dataset string-times
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
-                 (qp/process-query
-                  (mt/mbql-query times {:fields [$d]}))))
-            (is (thrown-with-msg?
-                 clojure.lang.ExceptionInfo
-                 #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
-                 (qp/process-query
-                  (mt/mbql-query times {:fields [$t]}))))))
+
+(deftest ^:parallel parse-query-string-test-2
+  (mt/test-driver :mongo
+    (mt/dataset string-times
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"
+           (qp/process-query
+            (mt/mbql-query times {:fields [$d]}))))
+      (is (thrown-with-msg?
+           clojure.lang.ExceptionInfo
+           #"MongoDB does not support parsing strings as times. Try parsing to a datetime instead"
+           (qp/process-query
+            (mt/mbql-query times {:fields [$t]})))))))

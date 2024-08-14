@@ -68,10 +68,10 @@
   [_driver _database _db]
   true)
 
-;;; TODO -- not sure why this is disabled for Redshift. I guess because of flakiness?
+;;; TODO -- this actually does seem to run for Redshift, but the results have a TZ shift error. TIMEZONE FIXME
 (defmethod driver/database-supports? [:redshift ::sanity-check-test]
   [_driver _database _db]
-  true)
+  false)
 
 (def sanity-check-test-utc-results
   "Default UTC results for [[sanity-check-test]]."

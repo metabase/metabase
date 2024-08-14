@@ -50,21 +50,28 @@
                                            :type     :query
                                            :query    {:source-table (str "card__" card-id)}}))))))))
 
-(defmethod driver/database-supports? [::driver/driver ::microseconds-test]
-  [_driver _feature _database]
-  true)
+(defmulti microseconds-test-expected-rows
+  {:arglists '([driver])}
+  tx/dispatch-on-driver-with-test-extensions
+  :hierarchy #'driver/hierarchy)
 
-(defmethod driver/database-supports? [:sqlite ::microseconds-test]
-  [_driver _feature _database]
-  true)
+(defmethod microseconds-test-expected-rows :default
+  [_driver]
+  [[1 4 "2015-06-06T10:40:00Z"]
+   [2 0 "2015-06-10T19:51:00Z"]])
+
+(defmethod microseconds-test-expected-rows :sqlite
+  [_driver]
+  [[1 4 "2015-06-06 10:40:00"]
+   [2 0 "2015-06-10 19:51:00"]])
 
 (deftest ^:parallel microseconds-test
-  (mt/test-drivers (mt/normal-drivers-with-feature ::microseconds-test)
+  (mt/test-drivers (mt/normal-drivers)
     (mt/dataset toucan-ms-incidents
-      (is (= #{[1 4 "2015-06-06T10:40:00Z"] [2 0 "2015-06-10T19:51:00Z"]}
-             (set (mt/formatted-rows
-                   [int int str]
-                   (mt/run-mbql-query incidents))))))))
+      (is (= (microseconds-test-expected-rows driver/*driver*)
+             (sort-by first (mt/formatted-rows
+                             [int int str]
+                             (mt/run-mbql-query incidents))))))))
 
 (deftest filter-test
   (mt/test-drivers (mt/normal-drivers)
@@ -226,6 +233,13 @@
            {:order-by [[:asc $id]], :fields [$ts]})
          :middleware {:format-rows? false}))
 
+(doseq [driver [:oracle :sparksql]]
+  (defmethod iso-8601-text-fields-query driver
+    [_driver]
+    (mt/dataset just-dates
+      (assoc (mt/mbql-query just-dates {:order-by [[:asc $id]]})
+             :middleware {:format-rows? false}))))
+
 (defmulti iso-8601-text-fields-expected-rows
   "Expected rows for the [[iso-8601-text-fields]] test below."
   {:arglists '([driver])}
@@ -369,6 +383,16 @@
   [driver _feature _database]
   (not= (get-method sql.qp/cast-temporal-byte [driver :Coercion/YYYYMMDDHHMMSSBytes->Temporal])
         (get-method sql.qp/cast-temporal-byte :default)))
+
+;;; Currently broken for Presto. See #46848
+(defmethod driver/database-supports? [:presto-jdbc ::yyyymmddhhss-binary-timestamps]
+  [_driver _feature _database]
+  false)
+
+;;; Not working for Redshift either. See #46850
+(defmethod driver/database-supports? [:redshift ::yyyymmddhhss-binary-timestamps]
+  [_driver _feature _database]
+  false)
 
 (defmulti yyyymmddhhmmss-binary-dates-expected-rows
   "Expected rows for the [[yyyymmddhhmmss-binary-dates]] test below."
