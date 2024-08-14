@@ -260,8 +260,7 @@
                                                  :throw-exceptions? true))
 
     (let [table-ids (sandbox->table-ids sandbox)]
-      {:perms/view-data (zipmap table-ids (repeat :unrestricted))
-       :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
+      {:perms/view-data (zipmap table-ids (repeat :unrestricted))})))
 
 (defn- merge-perms
   "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.
