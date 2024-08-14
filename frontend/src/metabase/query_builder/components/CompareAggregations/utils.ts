@@ -186,6 +186,7 @@ export function updateQueryWithCompareOffsetAggregations(
   offset: "" | number,
   columns: ColumnType[],
   columnAndBucket: BreakoutColumnAndBucket,
+  includeCurrentPeriod: boolean,
 ): UpdatedQuery | null {
   if (!aggregation || offset === "") {
     return null;
@@ -226,6 +227,7 @@ export function updateQueryWithCompareOffsetAggregations(
     aggregation,
     columns,
     offset,
+    includeCurrentPeriod,
   );
 
   nextQuery = aggregations.reduce(

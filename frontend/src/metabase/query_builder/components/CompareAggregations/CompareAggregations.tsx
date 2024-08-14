@@ -98,6 +98,7 @@ export const CompareAggregations = ({
       offset,
       columns,
       columnAndBucket,
+      includeCurrentPeriod,
     );
 
     if (!next) {
