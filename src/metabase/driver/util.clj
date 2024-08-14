@@ -4,6 +4,7 @@
    [clojure.core.memoize :as memoize]
    [clojure.set :as set]
    [clojure.string :as str]
+   [metabase.auth-provider :as auth-provider]
    [metabase.config :as config]
    [metabase.db :as mdb]
    [metabase.driver :as driver]
@@ -128,6 +129,23 @@
   :doc "Timeout in milliseconds for connecting to databases, both Metabase application database and data connections.
         In case you're connecting via an SSH tunnel and run into a timeout, you might consider increasing this value
         as the connections via tunnels have more overhead than connections without.")
+
+;; This is normally set via the env var `MB_DB_QUERY_TIMEOUT_MINUTES`
+(defsetting db-query-timeout-minutes
+  "By default, this is 20 minutes."
+  :visibility :internal
+  :export?    false
+  :type       :integer
+  ;; I don't know if these numbers make sense, but my thinking is we want to enable (somewhat) long-running queries on
+  ;; prod but for test and dev purposes we want to fail faster because it usually means I broke something in the QP
+  ;; code
+  :default    (if config/is-prod?
+                20
+                3)
+  :doc "Timeout in minutes for databases query execution, both Metabase application database and data connections.
+  If you have long-running queries, you might consider increasing this value.
+  Adjusting the timeout does not impact Metabase’s frontend.
+  Please be aware that other services (like Nginx) may still drop long-running queries.")
 
 (defn- connection-error? [^Throwable throwable]
   (and (some? throwable)
@@ -659,3 +677,19 @@
           password-fields (filter #(contains? #{:password :secret} (get % :type)) all-fields)]
       (into default-sensitive-fields (map (comp keyword :name) password-fields)))
     default-sensitive-fields))
+
+(defn fetch-and-incorporate-auth-provider-details
+  "Incorporates auth-provider responses with db-details.
+
+  If you have a database you need to pass the database-id as some providers will need to save the response (e.g. refresh-tokens)."
+  ([driver db-details]
+   (fetch-and-incorporate-auth-provider-details driver nil db-details))
+  ([driver database-id {:keys [use-auth-provider auth-provider] :as db-details}]
+   (if use-auth-provider
+     (let [auth-provider (keyword auth-provider)]
+       (driver/incorporate-auth-provider-details
+        driver
+        auth-provider
+        (auth-provider/fetch-auth auth-provider database-id db-details)
+        db-details))
+     db-details)))

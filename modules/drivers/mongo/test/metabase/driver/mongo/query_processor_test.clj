@@ -602,3 +602,9 @@
                            #{}
                            (filter #(contains? % "$lookup") (:query compiled)))]
        (is (= #{1 2 3 4} indices))))))
+
+(deftest ^:parallel parse-query-string-test
+  (testing "`parse-query-string` returns no `Bson...` typed values  (#38181)"
+    ;; ie. parse result does not look as follows: `#object[org.bson.BsonString 0x5f26b3a1 "BsonString{value='1000'}"]`
+    (let [parsed (mongo.qp/parse-query-string "[{\"limit\": \"1000\"}]")]
+      (is (not (instance? org.bson.BsonValue (get-in parsed [0 "limit"])))))))

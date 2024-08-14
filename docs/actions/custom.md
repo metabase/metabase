@@ -2,7 +2,7 @@
 title: Custom actions
 ---
 
-## Custom actions
+# Custom actions
 
 Write SQL to update records in your databases.
 

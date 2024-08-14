@@ -577,7 +577,30 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
   });
 
   describe("dashboards", () => {
-    beforeEach(() => {
+    it("should be scrollable even when tiny (metabase#24678)", () => {
+      cy.createQuestionAndDashboard({
+        questionDetails: {
+          name: QUESTION_NAME,
+          query: testQuery.query,
+          display: "pivot",
+        },
+        dashboardDetails: {
+          name: DASHBOARD_NAME,
+        },
+        cardDetails: {
+          size_x: 3,
+          size_y: 3,
+        },
+      }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
+
+      dashboardCards()
+        .eq(0)
+        .within(() => {
+          cy.findByText("Doohickey").scrollIntoView().should("be.visible");
+        });
+    });
+
+    it("should allow filtering drill through (metabase#14632) (metabase#14465)", () => {
       cy.createQuestionAndDashboard({
         questionDetails: {
           name: QUESTION_NAME,
@@ -592,13 +615,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
           size_y: 8,
         },
       }).then(({ body: { dashboard_id } }) => visitDashboard(dashboard_id));
-    });
 
-    it("should display a pivot table on a dashboard (metabase#14465)", () => {
-      assertOnPivotFields();
-    });
-
-    it("should allow filtering drill through (metabase#14632)", () => {
       assertOnPivotFields();
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Google").click(); // open drill-through menu
@@ -1401,6 +1418,81 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
       .and("contain", "Sum of Total")
       .and("contain", "Grand totals");
   });
+
+  it("displays total values for collapsed rows (metabase#26919)", () => {
+    const categoryField = [
+      "field",
+      PRODUCTS.CATEGORY,
+      { "base-type": "type/Text" },
+    ];
+
+    createQuestion(
+      {
+        display: "pivot",
+        query: {
+          "source-table": PRODUCTS_ID,
+          expressions: {
+            test: [
+              "case",
+              [[["is-null", categoryField], categoryField]],
+              { default: categoryField },
+            ],
+          },
+          aggregation: [["count"]],
+          breakout: [
+            ["expression", "test", { "base-type": "type/Text" }],
+            [
+              "field",
+              PRODUCTS.RATING,
+              {
+                "base-type": "type/Float",
+                binning: {
+                  strategy: "default",
+                },
+              },
+            ],
+          ],
+        },
+        visualization_settings: {
+          "pivot_table.column_split": {
+            rows: [
+              ["expression", "test"],
+              ["field", PRODUCTS.RATING],
+            ],
+            columns: [],
+            values: [["aggregation", 0]],
+          },
+          "pivot_table.collapsed_rows": {
+            value: ['["Doohickey"]', '["Gadget"]', '["Gizmo"]', '["Widget"]'],
+            rows: [
+              ["expression", "test"],
+              [
+                "field",
+                PRODUCTS.RATING,
+                {
+                  "base-type": "type/Float",
+                  binning: {
+                    strategy: "num-bins",
+                    "min-value": 0,
+                    "max-value": 5.25,
+                    "num-bins": 8,
+                    "bin-width": 0.75,
+                  },
+                },
+              ],
+            ],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    getPivotTableBodyCell(0).should("have.text", "42");
+    getPivotTableBodyCell(1).should("have.text", "53");
+    getPivotTableBodyCell(2).should("have.text", "51");
+    getPivotTableBodyCell(3).should("have.text", "54");
+    getPivotTableBodyCell(4).should("have.text", "200");
+  });
 });
 
 const testQuery = {
@@ -1499,4 +1591,11 @@ function sortColumnResults(column, direction) {
     const decodedQuery = atob(base64EncodedQuery);
     expect(decodedQuery).to.include(direction);
   });
+}
+
+function getPivotTableBodyCell(index) {
+  return cy
+    .findByLabelText("pivot-table-body-grid")
+    .findAllByTestId("pivot-table-cell")
+    .eq(index);
 }

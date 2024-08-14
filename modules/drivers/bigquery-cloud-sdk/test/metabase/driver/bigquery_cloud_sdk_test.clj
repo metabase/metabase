@@ -23,7 +23,7 @@
    [toucan2.core :as t2]
    [toucan2.tools.with-temp :as t2.with-temp])
   (:import
-   (com.google.cloud.bigquery BigQuery DatasetId)))
+   (com.google.cloud.bigquery BigQuery DatasetId TableResult)))
 
 (set! *warn-on-reflection* true)
 
@@ -79,29 +79,31 @@
    ;; we don't care how many pages it took to load this dataset above. it will be a large
    ;; number because we're just tracking the number of times `get-query-results` gets invoked.
 
-   ;; TODO Temporarily disabling due to flakiness (#33140)
-   #_
    (testing "with pagination"
      (let [pages-retrieved (atom 0)
            page-callback   (fn [] (swap! pages-retrieved inc))]
-       (with-bindings {#'bigquery/*page-size*             25
-                       #'bigquery/*page-callback*         page-callback}
-         (let [actual (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
-                             [(t2/select-one Field :id (mt/id :venues :id))
-                              (t2/select-one Field :id (mt/id :venues :name))]
-                             (constantly conj))
-                           (sort-by first)
-                           (take 5))]
+       (with-bindings {#'bigquery/*page-size*     25
+                       #'bigquery/*page-callback* page-callback}
+         (let [results (->> (metadata-queries/table-rows-sample (t2/select-one Table :id (mt/id :venues))
+                              [(t2/select-one Field :id (mt/id :venues :id))
+                               (t2/select-one Field :id (mt/id :venues :name))]
+                              (constantly conj))
+                            (sort-by first)
+                            (take 5))]
            (is (= [[1 "Red Medicine"]
                    [2 "Stout Burgers & Beers"]
                    [3 "The Apple Pan"]
                    [4 "Wurstküche"]
                    [5 "Brite Spot Family Restaurant"]]
-                  actual))
+                  (take 5 results)))
+           (testing "results are not duplicated when pagination occurs (#45953)"
+             (is (= (count results) (count (distinct results)))))
            ;; the `(sort-by)` above will cause the entire resultset to be realized, so
            ;; we want to make sure that it really did retrieve 25 rows per request
            ;; this only works if the timeout has been temporarily set to 0 (see above)
-           (is (= 4 @pages-retrieved))))))))
+
+           ;; TODO Temporarily disabling due to flakiness (#33140)
+           #_(is (= 4 @pages-retrieved))))))))
 
 ;; These look like the macros from metabase.query-processor-test.expressions-test
 ;; but conform to bigquery naming rules
@@ -687,12 +689,12 @@
     (let [fake-execute-called (atom false)
           orig-fn             @#'bigquery/execute-bigquery]
       (testing "Retry functionality works as expected"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
                                                   (if-not @fake-execute-called
                                                     (do (reset! fake-execute-called true)
                                                         ;; simulate a transient error being thrown
                                                         (throw (ex-info "Transient error" {:retryable? true})))
-                                                    (orig-fn client sql parameters nil nil)))]
+                                                    (orig-fn client sql parameters nil)))]
           ;; run any other test that requires a successful query execution
           (table-rows-sample-test)
           ;; make sure that the fake exception was thrown, and thus the query execution was retried
@@ -703,13 +705,13 @@
     (let [fake-execute-called (atom false)
           orig-fn        @#'bigquery/execute-bigquery]
       (testing "Should not retry query on cancellation"
-        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _ _]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters _]
                                                   ;; We only want to simulate exception on the query that we're testing and not on possible db setup queries
                                                   (if (and (re-find #"notRetryCancellationExceptionTest" sql) (not @fake-execute-called))
                                                     (do (reset! fake-execute-called true)
                                                         ;; Simulate a cancellation happening
                                                         (throw (ex-info "Query cancelled" {::bigquery/cancelled? true})))
-                                                    (orig-fn client sql parameters nil nil)))]
+                                                    (orig-fn client sql parameters nil)))]
           (try
             (qp/process-query {:native {:query "SELECT CURRENT_TIMESTAMP() AS notRetryCancellationExceptionTest"} :database (mt/id)
                                :type     :native})
@@ -720,6 +722,12 @@
               (is (= "Query cancelled" (.getMessage e)))
               ;; make sure that the fake exception was thrown
               (is (true? @fake-execute-called)))))))))
+
+(defn- future-thread-names []
+  ;; kinda hacky but we don't control this thread pool
+  (into #{} (comp (map (fn [^Thread t] (.getName t)))
+                  (filter #(str/includes? % "clojure-agent-send-off-pool")))
+        (.keySet (Thread/getAllStackTraces))))
 
 (deftest query-cancel-test
   (mt/test-driver :bigquery-cloud-sdk
@@ -745,18 +753,43 @@
                      (ex-message e))))))))
     (testing "Cancel thread does not leak"
       (mt/dataset test-data
-        (let [query               (assoc-in (mt/query orders) [:query :limit] 2)
-              future-thread-names (fn []
-                                    ;; kinda hacky but we don't control this thread pool
-                                    (into #{} (comp (map (fn [^Thread t] (.getName t)))
-                                                    (filter #(str/includes? % "clojure-agent-send-off-pool")))
-                                          (.keySet (Thread/getAllStackTraces))))
-              count-before        (count (future-thread-names))]
+        (let [query        (assoc-in (mt/query orders) [:query :limit] 2)
+              count-before (count (future-thread-names))]
           (dotimes [_ 10]
             (mt/process-query query))
           (let [count-after (count (future-thread-names))]
             (is (< count-after (+ count-before 5))
                 "unbounded thread growth!")))))))
+
+(deftest later-page-fetch-throws-test
+  (mt/test-driver :bigquery-cloud-sdk
+    (testing "BigQuery queries which fail on later pages are caught properly"
+      (let [count-before (count (future-thread-names))
+            page-counter (atom 3)
+            orig-exec    @#'bigquery/execute-bigquery
+            wrap-result  (fn wrap-result [^TableResult result]
+                           (proxy [TableResult] []
+                             (getSchema [] (.getSchema result))
+                             (getValues [] (.getValues result))
+                             (getNextPageToken [] (.getNextPageToken result))
+                             (getNextPage []
+                               (if (zero? @page-counter)
+                                 (throw (ex-info "onoes BigQuery failed to fetch a later page" {}))
+                                 (wrap-result (.getNextPage result))))))]
+        (with-redefs [bigquery/execute-bigquery (fn [^BigQuery client ^String sql parameters cancel-chan]
+                                                  (wrap-result (orig-exec client sql parameters cancel-chan)))]
+          (dotimes [_ 10]
+            (reset! page-counter 3)
+            (binding [bigquery/*page-size*     100 ; small pages so there are several
+                      bigquery/*page-callback* (fn []
+                                                 (let [pages (swap! page-counter #(max (dec %) 0))]
+                                                   (log/debugf "*page-callback counting down: %d to go" pages)))]
+              (mt/dataset test-data
+                (is (thrown-with-msg? Exception #"onoes BigQuery failed to fetch a later page"
+                                      (mt/process-query (mt/query orders))))))))
+        (testing "no thread leaks"
+          (let [count-after (count (future-thread-names))]
+            (is (< count-after (+ count-before 5)))))))))
 
 ;; TODO Temporarily disabling due to flakiness (#33140)
 #_

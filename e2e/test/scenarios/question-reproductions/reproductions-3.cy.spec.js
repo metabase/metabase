@@ -46,6 +46,8 @@ import {
   visitQuestion,
   tableHeaderClick,
   withDatabase,
+  visitModel,
+  setModelMetadata,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID, PRODUCTS, PRODUCTS_ID, PEOPLE, PEOPLE_ID } =
@@ -800,7 +802,7 @@ describe("issue 40064", () => {
     getNotebookStep("expression").findByText("Tax3").click();
     enterCustomColumnDetails({ formula: "[Tax3] * 3", name: "Tax3" });
     popover().within(() => {
-      cy.findByText("Unknown Field: Tax3").should("be.visible");
+      cy.findByText("Cycle detected: Tax3 → Tax3").should("be.visible");
       cy.button("Update").should("be.disabled");
     });
   });
@@ -1587,8 +1589,7 @@ describe("issue 44668", () => {
   });
 });
 
-// TODO: unskip when metabase#44974 is fixed
-describe.skip("issue 44974", () => {
+describe("issue 44974", () => {
   const PG_DB_ID = 2;
 
   beforeEach(() => {
@@ -1599,9 +1600,9 @@ describe.skip("issue 44974", () => {
   it("entity picker should not offer to join with a table or a question from a different database (metabase#44974)", () => {
     withDatabase(PG_DB_ID, ({ PEOPLE_ID }) => {
       const questionDetails = {
-        name: "Question 44794 in Postgres DB",
+        name: "Question 44974 in Postgres DB",
+        database: PG_DB_ID,
         query: {
-          database: PG_DB_ID,
           "source-table": PEOPLE_ID,
           limit: 1,
         },
@@ -1616,11 +1617,8 @@ describe.skip("issue 44974", () => {
       join();
 
       entityPickerModal().within(() => {
-        entityPickerModalTab("Recents").should(
-          "have.attr",
-          "aria-selected",
-          "true",
-        );
+        entityPickerModalTab("Recents").should("not.exist");
+        entityPickerModalTab("Saved questions").click();
         cy.findByText(questionDetails.name).should("not.exist");
       });
     });
@@ -1672,6 +1670,304 @@ describe("issue 38989", () => {
         /either it does not exist, or it belongs to a different Database/,
       )
       .should("exist");
+  });
+});
+
+// This test is slightly different in master than here (i.e. release-x.50.x) due to https://github.com/metabase/metabase/issues/45358.
+// It's unclear why it behaves differently in master (in CI only).
+describe("issue 39771", () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsNormalUser();
+  });
+
+  it("should show tooltip for ellipsified text (metabase#39771)", () => {
+    createQuestion(
+      {
+        query: {
+          aggregation: [["count"]],
+          breakout: [
+            [
+              "field",
+              "CREATED_AT",
+              {
+                "base-type": "type/DateTime",
+                "temporal-unit": "minute-of-hour", // this is different than in master
+              },
+            ],
+          ],
+          "source-query": {
+            "source-table": ORDERS_ID,
+            aggregation: [["count"]],
+            breakout: [
+              [
+                "field",
+                ORDERS.CREATED_AT,
+                {
+                  "base-type": "type/DateTime",
+                  "temporal-unit": "month",
+                },
+              ],
+            ],
+          },
+        },
+      },
+      { visitQuestion: true },
+    );
+
+    openNotebook();
+    getNotebookStep("summarize", { stage: 1 })
+      .findByTestId("breakout-step")
+      .findByText("Created At: Month: Minute of hour")
+      .click();
+
+    popover().findByText("by minute of hour").realHover();
+
+    popover().then(([$popover]) => {
+      const popoverStyle = window.getComputedStyle($popover);
+      const popoverZindex = parseInt(popoverStyle.zIndex, 10);
+
+      cy.findByTestId("ellipsified-tooltip").within(([$tooltip]) => {
+        cy.findByText("by minute of hour").should("be.visible");
+
+        const tooltipStyle = window.getComputedStyle($tooltip);
+        const tooltipZindex = parseInt(tooltipStyle.zIndex, 10);
+
+        // resort to asserting zIndex because should("be.visible") passes unexpectedly
+        expect(tooltipZindex).to.be.gte(popoverZindex);
+      });
+    });
+  });
+});
+
+describe("issue 45063", () => {
+  function createGuiQuestion({ sourceTableId }) {
+    const questionDetails = {
+      name: "Question",
+      query: {
+        "source-table": sourceTableId,
+      },
+    };
+    createQuestion(questionDetails, { wrapId: true });
+  }
+
+  function createGuiModel({ sourceTableId }) {
+    const mbqlModelDetails = {
+      name: "Model",
+      type: "model",
+      query: {
+        "source-table": sourceTableId,
+      },
+    };
+    createQuestion(mbqlModelDetails, { wrapId: true, idAlias: "modelId" });
+  }
+
+  function createNativeModel({
+    tableName,
+    fieldId,
+    fieldName,
+    fieldSemanticType,
+  }) {
+    const nativeModelDetails = {
+      name: "Native Model",
+      type: "model",
+      native: {
+        query: `SELECT * FROM ${tableName}`,
+      },
+    };
+    createNativeQuestion(nativeModelDetails, {
+      wrapId: true,
+      idAlias: "modelId",
+    }).then(({ body: model }) => {
+      cy.log("populate result_metadata");
+      cy.request("POST", `/api/card/${model.id}/query`);
+      cy.log("map columns to database fields");
+      setModelMetadata(model.id, field => {
+        if (field.name === fieldName) {
+          return { ...field, id: fieldId, semantic_type: fieldSemanticType };
+        }
+        return field;
+      });
+    });
+  }
+
+  function setListValues({ fieldId }) {
+    cy.request("PUT", `/api/field/${fieldId}`, {
+      has_field_values: "list",
+    });
+  }
+
+  function setSearchValues({ fieldId }) {
+    cy.request("PUT", `/api/field/${fieldId}`, {
+      has_field_values: "search",
+    });
+  }
+
+  function setForeignKeyRemapping({
+    sourceFieldId,
+    targetFieldId,
+    remappedDisplayName,
+  }) {
+    cy.request("POST", `/api/field/${sourceFieldId}/dimension`, {
+      type: "external",
+      name: remappedDisplayName,
+      human_readable_field_id: targetFieldId,
+    });
+  }
+
+  function verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel }) {
+    tableHeaderClick(fieldDisplayName);
+    popover().findByText("Filter by this column").click();
+    popover().within(() => {
+      cy.findByPlaceholderText("Search the list").type(fieldValueLabel);
+      cy.findByText(fieldValueLabel).click();
+      cy.button("Add filter").click();
+    });
+    cy.findByTestId("qb-filters-panel")
+      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .click();
+    popover().findByLabelText(fieldValueLabel).should("be.checked");
+  }
+
+  function verifySearchFilter({
+    fieldDisplayName,
+    fieldValue,
+    fieldValueLabel,
+  }) {
+    tableHeaderClick(fieldDisplayName);
+    popover().findByText("Filter by this column").click();
+    popover()
+      .findByPlaceholderText(`Search by ${fieldDisplayName}`)
+      .type(fieldValueLabel);
+    popover().last().findByText(fieldValueLabel).click();
+    popover().first().click().button("Add filter").click();
+    cy.findByTestId("qb-filters-panel")
+      .findByText(`${fieldDisplayName} is ${fieldValue}`)
+      .should("be.visible");
+  }
+
+  function verifyRemappedFilter({
+    visitCard,
+    fieldId,
+    fieldDisplayName,
+    fieldValue,
+    fieldValueLabel,
+    expectedRowCount,
+  }) {
+    cy.log("list values");
+    cy.signInAsAdmin();
+    setListValues({ fieldId });
+    cy.signInAsNormalUser();
+    visitCard();
+    verifyListFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    assertQueryBuilderRowCount(expectedRowCount);
+
+    cy.log("search values");
+    cy.signInAsAdmin();
+    setSearchValues({ fieldId });
+    cy.signInAsNormalUser();
+    visitCard();
+    verifySearchFilter({ fieldDisplayName, fieldValue, fieldValueLabel });
+    assertQueryBuilderRowCount(expectedRowCount);
+  }
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  describe("type/PK -> type/Name remapping (metabase#45063)", () => {
+    it("should work with questions", () => {
+      createGuiQuestion({ sourceTableId: PEOPLE_ID });
+      verifyRemappedFilter({
+        visitCard: () => visitQuestion("@questionId"),
+        fieldId: PEOPLE.ID,
+        fieldDisplayName: "ID",
+        fieldValue: 1,
+        fieldValueLabel: "Hudson Borer",
+        expectedRowCount: 1,
+      });
+    });
+
+    it("should work with models", () => {
+      createGuiModel({ sourceTableId: PEOPLE_ID });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: PEOPLE.ID,
+        fieldDisplayName: "ID",
+        fieldValue: 1,
+        fieldValueLabel: "Hudson Borer",
+        expectedRowCount: 1,
+      });
+    });
+
+    it("should work with native models", () => {
+      createNativeModel({
+        tableName: "PEOPLE",
+        fieldId: PEOPLE.ID,
+        fieldName: "ID",
+        fieldSemanticType: "type/PK",
+      });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: PEOPLE.ID,
+        fieldDisplayName: "ID",
+        fieldValue: 1,
+        fieldValueLabel: "Hudson Borer",
+        expectedRowCount: 1,
+      });
+    });
+  });
+
+  describe("type/FK -> column remapping (metabase#45063)", () => {
+    beforeEach(() => {
+      setForeignKeyRemapping({
+        sourceFieldId: ORDERS.PRODUCT_ID,
+        targetFieldId: PRODUCTS.TITLE,
+        remappedDisplayName: "Product ID",
+      });
+    });
+
+    it("should work with questions", () => {
+      createGuiQuestion({ sourceTableId: ORDERS_ID });
+      verifyRemappedFilter({
+        visitCard: () => visitQuestion("@questionId"),
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldDisplayName: "Product ID",
+        fieldValue: 1,
+        fieldValueLabel: "Rustic Paper Wallet",
+        expectedRowCount: 93,
+      });
+    });
+
+    it("should work with models", () => {
+      createGuiModel({ sourceTableId: ORDERS_ID });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldDisplayName: "Product ID",
+        fieldValue: 1,
+        fieldValueLabel: "Rustic Paper Wallet",
+        expectedRowCount: 93,
+      });
+    });
+
+    it("should work with native models", () => {
+      createNativeModel({
+        tableName: "ORDERS",
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldName: "PRODUCT_ID",
+        fieldSemanticType: "type/FK",
+      });
+      verifyRemappedFilter({
+        visitCard: () => cy.get("@modelId").then(visitModel),
+        fieldId: ORDERS.PRODUCT_ID,
+        fieldDisplayName: "PRODUCT_ID",
+        fieldValue: 1,
+        fieldValueLabel: "Rustic Paper Wallet",
+        expectedRowCount: 93,
+      });
+    });
   });
 });
 

@@ -11,7 +11,7 @@ import { Flex, Box } from "metabase/ui";
 
 import { useCommandPalette } from "../hooks/useCommandPalette";
 import type { PaletteActionImpl } from "../types";
-import { processResults, findClosestActionIndex } from "../utils";
+import { processResults, navigateActionIndex } from "../utils";
 
 import { PaletteResultItem } from "./PaletteResultItem";
 import { PaletteResultList } from "./PaletteResultsList";
@@ -39,23 +39,24 @@ export const PaletteResults = withRouter(
     }, [processedResults, query]);
 
     useKeyPressEvent("End", () => {
-      const lastIndex = processedResults.length - 1;
-      query.setActiveIndex(lastIndex);
+      query.setActiveIndex(
+        navigateActionIndex(processedResults, processedResults.length, -1),
+      );
     });
 
     useKeyPressEvent("Home", () => {
-      query.setActiveIndex(1);
+      query.setActiveIndex(navigateActionIndex(processedResults, -1, 1));
     });
 
     useKeyPressEvent("PageDown", () => {
       query.setActiveIndex(i =>
-        findClosestActionIndex(processedResults, i, PAGE_SIZE),
+        navigateActionIndex(processedResults, i, PAGE_SIZE),
       );
     });
 
     useKeyPressEvent("PageUp", () => {
       query.setActiveIndex(i =>
-        findClosestActionIndex(processedResults, i, -PAGE_SIZE),
+        navigateActionIndex(processedResults, i, -PAGE_SIZE),
       );
     });
 

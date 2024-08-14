@@ -4,9 +4,14 @@
    [metabase-enterprise.serialization.v2.backfill-ids :as serdes.backfill]
    [metabase-enterprise.serialization.v2.entity-ids :as v2.entity-ids]
    [metabase-enterprise.serialization.v2.models :as serdes.models]
-   [metabase.models.serialization :as serdes]))
+   [metabase.db :as mdb]
+   [metabase.models.serialization :as serdes]
+   [metabase.test :as mt]
+   [metabase.util :as u]
+   [metabase.util.connection :as u.conn]
+   [toucan2.core :as t2]))
 
-(deftest every-model-is-supported-test
+(deftest ^:parallel every-model-is-supported-test
   (testing "Serialization support\n"
     (testing "We know about every model"
       (is (= (set (concat serdes.models/exported-models
@@ -35,3 +40,38 @@
               ;; TODO: strip serialization stuff off Pulse*
               (when-not (#{"Pulse" "PulseChannel" "PulseCard" "User" "PermissionsGroup"} (name model))
                 (is (not random-entity-id?))))))))))
+
+(deftest serialization-complete-spec-test
+  (mt/with-empty-h2-app-db
+    ;; When serialization spec is defined, it describes every column
+    (doseq [m     serdes.models/exported-models
+            :let  [spec (serdes/make-spec m)]
+            :when spec]
+      (let [t      (t2/table-name (keyword "model" m))
+            fields (u.conn/app-db-column-types (mdb/app-db) t)
+            spec'  (merge (zipmap (:copy spec) (repeat :copy))
+                          (zipmap (:skip spec) (repeat :skip))
+                          (:transform spec))]
+        (testing (format "%s should declare every column in serialization spec" m)
+          (is (= (->> (keys fields)
+                      (map u/lower-case-en)
+                      set)
+                 (->> (keys spec')
+                      (map name)
+                      set))))
+        (testing "Foreign keys should be declared as such\n"
+          (doseq [[fk _] (filter #(:fk (second %)) fields)
+                  :let   [fk (u/lower-case-en fk)
+                          action (get spec' (keyword fk))]]
+            (testing (format "%s.%s is foreign key which is handled correctly" m fk)
+              ;; FIXME: serialization can guess where FK points by itself, but `collection_id` and `database_id` are
+              ;; specifying that themselves right now
+              (when-not (#{"collection_id" "database_id"} fk)
+                (is (#{:skip
+                       serdes/*export-fk*
+                       serdes/*export-fk-keyed*
+                       serdes/*export-table-fk*
+                       serdes/*export-user*}
+                     (if (vector? action)
+                       (first action) ;; tuple of [ser des]
+                       action)))))))))))

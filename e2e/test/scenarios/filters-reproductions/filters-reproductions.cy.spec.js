@@ -1,4 +1,8 @@
-import { SAMPLE_DB_ID, SAMPLE_DB_SCHEMA_ID } from "e2e/support/cypress_data";
+import {
+  SAMPLE_DB_ID,
+  SAMPLE_DB_SCHEMA_ID,
+  WRITABLE_DB_ID,
+} from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   openOrdersTable,
@@ -23,6 +27,8 @@ import {
   createQuestion,
   tableHeaderClick,
   openNotebook,
+  resetTestTable,
+  resyncDatabase,
 } from "e2e/support/helpers";
 
 const {
@@ -1197,4 +1203,113 @@ describe("issue 40622", () => {
       });
     });
   }
+});
+
+describe("45252", { tags: "@external" }, () => {
+  beforeEach(() => {
+    resetTestTable({ type: "postgres", table: "many_data_types" });
+    restore("postgres-writable");
+    cy.signInAsAdmin();
+    resyncDatabase({ dbId: WRITABLE_DB_ID, tableName: "many_data_types" });
+    cy.intercept("POST", "/api/dataset").as("dataset");
+  });
+
+  it("should allow using is-null and not-null operators with unsupported data types (metabase#45252,metabase#38111)", () => {
+    startNewQuestion();
+
+    cy.log("filter picker - new filter");
+    entityPickerModal().within(() => {
+      entityPickerModalTab("Tables").click();
+      cy.findByText("Writable Postgres12").click();
+      cy.findByText("Many Data Types").click();
+    });
+    getNotebookStep("filter")
+      .findByText("Add filters to narrow your answer")
+      .click();
+    popover().within(() => {
+      cy.findByText("Binary").scrollIntoView().click();
+      cy.findByLabelText("Is empty").click();
+      cy.button("Add filter").click();
+    });
+    visualize();
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(0);
+
+    cy.log("filter picker - existing filter");
+    cy.findByTestId("qb-filters-panel").findByText("Binary is empty").click();
+    popover().within(() => {
+      cy.findByLabelText("Not empty").click();
+      cy.button("Update filter").click();
+      cy.wait("@dataset");
+    });
+    cy.findByTestId("qb-filters-panel")
+      .findByText("Binary is not empty")
+      .should("be.visible");
+    assertQueryBuilderRowCount(2);
+
+    cy.log("filter modal - existing filter");
+    queryBuilderHeader().button("Filter").click();
+    modal().within(() => {
+      cy.findByTestId("filter-column-Binary")
+        .findByLabelText("Is empty")
+        .click();
+      cy.button("Apply filters").click();
+      cy.wait("@dataset");
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(0);
+
+    cy.log("filter modal - json column");
+    queryBuilderHeader().button("Filter").click();
+    modal().within(() => {
+      cy.findByTestId("filter-column-Binary")
+        .findByLabelText("Not empty")
+        .click();
+      cy.findByTestId("filter-column-Jsonb")
+        .findByLabelText("Not empty")
+        .click();
+      cy.button("Apply filters").click();
+      cy.wait("@dataset");
+    });
+    cy.wait("@dataset");
+    assertQueryBuilderRowCount(2);
+  });
+});
+
+describe.skip("issue 44435", () => {
+  // It is crucial that the string is without spaces!
+  const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  const longString = alphabet.repeat(10);
+
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+
+  it("filter pill should not overflow the window width when the filter string is very long (metabase#44435)", () => {
+    visitQuestionAdhoc({
+      dataset_query: {
+        database: SAMPLE_DB_ID,
+        type: "query",
+        query: {
+          "source-table": REVIEWS_ID,
+          fields: [
+            ["field", REVIEWS.REVIEWER, { "base-type": "type/Text" }],
+            ["field", REVIEWS.RATING, { "base-type": "type/Integer" }],
+          ],
+          filter: [
+            "=",
+            ["field", REVIEWS.BODY, { "base-type": "type/Text" }],
+            longString,
+          ],
+        },
+        parameters: [],
+      },
+    });
+
+    cy.findByTestId("filter-pill").then($pill => {
+      const pillWidth = $pill[0].getBoundingClientRect().width;
+      cy.window().its("innerWidth").should("be.gt", pillWidth);
+    });
+  });
 });

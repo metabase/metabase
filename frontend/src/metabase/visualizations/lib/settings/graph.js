@@ -42,6 +42,7 @@ import {
   getDefaultDimensions,
   getDefaultShowStackValues,
   STACKABLE_SERIES_DISPLAY_TYPES,
+  getSeriesOrderDimensionSetting,
   getDefaultMetrics,
   isShowStackValuesValid,
 } from "metabase/visualizations/shared/settings/cartesian-chart";
@@ -114,7 +115,7 @@ export const GRAPH_DATA_SETTINGS = {
     useRawSeries: true,
   },
   "graph.series_order_dimension": {
-    getValue: (_series, settings) => settings["graph.dimensions"][1],
+    getValue: (_series, settings) => getSeriesOrderDimensionSetting(settings),
     // This read dependency is set so that "graph.series_order" is computed *before* this value, ensuring that
     // that it uses the stored value if one exists. This is needed to check if the dimension has actually changed
     readDependencies: ["graph.series_order"],
@@ -143,7 +144,7 @@ export const GRAPH_DATA_SETTINGS = {
     widget: "fields",
     isValid: (series, vizSettings) =>
       getAreDimensionsAndMetricsValid(series, vizSettings),
-    getDefault: series => getDefaultMetrics(series),
+    getDefault: (series, vizSettings) => getDefaultMetrics(series, vizSettings),
     persistDefault: true,
     getProps: ([{ card, data }], vizSettings, _onChange, extra) => {
       const options = data.cols

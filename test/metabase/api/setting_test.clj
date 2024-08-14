@@ -3,6 +3,7 @@
    [clojure.test :refer :all]
    [metabase.api.common.validation :as validation]
    [metabase.driver.h2 :as h2]
+   [metabase.models :refer [Database]]
    [metabase.models.setting :as setting :refer [defsetting]]
    [metabase.models.setting-test :as models.setting-test]
    [metabase.test :as mt]
@@ -220,6 +221,75 @@
              (mt/user-http-request :crowberto :put 204 "setting" {:test-sensitive-setting "**********56"})))
       (is (= "123456"
              (models.setting-test/test-sensitive-setting))))))
+
+(deftest fetch-conditionally-read-only-setting-test
+  (testing "GET requests are unaffected by the conditional read-only status"
+    (testing "GET /api/session/properties with attached-dwh"
+      (mt/with-premium-features #{:attached-dwh}
+        (is (=? {:db_id        nil
+                 :schema_name  nil
+                 :table_prefix nil}
+                (:uploads-settings (mt/user-http-request :crowberto :get 200 "session/properties"))))))
+    (testing "GET /api/setting with attached-dwh"
+      (mt/with-premium-features #{:attached-dwh}
+        (is (=? {:db_id        nil
+                 :schema_name  nil
+                 :table_prefix nil}
+                (:value (first (filter (comp #{"uploads-settings"} :key)
+                                       (mt/user-http-request :crowberto :get 200 "setting"))))))))
+    (testing "GET /api/setting/uploads-settings with attached-dwh"
+      (mt/with-premium-features #{:attached-dwh}
+        (is (=? {:db_id        nil
+                 :schema_name  nil
+                 :table_prefix nil}
+                (mt/user-http-request :crowberto :get 200 "setting/uploads-settings")))))
+    (testing "GET /api/session/properties without attached-dwh"
+      (is (=? {:db_id        nil
+               :schema_name  nil
+               :table_prefix nil}
+              (:uploads-settings (mt/user-http-request :crowberto :get 200 "session/properties")))))
+    (testing "GET /api/setting without attached-dwh"
+      (is (=? {:db_id        nil
+               :schema_name  nil
+               :table_prefix nil}
+              (:value (first (filter (comp #{"uploads-settings"} :key)
+                                     (mt/user-http-request :crowberto :get 200 "setting")))))))
+    (testing "GET /api/setting/uploads-settings without attached-dwh"
+      (is (=? {:db_id        nil
+               :schema_name  nil
+               :table_prefix nil}
+              (mt/user-http-request :crowberto :get 200 "setting/uploads-settings"))))))
+
+(deftest set-conditionally-read-only-setting-test
+  (testing "PUT requests are rejected with attached-dwh but permitted without"
+    (mt/with-temp [Database {:keys [id]} {:engine :postgres
+                                          :name   "The Chosen One"}]
+      (testing "PUT /api/setting with attached-dwh"
+        (mt/with-premium-features #{:attached-dwh}
+          (mt/user-http-request :crowberto :put 403 "setting" {:uploads-settings {:db_id id}}))
+        (is (=? {:db_id        nil
+                 :schema_name  nil
+                 :table_prefix nil}
+                (mt/user-http-request :crowberto :get 200 "setting/uploads-settings"))))
+      (testing "PUT /api/setting/uploads-settings with attached-dwh"
+        (mt/with-premium-features #{:attached-dwh}
+          (mt/user-http-request :crowberto :put 403 "setting/uploads-settings" {:value {:db_id id}}))
+        (is (=? {:db_id        nil
+                 :schema_name  nil
+                 :table_prefix nil}
+                (mt/user-http-request :crowberto :get 200 "setting/uploads-settings"))))
+      (testing "PUT /api/setting without attached-dwh"
+        (mt/user-http-request :crowberto :put 204 "setting" {:uploads-settings {:db_id id}})
+        (is (=? {:db_id        id
+                 :schema_name  nil
+                 :table_prefix nil}
+                (mt/user-http-request :crowberto :get 200 "setting/uploads-settings"))))
+      (testing "PUT /api/setting/uploads-settings without attached-dwh"
+        (mt/user-http-request :crowberto :put 204 "setting/uploads-settings" {:value {:db_id id}})
+        (is (=? {:db_id        id
+                 :schema_name  nil
+                 :table_prefix nil}
+                (mt/user-http-request :crowberto :get 200 "setting/uploads-settings")))))))
 
 ;; there are additional tests for this functionality in [[metabase.models.models.setting-test/set-many!-test]], since
 ;; this API endpoint is just a thin wrapper around that function

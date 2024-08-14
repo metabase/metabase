@@ -96,8 +96,9 @@
 
 (defn load-metabase!
   "Loads in a database export from an ingestion source, which is any Ingestable instance."
-  [ingestion & {:keys [backfill?]
-                :or   {backfill? true}}]
+  [ingestion & {:keys [backfill? continue-on-error]
+                :or   {backfill?   true
+                       continue-on-error false}}]
   (t2/with-transaction [_tx]
     ;; We proceed in the arbitrary order of ingest-list, deserializing all the files. Their declared dependencies
     ;; guide the import, and make sure all containers are imported before contents, etc.
@@ -107,5 +108,17 @@
           ctx      {:expanding #{}
                     :seen      #{}
                     :ingestion ingestion
-                    :from-ids  (m/index-by :id contents)}]
-      (reduce load-one! ctx contents))))
+                    :from-ids  (m/index-by :id contents)
+                    :errors    []}]
+      (log/infof "Starting deserialization, total %s documents" (count contents))
+      (reduce (fn [ctx item]
+                (try
+                  (load-one! ctx item)
+                  (catch Exception e
+                    (when-not continue-on-error
+                      (throw e))
+                    ;; eschew big and scary stacktrace
+                    (log/warnf "Skipping deserialization error: %s %s" (ex-message e) (ex-data e))
+                    (update ctx :errors conj e))))
+              ctx
+              contents))))

@@ -59,7 +59,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
       breakouts,
     );
 
-    if (Lib.isDate(column)) {
+    if (Lib.isTemporal(column)) {
       const info = Lib.displayInfo(query, stageIndex, breakout);
 
       if (info.isTemporalExtraction) {
@@ -89,7 +89,7 @@ export const defaultDisplay = (query: Lib.Query): DefaultDisplay => {
     );
 
     const isAnyBreakoutDate = breakoutsWithColumns.some(({ column }) => {
-      return Lib.isDate(column);
+      return Lib.isTemporal(column);
     });
     if (isAnyBreakoutDate) {
       return { display: "line" };

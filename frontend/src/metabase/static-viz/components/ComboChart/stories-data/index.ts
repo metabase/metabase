@@ -92,6 +92,7 @@ import numberOfInsightsError39608 from "./number-of-insights-error-39608.json";
 import numericXAxisIncludesZero37082 from "./numeric-x-axis-includes-zero-37082.json";
 import powYScaleCustomYAxisRange from "./pow-y-scale-custom-y-axis-range.json";
 import safariNonIanaTimezoneRepro44128 from "./safari-non-iana-timezone-repro-44128.json";
+import seriesOrderSettingsDoNotMatchSeriesCount from "./series-order-settings-do-not-match-series-count.json";
 import stackedChartCustomYAxisRange from "./stacked-chart-custom-y-axis-range.json";
 import ticksNativeWeekWithGapLongRange from "./ticks-native-week-with-gap-long-range.json";
 import ticksNativeWeekWithGapShortRange from "./ticks-native-week-with-gap-short-range.json";
@@ -230,4 +231,5 @@ export const data = {
   safariNonIanaTimezoneRepro44128,
   combinedWithInvalidSettings,
   stackedChartCustomYAxisRange,
+  seriesOrderSettingsDoNotMatchSeriesCount,
 };

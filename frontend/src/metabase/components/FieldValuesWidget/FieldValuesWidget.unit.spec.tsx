@@ -1,6 +1,6 @@
 import userEvent from "@testing-library/user-event";
 
-import { setupFieldSearchValuesEndpoints } from "__support__/server-mocks";
+import { setupFieldSearchValuesEndpoint } from "__support__/server-mocks";
 import {
   getBrokenUpTextMatcher,
   renderWithProviders,
@@ -51,7 +51,8 @@ async function setup({
 
   if (searchValue) {
     fields.forEach(field => {
-      setupFieldSearchValuesEndpoints(field?.id as number, searchValue);
+      const fieldId = field?.id as number;
+      setupFieldSearchValuesEndpoint(fieldId, fieldId, searchValue);
     });
   }
 

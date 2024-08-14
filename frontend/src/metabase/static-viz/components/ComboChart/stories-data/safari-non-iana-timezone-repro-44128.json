@@ -7,7 +7,6 @@
       "view_count": 0,
       "collection_position": null,
       "table_id": null,
-      "can_run_adhoc_query": true,
       "result_metadata": [
         {
           "display_name": "CURRENT_DATE",

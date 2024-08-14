@@ -76,6 +76,8 @@ function FilterValuePicker({
         autoFocus={autoFocus}
         compact={compact}
         onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     );
   }
@@ -89,10 +91,12 @@ function FilterValuePicker({
         searchFieldId={checkNotNull(fieldInfo.searchFieldId)}
         fieldValues={fieldData?.values ?? []}
         selectedValues={selectedValues}
-        placeholder={t`Search by ${columnInfo.displayName}`}
+        columnDisplayName={columnInfo.displayName}
         shouldCreate={shouldCreate}
         autoFocus={autoFocus}
         onChange={onChange}
+        onFocus={onFocus}
+        onBlur={onBlur}
       />
     );
   }

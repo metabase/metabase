@@ -41,9 +41,9 @@ describe("revision history", () => {
       });
 
       // Save the dashboard without any changes made to it (TODO: we should probably disable "Save" button in the first place)
-      saveDashboard();
+      saveDashboard({ awaitRequest: false });
       editDashboard();
-      saveDashboard();
+      saveDashboard({ awaitRequest: false });
 
       openRevisionHistory();
 

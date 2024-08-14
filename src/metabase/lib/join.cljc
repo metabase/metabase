@@ -464,6 +464,19 @@
     (run! generator taken-names)
     (generator base-name)))
 
+(defn default-alias
+  "Generate a default `:alias` for a join clause. home-cols should be visible columns for the stage"
+  ([query stage-number a-join]
+   (let [stage (lib.util/query-stage query stage-number)
+         home-cols (lib.metadata.calculation/visible-columns query stage-number stage)]
+     (default-alias query stage-number a-join stage home-cols)))
+  ([query _stage-number a-join stage home-cols]
+   (let [home-cols   home-cols
+         cond-fields (lib.util.match/match (:conditions a-join) :field)
+         home-col    (select-home-column home-cols cond-fields)]
+     (as-> (calculate-join-alias query a-join home-col) s
+       (generate-unique-name query s (keep :alias (:joins stage)))))))
+
 (mu/defn add-default-alias :- ::lib.schema.join/join
   "Add a default generated `:alias` to a join clause that does not already have one."
   [query        :- ::lib.schema/query
@@ -475,10 +488,7 @@
     a-join
     (let [stage       (lib.util/query-stage query stage-number)
           home-cols   (lib.metadata.calculation/visible-columns query stage-number stage)
-          cond-fields (lib.util.match/match (:conditions a-join) :field)
-          home-col    (select-home-column home-cols cond-fields)
-          join-alias  (as-> (calculate-join-alias query a-join home-col) s
-                        (generate-unique-name query s (keep :alias (:joins stage))))
+          join-alias  (default-alias query stage-number a-join stage home-cols)
           join-cols   (lib.metadata.calculation/returned-columns
                        (lib.query/query-with-stages query (:stages a-join)))]
       (-> a-join

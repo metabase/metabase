@@ -224,3 +224,7 @@ export function dependentMetadata(
 ): DependentItem[] {
   return ML.dependent_metadata(query, cardId, cardType);
 }
+
+export function columnKey(column: ColumnMetadata): string {
+  return ML.column_key(column);
+}

@@ -11,8 +11,7 @@
    [metabase.sync.util :as sync-util]
    [metabase.util.log :as log]
    [metabase.util.malli :as mu]
-   [metabase.util.malli.fn :as mu.fn]
-   [toucan2.realize :as t2.realize]))
+   [metabase.util.malli.fn :as mu.fn]))
 
 (defmacro log-if-error
   "Logs an error message if an exception is thrown while executing the body."
@@ -55,10 +54,10 @@
   "Replaces [[metabase.driver/describe-fields]] for drivers that haven't implemented it. Uses [[driver/describe-table]]
   instead. Also includes nested field column metadata."
   [_driver database & {:keys [schema-names table-names]}]
-  (let [tables (sync-util/db->reducible-sync-tables database :schema-names schema-names :table-names table-names)]
+  (let [tables (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names)]
     (eduction
      (mapcat (fn [table]
-               (for [x (table-fields-metadata database (t2.realize/realize table))]
+               (for [x (table-fields-metadata database table)]
                  (assoc x :table-schema (:schema table) :table-name (:name table)))))
      tables)))
 
@@ -83,7 +82,7 @@
   "Replaces [[metabase.driver/describe-fks]] for drivers that haven't implemented it. Uses [[driver/describe-table-fks]]
   which is deprecated."
   [driver database & {:keys [schema-names table-names]}]
-  (let [tables (sync-util/db->reducible-sync-tables database :schema-names schema-names :table-names table-names)]
+  (let [tables (sync-util/reducible-sync-tables database :schema-names schema-names :table-names table-names)]
     (eduction
      (mapcat (fn [table]
                #_{:clj-kondo/ignore [:deprecated-var]}

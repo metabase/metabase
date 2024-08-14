@@ -34,7 +34,7 @@ export function usePollingLogsQuery(pollingDurationMs: number) {
       }
     } catch (err: any) {
       console.error(err);
-      const msg = err?.data?.message ?? err.messsage ?? t`An error occurred.`;
+      const msg = err?.data?.message ?? err.message ?? t`An error occurred.`;
       if (isMountedRef.current) {
         setError(msg);
         isFetchingRef.current = false;

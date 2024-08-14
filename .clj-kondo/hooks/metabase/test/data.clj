@@ -11,6 +11,10 @@
   []
   (not-empty (set (keys (:clj (hooks/ns-analysis 'metabase.test.data.dataset-definitions))))))
 
+(defn- local-def?
+  [ns* sexpr]
+  (= ns* (:ns (hooks/resolve {:name sexpr}))))
+
 (defn- dataset-type
   "`dataset` can be one of:
 
@@ -21,7 +25,7 @@
 
   We can only determine if an unqualified symbol refers to something in the dataset definitions namespace if there are
   cached results available from [[global-dataset-symbols]]."
-  [dataset]
+  [this-ns dataset]
   (let [sexpr       (hooks/sexpr dataset)
         global-defs (global-dataset-symbols)]
     (cond
@@ -31,20 +35,19 @@
       (namespace sexpr)
       :qualified
 
-      (empty? global-defs)
-      :unqualified/unknown
-
       (contains? global-defs sexpr)
       :unqualified/from-dataset-defs-namespace
 
-      ;; either something defined in the current namespace or let-bound in the current scope.
+      (local-def? this-ns sexpr)
+      :unqualified/local-def
+
       :else
-      :unqualified/local-def)))
+      :unqualified/unknown)))
 
 (defn dataset
-  [{{[_ dataset & body] :children} :node}]
+  [{{[_ dataset & body] :children} :node this-ns :ns}]
   (let [noop (constantly nil)
-        body (case (dataset-type dataset)
+        body (case (dataset-type this-ns dataset)
                ;; non-symbol, qualified symbols, and unqualified symbols from the current namespace/let-bound can all
                ;; get converted from something like
                ;;

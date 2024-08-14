@@ -28,6 +28,7 @@ import {
   getSeriesOrderVisibilitySettings,
   getYAxisAutoRangeDefault,
   getYAxisUnpinFromZeroDefault,
+  getSeriesOrderDimensionSetting,
   isStackingValueValid,
   isXAxisScaleValid,
   isYAxisUnpinFromZeroValid,
@@ -141,7 +142,7 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(
     settings,
     "graph.metrics",
-    getDefaultMetrics(rawSeries),
+    getDefaultMetrics(rawSeries, settings),
     areDimensionsAndMetricsValid,
   );
 
@@ -193,11 +194,13 @@ export const computeStaticComboChartSettings = (
     getDefaultDataLabelsFormatting(),
   );
 
-  fillWithDefaultValue(
+  settings["graph.series_order"] = getSeriesOrderVisibilitySettings(
     settings,
-    "graph.series_order",
-    getSeriesOrderVisibilitySettings(settings, seriesVizSettingsKeys),
+    seriesVizSettingsKeys,
   );
+
+  settings["graph.series_order_dimension"] =
+    getSeriesOrderDimensionSetting(settings);
 
   fillWithDefaultValue(
     settings,
@@ -298,7 +301,7 @@ export const computeStaticComboChartSettings = (
   fillWithDefaultValue(
     settings,
     "legend.is_reversed",
-    getDefaultLegendIsReversed(mainDataset),
+    getDefaultLegendIsReversed(settings),
   );
 
   // For scatter plot

@@ -2,6 +2,9 @@ import { WRITABLE_DB_ID, SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import { ORDERS_QUESTION_ID } from "e2e/support/cypress_sample_instance_data";
 import {
+  commandPalette,
+  commandPaletteSearch,
+  createQuestion,
   restore,
   visualize,
   openTable,
@@ -861,22 +864,36 @@ describe("issue 18207", () => {
   });
 });
 
-describe("11914, 18978, 18977", () => {
+describe("issues 11914, 18978, 18977, 23857", () => {
   beforeEach(() => {
     restore();
     cy.signInAsAdmin();
-    cy.createQuestion({
+    createQuestion({
+      name: "Repro",
       query: {
         "source-table": `card__${ORDERS_QUESTION_ID}`,
         limit: 2,
       },
-    }).then(({ body: { id: questionId } }) => {
-      cy.signIn("nodata");
-      visitQuestion(questionId);
     });
+    cy.signIn("nodata");
   });
 
   it("should not display query editing controls and 'Browse databases' link", () => {
+    cy.log(
+      "Make sure we don't offer to duplicate question with a query for which the user has no permission to run (metabase#23857)",
+    );
+    visitQuestion(ORDERS_QUESTION_ID);
+    cy.findByLabelText("Move, archive, and more...").click();
+    popover().findByText("Duplicate").should("not.exist");
+
+    cy.log(
+      "Make sure we don't offer to duplicate question based on a question with a query for which the user has no permission to run (metabase#23857)",
+    );
+    commandPaletteSearch("Repro", false);
+    commandPalette().findByText("Repro").click();
+    cy.findByLabelText("Move, archive, and more...").click();
+    popover().findByText("Duplicate").should("not.exist");
+
     cy.log(
       "Make sure we don't prompt user to browse databases from the sidebar",
     );

@@ -85,7 +85,7 @@
     (when (= audit/audit-db-id database-id)
       (check-audit-db-permissions outer-query))
     (let [card-id (or *card-id* (:qp/source-card-id outer-query))
-          required-perms (query-perms/required-perms outer-query :already-preprocessed? true)]
+          required-perms (query-perms/required-perms-for-query outer-query :already-preprocessed? true)]
       (cond
         card-id
         (do
@@ -131,7 +131,7 @@
     (check-card-read-perms database-id *card-id*))
   (when-not (query-perms/check-data-perms
              outer-query
-             (query-perms/required-perms outer-query :already-preprocessed? true)
+             (query-perms/required-perms-for-query outer-query :already-preprocessed? true)
              :throw-exceptions? false)
     (check-block-permissions outer-query)))
 

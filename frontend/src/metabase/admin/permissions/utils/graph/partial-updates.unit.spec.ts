@@ -6,6 +6,7 @@ import { DataPermission, DataPermissionValue } from "../../types";
 
 import {
   getModifiedGroupsPermissionsGraphParts,
+  getModifiedCollectionPermissionsGraphParts,
   mergeGroupsPermissionsUpdates,
 } from "./partial-updates";
 
@@ -104,5 +105,27 @@ describe("mergeGroupsPermissionsUpdates", () => {
     expect(mergeGroupsPermissionsUpdates(permissions, update)).toEqual(
       expectedResult,
     );
+  });
+});
+
+describe("getModifiedCollectionPermissionsGraphParts", () => {
+  it("should only include groups that have had data permission updated", async () => {
+    const simpleUpdate = getModifiedCollectionPermissionsGraphParts(
+      {
+        "1": { "1": "write", "2": "write" },
+        "2": { "1": "write", "2": "write" },
+        "3": { "1": "write", "2": "write" },
+      },
+      {
+        "1": { "1": "write", "2": "write" },
+        "2": { "1": "read", "2": "read" },
+        "3": { "1": "write", "2": "write" },
+      },
+    );
+
+    // should not contain groups that have not been modified
+    expect(simpleUpdate).not.toHaveProperty("1");
+    expect(simpleUpdate).not.toHaveProperty("3");
+    expect(simpleUpdate).toEqual({ "2": { "1": "read", "2": "read" } });
   });
 });

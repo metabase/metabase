@@ -321,12 +321,16 @@
 
 (defmethod ^:private migrate-viz-settings* [1 2] [viz-settings _]
   (let [{percent? :pie.show_legend_perecent ;; [sic]
-         legend?  :pie.show_legend} viz-settings]
-    (if-let [new-value (cond
-                         legend?  "inside"
-                         percent? "legend")]
-      (assoc viz-settings :pie.percent_visibility new-value)
-      viz-settings))) ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+         legend?  :pie.show_legend} viz-settings
+        new-visibility              (cond
+                                      legend?  "inside"
+                                      percent? "legend")
+        new-linktype                (when (= "page" (-> viz-settings :click_behavior :linkType))
+                                      "dashboard")]
+    (cond-> viz-settings
+      ;; if nothing was explicitly set don't default to "off", let the FE deal with it
+      new-visibility (assoc :pie.percent_visibility new-visibility)
+      new-linktype   (assoc-in [:click_behavior :linkType] new-linktype))))
 
 (defn- migrate-viz-settings
   [viz-settings]

@@ -9,7 +9,9 @@
    [medley.core :as m]
    [metabase.driver :as driver]
    [metabase.driver.sql.query-processor-test-util :as sql.qp-test-util]
+   [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.lib.schema.id :as lib.schema.id]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -640,7 +642,7 @@
                                            (lib.tu/metadata-provider-with-cards-for-queries [{}])
                                            (lib.tu/merged-mock-metadata-provider {:cards [{:id 1, :collection-id 1000}]}))
         (is (= {:paths #{(perms/collection-read-path (t2/instance :model/Collection {:id 1000}))}}
-               (query-perms/required-perms (query-with-source-card 1 :aggregation [:count]))))))))
+               (query-perms/required-perms-for-query (query-with-source-card 1 :aggregation [:count]))))))))
 
 (deftest ^:parallel card-perms-test-2
   (testing "perms for a Card with a SQL source query\n"
@@ -649,7 +651,7 @@
       (qp.store/with-metadata-provider (qp.test-util/metadata-provider-with-cards-for-queries
                                         [(mt/native-query {:query "SELECT * FROM VENUES"})])
         (is (= {:paths #{(perms/collection-read-path collection/root-collection)}}
-               (query-perms/required-perms (query-with-source-card 1 :aggregation [:count]))))))))
+               (query-perms/required-perms-for-query (query-with-source-card 1 :aggregation [:count]))))))))
 
 (deftest card-perms-test-3
   (testing "perms for Card -> Card -> MBQL Source query\n"
@@ -1452,3 +1454,25 @@
                     {:expressions {"substring" [:substring [:field field-id nil] 1 10]}
                      :fields      [[:expression "substring"]
                                    [:field field-id nil]]}))))))))
+
+(deftest ^:parallel space-names-test
+  (mt/test-drivers (set/intersection
+                     (mt/normal-drivers-with-feature :identifiers-with-spaces)
+                     (mt/normal-drivers-with-feature :left-join))
+    (mt/dataset
+      crazy-names
+      (let [mp (lib.metadata.jvm/application-database-metadata-provider (mt/id))
+            query (as-> (lib/query mp (lib.metadata/table mp (mt/id "space table"))) $q
+                    (lib/join $q (-> (lib/join-clause (lib.metadata/table mp (mt/id "space table")))
+                                     (lib/with-join-alias "Space Table Alias")
+                                     (lib/with-join-strategy :left-join)
+                                     (lib/with-join-conditions [(lib/=
+                                                                  (lib.metadata/field mp (mt/id "space table" "space column"))
+                                                                  (lib/with-join-alias (lib.metadata/field mp (mt/id "space table" "space column"))
+                                                                    "Space Table Alias"))])))
+
+                    (lib/breakout $q (m/find-first (every-pred (comp #{"Space Column"} :display-name) :source-alias)
+                                                   (lib/breakoutable-columns $q)))
+                    (lib/append-stage $q)
+                    (lib/aggregate $q (lib/max (first (lib/visible-columns $q)))))]
+        (is (= [[20]] (mt/formatted-rows [int] (qp/process-query query))))))))

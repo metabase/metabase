@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { push } from "react-router-redux";
 import { t } from "ttag";
 
+import { useLocale } from "metabase/common/hooks/use-locale/use-locale";
 import EntityItem from "metabase/components/EntityItem";
 import {
   SortableColumnHeader,
@@ -18,9 +19,8 @@ import { Columns, SortDirection } from "metabase/components/ItemsTable/Columns";
 import type { ResponsiveProps } from "metabase/components/ItemsTable/utils";
 import { Ellipsified } from "metabase/core/components/Ellipsified";
 import { color } from "metabase/lib/colors";
-import { useDispatch, useSelector } from "metabase/lib/redux";
+import { useDispatch } from "metabase/lib/redux";
 import * as Urls from "metabase/lib/urls";
-import { getLocale } from "metabase/setup/selectors";
 import { Flex, Icon, type IconProps } from "metabase/ui";
 
 import { trackModelClick } from "../analytics";
@@ -63,9 +63,6 @@ const DEFAULT_SORTING_OPTIONS: SortingOptions = {
 const LARGE_DATASET_THRESHOLD = 500;
 
 export const ModelsTable = ({ models }: ModelsTableProps) => {
-  const locale = useSelector(getLocale);
-  const localeCode: string | undefined = locale?.code;
-
   // for large datasets, we need to simplify the display to avoid performance issues
   const isLargeDataset = models.length > LARGE_DATASET_THRESHOLD;
 
@@ -75,7 +72,8 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
     DEFAULT_SORTING_OPTIONS,
   );
 
-  const sortedModels = sortModels(models, sortingOptions, localeCode);
+  const locale = useLocale();
+  const sortedModels = sortModels(models, sortingOptions, locale);
 
   /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
   const collectionWidth = 38.5;
@@ -97,7 +95,7 @@ export const ModelsTable = ({ models }: ModelsTableProps) => {
   }, [isLargeDataset, showLoading, sortedModels]);
 
   return (
-    <Table>
+    <Table aria-label={t`Table of models`}>
       <colgroup>
         {/* <col> for Name column */}
         <ModelNameColumn containerName={itemsTableContainerName} />

@@ -84,6 +84,8 @@ export const clickSend = () => {
 export const openAndAddEmailsToSubscriptions = recipients => {
   cy.findByLabelText("subscriptions").click();
 
+  sidebar().findByText("Create a dashboard subscription").should("be.visible");
+
   cy.findByText("Email it").click();
 
   const input = cy
@@ -106,11 +108,6 @@ export const openPulseSubscription = () => {
 
 export const emailSubscriptionRecipients = () => {
   openPulseSubscription();
-  clickSend();
-};
-
-export const sendSubscriptionsEmail = recipient => {
-  openAndAddEmailsToSubscriptions([recipient]);
   clickSend();
 };
 

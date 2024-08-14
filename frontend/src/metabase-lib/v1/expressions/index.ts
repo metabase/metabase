@@ -331,7 +331,7 @@ export function isMetric(expr: unknown): boolean {
   return (
     Array.isArray(expr) &&
     expr[0] === "metric" &&
-    expr.length === 2 &&
+    (expr.length === 2 || expr.length === 3) &&
     typeof expr[1] === "number"
   );
 }

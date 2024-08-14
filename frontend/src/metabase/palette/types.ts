@@ -17,6 +17,7 @@ interface PaletteActionExtras {
     /** subtext: text to come after the item name */
     subtext?: string;
   };
+  disabled?: boolean;
 }
 
 export type PaletteAction = Action &

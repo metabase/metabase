@@ -1,4 +1,4 @@
-(ns metabase.xrays.automagic-dashboards.comparison-test
+(ns ^:mb/once metabase.xrays.automagic-dashboards.comparison-test
   (:require
    [clojure.test :refer :all]
    [metabase.models :refer [Card Segment Table]]

@@ -28,6 +28,7 @@ import {
   echartsContainer,
   visitQuestion,
   visitQuestionAdhoc,
+  mockSessionPropertiesTokenFeatures,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -1099,7 +1100,7 @@ describe("scenarios > admin > settings > map settings", () => {
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Load").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Invalid custom GeoJSON: does not contain features");
+    cy.findByText("GeoJSON URL returned invalid content-type");
 
     // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
     cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
@@ -1111,5 +1112,71 @@ describe("scenarios > admin > settings > map settings", () => {
     cy.findByText("Load").click();
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Invalid custom GeoJSON: does not contain features");
+  });
+
+  it("should show an informative error when adding a calid URL that contains GeoJSON that does not use lat/lng coordinates", () => {
+    //intercept call to api/geojson and return projected.geojson. Call to load file actually happens in the BE
+    cy.fixture("../../e2e/support/assets/projected.geojson").then(data => {
+      cy.intercept("GET", "/api/geojson*", data);
+    });
+
+    cy.visit("/admin/settings/maps");
+    cy.button("Add a map").click();
+
+    modal().within(() => {
+      // GeoJSON with an unsupported format (not a Feature or FeatureCollection)
+      cy.findByPlaceholderText("Like https://my-mb-server.com/maps/my-map.json")
+        .clear()
+        .type("http://assets/projected.geojson");
+      cy.findByText("Load").click();
+      cy.findByText(
+        "Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude",
+      );
+    });
+  });
+});
+
+describe("admin > upload settings", () => {
+  describe("scenarios > admin > uploads (OSS)", { tags: "@OSS" }, () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+    });
+
+    it("should show the uploads settings page", () => {
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
+      cy.findByLabelText("Upload Settings Form").findByText(
+        "Database to use for uploads",
+      );
+    });
+  });
+  describeEE("scenarios > admin > uploads (EE)", () => {
+    beforeEach(() => {
+      restore();
+      cy.signInAsAdmin();
+      setTokenFeatures("all");
+    });
+
+    it("without attached-dwh should show the uploads settings page", () => {
+      mockSessionPropertiesTokenFeatures({ attached_dwh: false });
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items").findByText("Uploads");
+      cy.findByLabelText("Upload Settings Form").findByText(
+        "Database to use for uploads",
+      );
+    });
+
+    it("with attached-dwh should not show the uploads settings page", () => {
+      mockSessionPropertiesTokenFeatures({ attached_dwh: true });
+      cy.visit("/admin/settings/uploads");
+      cy.findByTestId("admin-list-settings-items")
+        .findByText("Uploads")
+        .should("not.exist");
+
+      cy.findAllByLabelText("error page").findByText(
+        "The page you asked for couldn't be found.",
+      );
+    });
   });
 });

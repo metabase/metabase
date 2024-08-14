@@ -72,7 +72,7 @@
                           #_#_(lib/concat string-field "abc") :type/Text
                           (lib/substring string-field 0 10) :type/Text
                           (lib/replace string-field "abc" "def") :type/Text
-                          (lib/regexextract string-field "abc") :type/Text
+                          (lib/regex-match-first string-field "abc") :type/Text
                           (lib/length string-field) :type/Integer
                           (lib/trim string-field) :type/Text
                           (lib/rtrim string-field) :type/Text
@@ -296,8 +296,10 @@
         expressionable-expressions-for-position (fn [pos]
                                                   (some->> (lib/expressionable-columns query pos)
                                                            (map :lib/desired-column-alias)))]
-    (is (= ["ID" "NAME"] (expressionable-expressions-for-position 0)))
-    (is (= ["ID" "NAME" "a"] (expressionable-expressions-for-position 1)))
+    ;; Because of (the second problem in) #44584, the expression-position argument is ignored,
+    ;; so the first two calls behave the same as the last two.
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 0)))
+    (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 1)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position nil)))
     (is (= ["ID" "NAME" "a" "b"] (expressionable-expressions-for-position 2)))
     (is (= (lib/visible-columns query)
@@ -518,7 +520,7 @@
 (deftest ^:parallel diagnose-expression-test-4-offset-not-allowed-in-expressions
   (testing "adding/editing an expression using offset is not allowed"
     (let [query (lib/query meta/metadata-provider (meta/table-metadata :orders))]
-      (is (=? {:message "OFFSET is not supported in custom expressions"}
+      (is (=? {:message "OFFSET is not supported in custom columns"}
               (lib.expression/diagnose-expression query 0 :expression
                                                   (lib/offset (meta/field-metadata :orders :subtotal) -1)
                                                   nil))))))

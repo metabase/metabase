@@ -12,6 +12,7 @@
    [metabase.lib.metadata.jvm :as lib.metadata.jvm]
    [metabase.models.card :as card]
    [metabase.models.interface :as mi]
+   [metabase.models.parameter-card :as parameter-card]
    [metabase.models.revision :as revision]
    [metabase.models.serialization :as serdes]
    [metabase.query-processor.card-test :as qp.card-test]
@@ -585,6 +586,18 @@
         (t2/delete! :model/Card :id source-card-id)
         (is (= []
                (t2/select :model/ParameterCard :card_id source-card-id)))))))
+
+(deftest do-not-update-parameter-card-if-it-doesn't-change-test
+  (testing "Do not update ParameterCard if updating a Dashboard doesn't change the parameters"
+    (mt/with-temp [:model/Card  {source-card-id :id} {}
+                   :model/Card  {card-id-1 :id}      {:parameters [{:name       "Category Name"
+                                                                    :slug       "category_name"
+                                                                    :id         "_CATEGORY_NAME_"
+                                                                    :type       "category"
+                                                                    :values_source_type    "card"
+                                                                    :values_source_config {:card_id source-card-id}}]}]
+      (mt/with-dynamic-redefs [parameter-card/upsert-or-delete-from-parameters! (fn [& _] (throw (ex-info "Should not be called" {})))]
+        (t2/update! :model/Card card-id-1 {:name "new name"})))))
 
 (deftest cleanup-parameter-on-card-changes-test
   (mt/dataset test-data

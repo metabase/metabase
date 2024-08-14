@@ -80,3 +80,19 @@ export const deleteToken = () => {
     },
   });
 };
+
+export const mockSessionPropertiesTokenFeatures = features => {
+  cy.intercept({ method: "GET", url: "/api/session/properties" }, request => {
+    request.on("response", response => {
+      if (typeof response.body === "object") {
+        response.body = {
+          ...response.body,
+          "token-features": {
+            ...response.body["token-features"],
+            ...features,
+          },
+        };
+      }
+    });
+  });
+};

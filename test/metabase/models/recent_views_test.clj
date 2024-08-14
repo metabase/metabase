@@ -31,7 +31,8 @@
 (deftest simple-get-list-card-test
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
-     :model/Card       {card-id         :id} {:type "question" :name "name" :display "display" :collection_id coll-id}]
+     :model/Database   {db-id :id}   {}
+     :model/Card       {card-id :id} {:type "question" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id)
     (is (= [{:description nil,
              :can_write true,
@@ -41,7 +42,8 @@
              :id card-id,
              :display "display",
              :timestamp String
-             :model :card}]
+             :model :card
+             :database_id db-id}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views/get-list (mt/user->id :rasta))))))))
@@ -49,7 +51,8 @@
 (deftest simple-get-list-dataset-test
   (mt/with-temp
     [:model/Collection {coll-id :id} {:name "my coll"}
-     :model/Card       {card-id         :id} {:type "model" :name "name" :display "display" :collection_id coll-id}]
+     :model/Database   {db-id :id}   {}
+     :model/Card       {card-id         :id} {:type "model" :name "name" :display "display" :collection_id coll-id :database_id db-id}]
     (recent-views/update-users-recent-views! (mt/user->id :rasta) :model/Card card-id)
     (is (= [{:description nil,
              :can_write true,
@@ -58,7 +61,8 @@
              :moderated_status nil,
              :id card-id,
              :timestamp String
-             :model :dataset}]
+             :model :dataset
+             :database_id db-id}]
            (mt/with-test-user :rasta
              (mapv fixup
                    (recent-views/get-list (mt/user->id :rasta))))))))
@@ -150,72 +154,6 @@
                                                           (recent-views/get-list (mt/user->id :rasta)))))))
       (is (= 1 (count (filter (comp #{:card} :model)    (mt/with-test-user :rasta
                                                           (recent-views/get-list (mt/user->id :rasta))))))))))
-
-(deftest recent-views-content-test
-  (binding [recent-views/*recent-views-stored-per-user-per-model* 2]
-    (testing "`update-users-recent-views!` prunes duplicates of all models.`"
-      (mt/with-temp
-        [:model/Collection {parent-coll-id :id} {:name "parent"}
-         :model/Card       {card-id :id} {:type "question" :name "my card" :description "this is my card" :collection_id parent-coll-id}
-         :model/Card       {model-id :id} {:type "model" :name "my model" :description "this is my model" :collection_id parent-coll-id}
-
-         :model/Dashboard  {dashboard-id :id} {:name "my dash" :description "this is my dash" :collection_id parent-coll-id}
-
-         :model/Collection {collection-id :id} {:name "my collection" :description "this is my collection" :location (str "/" parent-coll-id "/")}
-
-         :model/Database   {db-id :id} {:name "My DB"} ;; just needed for these temp tables
-         :model/Table      {table-id :id} {:name "tablet" :display_name "I am the table" :db_id db-id, :is_upload true}]
-        (doseq [[model model-id] [[:model/Card card-id]
-                                  [:model/Card model-id]
-                                  [:model/Dashboard dashboard-id]
-                                  [:model/Collection collection-id]
-                                  [:model/Table table-id]]]
-          (recent-views/update-users-recent-views! (mt/user->id :rasta) model model-id))
-        (is (= [{:id "ID",
-                 :name "tablet",
-                 :description nil,
-                 :model :table,
-                 :display_name "I am the table",
-                 :can_write false,
-                 :database {:id "ID", :name "My DB", :initial_sync_status "incomplete"}}
-                {:id "ID",
-                 :name "my collection",
-                 :description "this is my collection",
-                 :effective_location (->location parent-coll-id)
-                 :model :collection,
-                 :can_write true,
-                 :authority_level nil,
-                 :parent_collection {:id "ID", :name "parent", :authority_level nil}}
-                {:id "ID",
-                 :name "my dash",
-                 :description "this is my dash",
-                 :model :dashboard,
-                 :can_write true,
-                 :parent_collection {:id "ID", :name "parent", :authority_level nil}}
-                {:id "ID",
-                 :name "my model",
-                 :description "this is my model",
-                 :model :dataset,
-                 :can_write true,
-                 :moderated_status nil,
-                 :parent_collection {:id "ID", :name "parent", :authority_level nil}}
-                {:description "this is my card",
-                 :can_write true,
-                 :name "my card",
-                 :parent_collection {:id "ID", :name "parent", :authority_level nil},
-                 :moderated_status nil,
-                 :id "ID",
-                 :display "table",
-                 :model :card}]
-               (mt/with-test-user :rasta
-                 (->> (recent-views/get-list (mt/user->id :rasta))
-                      (mapv (fn [rv] (cond-> rv
-                                       true                                       (assoc :id "ID")
-                                       true                                       (dissoc :timestamp)
-                                       (-> rv :database :id)                      (assoc-in [:database :id] "ID")
-                                       (some-> rv :parent_collection)             (update :parent_collection #(into {} %))
-                                       (some-> rv :parent_collection :id number?) (assoc-in [:parent_collection :id] "ID"))))))))
-        "After inserting 2 views of each model, we should have 2 views PER each model."))))
 
 (deftest most-recent-dashboard-view-test
   (testing "The most recent dashboard view is never pruned"

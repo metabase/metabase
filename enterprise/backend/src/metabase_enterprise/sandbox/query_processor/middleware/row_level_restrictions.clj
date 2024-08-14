@@ -62,7 +62,7 @@
 
 (defn- tables->sandboxes [table-ids]
   (qp.store/cached [*current-user-id* table-ids]
-    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for *current-user-id* table-ids)]
+    (let [enforced-sandboxes (mt.api.u/enforced-sandboxes-for-tables table-ids)]
        (when (seq enforced-sandboxes)
          (assert-one-gtap-per-table enforced-sandboxes)
          enforced-sandboxes))))
@@ -256,10 +256,12 @@
   [{card-id :card_id :as sandbox}]
   (if card-id
     (qp.store/cached card-id
-                     (query-perms/required-perms (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
+                     (query-perms/required-perms-for-query (:dataset-query (lib.metadata.protocols/card (qp.store/metadata-provider) card-id))
                                                  :throw-exceptions? true))
-    {:perms/view-data :unrestricted
-     :perms/create-queries (zipmap (sandbox->table-ids sandbox) (repeat :query-builder))}))
+
+    (let [table-ids (sandbox->table-ids sandbox)]
+      {:perms/view-data (zipmap table-ids (repeat :unrestricted))
+       :perms/create-queries (zipmap table-ids (repeat :query-builder))})))
 
 (defn- merge-perms
   "The shape of permissions maps is a little odd, and using `m/deep-merge` doesn't give us exactly what we want.

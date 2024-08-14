@@ -3,7 +3,7 @@ import { t } from "ttag";
 
 import { useToggle } from "metabase/hooks/use-toggle";
 import { Button, Icon } from "metabase/ui";
-import type { SearchModel, SearchResult } from "metabase-types/api";
+import type { RecentItem, SearchModel, SearchResult } from "metabase-types/api";
 
 import type { EntityTab } from "../../EntityPicker";
 import { EntityPickerModal, defaultOptions } from "../../EntityPicker";
@@ -16,13 +16,15 @@ import type {
 import { CollectionPicker } from "./CollectionPicker";
 import { NewCollectionDialog } from "./NewCollectionDialog";
 
-interface CollectionPickerModalProps {
+export interface CollectionPickerModalProps {
   title?: string;
   onChange: (item: CollectionPickerValueItem) => void;
   onClose: () => void;
   options?: CollectionPickerOptions;
   value: Pick<CollectionPickerValueItem, "id" | "model">;
   shouldDisableItem?: (item: CollectionPickerItem) => boolean;
+  searchResultFilter?: (searchResults: SearchResult[]) => SearchResult[];
+  recentFilter?: (recentItems: RecentItem[]) => RecentItem[];
 }
 
 const canSelectItem = (
@@ -42,6 +44,8 @@ export const CollectionPickerModal = ({
   value,
   options = defaultOptions,
   shouldDisableItem,
+  searchResultFilter,
+  recentFilter,
 }: CollectionPickerModalProps) => {
   options = { ...defaultOptions, ...options };
   const [selectedItem, setSelectedItem] = useState<CollectionPickerItem | null>(
@@ -109,6 +113,16 @@ export const CollectionPickerModal = ({
     pickerRef.current?.onNewCollection(newCollection);
   };
 
+  const composedSearchResultFilter = useCallback(
+    (searchResults: SearchResult[]) => {
+      if (searchResultFilter) {
+        return searchFilter(searchResultFilter(searchResults));
+      }
+      return searchFilter(searchResults);
+    },
+    [searchResultFilter],
+  );
+
   return (
     <>
       <EntityPickerModal
@@ -120,7 +134,8 @@ export const CollectionPickerModal = ({
         selectedItem={selectedItem}
         tabs={tabs}
         options={options}
-        searchResultFilter={searchFilter}
+        searchResultFilter={composedSearchResultFilter}
+        recentFilter={recentFilter}
         actionButtons={modalActions}
         trapFocus={!isCreateDialogOpen}
       />
@@ -135,6 +150,7 @@ export const CollectionPickerModal = ({
             : "root"
         }
         onNewCollection={handleNewCollectionCreate}
+        namespace={options.namespace}
       />
     </>
   );

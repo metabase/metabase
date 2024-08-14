@@ -272,7 +272,9 @@
 
 (defn- table-like?
   [card-or-question]
-  (nil? (get-in card-or-question [:dataset_query :query :aggregation])))
+  (and
+    (nil? (get-in card-or-question [:dataset_query :query :aggregation]))
+    (nil? (get-in card-or-question [:dataset_query :query :breakout]))))
 
 (defn- table-id
   "Get the Table ID from `card-or-question`, which can be either a Card from the DB (which has a `:table_id` property)
@@ -434,16 +436,18 @@
                  (map #(assoc % :db db))
                  (group-by :table_id))
             u/the-id)
-      (let [source-fields (->> source
-                               :result_metadata
-                               (map (fn [field]
-                                      (as-> field field
-                                        (update field :base_type keyword)
-                                        (update field :semantic_type keyword)
-                                        (mi/instance Field field)
-                                        (classifiers/run-classifiers field {})
-                                        (assoc field :db db)))))]
-        (constantly source-fields)))))
+      (if (table-like? source)
+        (let [source-fields (->> source
+                                 :result_metadata
+                                 (map (fn [field]
+                                        (as-> field field
+                                          (update field :base_type keyword)
+                                          (update field :semantic_type keyword)
+                                          (mi/instance Field field)
+                                          (classifiers/run-classifiers field {})
+                                          (assoc field :db db)))))]
+          (constantly source-fields))
+        (constantly [])))))
 
 (defn- make-base-context
   "Create the underlying context to which we will add metrics, dimensions, and filters.
@@ -557,6 +561,7 @@
 
 (def ^:private ^:const ^Long max-related 8)
 (def ^:private ^:const ^Long max-cards 15)
+(def ^:private ^:const ^Long max-cards-total 30)
 
 (defn ->related-entity
   "Turn `entity` into an entry in `:related.`"
@@ -828,7 +833,8 @@
   (for [breakout     (get-in question [:dataset_query :query :breakout])
         field-clause (take 1 (magic.util/collect-field-references breakout))
         :let         [field (magic.util/->field root field-clause)]
-        :when        field]
+        :when        (and field
+                          (= (:table_id field) (table-id question)))]
     field))
 
 (defn- decompose-question
@@ -871,7 +877,7 @@
                                                :dashboard-templates-prefix ["table"]})
                                             opts)]
                            (automagic-dashboard root'))
-                         (let [opts      (assoc opts :show :all)
+                         (let [opts      (assoc opts :show max-cards-total)
                                root'     (merge root
                                                 (when cell-query
                                                   {:url cell-url})

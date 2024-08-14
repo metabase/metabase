@@ -5,10 +5,10 @@ import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { startTimer } from "metabase/lib/performance";
 import { defer } from "metabase/lib/promise";
 import { createThunkAction } from "metabase/lib/redux";
+import { syncVizSettingsWithSeries } from "metabase/querying";
 import { getWhiteLabeledLoadingMessageFactory } from "metabase/selectors/whitelabel";
 import { runQuestionQuery as apiRunQuestionQuery } from "metabase/services";
 import { getSensibleDisplays } from "metabase/visualizations";
-import { syncVizSettingsWithSeries } from "metabase/visualizations/lib/sync-settings";
 import * as Lib from "metabase-lib";
 import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
 
@@ -192,9 +192,16 @@ export const queryCompleted = (question, queryResults) => {
         prevCard && (prevData || prevError)
           ? [{ card: prevCard, data: prevData, error: prevError }]
           : null;
-      question = question.setSettings(
-        syncVizSettingsWithSeries(question.settings(), series, previousSeries),
-      );
+      if (series && previousSeries) {
+        question = question.setSettings(
+          syncVizSettingsWithSeries(
+            question.settings(),
+            question.query(),
+            series,
+            previousSeries,
+          ),
+        );
+      }
 
       question = question.maybeResetDisplay(
         data,

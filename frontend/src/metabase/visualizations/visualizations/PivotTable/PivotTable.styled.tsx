@@ -109,6 +109,7 @@ interface PivotTableRootProps {
 export const PivotTableRoot = styled.div<PivotTableRootProps>`
   height: 100%;
   font-size: ${PIVOT_TABLE_FONT_SIZE};
+  overflow: auto;
 
   ${props =>
     props.isDashboard

@@ -92,3 +92,9 @@ export function isPermissionDisabled(index, permission, isDisabled) {
     .closest("a")
     .should("have.attr", "aria-disabled", isDisabled.toString());
 }
+
+export const dismissSplitPermsModal = () => {
+  cy.findByRole("dialog", { name: /permissions may look different/ })
+    .findByRole("button", { name: "Got it" })
+    .click();
+};

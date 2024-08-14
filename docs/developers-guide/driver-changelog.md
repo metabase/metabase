@@ -4,6 +4,23 @@ title: Driver interface changelog
 
 # Driver Interface Changelog
 
+## Metabase 0.50.17
+
+- Added method `metabase.driver/incorporate-auth-provider-details` for driver specific behavior required to
+  incorporate response of an auth-provider into the DB details.  In most cases this means setting the :password
+  and/or :username based on the auth-provider and its response.
+
+## Metabase 0.50.16
+
+  - `:type/fingerprinting-unsupported` has been added in the `metabase.types` namespace. Similar to
+    `:type/field-values-unsupported` for field values scanning, it is used to determine whether a specific field
+    should have its fingerprint computed or not. At the time of writing that logic is performed in
+    `metabase.sync.analyze.fingerprint/fields-to-fingerprint-base-clause`.
+
+  - `:type/Large` has been also been added in the `metabase.types` namespace. It can be used by driver authors to
+    signal that a specific field contains large enough values to skip fingerprinting or field values scanning. It
+    can be used for other purposes as well in the future. Examples include Oracle CLOB or Postgres JSON columns.
+
 ## Metabase 0.50.0
 
 - The Metabase `metabase.mbql.*` namespaces have been moved to `metabase.legacy-mbql.*`. You probably didn't need to
@@ -76,6 +93,19 @@ title: Driver interface changelog
   corresponds to multiple databases or just one. The default is `false`, where a connection specifies a single database.
   This is the common case for classic relational DBs like Postgres, and some cloud databases. In contrast, a driver like
   Athena sets this to `true` because it connects to an S3 bucket and treats each file within it as a database.
+
+- New feature `:identifiers-with-spaces` has been added to indicate where a driver supports identifiers like table or
+  column names that contains a space character. Defaults to `false`.
+
+- New feature `:uuid-type` has been added to indicate that this database is able to distinguish and filter against UUIDs.
+  Only a few database support native UUID types. The default is `false`.
+
+## Metabase 0.49.22
+
+- A new optional method `metabase.driver.sql/json-field-length` has been added. It should be implemented for all
+  drivers that derive from `:sql` and support the `:nested-field-columns` feature. If implemented, Metabase will skip
+  querying large JSON values during the "sync-fields" step that could otherwise slow down the inference of nested
+  field columns and cause Metabase to run out of heap space.
 
 ## Metabase 0.49.9
 

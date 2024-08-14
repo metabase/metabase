@@ -10,6 +10,7 @@ import {
   isFullyParameterized,
   isPreviewShown,
 } from "metabase/collections/utils";
+import EventSandbox from "metabase/components/EventSandbox";
 import CS from "metabase/css/core/index.css";
 import type { IconName } from "metabase/ui";
 import Visualization from "metabase/visualizations/components/Visualization";
@@ -48,16 +49,20 @@ const PinnedQuestionCard = ({
   const isPreview = isPreviewShown(item);
 
   const actionMenu = (
-    <ActionMenu
-      item={item}
-      collection={collection}
-      databases={databases}
-      bookmarks={bookmarks}
-      onCopy={onCopy}
-      onMove={onMove}
-      createBookmark={onCreateBookmark}
-      deleteBookmark={onDeleteBookmark}
-    />
+    // This component is used within a `<Link>` component,
+    // so we must prevent events from triggering the activation of the link
+    <EventSandbox preventDefault sandboxedEvents={["onClick"]}>
+      <ActionMenu
+        item={item}
+        collection={collection}
+        databases={databases}
+        bookmarks={bookmarks}
+        onCopy={onCopy}
+        onMove={onMove}
+        createBookmark={onCreateBookmark}
+        deleteBookmark={onDeleteBookmark}
+      />
+    </EventSandbox>
   );
 
   const positionedActionMenu = (

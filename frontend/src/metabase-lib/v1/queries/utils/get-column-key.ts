@@ -12,7 +12,6 @@ import type { DatasetColumn } from "metabase-types/api";
 
 export const getColumnKey = (
   column: Pick<DatasetColumn, "name" | "field_ref">,
-  ignoreBaseType = false,
 ) => {
   let fieldRef = column.field_ref;
 
@@ -32,7 +31,7 @@ export const getColumnKey = (
     isExpressionReference(fieldRef) ||
     isAggregationReference(fieldRef)
   ) {
-    fieldRef = getBaseDimensionReference(fieldRef, ignoreBaseType);
+    fieldRef = getBaseDimensionReference(fieldRef);
   }
 
   const isLegacyRef =

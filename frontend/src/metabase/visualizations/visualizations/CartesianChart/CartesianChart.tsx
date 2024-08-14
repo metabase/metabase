@@ -27,7 +27,8 @@ function _CartesianChart(props: VisualizationProps) {
     settings: originalSettings,
     card,
     gridSize,
-    width,
+    width: outerWidth,
+    height: outerHeight,
     showTitle,
     headerIcon,
     actionButtons,
@@ -99,8 +100,10 @@ function _CartesianChart(props: VisualizationProps) {
           description={description}
           icon={headerIcon}
           actionButtons={actionButtons}
-          onSelectTitle={canSelectTitle ? onOpenQuestion : undefined}
-          width={width}
+          onSelectTitle={
+            canSelectTitle ? () => onOpenQuestion(card.id) : undefined
+          }
+          width={outerWidth}
         />
       )}
       <CartesianChartLegendLayout
@@ -115,6 +118,8 @@ function _CartesianChart(props: VisualizationProps) {
         canRemoveSeries={canRemoveSeries}
         onRemoveSeries={onRemoveSeries}
         onHoverChange={onHoverChange}
+        width={outerWidth}
+        height={outerHeight}
       >
         <CartesianChartRenderer
           // @ts-expect-error emotion does not properly provide prop types due
