@@ -223,8 +223,7 @@
                                                                 :field_ref     [:aggregation 0]}]
                    ::query-perms/perms                        {:gtaps {:perms/view-data      {(mt/id :checkins) :unrestricted
                                                                                               (mt/id :venues) :unrestricted}
-                                                                       :perms/create-queries {(mt/id :checkins) :query-builder
-                                                                                              (mt/id :venues) :query-builder}}}})
+                                                                       :perms/create-queries {(mt/id :checkins) :query-builder}}}})
                 (apply-row-level-permissions
                  (mt/mbql-query checkins
                    {:aggregation [[:count]]
@@ -818,17 +817,17 @@
                        (first (mt/rows result))))))))))))
 
 (deftest sandboxing-linked-table-perms
-  (testing "Sandboxing based on a column in a linked table should work even if the user doesn't have self-service query
-           permissions for the linked table (#15105)"
+  (testing "Sandboxing based on a column in a linked table should not work when the user has create-queries = no
+            permissions for the linked table"
     (mt/dataset test-data
       (met/with-gtaps! (mt/$ids orders
                         {:gtaps      {:orders {:remappings {"user_id" [:dimension $user_id->people.id]}}}
                          :attributes {"user_id" 1}})
         (mt/with-test-user :rasta
-          (is (= [11]
-                 (-> (mt/run-mbql-query orders {:aggregation [[:count]]})
-                     mt/rows
-                     first))))))))
+          (is (thrown-with-msg?
+               Exception
+               #"You do not have permissions to run this query\."
+               (mt/run-mbql-query orders {:aggregation [[:count]]}))))))))
 
 (deftest drill-thru-on-joins-test
   (testing "should work on questions with joins, with sandboxed target table, where target fields cannot be filtered (#13642)"
