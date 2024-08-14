@@ -53,7 +53,7 @@
       deactivated?
       ;; Channel.name has an unique constraint and it's an useful property for serialization
       ;; So we rename deactivated channels so new channel can reuse the name
-      (assoc :name (format "%s DEACTIVATED_%d" (:name instance) (quot (System/currentTimeMillis) 1000))))))
+      (assoc :name (format "%s DEACTIVATED_%s" (:name instance) (random-uuid))))))
 
 (defmethod audit-log/model-details :model/Channel
   [channel _event-type]
