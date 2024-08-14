@@ -36,39 +36,16 @@ export const useSummarizeQuery = ({
     [onQueryChange],
   );
 
-  const handleAddAggregations = useCallback(
-    (aggregations: Lib.Aggregable[]) => {
-      const nextQuery = aggregations.reduce(
-        (query, aggregation) => Lib.aggregate(query, STAGE_INDEX, aggregation),
-        query,
-      );
-      handleChange(nextQuery);
-    },
-    [query, handleChange],
-  );
-
-  const handleUpdateAggregation = useCallback(
-    (aggregation: Lib.AggregationClause, nextAggregation: Lib.Aggregable) => {
-      const nextQuery = Lib.replaceClause(
-        query,
-        STAGE_INDEX,
-        aggregation,
-        nextAggregation,
-      );
-      handleChange(nextQuery);
-    },
-    [query, handleChange],
-  );
-
-  const handleRemoveAggregation = useCallback(
-    (aggregation: Lib.AggregationClause) => {
-      if (hasDefaultAggregation) {
+  const handleQueryChange = useCallback(
+    (nextQuery: Lib.Query) => {
+      const newAggregations = Lib.aggregations(nextQuery, STAGE_INDEX);
+      if (newAggregations.length === 0) {
         setHasDefaultAggregation(false);
       } else {
-        handleChange(Lib.removeClause(query, STAGE_INDEX, aggregation));
+        handleChange(nextQuery);
       }
     },
-    [query, hasDefaultAggregation, handleChange],
+    [handleChange],
   );
 
   const handleAddBreakout = useCallback(
@@ -107,9 +84,7 @@ export const useSummarizeQuery = ({
     stageIndex: STAGE_INDEX,
     aggregations,
     hasAggregations,
-    handleAddAggregations,
-    handleUpdateAggregation,
-    handleRemoveAggregation,
+    handleQueryChange,
     handleAddBreakout,
     handleUpdateBreakout,
     handleRemoveBreakout,
@@ -119,5 +94,5 @@ export const useSummarizeQuery = ({
 
 function shouldAddDefaultAggregation(query: Lib.Query): boolean {
   const aggregations = Lib.aggregations(query, STAGE_INDEX);
-  return aggregations.length === 0 && !Lib.isMetricBased(query, STAGE_INDEX);
+  return aggregations.length === 0;
 }

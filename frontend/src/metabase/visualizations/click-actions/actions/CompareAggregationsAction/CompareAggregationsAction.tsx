@@ -41,15 +41,12 @@ export const CompareAggregationsAction: LegacyDrill = ({
     const dispatch = useDispatch();
     const aggregations = Lib.aggregations(query, stageIndex);
 
-    function handleSubmit(aggregations: Lib.ExpressionClause[]) {
-      const nextQuery = aggregations.reduce(
-        (query, aggregation) => Lib.aggregate(query, stageIndex, aggregation),
-        query,
-      );
-
+    function handleSubmit(
+      nextQuery: Lib.Query,
+      aggregations: Lib.ExpressionClause[],
+    ) {
       const nextQuestion = checkNotNull(currentQuestion).setQuery(nextQuery);
       const nextCard = nextQuestion.card();
-
       trackColumnCompareViaPlusModal(
         nextQuery,
         stageIndex,

@@ -121,6 +121,8 @@ export const createMockTokenFeatures = (
   snippet_collections: false,
   email_allow_list: false,
   email_restrict_recipients: false,
+  collection_cleanup: false,
+  upload_management: false,
   ...opts,
 });
 

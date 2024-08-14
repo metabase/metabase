@@ -18,7 +18,7 @@ import { getMetadata } from "metabase/selectors/metadata";
 import { getCardAfterVisualizationClick } from "metabase/visualizations/lib/utils";
 import * as Lib from "metabase-lib";
 import Question from "metabase-lib/v1/Question";
-import { isAdHocModelQuestion } from "metabase-lib/v1/metadata/utils/models";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
 import Query from "metabase-lib/v1/queries/Query";
 import {
   cardIsEquivalent,
@@ -257,7 +257,10 @@ export const apiUpdateQuestion = (question, { rerunQuery } = {}) => {
       submittableQuestion,
       dispatch,
       {
-        excludeDatasetQuery: isAdHocModelQuestion(question, originalQuestion),
+        excludeDatasetQuery: isAdHocModelOrMetricQuestion(
+          question,
+          originalQuestion,
+        ),
       },
     );
 

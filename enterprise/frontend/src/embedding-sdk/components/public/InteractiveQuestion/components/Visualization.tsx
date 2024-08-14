@@ -17,8 +17,8 @@ export const QuestionVisualization = () => {
     mode,
     isQuestionLoading,
     isQueryRunning,
+    navigateToNewCard,
     onNavigateBack,
-    onNavigateToNewCard,
   } = useInteractiveQuestionContext();
 
   if (isQuestionLoading) {
@@ -44,7 +44,7 @@ export const QuestionVisualization = () => {
       result={result}
       noHeader
       mode={mode}
-      navigateToNewCardInsideQB={onNavigateToNewCard}
+      navigateToNewCardInsideQB={navigateToNewCard}
       onNavigateBack={onNavigateBack}
     />
   );
