@@ -15,14 +15,19 @@ import {
   CurrentPerionInput,
 } from "./components";
 import type { ColumnType, ComparisonType } from "./types";
-import { canSubmit, getAggregations, getTitle } from "./utils";
+import {
+  canSubmit,
+  getBreakout,
+  getTitle,
+  updateQueryWithCompareOffsetAggregations,
+} from "./utils";
 
 interface Props {
   aggregations: Lib.AggregationClause[];
   query: Lib.Query;
   stageIndex: number;
   onClose: () => void;
-  onSubmit: (aggregations: Lib.ExpressionClause[]) => void;
+  onSubmit: (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => void;
 }
 
 const DEFAULT_OFFSET = 1;
@@ -42,6 +47,11 @@ export const CompareAggregations = ({
   const [aggregation, setAggregation] = useState<
     Lib.AggregationClause | Lib.ExpressionClause | undefined
   >(hasManyAggregations ? undefined : aggregations[0]);
+  const columnAndBucket = useMemo(
+    () => getBreakout(query, stageIndex),
+    [query, stageIndex],
+  );
+
   const [offset, setOffset] = useState<number | "">(DEFAULT_OFFSET);
   const [columns, setColumns] = useState<ColumnType[]>(DEFAULT_COLUMNS);
   const [comparisonType, setComparisonType] = useState<ComparisonType>(
@@ -77,18 +87,25 @@ export const CompareAggregations = ({
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
 
-    if (aggregation && offset !== "") {
-      const aggregations = getAggregations(
-        query,
-        stageIndex,
-        aggregation,
-        columns,
-        offset,
-        includeCurrentPeriod,
-      );
-      onSubmit(aggregations);
-      onClose();
+    if (!aggregation || !columnAndBucket) {
+      return;
     }
+
+    const next = updateQueryWithCompareOffsetAggregations(
+      query,
+      stageIndex,
+      aggregation,
+      offset,
+      columns,
+      columnAndBucket,
+    );
+
+    if (!next) {
+      return;
+    }
+
+    onSubmit(next.query, next.addedAggregations);
+    onClose();
   };
 
   return (

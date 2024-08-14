@@ -1,7 +1,4 @@
-import {
-  ORDERS_DASHBOARD_ID,
-  ORDERS_DASHBOARD_DASHCARD_ID,
-} from "e2e/support/cypress_sample_instance_data";
+import { ORDERS_DASHBOARD_ID } from "e2e/support/cypress_sample_instance_data";
 import {
   restore,
   popover,
@@ -35,6 +32,18 @@ describe("scenarios > dashboard > filters > number", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
     editDashboard();
+
+    /**
+     * Even though we're already intercepting this route in the visitDashboard helper,
+     * it is important to alias it differently here, and to then wait for it in tests.
+     *
+     * The place where the intercept is first set matters.
+     * If we set it before the visitDashboard, we'd have to wait for it after the visit,
+     * otherwise we'd always be one wait behind in tests.
+     */
+    cy.intercept("POST", "api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashboardData",
+    );
   });
 
   it("should work when set through the filter widget", () => {
@@ -53,19 +62,19 @@ describe("scenarios > dashboard > filters > number", () => {
     });
 
     saveDashboard();
+    cy.wait("@dashboardData");
 
     DASHBOARD_NUMBER_FILTERS.forEach(
       ({ operator, value, representativeResult }, index) => {
         filterWidget().eq(index).click();
         addWidgetNumberFilter(value);
+        cy.wait("@dashboardData");
 
         cy.log(`Make sure ${operator} filter returns correct result`);
-        cy.findByTestId("dashcard").within(() => {
-          cy.findByText(representativeResult);
-        });
+        cy.findByTestId("dashcard").should("contain", representativeResult);
 
         clearFilterWidget(index);
-        cy.wait(`@dashcardQuery${ORDERS_DASHBOARD_DASHCARD_ID}`);
+        cy.wait("@dashboardData");
       },
     );
   });
@@ -79,20 +88,22 @@ describe("scenarios > dashboard > filters > number", () => {
     addWidgetNumberFilter("2.07");
 
     saveDashboard();
+    cy.wait("@dashboardData");
 
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("37.65");
-    });
+    cy.findByTestId("dashcard")
+      .should("contain", "37.65")
+      .and("not.contain", "101.04");
 
     clearFilterWidget();
+    cy.wait("@dashboardData");
 
     filterWidget().click();
-
     addWidgetNumberFilter("5.27", { buttonLabel: "Update filter" });
+    cy.wait("@dashboardData");
 
-    cy.findByTestId("dashcard").within(() => {
-      cy.findByText("101.04");
-    });
+    cy.findByTestId("dashcard")
+      .should("contain", "101.04")
+      .and("not.contain", "37.65");
   });
 
   it("should support being required", () => {
@@ -120,15 +131,18 @@ describe("scenarios > dashboard > filters > number", () => {
     addWidgetNumberFilter("2.07", { buttonLabel: "Update filter" });
 
     saveDashboard();
+    cy.wait("@dashboardData");
     ensureDashboardCardHasText("37.65");
 
     // Updates the filter value
     setFilterWidgetValue("5.27", "Enter a number");
+    cy.wait("@dashboardData");
     ensureDashboardCardHasText("95.77");
 
     // Resets the value back by clicking widget icon
     resetFilterWidgetToDefault();
     filterWidget().findByText("2.07");
+    cy.wait("@dashboardData");
     ensureDashboardCardHasText("37.65");
 
     // Removing value resets back to default

@@ -7,7 +7,7 @@ import * as Lib from "metabase-lib";
 import type { NotebookStepUiComponentProps } from "../../types";
 import { ClauseStep } from "../ClauseStep";
 
-function BreakoutStep({
+export function BreakoutStep({
   query,
   step,
   color,
@@ -105,16 +105,21 @@ const BreakoutPopover = ({
 }: BreakoutPopoverProps) => {
   const columnGroups = useMemo(() => {
     const columns = Lib.breakoutableColumns(query, stageIndex);
-
-    const filteredColumns = columns.filter(column => {
-      const columnInfo = Lib.displayInfo(query, stageIndex, column);
-      const isAlreadyUsed = columnInfo.breakoutPosition != null;
-      const isSelected = checkColumnSelected(columnInfo, breakoutIndex);
-      return isSelected || !isAlreadyUsed;
-    });
-
+    const filteredColumns = columns.reduce(
+      (columns: Lib.ColumnMetadata[], column) => {
+        const columnInfo = Lib.displayInfo(query, stageIndex, column);
+        const { breakoutPositions = [] } = columnInfo;
+        if (breakout && checkColumnSelected(columnInfo, breakoutIndex)) {
+          columns.push(Lib.breakoutColumn(query, stageIndex, breakout));
+        } else if (breakoutPositions.length === 0) {
+          columns.push(column);
+        }
+        return columns;
+      },
+      [],
+    );
     return Lib.groupColumns(filteredColumns);
-  }, [query, stageIndex, breakoutIndex]);
+  }, [query, stageIndex, breakout, breakoutIndex]);
 
   return (
     <QueryColumnPicker
@@ -140,11 +145,8 @@ const BreakoutPopover = ({
 };
 
 const checkColumnSelected = (
-  columnInfo: Lib.ColumnDisplayInfo,
+  { breakoutPositions = [] }: Lib.ColumnDisplayInfo,
   breakoutIndex?: number,
 ) => {
-  return breakoutIndex != null && columnInfo.breakoutPosition === breakoutIndex;
+  return breakoutIndex != null && breakoutPositions.includes(breakoutIndex);
 };
-
-// eslint-disable-next-line import/no-default-export -- deprecated usage
-export default BreakoutStep;

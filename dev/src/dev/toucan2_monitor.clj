@@ -12,8 +12,11 @@
   (:require
    [clojure.data.csv :as csv]
    [clojure.java.io :as io]
+   [clojure.stacktrace :as stacktrace]
+   [clojure.string :as str]
    [dev.util :as dev.u]
    [metabase.test.util.log :as tu.log]
+   [metabase.util :as u]
    [metabase.util.log :as log]
    [methodical.core :as methodical]
    [toucan2.pipeline :as t2.pipeline])
@@ -47,12 +50,22 @@
     {:total-queries           (count qs)
      :total-execution-time-ms (->> qs (map second) (apply +) int)}))
 
+(defn call-site
+  "Return first callsite inside Metabase that's not `metabase.db`"
+  []
+  (let [trace (->> (with-out-str
+                     (stacktrace/print-stack-trace (Exception. "tracker")))
+                   str/split-lines)]
+    (some-> (u/seek #(and (re-find #"^\s*metabase\." %)
+                      (not (re-find #"^\s*metabase\.db" %))) trace)
+            str/trim)))
+
 (defn- track-query-execution-fn
   [next-method rf conn query-type model query]
   (let [start  (System/nanoTime)
         result (next-method rf conn query-type model query)
         end    (System/nanoTime)]
-    (swap! queries* (fnil conj []) [query (/ (- end start) 1e6)])
+    (swap! queries* (fnil conj []) [query (/ (- end start) 1e6) (call-site)])
    result))
 
 (def ^:private log-thread-ref (volatile! nil))
@@ -70,11 +83,11 @@
   (when-not (some? @log-thread-ref)
     (let [new-thread (create-log-thread!)]
       (vreset! log-thread-ref new-thread)
-      (.start new-thread))))
+      (.start ^Thread new-thread))))
 
 (defn- stop-log! []
   (when-let [thread @log-thread-ref]
-    (.interrupt thread)
+    (.interrupt ^Thread thread)
     (vreset! log-thread-ref nil)))
 
 (defn start!
@@ -109,6 +122,25 @@
     (with-open [w (io/writer temp-file)]
       (csv/write-csv w (cons ["query" "params" "execution-time(ms)"] (map format-q qs))))
     (dev.u/os-open temp-file)))
+
+(defn do-with-queries
+  "Implementation for [[with-queries]]."
+  [f]
+  (reset-queries!)
+  (start!)
+  (u/prog1 (f queries)
+    (stop!)))
+
+(defmacro with-queries
+  "See Toucan queries executed:
+
+  ```clj
+  (with-queries [queries]
+    (select ...)
+    (println :total (count (queries)))) ;; -> :total 1
+  ```"
+  [[queries-binding] & body]
+  `(do-with-queries (^:once fn* [~queries-binding] ~@body)))
 
 (comment
  (start!)

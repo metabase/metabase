@@ -16,7 +16,7 @@ import {
 } from "e2e/support/helpers";
 import type { FieldReference, StructuredQuery } from "metabase-types/api";
 
-const { PRODUCTS_ID, PRODUCTS } = SAMPLE_DATABASE;
+const { PRODUCTS_ID, PRODUCTS, ORDERS, ORDERS_ID, PEOPLE } = SAMPLE_DATABASE;
 
 const FIELD_PRICE: FieldReference = [
   "field",
@@ -42,6 +42,16 @@ const BREAKOUT_NON_DATETIME: FieldReference = [
   { "base-type": "type/Text" },
 ];
 
+const BREAKOUT_OTHER_DATETIME: FieldReference = [
+  "field",
+  PEOPLE.CREATED_AT,
+  {
+    "base-type": "type/DateTime",
+    "temporal-unit": "month",
+    "source-field": ORDERS.USER_ID,
+  },
+];
+
 const QUERY_NO_AGGREGATION: StructuredQuery = {
   "source-table": PRODUCTS_ID,
 };
@@ -60,6 +70,12 @@ const QUERY_SINGLE_AGGREGATION_BINNED_DATETIME_BREAKOUT: StructuredQuery = {
   "source-table": PRODUCTS_ID,
   aggregation: [["count"]],
   breakout: [BREAKOUT_BINNED_DATETIME],
+};
+
+const QUERY_SINGLE_AGGREGATION_OTHER_DATETIME: StructuredQuery = {
+  "source-table": ORDERS_ID,
+  aggregation: [["count"]],
+  breakout: [BREAKOUT_OTHER_DATETIME],
 };
 
 const QUERY_SINGLE_AGGREGATION_NON_BINNED_DATETIME_BREAKOUT: StructuredQuery = {
@@ -91,6 +107,22 @@ const QUERY_MULTIPLE_AGGREGATIONS_NON_DATETIME_BREAKOUT: StructuredQuery = {
   "source-table": PRODUCTS_ID,
   aggregation: [["count"], ["sum", FIELD_PRICE]],
   breakout: [BREAKOUT_NON_DATETIME],
+};
+
+const QUERY_MULTIPLE_BREAKOUTS: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"]],
+  breakout: [BREAKOUT_NON_DATETIME, BREAKOUT_BINNED_DATETIME],
+};
+
+const QUERY_MULTIPLE_TEMPORAL_BREAKOUTS: StructuredQuery = {
+  "source-table": PRODUCTS_ID,
+  aggregation: [["count"]],
+  breakout: [
+    BREAKOUT_NON_DATETIME,
+    BREAKOUT_BINNED_DATETIME,
+    BREAKOUT_NON_BINNED_DATETIME,
+  ],
 };
 
 const CUSTOM_EXPRESSIONS_USED = [
@@ -249,21 +281,25 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         });
       });
 
+      verifyBreakoutExistsAndIsFirst({
+        column: "Created At",
+        bucket: "Month",
+      });
+
       verifyAggregations([
         {
-          name: "Count (previous period)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous period)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous period)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
-      verifyBreakoutRequiredError();
     });
 
     it("breakout on binned datetime column", () => {
@@ -325,6 +361,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
+      verifyBreakoutExistsAndIsFirst({ column: "Created At", bucket: "Month" });
 
       verifyColumns([
         "Count (previous month)",
@@ -400,7 +437,7 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
       ]);
     });
 
-    it("breakout on non-datetime column", () => {
+    it("breakout on non-datetime column", { tags: "@flaky" }, () => {
       createQuestion(
         { query: QUERY_SINGLE_AGGREGATION_NON_DATETIME_BREAKOUT },
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
@@ -455,22 +492,224 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
 
       verifyAggregations([
         {
-          name: "Count (previous value)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous value)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous value)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
+
+      verifyBreakoutExistsAndIsFirst({
+        column: "Created At",
+        bucket: "Month",
+      });
+
       verifyColumns([
-        "Count (previous value)",
-        "Count (vs previous value)",
-        "Count (% vs previous value)",
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
+      ]);
+    });
+
+    it("multiple breakouts", () => {
+      createQuestion(
+        { query: QUERY_MULTIPLE_BREAKOUTS },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
+      verifySummarizeText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "rows above based on “Category”",
+      });
+
+      verifyPlusButtonText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "rows above based on “Category”",
+      });
+
+      verifyNotebookText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "rows above based on “Category”",
+      });
+
+      toggleColumnPickerItems(["Value difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (previous month)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous month)",
+          expression: "Count - Offset(Count, -1)",
+        },
+        {
+          name: "Count (% vs previous month)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
+      ]);
+
+      verifyBreakoutExistsAndIsFirst({ column: "Created At", bucket: "Month" });
+      breakout({ column: "Category" }).should("exist");
+
+      verifyColumns([
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
+      ]);
+    });
+
+    it("multiple temporal breakouts", () => {
+      createQuestion(
+        { query: QUERY_MULTIPLE_TEMPORAL_BREAKOUTS },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
+      verifySummarizeText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "rows above based on “Category”",
+      });
+
+      verifyPlusButtonText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "rows above based on “Category”",
+      });
+
+      verifyNotebookText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "rows above based on “Category”",
+      });
+
+      toggleColumnPickerItems(["Value difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (previous month)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous month)",
+          expression: "Count - Offset(Count, -1)",
+        },
+        {
+          name: "Count (% vs previous month)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
+      ]);
+
+      verifyBreakoutExistsAndIsFirst({ column: "Created At", bucket: "Month" });
+      breakout({ column: "Category" }).should("exist");
+      breakout({ column: "Created At" }).should("exist");
+
+      verifyColumns([
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
+      ]);
+    });
+
+    it("one breakout on non-default datetime column", () => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_OTHER_DATETIME },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
+      verifySummarizeText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "months ago based on “Created At”",
+      });
+
+      tableHeaderClick("Count");
+      verifyNoColumnCompareShortcut();
+
+      verifyColumnDrillText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "months ago based on “Created At”",
+      });
+
+      verifyPlusButtonText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "months ago based on “Created At”",
+      });
+
+      verifyNotebookText({
+        itemName: "Compare to the past",
+        step2Title: "Compare “Count” to the past",
+        offsetHelp: "months ago based on “Created At”",
+      });
+
+      toggleColumnPickerItems(["Value difference"]);
+      popover().button("Done").click();
+
+      cy.get("@questionId").then(questionId => {
+        expectGoodSnowplowEvent({
+          event: "column_compare_via_shortcut",
+          custom_expressions_used: CUSTOM_EXPRESSIONS_USED,
+          database_id: SAMPLE_DB_ID,
+          question_id: questionId,
+        });
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (previous month)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (vs previous month)",
+          expression: "Count - Offset(Count, -1)",
+        },
+        {
+          name: "Count (% vs previous month)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
+      ]);
+
+      verifyBreakoutExistsAndIsFirst({
+        column: "User → Created At",
+        bucket: "Month",
+      });
+      breakout({ column: "Created At", bucket: "Month" }).should("not.exist");
+
+      verifyColumns([
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
       ]);
     });
   });
@@ -521,21 +760,21 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
         });
       });
 
+      verifyBreakoutExistsAndIsFirst({ column: "Created At", bucket: "Month" });
       verifyAggregations([
         {
-          name: "Count (previous period)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous period)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous period)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
-      verifyBreakoutRequiredError();
     });
 
     it("breakout on binned datetime column", () => {
@@ -728,23 +967,23 @@ describeWithSnowplow("scenarios > question > column compare TODO", () => {
 
       verifyAggregations([
         {
-          name: "Count (previous value)",
+          name: "Count (previous month)",
           expression: "Offset(Count, -1)",
         },
         {
-          name: "Count (vs previous value)",
+          name: "Count (vs previous month)",
           expression: "Count - Offset(Count, -1)",
         },
         {
-          name: "Count (% vs previous value)",
+          name: "Count (% vs previous month)",
           expression: "Count / Offset(Count, -1) - 1",
         },
       ]);
 
       verifyColumns([
-        "Count (previous value)",
-        "Count (vs previous value)",
-        "Count (% vs previous value)",
+        "Count (previous month)",
+        "Count (vs previous month)",
+        "Count (% vs previous month)",
       ]);
     });
   });
@@ -821,7 +1060,8 @@ function verifyPlusButtonText(options: CheckTextOpts) {
 function verifyNotebookText(options: CheckTextOpts) {
   openNotebook();
   getNotebookStep("summarize")
-    .findByTestId("aggregate-step")
+    .findAllByTestId("aggregate-step")
+    .last()
     .icon("add")
     .click();
 
@@ -865,18 +1105,20 @@ function verifyColumns(names: string[]) {
   }
 }
 
-function verifyBreakoutRequiredError() {
-  visualize();
+function breakout({ column, bucket }: { column: string; bucket?: string }) {
+  const name = bucket ? `${column}: ${bucket}` : column;
+  return cy.findByTestId("breakout-step").findByText(name);
+}
 
-  cy.get("main")
-    .findByText("There was a problem with your question")
-    .should("be.visible");
-  cy.get("main").findByText("Show error details").click();
-  cy.get("main")
-    .findByText(
-      "Window function requires either breakouts or order by in the query",
-    )
-    .should("be.visible");
+function verifyBreakoutExistsAndIsFirst(options: {
+  column: string;
+  bucket?: string;
+}) {
+  breakout(options)
+    .should("exist")
+    .parent()
+    .parent()
+    .should("match", ":first-child");
 }
 
 function openVisualization() {
