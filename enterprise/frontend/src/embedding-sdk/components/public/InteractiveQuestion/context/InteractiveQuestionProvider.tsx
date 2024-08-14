@@ -98,6 +98,8 @@ export const InteractiveQuestionProvider = ({
     mode,
   };
 
+  // When the `cardId` changes, the reference to the loadQuestion method changes,
+  // and the question will be reloaded. We should improve this to be more obvious.
   useEffect(() => {
     loadQuestion();
   }, [loadQuestion]);
