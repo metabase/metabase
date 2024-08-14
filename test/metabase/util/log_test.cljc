@@ -4,7 +4,7 @@
     [metabase.test.util.log :as tlog]
     [metabase.util.log :as log]))
 
-(deftest basic-logp-test
+(deftest ^:parallel basic-logp-test
   (is (= [[:warn nil "a message"]]
          (tlog/with-log-messages-for-level :warn
            (log/info "not this one")
@@ -18,7 +18,7 @@
          (tlog/with-log-messages-for-level :info
            (log/info :keyword 78)))))
 
-(deftest logp-levels-test
+(deftest ^:parallel logp-levels-test
   (let [important-message #{"fatal" "error" "warn" "info" "debug" "trace"}
         spam (fn []
                (log/fatal "fatal")
@@ -45,7 +45,7 @@
          5 :debug
          6 :trace)))
 
-(deftest logf-formatting-test
+(deftest ^:parallel logf-formatting-test
   (is (= [[:info nil "input: 8, 3; output: ignored"]]
          (tlog/with-log-messages-for-level :info
            (log/infof "input: %d, %d; %s: ignored" 8 3 "output")))))

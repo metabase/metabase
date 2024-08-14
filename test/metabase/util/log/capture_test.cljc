@@ -1,7 +1,60 @@
 (ns metabase.util.log.capture-test
-  (:require [clojure.test :refer [deftest testing is]]
-            [metabase.util.log :as log]
-            [metabase.util.log.capture :as log.capture]))
+  (:require
+   [clojure.test :refer [deftest testing is are]]
+   [metabase.util.log :as log]
+   [metabase.util.log.capture :as log.capture]))
+
+(deftest ^:parallel basic-logp-test
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message"}]
+         (log.capture/with-log-messages-for-level [messages :warn]
+           (log/info "not this one")
+           (log/warn "a message")
+           (messages))))
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "here's one"}
+          {:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message"}]
+         (log.capture/with-log-messages-for-level [messages :info]
+           (log/info "here's one")
+           (log/warn "a message")
+           (messages))))
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message ":keyword 78"}]
+         (log.capture/with-log-messages-for-level [messages :info]
+           (log/info :keyword 78)
+           (messages)))))
+
+(deftest ^:parallel logp-levels-test
+  (let [important-message #{"fatal" "error" "warn" "info" "debug" "trace"}
+        spam (fn []
+               (log/fatal "fatal")
+               (log/error "error")
+               (log/warn  "warn")
+               (log/info  "info")
+               (log/debug "debug")
+               (log/trace "trace"))
+        logs [{:namespace 'metabase.util.log.capture-test, :level :fatal, :e nil, :message "fatal"}
+              {:namespace 'metabase.util.log.capture-test, :level :error, :e nil, :message "error"}
+              {:namespace 'metabase.util.log.capture-test, :level :warn, :e  nil, :message "warn"}
+              {:namespace 'metabase.util.log.capture-test, :level :info, :e  nil, :message "info"}
+              {:namespace 'metabase.util.log.capture-test, :level :debug, :e nil, :message "debug"}
+              {:namespace 'metabase.util.log.capture-test, :level :trace, :e nil, :message "trace"}]]
+    (are [prefix level] (= (->> logs
+                                (filter #(contains? important-message (:message %)))
+                                (take prefix))
+                           (log.capture/with-log-messages-for-level [messages level]
+                             (spam)
+                             (messages)))
+                                        ;0 :off - this doesn't work in CLJ and perhaps should?
+      1 :fatal
+      2 :error
+      3 :warn
+      4 :info
+      5 :debug
+      6 :trace)))
+
+(deftest ^:parallel logf-formatting-test
+  (is (= [{:namespace 'metabase.util.log.capture-test, :level :info, :e nil, :message "input: 8, 3; output: ignored"}]
+         (log.capture/with-log-messages-for-level [messages :info]
+           (log/infof "input: %d, %d; %s: ignored" 8 3 "output")
+           (messages)))))
 
 (deftest ^:parallel ignore-logs-at-finer-level-test
   (testing "Do not capture logs at a finer level"
@@ -34,7 +87,7 @@
     (log.capture/with-log-messages-for-level [messages [metabase.util.log.capture-test :trace]]
       (is (= []
              (messages)))
-      (log/debugf "a picture")
+      (log/debug "a picture")
       (is (= [{:namespace 'metabase.util.log.capture-test
                :level     :debug
                :e         nil
