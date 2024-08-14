@@ -311,6 +311,31 @@ describe("parameters/utils/targets", () => {
             ...withColumnsStage(-1, summaryColumns),
           ]);
         });
+
+        it("complex 2-stage query", () => {
+          const question = createQuestion(createComplex2StageQuery());
+          const { query, columns } = getParameterColumns(question, parameter);
+          const columnsInfos = getColumnsInfos(query, columns);
+
+          const summaryColumns = [
+            ["Orders", "Created At: Month"],
+            ["Products", "Created At: Year"],
+            ["Reviews", "Created At: Quarter"],
+            [undefined, "User's 18th birthday"],
+            [undefined, "Count"],
+            [undefined, "Sum of Total"],
+          ];
+
+          expect(columnsInfos).toEqual([
+            ...withColumnsStage(-2, ordersColumns),
+            withColumnStage(-2, [undefined, "User's 18th birthday"]),
+            ...withColumnsStage(-2, reviewsJoinProductsColumns),
+            ...withColumnsStage(-2, productsColumns),
+            ...withColumnsStage(-2, peopleColumns),
+            ...withColumnsStage(-2, productsColumns),
+            ...withColumnsStage(-1, summaryColumns),
+          ]);
+        });
       });
 
       describe("model", () => {
@@ -516,7 +541,7 @@ describe("parameters/utils/targets", () => {
 
 function createComplex1StageQuery() {
   const baseQuery = ordersJoinReviewsOnProductId();
-  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, 0));
+  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, -1));
   const userBirthdayColumn = findColumn("PEOPLE", "BIRTH_DATE");
 
   return createQueryWithClauses({
@@ -552,6 +577,25 @@ function createComplex1StageQuery() {
         columnName: "User's 18th birthday",
       },
     ],
+  });
+}
+
+function createComplex2StageQuery() {
+  const baseQuery = Lib.appendStage(createComplex1StageQuery());
+  const findColumn = columnFinder(baseQuery, Lib.visibleColumns(baseQuery, -1));
+  const countColumn = findColumn(null, "count");
+
+  return createQueryWithClauses({
+    query: createComplex1StageQuery(),
+    expressions: [
+      {
+        name: "Count + 1",
+        operator: "+",
+        args: [checkNotNull(countColumn), 1],
+      },
+    ],
+    aggregations: [{ operatorName: "count" }],
+    // breakouts: [],
   });
 }
 
