@@ -1,3 +1,4 @@
+export const assistant_url = "wss://dev.chat.omniloy.com";
 export const isCypressActive = !!window.Cypress;
 
 // eslint-disable-next-line no-undef

@@ -70,6 +70,8 @@
                                    ;; for webpack hot reloading
                                    (when config/is-dev?
                                      "http://localhost:8080")
+                                            (when config/is-dev?
+                                       "*:8090 ws://*:8090 wss://*")
                                    ;; for react dev tools to work in Firefox until resolution of
                                    ;; https://github.com/facebook/react/issues/17997
                                    (when config/is-dev?
@@ -89,6 +91,8 @@
                                  ;; for webpack hot reloading
                                  (when config/is-dev?
                                    "http://localhost:8080")
+                                      (when config/is-dev?
+                                  "*:8090 ws://*:8090 wss://*")
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "http://localhost:9630")
@@ -111,7 +115,7 @@
                                  (when config/is-dev?
                                    "*:8080 ws://*:8080")
                                    (when config/is-dev?
-                                   "*:8090 ws://*:8090")
+                                   "*:8090 ws://*:8090 wss://*")
                                  ;; CLJS REPL
                                  (when config/is-dev?
                                    "ws://*:9630")]
