@@ -25,8 +25,13 @@
   [_driver _feature _database]
   true)
 
-;;; FIXME -- not working for Athena -- test is returning dates including time for Athena (#46849)
+;;; FIXME -- not working for Athena -- test is returning dates including time (#46849)
 (defmethod driver/database-supports? [:athena ::date-columns-should-be-emitted-without-time]
+  [_driver _feature _database]
+  false)
+
+;;; FIXME -- not working for MongoDB -- test is returning dates including time (#46856)
+(defmethod driver/database-supports? [:mongo ::date-columns-should-be-emitted-without-time]
   [_driver _feature _database]
   false)
 

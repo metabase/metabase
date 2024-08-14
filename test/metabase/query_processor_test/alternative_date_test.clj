@@ -335,12 +335,21 @@
                             mt/rows
                             count)))))))))))
 
+(defmethod driver/database-supports? [::driver/driver ::parse-string-to-date]
+  [_driver _feature _database]
+  true)
+
+;;; MongoDB does not support parsing strings as dates
+(defmethod driver/database-supports? [:mongo ::parse-string-to-date]
+  [_driver _feature _database]
+  false)
+
 (deftest ^:parallel iso-8601-text-fields-should-be-queryable-date-test
   (testing "text fields with semantic_type :type/ISO8601DateTimeString"
     (testing "are queryable as dates"
       (mt/dataset string-times
         (testing "a date field"
-          (mt/test-drivers (mt/normal-drivers-with-feature ::iso-8601-test-fields-are-queryable)
+          (mt/test-drivers (mt/normal-drivers-with-feature ::iso-8601-test-fields-are-queryable ::parse-string-to-date)
             (is (= 1
                    (->> (mt/run-mbql-query times
                           {:filter [:= !day.d "2008-10-19"]})

@@ -8,8 +8,8 @@
    [metabase.driver.mongo.query-processor :as mongo.qp]
    [metabase.models :refer [Field Table]]
    [metabase.query-processor :as qp]
-   [metabase.query-processor-test.date-time-zone-functions-test
-    :as qp.datetime-test]
+   [metabase.query-processor-test.alternative-date-test :as qp.alternative-date-test]
+   [metabase.query-processor-test.date-time-zone-functions-test :as qp.datetime-test]
    [metabase.query-processor.compile :as qp.compile]
    [metabase.query-processor.timezone :as qp.timezone]
    [metabase.test :as mt]
@@ -617,7 +617,7 @@
 
 (deftest ^:parallel parse-query-string-test-2
   (mt/test-driver :mongo
-    (mt/dataset string-times
+    (mt/dataset qp.alternative-date-test/string-times
       (is (thrown-with-msg?
            clojure.lang.ExceptionInfo
            #"MongoDB does not support parsing strings as dates. Try parsing to a datetime instead"

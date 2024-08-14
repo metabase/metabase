@@ -680,11 +680,13 @@
                         {:aggregation [[:count]]
                          :filter      [:= $name v]})]
             (testing (format "\nquery = %s" (pr-str (:query (qp.compile/compile-with-inline-parameters query))))
-              (is (= (if (driver/database-supports? driver/*driver* ::empty-results-wrong-because-of-issue-5419 (mt/db))
+              (is (= (if (and (zero? expected-count)
+                              (driver/database-supports? driver/*driver* ::empty-results-wrong-because-of-issue-5419 (mt/db)))
                        []
                        [[expected-count]])
-                     (mt/formatted-rows [int]
-                       (qp/process-query query)))))))))))
+                     (mt/formatted-rows
+                      [int]
+                      (qp/process-query query)))))))))))
 
 (deftest ^:parallel string-escape-test-2
   ;; test `:sql` drivers that support native parameters
