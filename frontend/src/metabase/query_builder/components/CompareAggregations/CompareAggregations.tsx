@@ -13,6 +13,7 @@ import {
   ReferenceAggregationPicker,
   ComparisonTypePicker,
   CurrentPerionInput,
+  OffsetPresets,
 } from "./components";
 import type { ColumnType, ComparisonType } from "./types";
 import {
@@ -59,6 +60,7 @@ export const CompareAggregations = ({
   );
   const [includeCurrentPeriod, setIncludeCurrentPeriod] = useState(false);
   const [bucket, setBucket] = useState<Lib.Bucket>(columnAndBucket?.bucket);
+  const [showPresets, setShowPresets] = useState(true);
   const width = aggregation ? STEP_2_WIDTH : STEP_1_WIDTH;
 
   const title = useMemo(
@@ -66,15 +68,28 @@ export const CompareAggregations = ({
     [query, stageIndex, aggregation],
   );
 
+  const handleHidePresets = useCallback(() => {
+    setShowPresets(false);
+  }, []);
+
+  const handleOffsetChange = useCallback((offset: number | "") => {
+    setOffset(offset);
+    setShowPresets(false);
+  }, []);
+
   const handleComparisonTypeChange = useCallback(
     (comparisonType: ComparisonType) => {
       setComparisonType(comparisonType);
       setColumns(convertColumnTypes(columns, comparisonType));
-      if (comparisonType === "moving-average" && offset !== "" && offset <= 1) {
+
+      if (comparisonType === "moving-average") {
         setOffset(2);
       }
+      if (comparisonType === "offset") {
+        setOffset(1);
+      }
     },
-    [offset, columns],
+    [columns],
   );
 
   const handleBack = () => {
@@ -110,6 +125,14 @@ export const CompareAggregations = ({
     onClose();
   };
 
+  if (!columnAndBucket) {
+    // TODO: how to hanlde this?
+    return null;
+  }
+
+  const shouldShowPresets =
+    showPresets && comparisonType === "offset" && offset === 1;
+
   return (
     <Box miw={width} maw={width}>
       <ExpressionWidgetHeader title={title} onBack={handleBack} />
@@ -131,16 +154,25 @@ export const CompareAggregations = ({
                 onChange={handleComparisonTypeChange}
               />
 
-              <OffsetInput
-                query={query}
-                stageIndex={stageIndex}
-                comparisonType={comparisonType}
-                value={offset}
-                onChange={setOffset}
-                column={columnAndBucket?.column}
-                bucket={bucket}
-                onBucketChange={setBucket}
-              />
+              {shouldShowPresets && (
+                <OffsetPresets
+                  query={query}
+                  stageIndex={stageIndex}
+                  bucket={bucket}
+                  onBucketChange={setBucket}
+                  onShowOffsetInput={handleHidePresets}
+                  column={columnAndBucket.column}
+                />
+              )}
+              {!shouldShowPresets && (
+                <OffsetInput
+                  query={query}
+                  stageIndex={stageIndex}
+                  comparisonType={comparisonType}
+                  value={offset}
+                  onChange={handleOffsetChange}
+                />
+              )}
 
               {comparisonType === "moving-average" && (
                 <CurrentPerionInput
