@@ -2,7 +2,7 @@ import Modal from "metabase/components/Modal";
 import { CreateDashboardModalConnected } from "metabase/dashboard/containers/CreateDashboardModal";
 import type { CollectionId, Dashboard } from "metabase-types/api";
 
-interface DashboardCreateModalProps {
+export interface DashboardCreateModalProps {
   collectionId?: CollectionId | null;
   onCreate: (dashboard: Dashboard) => void;
   onClose?: () => void;

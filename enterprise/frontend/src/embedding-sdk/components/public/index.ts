@@ -8,3 +8,4 @@ export { StaticDashboard } from "./StaticDashboard";
 export { CollectionBrowser } from "./CollectionBrowser";
 export { InteractiveDashboard } from "./InteractiveDashboard";
 export { EditableDashboard } from "./InteractiveDashboard";
+export * from "./DashboardCreateModal";
