@@ -40,11 +40,13 @@ interface AggregationPickerProps {
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
   type: "operator";
   operator: Lib.AggregationOperator;
+  name: string;
 };
 
 type MetricListItem = Lib.MetricDisplayInfo & {
   type: "metric";
   metric: Lib.MetricMetadata;
+  name: string;
   selected: boolean;
 };
 
@@ -408,6 +410,7 @@ function getOperatorListItem(
   return {
     ...operatorInfo,
     type: "operator",
+    name: operatorInfo.displayName,
     operator,
   };
 }
@@ -422,6 +425,7 @@ function getMetricListItem(
   return {
     ...metricInfo,
     type: "metric",
+    name: metricInfo.displayName,
     metric,
     selected:
       clauseIndex != null && metricInfo.aggregationPosition === clauseIndex,
