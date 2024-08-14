@@ -29,11 +29,7 @@ export function OffsetPresets({
   column,
   onShowOffsetInput,
 }: Props) {
-  // TODO:
-  // - do not use ref equality for bucket, but use shortName
-  // - render this in CompareAggregations
-
-  const presets = getPreferredPresets(query, stageIndex, column);
+  const presets = getPreferredPresets(query, stageIndex, column, bucket);
 
   return (
     <Stack spacing="sm">
@@ -68,6 +64,7 @@ function getPreferredPresets(
   query: Lib.Query,
   stageIndex: number,
   column: Lib.ColumnMetadata,
+  bucket: TemporalUnit | null,
 ) {
   const availabeBuckets = Lib.availableTemporalBuckets(
     query,
@@ -76,15 +73,16 @@ function getPreferredPresets(
   );
 
   const byKey: Record<string, Preset> = {};
-  for (const bucket of availabeBuckets) {
-    const info = Lib.displayInfo(query, stageIndex, bucket);
+  for (const availableBucket of availabeBuckets) {
+    const info = Lib.displayInfo(query, stageIndex, availableBucket);
     byKey[info.shortName] = {
-      bucket,
+      bucket: availableBucket,
       shortName: info.shortName,
       displayName: t`Previous ${info.displayName.toLowerCase()}`,
     };
   }
 
+  let hasOriginalBucket = false;
   const res = [];
   for (const key of PREFERRED_PRESETS) {
     if (res.length >= 2) {
@@ -92,7 +90,13 @@ function getPreferredPresets(
     }
     if (key in byKey) {
       res.push(byKey[key]);
+      hasOriginalBucket = hasOriginalBucket || key === bucket;
     }
+  }
+
+  if (!hasOriginalBucket && bucket && bucket in byKey) {
+    res.pop();
+    res.push(byKey[bucket]);
   }
 
   return res;
