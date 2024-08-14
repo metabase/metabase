@@ -2,7 +2,6 @@ import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { renderWithProviders } from "__support__/ui";
-import type { State } from "metabase-types/store";
 import {
   createMockDashboardState,
   createMockState,
@@ -34,48 +33,63 @@ describe("AddFilterParameterButton", () => {
     expect(screen.getByLabelText("filter icon")).toBeInTheDocument();
   });
 
-  it("should dispatch showAddParameterPopover when clicked and popover is closed", async () => {
-    const { store } = setup();
-    expect(getIsAddParameterPopoverOpen(store.getState())).toBe(false);
+  describe("when popover is open based on state", () => {
+    it("should render the popover when isAddParameterPopoverOpen is true", () => {
+      setup({ isAddParameterPopoverOpen: true });
+      expect(
+        screen.getByTestId("add-filter-parameter-dropdown"),
+      ).toBeInTheDocument();
+    });
+    it("should not render the popover when isAddParameterPopoverOpen is false", () => {
+      setup({ isAddParameterPopoverOpen: false });
+      expect(
+        screen.queryByTestId("add-filter-parameter-dropdown"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe("when the popover is closed", () => {
+    it("should show the popover when the button is clicked", async () => {
+      setup();
+      expect(
+        screen.queryByTestId("add-filter-parameter-dropdown"),
+      ).not.toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("Add a filter"));
+      expect(
+        screen.getByTestId("add-filter-parameter-dropdown"),
+      ).toBeInTheDocument();
+    });
+  });
+
+  describe("when the popover is open", () => {
+    it("should close the popover when the button is clicked", async () => {
+      setup({ isAddParameterPopoverOpen: true });
+      expect(
+        screen.getByTestId("add-filter-parameter-dropdown"),
+      ).toBeInTheDocument();
+      await userEvent.click(screen.getByLabelText("Add a filter"));
+      expect(
+        screen.queryByTestId("add-filter-parameter-dropdown"),
+      ).not.toBeInTheDocument();
+    });
+
+    it("should close the popover when the user clicks outside the popover", async () => {
+      setup({ isAddParameterPopoverOpen: true });
+      expect(
+        screen.getByTestId("add-filter-parameter-dropdown"),
+      ).toBeInTheDocument();
+      await userEvent.click(document.body);
+      expect(
+        screen.queryByTestId("add-filter-parameter-dropdown"),
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  it("should show the popover when the button is clicked", async () => {
+    setup();
+
     const button = screen.getByLabelText("Add a filter");
     await userEvent.click(button);
     expect(screen.getByText("What do you want to filter?")).toBeInTheDocument();
-    expect(getIsAddParameterPopoverOpen(store.getState())).toBe(true);
-  });
-
-  it("should dispatch hideAddParameterPopover when clicked and popover is open", async () => {
-    const { store } = setup({ isAddParameterPopoverOpen: true });
-    expect(getIsAddParameterPopoverOpen(store.getState())).toBe(true);
-    const button = screen.getByLabelText("Add a filter");
-    await userEvent.click(button);
-    expect(
-      screen.queryByText("What do you want to filter?"),
-    ).not.toBeInTheDocument();
-    expect(getIsAddParameterPopoverOpen(store.getState())).toBe(false);
-  });
-
-  it("should render ParametersPopover when isAddParameterPopoverOpen is true", () => {
-    const { store } = setup({ isAddParameterPopoverOpen: true });
-    expect(screen.getByText("What do you want to filter?")).toBeInTheDocument();
-    expect(getIsAddParameterPopoverOpen(store.getState())).toBe(true);
-  });
-
-  it("should not render ParametersPopover when isAddParameterPopoverOpen is false", () => {
-    const { store } = setup({ isAddParameterPopoverOpen: false });
-    expect(
-      screen.queryByText("What do you want to filter?"),
-    ).not.toBeInTheDocument();
-    expect(getIsAddParameterPopoverOpen(store.getState())).toBe(false);
-  });
-
-  it("should dispatch hideAddParameterPopover when popover is closed", async () => {
-    const { store } = setup({ isAddParameterPopoverOpen: true });
-    expect(screen.getByText("What do you want to filter?")).toBeInTheDocument();
-    await userEvent.click(document.body);
-    expect(getIsAddParameterPopoverOpen(store.getState())).toBe(false);
   });
 });
-
-function getIsAddParameterPopoverOpen(state: State) {
-  return state.dashboard.isAddParameterPopoverOpen;
-}

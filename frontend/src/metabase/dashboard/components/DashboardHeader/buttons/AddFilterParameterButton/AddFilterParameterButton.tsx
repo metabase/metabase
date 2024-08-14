@@ -33,7 +33,7 @@ export const AddFilterParameterButton = () => {
           tooltipLabel={t`Add a filter`}
         />
       </Popover.Target>
-      <Popover.Dropdown>
+      <Popover.Dropdown data-testid="add-filter-parameter-dropdown">
         <ParametersPopover
           onAddParameter={parameter => dispatch(addParameter(parameter))}
           onClose={() => dispatch(hideAddParameterPopover())}
