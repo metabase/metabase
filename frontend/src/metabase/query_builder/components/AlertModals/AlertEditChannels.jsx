@@ -44,12 +44,10 @@ class AlertEditChannelsInner extends Component {
           <PulseEditChannels
             pulse={alert}
             pulseId={alert.id}
-            pulseIsValid={true}
             formInput={formInput}
             user={user}
             users={users}
             setPulse={this.onSetPulse}
-            hideSchedulePicker={true}
             emailRecipientText={t`Email alerts to:`}
             invalidRecipientText={domains =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`

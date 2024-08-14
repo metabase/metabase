@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { RecipientPicker } from "metabase/pulse/components/RecipientPicker";
 import { createMockUser } from "metabase-types/api/mocks";
 
@@ -23,7 +22,6 @@ describe("recipient picker", () => {
         <RecipientPicker
           recipients={[]}
           users={TEST_USERS}
-          isNewPulse={true}
           onRecipientsChange={() => alert("why?")}
           invalidRecipientText={() => ""}
         />,
@@ -37,7 +35,6 @@ describe("recipient picker", () => {
         <RecipientPicker
           recipients={[TEST_USERS[0]]}
           users={TEST_USERS}
-          isNewPulse={true}
           onRecipientsChange={() => alert("why?")}
           invalidRecipientText={() => ""}
         />,
@@ -49,10 +46,6 @@ describe("recipient picker", () => {
   });
 
   describe("onChange", () => {
-    beforeAll(() => {
-      jest.mock("metabase/lib/analytics");
-    });
-
     it("should track additions", async () => {
       const onRecipientsChange = jest.fn();
 
@@ -60,7 +53,6 @@ describe("recipient picker", () => {
         <RecipientPicker
           recipients={[TEST_USERS[0]]}
           users={TEST_USERS}
-          isNewPulse={true}
           onRecipientsChange={onRecipientsChange}
           invalidRecipientText={() => ""}
         />,
@@ -69,13 +61,10 @@ describe("recipient picker", () => {
       await userEvent.type(await screen.findByRole("textbox"), "Na");
       await userEvent.click(await screen.findByText("Nancy"));
 
-      expect(onRecipientsChange).toHaveBeenCalled();
-
-      expect(MetabaseAnalytics.trackStructEvent).toHaveBeenLastCalledWith(
-        "PulseCreate",
-        "AddRecipient",
-        "user",
-      );
+      expect(onRecipientsChange).toHaveBeenCalledWith([
+        TEST_USERS[0],
+        TEST_USERS[5],
+      ]);
     });
 
     it("should track removals", async () => {
@@ -85,7 +74,6 @@ describe("recipient picker", () => {
         <RecipientPicker
           recipients={[TEST_USERS[0], TEST_USERS[1], TEST_USERS[2]]}
           users={TEST_USERS}
-          isNewPulse={true}
           onRecipientsChange={onRecipientsChange}
           invalidRecipientText={() => ""}
         />,
@@ -97,12 +85,10 @@ describe("recipient picker", () => {
         )[2],
       );
 
-      expect(onRecipientsChange).toHaveBeenCalled();
-      expect(MetabaseAnalytics.trackStructEvent).toHaveBeenLastCalledWith(
-        "PulseCreate",
-        "RemoveRecipient",
-        "user",
-      );
+      expect(onRecipientsChange).toHaveBeenCalledWith([
+        TEST_USERS[0],
+        TEST_USERS[1],
+      ]);
     });
 
     it("should support adding emails", async () => {
@@ -112,7 +98,6 @@ describe("recipient picker", () => {
         <RecipientPicker
           recipients={[TEST_USERS[0]]}
           users={TEST_USERS}
-          isNewPulse={true}
           onRecipientsChange={onRecipientsChange}
           invalidRecipientText={() => ""}
         />,
@@ -123,38 +108,10 @@ describe("recipient picker", () => {
         "foo@bar.com{enter}",
       );
 
-      expect(onRecipientsChange).toHaveBeenCalled();
-      expect(MetabaseAnalytics.trackStructEvent).toHaveBeenLastCalledWith(
-        "PulseCreate",
-        "AddRecipient",
-        "email",
-      );
-    });
-
-    it("should track creating vs editing pulses", async () => {
-      const onRecipientsChange = jest.fn();
-
-      render(
-        <RecipientPicker
-          recipients={[TEST_USERS[0]]}
-          users={TEST_USERS}
-          isNewPulse={false}
-          onRecipientsChange={onRecipientsChange}
-          invalidRecipientText={() => ""}
-        />,
-      );
-
-      await userEvent.type(
-        await screen.findByRole("textbox"),
-        "foo@bar.com{enter}",
-      );
-
-      expect(onRecipientsChange).toHaveBeenCalled();
-      expect(MetabaseAnalytics.trackStructEvent).toHaveBeenLastCalledWith(
-        "PulseEdit",
-        "AddRecipient",
-        "email",
-      );
+      expect(onRecipientsChange).toHaveBeenCalledWith([
+        TEST_USERS[0],
+        { email: "foo@bar.com" },
+      ]);
     });
   });
 });

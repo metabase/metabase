@@ -59,7 +59,6 @@ function _AddEditEmailSidebar({
         <div>
           <div className={cx(CS.textBold, CS.mb1)}>{t`To:`}</div>
           <RecipientPicker
-            isNewPulse={pulse.id == null}
             autoFocus={false}
             recipients={channel.recipients}
             recipientTypes={channelSpec.recipients}

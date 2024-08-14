@@ -5,8 +5,6 @@ import { t } from "ttag";
 import _ from "underscore";
 
 import ChannelSetupMessage from "metabase/components/ChannelSetupMessage";
-import type { ScheduleChangeProp } from "metabase/components/Schedule/types";
-import SchedulePicker from "metabase/containers/SchedulePicker";
 import Toggle from "metabase/core/components/Toggle";
 import CS from "metabase/css/core/index.css";
 import * as MetabaseAnalytics from "metabase/lib/analytics";
@@ -21,7 +19,6 @@ import type {
   ChannelType,
   Pulse,
   User,
-  ScheduleSettings,
 } from "metabase-types/api";
 
 import { RecipientPicker } from "./RecipientPicker";
@@ -29,11 +26,6 @@ import { RecipientPicker } from "./RecipientPicker";
 export const CHANNEL_ICONS: Record<ChannelType, IconName> = {
   email: "mail",
   slack: "slack",
-};
-
-const CHANNEL_NOUN_PLURAL = {
-  email: t`Emails`,
-  slack: t`Slack messages`,
 };
 
 interface PulseEditChannelsProps {
@@ -56,7 +48,6 @@ export const PulseEditChannels = ({
   user,
   users,
   setPulse,
-  hideSchedulePicker,
   emailRecipientText,
   invalidRecipientText,
 }: PulseEditChannelsProps) => {
@@ -82,25 +73,6 @@ export const PulseEditChannels = ({
 
     channels[index] = { ...channels[index], [name]: value };
 
-    setPulse({ ...pulse, channels });
-  };
-
-  // changedProp contains the schedule property that user just changed
-  // newSchedule may contain also other changed properties as some property changes reset other properties
-  const onChannelScheduleChange = (
-    index: number,
-    newSchedule: ScheduleSettings,
-    changedProp: ScheduleChangeProp,
-  ) => {
-    const channels = [...pulse.channels];
-
-    MetabaseAnalytics.trackStructEvent(
-      pulseId ? "PulseEdit" : "PulseCreate",
-      channels[index].channel_type + ":" + changedProp.name,
-      changedProp.value,
-    );
-
-    channels[index] = { ...channels[index], ...newSchedule };
     setPulse({ ...pulse, channels });
   };
 
@@ -169,7 +141,6 @@ export const PulseEditChannels = ({
               {emailRecipientText || t`To:`}
             </div>
             <RecipientPicker
-              isNewPulse={pulseId === undefined}
               autoFocus={!!pulse.name}
               recipients={channel.recipients}
               users={users}
@@ -189,27 +160,6 @@ export const PulseEditChannels = ({
             }
           />
         ) : null}
-        {!hideSchedulePicker && channelSpec.schedules && (
-          <SchedulePicker
-            schedule={_.pick(
-              channel,
-              "schedule_day",
-              "schedule_frame",
-              "schedule_hour",
-              "schedule_type",
-            )}
-            scheduleOptions={channelSpec.schedules}
-            textBeforeInterval={t`Sent`}
-            textBeforeSendTime={t`${
-              CHANNEL_NOUN_PLURAL[channelSpec && channelSpec.type] ||
-              t`Messages`
-            } will be sent at`}
-            onScheduleChange={(
-              nextSchedule: ScheduleSettings,
-              change: ScheduleChangeProp,
-            ) => onChannelScheduleChange(index, nextSchedule, change)}
-          />
-        )}
       </li>
     );
   };

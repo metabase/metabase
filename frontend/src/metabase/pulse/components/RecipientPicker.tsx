@@ -5,7 +5,6 @@ import _ from "underscore";
 import TokenField from "metabase/components/TokenField";
 import UserAvatar from "metabase/components/UserAvatar";
 import CS from "metabase/css/core/index.css";
-import * as MetabaseAnalytics from "metabase/lib/analytics";
 import { isEmail } from "metabase/lib/email";
 import { recipientIsValid } from "metabase/lib/pulse";
 import MetabaseSettings from "metabase/lib/settings";
@@ -17,7 +16,6 @@ import { ErrorMessage } from "./RecipientPicker.styled";
 interface RecipientPickerProps {
   recipients?: User[];
   users: User[];
-  isNewPulse: boolean;
   onRecipientsChange: (recipients: User[]) => void;
   autoFocus?: boolean;
   invalidRecipientText: (domains: string) => string;
@@ -26,28 +24,12 @@ interface RecipientPickerProps {
 export const RecipientPicker = ({
   recipients = [],
   users,
-  isNewPulse,
   onRecipientsChange,
   autoFocus = true,
   invalidRecipientText,
 }: RecipientPickerProps) => {
   const handleOnChange = (newRecipients: User[]) => {
     onRecipientsChange(newRecipients);
-    _trackChange(newRecipients);
-  };
-
-  const _trackChange = (newRecipients: User[]) => {
-    const isAddition = newRecipients.length > recipients.length;
-
-    const recipient = isAddition
-      ? _.difference(newRecipients, recipients)[0]
-      : _.difference(recipients, newRecipients)[0];
-
-    MetabaseAnalytics.trackStructEvent(
-      isNewPulse ? "PulseCreate" : "PulseEdit",
-      isAddition ? "AddRecipient" : "RemoveRecipient",
-      recipient && (recipient.id ? "user" : "email"),
-    );
   };
 
   const isValid = recipients.every(r => recipientIsValid(r));
