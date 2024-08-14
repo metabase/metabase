@@ -831,7 +831,7 @@ describe("scenarios > question > notebook", { tags: "@slow" }, () => {
     cy.get("@metricId").then(metricId => {
       const questionDetails = {
         query: {
-          "source-table": `card__${metricId}`,
+          "source-table": ORDERS_ID,
           breakout: [
             ["field", ORDERS.CREATED_AT, { "temporal-unit": "month" }],
           ],

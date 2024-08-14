@@ -33,9 +33,8 @@ interface AggregationPickerProps {
   clauseIndex?: number;
   operators: Lib.AggregationOperator[];
   hasExpressionInput?: boolean;
-  onAdd: (aggregations: Lib.Aggregable[]) => void;
-  onSelect: (aggregation: Lib.Aggregable) => void;
   onClose?: () => void;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 type OperatorListItem = Lib.AggregationOperatorDisplayInfo & {
@@ -67,9 +66,8 @@ export function AggregationPicker({
   clauseIndex,
   operators,
   hasExpressionInput = true,
-  onAdd,
-  onSelect,
   onClose,
+  onQueryChange,
 }: AggregationPickerProps) {
   const question = useSelector(getQuestion);
   const metadata = useSelector(getMetadata);
@@ -100,6 +98,25 @@ export function AggregationPicker({
   const aggregations = useMemo(() => {
     return Lib.aggregations(query, stageIndex);
   }, [query, stageIndex]);
+
+  const onSelect = useCallback(
+    function (aggregation: Lib.Aggregable) {
+      const isUpdate = clause != null && clauseIndex != null;
+      if (isUpdate) {
+        const nextQuery = Lib.replaceClause(
+          query,
+          stageIndex,
+          clause,
+          aggregation,
+        );
+        onQueryChange(nextQuery);
+      } else {
+        const nextQuery = Lib.aggregate(query, stageIndex, aggregation);
+        onQueryChange(nextQuery);
+      }
+    },
+    [query, stageIndex, clause, clauseIndex, onQueryChange],
+  );
 
   const sections = useMemo(() => {
     const sections: Section[] = [];
@@ -239,8 +256,8 @@ export function AggregationPicker({
   );
 
   const handleCompareSubmit = useCallback(
-    (aggregations: Lib.ExpressionClause[]) => {
-      onAdd(aggregations);
+    (query: Lib.Query, aggregations: Lib.ExpressionClause[]) => {
+      onQueryChange(query);
 
       if (question) {
         trackColumnCompareViaShortcut(
@@ -253,7 +270,7 @@ export function AggregationPicker({
 
       onClose?.();
     },
-    [query, stageIndex, question, onAdd, onClose],
+    [stageIndex, question, onClose, onQueryChange],
   );
 
   if (isComparing) {

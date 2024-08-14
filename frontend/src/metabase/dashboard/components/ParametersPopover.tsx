@@ -25,28 +25,26 @@ type ParameterSection = typeof PARAMETER_SECTIONS[number];
 export const ParametersPopover = ({
   onClose,
   onAddParameter,
-}: ParametersPopoverProps) => {
-  return (
-    <ParameterOptionsSectionsPane
-      sections={PARAMETER_SECTIONS}
-      onSelectSection={selectedSection => {
-        const parameterSection = _.findWhere(PARAMETER_SECTIONS, {
-          id: selectedSection.id,
-        });
+}: ParametersPopoverProps) => (
+  <ParameterOptionsSectionsPane
+    sections={PARAMETER_SECTIONS}
+    onSelectSection={selectedSection => {
+      const parameterSection = _.findWhere(PARAMETER_SECTIONS, {
+        id: selectedSection.id,
+      });
 
-        if (parameterSection) {
-          const defaultOption =
-            defaultOptionForParameterSection[parameterSection.id];
+      if (parameterSection) {
+        const defaultOption =
+          defaultOptionForParameterSection[parameterSection.id];
 
-          if (defaultOption) {
-            onAddParameter(defaultOption);
-          }
-          onClose();
+        if (defaultOption) {
+          onAddParameter(defaultOption);
         }
-      }}
-    />
-  );
-};
+        onClose();
+      }
+    }}
+  />
+);
 
 const ParameterOptionsSection = ({
   section,

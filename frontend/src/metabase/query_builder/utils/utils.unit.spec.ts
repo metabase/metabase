@@ -10,7 +10,7 @@ import {
 } from "metabase-types/api/mocks";
 import { createMockLocation } from "metabase-types/store/mocks";
 
-import { isNavigationAllowed } from "./utils";
+import { isNavigationAllowed } from ".";
 
 const structuredCard = createMockCard({
   id: getNextId(),

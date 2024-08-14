@@ -1,6 +1,4 @@
 -- Insert DB-level permissions with a check for table-level permissions
-ALTER TABLE data_permissions DISABLE TRIGGER ALL;
-
 INSERT INTO data_permissions (group_id, perm_type, db_id, schema_name, table_id, perm_value)
 SELECT pg.id AS group_id,
        'perms/download-results' AS perm_type,
@@ -120,5 +118,3 @@ WHERE NOT EXISTS (
       AND dp.perm_type = 'perms/download-results'
 )
 AND pg.name != 'Administrators';
-
-ALTER TABLE data_permissions ENABLE TRIGGER ALL;
