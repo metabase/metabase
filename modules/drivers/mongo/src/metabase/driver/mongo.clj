@@ -218,7 +218,7 @@
   [{"$project" {"path" root-path, (depth-kvs 0) {"$objectToArray" (str "$" root-path)}}}
    {"$unwind" {"path" (str "$" (depth-kvs 0)), "includeArrayIndex" (depth-idx 0)}}])
 
-(defn- infer-fields-query [collection-name sample-size max-depth root-path]
+(defn- describe-table-query [collection-name sample-size max-depth root-path]
   (let [all-depths (range (inc max-depth))
         facets     (into {} (map (juxt #(str "depth" %) #(facet-stage root-path %)) all-depths))]
     (concat (sample-stages collection-name sample-size)
@@ -231,22 +231,22 @@
 (defn- path->depth [path]
   (dec (count (str/split path #"\."))))
 
-(def infer-fields-query-depth
-  "The depth of nested objects that [[infer-fields-query]] will execute to. If set to 0, the query will only return the
+(def describe-table-query-depth
+  "The depth of nested objects that [[describe-table-query]] will execute to. If set to 0, the query will only return the
    fields under `root-path`, and nested fields will be queried with further executions. If set to K, the query will
    return fields at K levels of nesting. Setting its value involves a trade-off: the lower it is, the faster
-   infer-fields-query executes, but the more queries we might have to execute."
+   describe-table-query executes, but the more queries we might have to execute."
   5)
 
-(mu/defn- infer-fields :- [:sequential
-                           [:map {:closed true}
-                            [:path           ::lib.schema.common/non-blank-string]
-                            [:k              ::lib.schema.common/non-blank-string]
-                            [:sortKey        ::lib.schema.common/non-blank-string]
-                            [:mostCommonType ::lib.schema.common/non-blank-string]]]
+(mu/defn- describe-table :- [:sequential
+                             [:map {:closed true}
+                              [:path           ::lib.schema.common/non-blank-string]
+                              [:k              ::lib.schema.common/non-blank-string]
+                              [:sortKey        ::lib.schema.common/non-blank-string]
+                              [:mostCommonType ::lib.schema.common/non-blank-string]]]
   "Queries the database for a sample of the data in `table` and returns a list of field information. Because Mongo
    documents can have many levels of nesting (up to 200) than we can query with one query, we query the fields at the
-   root first, which gets all the fields until a depth of [[infer-fields-query-depth]]. Then for any objects at that
+   root first, which gets all the fields until a depth of [[describe-table-query-depth]]. Then for any objects at that
    depth, we recursively query the database for fields nested inside those objects."
   [db table]
   (let [collection-name (:name table)
@@ -259,20 +259,20 @@
                                               :native   {:collection collection-name
                                                          :query      (json/generate-string q)}}))))
         nested-fields (fn nested-fields [path]
-                        (let [fields (flatten (q! (infer-fields-query collection-name sample-size infer-fields-query-depth path)))
+                        (let [fields (flatten (q! (describe-table-query collection-name sample-size describe-table-query-depth path)))
                               nested (->> fields
                                           (filter (fn [x]
                                                     (and (= (:mostCommonType x) "object")
                                                          (= (path->depth (:path x))
-                                                            (inc (+ (path->depth path) infer-fields-query-depth))))))
+                                                            (inc (+ (path->depth path) describe-table-query-depth))))))
                                           (map :path)
                                           (mapcat nested-fields))]
                           (concat fields nested)))
-        fields        (flatten (q! (infer-fields-query collection-name sample-size infer-fields-query-depth "$ROOT")))
+        fields        (flatten (q! (describe-table-query collection-name sample-size describe-table-query-depth "$ROOT")))
         nested        (->> fields
                            (filter (fn [x]
                                      (and (= (:mostCommonType x) "object")
-                                          (= (path->depth (:path x)) infer-fields-query-depth))))
+                                          (= (path->depth (:path x)) describe-table-query-depth))))
                            (map :path)
                            (mapcat nested-fields))]
     (concat fields nested)))
@@ -319,8 +319,7 @@
 
 (defmethod driver/describe-table :mongo
   [_driver database table]
-  (let [fields (infer-fields database table)
-        fields (->> fields
+  (let [fields (->> (describe-table database table)
                     (map (fn [x]
                            (cond-> {:name              (:k x)
                                     :database-type     (:mostCommonType x)
@@ -328,21 +327,16 @@
                                     ; sortKey is used by `set-database-position`, and not present in final result
                                     :sortKey           (:sortKey x)
                                     ; path and depth are used to nest fields, and not present in final result
-                                    :path              (str/split (:path x) #"\.")
-                                    :depth             (path->depth (:path x))}
+                                    :path              (str/split (:path x) #"\.")}
                              (= (:k x) "_id")
                              (assoc :pk? true)))))
         ;; convert the flat list of fields into deeply-nested map.
         ;; `fields` and `:nested-fields` values are maps from name to field
-        fields (loop [depth      0
-                      new-fields {}]
-                 (if-some [fields-at-depth (not-empty (filter #(= (:depth %) depth) fields))]
-                   (recur (inc depth)
-                          (reduce (fn [acc field]
-                                    (assoc-in acc (interpose :nested-fields (:path field)) (dissoc field :path :depth)))
-                                  new-fields
-                                  fields-at-depth))
-                   new-fields))
+        fields (reduce
+                (fn [acc field]
+                  (assoc-in acc (interpose :nested-fields (:path field)) (dissoc field :path)))
+                {}
+                fields)
         ;; replace maps from name to field with sets of fields
         fields (walk/postwalk (fn [x]
                                 (cond-> x

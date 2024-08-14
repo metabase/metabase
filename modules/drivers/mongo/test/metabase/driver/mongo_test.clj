@@ -196,38 +196,44 @@
              {:schema nil, :name "reviews"}}
             (:tables (driver/describe-database :mongo (mt/db)))))))
 
+(defmacro with-describe-table-query-depths
+  "Test various values of `describe-table-query-depth` to prove that fields are synced the same regardless of the level of nesting."
+  [& body]
+  `(doseq [depth# [0 5]]
+     (with-redefs [mongo/describe-table-query-depth depth#]
+       ~@body)))
+
 (deftest describe-table-test
   (mt/test-driver :mongo
-    (doseq [root-query-depth [0 5]]
-      (with-redefs [mongo/infer-fields-query-depth root-query-depth]
-        (is (= {:schema nil
-                :name   "venues"
-                :fields #{{:name              "name"
-                           :database-type     "string"
-                           :base-type         :type/Text
-                           :database-position 1}
-                          {:name              "latitude"
-                           :database-type     "double"
-                           :base-type         :type/Float
-                           :database-position 3}
-                          {:name              "longitude"
-                           :database-type     "double"
-                           :base-type         :type/Float
-                           :database-position 4}
-                          {:name              "price"
-                           :database-type     "long"
-                           :base-type         :type/Integer
-                           :database-position 5}
-                          {:name              "category_id"
-                           :database-type     "long"
-                           :base-type         :type/Integer
-                           :database-position 2}
-                          {:name              "_id"
-                           :database-type     "long"
-                           :base-type         :type/Integer
-                           :pk?               true
-                           :database-position 0}}}
-               (driver/describe-table :mongo (mt/db) (t2/select-one Table :id (mt/id :venues)))))))))
+    (with-describe-table-query-depths
+      (is (= {:schema nil
+              :name   "venues"
+              :fields #{{:name              "name"
+                         :database-type     "string"
+                         :base-type         :type/Text
+                         :database-position 1}
+                        {:name              "latitude"
+                         :database-type     "double"
+                         :base-type         :type/Float
+                         :database-position 3}
+                        {:name              "longitude"
+                         :database-type     "double"
+                         :base-type         :type/Float
+                         :database-position 4}
+                        {:name              "price"
+                         :database-type     "long"
+                         :base-type         :type/Integer
+                         :database-position 5}
+                        {:name              "category_id"
+                         :database-type     "long"
+                         :base-type         :type/Integer
+                         :database-position 2}
+                        {:name              "_id"
+                         :database-type     "long"
+                         :base-type         :type/Integer
+                         :pk?               true
+                         :database-position 0}}}
+             (driver/describe-table :mongo (mt/db) (t2/select-one Table :id (mt/id :venues))))))))
 
 (deftest sync-indexes-info-test
   (mt/test-driver :mongo
@@ -268,48 +274,47 @@
 
 (deftest sync-indexes-top-level-and-nested-column-with-same-name-test
   (mt/test-driver :mongo
-    (doseq [root-query-depth [0 5]]
-      (with-redefs [mongo/infer-fields-query-depth root-query-depth])
-        (testing "when a table has fields at the top level and nested level with the same name
-                 we shouldn't mistakenly mark both of them as indexed if one is(#46312)"
-          (mt/dataset (mt/dataset-definition "index-duplicate-name"
-                        ["top-level-indexed"
-                         [{:field-name "name" :indexed? true :base-type :type/Text}
-                          {:field-name "class" :indexed? false :base-type :type/Text}]
-                         [["Metabase" {"name" "Physics"}]]]
-                        ["nested-indexed"
-                         [{:field-name "name" :indexed? false :base-type :type/Text}
-                          {:field-name "class" :indexed? false :base-type :type/Text}]
-                         [["Metabase" {"name" "Physics"}]]])
-            (mongo.connection/with-mongo-database [db (mt/db)]
-              (mongo.util/create-index (mongo.util/collection db "nested-indexed") (array-map "class.name" 1)))
-           (sync/sync-database! (mt/db) {:scan :schema})
-           (testing "top level indexed, nested not"
-             (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
-                                          :table_id (mt/id :top-level-indexed) :name "name")]
-               (testing "sanity check that we have 2 `name` fields"
-                 (is (= 2 (count name-fields))))
-               (testing "only the top level field is indexed"
-                 (is (=? [{:name             "name"
-                           :parent_id        nil
-                           :database_indexed true}
-                          {:name             "name"
-                           :parent_id        (mt/malli=? int?)
-                           :database_indexed false}]
-                         (sort-by :parent_id name-fields))))))
-           (testing "nested field indexed, top level not"
-             (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
-                                          :table_id (mt/id :nested-indexed) :name "name")]
-               (testing "sanity check that we have 2 `name` fields"
-                 (is (= 2 (count name-fields))))
-               (testing "only the nested field is indexed"
-                 (is (=? [{:name             "name"
-                           :parent_id        nil
-                           :database_indexed false}
-                          {:name             "name"
-                           :parent_id        (mt/malli=? int?)
-                           :database_indexed true}]
-                         (sort-by :parent_id name-fields)))))))))))
+    (with-describe-table-query-depths
+      (testing "when a table has fields at the top level and nested level with the same name
+               we shouldn't mistakenly mark both of them as indexed if one is(#46312)"
+        (mt/dataset (mt/dataset-definition "index-duplicate-name"
+                      ["top-level-indexed"
+                       [{:field-name "name" :indexed? true :base-type :type/Text}
+                        {:field-name "class" :indexed? false :base-type :type/Text}]
+                       [["Metabase" {"name" "Physics"}]]]
+                      ["nested-indexed"
+                       [{:field-name "name" :indexed? false :base-type :type/Text}
+                        {:field-name "class" :indexed? false :base-type :type/Text}]
+                       [["Metabase" {"name" "Physics"}]]])
+          (mongo.connection/with-mongo-database [db (mt/db)]
+            (mongo.util/create-index (mongo.util/collection db "nested-indexed") (array-map "class.name" 1)))
+         (sync/sync-database! (mt/db) {:scan :schema})
+         (testing "top level indexed, nested not"
+           (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
+                                        :table_id (mt/id :top-level-indexed) :name "name")]
+             (testing "sanity check that we have 2 `name` fields"
+               (is (= 2 (count name-fields))))
+             (testing "only the top level field is indexed"
+               (is (=? [{:name             "name"
+                         :parent_id        nil
+                         :database_indexed true}
+                        {:name             "name"
+                         :parent_id        (mt/malli=? int?)
+                         :database_indexed false}]
+                       (sort-by :parent_id name-fields))))))
+         (testing "nested field indexed, top level not"
+           (let [name-fields (t2/select [:model/Field :name :parent_id :database_indexed]
+                                        :table_id (mt/id :nested-indexed) :name "name")]
+             (testing "sanity check that we have 2 `name` fields"
+               (is (= 2 (count name-fields))))
+             (testing "only the nested field is indexed"
+               (is (=? [{:name             "name"
+                         :parent_id        nil
+                         :database_indexed false}
+                        {:name             "name"
+                         :parent_id        (mt/malli=? int?)
+                         :database_indexed true}]
+                       (sort-by :parent_id name-fields)))))))))))
 
 (deftest describe-table-indexes-test
   (mt/test-driver :mongo
@@ -411,25 +416,23 @@
 
 (deftest all-null-columns-test
   (mt/test-driver :mongo
-    (doseq [root-query-depth [0 5]]
-      (with-redefs [mongo/infer-fields-query-depth root-query-depth]
-        (mt/dataset all-null-columns
-          ;; do a full sync on the DB to get the correct semantic type info
-          (sync/sync-database! (mt/db))
-          (is (= [{:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
-                  {:name "favorite_snack", :database_type "null",   :base_type :type/*,       :semantic_type nil}
-                  {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}]
-                 (map
-                  (partial into {})
-                  (t2/select [Field :name :database_type :base_type :semantic_type]
-                    :table_id (mt/id :bird_species)
-                    {:order-by [:name]})))))))))
+    (with-describe-table-query-depths
+      (mt/dataset all-null-columns
+        ;; do a full sync on the DB to get the correct semantic type info
+        (sync/sync-database! (mt/db))
+        (is (= [{:name "_id",            :database_type "long",   :base_type :type/Integer, :semantic_type :type/PK}
+                {:name "favorite_snack", :database_type "null",   :base_type :type/*,       :semantic_type nil}
+                {:name "name",           :database_type "string", :base_type :type/Text,    :semantic_type :type/Name}]
+               (map
+                (partial into {})
+                (t2/select [Field :name :database_type :base_type :semantic_type]
+                  :table_id (mt/id :bird_species)
+                  {:order-by [:name]}))))))))
 
 (deftest new-rows-take-precedence-when-collecting-metadata-test
   (mt/test-driver :mongo
-    (doseq [root-query-depth [0 5]]
-      (with-redefs [metadata-queries/nested-field-sample-limit 2
-                    mongo/infer-fields-query-depth root-query-depth]
+    (with-describe-table-query-depths
+      (with-redefs [metadata-queries/nested-field-sample-limit 2]
         (binding [tdm/*remove-nil?* true]
           (mt/with-temp-test-data
             [["bird_species"
@@ -710,46 +713,45 @@
 
 (deftest sync-missing-fields-test
   (mt/test-driver :mongo
-    (doseq [root-query-depth [0 1 5]]
-      (with-redefs [mongo/infer-fields-query-depth root-query-depth]
-        (mt/with-db (missing-fields-db)
-          (sync/sync-database! (missing-fields-db))
-          (testing "Test that fields with missing or null values get synced correctly"
-            (let [results (map #(into {} %)
-                               (t2/select [Field :id :name :database_type :base_type :semantic_type :parent_id]
-                                          :active   true
-                                          :table_id (mt/id :coll)
-                                          {:order-by [:database_position]}))]
-              ;; The logic for how database_position should be set (in imperative pseudocode):
-              ;; i = 0
-              ;; for each row in sample-row:
-              ;;   for each k,v in row:
-              ;;     database-position = i
-              ;;     i = i + 1
-              (is (=? [{:name "_id",   :database_type "long",   :base_type :type/Integer,    :semantic_type :type/PK}
-                       {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                       {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
-                       {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                       {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type :type/Category}
-                       {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
-                       {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
-                       {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}
-                       {:name "f",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}]
-                      results))
-              (testing "parent_ids are correct"
-                (let [parent (fn [field-name]
-                               (let [field (first (filter #(= (:name %) field-name) results))]
-                                 (:name (first (filter #(= (:id %) (:parent_id field)) results)))))]
-                  (is (= {"_id"   nil
-                          "a"     nil
-                          "b"     nil
-                          "c"     nil
-                          "b_c"   "b"
-                          "b_d"   "b"
-                          "b_e"   "b"
-                          "b_e_f" "b_e"
-                          "f"     nil}
-                         (into {} (map (juxt :name #(parent (:name %))) results)))))))))))))
+    (with-describe-table-query-depths
+      (mt/with-db (missing-fields-db)
+        (sync/sync-database! (missing-fields-db))
+        (testing "Test that fields with missing or null values get synced correctly"
+          (let [results (map #(into {} %)
+                              (t2/select [Field :id :name :database_type :base_type :semantic_type :parent_id]
+                                        :active   true
+                                        :table_id (mt/id :coll)
+                                        {:order-by [:database_position]}))]
+            ;; The logic for how database_position should be set (in imperative pseudocode):
+            ;; i = 0
+            ;; for each row in sample-row:
+            ;;   for each k,v in row:
+            ;;     database-position = i
+            ;;     i = i + 1
+            (is (=? [{:name "_id",    :database_type "long",   :base_type :type/Integer,    :semantic_type :type/PK}
+                      {:name "a",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
+                      {:name "b",     :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
+                      {:name "b_c",   :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
+                      {:name "b_d",   :database_type "int",    :base_type :type/Integer,    :semantic_type :type/Category}
+                      {:name "b_e",   :database_type "object", :base_type :type/Dictionary, :semantic_type nil}
+                      {:name "b_e_f", :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}
+                      {:name "c",     :database_type "null",   :base_type :type/*,          :semantic_type nil}
+                      {:name "f",     :database_type "string", :base_type :type/Text,       :semantic_type :type/Category}]
+                    results))
+            (testing "parent_ids are correct"
+              (let [parent (fn [field-name]
+                              (let [field (first (filter #(= (:name %) field-name) results))]
+                                (:name (first (filter #(= (:id %) (:parent_id field)) results)))))]
+                (is (= {"_id"   nil
+                        "a"     nil
+                        "b"     nil
+                        "c"     nil
+                        "b_c"   "b"
+                        "b_d"   "b"
+                        "b_e"   "b"
+                        "b_e_f" "b_e"
+                        "f"     nil}
+                        (into {} (map (juxt :name #(parent (:name %))) results))))))))))))
 
 (defn- array-fields-db []
   (create-database-from-row-maps!
