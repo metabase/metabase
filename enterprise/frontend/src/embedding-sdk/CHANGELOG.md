@@ -1,3 +1,22 @@
+## [0.1.30](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.29...embedding-sdk-0.1.30) (2024-08-13)
+
+
+### Bug Fixes
+
+* **sdk:** Add location-specific provider for SDK ([#46681](https://github.com/metabase/metabase/issues/46681)) ([abacb88](https://github.com/metabase/metabase/commit/abacb880e68095e59e7245c2289a8a9bd4b3257d))
+* **sdk:** always pull the latest image in the cli ([#46739](https://github.com/metabase/metabase/issues/46739)) ([9a33e10](https://github.com/metabase/metabase/commit/9a33e10893ead95b07ee8e6946e187ea04ce7046))
+* **sdk:** fix health endpoint when polling whether metabase instance is ready ([#46730](https://github.com/metabase/metabase/issues/46730)) ([8b4f855](https://github.com/metabase/metabase/commit/8b4f8554117e615436b202bdc1dab3c086dac504))
+* **sdk:** increase setup timeout to 15s to avoid 'user already created' issue on retry ([210aebe](https://github.com/metabase/metabase/commit/210aebe60bcc1fa9d914722511da2b908eacdfda))
+* **sdk:** make sure generated password has at least one number, one upper case and one lower case character to avoid issues with password policies ([#46737](https://github.com/metabase/metabase/issues/46737)) ([df81b2d](https://github.com/metabase/metabase/commit/df81b2de3b6907bd312e96a75054f58304a9bab3))
+
+
+### Features
+
+* **sdk:** Add edit mode for interactive dashboard component ([#46255](https://github.com/metabase/metabase/issues/46255)) ([10e21e2](https://github.com/metabase/metabase/commit/10e21e250738804f9f8722afc9785c6748c48b39))
+* **sdk:** generate sample react component with the embedding cli ([#46538](https://github.com/metabase/metabase/issues/46538)) ([4c3df61](https://github.com/metabase/metabase/commit/4c3df61d2a0161432a121cfa2fdcaa1b16e6bdc6))
+
+
+
 ## [0.1.29](https://github.com/metabase/metabase/compare/embedding-sdk-0.1.28...embedding-sdk-0.1.29) (2024-08-09)
 
 

@@ -1,33 +1,32 @@
+import { useMemo } from "react";
+
 import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
-import { useSdkDispatch } from "embedding-sdk/store";
 import { useSelector } from "metabase/lib/redux";
-import {
-  runQuestionQuery,
-  updateQuestion,
-} from "metabase/query_builder/actions";
 import { default as QBNotebook } from "metabase/query_builder/components/notebook/Notebook";
 import {
-  getIsDirty,
-  getIsResultDirty,
-  getIsRunnable,
-} from "metabase/query_builder/selectors";
+  isQuestionDirty,
+  isQuestionRunnable,
+} from "metabase/query_builder/utils/question";
 import { getSetting } from "metabase/selectors/settings";
 import { ScrollArea } from "metabase/ui";
-import type Question from "metabase-lib/v1/Question";
 
 type NotebookProps = { onApply?: () => void };
 
 export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
-  const { question } = useInteractiveQuestionContext();
+  const { question, originalQuestion, updateQuestion, runQuestion } =
+    useInteractiveQuestionContext();
 
-  const isDirty = useSelector(getIsDirty);
-  const isRunnable = useSelector(getIsRunnable);
-  const isResultDirty = useSelector(getIsResultDirty);
+  const isDirty = useMemo(() => {
+    return isQuestionDirty(question, originalQuestion);
+  }, [question, originalQuestion]);
+
+  const isRunnable = useMemo(() => {
+    return isQuestionRunnable(question, isDirty);
+  }, [question, isDirty]);
+
   const reportTimezone = useSelector(state =>
     getSetting(state, "report-timezone-long"),
   );
-
-  const dispatch = useSdkDispatch();
 
   return (
     question && (
@@ -36,14 +35,14 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
           question={question}
           isDirty={isDirty}
           isRunnable={isRunnable}
-          isResultDirty={Boolean(isResultDirty)}
+          isResultDirty={isDirty}
           reportTimezone={reportTimezone}
           readOnly={false}
-          updateQuestion={(question: Question) =>
-            dispatch(updateQuestion(question))
+          updateQuestion={nextQuestion =>
+            updateQuestion(nextQuestion, { run: false })
           }
           runQuestionQuery={() => {
-            dispatch(runQuestionQuery());
+            runQuestion();
             onApply();
           }}
           setQueryBuilderMode={() => {}}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 
 import { Popover } from "metabase/ui";
 import * as Lib from "metabase-lib";
@@ -12,9 +12,7 @@ interface AggregationItemProps {
   stageIndex: number;
   aggregation: Lib.AggregationClause;
   aggregationIndex: number;
-  onAdd: (aggregations: Lib.Aggregable[]) => void;
-  onUpdate: (nextAggregation: Lib.Aggregable) => void;
-  onRemove: () => void;
+  onQueryChange: (query: Lib.Query) => void;
 }
 
 export function AggregationItem({
@@ -22,9 +20,7 @@ export function AggregationItem({
   stageIndex,
   aggregation,
   aggregationIndex,
-  onAdd,
-  onUpdate,
-  onRemove,
+  onQueryChange,
 }: AggregationItemProps) {
   const [isOpened, setIsOpened] = useState(false);
   const { displayName } = Lib.displayInfo(query, stageIndex, aggregation);
@@ -33,6 +29,11 @@ export function AggregationItem({
     Lib.availableAggregationOperators(query, stageIndex),
     aggregation,
   );
+
+  const handleRemove = useCallback(() => {
+    const nextQuery = Lib.removeClause(query, stageIndex, aggregation);
+    onQueryChange(nextQuery);
+  }, [query, stageIndex, aggregation, onQueryChange]);
 
   return (
     <Popover opened={isOpened} onChange={setIsOpened}>
@@ -43,7 +44,7 @@ export function AggregationItem({
           onClick={() => setIsOpened(!isOpened)}
         >
           <AggregationName>{displayName}</AggregationName>
-          <RemoveIcon name="close" onClick={onRemove} />
+          <RemoveIcon name="close" onClick={handleRemove} />
         </Root>
       </Popover.Target>
       <Popover.Dropdown>
@@ -54,11 +55,7 @@ export function AggregationItem({
           clauseIndex={aggregationIndex}
           operators={operators}
           hasExpressionInput={false}
-          onAdd={onAdd}
-          onSelect={nextAggregation => {
-            onUpdate(nextAggregation);
-            setIsOpened(false);
-          }}
+          onQueryChange={onQueryChange}
         />
       </Popover.Dropdown>
     </Popover>

@@ -7,6 +7,7 @@
    [metabase.lib.core :as lib]
    [metabase.lib.metadata :as lib.metadata]
    [metabase.lib.options :as lib.options]
+   [metabase.lib.query :as lib.query]
    [metabase.lib.remove-replace :as lib.remove-replace]
    [metabase.lib.test-metadata :as meta]
    [metabase.lib.test-util :as lib.tu]
@@ -386,7 +387,26 @@
                               (lib/append-stage)
                               (lib/filter (lib/= [:field {:lib/uuid (str (random-uuid)) :base-type :type/Integer} "ID"] 1))
                               (lib/replace-clause 0 (second breakouts) (meta/field-metadata :venues :price))
-                              (lib/breakouts 0)))))))
+                              (lib/breakouts 0)))))
+    (testing "should ignore duplicate breakouts"
+      (let [id-column    (meta/field-metadata :venues :id)
+            price-column (meta/field-metadata :venues :price)
+            query        (-> lib.tu/venues-query
+                             (lib/breakout id-column)
+                             (lib/breakout price-column))
+            breakouts    (lib/breakouts query)]
+        (is (= query (lib/replace-clause query (first breakouts) price-column)))))
+    (testing "should ignore duplicate breakouts with the same temporal bucket when converting from legacy MBQL"
+      (let [base-query  (lib/query meta/metadata-provider (meta/table-metadata :people))
+            column      (meta/field-metadata :people :birth-date)
+            query       (-> base-query
+                            (lib/breakout (lib/with-temporal-bucket column :year))
+                            (lib/breakout (lib/with-temporal-bucket column :month)))
+            query       (->> query
+                             (lib.query/->legacy-MBQL)
+                             (lib/query meta/metadata-provider))]
+        (is (= query (lib/replace-clause query (first breakouts)
+                                         (lib/with-temporal-bucket column :month))))))))
 
 (deftest ^:parallel replace-clause-fields-test
   (let [query (-> lib.tu/venues-query
@@ -463,6 +483,7 @@
                              {:cards [{:id          100
                                        :name        "Sum of Cans"
                                        :database-id (meta/id)
+                                       :table-id    (meta/id :venues)
                                        :dataset-query
                                        (-> lib.tu/venues-query
                                            (lib/filter (lib/= (meta/field-metadata :venues :price) 4))
@@ -476,18 +497,18 @@
                                        [:count {:lib/uuid string?}]]}]}
               query))
       (is (=? {:stages [{:aggregation [[:metric {:lib/uuid string?} 100]
-                                       [:metric {:lib/uuid string?} 100]]}]}
-              (lib/replace-clause
-               query
-               (second (lib/aggregations query))
-               (first (lib/available-metrics query)))))
+                                         [:metric {:lib/uuid string?} 100]]}]}
+                (lib/replace-clause
+                 query
+                 (second (lib/aggregations query))
+                 (first (lib/available-metrics query)))))
       (is (=? {:stages [{:aggregation [[:count {:lib/uuid string?}]
-                                       [:metric {:lib/uuid string?} 100]]}]}
-              (-> query
-                  (lib/replace-clause
-                   (second (lib/aggregations query))
-                   (first (lib/available-metrics query)))
-                  (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
+                                         [:metric {:lib/uuid string?} 100]]}]}
+                (-> query
+                    (lib/replace-clause
+                     (second (lib/aggregations query))
+                     (first (lib/available-metrics query)))
+                    (as-> $q (lib/replace-clause $q (first (lib/aggregations $q)) (lib/count)))))))))
 
 (deftest ^:parallel replace-segment-test
   (testing "replacing with segment should work"
