@@ -68,8 +68,8 @@ const setupState = ({
   });
 
   setupNotificationChannelsEndpoints({
-    slack: { configured: isEmailSetup },
-    email: { configured: isSlackSetup },
+    slack: { configured: isSlackSetup },
+    email: { configured: isEmailSetup },
   } as any);
 
   const settingValues = createMockSettings({

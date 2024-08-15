@@ -12,7 +12,6 @@ import {
   modal,
   openEmbedModalFromMenu,
   openNewPublicLinkDropdown,
-  openPublicLinkPopoverFromMenu,
   openSharingMenu,
   openStaticEmbeddingModal,
   popover,
@@ -98,7 +97,7 @@ import {
               visitResource(resource, id);
             });
 
-            openPublicLinkPopoverFromMenu();
+            openSharingMenu(/public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
           });
@@ -122,7 +121,7 @@ import {
               visitResource(resource, id);
             });
 
-            openPublicLinkPopoverFromMenu();
+            openSharingMenu(/public link/i);
 
             assertValidPublicLink({ resource, shouldHaveRemoveLink: true });
 
@@ -353,7 +352,7 @@ describe("metabase#46893 - popover should appear next to button, not at the top 
             visitResource(resource, id);
           });
 
-          openPublicLinkPopoverFromMenu();
+          openSharingMenu(/public link/i);
           cy.findByTestId("copy-button").realClick();
           if (resource === "dashboard") {
             expectGoodSnowplowEvent({
@@ -401,7 +400,7 @@ describe("metabase#46893 - popover should appear next to button, not at the top 
             visitResource(resource, id);
           });
 
-          openPublicLinkPopoverFromMenu();
+          openSharingMenu(/public link/i);
           popover().button("Remove public link").click();
           expectGoodSnowplowEvent({
             event: "public_link_removed",

@@ -123,7 +123,7 @@ describe("issue 18344", { tags: "@external" }, () => {
 
   it("subscription should not include original question name when it's been renamed in the dashboard (metabase#18344)", () => {
     // Send a test email subscription
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
@@ -168,7 +168,7 @@ describe("issue 18352", { tags: "@external" }, () => {
   });
 
   it("should send the card with the INT64 values (metabase#18352)", () => {
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
@@ -239,7 +239,7 @@ describeEE("issue 18669", { tags: "@external" }, () => {
   });
 
   it("should send a test email with non-default parameters (metabase#18669)", () => {
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText("Email it").click();
 
@@ -801,7 +801,7 @@ describe("issue 17657", () => {
   it("frontend should gracefully handle the case of a subscription without a recipient (metabase#17657)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();
@@ -896,7 +896,7 @@ describe("issue 17658", { tags: "@external" }, () => {
   it("should delete dashboard subscription from any collection (metabase#17658)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.icon("subscription").click();
+    openSharingMenu("Subscriptions");
 
     // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
     cy.findByText(/^Emailed monthly/).click();

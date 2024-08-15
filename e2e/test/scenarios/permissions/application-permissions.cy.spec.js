@@ -18,6 +18,8 @@ import {
   sharingMenu,
   visitDashboard,
   visitQuestion,
+  tableInteractive,
+  sharingMenuButton,
 } from "e2e/support/helpers";
 
 const { ORDERS_ID } = SAMPLE_DATABASE;
@@ -81,8 +83,8 @@ describeEE("scenarios > admin > permissions > application", () => {
           .should("not.exist");
 
         visitQuestion(ORDERS_QUESTION_ID);
-        openSharingMenu();
-        sharingMenu().findByText(/alert/i).should("not.exist");
+        tableInteractive().should("be.visible");
+        sharingMenuButton().should("be.disabled");
 
         cy.visit("/account/notifications");
         cy.findByTestId("notifications-list").within(() => {
@@ -92,23 +94,19 @@ describeEE("scenarios > admin > permissions > application", () => {
     });
 
     describe("granted", () => {
-      it("gives ability to create dashboard subscriptions", () => {
+      it("gives ability to create dashboard subscriptions and question alerts", () => {
         setupSMTP();
         cy.signInAsNormalUser();
+
+        cy.log("Create a dashboard subscription");
         visitDashboard(ORDERS_DASHBOARD_ID);
-        openSharingMenu();
-        sharingMenu()
-          .findByText(/subscri/i)
-          .should("be.visible");
-
+        openSharingMenu(/subscriptions/i);
         sidebar().findByText("Email this dashboard").should("exist");
-      });
 
-      it("gives ability to create question alerts", () => {
-        cy.signInAsNormalUser();
+        cy.log("Create a question alert");
         visitQuestion(ORDERS_QUESTION_ID);
-        openSharingMenu();
-        sharingMenu().findByText(/alert/i).should("be.visible");
+        openSharingMenu(/alert/i);
+        modal().findByText("The wide world of alerts").should("be.visible");
       });
     });
   });

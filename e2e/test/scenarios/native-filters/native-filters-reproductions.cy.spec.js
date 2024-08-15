@@ -2,6 +2,11 @@ import { SAMPLE_DB_ID, USER_GROUPS } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   filterWidget,
+  popover,
+  visitQuestionAdhoc,
+  visitQuestion,
+  queryBuilderMain,
+  visitDashboard,
   getDashboardCard,
   moveDnDKitElement,
   openNativeEditor,
@@ -9,6 +14,7 @@ import {
   popover,
   queryBuilderMain,
   removeMultiAutocompleteValue,
+  openSharingMenu,
   restore,
   visitDashboard,
   visitQuestion,
@@ -730,7 +736,7 @@ describe("issue 17019", () => {
   });
 
   it("question filters should work for embedding/public sharing scenario (metabase#17019)", () => {
-    openPublicLinkPopoverFromMenu();
+    openSharingMenu(/public link/i);
 
     cy.findByTestId("public-link-popover-content")
       .findByTestId("public-link-input")

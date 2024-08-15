@@ -687,13 +687,14 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in a public link", () => {
+          cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
-            sharingMenu("Create a public link");
+            openSharingMenu();
             modal().within(() => {
               cy.findByText("Save").click();
             });
           }
-          openPublicLinkPopoverFromMenu();
+          openSharingMenu(/public link/i);
           cy.findByTestId("public-link-popover-content")
             .findByTestId("public-link-input")
             .invoke("val")
@@ -715,8 +716,9 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         });
 
         it("should display pivot table in an embed URL", () => {
+          cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
-            sharingMenu("Create a public link");
+            openSharingMenu("Create a public link");
             modal().within(() => {
               cy.findByText("Save").click();
             });

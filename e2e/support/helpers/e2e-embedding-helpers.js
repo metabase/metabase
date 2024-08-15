@@ -140,13 +140,6 @@ export function getEmbedModalSharingPane() {
   return cy.findByTestId("sharing-pane-container");
 }
 
-export function openPublicLinkPopoverFromMenu() {
-  openSharingMenu(/public link/i);
-  cy.findByTestId("embed-header-menu")
-    .findByTestId("embed-menu-public-link-item")
-    .click();
-}
-
 export function openEmbedModalFromMenu() {
   openSharingMenu("Embed");
 }
@@ -242,7 +235,7 @@ export function openNewPublicLinkDropdown(resourceType) {
     "sharingEnabled",
   );
 
-  openPublicLinkPopoverFromMenu();
+  openSharingMenu(/public link/i);
 
   cy.wait("@sharingEnabled").then(
     ({

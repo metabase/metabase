@@ -23,7 +23,6 @@ import {
   sendEmailAndVisitIt,
   clickSend,
   viewEmailPage,
-  openPublicLinkPopoverFromMenu,
   openEmbedModalFromMenu,
   openSharingMenu,
   getEmbedModalSharingPane,
@@ -54,7 +53,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 
     cy.findByLabelText("subscriptions").should("not.exist");
 
-    openPublicLinkPopoverFromMenu();
+    openSharingMenu(/public link/i);
     cy.findByTestId("public-link-popover-content").should("be.visible");
 
     openSharingMenu("Embed");
@@ -731,7 +730,7 @@ describe("scenarios > dashboard > subscriptions", () => {
 function openDashboardSubscriptions(dashboard_id = ORDERS_DASHBOARD_ID) {
   // Orders in a dashboard
   visitDashboard(dashboard_id);
-  cy.findByLabelText("subscriptions").click();
+  openSharingMenu("Subscriptions");
 }
 
 function assignRecipient({

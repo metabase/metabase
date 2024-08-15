@@ -13,10 +13,9 @@ import { Icon, type IconName } from "metabase/ui";
 import type {
   Alert,
   Channel,
-  ChannelSpec,
   ChannelApiResponse,
+  ChannelSpec,
   ChannelType,
-  FormInput,
   Pulse,
   User,
 } from "metabase-types/api";

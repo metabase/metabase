@@ -57,26 +57,26 @@ describe("DashboardSharingMenu", () => {
     });
 
     describe("non-admins", () => {
-      it("should show 'subscriptions' option when slack is set up", async () => {
-        setupDashboardSharingMenu({ isAdmin: false, isSlackSetup: true });
-        await openMenu();
-        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
-      });
-
       it("should show 'subscriptions' option when email is set up", async () => {
-        setupDashboardSharingMenu({ isAdmin: false, isEmailSetup: true });
-        await openMenu();
-        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
-      });
-
-      it("should not show 'subscriptions' option when neither email nor slack are set up", async () => {
         setupDashboardSharingMenu({
           isAdmin: false,
-          isEmailSetup: false,
+          isEmailSetup: true,
           isSlackSetup: false,
         });
         await openMenu();
-        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
+        expect(screen.getByText("Subscriptions")).toBeInTheDocument();
+      });
+
+      it("should show disabled 'subscriptions' option when email is not set up", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: false,
+          isEmailSetup: false,
+          isSlackSetup: true,
+        });
+        await openMenu();
+        expect(
+          await screen.findByText("Can't send subscriptions"),
+        ).toBeInTheDocument();
       });
     });
   });
