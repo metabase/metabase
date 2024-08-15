@@ -8,7 +8,7 @@
    [metabase.test.initialize :as initialize]
    [metabase.util.encryption :as encryption]))
 
-(defn do-with-secret-key [^String secret-key thunk]
+(defn do-with-secret-key! [^String secret-key thunk]
   ;; flush the Setting cache so unencrypted values have to be fetched from the DB again
   (initialize/initialize-if-needed! :db)
   (setting.cache/restore-cache!)
@@ -20,6 +20,7 @@
       ;; reset the cache again so nothing that happened during the test is persisted.
       (setting.cache/restore-cache!))))
 
+#_{:clj-kondo/ignore [:metabase/test-helpers-use-non-thread-safe-functions]}
 (defmacro with-secret-key
   "Run `body` with the encryption secret key temporarily bound to `secret-key`. Useful for testing how functions behave
   with and without encryption disabled."
@@ -27,7 +28,7 @@
   [^String secret-key & body]
   `(let [secret-key# ~secret-key]
      (testing (format "\nwith secret key %s" (pr-str secret-key#))
-       (do-with-secret-key secret-key# (fn [] ~@body)))))
+       (do-with-secret-key! secret-key# (fn [] ~@body)))))
 
 (def ^:private secret-string "Orw0AAyzkO/kPTLJRxiyKoBHXa/d6ZcO+p+gpZO/wSQ=")
 
