@@ -2,19 +2,25 @@ import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
   assertQueryBuilderRowCount,
   createQuestion,
+  createQuestionAndDashboard,
   dragField,
+  editDashboard,
   entityPickerModal,
   entityPickerModalTab,
+  filterWidget,
+  getDashboardCard,
   getNotebookStep,
   openNotebook,
   popover,
   restore,
+  saveDashboard,
   startNewQuestion,
   type StructuredQuestionDetails,
   summarize,
   tableHeaderClick,
   tableInteractive,
   tableInteractiveBody,
+  visitDashboard,
   visualize,
 } from "e2e/support/helpers";
 
@@ -88,6 +94,9 @@ describe("scenarios > question > multiple column breakouts", () => {
     cy.signInAsNormalUser();
     cy.intercept("POST", "/api/dataset").as("dataset");
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
+    cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
+      "dashcardQuery",
+    );
   });
 
   describe("current stage", () => {
@@ -268,8 +277,47 @@ describe("scenarios > question > multiple column breakouts", () => {
           .and("contain.text", "Created At: Week");
       });
     });
+
+    describe("dashboards", () => {
+      it("should be able to use temporal-unit parameters with multiple breakouts of a column", () => {
+        createQuestionAndDashboard({
+          questionDetails: questionWith2BreakoutsDetails,
+        }).then(({ body: { dashboard_id } }) => {
+          visitDashboard(dashboard_id);
+          cy.wait("@dashcardQuery");
+        });
+
+        cy.log("add parameters");
+        editDashboard();
+        addTemporalUnitParameter();
+        getDashboardCard().findByText("Select…").click();
+        popover().findAllByText("Created At").eq(0).click();
+        addTemporalUnitParameter();
+        getDashboardCard().findByText("Select…").click();
+        popover().findAllByText("Created At").eq(1).click();
+        saveDashboard();
+
+        cy.log("set parameter values");
+        filterWidget().eq(0).click();
+        popover().findByText("Quarter").click();
+        cy.wait("@dashcardQuery");
+        filterWidget().eq(1).click();
+        popover().findByText("Week").click();
+        cy.wait("@dashcardQuery");
+        getDashboardCard().within(() => {
+          cy.findByText("Created At: Quarter").should("be.visible");
+          cy.findByText("Created At: Week").should("be.visible");
+        });
+      });
+    });
   });
 });
+
+function addTemporalUnitParameter() {
+  cy.findByTestId("dashboard-header")
+    .findByLabelText("Add a Unit of Time widget")
+    .click();
+}
 
 interface TableOpts {
   columns?: string[];
