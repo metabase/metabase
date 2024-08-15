@@ -84,6 +84,8 @@ describe("scenarios > dashboard", () => {
       const existingQuestionName = "Orders, Count";
 
       cy.visit("/");
+      // TODO: remove, it should fail to verify cypress-terminal-report logs
+      cy.findByTestId("234");
       appBar().findByText("New").click();
       popover().findByText("Dashboard").should("be.visible").click();
 
