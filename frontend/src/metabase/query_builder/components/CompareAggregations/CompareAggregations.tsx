@@ -2,7 +2,7 @@ import type { FormEvent } from "react";
 import { useCallback, useMemo, useState } from "react";
 import { t } from "ttag";
 
-import { Box, Button, Flex, Stack, Text } from "metabase/ui";
+import { Box, Button, Flex, Stack, Text, Input } from "metabase/ui";
 import type * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
@@ -154,34 +154,37 @@ export const CompareAggregations = ({
                 onChange={handleComparisonTypeChange}
               />
 
-              {shouldShowPresets && (
-                <OffsetPresets
-                  query={query}
-                  stageIndex={stageIndex}
-                  bucket={bucket}
-                  onBucketChange={setBucket}
-                  onShowOffsetInput={handleHidePresets}
-                  column={matchedBreakout.column}
-                />
-              )}
-              {!shouldShowPresets && (
-                <Flex align="flex-end" gap="md">
-                  <OffsetInput
-                    comparisonType={comparisonType}
-                    value={offset}
-                    onChange={handleOffsetChange}
-                  />
-                  <BucketInput
+              <Stack spacing="sm">
+                <Input.Label>{t`Compare to`}</Input.Label>
+                {shouldShowPresets && (
+                  <OffsetPresets
                     query={query}
                     stageIndex={stageIndex}
-                    offset={offset || 0}
+                    bucket={bucket}
+                    onBucketChange={setBucket}
+                    onShowOffsetInput={handleHidePresets}
                     column={matchedBreakout.column}
-                    value={bucket}
-                    onChange={setBucket}
                   />
-                  <Text align="center" c="text-light">{t`ago`}</Text>
-                </Flex>
-              )}
+                )}
+                {!shouldShowPresets && (
+                  <Flex align="flex-end" gap="md">
+                    <OffsetInput
+                      comparisonType={comparisonType}
+                      value={offset}
+                      onChange={handleOffsetChange}
+                    />
+                    <BucketInput
+                      query={query}
+                      stageIndex={stageIndex}
+                      offset={offset || 0}
+                      column={matchedBreakout.column}
+                      value={bucket}
+                      onChange={setBucket}
+                    />
+                    <Text align="center" c="text-light">{t`ago`}</Text>
+                  </Flex>
+                )}
+              </Stack>
 
               {comparisonType === "moving-average" && (
                 <CurrentPerionInput

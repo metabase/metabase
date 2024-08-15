@@ -1,6 +1,6 @@
 import { t } from "ttag";
 
-import { Flex, Stack, Button, Input } from "metabase/ui";
+import { Flex, Button } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
 
@@ -32,31 +32,23 @@ export function OffsetPresets({
   const presets = getPreferredPresets(query, stageIndex, column, bucket);
 
   return (
-    <Stack spacing="sm">
-      <Input.Label>{t`How to compare`}</Input.Label>
-      <Flex align="flex-end" pos="relative" gap="sm">
-        {presets.map(preset => (
-          <Button
-            key={preset.shortName}
-            variant={preset.shortName === bucket ? "filled" : "default"}
-            radius="xl"
-            p="sm"
-            onClick={() => onBucketChange(preset.shortName)}
-          >
-            {preset.displayName}
-          </Button>
-        ))}
-
+    <Flex align="flex-end" pos="relative" gap="sm">
+      {presets.map(preset => (
         <Button
-          variant="default"
+          key={preset.shortName}
+          variant={preset.shortName === bucket ? "filled" : "default"}
           radius="xl"
           p="sm"
-          onClick={onShowOffsetInput}
+          onClick={() => onBucketChange(preset.shortName)}
         >
-          {t`Custom...`}
+          {preset.displayName}
         </Button>
-      </Flex>
-    </Stack>
+      ))}
+
+      <Button variant="default" radius="xl" p="sm" onClick={onShowOffsetInput}>
+        {t`Custom...`}
+      </Button>
+    </Flex>
   );
 }
 
