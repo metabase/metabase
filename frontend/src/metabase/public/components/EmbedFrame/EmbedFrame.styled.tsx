@@ -39,6 +39,8 @@ export const Root = styled.div<{
     `}
 
   ${props =>
+    // Prevents https://github.com/metabase/metabase/issues/40660
+    // when printing an embedded dashboard
     props.hasVisibleOverflowWhenPriting &&
     css`
       @media print {
