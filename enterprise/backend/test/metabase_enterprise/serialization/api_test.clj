@@ -69,8 +69,7 @@
   (->> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
        second
        read-string
-       (walk/postwalk
-        #(-> % (sanitize-key :id) (sanitize-key :entity_id)))))
+       (walk/postwalk #(-> % (sanitize-key :id) (sanitize-key :entity_id)))))
 
 (deftest export-test
   (testing "Serialization API export"
