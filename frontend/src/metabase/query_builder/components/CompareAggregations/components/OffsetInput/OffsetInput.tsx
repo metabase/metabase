@@ -28,10 +28,7 @@ export const OffsetInput = ({ value, onChange, comparisonType }: Props) => {
 
   return (
     <NumberInput
-      classNames={{
-        input: S.input,
-        wrapper: S.wrapper,
-      }}
+      classNames={{ input: S.input }}
       min={minimum}
       precision={0}
       size="md"

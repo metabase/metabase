@@ -167,7 +167,7 @@ export const CompareAggregations = ({
                   />
                 )}
                 {!shouldShowPresets && (
-                  <Flex align="flex-end" gap="md">
+                  <Flex align="center" gap="md">
                     <OffsetInput
                       comparisonType={comparisonType}
                       value={offset}
@@ -181,7 +181,7 @@ export const CompareAggregations = ({
                       value={bucket}
                       onChange={setBucket}
                     />
-                    <Text align="center" c="text-light">{t`ago`}</Text>
+                    <Text c="text-light">{t`ago`}</Text>
                   </Flex>
                 )}
               </Stack>
