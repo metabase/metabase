@@ -70,7 +70,7 @@ export const BulkSelectWrapper = styled(IconButtonWrapper)`
   width: 3em;
 `;
 
-export const ItemCell = styled.td<ResponsiveProps>`
+export const ItemCell = styled.div<ResponsiveProps>`
   padding: 0.25em 0 0.25em 1em !important;
   ${hideResponsively}
 `;
@@ -102,7 +102,7 @@ export const ItemLink = styled(Link)(itemLinkStyle);
 
 export const MaybeItemLink = styled(RawMaybeLink)(itemLinkStyle);
 
-export const ItemNameCell = styled.td`
+export const ItemNameCell = styled.div`
   padding: 0 !important;
 
   ${ItemLink}, ${MaybeItemLink}, ${ItemButton} {

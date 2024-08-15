@@ -1,6 +1,8 @@
 import type { PropsWithChildren } from "react";
 import { c, t } from "ttag";
 
+import "react-data-grid/lib/styles.css";
+
 import type { ActionMenuProps } from "metabase/collections/components/ActionMenu";
 import ActionMenu from "metabase/collections/components/ActionMenu";
 import DateTime from "metabase/components/DateTime";

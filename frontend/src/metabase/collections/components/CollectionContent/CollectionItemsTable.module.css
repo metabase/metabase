@@ -2,6 +2,8 @@
   background-color: var(--mb-color-bg-white);
   /*table-layout: fixed;*/
   border-radius: 0.5rem;
+  /* FIXME: workaround */
+  height: 70vh;
 
   /* thead { */
   /*   th { */
