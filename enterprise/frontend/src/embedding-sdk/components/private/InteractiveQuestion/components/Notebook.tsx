@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 
-import { useInteractiveQuestionContext } from "embedding-sdk/components/public/InteractiveQuestion/context";
+import { useInteractiveQuestionContext } from "embedding-sdk/components/private/InteractiveQuestion/context";
 import { useSelector } from "metabase/lib/redux";
 import { default as QBNotebook } from "metabase/query_builder/components/notebook/Notebook";
 import {

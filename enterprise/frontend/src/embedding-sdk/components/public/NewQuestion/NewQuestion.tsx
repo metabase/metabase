@@ -3,14 +3,6 @@ import { usePreviousDistinct } from "react-use";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
-  Notebook,
-  QuestionVisualization,
-} from "embedding-sdk/components/public/InteractiveQuestion/components";
-import {
-  InteractiveQuestionProvider,
-  useInteractiveQuestionContext,
-} from "embedding-sdk/components/public/InteractiveQuestion/context";
-import {
   SaveQuestionForm,
   SaveQuestionTitle,
 } from "metabase/components/SaveQuestionForm";
@@ -18,6 +10,15 @@ import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/conte
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
 import { Button, Group, Stack, Tabs, Title, Box } from "metabase/ui";
+
+import {
+  Notebook,
+  QuestionVisualization,
+} from "../../private/InteractiveQuestion/components";
+import {
+  InteractiveQuestionProvider,
+  useInteractiveQuestionContext,
+} from "../../private/InteractiveQuestion/context";
 
 const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
   const { question, originalQuestion } = useInteractiveQuestionContext();

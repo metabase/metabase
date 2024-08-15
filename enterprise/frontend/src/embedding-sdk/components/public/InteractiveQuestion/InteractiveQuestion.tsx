@@ -17,8 +17,8 @@ import {
   Notebook,
   NotebookButton,
   QuestionVisualization,
-} from "./components";
-import { InteractiveQuestionProviderWithLocation } from "./context";
+} from "../../private/InteractiveQuestion/components";
+import { InteractiveQuestionProviderWithLocation } from "../../private/InteractiveQuestion/context";
 
 type InteractiveQuestionProps = PropsWithChildren<{
   questionId: CardId;
