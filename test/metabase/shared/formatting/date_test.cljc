@@ -2,11 +2,15 @@
   (:require
    [clojure.test :refer [are deftest is testing]]
    [metabase.shared.formatting.date :as date]
+   [metabase.shared.formatting.internal.date-formatters :as formatters]
    [metabase.shared.util.time :as shared.ut]
-   #?@(:clj [[metabase.shared.formatting.internal.date-formatters :as formatters]
-             [metabase.test :as mt]]))
+   [metabase.test :as mt]
+   #?@(:cljs
+       [[metabase.test-runner.assert-exprs.approximately-equal]]))
   #?(:clj (:import
            java.util.Locale)))
+
+#?(:cljs (comment metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (def ^:private locale
   #?(:cljs nil :clj (Locale. "en")))

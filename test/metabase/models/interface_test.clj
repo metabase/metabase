@@ -79,7 +79,7 @@
            ((:in mi/transform-parameters-list)
             [{:target [:dimension [:field "ABC" nil]]}]))))))
 
-(deftest ^:parallel timestamped-property-test
+(deftest timestamped-property-test
   (testing "Make sure updated_at gets updated for timestamped models"
     (t2.with-temp/with-temp [Table table {:updated_at #t "2023-02-02T01:00:00"}]
       (let [updated-at (:updated_at table)
