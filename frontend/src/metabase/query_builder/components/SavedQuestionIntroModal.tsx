@@ -44,7 +44,11 @@ export const SavedQuestionIntroModal = ({
   const { title, message } = getLabels(question);
 
   return (
-    <Modal.Root opened={isShowingNewbModal} onClose={onClose} size={500}>
+    <Modal.Root
+      opened={isShowingNewbModal || true}
+      onClose={onClose}
+      size={500}
+    >
       <Modal.Overlay />
       <Modal.Content p="md">
         <Modal.Header mb="md">

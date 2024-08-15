@@ -8,7 +8,7 @@ const DEFAULT_MODAL_SPACING = "lg";
 export const getModalOverrides = (): MantineThemeOverride["components"] => ({
   Modal: {
     defaultProps: {
-      p: DEFAULT_MODAL_SPACING,
+      padding: DEFAULT_MODAL_SPACING,
     },
     styles: theme => ({
       root: {
