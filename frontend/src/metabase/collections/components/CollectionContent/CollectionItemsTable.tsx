@@ -1,5 +1,11 @@
 /* eslint-disable react/prop-types */
-import { type ComponentType, useCallback, useEffect, useState } from "react";
+import {
+  type ComponentType,
+  useCallback,
+  useEffect,
+  useState,
+  useMemo,
+} from "react";
 import DataGrid, { type RenderRowProps } from "react-data-grid";
 import CollectionItemsTableS from "./CollectionItemsTable.module.css";
 
@@ -186,6 +192,15 @@ export const CollectionItemsTable = ({
         const isEmpty =
           !loading && !hasPinnedItems && unpinnedItems.length === 0;
 
+        const manyItems = [
+          ...unpinnedItems,
+          ...unpinnedItems,
+          ...unpinnedItems,
+          ...unpinnedItems,
+          ...unpinnedItems,
+          ...unpinnedItems,
+        ];
+
         if (isEmpty && !loadingUnpinnedItems) {
           return <EmptyContentComponent collection={collection} />;
         }
@@ -231,6 +246,10 @@ export const CollectionItemsTable = ({
         // <Columns.LastEditedBy.Col />
         // <Columns.LastEditedAt.Col />
         // {showActionMenu && <Columns.ActionMenu.Col />}
+        const headerSortingProps = {
+          onSortingOptionsChange: handleUnpinnedItemsSortingChange,
+          sortingOptions: unpinnedItemsSorting,
+        };
 
         // FIXME: Note I have removed <CollectionTable> which used to wrap this datagrid
         return (
@@ -262,10 +281,9 @@ export const CollectionItemsTable = ({
                 name: "Type",
                 width: 70,
                 sortable: true,
-                renderHeaderCell: props => <Columns.Type.Header
-                    onSortingOptionsChange={handleUnpinnedItemsSortingChange}
-                    sortingOptions={unpinnedItemsSorting}
-                />,
+                renderHeaderCell: props => (
+                  <Columns.Type.Header {...headerSortingProps} />
+                ),
                 renderCell: props => <Columns.Type.Cell {...props.row} />,
               },
               {
@@ -274,35 +292,32 @@ export const CollectionItemsTable = ({
                 renderCell: props => <Columns.Name.Cell item={props.row} />,
                 sortable: true,
                 renderHeaderCell: _props => (
-                  <Columns.Name.Header
-                    onSortingOptionsChange={handleUnpinnedItemsSortingChange}
-                    sortingOptions={unpinnedItemsSorting}
-                  />
+                  <Columns.Name.Header {...headerSortingProps} />
                 ),
               },
               {
                 key: "last_edited_by",
                 name: "Last edited by",
                 width: 140,
-
                 sortable: true,
                 renderCell: props => (
-                  <Columns.LastEditedBy.Cell item={props.row}
-                />
+                  <Columns.LastEditedBy.Cell item={props.row} />
                 ),
-                renderHeaderCell: _props => <Columns.LastEditedBy.Header
-                    onSortingOptionsChange={handleUnpinnedItemsSortingChange}
-                    sortingOptions={unpinnedItemsSorting}
-                />,
+                renderHeaderCell: _props => (
+                  <Columns.LastEditedBy.Header {...headerSortingProps} />
+                ),
               },
               {
                 key: "last_edited_at",
                 name: "Last edited at",
                 width: 140,
+                sortable: true,
                 renderCell: props => (
                   <Columns.LastEditedAt.Cell {...props.row} />
                 ),
-                renderHeaderCell: _props => <Columns.LastEditedAt.Header />,
+                renderHeaderCell: _props => (
+                  <Columns.LastEditedAt.Header {...headerSortingProps} />
+                ),
               },
               {
                 key: "action_menu",
