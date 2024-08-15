@@ -8,6 +8,7 @@ import {
 } from "metabase/components/MetadataInfo/InfoIcon";
 import { Popover } from "metabase/components/MetadataInfo/Popover";
 import AccordionList from "metabase/core/components/AccordionList";
+import Markdown from "metabase/core/components/Markdown";
 import { useToggle } from "metabase/hooks/use-toggle";
 import { useSelector } from "metabase/lib/redux";
 import {
@@ -391,7 +392,14 @@ function renderItemIcon(item: ListItem) {
 
   return (
     <Flex pr="sm" align="center">
-      <Popover position="right" content={<Box p="md">{item.description}</Box>}>
+      <Popover
+        position="right"
+        content={
+          <Box p="md">
+            <Markdown>{item.description}</Markdown>
+          </Box>
+        }
+      >
         <span aria-label={t`More info`}>
           <PopoverDefaultIcon name="empty" size={18} />
           <PopoverHoverTarget name="info_filled" hasDescription size={18} />
