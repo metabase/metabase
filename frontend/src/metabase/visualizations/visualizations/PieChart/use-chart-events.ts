@@ -55,7 +55,7 @@ export const getTooltipModel = (
       name: row.name,
       values: [
         row.formatter(row.value),
-        formatPercent(getPercent(rowsTotal, row.value) ?? 0),
+        formatPercent(getPercent(chartModel.total, row.value) ?? 0),
       ],
     };
   });
@@ -66,7 +66,10 @@ export const getTooltipModel = (
     footer: isShowingTotalSensible
       ? {
           name: t`Total`,
-          values: [formatPercent(getPercent(rowsTotal, chartModel.total) ?? 0)],
+          values: [
+            formatters.formatMetric(rowsTotal),
+            formatPercent(getPercent(chartModel.total, rowsTotal) ?? 0),
+          ],
         }
       : undefined,
   };
