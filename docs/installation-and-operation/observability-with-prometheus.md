@@ -67,6 +67,8 @@ scrape_configs:
       - targets: ['localhost:9191']
 ```
 
+You need to change the "target" to where Metabase is, for this particular example, Metabase resides in the same host where Prometheus is running ("localhost").
+
 ## Running Prometheus Locally
 
 In a new terminal process in the Prometheus directory, run:
@@ -155,6 +157,11 @@ Metrics exported by Metabase include:
 - `process_max_fds`
 - `process_open_fds`
 - `process_start_time_seconds`
+- `process_virtual_memory_bytes`
+- `metabase_email_messages_total`
+- `metabase_email_messages_created`
+- `metabase_email_message_errors_total`
+- `metabase_email_message_errors_created`
 
 ## Further reading
 
