@@ -165,16 +165,16 @@
              {"$group" {"_id"   {"t" "$t"
                                  "p" "$p"}
                         "count" {"$sum" 1}
-                        "i"     {"$first" "$i"}}}
+                        "i"     {"$min" "$i"}}}
              {"$sort" {"count" -1}}
              {"$group" {"_id" "$_id.p"
-                        "types" {"$push" "$_id.t"}
-                        "i"     {"$first" "$i"}}}
+                        "ts"  {"$push" "$_id.t"}
+                        "i"   {"$min" "$i"}}}
              {"$project" {"p" "$_id"
                           "d" {"$literal" depth}
-                          "t" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$types", 0]}, "null"]},
-                                        "then" {"$ifNull" [{"$arrayElemAt" ["$types", 1]}, "null"]},
-                                        "else" {"$arrayElemAt" ["$types", 0]}}}
+                          "t" {"$cond" {"if"   {"$eq" [{"$arrayElemAt" ["$ts", 0]}, "null"]},
+                                        "then" {"$ifNull" [{"$arrayElemAt" ["$ts", 1]}, "null"]},
+                                        "else" {"$arrayElemAt" ["$ts", 0]}}}
                           "v" nil
                           "i" 1}}]
      "next" [{"$match" {"t" "object"
@@ -267,7 +267,20 @@
   "Adds :database-position to all fields. It starts at 0 and is ordered by a depth-first traversal of nested fields."
   [fields i]
   (->> fields
-       (sort-by :index)
+       ;; Previously database-position was set with Clojure according to the logic in this imperative pseudocode:
+       ;; i = 0
+       ;; for each row in sample:
+       ;;   for each k,v in row:
+       ;;     field.database-position = i
+       ;;     i = i + 1
+       ;;     for each k,v in field.nested-fields:
+       ;;       field.database-position = i
+       ;;       i = i + 1
+       ;;       etc.
+       ;; We can't match this logic exactly with a MongoDB query. We can get close though: index is the minimum index
+       ;; of the key in the object over all documents in the sample. however, there can be more than one key that has
+       ;; the same index. so name is used to keep the order stable.
+       (sort-by (juxt :index :name))
        (reduce (fn [[fields i] field]
                  (let [field             (assoc field :database-position i)
                        i                 (inc i)
