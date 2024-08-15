@@ -20,14 +20,143 @@
   :use                          {:level :warning}
   :warn-on-reflection           {:level :warning}
 
-  :metabase/defsetting-must-specify-export                             {:level :warning}
-  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests {:level :warning}
-  :metabase/mbql-query-first-arg                                       {:level :warning}
-  :metabase/missing-test-expr-requires-in-cljs                         {:level :warning}
-  :metabase/require-shape-checker                                      {:level :warning}
-  :metabase/test-helpers-use-non-thread-safe-functions                 {:level :warning}
-  :metabase/validate-deftest                                           {:level :warning}
-  :metabase/validate-logging                                           {:level :warning}
+  :metabase/defsetting-must-specify-export             {:level :warning}
+  :metabase/mbql-query-first-arg                       {:level :warning}
+  :metabase/missing-test-expr-requires-in-cljs         {:level :warning}
+  :metabase/require-shape-checker                      {:level :warning}
+  :metabase/test-helpers-use-non-thread-safe-functions {:level :warning}
+  :metabase/validate-logging                           {:level :warning}
+
+  :metabase/validate-deftest
+  {:level :warning
+
+   ;; calling these functions will result in an error in tests marked `^:parallel`
+   ;;
+   ;; TODO -- these should all be made thread safe if possible or renamed so they end in `!`. Then we can remove them
+   ;; from this list because by default anything ending in `!` is considered to be thread-unsafe
+   :disallowed
+   #{clojure.core/alter-var-root
+     clojure.core/with-redefs
+     clojure.core/with-redefs-fn
+     metabase-enterprise.sandbox.test-util/with-user-attributes
+     metabase-enterprise.test/with-user-attributes
+     metabase.actions.test-util/with-actions
+     metabase.actions.test-util/with-actions-disabled
+     metabase.actions.test-util/with-actions-enabled
+     metabase.actions.test-util/with-actions-test-data
+     metabase.actions.test-util/with-actions-test-data-and-actions-enabled
+     metabase.actions.test-util/with-actions-test-data-tables
+     metabase.analytics.snowplow-test/with-fake-snowplow-collector
+     metabase.email-test/with-expected-messages
+     metabase.email-test/with-fake-inbox
+     metabase.test.data.users/with-group
+     metabase.test.data.users/with-group-for-user
+     metabase.test.persistence/with-persistence-enabled
+     metabase.test.util.log/with-log-level
+     metabase.test.util.misc/with-single-admin-user
+     metabase.test.util/with-all-users-permission
+     metabase.test.util/with-discarded-collections-perms-changes
+     metabase.test.util/with-env-keys-renamed-by
+     metabase.test.util/with-locale
+     metabase.test.util/with-non-admin-groups-no-root-collection-for-namespace-perms
+     metabase.test.util/with-non-admin-groups-no-root-collection-perms
+     metabase.test.util/with-temp-env-var-value
+     metabase.test.util/with-temp-vals-in-db
+     metabase.test.util/with-temporary-raw-setting-values
+     metabase.test.util/with-temporary-setting-values
+     metabase.test.util/with-user-in-groups
+     metabase.test/with-actions
+     metabase.test/with-actions-disabled
+     metabase.test/with-actions-enabled
+     metabase.test/with-actions-test-data
+     metabase.test/with-actions-test-data-and-actions-enabled
+     metabase.test/with-actions-test-data-tables
+     metabase.test/with-all-users-permission
+     metabase.test/with-discarded-collections-perms-changes
+     metabase.test/with-env-keys-renamed-by
+     metabase.test/with-expected-messages
+     metabase.test/with-fake-inbox
+     metabase.test/with-group
+     metabase.test/with-group-for-user
+     metabase.test/with-locale
+     metabase.test/with-log-level
+     metabase.test/with-non-admin-groups-no-root-collection-for-namespace-perms
+     metabase.test/with-non-admin-groups-no-root-collection-perms
+     metabase.test/with-persistence-enabled
+     metabase.test/with-single-admin-user
+     metabase.test/with-temp-env-var-value
+     metabase.test/with-temp-vals-in-db
+     metabase.test/with-temporary-raw-setting-values
+     metabase.test/with-temporary-setting-values
+     metabase.test/with-user-in-groups}
+
+   ;; these functions are allowed in `^:parallel` tests even tho they end in `!`
+   :allowed
+   #{clojure.core/assoc!
+     clojure.core/compare-and-set!
+     clojure.core/conj!
+     clojure.core/disj!
+     clojure.core/dissoc!
+     clojure.core/persistent!
+     clojure.core/pop!
+     clojure.core/reset!
+     clojure.core/reset-vals!
+     clojure.core/run!
+     clojure.core/swap!
+     clojure.core/swap-vals!
+     clojure.core/volatile!
+     clojure.core/vreset!
+     clojure.core/vswap!
+     clojure.core.async/<!
+     clojure.core.async/<!!
+     clojure.core.async/>!
+     clojure.core.async/>!!
+     clojure.core.async/alt!
+     clojure.core.async/alt!!
+     clojure.core.async/alts!
+     clojure.core.async/alts!!
+     clojure.core.async/close!
+     clojure.core.async/ioc-alts!
+     clojure.core.async/offer!
+     clojure.core.async/onto-chan!
+     clojure.core.async/onto-chan!!
+     clojure.core.async/poll!
+     clojure.core.async/put!
+     clojure.core.async/take!
+     clojure.core.async/to-chan!
+     clojure.core.async/to-chan!!
+     metabase.driver.sql-jdbc.execute/execute-prepared-statement!
+     metabase.pulse/send-pulse!
+     metabase.query-processor.store/store-database!
+     next.jdbc/execute!}}
+
+  :metabase/i-like-making-cams-eyes-bleed-with-horrifically-long-tests
+  {:level      :warning
+   :max-length 180}
+
+  ;; this is not enabled here, it is enabled below only for specific namespaces.
+  :metabase/disallow-hardcoded-driver-names-in-tests
+  ;; don't include `:h2` since that will probably lead to a mountain of tests where we are specifically testing
+  ;; middleware or compilation behavior with just H2 since it's the default.
+  {:drivers #{ ;; core drivers
+              #_:h2
+              :postgres
+              :mysql
+              ;; module drivers
+              :athena
+              :bigquery-cloud-sdk
+              :druid
+              :druid-jdbc
+              :googleanalytics
+              :mongo
+              :oracle
+              :presto-jdbc
+              :redshift
+              :snowflake
+              :sparksql
+              :sqlite
+              :sqlserver
+              :vertica}}
 
   ;;
   ;; disabled linters
@@ -151,7 +280,7 @@
     metabase.analytics             #{metabase.analytics.prometheus
                                      metabase.analytics.snowplow
                                      metabase.analytics.stats
-                                     metabase.analytics.sdk}                                      ; TODO -- consolidate these into a real API namespace.
+                                     metabase.analytics.sdk}                                        ; TODO -- consolidate these into a real API namespace.
     metabase.analyze               #{metabase.analyze}
     metabase.api                   #{metabase.api.common
                                      metabase.api.dataset
@@ -319,11 +448,11 @@
    ;; this is mostly intended for excluding test namespaces or those rare 'glue' namespaces that glue multiple modules
    ;; together, e.g. `metabase.lib.metadata.jvm`.
    :ignored-namespace-patterns
-   #{"-test$"                           ; anything ending in `-test`
-     "test[-.]util"                     ; anything that contains `test.util` or `test-util`
-     "test\\.impl"                      ; anything that contains `test.impl`
-     "^metabase\\.test"                 ; anything starting with `metabase.test`
-     "^metabase\\.http-client$"}}       ; `metabase.http-client` which is a test-only namespace despite its name.
+   #{"-test$"                     ; anything ending in `-test`
+     "test[-.]util"               ; anything that contains `test.util` or `test-util`
+     "test\\.impl"                ; anything that contains `test.impl`
+     "^metabase\\.test"           ; anything starting with `metabase.test`
+     "^metabase\\.http-client$"}} ; `metabase.http-client` which is a test-only namespace despite its name.
 
   :consistent-alias
   {:aliases
@@ -353,11 +482,7 @@
     hiccup.util                                                   hiccup.util
     honey.sql                                                     sql
     honey.sql.helpers                                             sql.helpers
-    honeysql.core                                                 hsql
-    honeysql.format                                               hformat
-    honeysql.helpers                                              hh
-    honeysql.types                                                htypes
-    java-time                                                     t
+    java-time.api                                                 t
     macaw.core                                                    macaw
     malli.core                                                    mc
     malli.error                                                   me
