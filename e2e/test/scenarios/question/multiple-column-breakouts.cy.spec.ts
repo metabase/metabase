@@ -3,6 +3,7 @@ import {
   assertQueryBuilderRowCount,
   createQuestion,
   createQuestionAndDashboard,
+  type DashboardDetails,
   dragField,
   editDashboard,
   entityPickerModal,
@@ -21,6 +22,8 @@ import {
   tableInteractive,
   tableInteractiveBody,
   visitDashboard,
+  visitEmbeddedPage,
+  visitPublicDashboard,
   visualize,
 } from "e2e/support/helpers";
 
@@ -90,6 +93,30 @@ const questionWith5BreakoutsAndLimitDetails: StructuredQuestionDetails = {
   },
 };
 
+const dashboardDetails: DashboardDetails = {
+  parameters: [
+    {
+      id: "1",
+      name: "Unit1",
+      slug: "unit1",
+      type: "temporal-unit",
+      sectionId: "temporal-unit",
+    },
+    {
+      id: "2",
+      name: "Unit2",
+      slug: "unit2",
+      type: "temporal-unit",
+      sectionId: "temporal-unit",
+    },
+  ],
+  enable_embedding: true,
+  embedding_params: {
+    unit1: "enabled",
+    unit2: "enabled",
+  },
+};
+
 describe("scenarios > question > multiple column breakouts", () => {
   beforeEach(() => {
     restore();
@@ -98,6 +125,12 @@ describe("scenarios > question > multiple column breakouts", () => {
     cy.intercept("POST", "/api/dataset/pivot").as("pivotDataset");
     cy.intercept("/api/dashboard/*/dashcard/*/card/*/query").as(
       "dashcardQuery",
+    );
+    cy.intercept("/api/public/dashboard/*/dashcard/*/card/*").as(
+      "publicDashcardQuery",
+    );
+    cy.intercept("/api/embed/dashboard/*/dashcard/*/card/*").as(
+      "embedDashcardQuery",
     );
   });
 
@@ -281,35 +314,47 @@ describe("scenarios > question > multiple column breakouts", () => {
     });
 
     describe("dashboards", () => {
-      it("should be able to use temporal-unit parameters with multiple breakouts of a column", () => {
-        createQuestionAndDashboard({
-          questionDetails: questionWith2BreakoutsDetails,
-        }).then(({ body: { dashboard_id } }) => {
-          visitDashboard(dashboard_id);
-          cy.wait("@dashcardQuery");
-        });
-
-        cy.log("add parameters");
-        editDashboard();
-        addTemporalUnitParameter();
-        getDashboardCard().findByText("Select…").click();
-        popover().findAllByText("Created At").eq(0).click();
-        addTemporalUnitParameter();
-        getDashboardCard().findByText("Select…").click();
-        popover().findAllByText("Created At").eq(1).click();
-        saveDashboard();
-
-        cy.log("set parameter values and check query results");
+      function setParametersAndVerify(queryAlias: string) {
         filterWidget().eq(0).click();
         popover().findByText("Quarter").click();
-        cy.wait("@dashcardQuery");
+        cy.wait(queryAlias);
         filterWidget().eq(1).click();
         popover().findByText("Week").click();
-        cy.wait("@dashcardQuery");
+        cy.wait(queryAlias);
         getDashboardCard().within(() => {
           cy.findByText("Created At: Quarter").should("be.visible");
           cy.findByText("Created At: Week").should("be.visible");
         });
+      }
+
+      it("should be able to use temporal-unit parameters with multiple breakouts of a column", () => {
+        cy.log("create dashboard");
+        cy.signInAsAdmin();
+        createQuestionAndDashboard({
+          dashboardDetails,
+          questionDetails: questionWith2BreakoutsDetails,
+        }).then(({ body: { dashboard_id } }) => {
+          cy.wrap(dashboard_id).as("dashboardId");
+        });
+
+        cy.log("visit dashboard");
+        cy.signInAsNormalUser();
+        visitDashboard("@dashboardId");
+        cy.wait("@dashcardQuery");
+
+        cy.log("add parameters");
+        editDashboard();
+        cy.findByTestId("fixed-width-filters").findByText("Unit1").click();
+        getDashboardCard().findByText("Select…").click();
+        popover().findAllByText("Created At").eq(0).click();
+        cy.findByTestId("fixed-width-filters").findByText("Unit2").click();
+        getDashboardCard().findByText("Select…").click();
+        popover().findAllByText("Created At").eq(1).click();
+        saveDashboard();
+        cy.wait("@dashcardQuery");
+
+        cy.log("set parameters and check query results");
+        setParametersAndVerify("@dashcardQuery");
 
         cy.log("drill-thru to the QB and check query results");
         getDashboardCard().findByText("Test question").click();
@@ -318,17 +363,26 @@ describe("scenarios > question > multiple column breakouts", () => {
           cy.findByText("Created At: Quarter").should("be.visible");
           cy.findByText("Created At: Week").should("be.visible");
         });
-        assertQueryBuilderRowCount(223);
+
+        cy.log("set parameters in a public dashboard");
+        cy.signInAsAdmin();
+        cy.get("@dashboardId").then(visitPublicDashboard);
+        cy.wait("@publicDashcardQuery");
+        setParametersAndVerify("@publicDashcardQuery");
+
+        cy.log("set parameters in an embedded dashboard");
+        cy.get<number>("@dashboardId").then(dashboardId =>
+          visitEmbeddedPage({
+            resource: { dashboard: dashboardId },
+            params: {},
+          }),
+        );
+        cy.wait("@embedDashcardQuery");
+        setParametersAndVerify("@embedDashcardQuery");
       });
     });
   });
 });
-
-function addTemporalUnitParameter() {
-  cy.findByTestId("dashboard-header")
-    .findByLabelText("Add a Unit of Time widget")
-    .click();
-}
 
 interface TableOpts {
   columns?: string[];
