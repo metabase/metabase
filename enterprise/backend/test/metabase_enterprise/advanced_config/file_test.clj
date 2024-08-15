@@ -170,7 +170,7 @@
             (is (= (mock-config-with-setting "")
                    (#'advanced-config.file/config)))))))))
 
-(deftest ^:parallel initialize-section-test
+(deftest initialize-section-test
   (testing "Ignore unknown sections"
     (binding [advanced-config.file/*config* {:version 1.0, :config {:unknown-section {}}}]
       (mt/with-log-messages-for-level [messages [metabase-enterprise.advanced-config.file.interface :warn]]
