@@ -9,6 +9,7 @@ import {
   entityPickerModal,
   entityPickerModalTab,
   getNotebookStep,
+  hovercard,
   modal,
   openQuestionActions,
   popover,
@@ -45,6 +46,7 @@ const ORDERS_SCALAR_MODEL_METRIC = {
 const ORDERS_SCALAR_FILTER_METRIC = {
   name: "Orders metric with filter",
   type: "metric",
+  description: "This is a description",
   query: {
     "source-table": ORDERS_ID,
     filter: [">", ["field", ORDERS.TOTAL, null], 100],
@@ -446,6 +448,27 @@ describe("scenarios > metrics > editing", () => {
         cy.findByText(ORDERS_SCALAR_MODEL_METRIC.name).should("not.exist");
         cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
       });
+    });
+
+    it("should show the description for metrics", () => {
+      createQuestion(ORDERS_SCALAR_FILTER_METRIC);
+      startNewQuestion();
+      entityPickerModal().within(() => {
+        entityPickerModalTab("Tables").click();
+        cy.findByText("Orders").click();
+      });
+      startNewAggregation();
+      popover().within(() => {
+        cy.findByText("Common Metrics").click();
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).should("be.visible");
+        cy.findByText(ORDERS_SCALAR_FILTER_METRIC.name).realHover();
+
+        cy.findByLabelText("More info").should("exist").realHover();
+      });
+
+      hovercard()
+        .contains(ORDERS_SCALAR_FILTER_METRIC.description)
+        .should("be.visible");
     });
   });
 });
