@@ -287,6 +287,7 @@ export default class PulseEditChannels extends Component {
 
   render() {
     const { formInput } = this.props;
+
     // Default to show the default channels until full formInput is loaded
     const channels = formInput.channels || {
       email: { name: t`Email`, type: "email" },

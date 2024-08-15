@@ -21,6 +21,7 @@ export * from "./e2e-misc-helpers";
 export * from "./e2e-mock-app-settings-helpers";
 export * from "./e2e-models-metadata-helpers";
 export * from "./e2e-notebook-helpers";
+export * from "./e2e-notification-helpers";
 export * from "./e2e-permissions-helpers";
 export * from "./e2e-qa-databases-helpers";
 export * from "./e2e-relative-date-picker-helpers";

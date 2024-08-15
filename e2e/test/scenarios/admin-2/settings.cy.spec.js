@@ -29,6 +29,7 @@ import {
   visitQuestion,
   visitQuestionAdhoc,
   tableHeaderClick,
+  WEBHOOK_TEST_URL,
 } from "e2e/support/helpers";
 
 const { ORDERS, ORDERS_ID } = SAMPLE_DATABASE;
@@ -342,7 +343,7 @@ describeWithSnowplow("scenarios > admin > settings", () => {
 
   describe(" > slack settings", () => {
     it("should present the form and display errors", () => {
-      cy.visit("/admin/settings/slack");
+      cy.visit("/admin/settings/notifications/slack");
 
       // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
       cy.findByText("Metabase on Slack");
@@ -1131,5 +1132,52 @@ describe("scenarios > admin > settings > map settings", () => {
         "Invalid custom GeoJSON: coordinates are outside bounds for latitude and longitude",
       );
     });
+  });
+});
+
+// Ensure the webhook tester docker container is running
+// docker run -p 9080:8080/tcp tarampampam/webhook-tester serve --create-session 00000000-0000-0000-0000-000000000000
+describe("notifications", { tags: "@external" }, () => {
+  beforeEach(() => {
+    restore();
+    cy.signInAsAdmin();
+  });
+  it("Should allow you to create and edit Notifications", () => {
+    cy.visit("/admin/settings/notifications");
+
+    cy.findByRole("heading", { name: "Add a webhook" }).click();
+
+    modal().within(() => {
+      cy.findByRole("heading", { name: "New webhook destination" }).should(
+        "exist",
+      );
+
+      cy.findByLabelText("Webhook URL").type(`${WEBHOOK_TEST_URL}/404`);
+      cy.findByLabelText("Give it a name").type("Awesome Hook");
+      cy.findByLabelText("Description").type("The best hook ever");
+      cy.button("Create destination").click();
+
+      cy.findByText("Unable to connect channel").should("exist");
+      cy.findByLabelText("Webhook URL").clear().type(WEBHOOK_TEST_URL);
+      cy.button("Create destination").click();
+    });
+
+    cy.findByRole("button", { name: /Add another/ }).should("exist");
+
+    cy.findByRole("heading", { name: "Awesome Hook" }).click();
+
+    modal().within(() => {
+      cy.findByRole("heading", { name: "Edit this webhook" }).should("exist");
+      cy.findByLabelText("Give it a name").clear().type("Updated Hook");
+      cy.button("Save changes").click();
+    });
+
+    cy.findByRole("heading", { name: "Updated Hook" }).click();
+
+    modal()
+      .button(/Delete this destination/)
+      .click();
+
+    cy.findByRole("heading", { name: "Add a webhook" }).should("exist");
   });
 });
