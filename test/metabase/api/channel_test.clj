@@ -72,6 +72,12 @@
                               {:active false})
         (is (= false (t2/select-one-fn :active :model/Channel (:id channel))))))))
 
+(deftest create-channel-with-existing-name-error-test
+  (let [channel-details default-test-channel]
+    (mt/with-temp [:model/Channel _chn channel-details]
+      (is (= {:errors {:name "Channel with that name already exists"}}
+             (mt/user-http-request :crowberto :post 409 "channel" default-test-channel))))))
+
 (def ns-keyword->str #(str (.-sym %)))
 
 (deftest list-channels-test

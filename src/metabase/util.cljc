@@ -184,6 +184,11 @@
       (str (upper-case-en (subs s 0 1))
            (lower-case-en (subs s 1))))))
 
+(defn truncate
+  "Truncate a string to `n` characters."
+  [s n]
+  (subs s 0 (min (count s) n)))
+
 (defn regex->str
   "Returns the contents of a regex as a string.
 
