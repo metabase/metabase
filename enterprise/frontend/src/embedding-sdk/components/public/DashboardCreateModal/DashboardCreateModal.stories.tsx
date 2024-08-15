@@ -20,20 +20,14 @@ export default {
   decorators: [CommonSdkStoryWrapper],
 };
 
-const Template: ComponentStory<typeof DashboardCreateModal> = () => {
-  return (
-    <DashboardCreateModal
-      onClose={action("onClose")}
-      onCreate={action("onCreate")}
-    />
-  );
-};
+const Template: ComponentStory<typeof DashboardCreateModal> = () => (
+  <DashboardCreateModal
+    onClose={action("onClose")}
+    onCreate={action("onCreate")}
+  />
+);
 
 export const Default = Template.bind({});
-Template.args = {
-  onClose: action("onClose"),
-  onCreate: action("onCreate"),
-};
 
 const HookTemplate: ComponentStory<
   JSXElementConstructor<Record<string, never>>

@@ -1,9 +1,9 @@
 import { useCallback } from "react";
 
-import { useSdkDispatch, useSdkStore } from "embedding-sdk/store";
+import { useSdkStore } from "embedding-sdk/store";
+import { useCreateDashboardMutation } from "metabase/api";
 import type { CreateDashboardProperties } from "metabase/dashboard/containers/CreateDashboardForm";
 import Collections from "metabase/entities/collections";
-import Dashboards from "metabase/entities/dashboards";
 import type { CollectionId } from "metabase-types/api";
 
 export interface DashboardCreateParameters
@@ -13,29 +13,25 @@ export interface DashboardCreateParameters
 
 export const useDashboardCreate = () => {
   const store = useSdkStore();
-  const dispatch = useSdkDispatch();
 
-  const createDashboard = useCallback(
+  const [createDashboard] = useCreateDashboardMutation();
+
+  const handleCreateDashboard = useCallback(
     async (values: DashboardCreateParameters) => {
       const initialCollectionId = Collections.selectors.getInitialCollectionId(
         store.getState(),
         values,
       ) as CollectionId;
 
-      const action = await dispatch(
-        Dashboards.actions.create({
-          ...values,
-          collection_id: values.collectionId ?? initialCollectionId,
-        }),
-      );
-      const dashboard = Dashboards.HACK_getObjectFromAction(action);
-
-      return dashboard;
+      return createDashboard({
+        ...values,
+        collection_id: values.collectionId ?? initialCollectionId,
+      }).unwrap();
     },
-    [dispatch, store],
+    [createDashboard, store],
   );
 
   return {
-    createDashboard,
+    createDashboard: handleCreateDashboard,
   };
 };

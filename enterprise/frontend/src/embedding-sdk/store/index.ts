@@ -37,6 +37,12 @@ export const useSdkDispatch: () => ThunkDispatch<
   return useDispatch();
 };
 
+export const useSdkStore = () => {
+  useCheckSdkReduxContext();
+
+  return useStore();
+};
+
 const useCheckSdkReduxContext = () => {
   const context = useContext(ReactReduxContext);
 
@@ -46,12 +52,6 @@ const useCheckSdkReduxContext = () => {
       "Cannot find react-redux context. Make sure component or hook is wrapped into MetabaseProvider",
     );
   }
-};
-
-export const useSdkStore = () => {
-  useCheckSdkReduxContext();
-
-  return useStore();
 };
 
 export { useSdkSelector } from "./use-sdk-selector";

@@ -10,7 +10,7 @@ export interface DashboardCreateModalProps {
   onClose?: () => void;
 }
 
-export const DashboardCreateModalInner = (props: DashboardCreateModalProps) => {
+const DashboardCreateModalInner = (props: DashboardCreateModalProps) => {
   const { collectionId, onCreate, onClose } = props;
 
   return (
