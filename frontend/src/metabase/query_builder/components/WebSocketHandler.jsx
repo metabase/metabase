@@ -11,19 +11,27 @@ import VisualizationResult from "metabase/query_builder/components/Visualization
 import { loadMetadataForCard } from "metabase/questions/actions";
 import { push } from "react-router-redux";
 import Modal from "metabase/components/Modal";
+import { Tabs } from "metabase/ui";
+import CS from "metabase/css/core/index.css";
+import cx from "classnames";
 
 const WebSocketHandler = () => {
+    const dispatch = useDispatch();
     const assistant_url = process.env.REACT_APP_WEBSOCKET_SERVER;
     const [inputValue, setInputValue] = useState("");
     const [messages, setMessages] = useState([]);
     const [card, setCard] = useState(null);
+    const [reasoning, setReasoning] = useState(null);
+    const [sources, setSources] = useState(null);
     const [result, setResult] = useState(null);
     const [defaultQuestion, setDefaultQuestion] = useState(null);
-    const [dataInfo, setDataInfo] = useState("");
+    const [codeQuery, setCodeQuery] = useState(null);
     const [isDBModalOpen, setIsDBModalOpen] = useState(false);
     const [dbInputValue, setDBInputValue] = useState("");
-    const dispatch = useDispatch();
+    const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [selectedTab, setSelectedTab] = useState("reasoning");
+
     const [id, setId] = useState(0);
     const { ws, isConnected } = useWebSocket(
         assistant_url,
@@ -56,8 +64,6 @@ const WebSocketHandler = () => {
         setIsModalOpen(false);
     };
 
-
-
     const handleFunctionalityMessages = async functions => {
         functions.forEach(async func => {
             switch (func.function_name) {
@@ -72,12 +78,14 @@ const WebSocketHandler = () => {
     };
 
     const handleGetDatasetQuery = async func => {
+        const { cardId, reasoning, sources } = func.arguments;
+        setSources(sources);
+        setReasoning(reasoning);
         setId(func.arguments.cardId);
         try {
-            const fetchedCard = await CardApi.get({ cardId: func.arguments.cardId });
-            const queryCard = await CardApi.query({ cardId: func.arguments.cardId });
+            const fetchedCard = await CardApi.get({ cardId: cardId });
+            const queryCard = await CardApi.query({ cardId: cardId });
             const cardMetadata = await dispatch(loadMetadataForCard(fetchedCard));
-            setResult(queryCard);
             const getDatasetQuery = fetchedCard?.dataset_query;
             const defaultQuestionTest = Question.create({
                 databaseId: 1,
@@ -89,10 +97,15 @@ const WebSocketHandler = () => {
                 metadata: cardMetadata.payload.entities
             });
             const newQuestion = defaultQuestionTest.setCard(fetchedCard);
+            setResult(queryCard);
+            setCodeQuery(queryCard.data.native_form.query);
             setDefaultQuestion(newQuestion);
             setCard(fetchedCard);
         } catch (error) {
             console.error("Error fetching card content:", error);
+        } finally {
+            setIsLoading(false);
+            removeLoadingMessage();
         }
     };
 
@@ -104,7 +117,12 @@ const WebSocketHandler = () => {
     };
 
     const handleResultMessage = data => {
-        setDataInfo(data.message);
+        addServerMessage(
+            data.message || "Received a message from the server.",
+            "text",
+        );
+        setIsLoading(false)
+        removeLoadingMessage();
     };
 
     const redirect = () => {
@@ -115,35 +133,44 @@ const WebSocketHandler = () => {
         setMessages(prevMessages => [
             ...prevMessages,
             {
-                id: Date.now(),
+                id: Date.now() + Math.random(),
                 text: message,
                 sender: "server",
                 type: type,
-            },
+            }
         ]);
     };
 
     const sendMessage = () => {
         if (!inputValue.trim()) return;
+        setIsLoading(true);
         if (isConnected) {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue || 8],
+                    configData: [dbInputValue || 2],
                 }),
             );
         }
 
-        const userMessage = {
-            id: Date.now(),
-            text: inputValue,
-            sender: "user",
-            type: "text",
-            thread_id: 1,
-        };
+        setMessages(prevMessages => [
+            ...prevMessages,
 
-        setMessages(prevMessages => [...prevMessages, userMessage]);
+            {
+                id: Date.now() + Math.random(),
+                text: inputValue,
+                sender: "user",
+                type: "text",
+                thread_id: 1,
+            },
+            {
+                id: Date.now() + Math.random(),
+                text: "Please wait until we generate the response....",
+                sender: "server",
+                type: "text",
+            },
 
+        ]);
         const response = {
             type: "query",
             task: inputValue,
@@ -154,6 +181,27 @@ const WebSocketHandler = () => {
             setInputValue("");
         }
     };
+
+    const removeLoadingMessage = () => {
+        setMessages(prevMessages => prevMessages.filter(
+            message => message.text !== "Please wait until we generate the response...."
+        ));
+    };
+
+    const handleKeyPress = (e) => {
+        if (e.charCode === 13 && inputValue.trim()) {
+            sendMessage();
+        }
+    };
+
+    const chatVisualizationStyle = {
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+    };
+
     return (
         <>
             <Box
@@ -178,9 +226,7 @@ const WebSocketHandler = () => {
                     }}
                     onClick={() => setIsDBModalOpen(true)}
                 >
-
                 </Button>
-
                 <div
                     style={{
                         flex: card ? "0 1 auto" : "1 1 auto",
@@ -190,9 +236,8 @@ const WebSocketHandler = () => {
                         borderRadius: card ? "0 0 12px 12px" : "12px",
                     }}
                 >
-                    <ChatMessageList messages={messages} />
+                    <ChatMessageList messages={messages} isLoading={isLoading} />
                 </div>
-
                 {card && defaultQuestion && result && (
                     <>
                         <div
@@ -200,7 +245,11 @@ const WebSocketHandler = () => {
                                 flex: "1 0 50%",
                                 padding: "16px",
                                 overflow: "hidden",
-                                minHeight: "400px",
+                                height: "400px",
+                                width: "auto",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
                             }}
                         >
                             <VisualizationResult
@@ -208,7 +257,7 @@ const WebSocketHandler = () => {
                                 isDirty={false}
                                 queryBuilderMode={"view"}
                                 result={result}
-                                className={"chat__visualization___3Z6Z-"}
+                                className={cx(CS.flexFull, CS.fullWidth, CS.fullHeight)}
                                 rawSeries={[{ card, data: result && result.data }]}
                                 isRunning={false}
                                 navigateToNewCardInsideQB={null}
@@ -219,13 +268,33 @@ const WebSocketHandler = () => {
                         </div>
                         <Button
                             variant="outlined"
-                            style={{ width: 200, cursor: "pointer", border: "1px solid #E0E0E0", marginBottom: "1rem", text: "center", color: "#000", marginLeft: "auto", marginRight: 0 }}
+                            style={{
+                                width: "auto",
+                                cursor: "pointer",
+                                border: "1px solid #E0E0E0",
+                                borderRadius: "8px",
+                                marginBottom: "1rem",
+                                color: "#FFF",
+                                marginLeft: "auto",
+                                marginRight: 0,
+                                backgroundColor: "#8A64DF",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                padding: "0.5rem 1rem",
+                                lineHeight: "1",
+                            }}
                             onClick={openModal}
                         >
-                            Review & Save
+                            <Icon
+                                size={18}
+                                name="bookmark"
+                                style={{
+                                    marginRight: "0.5rem",
+                                }}
+                            />
+                            <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify & Save</span>
                         </Button>
                     </>
-
                 )}
 
                 <div
@@ -242,17 +311,20 @@ const WebSocketHandler = () => {
                         id="1"
                         type="text"
                         fullWidth
+                        size="large"
+                        placeholder="Enter a prompt here..."
                         value={inputValue}
                         onChange={e => setInputValue(e.target.value)}
+                        onKeyPress={handleKeyPress}
                         style={{ marginRight: "8px" }}
                     />
                     <Button
                         variant="filled"
                         disabled={!isConnected}
                         onClick={sendMessage}
-                        style={{ borderRadius: "12px", padding: "8px" }}
+                        style={{ borderRadius: "12px", padding: "0px", backgroundColor: !isConnected ? "#F1EBFF" : "#8A64DF", color: "#FFF", border: "none" }}
                     >
-                        <Icon size={28} style={{ marginTop: "4px", marginBottom: "auto", padding: "0px", paddingLeft: "4px", paddingRight: "4px" }} name="sendChat" />
+                        <Icon size={26} style={{ padding: "6px", marginTop: "4px", marginLeft: "4px", marginRight: "4px" }} name="sendChat" />
                     </Button>
                 </div>
             </Box>
@@ -279,24 +351,160 @@ const WebSocketHandler = () => {
                     </div>
                 </Modal>
             )}
-
             {isModalOpen && (
                 <Modal isOpen={isModalOpen} onClose={closeModal}>
-                    <div style={{ padding: "20px" }}>
-                        <h2 style={{ marginBottom: "10px" }}>Save question</h2>
-                        {dataInfo !== "" && (
-                            <>
-                                <strong>Data generation insight:</strong>
-                                <p>{dataInfo}</p>
-                            </>
-                        )}
-                        <p>Please go to builder to review and save your question.</p>
-                        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: "20px" }}>
-                            <Button variant="outlined" style={{ marginRight: "10px" }} onClick={closeModal}>
-                                Cancel
+                    <div style={{ padding: "20px", position: "relative" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
+                            <h2 style={{ fontSize: "24px", fontWeight: "600", margin: 0, paddingLeft: "1rem" }}>Verify results</h2>
+                            <Icon
+                                name="close"
+                                size={24}
+                                style={{ cursor: "pointer", color: "#76797D", paddingRight: "1rem" }}
+                                onClick={closeModal}
+                            />
+                        </div>
+                        <div style={{ marginBottom: "20px", paddingLeft: "1rem", paddingRight: "1rem" }}>
+                            <h4 style={{ marginBottom: "10px", color: "#5B6B7B", fontWeight: "600" }}>Sources</h4>
+                            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+                                {sources?.tables?.map((table, index) => (
+                                    <div
+                                        key={index}
+                                        style={{
+                                            padding: "8px 12px",
+                                            backgroundColor: "#F8FAFD",
+                                            borderRadius: "8px",
+                                            border: "1px solid #E1E5EB",
+                                            display: "flex",
+                                            flexDirection: "column",
+                                            alignItems: "flex-start",
+                                        }}
+                                    >
+                                        <div style={{ fontWeight: "500", color: "#3A4A58" }}>Table: {table.tableName}</div>
+                                        <div style={{ marginTop: "8px", color: "#76797D", fontSize: "14px" }}>
+                                            Fields: {table.fields.join(", ")}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <Tabs
+                            value={selectedTab}
+                            onChange={(newTab) => setSelectedTab(newTab)}
+                            style={{
+                                flexGrow: 1,
+                                display: "flex",
+                                flexDirection: "column",
+                                paddingLeft: "1rem",
+                                paddingRight: "1rem",
+                            }}
+                        >
+                            <Tabs.List
+                                style={{
+                                    borderBottom: "none",
+                                }}
+                            >
+                                <Tabs.Tab
+                                    value="reasoning"
+                                    style={{
+                                        backgroundColor: selectedTab === "reasoning" ? "#F8FAFD" : "#FFFFFF",
+                                        color: selectedTab === "reasoning" ? "#0458DD" : "#76797D",
+                                        borderBottom: "none",
+                                    }}
+                                    onClick={() => setSelectedTab("reasoning")}
+                                >
+                                    Reasoning
+                                </Tabs.Tab>
+                                <Tabs.Tab
+                                    value="codeQuery"
+                                    style={{
+                                        backgroundColor: selectedTab === "codeQuery" ? "#F8FAFD" : "#FFFFFF",
+                                        color: selectedTab === "codeQuery" ? "#0458DD" : "#76797D",
+                                        borderBottom: "none",
+                                    }}
+                                    onClick={() => setSelectedTab("codeQuery")}
+                                >
+                                    Code Query
+                                </Tabs.Tab>
+                                <Tabs.Tab
+                                    value="aiDefinitions"
+                                    style={{
+                                        backgroundColor: selectedTab === "aiDefinitions" ? "#F8FAFD" : "#FFFFFF",
+                                        color: selectedTab === "aiDefinitions" ? "#0458DD" : "#76797D",
+                                        borderBottom: "none",
+                                    }}
+                                    onClick={() => setSelectedTab("aiDefinitions")}
+                                    disabled
+                                >
+                                    AI Definitions
+                                </Tabs.Tab>
+                                <Tabs.Tab
+                                    value="joins"
+                                    style={{
+                                        backgroundColor: selectedTab === "joins" ? "#F8FAFD" : "#FFFFFF",
+                                        color: selectedTab === "joins" ? "#0458DD" : "#76797D",
+                                        borderBottom: "none",
+                                    }}
+                                    onClick={() => setSelectedTab("joins")}
+                                    disabled
+                                >
+                                    Joins
+                                </Tabs.Tab>
+                            </Tabs.List>
+
+                            <Tabs.Panel
+                                value="reasoning"
+                                style={{ backgroundColor: "#F8FAFD", padding: "1rem", height: "350px", overflowY: "auto", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}
+                            >
+                                {reasoning.split("\n").map((point, index) => (
+                                    point.trim() && (
+                                        <p key={index} style={{ marginBottom: "1rem", fontSize: "16px" }}>
+                                            {point}
+                                        </p>
+                                    )
+                                ))}
+                            </Tabs.Panel>
+
+                            <Tabs.Panel
+                                value="codeQuery"
+                                style={{ backgroundColor: "#F8FAFD", padding: "1rem", height: "350px", overflowY: "auto", borderBottomLeftRadius: "12px", borderBottomRightRadius: "12px" }}
+                            >
+                                <pre style={{ whiteSpace: "pre-wrap", wordWrap: "break-word" }}>{codeQuery}</pre>
+                            </Tabs.Panel>
+
+
+                        </Tabs>
+
+                        <div style={{ display: "flex", marginTop: "20px", paddingLeft: "1rem", paddingRight: "1rem", gap: "2rem" }}>
+                            <Button
+                                variant="outlined"
+                                style={{
+                                    flex: 1,
+                                    borderColor: "#1664D6",
+                                    color: "#1664D6",
+                                    marginRight: "1px",
+                                    height: "50px",
+                                    fontSize: "16px",
+                                    fontWeight: "500",
+                                    border: "1px solid #1664D6",
+                                }}
+                                onClick={closeModal}
+                            >
+                                Provide feedback
                             </Button>
-                            <Button variant="filled" onClick={() => { redirect(); closeModal(); }}>
-                                Go to builder
+                            <Button
+                                variant="filled"
+                                style={{
+                                    flex: 1,
+                                    backgroundColor: "#1664D6",
+                                    color: "#FFFFFF",
+                                    height: "50px",
+                                    fontSize: "16px",
+                                    fontWeight: "500",
+                                    marginLeft: "1px",
+                                }}
+                                onClick={() => { redirect(); }}
+                            >
+                                Go to builder & save
                             </Button>
                         </div>
                     </div>

@@ -34,8 +34,8 @@ export const LayoutCard = styled.div`
 `;
 
 export const LayoutIllustration = styled.div<{
-  backgroundImageSrc: string;
   isDefault: boolean;
+  backgroundImageSrc: string;
 }>`
   position: absolute;
   top: 0;
@@ -44,8 +44,7 @@ export const LayoutIllustration = styled.div<{
   height: 100%;
   filter: ${({ isDefault }) =>
     isDefault && `hue-rotate(${hueRotate("brand")}deg)`};
-  background-image: ${({ backgroundImageSrc }) =>
-    `url("${backgroundImageSrc}")`};
+  background: linear-gradient(to bottom, #dbeeff, #ffffff);
   background-size: ${({ isDefault }) =>
     isDefault ? "max(2592px, 100%) auto" : "100% auto"};
   background-repeat: no-repeat;

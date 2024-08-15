@@ -1,6 +1,6 @@
 import Message from "./Message";
 
-const ChatMessageList = ({ messages }) => {
+const ChatMessageList = ({ messages, isLoading }) => {
   return (
     <div
       style={{
@@ -11,10 +11,17 @@ const ChatMessageList = ({ messages }) => {
       }}
     >
       {messages.map((message, index) => (
-        <Message key={message.id || index} message={message} />
+        <Message
+          key={message.id || index}
+          message={message}
+          isLoading={
+            isLoading &&
+            message.sender === "server" &&
+            message.text === "Please wait until we generate the response...."
+          }
+        />
       ))}
     </div>
   );
 };
-
 export default ChatMessageList;
