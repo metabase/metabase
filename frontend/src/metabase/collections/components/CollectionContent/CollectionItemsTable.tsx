@@ -1,6 +1,6 @@
 /* eslint-disable react/prop-types */
-import cx from "classnames";
 import { type ComponentType, useCallback, useEffect, useState } from "react";
+import DataGrid from 'react-data-grid';
 
 import {
   ALL_MODELS,
@@ -12,9 +12,6 @@ import type {
   DeleteBookmark,
 } from "metabase/collections/types";
 import { isRootTrashCollection } from "metabase/collections/utils";
-import { ItemsTable } from "metabase/components/ItemsTable";
-import { PaginationControls } from "metabase/components/PaginationControls";
-import CS from "metabase/css/core/index.css";
 import Search from "metabase/entities/search";
 import { usePagination } from "metabase/hooks/use-pagination";
 import { useSelector } from "metabase/lib/redux";
@@ -189,40 +186,41 @@ export const CollectionItemsTable = ({
 
         return (
           <CollectionTable data-testid="collection-table">
-            <ItemsTable
-              databases={databases}
-              bookmarks={bookmarks}
-              createBookmark={createBookmark}
-              deleteBookmark={deleteBookmark}
-              items={unpinnedItems}
-              collection={collection}
-              sortingOptions={unpinnedItemsSorting}
-              onSortingOptionsChange={handleUnpinnedItemsSortingChange}
-              selectedItems={selected}
-              hasUnselected={hasUnselected}
-              getIsSelected={getIsSelected}
-              onToggleSelected={toggleItem}
-              onDrop={clear}
-              onMove={handleMove}
-              onCopy={handleCopy}
-              onSelectAll={handleSelectAll}
-              onSelectNone={clear}
-              onClick={onClick}
-              showActionMenu={showActionMenu}
-            />
-            <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}>
-              {hasPagination && (
-                <PaginationControls
-                  showTotal
-                  page={page}
-                  pageSize={pageSize}
-                  total={total ?? undefined}
-                  itemsLength={unpinnedItems.length}
-                  onNextPage={handleNextPage}
-                  onPreviousPage={handlePreviousPage}
-                />
-              )}
-            </div>
+            <DataGrid rows={unpinnedItems} columns={}>
+            {/* <ItemsTable */}
+            {/*   databases={databases} */}
+            {/*   bookmarks={bookmarks} */}
+            {/*   createBookmark={createBookmark} */}
+            {/*   deleteBookmark={deleteBookmark} */}
+            {/*   items={unpinnedItems} */}
+            {/*   collection={collection} */}
+            {/*   sortingOptions={unpinnedItemsSorting} */}
+            {/*   onSortingOptionsChange={handleUnpinnedItemsSortingChange} */}
+            {/*   selectedItems={selected} */}
+            {/*   hasUnselected={hasUnselected} */}
+            {/*   getIsSelected={getIsSelected} */}
+            {/*   onToggleSelected={toggleItem} */}
+            {/*   onDrop={clear} */}
+            {/*   onMove={handleMove} */}
+            {/*   onCopy={handleCopy} */}
+            {/*   onSelectAll={handleSelectAll} */}
+            {/*   onSelectNone={clear} */}
+            {/*   onClick={onClick} */}
+            {/*   showActionMenu={showActionMenu} */}
+            {/* /> */}
+            {/* <div className={cx(CS.flex, CS.justifyEnd, CS.my3)}> */}
+            {/*   {hasPagination && ( */}
+            {/*     <PaginationControls */}
+            {/*       showTotal */}
+            {/*       page={page} */}
+            {/*       pageSize={pageSize} */}
+            {/*       total={total ?? undefined} */}
+            {/*       itemsLength={unpinnedItems.length} */}
+            {/*       onNextPage={handleNextPage} */}
+            {/*       onPreviousPage={handlePreviousPage} */}
+            {/*     /> */}
+            {/*   )} */}
+            {/* </div> */}
           </CollectionTable>
         );
       }}
