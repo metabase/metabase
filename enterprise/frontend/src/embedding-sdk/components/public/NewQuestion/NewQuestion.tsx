@@ -20,7 +20,7 @@ import { useSaveQuestion } from "metabase/query_builder/containers/use-save-ques
 import { Button, Group, Stack, Tabs, Title, Box } from "metabase/ui";
 
 const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
-  const { question } = useInteractiveQuestionContext();
+  const { question, originalQuestion } = useInteractiveQuestionContext();
 
   const handleCreate = useCreateQuestion();
   const handleSave = useSaveQuestion();
@@ -32,7 +32,7 @@ const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
   return (
     <SaveQuestionProvider
       question={question}
-      originalQuestion={null}
+      originalQuestion={originalQuestion ?? null}
       onCreate={handleCreate}
       onSave={handleSave}
       multiStep={false}

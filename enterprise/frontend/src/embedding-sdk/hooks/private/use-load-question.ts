@@ -30,6 +30,7 @@ export interface LoadQuestionHookResult {
   isQueryRunning: boolean;
 
   runQuestion(): Promise<void>;
+
   loadQuestion(): LoadQuestionResult;
 
   updateQuestion(
@@ -102,6 +103,7 @@ export function useLoadQuestion({
     async (nextQuestion: Question, options: { run?: boolean }) => {
       const { run = false } = options ?? {};
 
+      // Is this supposed to be nextQuestion or question?
       if (!question) {
         return;
       }

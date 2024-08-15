@@ -34,19 +34,18 @@ export const Notebook = ({ onApply = () => {} }: NotebookProps) => {
     getSetting(state, "report-timezone-long"),
   );
 
-  const handleUpdateQuestion = async (question: Question) => {
-    const query = question.query();
+  const handleUpdateQuestion = async (nextQuestion: Question) => {
+    const query = nextQuestion.query();
     const sourceTableId = sourceTableOrCardId(query);
     const table = metadata.table(sourceTableId);
     const databaseId = table?.db_id;
 
-    await updateQuestion(
-      question.setDatasetQuery({
-        ...question.datasetQuery(),
-        database: databaseId ?? null,
-      }),
-      { run: false },
-    );
+    const nextQuestionWithDatabaseId = nextQuestion.setDatasetQuery({
+      ...nextQuestion.datasetQuery(),
+      database: databaseId ?? null,
+    });
+
+    await updateQuestion(nextQuestionWithDatabaseId, { run: false });
   };
 
   return (
