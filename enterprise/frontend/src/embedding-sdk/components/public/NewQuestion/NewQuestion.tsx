@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { usePreviousDistinct } from "react-use";
 
 import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
 import {
@@ -9,7 +8,17 @@ import {
 import { SaveQuestionProvider } from "metabase/components/SaveQuestionForm/context";
 import { useCreateQuestion } from "metabase/query_builder/containers/use-create-question";
 import { useSaveQuestion } from "metabase/query_builder/containers/use-save-question";
-import { Button, Group, Stack, Tabs, Title } from "metabase/ui";
+import {
+  Button,
+  Group,
+  Stack,
+  Tabs,
+  Title,
+  Box,
+  Overlay,
+  Paper,
+  Center,
+} from "metabase/ui";
 
 import {
   Notebook,
@@ -63,66 +72,63 @@ const ResetQuestionButton = ({ onClick }: { onClick?: () => void } = {}) => {
 
 const NewQuestionInner = () => {
   const [activeTab, setActiveTab] = useState<
-    "notebook" | "visualization" | "save" | null | (string & unknown)
+    "notebook" | "visualization" | null | (string & unknown)
   >("notebook");
+
+  const [isSaving, setIsSaving] = useState(false);
 
   const { queryResults } = useInteractiveQuestionContext();
 
-  const previousTab = usePreviousDistinct(activeTab);
-
-  const returnToPreviousTab = () => {
-    if (previousTab) {
-      return setActiveTab(previousTab);
-    }
-  };
-
-  const onSaveButtonClick = () => {
-    if (activeTab === "save") {
-      returnToPreviousTab();
-    } else {
-      setActiveTab("save");
-    }
-  };
-
   return (
-    <Tabs
-      value={activeTab}
-      onTabChange={setActiveTab}
-      style={{
-        // we have to use a style tag because Mantine uses inline styles for defining flex direction
-        flexDirection: "column",
-      }}
-      display="flex"
-      h="100%"
-    >
-      <Group w="100%" position="apart">
-        <Tabs.List>
-          <Group>
-            <Tabs.Tab value="notebook">Notebook</Tabs.Tab>
-            {queryResults && (
-              <Tabs.Tab value="visualization">Visualization</Tabs.Tab>
-            )}
-          </Group>
-        </Tabs.List>
-        {activeTab !== "save" && (
-          <Group>
-            <ResetQuestionButton onClick={() => setActiveTab("notebook")} />
-            {/* using a button instead of a tab for styling reasons */}
-            <Button onClick={onSaveButtonClick}>Save</Button>
-          </Group>
-        )}
-      </Group>
+    <Box pos="relative" h="100%" w="100%">
+      <Tabs
+        value={activeTab}
+        onTabChange={setActiveTab}
+        style={{
+          // we have to use a style tag because Mantine uses inline styles for defining flex direction
+          flexDirection: "column",
+        }}
+        display="flex"
+        h="100%"
+      >
+        <Group w="100%" position="apart">
+          <Tabs.List>
+            <Group>
+              <Tabs.Tab value="notebook">Notebook</Tabs.Tab>
+              {queryResults && (
+                <Tabs.Tab value="visualization">Visualization</Tabs.Tab>
+              )}
+            </Group>
+          </Tabs.List>
+          {activeTab !== "save" && (
+            <Group>
+              <ResetQuestionButton onClick={() => setActiveTab("notebook")} />
+              {/* using a button instead of a tab for styling reasons */}
+              <Button onClick={() => setIsSaving(true)}>Save</Button>
+            </Group>
+          )}
+        </Group>
 
-      <Tabs.Panel value="notebook">
-        <Notebook onApply={() => setActiveTab("visualization")} />
-      </Tabs.Panel>
-      <Tabs.Panel value="visualization" style={{ flex: 1 }}>
-        <QuestionVisualization />
-      </Tabs.Panel>
-      <Tabs.Panel value="save">
-        <SaveQuestion onClose={returnToPreviousTab} />
-      </Tabs.Panel>
-    </Tabs>
+        <Tabs.Panel value="notebook">
+          <Notebook onApply={() => setActiveTab("visualization")} />
+        </Tabs.Panel>
+        <Tabs.Panel value="visualization" style={{ flex: 1 }}>
+          <QuestionVisualization />
+        </Tabs.Panel>
+      </Tabs>
+
+      {isSaving && (
+        <Box pos="absolute" top={0} left={0} h="100%" w="100%">
+          <Overlay>
+            <Center h="100%" w="100%">
+              <Paper>
+                <SaveQuestion onClose={() => setIsSaving(false)} />
+              </Paper>
+            </Center>
+          </Overlay>
+        </Box>
+      )}
+    </Box>
   );
 };
 

@@ -1,6 +1,7 @@
 import { IndexRedirect, IndexRoute, Redirect } from "react-router";
 import { t } from "ttag";
 
+import { NewQuestion } from "embedding-sdk";
 import App from "metabase/App.tsx";
 import getAccountRoutes from "metabase/account/routes";
 import CollectionPermissionsModal from "metabase/admin/permissions/components/CollectionPermissionsModal/CollectionPermissionsModal";
@@ -50,6 +51,7 @@ import SegmentRevisionsContainer from "metabase/reference/segments/SegmentRevisi
 import SearchApp from "metabase/search/containers/SearchApp";
 import { Setup } from "metabase/setup/components/Setup";
 import getCollectionTimelineRoutes from "metabase/timelines/collections/routes";
+import { Center } from "metabase/ui";
 
 import { BrowseDatabases } from "./browse/components/BrowseDatabases";
 import { BrowseModels } from "./browse/components/BrowseModels";
@@ -81,6 +83,17 @@ export const getRoutes = store => {
         onChange={(prevState, nextState) => {
           trackPageView(nextState.location.pathname);
         }}
+      />
+
+      <Route
+        path="/playground"
+        component={() => (
+          <Center>
+            <Center w="50vw" h="50vh">
+              <NewQuestion />
+            </Center>
+          </Center>
+        )}
       />
 
       {/* APP */}
