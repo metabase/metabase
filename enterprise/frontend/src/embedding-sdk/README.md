@@ -25,12 +25,12 @@ Features currently supported:
 - theming with CSS variables
 - plugins for custom actions, overriding dashboard card menu items
 - subscribing to events
-- editing dashboards - requires upgrade to the next metabase platform version
-
+- editing dashboards - requires upgrade to metabase v50
+- creating dashboards
+-
 Features not yet supported:
 
 - letting users create new questions from scratch
-- creating dashboards
 
 # Changelog
 
@@ -478,7 +478,7 @@ export default function App() {
 }
 ```
 
-### Editable Dashboard
+### Editing dashboards
 
 Dashboards that support editing if a user has permissions for this, could be embedded using `EditableDashboard` component.
 
@@ -498,6 +498,50 @@ Dashboards that support editing if a user has permissions for this, could be emb
 - **onLoadWithoutCards**: `(dashboard: Dashboard | null) => void;` - event handler that triggers after dashboard loads,
   but without its cards - at this stage dashboard title, tabs and cards grid is rendered, but cards content is not yet
   loaded.
+
+### Creating Dashboards
+
+Creating dashboard could be done with `useDashboardCreate` hook or `DashboardCreateModal` component.
+
+#### Hook
+
+Supported parameters:
+
+- **name**: `string` (required) - dashboard title
+- **description**: `string | null` - optional dashboard description
+- **collectionId**: `number | 'root' | 'personal' | null` - collection where to create a new dashboard. You can use predefined system values like `root` or `personal`.
+
+```typescript jsx
+const { createDashboard } = useDashboardCreate();
+
+const handleDashboardCreate = async () => {
+    const dashboard = await createDashboard(props);
+
+    // do something with created empty dashboard, e.g. use it in EditableDashboard component
+};
+
+return <Button onClick={handleDashboardCreate}>Create new dashboard</Button>
+```
+
+#### Component
+
+Supported props:
+
+- **collectionId?** : `number | 'root' | 'personal' | null` - initial collection field value. You can use predefined system values like `root` or `personal`.
+- **onCreate**: `(dashboard: Dashboard) => void`; - handler to react on dashboard creation.
+- **onClose?**: `() => void`; - handler to close modal component
+
+```typescript jsx
+const [dashboard, setDashboard] = useState<Dashboard | null>(null);
+
+if (dashboard) {
+    return <EditableDashboard dashboardId={dashboard.id} />;
+}
+
+return (
+    <DashboardCreateModal onClose={handleClose} onCreate={setDashboard} />
+);
+```
 
 ### Embedding the collection browser
 
