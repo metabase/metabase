@@ -7,6 +7,8 @@ import "cypress-real-events/support";
 import addContext from "mochawesome/addContext";
 import "./commands";
 
+const isCI = Cypress.env("CI");
+
 Cypress.on("uncaught:exception", (err, runnable) => false);
 
 Cypress.on("test:before:run", () => {
@@ -33,7 +35,8 @@ Cypress.on("test:after:run", (test, runnable) => {
     }
     filename += `${titleToFileName(test.title)} (failed).png`;
 
-    if (Cypress.env("CI")) {
+    if (isCI) {
+      // cypress-terminal-report
       Cypress.Mochawesome.context.forEach(ctx => {
         addContext({ test }, ctx);
       });
@@ -95,7 +98,7 @@ Cypress.on("window:load", window => {
 });
 
 // cypress-terminal-report
-if (Cypress.env("CI")) {
+if (isCI) {
   afterEach(() => {
     cy.wait(50, { log: false }).then(() =>
       cy.addTestContext(Cypress.TerminalReport.getLogs("txt")),
