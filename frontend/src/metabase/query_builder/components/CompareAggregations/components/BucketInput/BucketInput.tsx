@@ -1,9 +1,12 @@
 import { useMemo } from "react";
+import { t } from "ttag";
 
 import { inflect } from "metabase/lib/formatting";
 import { Select } from "metabase/ui";
 import * as Lib from "metabase-lib";
 import type { TemporalUnit } from "metabase-types/api";
+
+import type { ComparisonType } from "../../types";
 
 type Props = {
   query: Lib.Query;
@@ -12,6 +15,7 @@ type Props = {
   offset: number;
   value: TemporalUnit | null;
   onChange: (bucket: TemporalUnit | null) => void;
+  comparisonType: ComparisonType;
 };
 
 export function BucketInput({
@@ -21,13 +25,21 @@ export function BucketInput({
   offset,
   value,
   onChange,
+  comparisonType,
 }: Props) {
   const options = useMemo(
-    () => getOptions(query, stageIndex, offset, column),
-    [query, stageIndex, offset, column],
+    () => getOptions(query, stageIndex, offset, column, comparisonType),
+    [query, stageIndex, offset, column, comparisonType],
   );
 
-  return <Select data={options} value={value} onChange={onChange} />;
+  return (
+    <Select
+      data={options}
+      value={value}
+      onChange={onChange}
+      aria-label={t`Unit`}
+    />
+  );
 }
 
 type SelectItem = {
@@ -40,6 +52,7 @@ function getOptions(
   stageIndex: number,
   offset: number,
   column: Lib.ColumnMetadata,
+  comparisonType: ComparisonType,
 ) {
   const availableBuckets = Lib.availableTemporalBuckets(
     query,
@@ -54,9 +67,14 @@ function getOptions(
         return null;
       }
 
+      const label =
+        comparisonType === "offset"
+          ? inflect(info.displayName, offset)
+          : info.displayName;
+
       return {
         value: info.shortName,
-        label: inflect(info.displayName, offset),
+        label,
       };
     })
     .filter((x): x is SelectItem => x !== null);

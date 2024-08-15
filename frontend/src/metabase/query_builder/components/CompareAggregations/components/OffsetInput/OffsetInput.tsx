@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { t } from "ttag";
 
 import { NumberInput } from "metabase/ui";
 
@@ -36,6 +37,7 @@ export const OffsetInput = ({ value, onChange, comparisonType }: Props) => {
       type="number"
       value={value}
       onChange={handleChange}
+      aria-label={t`Offset`}
     />
   );
 };

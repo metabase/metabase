@@ -180,8 +180,12 @@ export const CompareAggregations = ({
                       column={matchedBreakout.column}
                       value={bucket}
                       onChange={setBucket}
+                      comparisonType={comparisonType}
                     />
-                    <Text c="text-light">{t`ago`}</Text>
+                    <Text c="text-light">
+                      {comparisonType === "offset" && t`ago`}
+                      {comparisonType === "moving-average" && t`moving average`}
+                    </Text>
                   </Flex>
                 )}
               </Stack>
