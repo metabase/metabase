@@ -267,6 +267,90 @@ describeWithSnowplow("scenarios > question > column compare", () => {
   });
 
   describe("offset", () => {
+    it("should be possible to change the temporal bucket through a preset", () => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
+      openNotebook();
+      getNotebookStep("summarize")
+        .findAllByTestId("aggregate-step")
+        .last()
+        .icon("add")
+        .click();
+
+      popover().within(() => {
+        cy.findByText("Basic Metrics").click();
+        cy.findByText("Compare to the past").click();
+
+        cy.findByText("Previous year").click();
+        cy.findByText("Done").click();
+      });
+
+      verifyBreakoutExistsAndIsFirst({
+        column: "Created At",
+        bucket: "Year",
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (previous year)",
+          expression: "Offset(Count, -1)",
+        },
+        {
+          name: "Count (% vs previous year)",
+          expression: "Count / Offset(Count, -1) - 1",
+        },
+      ]);
+    });
+
+    it("should be possible to change the temporal bucket with a custom offset", () => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
+      openNotebook();
+      getNotebookStep("summarize")
+        .findAllByTestId("aggregate-step")
+        .last()
+        .icon("add")
+        .click();
+
+      popover().within(() => {
+        cy.findByText("Basic Metrics").click();
+        cy.findByText("Compare to the past").click();
+
+        cy.findByText("Custom...").click();
+
+        cy.findByLabelText("Offset").clear().type("2");
+        cy.findByLabelText("Unit").click();
+      });
+
+      popover().last().findByText("Weeks").click();
+
+      popover().within(() => {
+        cy.findByText("Done").click();
+      });
+
+      verifyBreakoutExistsAndIsFirst({
+        column: "Created At",
+        bucket: "Week",
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (2 weeks ago)",
+          expression: "Offset(Count, -2)",
+        },
+        {
+          name: "Count (% vs 2 weeks ago)",
+          expression: "Count / Offset(Count, -2) - 1",
+        },
+      ]);
+    });
+
     describe("single aggregation", () => {
       it("no breakout", () => {
         createQuestion(
@@ -910,6 +994,54 @@ describeWithSnowplow("scenarios > question > column compare", () => {
   });
 
   describe("moving average", () => {
+    it("should be possible to change the temporal bucket with a custom offset", () => {
+      createQuestion(
+        { query: QUERY_SINGLE_AGGREGATION_NO_BREAKOUT },
+        { visitQuestion: true, wrapId: true, idAlias: "questionId" },
+      );
+
+      openNotebook();
+      getNotebookStep("summarize")
+        .findAllByTestId("aggregate-step")
+        .last()
+        .icon("add")
+        .click();
+
+      popover().within(() => {
+        cy.findByText("Basic Metrics").click();
+        cy.findByText("Compare to the past").click();
+
+        cy.findByText("Moving average").click();
+
+        cy.findByLabelText("Offset").clear().type("3");
+        cy.findByLabelText("Unit").click();
+      });
+
+      popover().last().findByText("Week").click();
+
+      popover().within(() => {
+        cy.findByText("Done").click();
+      });
+
+      verifyBreakoutExistsAndIsFirst({
+        column: "Created At",
+        bucket: "Week",
+      });
+
+      verifyAggregations([
+        {
+          name: "Count (3-week moving average)",
+          expression:
+            "(Offset(Count, -1) + Offset(Count, -2) + Offset(Count, -3)) / 3",
+        },
+        {
+          name: "Count (% vs 3-week moving average)",
+          expression:
+            "Count / ((Offset(Count, -1) + Offset(Count, -2) + Offset(Count, -3)) / 3)",
+        },
+      ]);
+    });
+
     describe("single aggregation", () => {
       it("no breakout", () => {
         createQuestion(
