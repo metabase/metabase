@@ -156,7 +156,7 @@ describe("scenarios > question > download", () => {
       });
 
       // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
-      assertOrdersExport(18760, false);
+      assertOrdersExport(18760);
 
       editDashboard();
 
@@ -181,7 +181,7 @@ describe("scenarios > question > download", () => {
       });
 
       // In CI agents after downloads Cypress gets stuck for a while so the downloads status gets closed by timeout
-      assertOrdersExport(1, false);
+      assertOrdersExport(1);
     });
 
     it("should allow downloading parameterized cards opened from dashboards as a user with no self-service permission (metabase#20868)", () => {
@@ -393,7 +393,7 @@ describeWithSnowplow("[snowplow] scenarios > dashboard", () => {
   });
 });
 
-function assertOrdersExport(length, dismissStatus = true) {
+function assertOrdersExport(length) {
   downloadAndAssert(
     {
       fileType: "xlsx",
@@ -401,7 +401,6 @@ function assertOrdersExport(length, dismissStatus = true) {
       dashcardId: ORDERS_DASHBOARD_DASHCARD_ID,
       dashboardId: ORDERS_DASHBOARD_ID,
       isDashboard: true,
-      dismissStatus,
     },
     sheet => {
       expect(sheet["A1"].v).to.eq("ID");

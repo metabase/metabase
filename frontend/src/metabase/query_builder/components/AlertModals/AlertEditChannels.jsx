@@ -8,7 +8,7 @@ import _ from "underscore";
 import CS from "metabase/css/core/index.css";
 import Users from "metabase/entities/users";
 import { fetchPulseFormInput } from "metabase/pulse/actions";
-import PulseEditChannels from "metabase/pulse/components/PulseEditChannels";
+import { PulseEditChannels } from "metabase/pulse/components/PulseEditChannels";
 import { getPulseFormInput } from "metabase/pulse/selectors";
 import { getUser } from "metabase/selectors/user";
 
@@ -44,12 +44,10 @@ class AlertEditChannelsInner extends Component {
           <PulseEditChannels
             pulse={alert}
             pulseId={alert.id}
-            pulseIsValid={true}
             formInput={formInput}
             user={user}
             users={users}
             setPulse={this.onSetPulse}
-            hideSchedulePicker={true}
             emailRecipientText={t`Email alerts to:`}
             invalidRecipientText={domains =>
               t`You're only allowed to email alerts to addresses ending in ${domains}`

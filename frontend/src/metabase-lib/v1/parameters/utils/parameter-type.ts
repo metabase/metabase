@@ -9,7 +9,7 @@ export function getParameterType(parameter: Parameter | string) {
     : parameter.sectionId || splitType(parameter)[0];
 }
 
-export function getParameterSubType(parameter: Parameter) {
+export function getParameterSubType(parameter: Parameter | string) {
   const [, subtype] = splitType(parameter);
   return subtype;
 }

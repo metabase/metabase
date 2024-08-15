@@ -19,6 +19,7 @@
                             :model/Card       {card-2 :id}   {:name "B" :collection_id coll-2}
                             :model/Card       {card-3 :id}   {:name "C" :collection_id coll-3}
                             :model/Card       {card-4 :id}   {:name "D"}
+                            :model/Card       {card-5 :id}   {:name "E"}
                             :model/Field      {field-1 :id}  {:active   false
                                                               :name     "FA"
                                                               :table_id table-1}
@@ -29,6 +30,7 @@
                             :model/QueryAnalysis {qa-1 :id}  {:card_id card-1}
                             :model/QueryAnalysis {qa-2 :id}  {:card_id card-2}
                             :model/QueryAnalysis {qa-3 :id}  {:card_id card-3}
+                            :model/QueryAnalysis {qa-5 :id}  {:card_id card-5}
 
                             ;; QTs not to include:
                             ;; - Table is still active
@@ -49,6 +51,10 @@
                                                                :analysis_id qa-3
                                                                :table       "T3"
                                                                :table_id    nil}
+                            :model/QueryTable {}              {:card_id     card-5
+                                                               :analysis_id qa-5
+                                                               :table       "T5"
+                                                               :table_id    nil}
 
                             ;; QFs not to include:
                             ;; - Field is still active
@@ -66,6 +72,7 @@
                                                               :table_id           table-1
                                                               :field_id           field-1
                                                               :explicit_reference false}
+
                             ;; - No resolved table, probably an imaginary column due to Macaw bugs
                             :model/QueryField {}             {:card_id            card-3
                                                               :analysis_id        qa-3
@@ -108,7 +115,7 @@
                                                               :field_id    nil}]
      (mt/with-premium-features #{:query-reference-validation}
        (mt/with-temporary-setting-values [query-analysis-enabled true]
-         (mt/call-with-map-params f [card-1 card-2 card-3 card-4 coll-2 coll-3]))))))
+         (mt/call-with-map-params f [card-1 card-2 card-3 card-4 card-5 coll-2 coll-3]))))))
 
 (defmacro ^:private with-test-setup
   "Creates some non-stale QueryFields and anaphorically provides stale QueryField IDs called `qf-{1-3}` and `qf-1b` and
@@ -118,7 +125,7 @@
   `card-4` is guaranteed not to have problems"
   [& body]
   `(do-with-test-setup
-    (mt/with-anaphora [card-1 card-2 card-3 card-4 coll-2 coll-3]
+    (mt/with-anaphora [card-1 card-2 card-3 card-4 card-5 coll-2 coll-3]
       ~@body)))
 
 (def ^:private url "ee/query-reference-validation/invalid-cards")
@@ -148,7 +155,12 @@
                             :effective_ancestors [{:id "root" :name "Our analytics" :authority_level nil}
                                                   {:id coll-2
                                                    :name (t2/select-one-fn :name :model/Collection :id coll-2)
-                                                   :type nil}]}}]
+                                                   :type nil}]}}
+              {:collection {:id nil
+                            :name nil
+                            :authority_level nil
+                            :type nil
+                            :effective_ancestors []}}]
              (map #(select-keys % [:collection]) (:data (get!))))))))
 
 (deftest premium-feature-test
@@ -171,7 +183,7 @@
 (deftest list-invalid-cards-basic-test
   (testing "Only returns cards with problematic field refs"
     (with-test-setup
-      (is (= {:total 3
+      (is (= {:total 4
               :data
               [{:id     card-1
                 :name   "A"
@@ -182,7 +194,10 @@
                 :errors [{:type "inactive-table", :table "T2"}]}
                {:id     card-3
                 :name   "C"
-                :errors [{:type "unknown-table", :table "T3"}]}]}
+                :errors [{:type "unknown-table", :table "T3"}]}
+               {:id     card-5
+                :name   "E"
+                :errors [{:type "unknown-table", :table "T5"}]}]}
                (-> (get!)
                    (select-keys [:data :total])
                    (update :data (fn [data] (map #(select-keys % [:id :name :errors]) data)))))))))
@@ -190,7 +205,7 @@
 (deftest pagination-test
   (testing "Lets you page results"
     (with-test-setup
-      (is (= {:total  3
+      (is (= {:total  4
               :limit  2
               :offset 0
               :data
@@ -204,44 +219,51 @@
                (-> (get! {:limit 2})
                    (select-keys [:total :limit :offset :data])
                    (with-data-keys [:id :name :errors]))))
-      (is (= {:total  3
-              :limit  1
+      (is (= {:total  4
+              :limit  3
               :offset 2
               :data
               [{:id     card-3
                 :name   "C"
-                :errors [{:type "unknown-table", :table "T3"}]}]}
-             (-> (get! {:limit 1 :offset 2})
+                :errors [{:type "unknown-table", :table "T3"}]}
+               {:id    card-5
+                :name "E"
+                :errors [{:type "unknown-table", :table "T5"}]}]}
+             (-> (get! {:limit 3 :offset 2})
                  (select-keys [:total :limit :offset :data])
                  (with-data-keys [:id :name :errors])))))))
 
 (deftest sorting-test
   (testing "Lets you specify the sort key"
     (with-test-setup
-      (is (= {:total 3
+      (is (= {:total 4
               :data
               [{:id card-3}
                {:id card-2}
-               {:id card-1}]}
+               {:id card-1}
+               {:id card-5}]}
              (-> (get! {:sort_column "collection" :sort_direction "desc"})
                  (select-keys [:total :data])
                  (with-data-keys [:id]))))
-      (is (= {:total 3
+      (is (= {:total 4
               :data
               [{:id card-1}
                {:id card-2}
-               {:id card-3}]}
+               {:id card-3}
+               {:id card-5}]}
              (-> (get! {:sort_column "last_edited_at" :sort_direction "asc"})
                  (select-keys [:total :data])
                  (with-data-keys [:id]))))
-      (is (= {:total 3
+      (is (= {:total 4
               :data
-              [{:id card-3}
+              [{:id card-5}
+               {:id card-3}
                {:id card-2}
                {:id card-1}]}
              (-> (get! {:sort_column "last_edited_at" :sort_direction "desc"})
                  (select-keys [:total :data])
                  (with-data-keys [:id]))))))
+
   (testing "Rejects bad keys"
     (with-test-setup
       (is (str/starts-with? (:sort_column
@@ -268,11 +290,12 @@
                    (select-keys [:total :data])
                    (with-data-keys [:id])))))
       (testing "we can look in the root coll (which recursively contains coll-2 and coll-3)"
-        (is (= {:total 3
+        (is (= {:total 4
                 :data
                 [{:id card-1}
                  {:id card-2}
-                 {:id card-3}]}
+                 {:id card-3}
+                 {:id card-5}]}
                (-> (get! {})
                    (select-keys [:total :data])
                    (with-data-keys [:id]))))))))

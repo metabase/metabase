@@ -2,7 +2,7 @@ import { useInteractiveQuestionContext } from "embedding-sdk/components/public/I
 import { QuestionFiltersHeader } from "metabase/query_builder/components/view/ViewHeader/components";
 
 export const FilterBar = () => {
-  const { question, onQuestionChange } = useInteractiveQuestionContext();
+  const { question, updateQuestion } = useInteractiveQuestionContext();
 
   const shouldRender =
     question &&
@@ -22,7 +22,7 @@ export const FilterBar = () => {
     <QuestionFiltersHeader
       expanded
       question={question}
-      updateQuestion={onQuestionChange}
+      updateQuestion={updateQuestion}
     />
   );
 };

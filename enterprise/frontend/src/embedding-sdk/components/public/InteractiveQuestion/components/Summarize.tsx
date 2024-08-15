@@ -28,10 +28,10 @@ const SummarizeInner = ({
 }: {
   question: Question;
 } & SummarizeProps) => {
-  const { onQuestionChange } = useInteractiveQuestionContext();
+  const { updateQuestion } = useInteractiveQuestionContext();
 
   const onQueryChange = (query: Lib.Query) =>
-    onQuestionChange(question.setQuery(query));
+    updateQuestion(question.setQuery(query));
 
   // save initial question in case we close without making changes
   const initialQuestion = useRef(question.query());
@@ -56,12 +56,10 @@ const SummarizeInner = ({
     query,
     stageIndex,
     aggregations,
-    handleAddAggregations,
     handleAddBreakout,
-    handleRemoveAggregation,
+    handleQueryChange,
     handleRemoveBreakout,
     handleReplaceBreakouts,
-    handleUpdateAggregation,
     handleUpdateBreakout,
     hasAggregations,
   } = useSummarizeQuery({
@@ -76,9 +74,7 @@ const SummarizeInner = ({
           query={query}
           stageIndex={stageIndex}
           aggregations={aggregations}
-          onAddAggregations={handleAddAggregations}
-          onUpdateAggregation={handleUpdateAggregation}
-          onRemoveAggregation={handleRemoveAggregation}
+          onQueryChange={handleQueryChange}
         />
         <Divider my="lg" />
         {hasAggregations && (

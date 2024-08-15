@@ -245,40 +245,44 @@ describe("scenarios > question > saved", () => {
     });
   });
 
-  it("'read-only' user should be able to resize column width (metabase#9772)", () => {
-    cy.signIn("readonly");
-    visitQuestion(ORDERS_QUESTION_ID);
+  it(
+    "'read-only' user should be able to resize column width (metabase#9772)",
+    { tags: "@flaky" },
+    () => {
+      cy.signIn("readonly");
+      visitQuestion(ORDERS_QUESTION_ID);
 
-    // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
-    cy.findByText("Tax")
-      .closest(".test-TableInteractive-headerCellData")
-      .as("headerCell")
-      .then($cell => {
-        const originalWidth = $cell[0].getBoundingClientRect().width;
+      // eslint-disable-next-line no-unscoped-text-selectors -- deprecated usage
+      cy.findByText("Tax")
+        .closest(".test-TableInteractive-headerCellData")
+        .as("headerCell")
+        .then($cell => {
+          const originalWidth = $cell[0].getBoundingClientRect().width;
 
-        // Retries the assertion a few times to ensure it waits for DOM changes
-        // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
-        function assertColumnResized(attempt = 0) {
-          cy.get("@headerCell").then($newCell => {
-            const newWidth = $newCell[0].getBoundingClientRect().width;
-            if (newWidth === originalWidth && attempt < 3) {
-              cy.wait(100);
-              assertColumnResized(++attempt);
-            } else {
-              expect(newWidth).to.be.gt(originalWidth);
-            }
-          });
-        }
+          // Retries the assertion a few times to ensure it waits for DOM changes
+          // More context: https://github.com/metabase/metabase/pull/21823#discussion_r855302036
+          function assertColumnResized(attempt = 0) {
+            cy.get("@headerCell").then($newCell => {
+              const newWidth = $newCell[0].getBoundingClientRect().width;
+              if (newWidth === originalWidth && attempt < 3) {
+                cy.wait(100);
+                assertColumnResized(++attempt);
+              } else {
+                expect(newWidth).to.be.gt(originalWidth);
+              }
+            });
+          }
 
-        cy.wrap($cell)
-          .find(".react-draggable")
-          .trigger("mousedown", 0, 0, { force: true })
-          .trigger("mousemove", 100, 0, { force: true })
-          .trigger("mouseup", 100, 0, { force: true });
+          cy.wrap($cell)
+            .find(".react-draggable")
+            .trigger("mousedown", 0, 0, { force: true })
+            .trigger("mousemove", 100, 0, { force: true })
+            .trigger("mouseup", 100, 0, { force: true });
 
-        assertColumnResized();
-      });
-  });
+          assertColumnResized();
+        });
+    },
+  );
 
   it("should always be possible to view the full title text of the saved question", () => {
     visitQuestion(ORDERS_QUESTION_ID);
