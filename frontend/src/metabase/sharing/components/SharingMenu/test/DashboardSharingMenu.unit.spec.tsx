@@ -1,6 +1,10 @@
 import userEvent from "@testing-library/user-event";
 
 import { screen } from "__support__/ui";
+import {
+  createMockCard,
+  createMockDashboardCard,
+} from "metabase-types/api/mocks";
 
 import { setupDashboardSharingMenu, openMenu } from "./setup";
 
@@ -54,6 +58,21 @@ describe("DashboardSharingMenu", () => {
           "Sidebar: sharing",
         );
       });
+
+      it("should not show the subscriptions menu item if there are no data cards", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: true,
+          dashboard: {
+            dashcards: [
+              createMockDashboardCard({
+                card: createMockCard({ display: "text" }),
+              }),
+            ],
+          },
+        });
+        await openMenu();
+        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
+      });
     });
 
     describe("non-admins", () => {
@@ -77,6 +96,21 @@ describe("DashboardSharingMenu", () => {
         expect(
           await screen.findByText("Can't send subscriptions"),
         ).toBeInTheDocument();
+      });
+
+      it("should not show the subscriptions menu item if there are no data cards", async () => {
+        setupDashboardSharingMenu({
+          isAdmin: false,
+          dashboard: {
+            dashcards: [
+              createMockDashboardCard({
+                card: createMockCard({ display: "heading" }),
+              }),
+            ],
+          },
+        });
+        await openMenu();
+        expect(screen.queryByText("Subscriptions")).not.toBeInTheDocument();
       });
     });
   });

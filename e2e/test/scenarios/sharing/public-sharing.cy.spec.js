@@ -311,8 +311,10 @@ describeEE(
       visitQuestion(ORDERS_QUESTION_ID);
 
       openSharingMenu("Create alert");
+      modal().findByText("Set up an alert").click();
 
-      cy.findByRole("heading", { name: "Email" })
+      modal()
+        .findByRole("heading", { name: "Email" })
         .closest("li")
         .within(() => {
           addEmailRecipient(deniedEmail);

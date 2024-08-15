@@ -41,12 +41,13 @@ export function DashboardSharingMenu({ dashboard }: { dashboard: Dashboard }) {
     return null;
   }
 
-  // TODO: prompt admins to setup notification channels
-
   return (
     <Flex>
       <SharingMenu>
-        <DashboardSubscriptionMenuItem onClick={toggleSubscriptionSidebar} />
+        <DashboardSubscriptionMenuItem
+          onClick={toggleSubscriptionSidebar}
+          dashboard={dashboard}
+        />
         <ExportPdfMenuItem dashboard={dashboard} />
         {!!canShare && (
           <>

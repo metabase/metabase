@@ -718,7 +718,7 @@ describe("scenarios > visualizations > pivot tables", { tags: "@slow" }, () => {
         it("should display pivot table in an embed URL", () => {
           cy.findByTestId("pivot-table").should("be.visible");
           if (test.case === "question") {
-            openSharingMenu("Create a public link");
+            openSharingMenu();
             modal().within(() => {
               cy.findByText("Save").click();
             });

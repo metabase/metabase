@@ -10,6 +10,25 @@ import {
 } from "e2e/support/cypress_sample_instance_data";
 import {
   addOrUpdateDashboardCard,
+  openQuestionsSidebar,
+  describeWithSnowplow,
+  expectNoBadSnowplowEvents,
+  resetSnowplow,
+  enableTracking,
+  expectGoodSnowplowEvent,
+  closeNavigationSidebar,
+  saveDashboard,
+  queryBuilderHeader,
+  removeDashboardCard,
+  getDashboardCards,
+  getDashboardCard,
+  toggleDashboardInfoSidebar,
+  dashboardHeader,
+  openProductsTable,
+  updateDashboardCards,
+  getTextCardDetails,
+  openDashboardMenu,
+  openSharingMenu,
   appBar,
   assertDashboardFixedWidth,
   assertDashboardFullWidth,
@@ -929,7 +948,7 @@ describe("scenarios > dashboard", () => {
     cy.contains("37.65");
     assertScrollBarExists();
 
-    openEmbedModalFromMenu();
+    openSharingMenu("Embed");
 
     modal().within(() => {
       cy.icon("close").click();

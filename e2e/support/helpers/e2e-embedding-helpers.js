@@ -140,10 +140,6 @@ export function getEmbedModalSharingPane() {
   return cy.findByTestId("sharing-pane-container");
 }
 
-export function openEmbedModalFromMenu() {
-  openSharingMenu("Embed");
-}
-
 /**
  * Open Static Embedding setup modal
  * @param {object} params
@@ -157,7 +153,7 @@ export function openStaticEmbeddingModal({
   acceptTerms = true,
   confirmSave,
 } = {}) {
-  openEmbedModalFromMenu();
+  openSharingMenu("Embed");
 
   if (confirmSave) {
     cy.findByRole("button", { name: "Save" }).click();

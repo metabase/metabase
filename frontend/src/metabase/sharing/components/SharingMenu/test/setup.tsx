@@ -20,6 +20,7 @@ import type {
 import {
   createMockCard,
   createMockDashboard,
+  createMockDashboardCard,
   createMockSettings,
   createMockTokenFeatures,
   createMockUser,
@@ -117,6 +118,11 @@ export function setupDashboardSharingMenu({
   const dashboard = createMockDashboard({
     name: "My Cool Dashboard",
     public_uuid: hasPublicLink && isPublicSharingEnabled ? "1337bad801" : null,
+    dashcards: [
+      createMockDashboardCard({
+        card: createMockCard({ display: "pie" }),
+      }),
+    ],
     ...dashboardOverrides,
   });
 

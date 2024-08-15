@@ -9,11 +9,15 @@ import {
 import {
   chartPathWithFillColor,
   clickSend,
+  openNewPublicLinkDropdown,
+  setFilter,
   createQuestion,
   createQuestionAndDashboard,
   dashboardHeader,
   describeEE,
+  chartPathWithFillColor,
   editDashboard,
+  openSharingMenu,
   filterWidget,
   getDashboardCard,
   getFullName,
@@ -67,7 +71,7 @@ describe("issue 18009", { tags: "@external" }, () => {
   it("nodata user should be able to create and receive an email subscription without errors (metabase#18009)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    cy.findByLabelText("subscriptions").click();
+    openSharingMenu("Subscriptions");
 
     sidebar()
       .findByPlaceholderText("Enter user names or email addresses")
@@ -731,7 +735,7 @@ describe("issue 30314", () => {
   it("should clean the new subscription form on cancel (metabase#30314)", () => {
     visitDashboard(ORDERS_DASHBOARD_ID);
 
-    dashboardHeader().findByLabelText("subscriptions").click();
+    openSharingMenu("Subscriptions");
     sidebar().within(() => {
       cy.findByText("Email it").click();
 
@@ -971,7 +975,7 @@ describe("issue 17547", () => {
   });
 
   it("editing an alert should not delete it (metabase#17547)", () => {
-    openSharingMenu("Create alert");
+    openSharingMenu("Edit alerts");
     popover().within(() => {
       cy.findByText("Daily, 12:00 PM");
       cy.findByText("Edit").click();
