@@ -311,7 +311,7 @@ const config = {
       MB_LOG_ANALYTICS: "false",
       REACT_APP_WEBSOCKET_SERVER:
         process.env.REACT_APP_WEBSOCKET_SERVER || "wss://dev.chat.omniloy.com",
-      REACT_APP_DB_CONFIG: process.env.REACT_APP_DB_CONFIG || 8,
+      REACT_APP_DB_CONFIG: process.env.REACT_APP_DB_CONFIG || 2,
       REACT_APP_SEMANTIC:
         process.env.REACT_APP_SEMANTIC || "https://dev.semantic.omniloy.com",
     }),

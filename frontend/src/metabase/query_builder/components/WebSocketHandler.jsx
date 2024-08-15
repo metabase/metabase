@@ -148,7 +148,7 @@ const WebSocketHandler = () => {
             ws.send(
                 JSON.stringify({
                     type: "configure",
-                    configData: [dbInputValue || 1],
+                    configData: [dbInputValue || 2],
                 }),
             );
         }
