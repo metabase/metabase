@@ -1,6 +1,7 @@
 (ns metabase.models.user-parameter-value
   (:require
    [cheshire.core :as json]
+   [clojure.string :as str]
    [metabase.api.common :as api]
    [metabase.db :as mdb]
    [metabase.models.interface :as mi]
@@ -44,16 +45,18 @@
       :mysql
       (t2/query {:insert-into             :user_parameter_value
                  :values                  rows
-                 ;:on-conflict             ;[:user_id :dashboard_id :parameter_id]
                  :on-duplicate-key-update {:value [:values :value]}})
 
       :h2 ;; sorry h2
-      (doseq [{:keys [user_id dashboard_id parameter_id value] :as row} rows]
-        (or (pos? (t2/update! :model/UserParameterValue {:user_id      user_id
-                                                         :dashboard_id dashboard_id
-                                                         :parameter_id parameter_id}
-                              {:value value}))
-            (t2/insert! :model/UserParameterValue row))))))
+      (t2/query (cons (format
+                       "MERGE INTO user_parameter_value AS target
+                       USING (VALUES %s) AS source(user_id, dashboard_id, parameter_id, `value`)
+                       ON target.user_id = source.user_id AND target.dashboard_id = source.dashboard_id AND target.parameter_id = source.parameter_id
+                       WHEN MATCHED THEN UPDATE SET `value` = source.`value`
+                       WHEN NOT MATCHED THEN INSERT (user_id, dashboard_id, parameter_id, `value`)
+                       VALUES (source.user_id, source.dashboard_id, source.parameter_id, source.`value`);"
+                       (str/join ", " (repeatedly (count rows) (constantly "(?, ?, ?, ?)"))))
+                      (mapcat (juxt :user_id :dashboard_id :parameter_id :value ) rows))))))
 
 (mu/defn batched-upsert!
   "Delete param with nil value and upsert the rest."
@@ -66,19 +69,18 @@
         to-delete      (filter to-delete-pred parameters)
         to-upsert      (filter (complement to-delete-pred) parameters)]
     (when (or (seq to-upsert) (seq to-delete))
-      (t2/with-transaction [_conn]
-        (when (seq to-upsert)
-          (batched-upsert!* (map (fn [{:keys [id value]}]
-                                   {:user_id      user-id
-                                    :dashboard_id dashboard-id
-                                    :parameter_id id
-                                    :value        value})
-                                 to-upsert)))
-        (when (seq to-delete)
-          (t2/delete! :model/UserParameterValue
-                      :user_id user-id
-                      :dashboard_id dashboard-id
-                      :parameter_id [:in (map :id to-delete)]))))))
+      (when (seq to-upsert)
+        (batched-upsert!* (map (fn [{:keys [id value]}]
+                                 {:user_id      user-id
+                                  :dashboard_id dashboard-id
+                                  :parameter_id id
+                                  :value        value})
+                               to-upsert)))
+      (when (seq to-delete)
+        (t2/delete! :model/UserParameterValue
+                    :user_id user-id
+                    :dashboard_id dashboard-id
+                    :parameter_id [:in (map :id to-delete)])))))
 
 ;; hydration
 
