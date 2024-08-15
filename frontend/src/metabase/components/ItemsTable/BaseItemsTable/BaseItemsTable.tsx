@@ -1,5 +1,6 @@
+import { AgGridReact } from 'ag-grid-react'; // React Data Grid Component
 import type { HTMLAttributes, PropsWithChildren } from "react";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import type {
   CreateBookmark,
@@ -28,6 +29,9 @@ import {
 } from "../BaseItemsTable.styled";
 import { Columns } from "../Columns";
 import type { ResponsiveProps } from "../utils";
+
+import "ag-grid-community/styles/ag-grid.css"; // Mandatory CSS required by the Data Grid
+import "ag-grid-community/styles/ag-theme-quartz.css"; // Optional Theme applied to the Data Grid
 
 export type SortableColumnHeaderProps = {
   name?: SortColumn;
@@ -153,7 +157,7 @@ export const BaseItemsTable = ({
     collection?.can_write && typeof onToggleSelected === "function";
   const isTrashed = !!collection && isTrashedCollection(collection);
 
-  return (
+return (
     <Table isInDragLayer={isInDragLayer} {...props}>
       {includeColGroup && (
         <colgroup>

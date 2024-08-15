@@ -93,7 +93,8 @@
                                  (when config/is-dev?
                                    "http://localhost:9630")
                                  "https://accounts.google.com"]
-                  :font-src     ["*"]
+                  :font-src     ["*"
+                                 "'self' data:"]
                   :img-src      ["*"
                                  "'self' data:"]
                   :connect-src  ["'self'"

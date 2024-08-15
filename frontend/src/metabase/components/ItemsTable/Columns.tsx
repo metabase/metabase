@@ -15,6 +15,7 @@ import { getFullName } from "metabase/lib/user";
 import { PLUGIN_MODERATION } from "metabase/plugins";
 import { getIsEmbeddingSdk } from "metabase/selectors/embed";
 import type { IconProps } from "metabase/ui";
+import { getUrl } from "metabase-lib/v1/urls";
 import type { CollectionItem, SearchResult } from "metabase-types/api";
 
 import type { SortableColumnHeaderProps } from "./BaseItemsTable";
@@ -49,7 +50,7 @@ const ItemLinkComponent = ({
     return <ItemButton onClick={() => onClick?.(item)}>{children}</ItemButton>;
   }
   return (
-    <ItemLink to={item.getUrl()} onClick={() => onClick?.(item)}>
+    <ItemLink to={"FIXME"} onClick={() => onClick?.(item)}>
       {children}
     </ItemLink>
   );
@@ -161,7 +162,6 @@ export const Columns = {
       onClick?: (item: CollectionItem) => void;
     }) => {
       return (
-        <ItemNameCell data-testid={`${testIdPrefix}-name`}>
           <ItemLinkComponent onClick={onClick} item={item}>
             <EntityItem.Name name={item.name} variant="list" />
             <PLUGIN_MODERATION.ModerationStatusIcon
@@ -180,7 +180,6 @@ export const Columns = {
               />
             )}
           </ItemLinkComponent>
-        </ItemNameCell>
       );
     },
   },
@@ -327,7 +326,7 @@ export const Columns = {
   },
 };
 
-const getLastEditedBy = (lastEditInfo?: Edit) => {
+export const getLastEditedBy = (lastEditInfo?: Edit) => {
   if (!lastEditInfo) {
     return "";
   }
