@@ -1,3 +1,5 @@
+import _ from "underscore";
+
 import { SAMPLE_DB_ID } from "e2e/support/cypress_data";
 import { SAMPLE_DATABASE } from "e2e/support/cypress_sample_database";
 import {
@@ -246,29 +248,17 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on grouping",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
 
-      verifyColumnDrillText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on grouping",
-      });
-
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on grouping",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on grouping",
-      });
+      verifySummarizeText(info);
+      verifyColumnDrillText(info);
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -309,32 +299,21 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
+
+      verifySummarizeText(info);
 
       tableHeaderClick("Created At: Month");
       verifyNoColumnCompareShortcut();
 
-      verifyColumnDrillText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
-
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
+      verifyColumnDrillText(info);
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -377,32 +356,21 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on “Created At”",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
+
+      verifySummarizeText(info);
 
       tableHeaderClick("Created At: Day");
       verifyNoColumnCompareShortcut();
 
-      verifyColumnDrillText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on “Created At”",
-      });
-
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on “Created At”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on “Created At”",
-      });
+      verifyColumnDrillText(info);
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -444,26 +412,20 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
+
+      verifySummarizeText(info);
 
       tableHeaderClick("Category");
       verifyNoColumnCompareShortcut();
 
-      verifyColumnDrillText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
-
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
+      verifyColumnDrillText(info);
+      verifyPlusButtonText(info);
 
       openNotebook();
 
@@ -474,11 +436,7 @@ describeWithSnowplow("scenarios > question > column compare", () => {
       cy.button("Show Visualization").click();
       queryBuilderMain().findByText("42").should("be.visible");
 
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -525,23 +483,16 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
 
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
+      verifySummarizeText(info);
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -586,23 +537,16 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
 
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
+      verifySummarizeText(info);
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -648,32 +592,21 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
+
+      verifySummarizeText(info);
 
       tableHeaderClick("Count");
       verifyNoColumnCompareShortcut();
 
-      verifyColumnDrillText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
-
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
+      verifyColumnDrillText(info);
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -723,32 +656,18 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step1Title: "Compare one of these to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on grouping",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
 
-      verifyColumnDrillText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on grouping",
-      });
-
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step1Title: "Compare one of these to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on grouping",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step1Title: "Compare one of these to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on grouping",
-      });
+      verifySummarizeText(info);
+      verifyColumnDrillText(info);
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -785,35 +704,22 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step1Title: "Compare one of these to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
+
+      verifySummarizeText(info);
 
       tableHeaderClick("Created At: Month");
       verifyNoColumnCompareShortcut();
 
-      verifyColumnDrillText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
-
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step1Title: "Compare one of these to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step1Title: "Compare one of these to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "months ago based on “Created At”",
-      });
+      verifyColumnDrillText(_.omit(info, "step1Title"));
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -855,35 +761,22 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step1Title: "Compare one of these to the past",
         step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on “Created At”",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
+
+      verifySummarizeText(info);
 
       tableHeaderClick("Created At: Day");
       verifyNoColumnCompareShortcut();
 
-      verifyColumnDrillText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on “Created At”",
-      });
-
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step1Title: "Compare one of these to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on “Created At”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step1Title: "Compare one of these to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "periods ago based on “Created At”",
-      });
+      verifyColumnDrillText(_.omit(info, "step1Title"));
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -925,35 +818,22 @@ describeWithSnowplow("scenarios > question > column compare", () => {
         { visitQuestion: true, wrapId: true, idAlias: "questionId" },
       );
 
-      verifySummarizeText({
+      const info = {
         itemName: "Compare to the past",
         step2Title: "Compare “Count” to the past",
         step1Title: "Compare one of these to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
+        presets: ["Previous month", "Previous year"],
+        offsetHelp: "ago",
+      };
+
+      verifySummarizeText(info);
 
       tableHeaderClick("Category");
       verifyNoColumnCompareShortcut();
 
-      verifyColumnDrillText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
-
-      verifyPlusButtonText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        step1Title: "Compare one of these to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
-
-      verifyNotebookText({
-        itemName: "Compare to the past",
-        step2Title: "Compare “Count” to the past",
-        step1Title: "Compare one of these to the past",
-        offsetHelp: "rows above based on “Category”",
-      });
+      verifyColumnDrillText(_.omit(info, "step1Title"));
+      verifyPlusButtonText(info);
+      verifyNotebookText(info);
 
       toggleColumnPickerItems(["Value difference"]);
       popover().button("Done").click();
@@ -1012,7 +892,21 @@ type CheckTextOpts = {
   step1Title?: string;
   step2Title: string;
   offsetHelp: string;
+  presets?: string[];
 };
+
+function verifyPresets(presets: string[] = []) {
+  for (const preset of presets) {
+    cy.findByText(preset).should("be.visible");
+  }
+}
+
+function selectCustomOffset() {
+  // This is broken up because the dashboard sometimes rerenders while clicking
+  // Cypress recommends this as a workaround for flakyness.
+  cy.findByText("Custom...").as("btn").should("be.visible");
+  cy.get("@btn").click();
+}
 
 function verifySummarizeText(options: CheckTextOpts) {
   cy.button("Summarize").click();
@@ -1027,6 +921,9 @@ function verifySummarizeText(options: CheckTextOpts) {
       cy.findByText("Count").click();
     }
 
+    verifyPresets(options.presets);
+    selectCustomOffset();
+
     cy.findByText(options.step2Title).should("be.visible");
     cy.findByText(options.offsetHelp).should("be.visible");
   });
@@ -1038,6 +935,10 @@ function verifyColumnDrillText(options: Omit<CheckTextOpts, "step1Title">) {
   popover().within(() => {
     cy.findByText(options.itemName).should("be.visible").click();
     cy.findByText(options.step2Title).should("be.visible");
+
+    verifyPresets(options.presets);
+    selectCustomOffset();
+
     cy.findByText(options.offsetHelp).should("be.visible");
   });
 }
@@ -1053,6 +954,9 @@ function verifyPlusButtonText(options: CheckTextOpts) {
       cy.findByText("Sum of Price").should("be.visible");
       cy.findByText("Count").click();
     }
+
+    verifyPresets(options.presets);
+    selectCustomOffset();
 
     cy.findByText(options.step2Title).should("be.visible");
     cy.findByText(options.offsetHelp).should("be.visible");
@@ -1075,6 +979,9 @@ function verifyNotebookText(options: CheckTextOpts) {
       cy.findByText("Sum of Price").should("be.visible");
       cy.findByText("Count").should("be.visible").click();
     }
+
+    verifyPresets(options.presets);
+    selectCustomOffset();
 
     cy.findByText(options.step2Title).should("be.visible");
     cy.findByText(options.offsetHelp).should("be.visible");
