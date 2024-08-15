@@ -71,7 +71,8 @@
                        (assoc :source-table table-id)
                        add-required-filters-if-needed)
        :middleware {:disable-remaps? true}}
-      rff))))
+      rff
+      nil))))
 
 (defn search-values-query
  "Generate the MBQL query used to power FieldValues search in [[metabase.api.field/search-values]]. The actual query generated
