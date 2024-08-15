@@ -61,7 +61,6 @@ export default class VisualizationResult extends Component {
       className,
       isRunning,
     } = this.props;
-    console.log("🚀 ~ VisualizationResult ~ render ~ className:", className)
     const { showCreateAlertModal } = this.state;
 
     const noResults = datasetContainsNoResults(result.data);
