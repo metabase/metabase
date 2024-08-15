@@ -43,6 +43,8 @@ You can use tools to view how Metabase uses the memory available to it over time
 - [Observability with Prometheus](../installation-and-operation/observability-with-prometheus.md)
 - [Monitoring your Metabase](../installation-and-operation/monitoring-metabase.md)
 
+The specific Prometheus metric you need to check is jvm_memory_bytes_used{area="heap"}
+
 A red flag to look out for: the sawtooth pattern. Metabase will quickly consume a lot of memory, which will trigger garbage collection, which frees up memory, which Metabase quickly consumes again. This up-down-up-down pattern of memory usage is the signature of frequent garbage collection cycles. The garbage collection will tie up CPU cycles, which can slow down your application.
 
 If you're seeing this, you'll need to [increase the amount of memory allocated to the JVM](#allocating-more-memory-to-the-jvm).
