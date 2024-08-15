@@ -232,77 +232,105 @@ export const CollectionItemsTable = ({
         // <Columns.LastEditedAt.Col />
         // {showActionMenu && <Columns.ActionMenu.Col />}
 
+        // FIXME: Note I have removed <CollectionTable> which used to wrap this datagrid
         return (
-          <CollectionTable data-testid="collection-table">
-            <DataGrid
-              className={CollectionItemsTableS.collectionItemsTable}
-              rowClass={(_row, _rowIndex) => "collection-item-row"}
-              rows={unpinnedItems.map(
-                (item: CollectionItem) =>
-                  ({
-                    item,
-                    isSelected: false,
-                    isPinned: false,
-                    onToggleSelected: () => null,
-                    collection: { ...item.collection, can_write: true },
-                    onCopy: () => null,
-                    showActionMenu: true,
-                  } as ItemRendererProps),
-              )}
-              columns={[
-                {
-                  key: "select",
-                  name: "",
-                  width: 70,
-                  renderHeaderCell: props => <Columns.Select.Header />,
-                },
-                {
-                  key: "type",
-                  name: "Type",
-                  width: 70,
-                  renderHeaderCell: props => <Columns.Type.Header />,
-                },
-                {
-                  key: "name",
-                  name: "Name",
-                  renderCell: props => <Columns.Name.Cell item={props.row} />,
-                  renderHeaderCell: props => <Columns.Name.Header />,
-                },
-                {
-                  key: "last_edited_by",
-                  name: "Last edited by",
-                  width: 140,
-                  renderCell: props => (
-                    <Columns.LastEditedBy.Cell item={props.row} />
-                  ),
-                  renderHeaderCell: props => <Columns.LastEditedBy.Header />,
-                },
-                {
-                  key: "last_edited_at",
-                  name: "Last edited at",
-                  width: 140,
-                  renderCell: props => (
-                    <Columns.LastEditedAt.Cell {...props.row} />
-                  ),
-                  renderHeaderCell: props => <Columns.LastEditedAt.Header />,
-                },
-                { key: "action_menu", name: "", width: 100 },
-                { key: "right_edge", name: "" },
-              ]}
-              defaultColumnOptions={{
+          <DataGrid
+            className={CollectionItemsTableS.collectionItemsTable}
+            rows={unpinnedItems.map(
+              (item: CollectionItem) =>
+                ({
+                  item,
+                  isSelected: false,
+                  isPinned: false,
+                  onToggleSelected: () => null,
+                  collection: { ...item.collection, can_write: true },
+                  onCopy: () => null,
+                  showActionMenu: true,
+                  onSortingOptionsChange: handleUnpinnedItemsSortingChange,
+                } as ItemRendererProps),
+            )}
+            columns={[
+              {
+                key: "select",
+                name: "",
+                width: 70,
+                renderHeaderCell: _props => <Columns.Select.Header />,
+                renderCell: props => <Columns.Select.Cell {...props.row} />,
+              },
+              {
+                key: "type",
+                name: "Type",
+                width: 70,
                 sortable: true,
-                resizable: true,
-              }}
-              renderers={{
-                renderRow: (key, props: RenderRowProps<ItemRendererProps>) => (
-                  <tr>
-                    <DefaultItemRenderer key={key} {...props.row} />
-                  </tr>
+                renderHeaderCell: props => <Columns.Type.Header
+                    onSortingOptionsChange={handleUnpinnedItemsSortingChange}
+                    sortingOptions={unpinnedItemsSorting}
+                />,
+                renderCell: props => <Columns.Type.Cell {...props.row} />,
+              },
+              {
+                key: "name",
+                name: "Name",
+                renderCell: props => <Columns.Name.Cell item={props.row} />,
+                sortable: true,
+                renderHeaderCell: _props => (
+                  <Columns.Name.Header
+                    onSortingOptionsChange={handleUnpinnedItemsSortingChange}
+                    sortingOptions={unpinnedItemsSorting}
+                  />
                 ),
-              }}
-              rowHeight={50}
-            />
-          </CollectionTable>
+              },
+              {
+                key: "last_edited_by",
+                name: "Last edited by",
+                width: 140,
+
+                sortable: true,
+                renderCell: props => (
+                  <Columns.LastEditedBy.Cell item={props.row}
+                />
+                ),
+                renderHeaderCell: _props => <Columns.LastEditedBy.Header
+                    onSortingOptionsChange={handleUnpinnedItemsSortingChange}
+                    sortingOptions={unpinnedItemsSorting}
+                />,
+              },
+              {
+                key: "last_edited_at",
+                name: "Last edited at",
+                width: 140,
+                renderCell: props => (
+                  <Columns.LastEditedAt.Cell {...props.row} />
+                ),
+                renderHeaderCell: _props => <Columns.LastEditedAt.Header />,
+              },
+              {
+                key: "action_menu",
+                name: "",
+                width: 100,
+                renderCell: props => <Columns.ActionMenu.Cell {...props.row} />,
+                renderHeaderCell: _props => <Columns.ActionMenu.Header />,
+              },
+              {
+                key: "right_edge",
+                name: "",
+                renderCell: _props => <Columns.RightEdge.Cell />,
+                renderHeaderCell: _props => <Columns.RightEdge.Header />,
+              },
+            ]}
+            defaultColumnOptions={{
+              sortable: true,
+              resizable: true,
+            }}
+            renderers={{
+              renderRow: (key, props: RenderRowProps<ItemRendererProps>) => (
+                <tr>
+                  <DefaultItemRenderer key={key} {...props.row} />
+                </tr>
+              ),
+            }}
+            rowHeight={50}
+          />
         );
       }}
     </Search.ListLoader>
