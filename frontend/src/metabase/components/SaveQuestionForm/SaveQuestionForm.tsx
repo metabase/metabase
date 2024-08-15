@@ -1,4 +1,3 @@
-import { TransitionGroup } from "react-transition-group";
 import { t } from "ttag";
 
 import FormCollectionPicker from "metabase/collections/containers/FormCollectionPicker";
@@ -22,6 +21,7 @@ export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
     useSaveQuestionContext();
 
   const nameInputPlaceholder = getPlaceholder(question.type());
+  const showForm = values.saveType === "create";
 
   return (
     <Form>
@@ -39,27 +39,25 @@ export const SaveQuestionForm = ({ onCancel }: SaveQuestionFormProps) => {
           vertical
         />
       )}
-      <TransitionGroup>
-        {values.saveType === "create" && (
-          <div className={CS.overflowHidden}>
-            <FormInput
-              name="name"
-              title={t`Name`}
-              placeholder={nameInputPlaceholder}
-            />
-            <FormTextArea
-              name="description"
-              title={t`Description`}
-              placeholder={t`It's optional but oh, so helpful`}
-            />
-            <FormCollectionPicker
-              name="collection_id"
-              title={t`Which collection should this go in?`}
-              zIndex={DEFAULT_MODAL_Z_INDEX + 1}
-            />
-          </div>
-        )}
-      </TransitionGroup>
+      {showForm ? (
+        <div className={CS.overflowHidden}>
+          <FormInput
+            name="name"
+            title={t`Name`}
+            placeholder={nameInputPlaceholder}
+          />
+          <FormTextArea
+            name="description"
+            title={t`Description`}
+            placeholder={t`It's optional but oh, so helpful`}
+          />
+          <FormCollectionPicker
+            name="collection_id"
+            title={t`Which collection should this go in?`}
+            zIndex={DEFAULT_MODAL_Z_INDEX + 1}
+          />
+        </div>
+      ) : null}
       <FormFooter>
         <FormErrorMessage inline />
         <Button type="button" onClick={onCancel}>{t`Cancel`}</Button>

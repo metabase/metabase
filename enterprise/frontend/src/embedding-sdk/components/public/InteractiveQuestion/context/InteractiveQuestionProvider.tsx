@@ -36,7 +36,7 @@ export const InteractiveQuestionContext = createContext<
   InteractiveQuestionContextType | undefined
 >(undefined);
 
-type InteractiveQuestionProviderProps = PropsWithChildren<
+export type InteractiveQuestionProviderProps = PropsWithChildren<
   {
     componentPlugins?: SdkPluginsConfig;
     onReset?: () => void;

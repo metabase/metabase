@@ -8,6 +8,7 @@ import {
 } from "embedding-sdk/components/public/InteractiveQuestion/components";
 import {
   InteractiveQuestionProvider,
+  type InteractiveQuestionProviderProps,
   useInteractiveQuestionContext,
 } from "embedding-sdk/components/public/InteractiveQuestion/context";
 import {
@@ -106,12 +107,30 @@ const NewQuestionInner = () => {
   );
 };
 
-export const NewQuestion = withPublicComponentWrapper(() => (
-  <InteractiveQuestionProvider options={{}}>
-    {/* 
+export const NewQuestion = withPublicComponentWrapper(
+  ({
+    cancelDeferred,
+    cardId,
+    componentPlugins,
+    deserializedCard,
+    onNavigateBack,
+    onReset,
+    options = {},
+  }: Partial<Omit<InteractiveQuestionProviderProps, "children">>) => (
+    <InteractiveQuestionProvider
+      cardId={cardId}
+      options={options}
+      deserializedCard={deserializedCard}
+      componentPlugins={componentPlugins}
+      onReset={onReset}
+      onNavigateBack={onNavigateBack}
+      cancelDeferred={cancelDeferred}
+    >
+      {/* 
     We can't inline this component, I *think* due to re-rendering reasons. 
     Otherwise the question will reset every time the component re-renders.
      */}
-    <NewQuestionInner />
-  </InteractiveQuestionProvider>
-));
+      <NewQuestionInner />
+    </InteractiveQuestionProvider>
+  ),
+);
