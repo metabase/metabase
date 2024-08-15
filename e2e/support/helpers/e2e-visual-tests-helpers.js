@@ -121,7 +121,12 @@ export function pieSliceWithColor(color) {
 }
 
 export function echartsTooltip() {
-  return cy.findByTestId("echarts-tooltip");
+  // ECharts may keep two dom instances of the tooltip
+  return cy
+    .findAllByTestId("echarts-tooltip")
+    .filter(":visible")
+    .should("have.length", 1)
+    .eq(0);
 }
 
 export function tooltipHeader() {
@@ -153,7 +158,7 @@ export function assertTooltipRow(
     });
 }
 
-export function assertEChartsTooltip({ header, rows }) {
+export function assertEChartsTooltip({ header, rows, blurAfter }) {
   echartsTooltip().within(() => {
     if (header != null) {
       tooltipHeader().should("have.text", header);
@@ -166,4 +171,8 @@ export function assertEChartsTooltip({ header, rows }) {
       });
     }
   });
+
+  if (blurAfter) {
+    echartsTriggerBlur();
+  }
 }

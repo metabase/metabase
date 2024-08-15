@@ -406,6 +406,7 @@ const getAllColumnsTooltipModel = (
         name: dataPoint.key,
         values: [
           formatValueForTooltip({
+            isAlreadyScaled: true,
             value: dataPoint.value,
             column: dataPoint.col,
             settings,
@@ -494,6 +495,7 @@ export const getStackedTooltipModel = (
   const formatter = (value: unknown) =>
     String(
       formatValueForTooltip({
+        isAlreadyScaled: true,
         value,
         settings,
         column:
