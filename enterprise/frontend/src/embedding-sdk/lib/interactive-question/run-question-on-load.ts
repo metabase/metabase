@@ -12,7 +12,7 @@ import { runQuestionQuerySdk } from "./run-question-query";
 
 export const runQuestionOnLoadSdk =
   ({
-    options,
+    options = {},
     deserializedCard,
     cardId,
     cancelDeferred,
