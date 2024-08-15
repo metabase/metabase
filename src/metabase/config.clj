@@ -3,7 +3,8 @@
    [cheshire.core :as json]
    [clojure.java.io :as io]
    [clojure.string :as str]
-   [environ.core :as env])
+   [environ.core :as env]
+   [net.cgrand.macrovich :as macros])
   (:import
    (clojure.lang Keyword)))
 
@@ -167,3 +168,43 @@
   "A unique identifier for the current request. This is bound by
   `metabase.server.middleware.request-id/wrap-request-id`."
   nil)
+
+(defmacro build-type-case
+  "Sort of like [[macros/case]] but emits different code for dev or release builds. Useful if you want macros to emit
+  extra stuff for debugging only in dev builds -- for example [[metabase.util.log]] macros emit extra code for
+  capturing logs in tests only in `:dev` builds.
+
+  Accepts the following keys:
+
+  * `:clj/dev` -- form will only be emitted if this is a Clj dev build (running from the REPL or running tests).
+
+  * `:cljs/dev` -- form will only be emitted if this is a Cljs dev build (running Cljs REPL or tests, or was triggered
+    by a yarn `build` command other than `build-release`.
+
+  * `:dev` -- form will only be emitted if this is a Clj or Cljs dev build. Cannot be used in combination with
+    `:clj/dev` or `:cljs/dev`.
+
+  * `:clj/release` -- form will only be emitted for non-dev Clj builds (i.e. the uberjar or `clj -M:run`) -- whenever
+    dev/test code is not available on the classpath)
+
+  * `:cljs/release` -- form will only be emitted for release Cljs builds (i.e., `yarn build-release` and friends)
+
+  * `:release` -- form will be emitted if this is a Clj or Cljs release build. Cannot be used in combination with
+  `:clj/release` or `:cljs/release`."
+  {:style/indent 0}
+  [& {:keys [dev release], cljs-dev :cljs/dev, cljs-release :cljs/release, clj-dev :clj/dev, clj-release :clj/release}]
+  (assert (not (and dev (or clj-dev cljs-dev)))
+          "Cannot specify dev in combination with clj-dev/cljs-dev")
+  (assert (not (and release (or clj-release cljs-release)))
+          "Cannot specify release in combination with clj-release/cljs-release")
+  (let [build-type (macros/case :clj  (if tests-available?
+                                        :clj/dev
+                                        :clj/release)
+                                :cljs (case (:shadow.build/mode &env)
+                                        :dev     :cljs/dev
+                                        :release :cljs/release))]
+    (case build-type
+      :clj/dev      (or dev clj-dev)
+      :cljs/dev     (or dev cljs-dev)
+      :clj/release  (or release clj-release)
+      :cljs/release (or release cljs-release))))

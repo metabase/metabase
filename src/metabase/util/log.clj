@@ -12,19 +12,6 @@
    [metabase.util.log.capture]
    [net.cgrand.macrovich :as macros]))
 
-;;; Only in `:dev`/`:tests`: include a little bit of extra magic in the macros to enable log captures. This var is
-;;; only checked during macroexpansion.
-(def ^:private emit-capture-code-in-macroexpansions?
-  "Whether to include the extra code from [[metabase.util.log.capture]] in the macroexpansions for [[logf]]
-  and [[logp]]. This code still no-ops when capturing is disabled, but in prod builds where we're never capturing
-  anything it's even more efficient to omit the code altogether."
-  ;; TODO -- how to differentiate a shadow-cljs normal build versus a release build? `goog.DEBUG` should be true for
-  ;; normal builds and false for release builds... but how to get that value from Clojure? Can we look at something
-  ;; like [[shadow.cljs.devtools.api/active-builds]]? I asked in Clojurians Slack here
-  ;; https://clojurians.slack.com/archives/C6N245JGG/p1723673967836339 -- hopefully someone can help me -- Cam
-  (macros/case :cljs true
-               :clj  (not config/is-prod?)))
-
 ;;; --------------------------------------------- CLJ-side macro helpers ---------------------------------------------
 (defn- glogi-logp
   "Macro helper for [[logp]] in CLJS."
@@ -94,18 +81,20 @@
   {:arglists '([level message & more] [level throwable message & more])}
   [level x & more]
   `(do
-     ~(when emit-capture-code-in-macroexpansions?
-        `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
+     ~(config/build-type-case
+        :dev
+       `(metabase.util.log.capture/capture-logp ~(str *ns*) ~level ~x ~@more))
      ~(macros/case
-       :cljs (glogi-logp (str *ns*) level x more)
-       :clj  (tools-logp *ns*       level x more))))
+        :cljs (glogi-logp (str *ns*) level x more)
+        :clj  (tools-logp *ns*       level x more))))
 
 (defmacro logf
   "Implementation for printf-style `logf`.
   You shouldn't have to use this directly; prefer the level-specific macros like [[infof]]."
   [level x & args]
   `(do
-     ~(when emit-capture-code-in-macroexpansions?
+     ~(config/build-type-case
+        :dev
         `(metabase.util.log.capture/capture-logf ~(str *ns*) ~level ~x ~@args))
      ~(macros/case
         :cljs (glogi-logf (str *ns*) level x args)
