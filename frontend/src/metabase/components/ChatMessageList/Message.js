@@ -1,7 +1,8 @@
 import React from "react";
 import { Icon } from "metabase/ui";
+import LoadingSpinner from "metabase/components/LoadingSpinner";
 
-const Message = ({ message }) => {
+const Message = ({ message, isLoading }) => {
   const isUser = message.sender === "user";
 
   return (
@@ -18,7 +19,10 @@ const Message = ({ message }) => {
         style={{
           marginTop: "4px",
           marginBottom: "auto",
-          padding: "2px",
+          padding: "6px",
+          backgroundColor: isUser ? "#0458DD" : "#E9DFFF",
+          borderRadius: "50%",
+          color: isUser ? "#FFF" : "#5B26D3",
         }}
         name={isUser ? "person" : "chat"}
       />
@@ -28,9 +32,22 @@ const Message = ({ message }) => {
           width: "90%",
           wordWrap: "break-word",
           color: "#333",
+          position: "relative",
         }}
       >
         <span style={{ fontSize: "16px" }}>{message.text}</span>
+        {isLoading && (
+          <div
+            style={{
+              position: "absolute",
+              right: 0,
+              top: "50%",
+              transform: "translateY(-50%)",
+            }}
+          >
+            <LoadingSpinner />
+          </div>
+        )}
       </div>
     </div>
   );

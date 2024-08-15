@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-import LogoIcon from "metabase/components/LogoIcon";
+import LogoLoginIcon from "metabase/components/LogoLogin";
 import { useSelector } from "metabase/lib/redux";
 import { getLoginPageIllustration } from "metabase/selectors/whitelabel";
 
@@ -28,7 +28,7 @@ export const AuthLayout = ({ children }: AuthLayoutProps): JSX.Element => {
         />
       )}
       <LayoutBody>
-        <LogoIcon height={65} />
+        <LogoLoginIcon height={65} />
         <LayoutCard>{children}</LayoutCard>
       </LayoutBody>
     </LayoutRoot>

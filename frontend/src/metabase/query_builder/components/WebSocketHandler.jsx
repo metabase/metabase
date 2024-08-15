@@ -23,6 +23,7 @@ const WebSocketHandler = () => {
     const [isDBModalOpen, setIsDBModalOpen] = useState(false);
     const [dbInputValue, setDBInputValue] = useState("");
     const dispatch = useDispatch();
+    const [isLoading, setIsLoading] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [id, setId] = useState(0);
     const { ws, isConnected } = useWebSocket(
@@ -75,7 +76,9 @@ const WebSocketHandler = () => {
         setId(func.arguments.cardId);
         try {
             const fetchedCard = await CardApi.get({ cardId: func.arguments.cardId });
+            console.log("🚀 ~ handleGetDatasetQuery ~ fetchedCard:", fetchedCard)
             const queryCard = await CardApi.query({ cardId: func.arguments.cardId });
+            console.log("🚀 ~ handleGetDatasetQuery ~ queryCard:", queryCard)
             const cardMetadata = await dispatch(loadMetadataForCard(fetchedCard));
             setResult(queryCard);
             const getDatasetQuery = fetchedCard?.dataset_query;
@@ -93,6 +96,9 @@ const WebSocketHandler = () => {
             setCard(fetchedCard);
         } catch (error) {
             console.error("Error fetching card content:", error);
+        } finally {
+            setIsLoading(false);
+            removeLoadingMessage();
         }
     };
 
@@ -119,12 +125,13 @@ const WebSocketHandler = () => {
                 text: message,
                 sender: "server",
                 type: type,
-            },
+            }
         ]);
     };
 
     const sendMessage = () => {
         if (!inputValue.trim()) return;
+        setIsLoading(true);
         if (isConnected) {
             ws.send(
                 JSON.stringify({
@@ -134,16 +141,24 @@ const WebSocketHandler = () => {
             );
         }
 
-        const userMessage = {
-            id: Date.now(),
-            text: inputValue,
-            sender: "user",
-            type: "text",
-            thread_id: 1,
-        };
+        setMessages(prevMessages => [
+            ...prevMessages,
 
-        setMessages(prevMessages => [...prevMessages, userMessage]);
+            {
+                id: Date.now(),
+                text: inputValue,
+                sender: "user",
+                type: "text",
+                thread_id: 1,
+            },
+            {
+                id: Date.now(),
+                text: "Please wait until we generate the response....",
+                sender: "server",
+                type: "text",
+            },
 
+        ]);
         const response = {
             type: "query",
             task: inputValue,
@@ -154,6 +169,14 @@ const WebSocketHandler = () => {
             setInputValue("");
         }
     };
+
+    const removeLoadingMessage = () => {
+        setMessages(prevMessages => prevMessages.filter(
+            message => message.text !== "Please wait until we generate the response...."
+        ));
+    };
+
+
     return (
         <>
             <Box
@@ -190,7 +213,8 @@ const WebSocketHandler = () => {
                         borderRadius: card ? "0 0 12px 12px" : "12px",
                     }}
                 >
-                    <ChatMessageList messages={messages} />
+                    <ChatMessageList messages={messages} isLoading={isLoading} />
+
                 </div>
 
                 {card && defaultQuestion && result && (
@@ -201,6 +225,9 @@ const WebSocketHandler = () => {
                                 padding: "16px",
                                 overflow: "hidden",
                                 minHeight: "400px",
+                                display: "flex",
+                                justifyContent: "center",
+                                alignItems: "center",
                             }}
                         >
                             <VisualizationResult
@@ -219,14 +246,37 @@ const WebSocketHandler = () => {
                         </div>
                         <Button
                             variant="outlined"
-                            style={{ width: 200, cursor: "pointer", border: "1px solid #E0E0E0", marginBottom: "1rem", text: "center", color: "#000", marginLeft: "auto", marginRight: 0 }}
+                            style={{
+                                width: "auto",
+                                cursor: "pointer",
+                                border: "1px solid #E0E0E0",
+                                borderRadius: "8px",
+                                marginBottom: "1rem",
+                                color: "#FFF",
+                                marginLeft: "auto",
+                                marginRight: 0,
+                                backgroundColor: "#8A64DF",
+                                display: "inline-flex", // Use inline-flex to make sure content inside is aligned properly
+                                alignItems: "center", // Vertically center the icon and text
+                                padding: "0.5rem 1rem", // Optional padding for a better button size
+                                lineHeight: "1", // Ensure consistent line height between icon and text
+                            }}
                             onClick={openModal}
                         >
-                            Review & Save
+                            <Icon
+                                size={18}
+                                name="bookmark"
+                                style={{
+                                    marginRight: "0.5rem",
+                                }}
+                            />
+                            <span style={{ fontSize: "18px", fontWeight: "lighter", verticalAlign: "top" }}>Verify & Save</span>
                         </Button>
                     </>
 
                 )}
+
+
 
                 <div
                     style={{
@@ -242,6 +292,8 @@ const WebSocketHandler = () => {
                         id="1"
                         type="text"
                         fullWidth
+                        size="large"
+                        placeholder="Enter a prompt here..."
                         value={inputValue}
                         onChange={e => setInputValue(e.target.value)}
                         style={{ marginRight: "8px" }}
@@ -250,9 +302,9 @@ const WebSocketHandler = () => {
                         variant="filled"
                         disabled={!isConnected}
                         onClick={sendMessage}
-                        style={{ borderRadius: "12px", padding: "8px" }}
+                        style={{ borderRadius: "12px", padding: "0px", backgroundColor: !isConnected ? "#F1EBFF" : "#8A64DF", color: "#FFF", border: "none" }}
                     >
-                        <Icon size={28} style={{ marginTop: "4px", marginBottom: "auto", padding: "0px", paddingLeft: "4px", paddingRight: "4px" }} name="sendChat" />
+                        <Icon size={26} style={{ padding: "6px", marginTop: "4px", marginLeft: "4px", marginRight: "4px" }} name="sendChat" />
                     </Button>
                 </div>
             </Box>
@@ -283,7 +335,7 @@ const WebSocketHandler = () => {
             {isModalOpen && (
                 <Modal isOpen={isModalOpen} onClose={closeModal}>
                     <div style={{ padding: "20px" }}>
-                        <h2 style={{ marginBottom: "10px" }}>Save question</h2>
+                        <h2 style={{ marginBottom: "10px" }}>Verify results</h2>
                         {dataInfo !== "" && (
                             <>
                                 <strong>Data generation insight:</strong>
@@ -296,7 +348,7 @@ const WebSocketHandler = () => {
                                 Cancel
                             </Button>
                             <Button variant="filled" onClick={() => { redirect(); closeModal(); }}>
-                                Go to builder
+                                Go to builder & save
                             </Button>
                         </div>
                     </div>
