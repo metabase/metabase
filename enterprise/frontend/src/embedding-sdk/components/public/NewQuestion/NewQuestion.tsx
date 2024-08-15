@@ -48,6 +48,12 @@ const SaveQuestion = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
+const ResetQuestionButton = () => {
+  const { onReset } = useInteractiveQuestionContext();
+
+  return <Button onClick={onReset}>Reset</Button>;
+};
+
 const NewQuestionInner = () => {
   const [activeTab, setActiveTab] = useState<
     "notebook" | "visualization" | "save" | null | (string & unknown)
@@ -79,8 +85,11 @@ const NewQuestionInner = () => {
               <Tabs.Tab value="visualization">Visualization</Tabs.Tab>
             </Group>
           </Tabs.List>
-          {/* using a button instead of a tab for styling reasons */}
-          <Button onClick={onSaveButtonClick}>Save</Button>
+          <Group>
+            <ResetQuestionButton />
+            {/* using a button instead of a tab for styling reasons */}
+            <Button onClick={onSaveButtonClick}>Save</Button>
+          </Group>
         </Group>
 
         <Tabs.Panel value="notebook">
