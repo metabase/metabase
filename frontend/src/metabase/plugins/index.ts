@@ -25,7 +25,6 @@ import type {
   AvailableModelFilters,
   ModelFilterControlsProps,
 } from "metabase/browse/utils";
-import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { getIconBase } from "metabase/lib/icon";
 import PluginPlaceholder from "metabase/plugins/components/PluginPlaceholder";
 import type { SearchFilterComponent } from "metabase/search/types";
@@ -50,6 +49,7 @@ import type {
   SearchResult,
   User,
   UserListResult,
+  CollectionId,
 } from "metabase-types/api";
 import type { AdminPathKey, State } from "metabase-types/store";
 
@@ -266,6 +266,10 @@ type CleanUpMenuItem = {
 
 export type ItemWithCollection = { collection: CollectionEssentials };
 
+type GetCollectionIdType = (
+  sourceCollectionId?: CollectionId | null,
+) => CollectionId | null;
+
 export const PLUGIN_COLLECTIONS = {
   AUTHORITY_LEVEL: {
     [JSON.stringify(AUTHORITY_LEVEL_REGULAR.type)]: AUTHORITY_LEVEL_REGULAR,
@@ -279,7 +283,7 @@ export const PLUGIN_COLLECTIONS = {
     _: Partial<Collection>,
   ): CollectionAuthorityLevelConfig | CollectionInstanceAnaltyicsConfig =>
     AUTHORITY_LEVEL_REGULAR,
-  useGetDefaultCollectionId: useGetDefaultCollectionId,
+  useGetDefaultCollectionId: null as GetCollectionIdType | null,
   CUSTOM_INSTANCE_ANALYTICS_COLLECTION_ENTITY_ID: "",
   INSTANCE_ANALYTICS_ADMIN_READONLY_MESSAGE: UNABLE_TO_CHANGE_ADMIN_PERMISSIONS,
   getAuthorityLevelMenuItems: (

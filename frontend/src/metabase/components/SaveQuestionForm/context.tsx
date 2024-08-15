@@ -7,9 +7,9 @@ import {
   useState,
 } from "react";
 
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import { FormProvider } from "metabase/forms";
 import { useSelector } from "metabase/lib/redux";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { getIsSavedQuestionChanged } from "metabase/query_builder/selectors";
 import type Question from "metabase-lib/v1/Question";
 
@@ -41,7 +41,7 @@ export const SaveQuestionProvider = ({
 }: PropsWithChildren<SaveQuestionProps>) => {
   const [originalQuestion] = useState(latestOriginalQuestion); // originalQuestion from props changes during saving
 
-  const defaultCollectionId = PLUGIN_COLLECTIONS.useGetDefaultCollectionId(
+  const defaultCollectionId = useGetDefaultCollectionId(
     originalQuestion?.collectionId(),
   );
 

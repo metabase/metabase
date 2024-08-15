@@ -1,9 +1,9 @@
 import { dissoc } from "icepick";
 import { t } from "ttag";
 
+import { useGetDefaultCollectionId } from "metabase/collections/hooks";
 import ModalContent from "metabase/components/ModalContent";
 import { CopyDashboardFormConnected } from "metabase/dashboard/containers/CopyDashboardForm";
-import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import { CopyQuestionForm } from "metabase/questions/components/CopyQuestionForm";
 
 interface EntityCopyModalProps {
@@ -32,7 +32,7 @@ const EntityCopyModal = ({
       ? entityObject.getPlainObject()
       : entityObject;
 
-  const defaultCollectionId = PLUGIN_COLLECTIONS.useGetDefaultCollectionId(
+  const defaultCollectionId = useGetDefaultCollectionId(
     resolvedObject?.collection?.id,
   );
 

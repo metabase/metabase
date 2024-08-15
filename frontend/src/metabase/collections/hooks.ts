@@ -1,8 +1,9 @@
 import getInitialCollectionId from "metabase/entities/collections/getInitialCollectionId";
 import { useSelector } from "metabase/lib/redux";
+import { PLUGIN_COLLECTIONS } from "metabase/plugins";
 import type { CollectionId } from "metabase-types/api";
 
-export const useGetDefaultCollectionId = (
+const _useGetDefaultCollectionId = (
   sourceCollectionId?: CollectionId | null,
 ): CollectionId | null => {
   // TODO: refactor this selector to be this hook and fetch the necessary collections
@@ -16,3 +17,6 @@ export const useGetDefaultCollectionId = (
 
   return initialCollectionId;
 };
+
+export const useGetDefaultCollectionId =
+  PLUGIN_COLLECTIONS.useGetDefaultCollectionId ?? _useGetDefaultCollectionId;
