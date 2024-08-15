@@ -1,10 +1,10 @@
 import {
   createContext,
   useContext,
-  useEffect,
   type PropsWithChildren,
   useMemo,
 } from "react";
+import { useMount } from "react-use";
 
 import type { SdkPluginsConfig } from "embedding-sdk";
 import {
@@ -14,6 +14,7 @@ import {
 import { useSdkSelector } from "embedding-sdk/store";
 import { getPlugins } from "embedding-sdk/store/selectors";
 import type { LoadSdkQuestionParams } from "embedding-sdk/types/question";
+import type { QueryParams } from "metabase/query_builder/actions";
 import type { Mode } from "metabase/visualizations/click-actions/Mode";
 import { getEmbeddingMode } from "metabase/visualizations/click-actions/lib/modes";
 
@@ -46,13 +47,15 @@ type InteractiveQuestionProviderProps = PropsWithChildren<
 
 export const InteractiveQuestionProvider = ({
   cardId,
-  options,
+  options = {},
   deserializedCard,
   componentPlugins,
   onReset,
   onNavigateBack,
   children,
-}: InteractiveQuestionProviderProps) => {
+}: Omit<InteractiveQuestionProviderProps, "options"> & {
+  options?: QueryParams;
+}) => {
   const {
     question,
     originalQuestion,
@@ -98,11 +101,9 @@ export const InteractiveQuestionProvider = ({
     mode,
   };
 
-  // When the `cardId` changes, the reference to the loadQuestion method changes,
-  // and the question will be reloaded. We should improve this to be more obvious.
-  useEffect(() => {
+  useMount(() => {
     loadQuestion();
-  }, [loadQuestion]);
+  });
 
   return (
     <InteractiveQuestionContext.Provider value={questionContext}>

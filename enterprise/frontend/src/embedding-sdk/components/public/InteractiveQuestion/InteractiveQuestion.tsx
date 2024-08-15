@@ -1,9 +1,4 @@
-import { type PropsWithChildren, useMemo } from "react";
-
-import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
-import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
-import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
-import type { CardId } from "metabase-types/api";
+import { type PropsWithChildren, useMemo, type ReactNode } from "react";
 
 import {
   BackButton,
@@ -17,14 +12,18 @@ import {
   Notebook,
   NotebookButton,
   QuestionVisualization,
-} from "../../private/InteractiveQuestion/components";
-import { InteractiveQuestionProviderWithLocation } from "../../private/InteractiveQuestion/context";
+} from "embedding-sdk/components/private/InteractiveQuestion/components";
+import { InteractiveQuestionProviderWithLocation } from "embedding-sdk/components/private/InteractiveQuestion/context";
+import { InteractiveQuestionResult } from "embedding-sdk/components/private/InteractiveQuestionResult";
+import { withPublicComponentWrapper } from "embedding-sdk/components/private/PublicComponentWrapper";
+import type { SdkPluginsConfig } from "embedding-sdk/lib/plugins";
+import type { CardId } from "metabase-types/api";
 
 type InteractiveQuestionProps = PropsWithChildren<{
   questionId: CardId;
   withResetButton?: boolean;
   withTitle?: boolean;
-  customTitle?: React.ReactNode;
+  customTitle?: ReactNode;
   plugins?: SdkPluginsConfig;
   height?: string | number;
 }>;
