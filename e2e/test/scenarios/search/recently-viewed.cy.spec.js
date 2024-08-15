@@ -130,7 +130,7 @@ describe("Recently Viewed > Entity Picker", () => {
     });
 
     cy.url().should("contain", `/dashboard/${ORDERS_DASHBOARD_ID}-`);
-    cy.get("#Dashboard-Header-Container").findByText(
+    cy.findByTestId("dashboard-header-container").findByText(
       /You're editing this dashboard/,
     );
   });

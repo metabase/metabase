@@ -15,6 +15,7 @@ import {
   setupSearchEndpoints,
   setupTableEndpoints,
 } from "__support__/server-mocks";
+import { setupPulseEndpoint } from "__support__/server-mocks/pulse";
 import { createMockEntitiesState } from "__support__/store";
 import {
   act,
@@ -62,8 +63,7 @@ async function setup({ dashboard }: Options = {}) {
   const mockDashboard = createMockDashboard(dashboard);
   const dashboardId = mockDashboard.id;
 
-  const channelData = { channels: {} };
-  fetchMock.get("path:/api/pulse/form_input", channelData);
+  setupPulseEndpoint();
 
   setupDatabasesEndpoints([TEST_DATABASE_WITH_ACTIONS]);
   setupDashboardEndpoints(mockDashboard);

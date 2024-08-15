@@ -97,24 +97,6 @@
         (lib.metadata.calculation/column-name query stage-number metric-metadata))
       "metric"))
 
-(defn- source-metric
-  "Returns the `:metadata/metric` for the given stage, or nil if this stage is not based on a metric."
-  [metadata-providerable stage]
-  (some->> stage :source-card (lib.metadata/metric metadata-providerable)))
-
-(mu/defn metric-based? :- :boolean
-  "Returns true if this MBQL `query` is based on metrics.
-
-  This is always false for stages other than 0, but accepting the parameter means consumers of the API don't need to
-  know about that.
-
-  Being \"based on metrics\" means the source is a metric."
-  [query        :- ::lib.schema/query
-   stage-number :- :int]
-  (and (zero? (lib.util/canonical-stage-index query stage-number))
-       (not (lib.query/native? query))
-       (source-metric query (lib.util/query-stage query stage-number))))
-
 (mu/defn available-metrics :- [:maybe [:sequential {:min 1} ::lib.schema.metadata/metric]]
   "Get a list of Metrics that you may consider using as aggregations for a query."
   ([query]
@@ -129,18 +111,13 @@
                                                        (:join-alias (lib.options/options aggregation-clause))]
                                                       index])))
                                    (lib.aggregation/aggregations query stage-number))
-         s-metric (source-metric query (lib.util/query-stage query stage-number))
          maybe-add-aggregation-pos (fn [metric-metadata]
                                      (let [aggregation-pos (-> metric-metadata
                                                                ((juxt :id ::lib.join/join-alias))
                                                                metric-aggregations)]
                                        (cond-> metric-metadata
                                          aggregation-pos (assoc :aggregation-position aggregation-pos))))]
-     (cond
-       (and first-stage? s-metric)
-       [(maybe-add-aggregation-pos s-metric)]
-
-       first-stage?
+     (when first-stage?
        (let [source-table (lib.util/source-table-id query)
              metrics (if source-table
                        (lib.metadata/metadatas-for-table query :metadata/metric source-table)

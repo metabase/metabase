@@ -549,6 +549,9 @@
 ;;; +----------------------------------------------------------------------------------------------------------------+
 ;;; |                                              Serialization                                                     |
 ;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod serdes/entity-id "FieldValues" [_ _] nil)
+
 (defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
   (let [field (t2/select-one 'Field :id field_id)]
     (conj (serdes/generate-path "Field" field)
