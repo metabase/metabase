@@ -144,8 +144,10 @@
         merged-parameters         (vals (merge (dashboard-param-defaults dashboard-param-id->param card-id)
                                                request-param-id->param))]
     (when-let [user-id api/*current-user-id*]
-      (doseq [parameter request-params]
-        (user-parameter-value/upsert! user-id dashboard-id parameter)))
+      (when (seq request-params)
+        (user-parameter-value/batched-upsert!
+         user-id dashboard-id
+         request-params)))
     (log/tracef "Dashboard parameters:\n%s\nRequest parameters:\n%s\nMerged:\n%s"
                 (u/pprint-to-str (update-vals dashboard-param-id->param
                                               (fn [param]
