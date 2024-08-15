@@ -666,7 +666,6 @@
   metabase.test/with-user-in-groups                                                    clojure.core/let
   metabase.upload-test/with-upload-table!                                              clojure.core/let
   metabase.util.files/with-open-path-to-resource                                       clojure.core/let
-  metabase.util.log.capture/with-log-messages-for-level                                clojure.core/let
   metabase.util.malli.defn/defn                                                        schema.core/defn
   metabase.util.malli.defn/defn-                                                       schema.core/defn
   metabase.util.malli.fn/fn                                                            schema.core/fn
@@ -688,20 +687,21 @@
 
  :hooks
  {:analyze-call
-  {clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
-   cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
+  {cljs.test/deftest                                                                                                         hooks.clojure.test/deftest
    cljs.test/is                                                                                                              hooks.clojure.test/is
    cljs.test/use-fixtures                                                                                                    hooks.clojure.test/use-fixtures
+   clojure.core/ns                                                                                                           hooks.clojure.core/lint-ns
    clojure.test/deftest                                                                                                      hooks.clojure.test/deftest
    clojure.test/is                                                                                                           hooks.clojure.test/is
    clojure.test/use-fixtures                                                                                                 hooks.clojure.test/use-fixtures
-   metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.advanced-permissions.models.permissions.application-permissions-test/with-new-group-and-current-graph hooks.common/with-two-top-level-bindings
    metabase-enterprise.audit-app.pages-test/with-temp-objects                                                                hooks.common/with-one-binding
+   metabase-enterprise.cache.config-test/with-temp-persist-models                                                            hooks.common/with-seven-bindings
    metabase-enterprise.serialization.test-util/with-temp-dpc                                                                 hooks.toucan2.tools.with-temp/with-temp
    metabase.analytics.prometheus-test/with-prometheus-system                                                                 hooks.common/with-two-bindings
-   metabase.api.automagic-dashboards-test/with-indexed-model                                                                 hooks.metabase.api.automagic-dashboards-test/with-indexed-model
    metabase.api.alert-test/with-alert-in-collection                                                                          hooks.common/with-four-bindings
+   metabase.api.automagic-dashboards-test/with-indexed-model                                                                 hooks.metabase.api.automagic-dashboards-test/with-indexed-model
+   metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.card-test/with-persistence-setup                                                                             hooks.common/with-one-top-level-binding
    metabase.api.card-test/with-temp-native-card!                                                                             hooks.common/with-two-bindings
    metabase.api.card-test/with-temp-native-card-with-params!                                                                 hooks.common/with-two-bindings
@@ -711,7 +711,6 @@
    metabase.api.common/defendpoint-async-schema                                                                              hooks.metabase.api.common/defendpoint
    metabase.api.dashboard-test/with-chain-filter-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.dashboard-test/with-simple-dashboard-with-tabs                                                               hooks.common/with-one-binding
-   metabase.api.card-test/with-card-param-values-fixtures                                                                    hooks.common/let-one-with-optional-value
    metabase.api.embed-test/do-response-formats                                                                               hooks.common/with-two-bindings
    metabase.api.embed-test/with-chain-filter-fixtures                                                                        hooks.common/let-one-with-optional-value
    metabase.api.embed-test/with-temp-card                                                                                    hooks.common/let-one-with-optional-value
@@ -725,23 +724,23 @@
    metabase.api.search-test/with-search-items-in-root-collection                                                             hooks.common/do*
    metabase.api.user-test/with-temp-user-email                                                                               hooks.common/with-one-binding
    metabase.async.streaming-response-test/with-start-execution-chan                                                          hooks.common/with-one-binding
-   metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.dashboard-subscription-test/with-link-card-fixture-for-dashboard                                                 hooks.common/let-second
+   metabase.db.schema-migrations-test.impl/test-migrations                                                                   hooks.metabase.db.schema-migrations-test.impl/test-migrations
    metabase.driver.bigquery-cloud-sdk-test/calculate-bird-scarcity                                                           hooks.metabase.query-processor-test.expressions-test/calculate-bird-scarcity
    metabase.driver/register!                                                                                                 hooks.metabase.driver/register!
    metabase.legacy-mbql.schema.macros/defclause                                                                              hooks.metabase.legacy-mbql.schemas.macros/defclause
-   metabase.lib.schema.mbql-clause/define-mbql-clause                                                                        hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-catn-mbql-clause                                                                   hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
+   metabase.lib.schema.mbql-clause/define-mbql-clause                                                                        hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.schema.mbql-clause/define-tuple-mbql-clause                                                                  hooks.metabase.lib.schema.mbql-clause/define-mbql-clause
    metabase.lib.test-util.macros/$ids                                                                                        hooks.metabase.test.data/$ids
    metabase.lib.test-util.macros/mbql-query                                                                                  hooks.metabase.test.data/mbql-query
    metabase.lib.test-util.macros/with-testing-against-standard-queries                                                       hooks.metabase.lib.test-util.macros/with-testing-against-standard-queries
    metabase.models.collection-test/with-collection-hierarchy                                                                 hooks.common/let-one-with-optional-value
    metabase.models.collection-test/with-personal-and-impersonal-collections                                                  hooks.common/with-two-bindings
-   metabase.models.dashboard-test/with-dash-in-collection                                                                    hooks.common/with-three-bindings
    metabase.models.dashboard-tab-test/with-dashtab-in-personal-collection                                                    hooks.common/with-one-top-level-binding
-   metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
+   metabase.models.dashboard-test/with-dash-in-collection                                                                    hooks.common/with-three-bindings
    metabase.models.interface/define-batched-hydration-method                                                                 hooks.metabase.models.interface/define-hydration-method
+   metabase.models.interface/define-simple-hydration-method                                                                  hooks.metabase.models.interface/define-hydration-method
    metabase.models.pulse-test/with-dashboard-subscription-in-collection                                                      hooks.common/with-four-bindings
    metabase.models.pulse-test/with-pulse-in-collection                                                                       hooks.common/with-four-bindings
    metabase.models.setting.multi-setting/define-multi-setting                                                                hooks.metabase.models.setting/define-multi-setting
@@ -752,6 +751,7 @@
    metabase.query-processor-test.filter-test/count-with-filter-clause                                                        hooks.metabase.test.data/$ids
    metabase.query-processor.middleware.cache-test/with-mock-cache                                                            hooks.common/with-two-bindings
    metabase.sample-data-test/with-temp-sample-database-db                                                                    hooks.common/with-one-binding
+   metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
    metabase.test.data.users/with-group                                                                                       hooks.common/let-one-with-optional-value
    metabase.test.data/$ids                                                                                                   hooks.metabase.test.data/$ids
    metabase.test.data/dataset                                                                                                hooks.metabase.test.data/dataset
@@ -759,7 +759,6 @@
    metabase.test.data/run-mbql-query                                                                                         hooks.metabase.test.data/mbql-query
    metabase.test.util.async/with-open-channels                                                                               hooks.common/let-with-optional-value-for-last-binding
    metabase.test.util.log/with-log-level                                                                                     hooks.common/with-ignored-first-arg
-   metabase.test.util.log/with-log-messages-for-level                                                                        hooks.common/with-ignored-first-arg
    metabase.test.util/discard-setting-changes                                                                                hooks.common/with-ignored-first-arg
    metabase.test.util/with-column-remappings                                                                                 hooks.common/with-ignored-first-arg
    metabase.test.util/with-non-admin-groups-no-root-collection-perms                                                         hooks.common/do*
@@ -770,31 +769,31 @@
    metabase.test/discard-setting-changes                                                                                     hooks.common/with-ignored-first-arg
    metabase.test/mbql-query                                                                                                  hooks.metabase.test.data/mbql-query
    metabase.test/query                                                                                                       hooks.metabase.test.data/mbql-query
-   metabase.test/test-drivers                                                                                                hooks.common/do*
    metabase.test/run-mbql-query                                                                                              hooks.metabase.test.data/mbql-query
+   metabase.test/test-drivers                                                                                                hooks.common/do*
    metabase.test/with-column-remappings                                                                                      hooks.common/with-ignored-first-arg
    metabase.test/with-group                                                                                                  hooks.common/let-one-with-optional-value
    metabase.test/with-log-level                                                                                              hooks.common/with-ignored-first-arg
-   metabase.test/with-log-messages-for-level                                                                                 hooks.common/with-ignored-first-arg
+   metabase.test/with-log-messages-for-level                                                                                 hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.test/with-non-admin-groups-no-root-collection-perms                                                              hooks.common/do*
    metabase.test/with-temp                                                                                                   hooks.toucan2.tools.with-temp/with-temp
-   metabase.stale-test/with-stale-items                                                                                      hooks.toucan2.tools.with-temp/with-temp
    metabase.test/with-temp-file                                                                                              hooks.metabase.test.util/with-temp-file
    metabase.test/with-temporary-setting-values                                                                               hooks.metabase.test.util/with-temporary-setting-values
-   metabase.util/format-color                                                                                                hooks.metabase.util/format-color
-   metabase.util.log/trace                                                                                                   hooks.metabase.util.log/info
-   metabase.util.log/tracef                                                                                                  hooks.metabase.util.log/infof
+   metabase.util.log.capture/with-log-messages-for-level                                                                     hooks.metabase.util.log.capture/with-log-messages-for-level
    metabase.util.log/debug                                                                                                   hooks.metabase.util.log/info
    metabase.util.log/debugf                                                                                                  hooks.metabase.util.log/infof
-   metabase.util.log/info                                                                                                    hooks.metabase.util.log/info
-   metabase.util.log/infof                                                                                                   hooks.metabase.util.log/infof
-   metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
-   metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
    metabase.util.log/error                                                                                                   hooks.metabase.util.log/info
    metabase.util.log/errorf                                                                                                  hooks.metabase.util.log/infof
    metabase.util.log/fatal                                                                                                   hooks.metabase.util.log/info
    metabase.util.log/fatalf                                                                                                  hooks.metabase.util.log/infof
-   metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def}
+   metabase.util.log/info                                                                                                    hooks.metabase.util.log/info
+   metabase.util.log/infof                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.log/trace                                                                                                   hooks.metabase.util.log/info
+   metabase.util.log/tracef                                                                                                  hooks.metabase.util.log/infof
+   metabase.util.log/warn                                                                                                    hooks.metabase.util.log/info
+   metabase.util.log/warnf                                                                                                   hooks.metabase.util.log/infof
+   metabase.util.malli.registry/def                                                                                          hooks.metabase.util.malli.registry/def
+   metabase.util/format-color                                                                                                hooks.metabase.util/format-color}
 
   :macroexpand
   {clojurewerkz.quartzite.jobs/build                                            macros.quartz/build-job

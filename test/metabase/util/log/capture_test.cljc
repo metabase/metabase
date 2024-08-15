@@ -2,7 +2,13 @@
   (:require
    [clojure.test :refer [deftest testing is are]]
    [metabase.util.log :as log]
-   [metabase.util.log.capture :as log.capture]))
+   [metabase.util.log.capture :as log.capture]
+   #?@(:cljs
+       [[metabase.test-runner.assert-exprs.approximately-equal]])))
+
+#?(:cljs
+   (comment
+     metabase.test-runner.assert-exprs.approximately-equal/keep-me))
 
 (deftest ^:parallel basic-logp-test
   (is (= [{:namespace 'metabase.util.log.capture-test, :level :warn, :e nil, :message "a message"}]
@@ -193,3 +199,16 @@
                :e         nil
                :message   "a bug"}]
              (test-trace-messages))))))
+
+(deftest ^:parallel preserve-formatting-test
+  ;; for whatever reason `logp` uses the equivalent of [[print-str]] while `logf` uses the equivalent of [[str]]
+  (testing 'logp
+    (log.capture/with-log-messages-for-level [messages :info]
+      (log/info "Something:" "s" [:vector "string"])
+      (is (=? [{:message "Something: s [:vector string]"}]
+              (messages)))))
+  (testing 'logf
+    (log.capture/with-log-messages-for-level [messages :info]
+      (log/infof "Something: %s %s" "s" [:vector "string"])
+      (is (=? [{:message "Something: s [:vector \"string\"]"}]
+              (messages))))))

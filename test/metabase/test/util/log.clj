@@ -4,7 +4,6 @@
    [clojure.test :refer :all]
    [mb.hawk.parallel]
    [metabase.logger :as logger]
-   [metabase.util.log.capture :as log.capture]
    [metabase.util.malli :as mu]
    [metabase.util.malli.schema :as ms])
   (:import
@@ -151,19 +150,6 @@
                               (list 'quote a-namespace)
                               a-namespace)]
     `(do-with-log-level ~a-namespace ~level (fn [] ~@body))))
-
-;;; this version of [[with-log-messages-for-level]] is a wrapper around the new version
-;;; in [[log.capture/with-log-messages-for-level]] introduced by #28827 for backward compatibility with existing tests.
-
-
-;; TODO -- this macro should probably just take a binding for the `logs` function so you can eval when needed
-;; Tech debt issue: #39335
-(defmacro with-log-messages-for-level
-  "Old version of [[log.capture/with-log-messages-for-level]]. Prefer that version going forward."
-  [ns+level & body]
-  `(log.capture/with-log-messages-for-level [messages# ~ns+level]
-     ~@body
-     (log.capture/messages->legacy-format (messages#))))
 
 ;;;; tests
 

@@ -279,26 +279,19 @@
         "Q2 - 2022"   "MMMM D, YYYY" "quarter"
         "2022"        "MMMM D, YYYY" "year"))))
 
-;; This is a separate deftest because the [[mt/with-log-messages-for-level]] doesn't work in :parallel tests.
-;; TODO Capturing log messages and suppressing the output is Clojure-only. Port that to CLJS and test it here.
 (deftest fallback-test
   (testing "fallback to ISO date string if neither the unit nor style map to a format"
-    #?(:clj  (let [result (atom nil)]
-               ;; Clear the cache, because it only generates the warning the first time this gets constructured.
-               (reset! @#'formatters/options->formatter-cache {})
-
-               (is (= [[:warn nil "Unrecognized date style {:date-style asdf, :unit :asdf}"]]
-                      (mt/with-log-messages-for-level :warn
-                        (reset! result
-                                (date/format-datetime-with-unit "2022-04-07T19:08:45.123" {:unit         :asdf
-                                                                                           :date-style   "asdf"
-                                                                                           :time-enabled false})))))
-               (is (= "2022-04-07T19:08:45" @result)))
-
-       :cljs (is (= "2022-04-07T19:08:45"
-                    (date/format-datetime-with-unit "2022-04-07T19:08:45.123" {:unit         "asdf"
-                                                                               :date-style   "asdf"
-                                                                               :time-enabled false}))))))
+    (let [result (atom nil)]
+      ;; Clear the cache, because it only generates the warning the first time this gets constructured.
+      (reset! @#'formatters/options->formatter-cache {})
+      (mt/with-log-messages-for-level [messages :warn]
+        (reset! result
+                (date/format-datetime-with-unit "2022-04-07T19:08:45.123" {:unit         :asdf
+                                                                           :date-style   "asdf"
+                                                                           :time-enabled false}))
+        (is (=? [{:level :warn, :message "Unrecognized date style {:date-style asdf, :unit :asdf}"}]
+                (messages))))
+      (is (= "2022-04-07T19:08:45" @result)))))
 
 ;; TODO The originals theoretically support custom "date-format" and "time-format" options; are they ever
 ;; actually used? What about non-standard styles?

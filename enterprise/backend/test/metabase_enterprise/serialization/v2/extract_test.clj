@@ -1645,22 +1645,23 @@
                                                      :dataset_query {:query {:source-table (str "card__" card1-id)
                                                                              :aggregation  [[:count]]}}}]
       (testing "Complain about card not available for exporting"
-        (is (some #(str/starts-with? % "Failed to export Dashboard")
-                  (into #{}
-                        (map (fn [[_log-level _error message]] message))
-                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                          (extract/extract {:targets       [["Collection" coll1-id]]
-                                            :no-settings   true
-                                            :no-data-model true}))))))
-
+        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+          (extract/extract {:targets       [["Collection" coll1-id]]
+                            :no-settings   true
+                            :no-data-model true})
+          (is (some #(str/starts-with? % "Failed to export Dashboard")
+                    (into #{}
+                          (map :message)
+                          (messages))))))
       (testing "Complain about card depending on an outside card"
-        (is (some #(str/starts-with? % "Failed to export Cards")
-                  (into #{}
-                        (map (fn [[_log-level _error message]] message))
-                        (mt/with-log-messages-for-level ['metabase-enterprise :warn]
-                          (extract/extract {:targets       [["Collection" coll2-id]]
-                                            :no-settings   true
-                                            :no-data-model true})))))))))
+        (mt/with-log-messages-for-level [messages [metabase-enterprise :warn]]
+          (extract/extract {:targets       [["Collection" coll2-id]]
+                            :no-settings   true
+                            :no-data-model true})
+          (is (some #(str/starts-with? % "Failed to export Cards")
+                    (into #{}
+                          (map :message)
+                          (messages)))))))))
 
 (deftest recursive-colls-test
   (mt/with-empty-h2-app-db

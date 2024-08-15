@@ -665,13 +665,13 @@
                    (into {} (for [[field-id m] response]
                               [field-id (update m :values (partial take 3))]))))))))))
 
-(deftest fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
+(deftest ^:parallel fetch-a-dashboard-with-param-linked-to-a-field-filter-that-is-not-existed
   (testing "when fetching a dashboard that has a param linked to a field filter that no longer exists, we shouldn't throw an error (#15494)"
     (mt/with-temp
       [:model/Card          {card-id :id} {:name "Native card"
                                            :database_id   (mt/id)
                                            :dataset_query (mt/native-query
-                                                           {:query "SELECT category FROM products LIMIT 10;"})
+                                                            {:query "SELECT category FROM products LIMIT 10;"})
                                            :type          :model}
        :model/Dashboard     {dash-id :id} {:parameters [{:name      "Text"
                                                          :slug      "text"
@@ -683,10 +683,11 @@
                                            :parameter_mappings [{:parameter_id "_TEXT_"
                                                                  :card_id      card-id
                                                                  :target       [:dimension [:template-tag "not-existed-filter"]]}]}]
-      (is (= (repeat 2 [:error nil
-                        "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"])
-             (mt/with-log-messages-for-level [metabase.models.params :error]
-               (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))))))))
+      (mt/with-log-messages-for-level [messages [metabase.models.params :error]]
+        (is (some? (mt/user-http-request :rasta :get 200 (str "dashboard/" dash-id))))
+        (is (=? (repeat 2 {:level   :error
+                           :message "Could not find matching field clause for target: [:dimension [:template-tag not-existed-filter]]"})
+                (messages)))))))
 
 (deftest param-values-not-fetched-on-load-test
   (testing "Param values are not needed on initial dashboard load and should not be fetched. #38826"

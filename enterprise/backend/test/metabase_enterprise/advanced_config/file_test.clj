@@ -170,14 +170,14 @@
             (is (= (mock-config-with-setting "")
                    (#'advanced-config.file/config)))))))))
 
-(deftest initialize-section-test
+(deftest ^:parallel initialize-section-test
   (testing "Ignore unknown sections"
     (binding [advanced-config.file/*config* {:version 1.0, :config {:unknown-section {}}}]
-      (let [log-messages (mt/with-log-messages-for-level [metabase-enterprise.advanced-config.file.interface :warn]
-                           (is (= :ok
-                                  (advanced-config.file/initialize!))))]
-        (is (= [[:warn nil (u/colorize :yellow "Ignoring unknown config section :unknown-section.")]]
-               log-messages))))))
+      (mt/with-log-messages-for-level [messages [metabase-enterprise.advanced-config.file.interface :warn]]
+        (is (= :ok
+               (advanced-config.file/initialize!)))
+        (is (=? [{:level :warn, :message (u/colorize :yellow "Ignoring unknown config section :unknown-section.")}]
+                (messages)))))))
 
 (deftest require-advanced-config-test
   (testing "Config files should require the `:config-text-file` token feature"

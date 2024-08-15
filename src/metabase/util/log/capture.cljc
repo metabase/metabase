@@ -82,6 +82,7 @@
 
 (s/def ::namespace
   (some-fn symbol? string?))
+
 (s/def ::level
   #{:explode :fatal :error :warn :info :debug :trace :whisper})
 
@@ -180,7 +181,7 @@
   "Impl for log message capturing for [[metabase.util.log/logp]]."
   [f & args]
   (let [{:keys [e args]} (parse-args args)]
-    (f e (str/join \space args))))
+    (f e (str/join \space (map print-str args)))))
 
 (defn capture-logf!
   "Impl for log message capturing for [[metabase.util.log/logf]]."
@@ -202,16 +203,3 @@
   [namespace-str level & args]
   `(when-let [f# (*capture-logs-fn* ~namespace-str ~(level->int level))]
      (capture-logf! f# ~@args)))
-
-(defn messages->legacy-format
-  "Impl for legacy [[metabase.test.util.log/with-log-messages-for-level]]. Convert captured messages from the improved
-  format introduced in #28827 e.g.
-
-    [{:namespace metabase.util.log-test, :level :warn, :e nil, :message \"a message\"}]
-
-  to the legacy format used previously e.g.
-
-    [[:warn nil \"a message\"]]"
-  [messages]
-  (mapv (juxt :level :e :message)
-        messages))

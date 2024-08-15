@@ -85,16 +85,17 @@
              (encryption/maybe-decrypt secret-2 original-ciphertext))))))
 
 (defn- includes-encryption-warning? [log-messages]
-  (some (fn [[level _ message]]
+  (some (fn [{:keys [level message]}]
           (and (= level :warn)
                (str/includes? message (str "Cannot decrypt encrypted String. Have you changed or forgot to set "
                                            "MB_ENCRYPTION_SECRET_KEY?"))))
         log-messages))
 
-(deftest no-errors-for-unencrypted-test
+(deftest ^:parallel no-errors-for-unencrypted-test
   (testing "Something obviously not encrypted should avoiding trying to decrypt it (and thus not log an error)"
-    (is (empty? (mt/with-log-messages-for-level :warn
-                  (encryption/maybe-decrypt secret "abc"))))))
+    (mt/with-log-messages-for-level [messages :warn]
+      (encryption/maybe-decrypt secret "abc")
+      (is (empty? (messages))))))
 
 (def ^:private fake-ciphertext
   "AES+CBC's block size is 16 bytes and the tag length is 32 bytes. This is a string of characters that is the same
@@ -102,15 +103,15 @@
   have the same size"
   (apply str (repeat 64 "a")))
 
-(deftest log-warning-on-failure-test
+(deftest ^:parallel log-warning-on-failure-test
   (testing (str "Something that is not encrypted, but might be (is the correct shape etc) should attempt to be "
                 "decrypted. If unable to decrypt it, log a warning.")
-    (is (includes-encryption-warning?
-         (mt/with-log-messages-for-level :warn
-           (encryption/maybe-decrypt secret fake-ciphertext))))
-    (is (includes-encryption-warning?
-         (mt/with-log-messages-for-level :warn
-           (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW")))))))
+    (mt/with-log-messages-for-level [messages :warn]
+      (encryption/maybe-decrypt secret fake-ciphertext)
+      (is (includes-encryption-warning? (messages))))
+    (mt/with-log-messages-for-level [messages :warn]
+      (encryption/maybe-decrypt secret-2 (encryption/encrypt secret "WOW"))
+      (is (includes-encryption-warning? (messages))))))
 
 (deftest ^:parallel possibly-encrypted-test
   (testing "Something that is not encrypted, but might be should return the original text"

@@ -244,7 +244,7 @@
       (u/with-timeout supports?-timeout-ms
         (driver/database-supports? driver feature database))
       (catch Throwable e
-        (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (name feature) (:name database)))
+        (log/error e (u/format-color 'red "Failed to check feature '%s' for database '%s'" (u/qualified-name feature) (:name database)))
         false))))
 
 (def ^:private memoized-supports?*
