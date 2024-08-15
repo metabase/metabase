@@ -3,6 +3,7 @@
    [clojure.java.io :as io]
    [clojure.string :as str]
    [clojure.test :refer :all]
+   [clojure.walk :as walk]
    [metabase-enterprise.serialization.api :as api.serialization]
    [metabase-enterprise.serialization.v2.load :as v2.load]
    [metabase.analytics.snowplow-test :as snowplow-test]
@@ -58,6 +59,18 @@
       (throw (ex-info "[test] deliberate error message" {:test true}))
       (orig model-name opts instance))))
 
+(defn- sanitize-key [m k]
+  (let [x (k m)]
+    (if (and x (or (not (string? x)) (= 21 (count x))))
+      (assoc m k "**ID**")
+      m)))
+
+(defn extract-and-sanitize-exception-map [log]
+  (->> (re-find #"ERROR .* (\{.*\})(\n|$)" log)
+       second
+       read-string
+       (walk/postwalk #(-> % (sanitize-key :id) (sanitize-key :entity_id)))))
+
 (deftest export-test
   (testing "Serialization API export"
     (let [known-files (set (.list (io/file api.serialization/parent-dir)))]
@@ -96,7 +109,7 @@
 
               (testing "On exception API returns log"
                 (mt/with-dynamic-redefs [serdes/extract-one (extract-one-error (:entity_id card)
-                                                                                (mt/dynamic-value serdes/extract-one))]
+                                                                               (mt/dynamic-value serdes/extract-one))]
                   (let [res (binding [api.serialization/*additive-logging* false]
                               (mt/user-http-request :crowberto :post 500 "ee/serialization/export" {}
                                                     :collection (:id coll) :data_model false :settings false))
@@ -104,7 +117,13 @@
                     (testing "In logs we get an entry for the dashboard, then card, and then an error"
                       (is (= #{"Dashboard" "Card"}
                              (log-types (str/split-lines log))))
-                      (is (re-find #"deliberate error message" log))))))
+                      (is (re-find #"deliberate error message" log))
+                      (is (=  {:id        "**ID**",
+                               :entity_id "**ID**",
+                               :model     "Card",
+                               :table     :report_card
+                               :cause     "[test] deliberate error message"}
+                              (extract-and-sanitize-exception-map log)))))))
 
               (testing "You can pass specific directory name"
                 (let [f (mt/user-http-request :crowberto :post 200 "ee/serialization/export" {}
@@ -204,7 +223,13 @@
                       (testing "3 header lines, then cards+database+collection, then the error"
                         (is (= #{"Card" "Database" "Collection"}
                                (log-types (str/split-lines log))))
-                        (is (re-find #"Failed to read file for Collection DoesNotExist" log)))
+                        (is (re-find #"Failed to read file for Collection DoesNotExist" log))
+                        (is (= {:deps-chain #{[{:id "**ID**", :model "Card"}]},
+                                :error      :metabase-enterprise.serialization.v2.load/not-found,
+                                :model      "Collection",
+                                :path       [{:id "DoesNotExist", :model "Collection"}],
+                                :table      :collection}
+                               (extract-and-sanitize-exception-map log))))
                       (testing "Snowplow event about error was sent"
                         (is (=? {"success"       false
                                  "event"         "serialization"
@@ -241,10 +266,16 @@
                                                                              (mt/dynamic-value serdes/extract-one))]
                 (testing "ERROR /api/ee/serialization/export"
                   (binding [api.serialization/*additive-logging* false]
-                    (is (-> (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
-                                                  :collection (:id coll) :data_model false :settings false)
-                            ;; consume response to remove on-disk data
-                            io/input-stream)))
+                    (let [res (mt/user-http-request :crowberto :post 500 "ee/serialization/export"
+                                                    :collection (:id coll) :data_model false :settings false)
+                          log (slurp (io/input-stream res))]
+                      (is (=  {:id        "**ID**",
+                               :entity_id "**ID**",
+                               :model     "Card",
+                               :table     :report_card
+                               :cause     "[test] deliberate error message"}
+                              (extract-and-sanitize-exception-map log)))))
+
                   (testing "Snowplow event about error was sent"
                     (is (=? {"event"           "serialization"
                              "direction"       "export"
